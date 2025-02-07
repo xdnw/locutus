@@ -23,7 +23,7 @@ public class StringColumn<P> extends ColumnInfo<P, String> {
     public String read(byte[] buffer, int offset) throws IOException {
         this.id = SafeUtils.readIntBE(buffer, offset);
         cacheValue = null;
-        return null;
+        return getHeader().getDictionary().get(id);
     }
 
     @Override

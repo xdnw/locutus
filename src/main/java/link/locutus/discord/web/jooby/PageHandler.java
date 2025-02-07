@@ -121,12 +121,14 @@ public class PageHandler implements Handler {
         this.commands.registerSubCommands(new TradePages(), "page");
         this.commands.registerSubCommands(new AlliancePages(), "page");
 
+        // endpoints
         this.commands.registerSubCommands(new EndpointPages(), "api");
         this.commands.registerSubCommands(new TradeEndpoints(), "api");
         this.commands.registerSubCommands(new IAEndpoints(), "api");
         this.commands.registerSubCommands(new StatEndpoints(), "api");
         this.commands.registerSubCommands(new CoalitionGraphEndpoints(), "api");
         this.commands.registerSubCommands(new GraphEndpoints(), "api");
+        this.commands.registerSubCommands(new TaxEndpoints(), "api");
 
         this.commands.registerCommands(new TestPages());
         this.commands.registerCommands(this);

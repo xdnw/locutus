@@ -1,6 +1,5 @@
 package link.locutus.discord.db.entities;
 
-import com.google.gson.Gson;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import com.politicsandwar.graphql.model.Bankrec;
 import com.politicsandwar.graphql.model.Nation;
@@ -31,6 +30,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
+import link.locutus.discord.db.TaxDeposit;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.metric.GrowthAsset;
 import link.locutus.discord.db.entities.metric.MembershipChangeReason;
@@ -1472,10 +1472,10 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         return new HashSet<>(Locutus.imp().getNationDB().getPositions(allianceId));
     }
 
-    public List<BankDB.TaxDeposit> updateTaxes() {
+    public List<TaxDeposit> updateTaxes() {
         return updateTaxes(null);
     }
-    public List<BankDB.TaxDeposit> updateTaxes(Long afterDate) {
+    public List<TaxDeposit> updateTaxes(Long afterDate) {
         long oldestApiFetchDate = getDateCreated() - TimeUnit.HOURS.toMillis(2);
 
         GuildDB db = Locutus.imp().getGuildDBByAA(allianceId);
@@ -1487,7 +1487,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 
         BankDB bankDb = Locutus.imp().getBankDB();
         if (afterDate == null) {
-            BankDB.TaxDeposit latestTaxRecord = bankDb.getLatestTaxDeposit(getAlliance_id());
+            TaxDeposit latestTaxRecord = bankDb.getLatestTaxDeposit(getAlliance_id());
 
             afterDate = oldestApiFetchDate;
             if (latestTaxRecord != null) afterDate = latestTaxRecord.date;
@@ -1501,7 +1501,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 
         Map<Integer, com.politicsandwar.graphql.model.TaxBracket> taxRates = api.fetchTaxBrackets(getAlliance_id(), false);
 
-        List<BankDB.TaxDeposit> taxes = new ArrayList<>();
+        List<TaxDeposit> taxes = new ArrayList<>();
         Map<Integer, TaxRate> internalTaxRateCache = new HashMap<>();
         for (Bankrec bankrec : bankRecs) {
             int nationId = bankrec.getSender_id();
@@ -1526,7 +1526,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
                 resourceTax = taxRate.getResource_tax_rate();
             }
 
-            BankDB.TaxDeposit taxRecord = new BankDB.TaxDeposit(bankrec.getReceiver_id(), bankrec.getDate().toEpochMilli(), bankrec.getId(), bankrec.getTax_id(), nationId, moneyTax, resourceTax, internal.money, internal.resources, deposit);
+            TaxDeposit taxRecord = new TaxDeposit(bankrec.getReceiver_id(), bankrec.getDate().toEpochMilli(), bankrec.getId(), bankrec.getTax_id(), nationId, moneyTax, resourceTax, internal.money, internal.resources, deposit);
             taxes.add(taxRecord);
 
         }
@@ -1580,7 +1580,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     public int updateTaxesLegacy(Long latestDate) {
         int count = 0;
 
-        List<BankDB.TaxDeposit> existing = Locutus.imp().getBankDB().getTaxesByTurn(allianceId);
+        List<TaxDeposit> existing = Locutus.imp().getBankDB().getTaxesByTurn(allianceId);
         int latestId = 1;
         if (latestDate == null) {
             latestDate = 0L;
@@ -1600,11 +1600,11 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
             latestId = existing.get(existing.size() - 1).index;
         }
 
-        List<BankDB.TaxDeposit> taxes = new GetTaxesTask(auth, latestDate).call();
+        List<TaxDeposit> taxes = new GetTaxesTask(auth, latestDate).call();
 
         synchronized (Locutus.imp().getBankDB()) {
             long oldestFetched = Long.MAX_VALUE;
-            for (BankDB.TaxDeposit tax : taxes) {
+            for (TaxDeposit tax : taxes) {
                 tax.index = ++latestId;
                 oldestFetched = Math.min(oldestFetched, tax.date);
             }

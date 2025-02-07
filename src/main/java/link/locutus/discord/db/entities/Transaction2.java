@@ -3,7 +3,7 @@ package link.locutus.discord.db.entities;
 import com.google.gson.JsonElement;
 import com.politicsandwar.graphql.model.Bankrec;
 import link.locutus.discord.apiv1.entities.BankRecord;
-import link.locutus.discord.db.BankDB;
+import link.locutus.discord.db.TaxDeposit;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
@@ -236,7 +236,7 @@ public class Transaction2 {
         resources = transfer.toMap();
     }
 
-    public Transaction2(BankDB.TaxDeposit tax) {
+    public Transaction2(TaxDeposit tax) {
         this.tx_id = tax.index;
         this.tx_datetime = tax.date;
         this.sender_id = tax.nationId;

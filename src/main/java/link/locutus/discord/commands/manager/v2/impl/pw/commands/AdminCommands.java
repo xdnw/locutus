@@ -2842,7 +2842,7 @@ public class AdminCommands {
         if (aaList == null) {
             return "No alliance registered to this guild. See " + GuildKey.ALLIANCE_ID.getCommandMention();
         }
-        List<BankDB.TaxDeposit> taxes = aaList.updateTaxes(timestamp);
+        List<TaxDeposit> taxes = aaList.updateTaxes(timestamp);
         return "Updated " + taxes.size() + " records.";
     }
 

@@ -29,6 +29,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.BankDB;
+import link.locutus.discord.db.TaxDeposit;
 import link.locutus.discord.db.conflict.Conflict;
 import link.locutus.discord.db.conflict.ConflictManager;
 import link.locutus.discord.db.GuildDB;
@@ -120,7 +121,7 @@ public class PlaceholdersMap {
     public static Placeholders<DBTrade> TRADES = null;
     public static Placeholders<IAttack> ATTACKS = null;
     public static Placeholders<DBWar> WARS = null;
-    public static Placeholders<BankDB.TaxDeposit> TAX_DEPOSITS = null;
+    public static Placeholders<TaxDeposit> TAX_DEPOSITS = null;
     public static Placeholders<GuildSetting> SETTINGS = null;
     public static Placeholders<Conflict> CONFLICTS = null;
     public static Placeholders<TextChannelWrapper> CHANNELS = null;
@@ -173,7 +174,7 @@ public class PlaceholdersMap {
         this.placeholders.put(DBTrade.class, createTrades());
         this.placeholders.put(IAttack.class, createAttacks());
         this.placeholders.put(DBWar.class, createWars());
-        this.placeholders.put(BankDB.TaxDeposit.class, createTaxDeposit());
+        this.placeholders.put(TaxDeposit.class, createTaxDeposit());
         this.placeholders.put(GuildSetting.class, createGuildSettings());
         this.placeholders.put(Conflict.class, createConflicts());
 
@@ -1370,14 +1371,14 @@ public class PlaceholdersMap {
     }
 
 
-    private Predicate<BankDB.TaxDeposit> getCanView(ValueStore store) {
+    private Predicate<TaxDeposit> getCanView(ValueStore store) {
         GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), false);
         User user = (User) store.getProvided(Key.of(User.class, Me.class), false);
         DBNation nation = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
         boolean hasEcon = user != null && db != null && Roles.ECON_STAFF.has(user, db.getGuild());
-        return new Predicate<BankDB.TaxDeposit>() {
+        return new Predicate<TaxDeposit>() {
             @Override
-            public boolean test(BankDB.TaxDeposit record) {
+            public boolean test(TaxDeposit record) {
                 if (nation != null && nation.getId() == record.nationId) return true;
                 if (db == null) return false;
                 if (!db.isAllianceId(record.allianceId)) return false;
@@ -1386,10 +1387,10 @@ public class PlaceholdersMap {
         };
     }
 
-    private Set<BankDB.TaxDeposit> getTaxes(ValueStore store, Set<Integer> ids, Set<Integer> taxIds, Set<Integer> nations, Set<Integer> aaIds) {
+    private Set<TaxDeposit> getTaxes(ValueStore store, Set<Integer> ids, Set<Integer> taxIds, Set<Integer> nations, Set<Integer> aaIds) {
         BankDB bankDb = Locutus.imp().getBankDB();
-        Predicate<BankDB.TaxDeposit> canView = getCanView(store);
-        Set<BankDB.TaxDeposit> result = new ObjectLinkedOpenHashSet<>();
+        Predicate<TaxDeposit> canView = getCanView(store);
+        Set<TaxDeposit> result = new ObjectLinkedOpenHashSet<>();
 
         if (ids != null && !ids.isEmpty()) {
             bankDb.getTaxesByIds(ids).stream().filter(canView).forEach(result::add);
@@ -1406,11 +1407,11 @@ public class PlaceholdersMap {
         return result;
     }
 
-    public Placeholders<BankDB.TaxDeposit> createTaxDeposit() {
-        return new SimplePlaceholders<BankDB.TaxDeposit>(BankDB.TaxDeposit.class, store, validators, permisser,
+    public Placeholders<TaxDeposit> createTaxDeposit() {
+        return new SimplePlaceholders<TaxDeposit>(TaxDeposit.class, store, validators, permisser,
                 "A tax record",
-                (ThrowingTriFunction<Placeholders<BankDB.TaxDeposit>, ValueStore, String, Set<BankDB.TaxDeposit>>) (inst, store, input) -> {
-                    Set<BankDB.TaxDeposit> selection = getSelection(inst, store, input);
+                (ThrowingTriFunction<Placeholders<TaxDeposit>, ValueStore, String, Set<TaxDeposit>>) (inst, store, input) -> {
+                    Set<TaxDeposit> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) {
                         GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), true);
@@ -1448,7 +1449,7 @@ public class PlaceholdersMap {
                     Set<Integer> ids = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
                     return getTaxes(store, null, null, ids, null);
 
-                }, (ThrowingTriFunction<Placeholders<BankDB.TaxDeposit>, ValueStore, String, Predicate<BankDB.TaxDeposit>>) (inst, store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<TaxDeposit>, ValueStore, String, Predicate<TaxDeposit>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
             if (SpreadSheet.isSheet(input)) {
                 Set<Integer> ids = new IntOpenHashSet();
@@ -1482,9 +1483,9 @@ public class PlaceholdersMap {
                 DBNation nation = DBNation.getOrCreate(f.nationId);
                 return nationFilter.test(nation);
             };
-        }, new Function<BankDB.TaxDeposit, String>() {
+        }, new Function<TaxDeposit, String>() {
             @Override
-            public String apply(BankDB.TaxDeposit taxDeposit) {
+            public String apply(TaxDeposit taxDeposit) {
                 return taxDeposit.toString();
             }
         }) {
@@ -1507,7 +1508,7 @@ public class PlaceholdersMap {
             @NoFormat
             @Command(desc = "Add an alias for a selection of tax records")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<BankDB.TaxDeposit> taxes) {
+            public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<TaxDeposit> taxes) {
                 return _addSelectionAlias(this, command, db, name, taxes, "taxes");
             }
 
@@ -1515,30 +1516,30 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to a Bank TaxDeposit sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> a,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> b,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> c,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> d,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> e,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> f,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> g,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> h,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> i,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> j,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> k,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> l,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> m,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> n,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> o,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> p,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> q,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> r,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> s,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> t,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> u,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> v,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> w,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> x) throws GeneralSecurityException, IOException {
+                                     @Default TypedFunction<TaxDeposit, String> a,
+                                     @Default TypedFunction<TaxDeposit, String> b,
+                                     @Default TypedFunction<TaxDeposit, String> c,
+                                     @Default TypedFunction<TaxDeposit, String> d,
+                                     @Default TypedFunction<TaxDeposit, String> e,
+                                     @Default TypedFunction<TaxDeposit, String> f,
+                                     @Default TypedFunction<TaxDeposit, String> g,
+                                     @Default TypedFunction<TaxDeposit, String> h,
+                                     @Default TypedFunction<TaxDeposit, String> i,
+                                     @Default TypedFunction<TaxDeposit, String> j,
+                                     @Default TypedFunction<TaxDeposit, String> k,
+                                     @Default TypedFunction<TaxDeposit, String> l,
+                                     @Default TypedFunction<TaxDeposit, String> m,
+                                     @Default TypedFunction<TaxDeposit, String> n,
+                                     @Default TypedFunction<TaxDeposit, String> o,
+                                     @Default TypedFunction<TaxDeposit, String> p,
+                                     @Default TypedFunction<TaxDeposit, String> q,
+                                     @Default TypedFunction<TaxDeposit, String> r,
+                                     @Default TypedFunction<TaxDeposit, String> s,
+                                     @Default TypedFunction<TaxDeposit, String> t,
+                                     @Default TypedFunction<TaxDeposit, String> u,
+                                     @Default TypedFunction<TaxDeposit, String> v,
+                                     @Default TypedFunction<TaxDeposit, String> w,
+                                     @Default TypedFunction<TaxDeposit, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
                         a, b, c, d, e, f, g, h, i, j,
                         k, l, m, n, o, p, q, r, s, t,
