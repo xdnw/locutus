@@ -2515,13 +2515,12 @@ public class WarDB extends DBMainV2 {
                         }
                     }
                 }
-                newAttacks = new ArrayList<>(newAttacks);
+                newAttacks = new ObjectArrayList<>(newAttacks);
                 newAttacks.removeIf(f -> existingAttackIds.contains(f.getWar_attack_id()));
             }
 
             long now = System.currentTimeMillis();
 
-            int[] unitBuffer = MilitaryUnit.getBuffer();
             for (AbstractCursor attack : newAttacks) {
                 if (runAlerts) {
                     Locutus.imp().getNationDB().setNationActive(attack.getAttacker_id(), attack.getDate(), eventConsumer);
