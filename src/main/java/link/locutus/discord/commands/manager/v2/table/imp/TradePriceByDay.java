@@ -23,7 +23,6 @@ public class TradePriceByDay extends SimpleTable<Void> {
 
         this.rssList = new ArrayList<>(resources);
         rssList.remove(ResourceType.MONEY);
-        rssList.remove(ResourceType.CREDITS);
         if (rssList.isEmpty()) throw new IllegalArgumentException("Invalid resources");
 
         long start = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(numDays);
