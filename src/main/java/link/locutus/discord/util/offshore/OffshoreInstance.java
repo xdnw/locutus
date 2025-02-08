@@ -925,20 +925,13 @@ public class OffshoreInstance {
                 return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, depositType.toString()).addMessage(response.toString());
             }
 
-            long primaryAccountId;
-            if (nationAccount != null && allowedIds.containsKey((long) nationAccount.getAlliance_id())) {
-                primaryAccountId = nationAccount.getAlliance_id();
-            } else if (receiver.isNation() && allowedIds.containsKey((long) receiver.asNation().getAlliance_id())) {
-                primaryAccountId = receiver.asNation().getAlliance_id();
-            } else {
-                primaryAccountId = allowedIds.keySet().iterator().next();
-            }
+            long primaryAccountId = getAccountId(allowedIds.keySet(), nationAccount, receiver);
             String note = depositType.toString(primaryAccountId);
             if (otherNotes.size() > 0) {
                 note += " " + String.join(" ", otherNotes);
             }
 
-            String ingameNote = isInternalTransfer ? "#" + DepositType.IGNORE.name().toLowerCase(Locale.ROOT) : note;
+            String ingameNote = isInternalTransfer ? "#" + DepositType.IGNORE.name().toLowerCase(Locale.ROOT) + "=" + primaryAccountId : note;
 
             long timestamp = System.currentTimeMillis();
             if (isInternalTransfer && !depositType.isIgnored()) {
@@ -1023,6 +1016,16 @@ public class OffshoreInstance {
                 }
             }
             return result;
+        }
+    }
+
+    public long getAccountId(Set<Long> allowedIds, DBNation nationAccount, NationOrAlliance receiver) {
+        if (nationAccount != null && allowedIds.contains((long) nationAccount.getAlliance_id())) {
+            return nationAccount.getAlliance_id();
+        } else if (receiver.isNation() && allowedIds.contains((long) receiver.asNation().getAlliance_id())) {
+            return receiver.asNation().getAlliance_id();
+        } else {
+            return allowedIds.iterator().next();
         }
     }
 
@@ -1149,10 +1152,12 @@ public class OffshoreInstance {
                         } else {
                             cutoff -= TimeUnit.DAYS.toMillis(1);
                         }
-
                         List<Transaction2> transactions = Locutus.imp().getBankDB().getTransactionsByNote(append, cutoff);
+                        Set<Long> offshoreAAIds = getOffshoreAAs();
+                        Set<Integer> aaIds = senderDB.getAllianceIds();
                         double total = 0;
                         for (Transaction2 transaction : transactions) {
+                            if (!transaction.isTrackedForGuild(senderDB, aaIds, offshoreAAIds)) continue;
                             total += transaction.convertedTotal();
                         }
                         if (total > withdrawLimit) {
