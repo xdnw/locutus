@@ -62,8 +62,7 @@ public enum ResourceType {
                     factor = 400;
                 }
                 if (hasProject.test(Projects.FALLOUT_SHELTER)) {
-                    if (rads < 0.15) rads = 0.15;
-                    else rads = Math.min(1, rads + 0.15);
+                    rads = Math.max(0, Math.min(1, 0.15 + 0.85 * rads));
                 } else {
                     rads = Math.max(0, rads);
                 }
