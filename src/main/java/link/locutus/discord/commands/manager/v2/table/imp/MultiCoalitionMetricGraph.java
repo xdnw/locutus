@@ -20,8 +20,8 @@ public class MultiCoalitionMetricGraph extends SimpleTable<Void> {
     private long maxTurn;
     private final double[] buffer;
 
-    public static MultiCoalitionMetricGraph create(AllianceMetric metric, long cutoffTurn, Collection<String> coalitionNames, Set<DBAlliance>... coalitions) {
-        return new MultiCoalitionMetricGraph(metric, cutoffTurn, TimeUtil.getTurn(), coalitionNames, coalitions);
+    public static MultiCoalitionMetricGraph create(AllianceMetric metric, long cutoffTurn, long turnEnd, Collection<String> coalitionNames, Set<DBAlliance>... coalitions) {
+        return new MultiCoalitionMetricGraph(metric, cutoffTurn, turnEnd, coalitionNames, coalitions);
     }
 
     public MultiCoalitionMetricGraph(AllianceMetric metric, long startTurn, long endTurn, Collection<String> coalitionNames, Set<DBAlliance>... coalitions) {

@@ -31,6 +31,20 @@ public enum DepositType {
 
     ;
 
+    public static DepositType parse(String note) {
+        if (note == null || note.isEmpty()) {
+            return null;
+        }
+        try {
+            if (note.startsWith("#")) {
+                note = note.substring(1);
+            }
+            return DepositType.valueOf(note.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
     private final String description;
     private DepositType parent;
     private boolean isClassifier;

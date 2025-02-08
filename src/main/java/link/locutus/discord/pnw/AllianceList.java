@@ -7,6 +7,7 @@ import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.TaxDeposit;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBAlliancePosition;
 import link.locutus.discord.db.entities.DBNation;
@@ -106,15 +107,15 @@ public class AllianceList {
         return alliances;
     }
 
-    public List<BankDB.TaxDeposit> updateTaxes() {
+    public List<TaxDeposit> updateTaxes() {
         return updateTaxes(null);
     }
 
 
-    public List<BankDB.TaxDeposit> updateTaxes(Long startDate) {
-        List<BankDB.TaxDeposit> deposits = new ArrayList<>();
+    public List<TaxDeposit> updateTaxes(Long startDate) {
+        List<TaxDeposit> deposits = new ArrayList<>();
         for (DBAlliance alliance : getAlliances()) {
-            List<BankDB.TaxDeposit> taxRecs = alliance.updateTaxes(startDate);
+            List<TaxDeposit> taxRecs = alliance.updateTaxes(startDate);
             if (taxRecs == null) throw new IllegalStateException("Failed to update taxes for " + alliance.getMarkdownUrl() + ". Are you sure the API_KEY set has the scope `" + AlliancePermission.TAX_BRACKETS.name() + "`");
             deposits.addAll(taxRecs);
         }

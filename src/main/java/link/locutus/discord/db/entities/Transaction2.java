@@ -2,8 +2,11 @@ package link.locutus.discord.db.entities;
 
 import com.google.gson.JsonElement;
 import com.politicsandwar.graphql.model.Bankrec;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.entities.BankRecord;
-import link.locutus.discord.db.BankDB;
+import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.TaxDeposit;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
@@ -27,6 +30,7 @@ import java.time.ZonedDateTime;
 import java.util.AbstractMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import static link.locutus.discord.apiv1.enums.ResourceType.ALUMINUM;
 import static link.locutus.discord.apiv1.enums.ResourceType.BAUXITE;
@@ -121,6 +125,48 @@ public class Transaction2 {
             }
         }
         return false;
+    }
+
+    public long getAccountId(Set<Long> offshoreAlliances) {
+        if (this.note != null) {
+            Map<String, String> notes = PW.parseTransferHashNotes(this.note);
+            for (Map.Entry<String, String> entry : notes.entrySet()) {
+                if (entry.getValue() == null) continue;
+                if (entry.getKey().equalsIgnoreCase("#alliance") || entry.getKey().equalsIgnoreCase("#guild")) {
+                    if (MathMan.isInteger(entry.getValue())) {
+                        return Long.parseLong(entry.getValue());
+                    }
+                }
+            }
+            for (Map.Entry<String, String> entry : notes.entrySet()) {
+                if (entry.getValue() == null) continue;
+                DepositType type = DepositType.parse(entry.getKey());
+                if (type != null && type.getParent() == null) {
+                    if (MathMan.isInteger(entry.getValue())) {
+                        return Long.parseLong(entry.getValue());
+                    }
+                }
+            }
+        }
+        if (!isReceiverAA()) {
+            return sender_id;
+        }
+        if (!isSenderAA()) {
+            return receiver_id;
+        }
+        if (offshoreAlliances.contains(receiver_id)) {
+            return sender_id;
+        }
+        if (offshoreAlliances.contains(sender_id)) {
+            return receiver_id;
+        }
+        return 0;
+    }
+
+    public boolean isTrackedForGuild(GuildDB db, Set<Integer> aaIds, Set<Long> offshoreAAs) {
+        if (aaIds.contains((int) sender_id) || aaIds.contains((int) receiver_id)) return true;
+        long accountId = getAccountId(offshoreAAs);
+        return (accountId == 0 || accountId == db.getIdLong() || aaIds.contains((int) accountId));
     }
 
     public static Transaction2 fromTX2Table(Transactions_2Record record) {
@@ -236,7 +282,7 @@ public class Transaction2 {
         resources = transfer.toMap();
     }
 
-    public Transaction2(BankDB.TaxDeposit tax) {
+    public Transaction2(TaxDeposit tax) {
         this.tx_id = tax.index;
         this.tx_datetime = tax.date;
         this.sender_id = tax.nationId;

@@ -50,6 +50,7 @@ import java.security.GeneralSecurityException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class GrantCommands {
 
@@ -2862,7 +2863,10 @@ public class GrantCommands {
                 }
             }
             // - Send to self via #ignore
-            TransferResult result = offshore.transferFromAllianceDeposits(me, db, db::isAllianceId, receiver, amtArr, "#ignore");
+            Set<Long> allowedIds = db.getAllianceIds().stream().map(f -> (long) f).collect(Collectors.toSet());
+            if (allowedIds.isEmpty()) allowedIds = Set.of(db.getIdLong());
+            long accountId = offshore.getAccountId(allowedIds, me, receiver);
+            TransferResult result = offshore.transferFromAllianceDeposits(me, db, db::isAllianceId, receiver, amtArr, DepositType.IGNORE.name() + "=" + accountId);
             switch (result.getStatus()) {
                 case SENT_TO_ALLIANCE_BANK:
                 case SUCCESS: {
