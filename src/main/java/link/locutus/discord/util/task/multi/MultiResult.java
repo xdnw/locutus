@@ -3,16 +3,11 @@ package link.locutus.discord.util.task.multi;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
-import link.locutus.discord.db.NationDB;
-import link.locutus.discord.db.TradeDB;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.network.IProxy;
-import link.locutus.discord.network.ProxyHandler;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.io.PagePriority;
@@ -32,10 +27,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class MultiResult {
-    private final Map<Integer, NetworkRow> network;
-    private final List<SameNetworkTrade> trade;
-    private final int nationId;
-    private long dateFetched = 0;
+    public final Map<Integer, NetworkRow> network;
+    public final List<SameNetworkTrade> trade;
+    public final int nationId;
+    public long dateFetched = 0;
+
+    public final Map<Integer, String> nationNames = new Int2ObjectOpenHashMap<>();
+    public final Map<Integer, String> allianceNames = new Int2ObjectOpenHashMap<>();
 
     public MultiResult(int nationId) {
         this.network = new Int2ObjectOpenHashMap<>();
@@ -47,6 +45,35 @@ public class MultiResult {
         this.network = network;
         this.trade = trade;
         this.nationId = nationId;
+    }
+
+    public MultiResult loadNames() {
+        for (Map.Entry<Integer, NetworkRow> entry : network.entrySet()) {
+            DBNation nation = DBNation.getById(entry.getKey());
+            if (nation != null) {
+                nationNames.put(entry.getKey(), nation.getName());
+            }
+            DBAlliance alliance = DBAlliance.get(entry.getValue().allianceId);
+            if (alliance != null) {
+                allianceNames.put(entry.getValue().allianceId, alliance.getName());
+            }
+        }
+
+        for (SameNetworkTrade trade : trade) {
+            DBNation buying = DBNation.getById(trade.buyingNation);
+            if (buying != null) {
+                nationNames.put(trade.buyingNation, buying.getName());
+            }
+            DBNation selling = DBNation.getById(trade.sellingNation);
+            if (selling != null) {
+                nationNames.put(trade.sellingNation, selling.getName());
+            }
+        }
+        DBNation nation = DBNation.getById(nationId);
+        if (nation != null) {
+            nationNames.put(nationId, nation.getName());
+        }
+        return this;
     }
 
     public MultiResult setDateFetched(long dateFetched) {
@@ -67,7 +94,7 @@ public class MultiResult {
             return this;
         }
         long now = System.currentTimeMillis();
-        if (System.currentTimeMillis() - dateFetched > timeout) {
+        if (now - dateFetched > timeout || dateFetched == 0) {
             try {
                 update(auth);
             } catch (IOException | ParseException e) {
@@ -221,65 +248,4 @@ public class MultiResult {
         return ResourceType.parse(resourceName);
     }
 
-    public static class NetworkRow {
-        public int id;
-        public long lastAccessFromSharedIP;
-        public int numberOfSharedIPs;
-        public long lastActiveMs;
-        public int allianceId;
-        public long dateCreated;
-
-        public NetworkRow(int id, long lastAccessFromSharedIP, int numberOfSharedIPs, long lastActiveMs, int allianceId, long dateCreated) {
-            this.id = id;
-            this.lastAccessFromSharedIP = lastAccessFromSharedIP;
-            this.numberOfSharedIPs = numberOfSharedIPs;
-            this.lastActiveMs = lastActiveMs;
-            this.allianceId = allianceId;
-            this.dateCreated = dateCreated;
-        }
-    }
-
-    public static class SameNetworkTrade {
-        public int sellingNation;
-        public int buyingNation;
-        public long dateOffered;
-        public ResourceType resource;
-        public int amount;
-        public int ppu;
-
-        public SameNetworkTrade(int sellingNation, int buyingNation, long dateOffered, ResourceType resource, int amount, int ppu) {
-            this.sellingNation = sellingNation;
-            this.buyingNation = buyingNation;
-            this.dateOffered = dateOffered;
-            this.resource = resource;
-            this.amount = amount;
-            this.ppu = ppu;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            SameNetworkTrade that = (SameNetworkTrade) o;
-
-            if (sellingNation != that.sellingNation) return false;
-            if (buyingNation != that.buyingNation) return false;
-            if (dateOffered != that.dateOffered) return false;
-            if (amount != that.amount) return false;
-            if (ppu != that.ppu) return false;
-            return resource == that.resource;
-        }
-
-        @Override
-        public int hashCode() {
-            int result = sellingNation;
-            result = 31 * result + buyingNation;
-            result = 31 * result + (int) (dateOffered ^ (dateOffered >>> 32));
-            result = 31 * result + (resource != null ? resource.hashCode() : 0);
-            result = 31 * result + amount;
-            result = 31 * result + ppu;
-            return result;
-        }
-    }
 }

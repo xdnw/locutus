@@ -601,6 +601,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 synchronized (alliancesById) {
                     existing = alliancesById.get(alliance.getId());
                 }
+                if (existing == null && alliance.getScore() != null && alliance.getScore() == 0) continue;
+
                 if (existing == null) {
                     existing = new DBAlliance(alliance);
                     synchronized (alliancesById) {

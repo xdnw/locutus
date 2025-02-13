@@ -9,7 +9,6 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
-import link.locutus.discord.apiv1.entities.ApiRecord;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
@@ -27,17 +26,13 @@ import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.offshore.EncryptionUtil;
 import com.google.api.client.util.Base64;
 import com.google.api.client.util.Sets;
-import com.google.gson.Gson;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import link.locutus.discord.util.task.multi.MultiResult;
-import net.dv8tion.jda.api.entities.Guild;
+import link.locutus.discord.util.task.multi.NetworkRow;
+import link.locutus.discord.util.task.multi.SameNetworkTrade;
 import net.dv8tion.jda.api.entities.User;
-import org.apache.commons.codec.binary.Hex;
-import org.jooq.meta.derby.sys.Sys;
 
-import java.io.File;
-import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -46,7 +41,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -149,13 +143,13 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         }
     }
 
-    public Map<Integer, MultiResult.NetworkRow> getNetworkRows(int nationId) {
-        Map<Integer, MultiResult.NetworkRow> map = new Int2ObjectOpenHashMap<>();
+    public Map<Integer, NetworkRow> getNetworkRows(int nationId) {
+        Map<Integer, NetworkRow> map = new Int2ObjectOpenHashMap<>();
         try (PreparedStatement stmt = prepareQuery("select * FROM NetworkRow2 WHERE id1 = ?")) {
             stmt.setInt(1, nationId);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    MultiResult.NetworkRow row = new MultiResult.NetworkRow(
+                    NetworkRow row = new NetworkRow(
                             rs.getInt("id2"),
                             rs.getInt("lastAccessFromSharedIP"),
                             rs.getInt("numberOfSharedIPs"),
@@ -173,14 +167,14 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         }
     }
 
-    public List<MultiResult.SameNetworkTrade> getSameNetworkTrades(int nationId) {
-        Set<MultiResult.SameNetworkTrade> list = new ObjectLinkedOpenHashSet<>();
+    public List<SameNetworkTrade> getSameNetworkTrades(int nationId) {
+        Set<SameNetworkTrade> list = new ObjectLinkedOpenHashSet<>();
         try (PreparedStatement stmt = prepareQuery("select * FROM SameNetworkTrade WHERE sellingNation = ? OR buyingNation = ?")) {
             stmt.setInt(1, nationId);
             stmt.setInt(2, nationId);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    MultiResult.SameNetworkTrade trade = new MultiResult.SameNetworkTrade(
+                    SameNetworkTrade trade = new SameNetworkTrade(
                             rs.getInt("sellingNation"),
                             rs.getInt("buyingNation"),
                             rs.getInt("dateOffered"),
@@ -198,11 +192,11 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         }
     }
 
-    public void addNetworks(int nationId, List<MultiResult.NetworkRow> data) {
+    public void addNetworks(int nationId, List<NetworkRow> data) {
         String query = "INSERT OR REPLACE INTO `NetworkRow2`(`id1`, `id2`, `lastAccessFromSharedIP`, `numberOfSharedIPs`, `lastActiveMs`, `allianceId`, `dateCreated`) VALUES (?, ?, ?, ?, ?, ?, ?)";
-        executeBatch(data, query, new ThrowingBiConsumer<MultiResult.NetworkRow, PreparedStatement>() {
+        executeBatch(data, query, new ThrowingBiConsumer<NetworkRow, PreparedStatement>() {
             @Override
-            public void acceptThrows(MultiResult.NetworkRow row, PreparedStatement stmt) throws Exception {
+            public void acceptThrows(NetworkRow row, PreparedStatement stmt) throws Exception {
                 stmt.setInt(1, nationId);
                 stmt.setInt(2, row.id);
                 stmt.setLong(3, row.lastAccessFromSharedIP);
@@ -214,11 +208,11 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         });
     }
 
-    public void addSameNetworkTrades(List<MultiResult.SameNetworkTrade> data) {
+    public void addSameNetworkTrades(List<SameNetworkTrade> data) {
         String query = "INSERT OR REPLACE INTO `SameNetworkTrade`(`sellingNation`, `buyingNation`, `dateOffered`, `resource`, `amount`, `ppu`) VALUES (?, ?, ?, ?, ?, ?)";
-        executeBatch(data, query, new ThrowingBiConsumer<MultiResult.SameNetworkTrade, PreparedStatement>() {
+        executeBatch(data, query, new ThrowingBiConsumer<SameNetworkTrade, PreparedStatement>() {
             @Override
-            public void acceptThrows(MultiResult.SameNetworkTrade trade, PreparedStatement stmt) throws Exception {
+            public void acceptThrows(SameNetworkTrade trade, PreparedStatement stmt) throws Exception {
                 stmt.setInt(1, trade.sellingNation);
                 stmt.setInt(2, trade.buyingNation);
                 stmt.setLong(3, trade.dateOffered);
@@ -231,8 +225,9 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
 
     public MultiResult getMultiResult(int nationId) {
         long lastUpdated = getMultiReportLastUpdated(nationId);
-        Map<Integer, MultiResult.NetworkRow> networkRows = getNetworkRows(nationId);
-        List<MultiResult.SameNetworkTrade> sameNetworkTrades = getSameNetworkTrades(nationId);
+        if (lastUpdated == 0) return new MultiResult(nationId);
+        Map<Integer, NetworkRow> networkRows = getNetworkRows(nationId);
+        List<SameNetworkTrade> sameNetworkTrades = getSameNetworkTrades(nationId);
         return new MultiResult(nationId, networkRows, sameNetworkTrades).setDateFetched(lastUpdated);
     }
 
