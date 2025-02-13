@@ -438,7 +438,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         if (filter != null) {
             alliances = api.fetchAlliances(false, filter, true, true);
         } else {
-            alliances = api.readSnapshot(PagePriority.API_ALLIANCES_AUTO, Alliance.class);
+            alliances = new ObjectArrayList<>(api.readSnapshot(PagePriority.API_ALLIANCES_AUTO, Alliance.class));
             Map<Integer, Alliance> byId = new Int2ObjectOpenHashMap<>();
             for (Alliance alliance : alliances) {
                 byId.put(alliance.getId(), alliance);
@@ -596,6 +596,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 synchronized (alliancesById) {
                     existing = alliancesById.get(alliance.getId());
                 }
+                if (existing == null && alliance.getScore() != null && alliance.getScore() == 0) continue;
+
                 if (existing == null) {
                     existing = new DBAlliance(alliance);
                     synchronized (alliancesById) {

@@ -129,6 +129,7 @@ public class PageHandler implements Handler {
         this.commands.registerSubCommands(new CoalitionGraphEndpoints(), "api");
         this.commands.registerSubCommands(new GraphEndpoints(), "api");
         this.commands.registerSubCommands(new TaxEndpoints(), "api");
+        this.commands.registerSubCommands(new MultiEndpoints(), "api");
 
         this.commands.registerCommands(new TestPages());
         this.commands.registerCommands(this);

@@ -4,7 +4,6 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -42,16 +41,16 @@ public class AdvMultiReport {
             throw new IllegalArgumentException("No multi result found for nation " + nationId);
         }
 
-        Map<Integer, MultiResult.NetworkRow> networks = data.getNetwork();
+        Map<Integer, NetworkRow> networks = data.getNetwork();
 
         System.out.println("Found networks for " + nationId + ": " + networks.size());
 
-        for (Map.Entry<Integer, MultiResult.NetworkRow> entry : networks.entrySet()) {
+        for (Map.Entry<Integer, NetworkRow> entry : networks.entrySet()) {
             List<String> row = new ArrayList<>();
 
             int otherNationId = entry.getKey();
             BigInteger otherUid = nationUids.get(otherNationId);
-            MultiResult.NetworkRow network = entry.getValue();
+            NetworkRow network = entry.getValue();
 
             DBNation otherNation = DBNation.getOrCreate(otherNationId);
             boolean banned = otherNation.hasPriorBan();
@@ -128,17 +127,17 @@ public class AdvMultiReport {
         int matchIpA = 0;
         int matchIpB = 0;
 
-        for (Map.Entry<Integer, MultiResult.NetworkRow> entry : a.getNetwork().entrySet()) {
+        for (Map.Entry<Integer, NetworkRow> entry : a.getNetwork().entrySet()) {
             int otherNationId = entry.getKey();
-            MultiResult.NetworkRow row = entry.getValue();
+            NetworkRow row = entry.getValue();
             totalIpsA += row.numberOfSharedIPs;
             if (nat2 == otherNationId || b.getNetwork().containsKey(otherNationId)) {
                 matchIpA += row.numberOfSharedIPs;
             }
         }
-        for (Map.Entry<Integer, MultiResult.NetworkRow> entry : b.getNetwork().entrySet()) {
+        for (Map.Entry<Integer, NetworkRow> entry : b.getNetwork().entrySet()) {
             int otherNationId = entry.getKey();
-            MultiResult.NetworkRow row = entry.getValue();
+            NetworkRow row = entry.getValue();
             totalIpsB += row.numberOfSharedIPs;
             if (nat1 == otherNationId || a.getNetwork().containsKey(otherNationId)) {
                 matchIpB += row.numberOfSharedIPs;
