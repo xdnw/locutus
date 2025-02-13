@@ -48,14 +48,13 @@ public abstract class AMessageBuilder implements IMessageBuilder {
             if (footerText != null && footerText.isEmpty()) {
                 content.append("> _" + footerText + "_\n");
             }
-            embeds.clear();
-            buttons.clear();
-            for (Map.Entry<String, String> entry : links.entrySet()) {
-                content.append("> [" + entry.getValue() + "](" + entry.getKey() + ")\n");
-            }
-            links.clear();
         }
-
+        embeds.clear();
+        buttons.clear();
+        for (Map.Entry<String, String> entry : links.entrySet()) {
+            content.append("> [" + entry.getValue() + "](" + entry.getKey() + ")\n");
+        }
+        links.clear();
     }
 
     public AMessageBuilder(IMessageIO parent, long id, long timeCreated, User author) {

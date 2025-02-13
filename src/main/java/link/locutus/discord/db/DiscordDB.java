@@ -656,14 +656,15 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
                 ") t2 ON t1.nation_id = t2.nation_id AND t1.date = t2.max_date;";
         try (PreparedStatement preparedStatement = prepareQuery(query);
              ResultSet resultSet = preparedStatement.executeQuery()) {
-
+            int i = 0;
             while (resultSet.next()) {
+                i++;
                 int nationId = resultSet.getInt("nation_id");
                 byte[] uuidBytes = resultSet.getBytes("uuid");
                 BigInteger uuidBigInteger = new BigInteger(uuidBytes);
-
                 latestUuidsMap.put(nationId, uuidBigInteger);
             }
+            System.out.println("Found " + i + " latest uuids");
         } catch (SQLException e) {
             e.printStackTrace();
             return null;

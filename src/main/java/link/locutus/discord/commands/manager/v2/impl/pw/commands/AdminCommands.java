@@ -2399,6 +2399,7 @@ public class AdminCommands {
             throw new IllegalArgumentException("Too many nations to update");
         }
         Map<Integer, BigInteger> latestUids = Locutus.imp().getDiscordDB().getLatestUidByNation();
+        System.out.println("Same network uids " + latestUids.size());
         Map<BigInteger, Set<Integer>> uidsByNation = new HashMap<>();
         Map<BigInteger, Set<DBNation>> uidsByNationExisting = new HashMap<>();
         for (Map.Entry<Integer, BigInteger> entry : latestUids.entrySet()) {
@@ -2450,7 +2451,7 @@ public class AdminCommands {
             return !contains;
         });
 
-        if (forceUpdate && uidsByNationExisting.size() > 0) {
+        if (forceUpdate && !uidsByNationExisting.isEmpty()) {
             Set<DBNation> nationsToUpdate = new HashSet<>();
 
             CompletableFuture<IMessageBuilder> msgFuture = io.sendMessage("Updating...");
@@ -2992,8 +2993,8 @@ public class AdminCommands {
 
         long start = System.currentTimeMillis();
         for (DBNation nation : nations) {
-            String formattedCmd = formatFunc.apply(nation);
             try {
+                String formattedCmd = formatFunc.apply(nation);
                 Map.Entry<CommandResult, List<StringMessageBuilder>> response = me.runCommandInternally(db.getGuild(), user, formattedCmd);
                 condensed.append("# " + nation.getMarkdownUrl() + ": " + response.getKey() + "\n");
                 for (StringMessageBuilder msg : response.getValue()) {

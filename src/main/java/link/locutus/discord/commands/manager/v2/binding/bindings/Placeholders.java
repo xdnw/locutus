@@ -576,6 +576,7 @@ public abstract class Placeholders<T> extends BindingHelper {
     }
 
     private Object toObject(Object expr, Class type, ParameterData param) {
+        if (expr == null) return null;
         if (type.isAssignableFrom(expr.getClass())) {
             return expr;
         }
