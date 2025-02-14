@@ -82,10 +82,10 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         executeStmt("CREATE TABLE IF NOT EXISTS `API_KEYS3`(`nation_id` INT NOT NULL PRIMARY KEY, `api_key` BLOB, `bot_key` BLOB, `date_updated` BIGINT NOT NULL)");
         executeStmt("CREATE TABLE IF NOT EXISTS `DISCORD_BANS`(`user` BIGINT NOT NULL, `server` BIGINT NOT NULL, `date` BIGINT NOT NULL, `reason` VARCHAR, PRIMARY KEY(`user`, `server`))");
 
-        executeStmt("CREATE TABLE IF NOT EXISTS `NetworkRow2` (`id1` INTEGER NOT NULL, `id2` INTEGER NOT NULL, `lastAccessFromSharedIP` INTEGER NOT NULL, `numberOfSharedIPs` INTEGER NOT NULL, `lastActiveMs` INTEGER NOT NULL, `allianceId` INTEGER NOT NULL, `dateCreated` INTEGER NOT NULL, PRIMARY KEY (`id1`, `id2`))");
+        executeStmt("CREATE TABLE IF NOT EXISTS `NetworkRow2` (`id1` INTEGER NOT NULL, `id2` INTEGER NOT NULL, `lastAccessFromSharedIP` BIGINT NOT NULL, `numberOfSharedIPs` INTEGER NOT NULL, `lastActiveMs` BIGINT NOT NULL, `allianceId` INTEGER NOT NULL, `dateCreated` BIGINT NOT NULL, PRIMARY KEY (`id1`, `id2`))");
         executeStmt("DROP TABLE IF EXISTS `NetworkRow`");
 //        executeStmt("DROP TABLE IF EXISTS `MultiReportLastUpdated`"); // todo remove
-        executeStmt("CREATE TABLE IF NOT EXISTS `SameNetworkTrade`(`sellingNation` INTEGER NOT NULL, `buyingNation` INTEGER NOT NULL, `dateOffered` INTEGER NOT NULL, `resource` INTEGER NOT NULL, `amount` INTEGER NOT NULL, `ppu` INTEGER NOT NULL, PRIMARY KEY (`sellingNation`, `buyingNation`, `dateOffered`, `resource`, `amount`, `ppu`))");
+        executeStmt("CREATE TABLE IF NOT EXISTS `SameNetworkTrade`(`sellingNation` INTEGER NOT NULL, `buyingNation` INTEGER NOT NULL, `dateOffered` BIGINT NOT NULL, `resource` INTEGER NOT NULL, `amount` INTEGER NOT NULL, `ppu` INTEGER NOT NULL, PRIMARY KEY (`sellingNation`, `buyingNation`, `dateOffered`, `resource`, `amount`, `ppu`))");
         executeStmt("CREATE INDEX IF NOT EXISTS idx_sellingNation ON SameNetworkTrade(sellingNation)");
         executeStmt("CREATE INDEX IF NOT EXISTS idx_buyingNation ON SameNetworkTrade(buyingNation)");
 
@@ -98,9 +98,21 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
             }
         }
 
+        fixTradeDates();
+
         setupApiKeys();
 
         createDeletionsTables();
+    }
+
+    public void fixTradeDates() {
+
+    }
+
+    public static void main(String[] args) {
+        long now = System.currentTimeMillis();
+
+        long root = now - ((int) now);
     }
 
     public void addMultiReportLastUpdated(int id, long date) {
@@ -151,11 +163,11 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
                 while (rs.next()) {
                     NetworkRow row = new NetworkRow(
                             rs.getInt("id2"),
-                            rs.getInt("lastAccessFromSharedIP"),
+                            rs.getLong("lastAccessFromSharedIP"),
                             rs.getInt("numberOfSharedIPs"),
-                            rs.getInt("lastActiveMs"),
+                            rs.getLong("lastActiveMs"),
                             rs.getInt("allianceId"),
-                            rs.getInt("dateCreated")
+                            rs.getLong("dateCreated")
                     );
                     map.put(row.id, row);
                 }
@@ -177,7 +189,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
                     SameNetworkTrade trade = new SameNetworkTrade(
                             rs.getInt("sellingNation"),
                             rs.getInt("buyingNation"),
-                            rs.getInt("dateOffered"),
+                            rs.getLong("dateOffered"),
                             ResourceType.values[rs.getInt("resource")],
                             rs.getInt("amount"),
                             rs.getInt("ppu")
