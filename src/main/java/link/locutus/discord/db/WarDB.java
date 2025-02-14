@@ -1673,7 +1673,7 @@ public class WarDB extends DBMainV2 {
     public boolean updateAllWars(Consumer<Event> eventConsumer) {
         long now = System.currentTimeMillis();
         long diff = now - lastAllWars;
-        if (diff < TimeUnit.MINUTES.toMillis(10)) {
+        if (diff < TimeUnit.MINUTES.toMillis(10) || true) {
             lastAllWars = now;
             long start = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 61);
             return updateWarsSince(eventConsumer, start);

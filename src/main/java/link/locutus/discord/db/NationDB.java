@@ -439,7 +439,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         PoliticsAndWarV3 api = Locutus.imp().getV3();
         long now = System.currentTimeMillis();
         long diff = now - lastUpdatedAlliances;
-        if (filter != null || diff < TimeUnit.MINUTES.toMillis(10)) {
+        if (filter != null || diff < TimeUnit.MINUTES.toMillis(10) || true) {
             alliances = api.fetchAlliances(false, filter, true, true);
         } else {
             lastUpdatedAlliances = now;
@@ -2016,7 +2016,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         Set<Integer> fetched;
         long now = System.currentTimeMillis();
         long diff = now - lastUpdatedNations;
-        if (diff < TimeUnit.MINUTES.toMillis(10)) {
+        if (diff < TimeUnit.MINUTES.toMillis(10) || true) {
             fetched = updateNations(f -> {}, eventConsumer);
         } else {
             lastUpdatedNations = now;
