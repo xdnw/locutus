@@ -268,6 +268,7 @@ public class CommandManager2 {
         getCommands().registerMethod(new SettingCommands(), List.of("bank"), "importTransactions", "import");
         getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "info", "info");
         getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "list", "list");
+        getCommands().registerMethod(new CustomSheetCommands(), List.of("sheet_custom"), "fromFile", "from_file");
 //        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "openMenu", "open");
 //        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "deleteMenu", "delete");
 //        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "renameMenu", "title");

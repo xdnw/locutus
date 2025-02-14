@@ -1,5 +1,8 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import de.siegmar.fastcsv.reader.CloseableIterator;
+import de.siegmar.fastcsv.reader.CsvReader;
+import de.siegmar.fastcsv.reader.CsvRow;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -32,6 +35,8 @@ import org.jetbrains.annotations.Unmodifiable;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.util.AbstractMap;
@@ -42,6 +47,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static link.locutus.discord.config.Messages.TAB_TYPE;
@@ -493,8 +499,10 @@ public class CustomSheetCommands {
         return response.toString();
     }
 
-    public String fromFile(@Me IMessageIO io, @Me JSONObject command, Message message, SpreadSheet sheet, @Switch("i") Integer index) {
-        // https://cdn.discordapp.com/attachments/1131198351749152818/1339802680012439646/Radiation_by_turn.csv?ex=67b00bfb&is=67aeba7b&hm=a775cac4b7916d76726e568a78fb61c9f618b5b6b43e35c521c49069745c955b&
+    @Command(desc = "Reads a CSV file from a discord message attachment and updates the provided Google Sheet\n" +
+            "The sheet must be in a valid TSV or CSV format, with the header row as the first row\n" +
+            "Specify the index of the attachment if there are multiple attachments")
+    public String fromFile(@Me IMessageIO io, @Me JSONObject command, Message message, SpreadSheet sheet, @Switch("i") Integer index) throws ExecutionException, InterruptedException {
         @Unmodifiable List<Message.Attachment> attachments = message.getAttachments();
         if (attachments.isEmpty()) {
             throw new IllegalArgumentException("No attachments found in the message.");
@@ -519,7 +527,36 @@ public class CustomSheetCommands {
             attachment = attachments.get(0);
         }
 
-        // TODO:read attachment to bytes[]
-        return "TODO";
+        try (InputStream is = attachment.getProxy().download().get()) {
+            byte[] bytes = is.readAllBytes();
+            String content = new String(bytes, StandardCharsets.UTF_8);
+            String[] lines = content.split("\r?\n");
+            if (lines.length < 2) {
+                throw new IllegalArgumentException("File must have at least 2 lines (found " + lines.length + ")");
+            }
+            String headerLine = lines[0];
+            char separator = headerLine.contains("\t") ? '\t' : ',';
+            try (CsvReader reader = CsvReader.builder().fieldSeparator(separator).quoteCharacter('"').build(new String(bytes, StandardCharsets.UTF_8))) {
+                try (CloseableIterator<CsvRow> iter = reader.iterator()) {
+                    CsvRow header = iter.next();
+                    List<String> fields = header.getFields();
+                    sheet.setHeader(fields);
+
+                    while (iter.hasNext()) {
+                        CsvRow row = iter.next();
+                        List<String> rowData = row.getFields();
+                        sheet.addRow(rowData);
+                    }
+
+                    sheet.updateClearCurrentTab();
+                    sheet.updateWrite();
+                    sheet.attach(io.create(), "file").send();
+                    return null;
+                }
+            }
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
