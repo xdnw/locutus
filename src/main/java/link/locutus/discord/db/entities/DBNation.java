@@ -3836,7 +3836,7 @@ public abstract class DBNation implements NationOrAlliance {
         return cityUrl(index);
     }
 
-    @Command(desc = "Get the city url by index")
+    @Command(desc = "Get the city url by index (1-indexed)")
     public String cityUrl(int index) {
         Set<Map.Entry<Integer, JavaCity>> cities = getCityMap(true, true, false).entrySet();
         int i = 0;

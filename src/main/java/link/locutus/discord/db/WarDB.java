@@ -531,7 +531,7 @@ public class WarDB extends DBMainV2 {
             loadAttacks(Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS, Settings.INSTANCE.TASKS.LOAD_ACTIVE_ATTACKS);
 
             if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS) {
-                if (warsByAllianceId.isEmpty() && Settings.INSTANCE.TASKS.ALL_WAR_SECONDS > 0) {
+                if ((warsByAllianceId.isEmpty() || activeWars.isEmpty()) && Settings.INSTANCE.TASKS.ALL_WAR_SECONDS > 0) {
                     updateAllWars(null);
                 }
 
@@ -556,8 +556,6 @@ public class WarDB extends DBMainV2 {
         if (conflictManager != null) {
             conflictManager.loadConflicts();
         }
-
-
 
         return this;
     }
@@ -1670,7 +1668,16 @@ public class WarDB extends DBMainV2 {
         });
     }
 
+    private long lastAllWars = System.currentTimeMillis();
+
     public boolean updateAllWars(Consumer<Event> eventConsumer) {
+        long now = System.currentTimeMillis();
+        long diff = now - lastAllWars;
+        if (diff < TimeUnit.MINUTES.toMillis(10)) {
+            lastAllWars = now;
+            long start = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 61);
+            return updateWarsSince(eventConsumer, start);
+        }
         List<DBWar> wars = Locutus.imp().getV3().readSnapshot(PagePriority.API_WARS, War.class)
                 .stream().map(f -> new DBWar(f, false)).toList();
         Set<Integer> activeWarIds = getActiveWars().stream().map(DBWar::getWarId).collect(Collectors.toSet());
@@ -1757,7 +1764,7 @@ public class WarDB extends DBMainV2 {
             if (useV2) {
                 return updateAllWarsV2(eventConsumer);
             } else {
-                return updateAllWars(eventConsumer);
+                return true;
             }
         }
         ObjectOpenHashSet<DBWar> wars = activeWars.getActiveWars();

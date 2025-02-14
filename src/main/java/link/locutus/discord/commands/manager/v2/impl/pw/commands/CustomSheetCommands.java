@@ -10,6 +10,8 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.annotation.PlaceholderType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.SheetBindings;
@@ -25,6 +27,8 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.sheet.SpreadSheet;
+import net.dv8tion.jda.api.entities.Message;
+import org.jetbrains.annotations.Unmodifiable;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -487,5 +491,35 @@ public class CustomSheetCommands {
             response.append("Saved sheet: `").append(custom.getName()).append("`");
         }
         return response.toString();
+    }
+
+    public String fromFile(@Me IMessageIO io, @Me JSONObject command, Message message, SpreadSheet sheet, @Switch("i") Integer index) {
+        // https://cdn.discordapp.com/attachments/1131198351749152818/1339802680012439646/Radiation_by_turn.csv?ex=67b00bfb&is=67aeba7b&hm=a775cac4b7916d76726e568a78fb61c9f618b5b6b43e35c521c49069745c955b&
+        @Unmodifiable List<Message.Attachment> attachments = message.getAttachments();
+        if (attachments.isEmpty()) {
+            throw new IllegalArgumentException("No attachments found in the message.");
+        }
+        Message.Attachment attachment;
+        if (attachments.size() != 1) {
+            if (index == null) {
+                IMessageBuilder embed = io.create().embed("Multiple attachments found", "Please specify the index by clicking a number below");
+                for (int i = 0; i < attachments.size(); i++) {
+                    JSONObject copy = new JSONObject(command).put("index", i + 1);
+                    embed = embed.commandButton(copy, String.valueOf(i + 1));
+                }
+                embed.send();
+                return null;
+            } else {
+                if (index < 1 || index > attachments.size()) {
+                    throw new IllegalArgumentException("Index must be between 1 and " + attachments.size());
+                }
+                attachment = attachments.get(index - 1);
+            }
+        } else {
+            attachment = attachments.get(0);
+        }
+
+        // TODO:read attachment to bytes[]
+        return "TODO";
     }
 }

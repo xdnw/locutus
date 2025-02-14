@@ -431,14 +431,19 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         return updateAlliancesById(new ArrayList<>(newIds), eventConsumer);
     }
 
+    private long lastUpdatedAlliances = System.currentTimeMillis();
+
     public void updateAlliances(Consumer<AlliancesQueryRequest> filter, Consumer<Event> eventConsumer) {
         Set<Integer> toDelete = filter == null ? getAlliances().stream().map(DBAlliance::getId).collect(Collectors.toSet()) : new HashSet<>();
         List<Alliance> alliances;
         PoliticsAndWarV3 api = Locutus.imp().getV3();
-        if (filter != null) {
+        long now = System.currentTimeMillis();
+        long diff = now - lastUpdatedAlliances;
+        if (filter != null || diff < TimeUnit.MINUTES.toMillis(10)) {
             alliances = api.fetchAlliances(false, filter, true, true);
         } else {
-            alliances = new ObjectArrayList<>(api.readSnapshot(PagePriority.API_ALLIANCES_AUTO, Alliance.class));
+            lastUpdatedAlliances = now;
+            alliances = api.readSnapshot(PagePriority.API_ALLIANCES_AUTO, Alliance.class);
             Map<Integer, Alliance> byId = new Int2ObjectOpenHashMap<>();
             for (Alliance alliance : alliances) {
                 byId.put(alliance.getId(), alliance);
@@ -596,7 +601,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 synchronized (alliancesById) {
                     existing = alliancesById.get(alliance.getId());
                 }
-                if (existing == null && alliance.getScore() != null && alliance.getScore() == 0) continue;
 
                 if (existing == null) {
                     existing = new DBAlliance(alliance);
@@ -604,8 +608,10 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                         alliancesById.put(alliance.getId(), existing);
                         allianceByNameCache.put(alliance.getName().toLowerCase(Locale.ROOT), alliance.getId());
                     }
-                    createdAlliances.add(existing);
-                    dirtyAlliances.add(existing);
+                    if (alliance.getScore() != 0) {
+                        createdAlliances.add(existing);
+                        dirtyAlliances.add(existing);
+                    }
                 } else {
                     String originalName = existing.getName();
                     if (existing.set(alliance, eventConsumer)) {
@@ -936,6 +942,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         for (int i = 0; i < nationIds.size(); i++) {
             nationIdIndex.put(nationIds.get(i), i);
         }
+        if (nationIdIndex.isEmpty()) return Collections.emptyList();
+
         List<Nation> nationActiveData = new ArrayList<>(Locutus.imp().getV3().fetchNationActive(priority, nationIds));
         nationActiveData.sort(Comparator.comparingInt(o -> nationIdIndex.get(o.getId())));
 
@@ -1997,19 +2005,29 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         return fetched;
     }
 
+    private long lastUpdatedNations = System.currentTimeMillis();
+
     public Set<Integer> updateAllNations(Consumer<Event> eventConsumer, boolean updateCitiesAndPositions) {
         Set<Integer> currentNations;
         synchronized (nationsById) {
             currentNations = new HashSet<>(nationsById.keySet());
         }
         Set<Integer> deleted = new HashSet<>();
-        Set<Integer> fetched = updateNationsCustom(onEachNation -> {
-            PoliticsAndWarV3 v3 = Locutus.imp().getV3();
-            List<Nation> nations = v3.readSnapshot(PagePriority.API_NATIONS_AUTO, Nation.class);
-            for (Nation nation : nations) {
-                onEachNation.test(nation);
-            }
-        }, eventConsumer, updateCitiesAndPositions);
+        Set<Integer> fetched;
+        long now = System.currentTimeMillis();
+        long diff = now - lastUpdatedNations;
+        if (diff < TimeUnit.MINUTES.toMillis(10)) {
+            fetched = updateNations(f -> {}, eventConsumer);
+        } else {
+            lastUpdatedNations = now;
+            fetched = updateNationsCustom(onEachNation -> {
+                PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+                List<Nation> nations = v3.readSnapshot(PagePriority.API_NATIONS_AUTO, Nation.class);
+                for (Nation nation : nations) {
+                    onEachNation.test(nation);
+                }
+            }, eventConsumer, updateCitiesAndPositions);
+        }
         long cutoff = System.currentTimeMillis() - TimeUnit.HOURS.toMillis(2);
         for (int id : currentNations) {
             if (!fetched.contains(id)) {
@@ -2069,6 +2087,13 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         if (added > 1000) {
             System.out.println("Added " + added + " nations to outdated list");
         }
+    }
+
+    public Set<Integer> updateNations(Consumer<NationsQueryRequest> filter, Consumer<Event> eventConsumer) {
+        return updateNationsCustom(onEachNation -> {
+            PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+            v3.fetchNationsWithInfo(false, filter, onEachNation);
+        }, eventConsumer, true);
     }
 
     public Set<Integer> updateNations(Collection<Nation> nations, Consumer<Event> eventConsumer, long timestamp) {
