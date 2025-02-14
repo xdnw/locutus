@@ -601,7 +601,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 synchronized (alliancesById) {
                     existing = alliancesById.get(alliance.getId());
                 }
-                if (existing == null && alliance.getScore() != null && alliance.getScore() == 0) continue;
 
                 if (existing == null) {
                     existing = new DBAlliance(alliance);
@@ -609,8 +608,10 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                         alliancesById.put(alliance.getId(), existing);
                         allianceByNameCache.put(alliance.getName().toLowerCase(Locale.ROOT), alliance.getId());
                     }
-                    createdAlliances.add(existing);
-                    dirtyAlliances.add(existing);
+                    if (alliance.getScore() != 0) {
+                        createdAlliances.add(existing);
+                        dirtyAlliances.add(existing);
+                    }
                 } else {
                     String originalName = existing.getName();
                     if (existing.set(alliance, eventConsumer)) {

@@ -1445,7 +1445,7 @@ public class UtilityCommands {
                 Function<DBNation, String> formatter = formatFunction.get(i);
                 String formatted = formatter.apply(nation);
 
-                header.set(i, formatted);
+                header.set(i, formatted == null ? "" : formatted);
             }
 
             sheet.addRow(new ArrayList<>(header));
