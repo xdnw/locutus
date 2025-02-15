@@ -31,6 +31,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.metric.AllianceMetricMode;
 import link.locutus.discord.db.entities.nation.DBNationSnapshot;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
@@ -342,9 +343,9 @@ public class AllianceMetricCommands {
                                 @Switch("t") boolean total,
                                 @Switch("s") @Timestamp Long snapshotDate,
                                 @Switch("j") boolean attachJson,
-                                @Switch("c") boolean attachCsv) throws IOException {
+                                @Switch("c") boolean attachCsv, @Switch("ss") boolean attach_sheet) throws IOException {
         Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild());
-        new MetricByGroup(metrics, nationsSet, groupBy, includeInactives, includeApplicants, total).write(io, attachJson, attachCsv);
+        new MetricByGroup(metrics, nationsSet, groupBy, includeInactives, includeApplicants, total).write(io, attachJson, attachCsv, attach_sheet ? db : null, SheetKey.METRIC_BY_GROUP);
     }
 
     @Command(desc = "Generate and save the alliance metrics over a period of time, using nation and city snapshots to calculate the metrics")
@@ -363,13 +364,13 @@ public class AllianceMetricCommands {
             "If your metric does not relate to cities, set `skipCityData` to true to speed up the process.")
     @RolePermission(value = Roles.ADMIN, root = true)
     @NoFormat
-    public String AlliancesDataByDay(@Me IMessageIO io,
+    public String AlliancesDataByDay(@Me GuildDB db, @Me IMessageIO io,
                                      TypedFunction<DBNation, Double> metric,
                                      @Timestamp long start,
                                      @Timestamp long end,
                                      AllianceMetricMode mode,
                                      @Arg ("The alliances to include. Defaults to top 15") @Default Set<DBAlliance> alliances,
-                                     @Default Predicate<DBNation> filter, @Switch("g") boolean graph, @Switch("a") boolean includeApps) throws IOException, ParseException {
+                                     @Default Predicate<DBNation> filter, @Switch("g") boolean graph, @Switch("a") boolean includeApps, @Switch("s") boolean attach_sheet) throws IOException, ParseException {
         CompletableFuture<IMessageBuilder> msg = io.send("Please wait...");
         Map<Long, double[]> valuesByDay = AlliancesNationMetricByDay.generateData(new Consumer<Long>() {
             @Override
@@ -408,7 +409,7 @@ public class AllianceMetricCommands {
         if (graph) {
             Set<DBAlliance> finalAlliances = AlliancesNationMetricByDay.resolveAlliances(alliances);
             AlliancesNationMetricByDay graphObj = new AlliancesNationMetricByDay(valuesByDay, metric, start, end, finalAlliances);
-            graphObj.writeMsg(msg2, false, false);
+            graphObj.writeMsg(msg2, false, false, attach_sheet ? db : null, SheetKey.ALLIANCE_METRIC_DAY);
         }
         msg2.send();
         return null;

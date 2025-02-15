@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 
+import static link.locutus.discord.network.PassthroughProxy.TIMEOUT_MILLIS;
+
 public class ApiProxy implements IProxy {
     private final String urlWithPlaceholder;
 
@@ -29,7 +31,7 @@ public class ApiProxy implements IProxy {
     @Override
     public Connection connect(String urlStr) throws IOException {
         String proxyUrl = getEncodedUrl(urlStr.toString());
-        Connection connection = Jsoup.connect(proxyUrl);
+        Connection connection = Jsoup.connect(proxyUrl).timeout(TIMEOUT_MILLIS);
         return connection;
     }
 }

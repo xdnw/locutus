@@ -258,7 +258,7 @@ public class WarCostRankingByDay extends Command {
         boolean attachJson = flags.contains('j');
         boolean attachCsv = flags.contains('j');
         for (TimeNumericTable<Map<String, WarAttackParser>> table : tables) {
-            table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, min, attachJson, attachCsv);
+            table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, min, attachJson, attachCsv, null, null);
         }
         if (tables.isEmpty()) return "Please use one of the flag";
 

@@ -89,6 +89,8 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         executeStmt("CREATE INDEX IF NOT EXISTS idx_sellingNation ON SameNetworkTrade(sellingNation)");
         executeStmt("CREATE INDEX IF NOT EXISTS idx_buyingNation ON SameNetworkTrade(buyingNation)");
 
+        executeStmt("DELETE FROM `SameNetworkTrade` WHERE `dateOffered` <= " + Integer.MAX_VALUE, true);
+
         // last updated by id MultiReportLastUpdated int id, long date
         executeStmt("CREATE TABLE IF NOT EXISTS `MultiReportLastUpdated`(`id` INTEGER PRIMARY KEY, `date` INTEGER NOT NULL)");
 
@@ -107,12 +109,6 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
 
     public void fixTradeDates() {
 
-    }
-
-    public static void main(String[] args) {
-        long now = System.currentTimeMillis();
-
-        long root = now - ((int) now);
     }
 
     public void addMultiReportLastUpdated(int id, long date) {

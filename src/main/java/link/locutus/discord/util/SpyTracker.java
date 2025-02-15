@@ -4,6 +4,7 @@ import com.politicsandwar.graphql.model.Bounty;
 import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationResponseProjection;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -312,7 +313,13 @@ public class SpyTracker {
                 DBNation defender = DBNation.getById(defensive.nationId);
                 if (defender == null) continue;
                 DBAlliance defAA = defender.getAlliance();
-                Set<Integer> treaties = defAA == null ? Collections.emptySet() : defAA.getTreaties().keySet();
+                Set<Integer> treaties;
+                if (defAA == null) {
+                    treaties = Collections.emptySet();
+                } else {
+                    treaties = new IntOpenHashSet(defAA.getTreaties().keySet());
+                    treaties.add(defAA.getId());
+                }
 
                 if (Settings.INSTANCE.LEGACY_SETTINGS.PRINT_ESPIONAGE_DEBUG) Logg.text("Finding match for " + defender.getNation_id() + " c" + defender.getCities() + " | " + defensive.change + "x" + defensive.unit + " | " + defensive.timestamp + " | " + defensive.score);
 

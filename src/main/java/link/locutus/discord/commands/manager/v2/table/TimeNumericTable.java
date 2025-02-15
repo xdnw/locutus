@@ -22,12 +22,15 @@ import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.Attribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
+import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.CIEDE2000;
+import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.web.commands.binding.value_types.GraphType;
 import link.locutus.discord.web.commands.binding.value_types.WebGraph;
 
@@ -462,12 +465,12 @@ public abstract class TimeNumericTable<T> {
         writer.write(plot, baos, 1400, 600);
         return baos.toByteArray();
     }
-    public void write(IMessageIO channel, TimeFormat timeFormat, TableNumberFormat numberFormat, GraphType type, long originDate, boolean attachJson, boolean attachCsv) throws IOException {
-        IMessageBuilder msg = writeMsg(channel.create(), timeFormat, numberFormat, type, originDate, attachJson, attachCsv);
+    public void write(IMessageIO channel, TimeFormat timeFormat, TableNumberFormat numberFormat, GraphType type, long originDate, boolean attachJson, boolean attachCsv, GuildDB db, SheetKey attachSheet) throws IOException {
+        IMessageBuilder msg = writeMsg(channel.create(), timeFormat, numberFormat, type, originDate, attachJson, attachCsv, db, attachSheet);
         msg.send();
     }
 
-    public IMessageBuilder writeMsg(IMessageBuilder msg, TimeFormat timeFormat, TableNumberFormat numberFormat, GraphType type, long originDate, boolean attachJson, boolean attachCsv) throws IOException {
+    public IMessageBuilder writeMsg(IMessageBuilder msg, TimeFormat timeFormat, TableNumberFormat numberFormat, GraphType type, long originDate, boolean attachJson, boolean attachCsv, GuildDB db, SheetKey attachSheet) throws IOException {
         try {
             msg = msg.graph(this, timeFormat, numberFormat, type, originDate);
             String name = this.name == null || this.name.isEmpty() ? "data" : this.name;
@@ -476,6 +479,20 @@ public abstract class TimeNumericTable<T> {
             }
             if (attachCsv) {
                 msg = msg.file(name + ".csv", toCsv());
+            }
+            if (db != null && attachSheet != null) {
+                SpreadSheet sheet = SpreadSheet.create(db, attachSheet);
+                List<List<String>> rows = toSheetRows();
+                if (rows.size() > 0) {
+                    sheet.setHeader(rows.get(0));
+                }
+                for (int i = 1; i < rows.size(); i++) {
+                    sheet.addRow(rows.get(i));
+                }
+                sheet.updateClearCurrentTab();
+                sheet.updateWrite();
+
+                sheet.attach(msg, attachSheet.name().toLowerCase(Locale.ROOT), null, true, 0);
             }
         } catch (Throwable e) {
             e.printStackTrace();

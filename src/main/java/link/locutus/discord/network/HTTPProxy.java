@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.net.*;
 import java.util.Base64;
 
+import static link.locutus.discord.network.PassthroughProxy.TIMEOUT_MILLIS;
+
 public class HTTPProxy implements IProxy {
     private final Proxy proxy;
     private String proxyHost;
@@ -41,7 +43,7 @@ public class HTTPProxy implements IProxy {
 
     @Override
     public Connection connect(String url) throws IOException {
-        Connection connection = Jsoup.connect(url.toString()).proxy(proxy);
+        Connection connection = Jsoup.connect(url.toString()).proxy(proxy).timeout(TIMEOUT_MILLIS);
         if (proxyUser != null && proxyPass != null) {
             String encoded = Base64.getEncoder().encodeToString((proxyUser + ":" + proxyPass).getBytes());
             connection.header("Proxy-Authorization", "Basic " + encoded);

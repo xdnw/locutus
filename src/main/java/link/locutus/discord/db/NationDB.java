@@ -2695,6 +2695,25 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         return results;
     }
 
+    public Map<Integer, DBBan> getBansByNation(Set<Integer> nationIds) {
+        Map<Integer, DBBan> results = new Object2ObjectOpenHashMap<>();
+        String select = "SELECT * FROM banned_nations WHERE nation_id IN (" + String.join(",", Collections.nCopies(nationIds.size(), "?")) + ")";
+        try (PreparedStatement stmt = getConnection().prepareStatement(select)) {
+            int i = 1;
+            for (int nationId : nationIds) {
+                stmt.setInt(i++, nationId);
+            }
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                DBBan ban = new DBBan(rs);
+                results.put(ban.nation_id, ban);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return results;
+    }
+
 
     public List<DBBan> getBansForUser(long discordId) {
         return getBansForUser(discordId, null);

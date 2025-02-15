@@ -1,12 +1,14 @@
 package link.locutus.discord.util.task.multi;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBBan;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
@@ -29,9 +31,10 @@ import java.util.regex.Pattern;
 public class MultiResult {
     public final Map<Integer, NetworkRow> network;
     public final List<SameNetworkTrade> trade;
-    public final int nationId;
+    public int nationId;
     public long dateFetched = 0;
 
+    public final Map<Integer, String> bans = new Int2ObjectOpenHashMap<>();
     public final Map<Integer, String> nationNames = new Int2ObjectOpenHashMap<>();
     public final Map<Integer, String> allianceNames = new Int2ObjectOpenHashMap<>();
 
@@ -48,6 +51,16 @@ public class MultiResult {
     }
 
     public MultiResult loadNames() {
+        Set<Integer> ids = new IntOpenHashSet();
+        ids.addAll(network.keySet());
+        ids.add(nationId);
+        for (SameNetworkTrade trade : trade) {
+            ids.add(trade.buyingNation);
+            ids.add(trade.sellingNation);
+        }
+
+        Map<Integer, DBBan> banInfo = Locutus.imp().getNationDB().getBansByNation(ids);
+        banInfo.forEach((id, ban) -> bans.put(id, ban.getReason()));
         for (Map.Entry<Integer, NetworkRow> entry : network.entrySet()) {
             DBNation nation = DBNation.getById(entry.getKey());
             if (nation != null) {
@@ -115,13 +128,17 @@ public class MultiResult {
 
                 Document doc = Jsoup.parse(html);
                 Elements tables = doc.select(".nationtable");
-                Element networkTable = tables.get(1);
+                int size = tables.size();
+                Element networkTable = tables.get(size - 5);
 
                 Elements netRows = networkTable.select("tr");
                 for (int i = 1; i < netRows.size(); i++) {
                     Element row = netRows.get(i);
                     Elements cols = row.select("td");
-                    if (cols.size() != 8) continue;
+                    if (cols.size() != 8) {
+                        System.out.println("Incorrect size " + cols.size());
+                        continue;
+                    }
 
                     long lastAccessFromSharedIP = parseDate(cols.get(1).text());
                     int numberOfSharedIPs = Integer.parseInt(cols.get(2).text());
@@ -154,8 +171,12 @@ public class MultiResult {
                     getNetwork().put(otherId, networkRow);
                 }
 
-                Element sameNetworkTradesTable = tables.get(3);
+                Element sameNetworkTradesTable = tables.get(size - 3);
                 parseTrades(sameNetworkTradesTable, getTrade());
+
+                System.out.println(html);
+                System.out.println("\n\n---\n\n" + trade.size() + " | " + netRows.size() + " | " + getNetwork().size() + " | " + getTrade().size());
+
                 return null;
             }
         }, auth);

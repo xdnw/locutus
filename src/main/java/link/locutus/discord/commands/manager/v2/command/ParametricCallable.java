@@ -962,7 +962,6 @@ public class ParametricCallable implements ICommand {
                     Object value = method.invoke(annotation);
                     Object defaultValue = method.getDefaultValue();
                     if (value != null && !StringMan.areEqual(value, defaultValue)) {
-                        if (value != null) System.out.println(":||remove Convert to value " + value.getClass() + " | " + value.toString() + " | " + defaultValue);
                         annJson.put(method.getName(), StringMan.toSerializable(value));
                     }
                 } catch (IllegalAccessException | InvocationTargetException e) {

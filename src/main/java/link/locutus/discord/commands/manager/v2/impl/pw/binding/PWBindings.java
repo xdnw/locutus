@@ -607,12 +607,21 @@ public class PWBindings extends BindingHelper {
         return war;
     }
 
-    @Binding(value = "nation id, name or url", examples = {"Borg", "<@664156861033086987>", "Danzek", "189573", "https://politicsandwar.com/nation/id=189573"})
     public static DBNation nation(@Default @Me User selfUser, String input) {
+        return nation(selfUser, input, null);
+    }
+
+    @Binding(value = "nation id, name or url", examples = {"Borg", "<@664156861033086987>", "Danzek", "189573", "https://politicsandwar.com/nation/id=189573"})
+    public static DBNation nation(@Default @Me User selfUser, String input, @Default ParameterData data) {
         DBNation nation = DiscordUtil.parseNation(input);
         if (nation == null) {
             if (selfUser != null && (input.equalsIgnoreCase("%user%") || input.equalsIgnoreCase("{usermention}"))) {
                 nation = DiscordUtil.getNation(selfUser);
+            } else {
+                boolean allowDeleted = data != null && data.getAnnotation(AllowDeleted.class) != null;
+                if (MathMan.isInteger(input) && allowDeleted) {
+                    return DBNation.getOrCreate(Integer.parseInt(input));
+                }
             }
             if (nation == null) {
                 String error = "No such nation: `" + input + "`";

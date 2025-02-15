@@ -8,6 +8,8 @@ import org.jsoup.nodes.Document;
 import java.io.IOException;
 import java.net.*;
 
+import static link.locutus.discord.network.PassthroughProxy.TIMEOUT_MILLIS;
+
 public class SocksProxy implements IProxy {
     private final Proxy proxy;
     private String proxyHost;
@@ -52,7 +54,7 @@ public class SocksProxy implements IProxy {
 
     @Override
     public Connection connect(String url) throws IOException {
-        Connection connection = Jsoup.connect(url).proxy(this.proxy);
+        Connection connection = Jsoup.connect(url).proxy(this.proxy).timeout(TIMEOUT_MILLIS);
         return connection;
     }
 }
