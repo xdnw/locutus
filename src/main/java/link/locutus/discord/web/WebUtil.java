@@ -23,6 +23,7 @@ import link.locutus.discord.util.task.mail.MailApiSuccess;
 import link.locutus.discord.util.task.mail.SearchMailTask;
 import link.locutus.discord.web.commands.binding.DBAuthRecord;
 import link.locutus.discord.web.jooby.WebRoot;
+import org.apache.http.client.utils.URIBuilder;
 import org.jsoup.Jsoup;
 
 import java.awt.Color;
@@ -310,5 +311,22 @@ public class WebUtil {
         } catch (Exception e) {
             throw new IOException("Failed to download and convert to bytes", e);
         }
+    }
+
+    public static String frontendUrl(String path, List<String> params) {
+        return frontendUrl(path, params.toArray(new String[0]));
+    }
+
+    public static String frontendUrl(String path, String... params) {
+        String url = Settings.INSTANCE.WEB.FRONTEND_DOMAIN;
+        if (path != null) url += "/#/" + path + "/";
+        if (params != null) {
+            URIBuilder uriBuilder = new URIBuilder();
+            for (int i = 0; i < params.length; i += 2) {
+                uriBuilder.addParameter(params[i], params[i + 1]);
+            }
+            url += uriBuilder.toString();
+        }
+        return url;
     }
 }

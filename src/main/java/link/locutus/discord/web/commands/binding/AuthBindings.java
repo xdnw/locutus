@@ -151,7 +151,7 @@ public class AuthBindings extends WebBindingHelper {
         params.add(new BasicNameValuePair("redirect_uri", WebRoot.REDIRECT));
         params.add(new BasicNameValuePair("response_type", "code"));
         params.add(new BasicNameValuePair("scope", "identify guilds"));
-        String query = URLEncodedUtils.format(params, "UTF-8");
+        String query = URLEncodedUtils.format(params, StandardCharsets.UTF_8);
         return AUTHORIZE_URL + "?" + query;
     }
 

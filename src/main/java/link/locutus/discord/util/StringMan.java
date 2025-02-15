@@ -576,6 +576,22 @@ public class StringMan {
         }
     }
 
+    public static String joinAndQuote(List<String> input, String separator) {
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < input.size(); i++) {
+            String s = input.get(i);
+            if (s.contains(separator)) {
+                result.append("\u201C").append(s).append("\u201D");
+            } else {
+                result.append(s);
+            }
+            if (i < input.size() - 1) {
+                result.append(separator);
+            }
+        }
+        return result.toString();
+    }
+
     public static List<String> split(String input, char delim) {
         return split(input, Character.toString(delim));
     }

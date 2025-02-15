@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
@@ -62,6 +63,7 @@ import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
@@ -69,11 +71,13 @@ import net.dv8tion.jda.api.entities.channel.concrete.VoiceChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
+import org.apache.http.client.utils.URIBuilder;
 import org.json.JSONObject;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.*;
@@ -1418,7 +1422,7 @@ public class UtilityCommands {
                                            "All NationAttribute placeholders must be surrounded by {} e.g. {nation}")
                                    @TextArea List<String> columns,
                                    @Switch("t") @Timestamp Long snapshotTime,
-                                   @Switch("e") boolean updateSpies, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+                                   @Switch("e") boolean updateSpies, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException, URISyntaxException {
         Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db.getGuild());
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.NATION_SHEET);
@@ -1454,7 +1458,28 @@ public class UtilityCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(channel.create(), "nations").send();
+        IMessageBuilder msg = channel.create();
+        String body = "type: " + DBNation.class.getSimpleName();
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+            List<String> params = new ObjectArrayList<>(List.of("type", DBNation.class.getSimpleName(), "sel", nations.getFilter()));
+            for (String column : columns) {
+                params.add("col");
+                params.add(column);
+            }
+            String url = WebUtil.frontendUrl("view_table", params);
+            body += "\n**Permanent Link:**(auto updates)\n<" + url + ">";
+        }
+
+        JSONObject command = CM.nation.sheet.NationSheet.cmd
+            .sheet(sheet == null ? null : sheet.getQualifiedId(true))
+            .nations(nations.getFilter())
+            .columns(StringMan.joinAndQuote(columns, " "))
+            .snapshotTime(snapshotTime == null ? null : "timestamp:" + snapshotTime)
+            .updateSpies(updateSpies ? "true" : null).toJson();
+
+        msg.embed("Update Nation Sheet", body).commandButton(CommandBehavior.DELETE_MESSAGE, command, "Update");
+        sheet.attach(msg, "nations");
+        msg.send();
     }
 
     @Command(desc = "Check if a nation shares networks with others\n" +

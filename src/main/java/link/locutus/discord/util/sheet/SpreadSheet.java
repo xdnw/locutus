@@ -351,6 +351,10 @@ public class SpreadSheet {
         return spreadsheetId;
     }
 
+    public String getQualifiedId(boolean includeTab) {
+        return "sheet:" + spreadsheetId + (includeTab && defaultTabId != null ? "#" + defaultTabId : "");
+    }
+
     public record SheetId(String id, String tabName, Integer tabId) {
     }
 
