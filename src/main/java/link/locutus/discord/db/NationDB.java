@@ -608,10 +608,10 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                         alliancesById.put(alliance.getId(), existing);
                         allianceByNameCache.put(alliance.getName().toLowerCase(Locale.ROOT), alliance.getId());
                     }
-                    if (alliance.getScore() != 0) {
+                    if (alliance.getScore() != null && alliance.getScore() != 0) {
                         createdAlliances.add(existing);
-                        dirtyAlliances.add(existing);
                     }
+                    dirtyAlliances.add(existing);
                 } else {
                     String originalName = existing.getName();
                     if (existing.set(alliance, eventConsumer)) {

@@ -3027,6 +3027,7 @@ public class GrantCommands {
                            @Switch("s") SpreadSheet sheet
                            ) throws GeneralSecurityException, IOException {
         if (force_projects == null) force_projects = Collections.emptySet();
+        if (force_policy == null) force_policy = Collections.emptySet();
         if (cities_up_to && cities == null) {
             throw new IllegalArgumentException("Please specify the number of cities when `cities_up_to: True`");
         }
@@ -3081,13 +3082,15 @@ public class GrantCommands {
 
             double infraCost = 0;
             if (infra_level != null) {
+                Set<Project> finalForce_projects = force_projects;
+                Set<DomesticPolicy> finalForce_policy = force_policy;
                 Function<Double, Double> calcInfraCost = (Double infra) -> {
                     // boolean aec, boolean cfce, boolean urbanization, boolean gsa
-                    boolean aec = nation.hasProject(Projects.ADVANCED_ENGINEERING_CORPS) || force_projects.contains(Projects.ADVANCED_ENGINEERING_CORPS);
-                    boolean cfce = nation.hasProject(Projects.CENTER_FOR_CIVIL_ENGINEERING) || force_projects.contains(Projects.CENTER_FOR_CIVIL_ENGINEERING);
-                    boolean urbanization = nation.getDomesticPolicy() == DomesticPolicy.URBANIZATION || force_policy.contains(DomesticPolicy.URBANIZATION);
-                    boolean gsa = nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) || force_projects.contains(Projects.GOVERNMENT_SUPPORT_AGENCY);
-                    boolean bda = nation.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS) || force_projects.contains(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
+                    boolean aec = nation.hasProject(Projects.ADVANCED_ENGINEERING_CORPS) || finalForce_projects.contains(Projects.ADVANCED_ENGINEERING_CORPS);
+                    boolean cfce = nation.hasProject(Projects.CENTER_FOR_CIVIL_ENGINEERING) || finalForce_projects.contains(Projects.CENTER_FOR_CIVIL_ENGINEERING);
+                    boolean urbanization = nation.getDomesticPolicy() == DomesticPolicy.URBANIZATION || finalForce_policy.contains(DomesticPolicy.URBANIZATION);
+                    boolean gsa = nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) || finalForce_projects.contains(Projects.GOVERNMENT_SUPPORT_AGENCY);
+                    boolean bda = nation.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS) || finalForce_projects.contains(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
                     return PW.City.Infra.calculateInfra(infra, infra_level, aec, cfce, urbanization, gsa, bda);
                 };
                 for (DBCity city : nation._getCitiesV3().values()) {
@@ -3102,12 +3105,14 @@ public class GrantCommands {
 
             double landCost = 0;
             if (land_level != null) {
+                Set<Project> finalForce_projects1 = force_projects;
+                Set<DomesticPolicy> finalForce_policy1 = force_policy;
                 Function<Double, Double> calcLandCost = (Double land) -> {
-                    boolean ra = nation.getDomesticPolicy() == DomesticPolicy.RAPID_EXPANSION || force_policy.contains(DomesticPolicy.RAPID_EXPANSION);
-                    boolean aec = nation.hasProject(Projects.ADVANCED_ENGINEERING_CORPS) || force_projects.contains(Projects.ADVANCED_ENGINEERING_CORPS);
-                    boolean ala = nation.hasProject(Projects.ARABLE_LAND_AGENCY) || force_projects.contains(Projects.ARABLE_LAND_AGENCY);
-                    boolean gsa = nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) || force_projects.contains(Projects.GOVERNMENT_SUPPORT_AGENCY);
-                    boolean bda = nation.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS) || force_projects.contains(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
+                    boolean ra = nation.getDomesticPolicy() == DomesticPolicy.RAPID_EXPANSION || finalForce_policy1.contains(DomesticPolicy.RAPID_EXPANSION);
+                    boolean aec = nation.hasProject(Projects.ADVANCED_ENGINEERING_CORPS) || finalForce_projects1.contains(Projects.ADVANCED_ENGINEERING_CORPS);
+                    boolean ala = nation.hasProject(Projects.ARABLE_LAND_AGENCY) || finalForce_projects1.contains(Projects.ARABLE_LAND_AGENCY);
+                    boolean gsa = nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) || finalForce_projects1.contains(Projects.GOVERNMENT_SUPPORT_AGENCY);
+                    boolean bda = nation.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS) || finalForce_projects1.contains(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
                     return PW.City.Land.calculateLand(land, land_level, ra, aec, ala, gsa, bda);
                 };
                 for (DBCity city : nation._getCitiesV3().values()) {
