@@ -3026,6 +3026,7 @@ public class GrantCommands {
                            @Switch("fp") @Arg("These projects are not purchased but are included for cost reduction calculations") Set<Project> force_projects,
                            @Switch("s") SpreadSheet sheet
                            ) throws GeneralSecurityException, IOException {
+        if (force_projects == null) force_projects = Collections.emptySet();
         if (cities_up_to && cities == null) {
             throw new IllegalArgumentException("Please specify the number of cities when `cities_up_to: True`");
         }
