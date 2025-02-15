@@ -1,10 +1,12 @@
 package link.locutus.discord.util.task.multi;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 
@@ -13,27 +15,20 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class AdvMultiReport {
-    public AdvMultiReport(DBNation nation, SnapshotMultiData snapshot, Map<Integer, BigInteger> nationUids) {
-        int nationId = nation.getId();
-        long lastActive = nation.lastActiveMs();
-        BigInteger uid = nationUids.get(nationId);
+    public final int nationId;
+    public final String nation;
+    public final int allianceId;
+    public final String alliance;
+    private final long lastActive;
 
-        List<List<String>> table = new ArrayList<>();
-        List<String> header = new ArrayList<>(Arrays.asList(
-                "Nation",
-                "Alliance",
-                "Age",
-                "Cities",
-                "Shared IPs",
-                "Shared %",
-                "Current IP",
-                "Banned",
-                "Login Diff",
-                "Same Activity %",
-                "Discord",
-                "Customization"
-        ));
-        table.add(header);
+    public final List<AdvMultiRow> rows;
+
+    public AdvMultiReport(DBNation nation, SnapshotMultiData snapshot, Map<Integer, BigInteger> nationUids) {
+        this.rows = new ObjectArrayList<>();
+        this.nationId = nation.getId();
+        this.lastActive = nation.lastActiveMs();
+
+        BigInteger uid = nationUids.get(nationId);
 
         DiscordDB db = Locutus.imp().getDiscordDB();
         MultiResult data = db.getMultiResult(nationId);
@@ -46,8 +41,6 @@ public class AdvMultiReport {
         System.out.println("Found networks for " + nationId + ": " + networks.size());
 
         for (Map.Entry<Integer, NetworkRow> entry : networks.entrySet()) {
-            List<String> row = new ArrayList<>();
-
             int otherNationId = entry.getKey();
             BigInteger otherUid = nationUids.get(otherNationId);
             NetworkRow network = entry.getValue();
@@ -63,62 +56,42 @@ public class AdvMultiReport {
             long lastLoginDiff = Math.abs(lastActive - lastLogin);
 
             int aaId = otherNation.isValid() ? otherNation.getAlliance_id() : network.allianceId;
+            String aaName = null;
+            if (aaId > 0) {
+                DBAlliance aa = DBAlliance.get(aaId);
+                if (aa != null) {
+                    aaName = aa.getName();
+                }
+            }
 
             String discordStr = otherNation.getUserDiscriminator();
-            if (discordStr == null || discordStr.isEmpty()) discordStr = otherNation.getDiscordString();
-            if (discordStr != null && !discordStr.isEmpty()) {
-                if (otherNation.isVerified()) {
-                    discordStr += " (Linked)";
-                } else {
-                    discordStr += " (Unregistered)";
-                }
-            } else {
-                discordStr = "N/A";
-            }
-            if (otherNation.hasProvidedIdentity(null)) {
-                discordStr += " (IRL Verified)";
-            }
-
             boolean hasCustomFlag = snapshot.hasCustomFlag(otherNationId);
             boolean hasCustomLand = snapshot.hasPickedLand(otherNationId);
             boolean hasPortrait = snapshot.hasCustomPortrait(otherNationId);
             boolean hasCustomCurrency = snapshot.hasCustomCurrency(otherNationId);
             int customCount = (hasCustomFlag ? 30 : 0) + (hasCustomLand ? 20 : 0) + (hasPortrait ? 30 : 0) + (hasCustomCurrency ? 20 : 0);
             boolean sameUid = Objects.equals(uid, otherUid);
+            Double sameActivityPct = 0d; // TODO
 
-            // Nation
-            row.add(otherNation.getSheetUrl());
-            // Alliance
-            row.add(aaId == 0 ? "None" : DBAlliance.getOrCreate(aaId).getSheetUrl());
-            // Age
-            row.add(otherNation.getAgeDays() + "");
-            // Cities
-            row.add(otherNation.getCities() + "");
-            // Shared ips
-            row.add(String.valueOf(network.numberOfSharedIPs));
-            // Percent shared IPs
-            row.add(reciprocal == -1 ? "N/A" : MathMan.format(reciprocal * 100) + "%");
-            // Same uid
-            row.add(sameUid ? "Same" : "");
-            // Banned
-            row.add(banned ? "Banned" : "");
-            // Login diff
-            row.add(TimeUtil.secToTime(TimeUnit.MILLISECONDS, lastLoginDiff));
-            // Activity similarity
-            row.add("TODO");
-            // discordStr verified
-            row.add(discordStr);
-            // Customization
-            row.add(customCount + "%");
-
-            table.add(row);
+            rows.add(new AdvMultiRow(
+                    otherNationId,
+                    otherNation.getName(),
+                    aaId,
+                    aaName,
+                    otherNation.getAgeDays(),
+                    otherNation.getCities(),
+                    network.numberOfSharedIPs,
+                    reciprocal,
+                    sameUid,
+                    banned,
+                    lastLoginDiff,
+                    sameActivityPct,
+                    discordStr,
+                    otherNation.isVerified(),
+                    otherNation.hasProvidedIdentity(null),
+                    customCount
+            ));
         }
-
-        // print table
-        for (List<String> row : table) {
-            System.out.println(StringMan.join(row, "\t"));
-        }
-
     }
 
     public double getPercentReciprocal(int nat1, int nat2, MultiResult a, MultiResult b) {
