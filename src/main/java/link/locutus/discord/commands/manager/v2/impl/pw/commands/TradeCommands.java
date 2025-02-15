@@ -1300,9 +1300,16 @@ public class TradeCommands {
                              @Arg("Group rankings by each nation's current alliance")
                              @Switch("a") boolean groupByAlliance,
                              @Arg("Include trades done outside of standard market prices")
-                             @Switch("p") boolean includeMoneyTrades) {
+                             @Switch("p") boolean includeMoneyTrades,
+                             @Switch("n") Set<DBNation> nations) {
         if (type == ResourceType.MONEY || type == ResourceType.CREDITS) return "Invalid resource";
-        List<DBTrade> offers = db.getTrades(cutoff);
+        List<DBTrade> offers;
+        if (nations == null) {
+            offers = db.getTrades(cutoff);
+        } else {
+            Set<Integer> nationIds = nations.stream().map(f -> f.getNation_id()).collect(IntOpenHashSet::new, IntOpenHashSet::add, IntOpenHashSet::addAll);
+            offers = db.getTrades(nationIds, cutoff);
+        }
         if (!includeMoneyTrades) {
             offers.removeIf(f -> manager.isTradeOutsideNormPrice(f.getPpu(), f.getResource()));
         }

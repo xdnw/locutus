@@ -31,7 +31,7 @@ public class WikiBankFlows extends BotWikiGen {
                 By default flow breakdown will use all transfers, to specify a note, set  `useFlowNote` argument to only show the flow breakdown for that specific note (e.g. `TRADE`)""",
                 CM.deposits.sheet.cmd.useFlowNote("TRADE").toString(),
                 "# Adjusting Balance Flows",
-                "Shift the transfer note notegory flows for a nation.",
+                "Shift the transfer note category flows for a nation.",
                 "Does not change overall or note balance unless it is shifted to `#ignore`",
                 "By default this will shift it to `DEPOSIT`, though you can specify `noteTo`.",
                 "Use a negative amount to subtract, and positive to add.",

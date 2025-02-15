@@ -1015,7 +1015,7 @@ public class TradeManager {
             if (resource != ResourceType.FOOD) {
                 return ppu < 1000 || ppu > 5000;
             } else {
-                return ppu < 50 || ppu > 150;
+                return ppu < 50 || ppu > 800;
             }
         } else {
             return ppu < 15000000 || ppu >= 30000000;

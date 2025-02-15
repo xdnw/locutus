@@ -615,7 +615,7 @@ public class DiscordCommands {
         return "```\n" +text + "\n```\n";
     }
 
-    @Command(desc = "Shift the transfer note notegory flows for a nation.\n" +
+    @Command(desc = "Shift the transfer note category flows for a nation.\n" +
             "For adjusting whether amounts are internal, withdrawn or deposited.\n" +
             "Does not change overall or note balance unless it is shifted to `#ignore`")
     @RolePermission(value = Roles.ECON)
