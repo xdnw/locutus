@@ -1296,7 +1296,7 @@ public class TradeCommands {
                              ResourceType type,
                              @Arg("Date to start from")
                              @Timestamp long cutoff,
-                             @Default @ArgChoice(value = {"BUYING", "SELLING"}) String buyOrSell,
+                             @Default @ArgChoice(value = {"SOLD", "BOUGHT"}) String buyOrSell,
                              @Arg("Group rankings by each nation's current alliance")
                              @Switch("a") boolean groupByAlliance,
                              @Arg("Include trades done outside of standard market prices")
@@ -1313,7 +1313,7 @@ public class TradeCommands {
         if (!includeMoneyTrades) {
             offers.removeIf(f -> manager.isTradeOutsideNormPrice(f.getPpu(), f.getResource()));
         }
-        int findsign = buyOrSell.equalsIgnoreCase("BUYING") ? 1 : -1;
+        int findsign = buyOrSell.equalsIgnoreCase("SOLD") ? 1 : -1;
 
         Collection<Transfer> transfers = manager.toTransfers(offers, false);
         Map<Integer, double[]> inflows = manager.inflows(transfers, groupByAlliance);
@@ -1337,7 +1337,7 @@ public class TradeCommands {
         for (Map.Entry<Integer, Double> entry : sorted.entrySet()) {
             if (i++ >= 25) break;
             int nationId = entry.getKey();
-            double amount = entry.getValue();
+            double amount = Math.abs(entry.getValue());
             double myPpu = ppu.get(nationId)[type.ordinal()];
 //                nationName.add(MarkupUtil.markdownUrl(PW.getName(nationId, false), PW.getUrl(nationId, false)));
             nationName.add(PW.getName(nationId, groupByAlliance));
