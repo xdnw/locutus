@@ -6,6 +6,7 @@ import com.google.gson.reflect.TypeToken;
 import in.wilsonl.minifyhtml.Configuration;
 import in.wilsonl.minifyhtml.MinifyHtml;
 import io.javalin.http.*;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
@@ -311,6 +312,15 @@ public class WebUtil {
         } catch (Exception e) {
             throw new IOException("Failed to download and convert to bytes", e);
         }
+    }
+
+    public static String tableUrl(Class type, String sel, List<String> columns) {
+        List<String> params = new ObjectArrayList<>(List.of("type", type.getSimpleName(), "sel", sel));
+        for (String column : columns) {
+            params.add("col");
+            params.add(column);
+        }
+        return WebUtil.frontendUrl("view_table", params);
     }
 
     public static String frontendUrl(String path, List<String> params) {

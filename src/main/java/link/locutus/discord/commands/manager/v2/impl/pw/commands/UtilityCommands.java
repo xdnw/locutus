@@ -1460,13 +1460,8 @@ public class UtilityCommands {
 
         IMessageBuilder msg = channel.create();
         String body = "type: " + DBNation.class.getSimpleName();
-        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
-            List<String> params = new ObjectArrayList<>(List.of("type", DBNation.class.getSimpleName(), "sel", nations.getFilter()));
-            for (String column : columns) {
-                params.add("col");
-                params.add(column);
-            }
-            String url = WebUtil.frontendUrl("view_table", params);
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB && snapshotTime == null) {
+            String url = WebUtil.tableUrl(DBNation.class, nations.getFilter(), columns);
             body += "\n**Permanent Link:**(auto updates)\n<" + url + ">";
         }
 
