@@ -28,6 +28,17 @@ public class SnapshotMultiData {
                             String portraitUrl, String leaderTitle, String nationTitle) {
     }
 
+    public int getCustomCount(int nationId) {
+        int customCount = 0;
+        MultiData natData = data.get(nationId);
+        if (natData == null) return customCount;
+        if (hasCustomFlag(nationId)) customCount += 30;
+        if (hasPickedLand(nationId)) customCount += 20;
+        if (hasCustomPortrait(nationId)) customCount += 30;
+        if (hasCustomCurrency(nationId)) customCount += 20;
+        return customCount;
+    }
+
     public boolean hasCustomFlag(int nationId) {
         MultiData natData = data.get(nationId);
         if (natData == null) return false;

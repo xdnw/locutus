@@ -9,6 +9,7 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.offshore.Auth;
 
 import java.math.BigInteger;
 import java.util.*;
@@ -19,14 +20,32 @@ public class AdvMultiReport {
     public final String nation;
     public final int allianceId;
     public final String alliance;
+    public final int age;
+    public final int cities;
+    public final String discord;
+    public final boolean discord_linked;
+    public final boolean irl_verified;
+    public final int customization;
+
+    public final long dateFetched;
+
     private final long lastActive;
 
     public final List<AdvMultiRow> rows;
 
-    public AdvMultiReport(DBNation nation, SnapshotMultiData snapshot, Map<Integer, BigInteger> nationUids) {
+    public AdvMultiReport(DBNation nation, SnapshotMultiData snapshot, Map<Integer, BigInteger> nationUids, boolean updateIfAbsent, long updateIfOutdated) {
         this.rows = new ObjectArrayList<>();
         this.nationId = nation.getId();
         this.lastActive = nation.lastActiveMs();
+        this.nation = nation.getName();
+        this.allianceId = nation.getAlliance_id();
+        this.alliance = nation.getAllianceName();
+        this.age = nation.getAgeDays();
+        this.cities = nation.getCities();
+        this.discord = nation.getUserDiscriminator();
+        this.discord_linked = nation.isVerified();
+        this.irl_verified = nation.hasProvidedIdentity(null);
+        this.customization = snapshot.getCustomCount(nationId);
 
         BigInteger uid = nationUids.get(nationId);
 
@@ -35,10 +54,13 @@ public class AdvMultiReport {
         if (data == null) {
             throw new IllegalArgumentException("No multi result found for nation " + nationId);
         }
+        if ((data.dateFetched == 0 && updateIfAbsent) || updateIfOutdated != Long.MAX_VALUE) {
+            Auth auth = Locutus.imp().getRootAuth();
+            data.updateIfOutdated(auth, updateIfOutdated, true);
+        }
+        this.dateFetched = data.dateFetched;
 
         Map<Integer, NetworkRow> networks = data.getNetwork();
-
-        System.out.println("Found networks for " + nationId + ": " + networks.size());
 
         for (Map.Entry<Integer, NetworkRow> entry : networks.entrySet()) {
             int otherNationId = entry.getKey();
@@ -65,11 +87,7 @@ public class AdvMultiReport {
             }
 
             String discordStr = otherNation.getUserDiscriminator();
-            boolean hasCustomFlag = snapshot.hasCustomFlag(otherNationId);
-            boolean hasCustomLand = snapshot.hasPickedLand(otherNationId);
-            boolean hasPortrait = snapshot.hasCustomPortrait(otherNationId);
-            boolean hasCustomCurrency = snapshot.hasCustomCurrency(otherNationId);
-            int customCount = (hasCustomFlag ? 30 : 0) + (hasCustomLand ? 20 : 0) + (hasPortrait ? 30 : 0) + (hasCustomCurrency ? 20 : 0);
+            int customCount = snapshot.getCustomCount(otherNationId);
             boolean sameUid = Objects.equals(uid, otherUid);
             Double sameActivityPct = 0d; // TODO
 
