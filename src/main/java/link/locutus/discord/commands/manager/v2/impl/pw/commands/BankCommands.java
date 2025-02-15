@@ -3363,6 +3363,8 @@ public class BankCommands {
 
         GuildDB receiverDB = Locutus.imp().getGuildDBByAA(receiver.getAlliance_id());
         if (receiverDB == null) return "Receiver is not in a guild with locutus";
+        if (!force && me.isBlockaded()) throw new IllegalArgumentException("Sender is blockaded");
+        if (!force && receiver.isBlockaded()) throw new IllegalArgumentException("Receiver is blockaded");
 
         User receiverUser = receiver.getUser();
         if (receiverUser == null) return "Receiver is not verified";

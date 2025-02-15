@@ -917,8 +917,8 @@ public class Auth {
             }
             DBNation senderNation = DBNation.getById(expectedNationId);
             if (senderNation == null) throw new IllegalArgumentException("Sender is null");
-            if (senderNation.isBlockaded()) throw new IllegalArgumentException("Sender is blockaded");
-            if (nation.isBlockaded()) throw new IllegalArgumentException("Receiver is blockaded");
+//            if (nation.isBlockaded()) throw new IllegalArgumentException("Receiver is blockaded");
+//            if (senderNation.isBlockaded()) throw new IllegalArgumentException("Sender is blockaded");
 
             OffshoreInstance offshore = currentDB.getOffshore();
 

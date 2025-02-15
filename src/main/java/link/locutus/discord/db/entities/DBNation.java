@@ -3967,8 +3967,8 @@ public abstract class DBNation implements NationOrAlliance {
             }
 
             if (senderNation == null) throw new IllegalArgumentException("Sender is null");
-            if (senderNation.isBlockaded()) throw new IllegalArgumentException("Sender is blockaded");
-            if (isBlockaded()) throw new IllegalArgumentException("Receiver is blockaded");
+//            if (isBlockaded()) throw new IllegalArgumentException("Receiver is blockaded");
+//            if (senderNation.isBlockaded()) throw new IllegalArgumentException("Sender is blockaded");
 
             OffshoreInstance offshore = currentDB.getOffshore();
 
@@ -4163,7 +4163,7 @@ public abstract class DBNation implements NationOrAlliance {
     public List<Auth.TradeResult> acceptTrades(int expectedNationId, Map<ResourceType, Double> amount, boolean reverse) {
         if (expectedNationId == data()._nationId()) throw new IllegalArgumentException("Buyer and seller cannot be the same");
         if (!TimeUtil.checkTurnChange()) return List.of(new Auth.TradeResult("cannot accept during turn change", Auth.TradeResultType.BLOCKADED));
-        if (isBlockaded()) return List.of(new Auth.TradeResult("receiver is blockaded", Auth.TradeResultType.BLOCKADED));
+//        if (isBlockaded()) return List.of(new Auth.TradeResult("receiver is blockaded", Auth.TradeResultType.BLOCKADED));
 
         PoliticsAndWarV3 api = this.getApi(true);
         List<Auth.TradeResult> responses = new ArrayList<>();
