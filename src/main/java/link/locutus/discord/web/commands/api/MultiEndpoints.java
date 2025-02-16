@@ -6,21 +6,53 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.offshore.Auth;
+import link.locutus.discord.util.task.multi.AdvMultiReport;
 import link.locutus.discord.util.task.multi.MultiResult;
 import link.locutus.discord.util.task.multi.SameNetworkTrade;
+import link.locutus.discord.util.task.multi.SnapshotMultiData;
 import link.locutus.discord.web.commands.ReturnType;
 import link.locutus.discord.web.commands.binding.value_types.WebGraph;
 
+import java.io.IOException;
+import java.lang.ref.WeakReference;
+import java.math.BigInteger;
+import java.text.ParseException;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 public class MultiEndpoints {
     @Command
     @ReturnType(MultiResult.class)
-    public synchronized MultiResult multi_buster(@AllowDeleted DBNation nation, @Default Boolean forceUpdate) throws InterruptedException {
-        MultiResult result = Locutus.imp().getDiscordDB().getMultiResult(nation.getId());
-        Auth auth = Locutus.imp().getRootAuth();
-        result.updateIfOutdated(auth, forceUpdate == Boolean.TRUE ? TimeUnit.DAYS.toMillis(1) : Long.MAX_VALUE, true);
-        return result.loadNames();
+    public MultiResult multi_buster(@AllowDeleted DBNation nation, @Default Boolean forceUpdate) throws InterruptedException {
+        synchronized (MultiEndpoints.class) {
+            MultiResult result = Locutus.imp().getDiscordDB().getMultiResult(nation.getId());
+            Auth auth = Locutus.imp().getRootAuth();
+            result.updateIfOutdated(auth, forceUpdate == Boolean.TRUE ? TimeUnit.DAYS.toMillis(1) : Long.MAX_VALUE, true);
+            return result.loadNames();
+        }
+    }
+
+    private static WeakReference<SnapshotMultiData> snapshotData = new WeakReference<>(null);
+    private static WeakReference<Map<Integer, BigInteger>> uids = new WeakReference<>(null);
+
+    @Command
+    @ReturnType(AdvMultiReport.class)
+    public AdvMultiReport multi_v2(@AllowDeleted DBNation nation, @Default Boolean forceUpdate) throws IOException, ParseException {
+        synchronized (MultiEndpoints.class) {
+            SnapshotMultiData snapshot = snapshotData.get();
+            if (snapshot == null) {
+                snapshot = new SnapshotMultiData();
+                snapshotData = new WeakReference<>(snapshot);
+            }
+
+            Map<Integer, BigInteger> uidMap = uids.get();
+            if (uidMap == null) {
+                uidMap = Locutus.imp().getDiscordDB().getLatestUidByNation();
+                uids = new WeakReference<>(uidMap);
+            }
+
+            return new AdvMultiReport(nation, snapshot, uidMap, true, forceUpdate ? TimeUnit.DAYS.toMillis(1) : Long.MAX_VALUE);
+        }
     }
 }

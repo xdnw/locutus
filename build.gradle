@@ -89,6 +89,8 @@ generateTypeScript {
             'link.locutus.discord.util.task.multi.MultiResult',
             'link.locutus.discord.util.task.multi.NetworkRow',
             'link.locutus.discord.util.task.multi.SameNetworkTrade',
+            'link.locutus.discord.util.task.multi.AdvMultiReport',
+            'link.locutus.discord.util.task.multi.AdvMultiRow',
     ]
     outputKind = 'module'
     nullableAnnotations = ['org.checkerframework.checker.nullness.qual.Nullable']
