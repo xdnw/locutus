@@ -26,11 +26,10 @@ public class AdvMultiReport {
     public final boolean discord_linked;
     public final boolean irl_verified;
     public final int customization;
+    public final boolean banned;
+    public final long lastActive;
 
     public final long dateFetched;
-
-    private final long lastActive;
-
     public final List<AdvMultiRow> rows;
 
     public AdvMultiReport(DBNation nation, SnapshotMultiData snapshot, Map<Integer, BigInteger> nationUids, boolean updateIfAbsent, long updateIfOutdated) {
@@ -46,6 +45,7 @@ public class AdvMultiReport {
         this.discord_linked = nation.isVerified();
         this.irl_verified = nation.hasProvidedIdentity(null);
         this.customization = snapshot.getCustomCount(nationId);
+        this.banned = nation.hasPriorBan();
 
         BigInteger uid = nationUids.get(nationId);
 
@@ -70,10 +70,15 @@ public class AdvMultiReport {
             DBNation otherNation = DBNation.getOrCreate(otherNationId);
             boolean banned = otherNation.hasPriorBan();
             MultiResult otherMultiResult = db.getMultiResult(otherNationId);
-            double reciprocal = -1;
+            Double reciprocal = null;
+            Double reciprocal_nations = null;
             long lastLogin = otherNation.isValid() ? otherNation.lastActiveMs() : network.lastActiveMs;
-            if (otherMultiResult != null) {
+            if (otherMultiResult.dateFetched > 0 && !otherMultiResult.getNetwork().isEmpty()) {
                 reciprocal = getPercentReciprocal(nationId, otherNationId, data, otherMultiResult);
+                reciprocal_nations = getPercentReciprocalNations(nationId, otherNationId, data, otherMultiResult);
+                System.out.println("Reciprocal: " + nationId + " " + reciprocal + " | " + otherMultiResult.getNetwork().size());
+            } else {
+                System.out.println("Not reciprocal: " + nationId + " " + otherNationId);
             }
             long lastLoginDiff = Math.abs(lastActive - lastLogin);
 
@@ -100,9 +105,10 @@ public class AdvMultiReport {
                     otherNation.getCities(),
                     network.numberOfSharedIPs,
                     reciprocal,
+                    reciprocal_nations,
                     sameUid,
                     banned,
-                    lastLoginDiff,
+                    lastLogin == 0 ? null : lastLoginDiff,
                     sameActivityPct,
                     discordStr,
                     otherNation.isVerified(),
@@ -139,6 +145,32 @@ public class AdvMultiReport {
         }
         double pctA = totalIpsA == 0 ? 0 : (double) matchIpA / totalIpsA;
         double pctB = totalIpsB == 0 ? 0 : (double) matchIpB / totalIpsB;
+        return Math.min(pctA, pctB);
+    }
+
+    public double getPercentReciprocalNations(int nat1, int nat2, MultiResult a, MultiResult b) {
+        int totalNationsA = a.getNetwork().size();
+        int totalNationsB = b.getNetwork().size();
+        int matchNationsA = 0;
+        int matchNationsB = 0;
+
+        for (Map.Entry<Integer, NetworkRow> entry : a.getNetwork().entrySet()) {
+            int otherNationId = entry.getKey();
+            if (nat2 == otherNationId || b.getNetwork().containsKey(otherNationId)) {
+                matchNationsA++;
+            }
+        }
+        for (Map.Entry<Integer, NetworkRow> entry : b.getNetwork().entrySet()) {
+            int otherNationId = entry.getKey();
+            if (nat1 == otherNationId || a.getNetwork().containsKey(otherNationId)) {
+                matchNationsB++;
+            }
+        }
+        if (matchNationsA == 0 || matchNationsB == 0) {
+            return 0;
+        }
+        double pctA = totalNationsA == 0 ? 0 : (double) matchNationsA / totalNationsA;
+        double pctB = totalNationsB == 0 ? 0 : (double) matchNationsB / totalNationsB;
         return Math.min(pctA, pctB);
     }
 
