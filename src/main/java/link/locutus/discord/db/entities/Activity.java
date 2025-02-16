@@ -192,6 +192,14 @@ public class Activity {
         }
         average /= byDay.length;
         return average;
+    }
 
+    public double getAverageByWeekTurn() {
+        double average = 0;
+        for (double v : byWeekTurn) {
+            average += v;
+        }
+        average /= byWeekTurn.length;
+        return average;
     }
 }

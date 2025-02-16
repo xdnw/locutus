@@ -14,6 +14,7 @@ public record AdvMultiRow(
         boolean banned,
         Long login_diff,
         Double same_activity_percent,
+        Double percentOnline,
         String discord,
         boolean discord_linked,
         boolean irl_verified,

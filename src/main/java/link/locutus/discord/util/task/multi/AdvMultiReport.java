@@ -3,12 +3,14 @@ package link.locutus.discord.util.task.multi;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.DiscordDB;
+import link.locutus.discord.db.entities.Activity;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
 
 import java.math.BigInteger;
@@ -28,6 +30,7 @@ public class AdvMultiReport {
     public final int customization;
     public final boolean banned;
     public final long lastActive;
+    public final double percentOnline;
 
     public final long dateFetched;
     public final List<AdvMultiRow> rows;
@@ -59,6 +62,8 @@ public class AdvMultiReport {
             data.updateIfOutdated(auth, updateIfOutdated, true);
         }
         this.dateFetched = data.dateFetched;
+        Activity a1 = nation.getActivity();
+        this.percentOnline = a1.getAverageByWeekTurn();
 
         Map<Integer, NetworkRow> networks = data.getNetwork();
 
@@ -94,7 +99,13 @@ public class AdvMultiReport {
             String discordStr = otherNation.getUserDiscriminator();
             int customCount = snapshot.getCustomCount(otherNationId);
             boolean sameUid = Objects.equals(uid, otherUid);
-            Double sameActivityPct = 0d; // TODO
+            Double sameActivityPct = null;
+            Double percent_online = null;
+            if (otherNation.isValid() && nation.isValid()) {
+                Activity a2 = otherNation.getActivity();
+                sameActivityPct = compareActivity(a1, a2);
+                percent_online = a2.getAverageByWeekTurn();
+            }
 
             rows.add(new AdvMultiRow(
                     otherNationId,
@@ -110,12 +121,24 @@ public class AdvMultiReport {
                     banned,
                     lastLogin == 0 ? null : lastLoginDiff,
                     sameActivityPct,
+                    percent_online,
                     discordStr,
                     otherNation.isVerified(),
                     otherNation.hasProvidedIdentity(null),
                     customCount
             ));
         }
+    }
+
+    private double compareActivity(Activity a1, Activity a2) {
+        double[] t1 = a1.getByWeekTurn();
+        double[] t2 = a2.getByWeekTurn();
+        double diff = 0;
+        for (int i = 0; i < t1.length; i++) {
+            diff += Math.abs(t1[i] - t2[i]);
+        }
+        return 1 - diff / t1.length;
+//        return ArrayUtil.cosineSimilarity(t1, t2);
     }
 
     public double getPercentReciprocal(int nat1, int nat2, MultiResult a, MultiResult b) {
