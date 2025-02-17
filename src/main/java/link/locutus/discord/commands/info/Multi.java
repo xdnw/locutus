@@ -71,9 +71,12 @@ public class Multi extends Command {
             ```Disclaimer:
             - Sharing networks does not mean they are the same person (mobile networks, schools, public wifi, vpns, dynamic ips)
             - A network not shared 'concurrently' or within a short timeframe may be a false positive
-            - Having many networks, but only a few shared may be a sign of a VPN being used (there are legitimate reasons for using a VPN)
-            - It is against game rules to use evidence to threaten or coerce others
-            See: https://politicsandwar.com/rules/```""");
+            - Having many networks, but only a few shared may be a sign of a VPN being used (there are legitimate reasons for using a VPN)```""");
+
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+            msg.append("\n**See also:** " + Settings.INSTANCE.WEB.FRONTEND_DOMAIN + "/#/multi_v2/" + nationId);
+        }
+
         msg.send();
         return null;
     }

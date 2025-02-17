@@ -1988,7 +1988,8 @@ public class GuildKey {
         public String help() {
             return "The channel to receive alerts when a bounty is placed";
         }
-    }.setupRequirements(f -> f.requireValidAlliance().requireActiveGuild());
+    }.setupRequirements(f -> f.requireActiveGuild());
+
     public static GuildSetting<MessageChannel> TREASURE_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BOUNTY) {
         @NoFormat
         @Command(descMethod = "help")
@@ -2000,7 +2001,8 @@ public class GuildKey {
         public String help() {
             return "The channel to receive alerts when a treasure moves to another nation or is about to reset";
         }
-    }.setupRequirements(f -> f.requireValidAlliance().requireActiveGuild());
+    }.setupRequirements(f -> f.requireActiveGuild());
+
     public static GuildSetting<MessageChannel> MEMBER_REBUY_INFRA_ALERT = new GuildChannelSetting(GuildSettingCategory.AUDIT) {
         @NoFormat
         @Command(descMethod = "help")

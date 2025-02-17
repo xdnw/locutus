@@ -146,6 +146,9 @@ public class Settings extends Config {
         @Comment("See proxy section")
         public boolean PROXY = false;
 
+        @Comment("If API snapshots are enabled (disable if the game's api breaks like it often does)")
+        public boolean SNAPSHOTS = true;
+
         public void disableTasks() {
             CREATE_DATABASES_ON_STARTUP = false;
             REPEATING_TASKS = false;
