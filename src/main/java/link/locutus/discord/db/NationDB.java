@@ -439,7 +439,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         PoliticsAndWarV3 api = Locutus.imp().getV3();
         long now = System.currentTimeMillis();
         long diff = now - lastUpdatedAlliances;
-        if (filter != null || diff < TimeUnit.MINUTES.toMillis(10) || true) {
+        if (filter != null || diff < TimeUnit.MINUTES.toMillis(10) || !Settings.INSTANCE.ENABLED_COMPONENTS.SNAPSHOTS) {
             alliances = api.fetchAlliances(false, filter, true, true);
         } else {
             lastUpdatedAlliances = now;
@@ -1217,15 +1217,24 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
     }
 
+    private long lastUpdatedCities = System.currentTimeMillis();
+
     public void updateAllCities(Consumer<Event> eventConsumer) {
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
         dirtyCities.clear();
         dirtyCityNations.clear();
-        List<City> cities = v3.readSnapshot(PagePriority.API_CITIES_AUTO_ALL, City.class);
         Map<Integer, Map<Integer, City>> nationIdCityIdCityMap = new Int2ObjectOpenHashMap<>();
+        List<City> cities;
+        long now = System.currentTimeMillis();
+        long diff = now - lastUpdatedCities;
+        if (diff < TimeUnit.MINUTES.toMillis(10) || !Settings.INSTANCE.ENABLED_COMPONENTS.SNAPSHOTS) {
+            cities = v3.fetchCitiesWithInfo(true, r -> {}, true);
+        } else {
+            cities = v3.readSnapshot(PagePriority.API_CITIES_AUTO_ALL, City.class);
+        }
         for (City city : cities) {
-            nationIdCityIdCityMap.computeIfAbsent(city.getNation_id(), f -> new Int2ObjectOpenHashMap<>())
-                    .put(city.getId(), city);
+        nationIdCityIdCityMap.computeIfAbsent(city.getNation_id(), f -> new Int2ObjectOpenHashMap<>())
+                .put(city.getId(), city);
         }
         if (!nationIdCityIdCityMap.isEmpty()) {
             updateCities(nationIdCityIdCityMap, eventConsumer);
@@ -2014,7 +2023,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         Set<Integer> fetched;
         long now = System.currentTimeMillis();
         long diff = now - lastUpdatedNations;
-        if (diff < TimeUnit.MINUTES.toMillis(10) || true) {
+        if (diff < TimeUnit.MINUTES.toMillis(10) || !Settings.INSTANCE.ENABLED_COMPONENTS.SNAPSHOTS) {
             fetched = updateNations(f -> {}, eventConsumer);
         } else {
             lastUpdatedNations = now;
