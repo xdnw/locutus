@@ -5255,13 +5255,20 @@ public abstract class DBNation implements NationOrAlliance {
             if (wars.isEmpty()) {
                 return wars;
             }
+            Set<DBWar>[] finalCopy = new Set[1];
             Locutus.imp().getWarDb().getAttacksByWar(wars, f -> f == AttackType.VICTORY || f == AttackType.PEACE, f -> {
                 if (f.getDate() <= end) {
-                    wars.remove(new DBWar.DBWarKey(f.getWar_id()));
+                    Set<DBWar> value = finalCopy[0];
+                    if (value == null) {
+                        value = new ObjectOpenHashSet<>(wars);
+                        finalCopy[0] = value;
+                    }
+                    value.remove(new DBWar.DBWarKey(f.getWar_id()));
                 }
                 return false;
             }, f -> false);
-            return wars;
+            Set<DBWar> value = finalCopy[0];
+            return value == null ? wars : value;
         }
         return Locutus.imp().getWarDb().getActiveWars(data()._nationId());
     }
