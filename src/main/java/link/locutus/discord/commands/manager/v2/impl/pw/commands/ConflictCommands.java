@@ -726,7 +726,7 @@ public class ConflictCommands {
         }
         if (ctowned) {
             io.updateOptionally(msgFuture, "Importing from ctowned.net");
-            importCtowned(db, manager, true);
+            importCtowned(db, manager, null, true);
         }
         if (wiki) {
             io.updateOptionally(msgFuture, "Importing from wiki");

@@ -361,14 +361,10 @@ public class RaidCommand extends Command {
 
         double infraCost = PW.City.Infra.calculateInfra(me.getAvg_infra(), me.getAvg_infra() - me.getAvg_infra() * 0.05) * me.getCities();
 
-        long diffRevenue = 0;
-        long diffBankLootEst = 0;
-        long diffWars = 0;
-        long diffCounter = 0;
+        double foodFactor = db != null && db.getOffshore() == Locutus.imp().getRootBank() ? 2 : 1;
 
         double lootPct = 0.14;
 
-        double[] buffer = new double[ResourceType.values.length];
         Map<DBNation, Double> lootTotal = new HashMap<>();
         Map<DBNation, Double> lootEst = new HashMap<>();
 
@@ -378,7 +374,13 @@ public class RaidCommand extends Command {
             {
                 LootEntry loot = enemy.getBeigeLoot();
                 if (loot != null) {
-                    value = loot.convertedTotal();
+                    double[] total = loot.getTotal_rss();
+                    for (ResourceType type : ResourceType.values) {
+                        double amt = total[type.ordinal()];
+                        if (amt > 0) {
+                            value += ResourceType.convertedTotal(type, type == ResourceType.FOOD ? amt * foodFactor : amt);
+                        }
+                    }
                 }
 
                 double revenueEst = 0;
@@ -405,6 +407,9 @@ public class RaidCommand extends Command {
                     if (turnsInactive > 0) {
                         double[] revenue = enemy.getRevenue(turnsInactive + 24, true, true, false, true, false, false, 0d, false);
                         if (loot != null) {
+                            if (revenue[ResourceType.FOOD.ordinal()] > 0) {
+                                revenue[ResourceType.FOOD.ordinal()] *= foodFactor;
+                            }
                             revenue = PW.capManuFromRaws(revenue, loot.getTotal_rss());
                         }
                         revenueEst = ResourceType.convertedTotal(revenue);
@@ -438,7 +443,14 @@ public class RaidCommand extends Command {
 
                         double ratio = ((score * 10000) / allianceScore) / 2d;
                         double percent = Math.min(Math.min(ratio, 10000) / 30000, 0.33);
-                        bankLootEst = aaLoot.convertedTotal() * percent;
+                        double convertedTotal = 0;
+                        for (ResourceType type : ResourceType.values) {
+                            double amt = aaLoot.getTotal_rss()[type.ordinal()];
+                            if (amt > 0) {
+                                convertedTotal += ResourceType.convertedTotal(type, type == ResourceType.FOOD ? amt * foodFactor : amt);
+                            }
+                        }
+                        bankLootEst = convertedTotal * percent;
                         value += bankLootEst;
                     }
                 }
