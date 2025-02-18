@@ -4115,18 +4115,13 @@ public abstract class DBNation implements NationOrAlliance {
             public List<Auth.TradeResult> get() {
                 List<String> responses = new ArrayList<>();
                 List<Map.Entry<ResourceType, Integer>> amounts = new ArrayList<>(amountMap.entrySet());
-                long start = System.currentTimeMillis();
                 for (int i = 0; i < amounts.size(); i++) {
                     Map.Entry<ResourceType, Integer> entry = amounts.get(i);
-                    // wait 5s between each trade
                     if (i > 0) {
-                        long diff = System.currentTimeMillis() - start;
-                        if (diff < 5000) {
-                            try {
-                                Thread.sleep(5000 - diff);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
+                        try {
+                            Thread.sleep(5000);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
                         }
                     }
                     String trade = auth.createDepositTrade(senderNation, entry.getKey(), entry.getValue());
