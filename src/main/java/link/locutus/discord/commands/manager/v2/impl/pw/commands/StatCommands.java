@@ -41,7 +41,6 @@ import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholder
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.table.imp.*;
 import link.locutus.discord.commands.rankings.WarCostAB;
-import link.locutus.discord.commands.rankings.WarCostByDay;
 import link.locutus.discord.commands.rankings.WarCostRanking;
 import link.locutus.discord.commands.manager.v2.builder.*;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
@@ -71,6 +70,7 @@ import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.web.WebUtil;
+import link.locutus.discord.web.commands.WM;
 import link.locutus.discord.web.commands.binding.value_types.GraphType;
 import link.locutus.discord.web.commands.binding.value_types.WebGraph;
 import net.dv8tion.jda.api.entities.Guild;
@@ -97,15 +97,18 @@ import java.util.stream.Collectors;
 
 public class StatCommands {
     @Command(desc = "Display a graph of the number of attacks by the specified nations per day over a time period")
-    public String warAttacksByDay(@Me IMessageIO io, @Default Set<DBNation> nations,
+    public String warAttacksByDay(@Me IMessageIO io, @Me JSONObject command,
+                                  @Default Set<DBNation> nations,
                                   @Arg("Period of time to graph") @Default @Timestamp Long cutoff,
                                   @Arg("Restrict to a list of attack types") @Default Set<AttackType> allowedTypes) throws IOException {
         WarAttacksByDay table = new WarAttacksByDay(nations, cutoff, allowedTypes);
-        io.create()
+        IMessageBuilder msg = io.create()
                 .file("img.png", table.write())
-                .file("data.csv", table.toCsv())
-                .append("Done!")
-                .send();
+                .file("data.csv", table.toCsv());
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+            msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.warAttacksByDay.cmd.getName(), command));
+        }
+        msg.send();
         return null;
     }
 
@@ -885,7 +888,7 @@ public class StatCommands {
     @Command(desc = "Generate a graph of nation military strength by score between two coalitions\n" +
             "1 tank = 1/32 aircraft for strength calculations\n" +
             "Effective score range is limited to 1.75x with a linear reduction of strength up to 40% to account for up-declares", aliases = {"strengthTierGraph"})
-    public String strengthTierGraph(@Me GuildDB db, @Me IMessageIO channel,
+    public String strengthTierGraph(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
                                     NationList coalition1,
                                     NationList coalition2,
                                     @Switch("i") boolean includeInactives,
@@ -899,7 +902,7 @@ public class StatCommands {
                                     @Switch("v") boolean attachCsv, @Switch("ss") boolean attach_sheet) throws IOException {
         Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild());
         Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild());
-        new StrengthTierGraph(
+        IMessageBuilder msg = new StrengthTierGraph(
                 coalition1.getFilter(),
                 coalition2.getFilter(),
                 coalition1Nations,
@@ -910,13 +913,17 @@ public class StatCommands {
                 col2MMR,
                 col1Infra,
                 col2Infra
-        ).write(channel, attachJson, attachCsv, attach_sheet ? db : null, SheetKey.STRENGTH_TIER);
+        ).writeMsg(channel.create(), attachJson, attachCsv, attach_sheet ? db : null, SheetKey.STRENGTH_TIER);
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+            msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.strengthTierGraph.cmd.getName(), command));
+        }
+        msg.send();
         return null;
     }
 
     @Command(desc = "Generate a graph of spy counts by city count between two coalitions\n" +
             "Nations which are applicants, in vacation mode or inactive (2 days) are excluded")
-    public String spyTierGraph(@Me GuildDB db, @Me IMessageIO channel,
+    public String spyTierGraph(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
                                NationList coalition1,
                                NationList coalition2,
                                @Switch("i") boolean includeInactives,
@@ -937,12 +944,17 @@ public class StatCommands {
         NationAttribute<Double> groupBy = new NationAttribute<>("cities", "", double.class, f -> (double) f.getCities());
 
         EntityGroup<DBNation> graph = new EntityGroup<DBNation>(null, attribute, coalitions, names, groupBy, total);
-        graph.setGraphType(barGraph ? GraphType.SIDE_BY_SIDE_BAR : GraphType.LINE).write(channel, attachJson, attachCsv, attach_sheet ? db : null, SheetKey.SPY_TIER);
+        IMessageBuilder msg = graph.setGraphType(barGraph ? GraphType.SIDE_BY_SIDE_BAR : GraphType.LINE)
+                .writeMsg(channel.create(), attachJson, attachCsv, attach_sheet ? db : null, SheetKey.SPY_TIER);
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+            msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.spyTierGraph.cmd.getName(), command));
+        }
+        msg.send();
         return null;
     }
 
     @Command(desc = "Generate a graph of nation counts by score between two coalitions", aliases = {"scoreTierGraph", "scoreTierSheet"})
-    public String scoreTierGraph(@Me GuildDB db, @Me IMessageIO channel,
+    public String scoreTierGraph(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
                                  NationList coalition1,
                                  NationList coalition2,
                                  @Switch("i") boolean includeInactives,
@@ -953,14 +965,18 @@ public class StatCommands {
         Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild());
         Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild());
 
-        new ScoreTierGraph(
+        IMessageBuilder msg = new ScoreTierGraph(
                 coalition1.getFilter(),
                 coalition2.getFilter(),
                 coalition1Nations,
                 coalition2Nations,
                 includeInactives,
                 includeApplicants
-        ).write(channel, attachJson, attachCsv, attach_sheet ? db : null, SheetKey.SCORE_TIER);
+        ).writeMsg(channel.create(), attachJson, attachCsv, attach_sheet ? db : null, SheetKey.SCORE_TIER);
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+            msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.scoreTierGraph.cmd.getName(), command));
+        }
+        msg.send();
         return null;
     }
 
@@ -1306,7 +1322,8 @@ public class StatCommands {
     }
 
     @Command(desc = "Generate a bar char comparing the nation at each city count (tiering) between two coalitions")
-    public String cityTierGraph(@Me GuildDB db, @Me IMessageIO channel, NationList coalition1, NationList coalition2,
+    public String cityTierGraph(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
+                                NationList coalition1, NationList coalition2,
                                 @Switch("i") boolean includeInactives,
                                 @Switch("b") boolean barGraph,
                                 @Switch("a") boolean includeApplicants,
@@ -1324,12 +1341,17 @@ public class StatCommands {
         NationAttribute<Double> groupBy = new NationAttribute<>("city", "", double.class, f -> (double) f.getCities());
 
         EntityGroup<DBNation> graph = new EntityGroup<DBNation>(null, attribute, coalitions, names, groupBy, true);
-        graph.setGraphType(barGraph ? GraphType.SIDE_BY_SIDE_BAR : GraphType.LINE).write(channel, attachJson, attachCsv, attach_sheet ? db : null, SheetKey.CITY_TIER);
+        IMessageBuilder msg = graph.setGraphType(barGraph ? GraphType.SIDE_BY_SIDE_BAR : GraphType.LINE)
+                .writeMsg(channel.create(), attachJson, attachCsv, attach_sheet ? db : null, SheetKey.CITY_TIER);
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+            msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.cityTierGraph.cmd.getName(), command));
+        }
+        msg.send();
         return null;
     }
 
     @Command(desc = "Compare the metric over time between multiple alliances")
-    public String allianceMetricsCompareByTurn(@Me GuildDB db, @Me IMessageIO channel,
+    public void allianceMetricsCompareByTurn(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
                                                AllianceMetric metric, Set<DBAlliance> alliances,
                                                @Arg("Date to start from")
                                                @Timestamp long start,
@@ -1342,12 +1364,16 @@ public class StatCommands {
         Set<DBAlliance>[] coalitions = alliances.stream().map(Collections::singleton).toList().toArray(new Set[0]);
         List<String> coalitionNames = alliances.stream().map(DBAlliance::getName).collect(Collectors.toList());
         TimeNumericTable table = MultiCoalitionMetricGraph.create(metric, turnStart, turnEnd, coalitionNames, coalitions);
-        table.write(channel, TimeFormat.TURN_TO_DATE, metric.getFormat(), GraphType.LINE, turnStart, attachJson, attachCsv, attach_sheet ? db : null, SheetKey.ALLIANCE_METRIC_TURN);
-        return "Done!";
+        IMessageBuilder msg = table.writeMsg(channel.create(), TimeFormat.TURN_TO_DATE, metric.getFormat(), GraphType.LINE, turnStart, attachJson, attachCsv, attach_sheet ? db : null, SheetKey.ALLIANCE_METRIC_TURN);
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+            msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.allianceMetricsCompareByTurn.cmd.getName(), command));
+        }
+        msg.send();
     }
 
-    @Command(desc = "Compare the metric over time between multiple alliances")
-    public String militarizationTime(@Me GuildDB db, @Me IMessageIO channel, DBAlliance alliance, @Default("7d") @Timestamp long start_time,
+    @Command(desc = "Graph militarization (soldier, tank, aircraft, ship) over time of an alliance")
+    public String militarizationTime(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
+                                     DBAlliance alliance, @Default("7d") @Timestamp long start_time,
                                      @Switch("e") @Timestamp Long end_time,
                                      @Switch("j") boolean attach_json,
                                      @Switch("c") boolean attach_csv,
@@ -1357,13 +1383,18 @@ public class StatCommands {
         long startTurn = TimeUtil.getTurn(start_time);
 
         List<AllianceMetric> metrics = new ArrayList<>(Arrays.asList(AllianceMetric.SOLDIER_PCT, AllianceMetric.TANK_PCT, AllianceMetric.AIRCRAFT_PCT, AllianceMetric.SHIP_PCT));
-        TimeNumericTable table = CoalitionMetricsGraph.create(metrics, startTurn, endTurn, alliance.getName(), Collections.singleton(alliance));
-        table.write(channel, TimeFormat.TURN_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, GraphType.LINE, start_time, attach_json, attach_csv, attach_sheet ? db : null, SheetKey.MILITARIZATION_TIME);
+        CoalitionMetricsGraph table = CoalitionMetricsGraph.create(metrics, startTurn, endTurn, alliance.getName(), Collections.singleton(alliance));
+        IMessageBuilder msg = table.writeMsg(channel.create(), TimeFormat.TURN_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, GraphType.LINE, start_time, attach_json, attach_csv, attach_sheet ? db : null, SheetKey.MILITARIZATION_TIME);
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+            msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.militarizationTime.cmd.getName(), command));
+        }
+        msg.send();
         return null;
     }
 
     @Command(desc = "Graph an alliance metric over time for two coalitions")
-    public String allianceMetricsAB(@Me GuildDB db, @Me IMessageIO channel, AllianceMetric metric, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2,
+    public void allianceMetricsAB(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
+                                    AllianceMetric metric, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2,
                                     @Arg("Date to start from")
                                     @Timestamp long start,
                                     @Timestamp @Default Long end,
@@ -1372,8 +1403,11 @@ public class StatCommands {
         long turnStart = TimeUtil.getTurn(start);
         long turnEnd = end == null ? TimeUtil.getTurn() : TimeUtil.getTurn(end);
         TimeNumericTable table = MultiCoalitionMetricGraph.create(metric, turnStart, turnEnd, null, coalition1, coalition2);
-        table.write(channel, TimeFormat.TURN_TO_DATE, metric.getFormat(), GraphType.LINE, turnStart, attachJson, attachCsv, attach_sheet ? db : null, SheetKey.ALLIANCE_METRIC_AB);
-        return "Done!";
+        IMessageBuilder msg = table.writeMsg(channel.create(), TimeFormat.TURN_TO_DATE, metric.getFormat(), GraphType.LINE, turnStart, attachJson, attachCsv, attach_sheet ? db : null, SheetKey.ALLIANCE_METRIC_AB);
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+            msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.allianceMetricsAB.cmd.getName(), command));
+        }
+        msg.send();
     }
 
     @RolePermission(value = {Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS, Roles.INTERNAL_AFFAIRS}, any = true)
@@ -1454,18 +1488,24 @@ public class StatCommands {
         return null;
     }
 
-    @Command(desc = "Create a graph of the radiation by turn")
-    public String radiationByTurn(@Me GuildDB db, @Me IMessageIO channel, Set<Continent> continents,
+    @Command(desc = "Graph global and per continent radiation by turn over a specified time period")
+    public String radiationByTurn(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
+                                  Set<Continent> continents,
                                   @Arg("Date to start from")
                                   @Timestamp long time, @Switch("j") boolean attachJson,
                                   @Switch("c") boolean attachCsv, @Switch("s") boolean attach_sheet) throws IOException {
         TimeNumericTable<Void> table = new RadiationByTurn(continents, time, Long.MAX_VALUE);
-        table.write(channel, TimeFormat.TURN_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, TimeUtil.getTurn(time), attachJson, attachCsv, attach_sheet ? db : null, SheetKey.RADIATION_BY_TURN);
+        IMessageBuilder msg = table.writeMsg(channel.create(), TimeFormat.TURN_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, TimeUtil.getTurn(time), attachJson, attachCsv, attach_sheet ? db : null, SheetKey.RADIATION_BY_TURN);
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+            msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.radiationByTurn.cmd.getName(), command));
+        }
+        msg.send();
         return "Done!";
     }
 
     @Command(desc = "Graph the metric over time for a coalition")
-    public String allianceMetricsByTurn(@Me GuildDB db, @Me IMessageIO channel, @Me User user, AllianceMetric metric, Set<DBAlliance> coalition,
+    public void allianceMetricsByTurn(@Me GuildDB db, @Me IMessageIO channel, @Me User user, @Me JSONObject command,
+                                      AllianceMetric metric, Set<DBAlliance> coalition,
                                         @Arg("Date to start from")
                                         @Timestamp long start,
                                         @Timestamp @Default Long end,
@@ -1475,8 +1515,11 @@ public class StatCommands {
         long turnEnd = end == null ? TimeUtil.getTurn() : TimeUtil.getTurn(end);
         List<String> coalitionNames = List.of(metric.name());
         TimeNumericTable table = MultiCoalitionMetricGraph.create(metric, turnStart, turnEnd, coalitionNames, coalition);
-        table.write(channel, TimeFormat.TURN_TO_DATE, metric.getFormat(), GraphType.LINE, turnStart, attachJson, attachCsv, attach_sheet ? db : null, SheetKey.ALLIANCE_METRICS_TURN);
-        return "Done! " + user.getAsMention();
+        IMessageBuilder msg = table.writeMsg(channel.create(), TimeFormat.TURN_TO_DATE, metric.getFormat(), GraphType.LINE, turnStart, attachJson, attachCsv, attach_sheet ? db : null, SheetKey.ALLIANCE_METRICS_TURN);
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+            msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.allianceMetricsByTurn.cmd.getName(), command));
+        }
+        msg.append("Done! " + user.getAsMention()).send();
     }
 
     @Command(
@@ -2353,17 +2396,21 @@ public class StatCommands {
     }
 
     @Command(desc = "Get a game graph by day")
-    public String orbisStatByDay(@Me IMessageIO channel, @Me GuildDB db,
+    public void orbisStatByDay(@Me IMessageIO channel, @Me GuildDB db, @Me JSONObject command,
                                  Set<OrbisMetric> metrics,
                                  @Default @Timestamp Long start,
                                  @Default @Timestamp Long end, @Switch("j") boolean attachJson, @Switch("c") boolean attachCsv, @Switch("ss") boolean attach_sheet) throws IOException {
         OrbisMetricGraph graph = new OrbisMetricGraph(metrics, start, end);
-        graph.write(channel, attachJson, attachCsv, attach_sheet ? db : null, SheetKey.ORBIS_STAT_BY_DAY);
-        return "Done!";
+        IMessageBuilder msg = graph.writeMsg(channel.create(), attachJson, attachCsv, attach_sheet ? db : null, SheetKey.ORBIS_STAT_BY_DAY);
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+            msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.orbisStatByDay.cmd.getName(), command));
+        }
+        msg.send();
     }
 
     @Command(desc = "Get nth loot beige graph by score range")
-    public String NthBeigeLootByScoreRange(@Me IMessageIO io, @Me GuildDB db, @Default NationList nations, @Default("5") int n, @Default @Timestamp Long snapshotDate,
+    public String NthBeigeLootByScoreRange(@Me IMessageIO io, @Me GuildDB db, @Me JSONObject command,
+                                           @Default NationList nations, @Default("5") int n, @Default @Timestamp Long snapshotDate,
                                            @Switch("c") boolean attachCsv, @Switch("j") boolean attachJson, @Switch("ss") boolean attach_sheet) throws IOException {
         if (n <= 0) throw new IllegalArgumentException("N must be greater than 0");
         String filter;
@@ -2375,7 +2422,10 @@ public class StatCommands {
                     f.active_m() > 7200 && f.getVm_turns() == 0 && f.getPositionEnum().id <= Rank.APPLICANT.id));
         }
         Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), filter, snapshotDate, db.getGuild());
-        new NthBeigeLoot(nationsSet, n).write(io, attachCsv, attachJson, attach_sheet ? db : null, SheetKey.NTH_LOOT_SCORE_RANGE);
+        IMessageBuilder msg = new NthBeigeLoot(nationsSet, n).writeMsg(io.create(), attachCsv, attachJson, attach_sheet ? db : null, SheetKey.NTH_LOOT_SCORE_RANGE);
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+            msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.NthBeigeLootByScoreRange.cmd.getName(), command));
+        }
         return null;
     }
 
@@ -2744,7 +2794,7 @@ public class StatCommands {
             @Switch("c") boolean attach_csv, @Switch("ss") boolean attach_sheet) throws IOException {
         String nameA = command.getString("coalition1");
         String nameB = command.getString("coalition2");
-        new link.locutus.discord.commands.manager.v2.table.imp.WarCostByDay(
+        IMessageBuilder msg = new WarCostByDay(
                 nameA,
                 nameB,
                 coalition1,
@@ -2757,7 +2807,11 @@ public class StatCommands {
                 allowedWarTypes,
                 allowedAttackTypes,
                 allowedVictoryTypes
-        ).write(io, attach_json, attach_csv, attach_sheet ? db : null, SheetKey.WAR_COST_DAY);
+        ).writeMsg(io.create(), attach_json, attach_csv, attach_sheet ? db : null, SheetKey.WAR_COST_DAY);
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+            msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.warCostsByDay.cmd.getName(), command));
+        }
+        msg.send();
         return null;
     }
 
@@ -2822,7 +2876,7 @@ public class StatCommands {
         args.put(command.has("coalition10") ? command.getString("coalition10") : null, coalition10);
         args.entrySet().removeIf(f -> f.getValue() == null);
 
-        new WarCostRankingByDay(
+        IMessageBuilder msg = new WarCostRankingByDay(
                 type,
                 mode,
                 time_start,
@@ -2833,7 +2887,11 @@ public class StatCommands {
                 allowedWarTypes,
                 allowedAttackTypes,
                 allowedVictoryTypes
-        ).write(io, attach_json, attach_csv, attach_sheet ? db : null, SheetKey.WAR_COST_RANKING_DAY);
+        ).writeMsg(io.create(), attach_json, attach_csv, attach_sheet ? db : null, SheetKey.WAR_COST_RANKING_DAY);
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+            msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.warsCostRankingByDay.cmd.getName(), command));
+        }
+        msg.send();
         return null;
     }
 }

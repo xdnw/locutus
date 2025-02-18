@@ -19,6 +19,11 @@ public class CommandRef {
         path = String.join(" ", split);
     }
 
+    public String getName() {
+        String[] split = path.split(" ");
+        return split[split.length - 1];
+    }
+
     public List<Example> getExamples() {
         return examples == null ? Collections.emptyList() : examples;
     }
