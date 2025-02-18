@@ -25,6 +25,7 @@ import link.locutus.discord.util.task.mail.SearchMailTask;
 import link.locutus.discord.web.commands.binding.DBAuthRecord;
 import link.locutus.discord.web.jooby.WebRoot;
 import org.apache.http.client.utils.URIBuilder;
+import org.json.JSONObject;
 import org.jsoup.Jsoup;
 
 import java.awt.Color;
@@ -334,6 +335,20 @@ public class WebUtil {
             URIBuilder uriBuilder = new URIBuilder();
             for (int i = 0; i < params.length; i += 2) {
                 uriBuilder.addParameter(params[i], params[i + 1]);
+            }
+            url += uriBuilder.toString();
+        }
+        return url;
+    }
+
+    public static String frontendUrl(String path, JSONObject args) {
+        String url = Settings.INSTANCE.WEB.FRONTEND_DOMAIN;
+        if (path != null) url += "/#/" + path + "/";
+        if (args != null) {
+            URIBuilder uriBuilder = new URIBuilder();
+            for (String key : args.keySet()) {
+                if (key.isEmpty()) continue;
+                uriBuilder.addParameter(key, args.getString(key));
             }
             url += uriBuilder.toString();
         }

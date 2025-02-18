@@ -211,6 +211,24 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         return loot == null ? 0 : ResourceType.convertedTotal(loot.getAllianceLootValue(score));
     }
 
+    @Command(desc = "Loot resources for a specific score")
+    public Map<ResourceType, Double> getLoot(double score) {
+        LootEntry loot = getLoot();
+        return loot == null ? Collections.emptyMap() : ResourceType.resourcesToMap(loot.getAllianceLootValue(score));
+    }
+
+    @Command(desc = "Estimated stockpile based on last loot info")
+    public Map<ResourceType, Double> getEstimatedStockpile() {
+        LootEntry loot = getLoot();
+        return loot == null ? Collections.emptyMap() : ResourceType.resourcesToMap(loot.getTotal_rss());
+    }
+
+    @Command(desc = "Estimated stockpile value based on last loot info")
+    public double getEstimatedStockpileValue() {
+        LootEntry loot = getLoot();
+        return loot == null ? 0 : loot.convertedTotal();
+    }
+
     public String setAAPage(String file) throws Exception{
         String input = FileUtil.readFile(file);
 

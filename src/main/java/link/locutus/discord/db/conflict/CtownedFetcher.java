@@ -30,6 +30,7 @@ import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class CtownedFetcher {
@@ -166,7 +167,7 @@ public class CtownedFetcher {
         }
     }
 
-    public String loadCtownedConflicts(GuildDB db, boolean useCache, ConflictCategory category, String urlStub, String fileName) throws IOException, SQLException, ClassNotFoundException, ParseException {
+    public String loadCtownedConflicts(GuildDB db, boolean useCache, ConflictCategory category, String urlStub, String fileName, Predicate<String> filter) throws IOException, SQLException, ClassNotFoundException, ParseException {
         List<String> warnings = new ArrayList<>();
         Document document = Jsoup.parse(getCtoConflict(urlStub, fileName, useCache));
         // get table id=conflicts-table
@@ -189,7 +190,9 @@ public class CtownedFetcher {
             String endDateStr = row.select("td").get(7).text();
             Date startDate = TimeUtil.YYYY_MM_DD_FORMAT.parse(startDateStr);
             Date endDate = endDateStr.contains("Ongoing") ? null : TimeUtil.YYYY_MM_DD_FORMAT.parse(endDateStr);
-            loadCtownedConflict(db, useCache, cellUrl, category, conflictName, startDate, endDate, warnings::add);
+            if (filter.test(conflictName)) {
+                loadCtownedConflict(db, useCache, cellUrl, category, conflictName, startDate, endDate, warnings::add);
+            }
         }
         return warnings.isEmpty() ? "" : String.join("\n", warnings);
     }

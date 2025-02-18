@@ -49,6 +49,8 @@ import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.trade.TradeManager;
 import com.google.common.collect.Maps;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.web.WebUtil;
+import link.locutus.discord.web.commands.WM;
 import link.locutus.discord.web.commands.binding.value_types.GraphType;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
@@ -1189,39 +1191,48 @@ public class TradeCommands {
     }
 
     @Command(desc = "Generate a graph comparing market values of two resource amounts by day")
-    public String compareStockpileValueByDay(@Me GuildDB db, @Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB,
+    public String compareStockpileValueByDay(@Me GuildDB db, @Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Me JSONObject command,
                                              Map<ResourceType, Double> stockpile1,
                                              Map<ResourceType, Double> stockpile2,
                                              @Range(min=1, max=3000) int numDays,
                                              @Switch("j") boolean attachJson,
                                              @Switch("c") boolean attachCsv, @Switch("ss") boolean attach_sheet) throws IOException, GeneralSecurityException {
-        new StockpileValueByDay(stockpile1, stockpile2, numDays).write(channel, attachJson, attachCsv, attach_sheet ? db : null, SheetKey.STOCKPILE_VALUE_DAY);
+        IMessageBuilder msg = new StockpileValueByDay(stockpile1, stockpile2, numDays).writeMsg(channel.create(), attachJson, attachCsv, attach_sheet ? db : null, SheetKey.STOCKPILE_VALUE_DAY);
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+            msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.compareStockpileValueByDay.cmd.getName(), command));
+        }
+        msg.send();
         return "Done!";
     }
 
     @Command(desc = "Generate a graph of average buy and sell trade price by day")
-    public String tradepricebyday(@Me GuildDB db, @Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB,
+    public String tradepricebyday(@Me GuildDB db, @Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Me JSONObject command,
                                   Set<ResourceType> resources,
                                   int numDays,
                                   @Switch("j") boolean attachJson,
                                   @Switch("c") boolean attachCsv, @Switch("ss") boolean attach_sheet) throws IOException, GeneralSecurityException {
         TradePriceByDay graph = new TradePriceByDay(resources, numDays);
-        graph.write(channel, attachJson, attachCsv, attach_sheet ? db : null, SheetKey.TRADE_PRICE_DAY);
+        IMessageBuilder msg = graph.writeMsg(channel.create(), attachJson, attachCsv, attach_sheet ? db : null, SheetKey.TRADE_PRICE_DAY);
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+            msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.tradePriceByDay.cmd.getName(), command));
+        }
+        msg.send();
         return "Done!";
     }
 
     @Command(desc = "Generate a graph of average trade buy and sell margin by day")
-    public String trademarginbyday(@Me GuildDB db, @Me IMessageIO channel, TradeManager manager, @Timestamp long start, @Default @Timestamp Long end,
+    public String trademarginbyday(@Me GuildDB db, @Me IMessageIO channel, TradeManager manager,
+                                   @Timestamp long start, @Default @Timestamp Long end, @Me JSONObject command,
                                    @Arg("Use the margin percent instead of absolute difference")
                                    @Default("true") boolean percent,
                                    @Switch("j") boolean attachJson,
                                    @Switch("c") boolean attachCsv, @Switch("ss") boolean attach_sheet) throws IOException, GeneralSecurityException {
-        Set<ResourceType> all = new HashSet<>(Arrays.asList(ResourceType.values()));
-        List<DBTrade> trades = TradeMarginByDay.getTradesByResources(all, start, end);
+        Set<ResourceType> allowed = new HashSet<>(Arrays.asList(ResourceType.values));
+        List<DBTrade> trades = TradeMarginByDay.getTradesByResources(allowed, start, end);
 
         List<ResourceType[]> tableTypes = new ArrayList<>();
 
-        tableTypes.add(new ResourceType[]{ResourceType.FOOD});
+        if (allowed.contains(ResourceType.FOOD)) tableTypes.add(new ResourceType[]{ResourceType.FOOD});
         tableTypes.add(new ResourceType[]{
                 ResourceType.COAL,
                 ResourceType.OIL,
@@ -1247,36 +1258,44 @@ public class TradeCommands {
                 }
             }
             TradeMarginByDay table = new TradeMarginByDay(filtered, new HashSet<>(Arrays.asList(types)), percent);
-            table.write(channel, attachJson, attachCsv, attach_sheet ? db : null, SheetKey.TRADE_MARGIN_DAY);
+            IMessageBuilder msg = table.writeMsg(channel.create(), attachJson, attachCsv, attach_sheet ? db : null, SheetKey.TRADE_MARGIN_DAY);
+            if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+                JSONObject commandRss = new JSONObject(command);
+                commandRss.put("resources", Arrays.stream(types).map(ResourceType::name).collect(Collectors.joining(",")));
+                msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.tradeMarginByDay.cmd.getName(), commandRss));
+            }
+            msg.send();
         }
         return null;
     }
 
     @Command(desc = "Generate a graph of average trade buy and sell volume by day")
-    public String tradevolumebyday(@Me GuildDB db, @Me IMessageIO channel, TradeManager manager,
+    public String tradevolumebyday(@Me GuildDB db, @Me IMessageIO channel, TradeManager manager, @Me JSONObject command,
                                    @Timestamp long start, @Default @Timestamp Long end,
                                    @Switch("j") boolean attachJson,
                                    @Switch("c") boolean attachCsv, @Switch("ss") boolean attach_sheet,
                                    @Switch("r") Set<ResourceType> resources) throws IOException, GeneralSecurityException {
         String title = "volume by day";
-        rssTradeByDay(title, channel, start, end, offers -> manager.volumeByResource(offers), attachJson, attachCsv, attach_sheet ? db : null, SheetKey.TRADE_VOLUME_DAY, resources);
+        rssTradeByDay(title, channel, start, end, offers -> manager.volumeByResource(offers), attachJson, attachCsv, attach_sheet ? db : null,
+                SheetKey.TRADE_VOLUME_DAY, resources, command, WM.api.tradeVolumeByDay.cmd);
         return null;
     }
 
     @Command(desc = "Generate a graph of average trade buy and sell total by day")
-    public String tradetotalbyday(@Me GuildDB db, @Me IMessageIO channel, TradeManager manager,
+    public String tradetotalbyday(@Me GuildDB db, @Me IMessageIO channel, TradeManager manager, @Me JSONObject command,
                                   @Timestamp long start, @Default @Timestamp Long end,
                                   @Switch("j") boolean attachJson,
                                   @Switch("c") boolean attachCsv, @Switch("ss") boolean attach_sheet,
                                   @Switch("r") Set<ResourceType> resources) throws IOException, GeneralSecurityException {
         String title = "total by day";
-        rssTradeByDay(title, channel, start, end, offers -> manager.totalByResource(offers), attachJson, attachCsv, attach_sheet ? db : null, SheetKey.TRADE_TOTAL_DAY, resources);
+        rssTradeByDay(title, channel, start, end, offers -> manager.totalByResource(offers), attachJson, attachCsv, attach_sheet ? db : null,
+                SheetKey.TRADE_TOTAL_DAY, resources, command, WM.api.tradeTotalByDay.cmd);
         return null;
     }
 
     public static void rssTradeByDay(String title, IMessageIO channel, long start, Long end, Function<Collection<DBTrade>, long[]> rssFunction, boolean
             attachJson,
-                              boolean attachCsv, GuildDB db, SheetKey key, Set<ResourceType> resources) throws IOException {
+                                     boolean attachCsv, GuildDB db, SheetKey key, Set<ResourceType> resources, JSONObject command, CommandRef ref) throws IOException {
         if (end == null) end = Long.MAX_VALUE;
         if (resources == null) resources = new LinkedHashSet<>(Arrays.asList(ResourceType.values));
         resources.remove(ResourceType.CREDITS);
@@ -1287,7 +1306,14 @@ public class TradeCommands {
         for (ResourceType type : resources) {
             if (type == ResourceType.CREDITS || type == ResourceType.MONEY) continue;
             RssTradeByDay graph = new RssTradeByDay(title, offers, type);
-            graph.write(channel, attachJson, attachCsv, db, key);
+            IMessageBuilder msg = graph.writeMsg(channel.create(), attachJson, attachCsv, db, key);
+            if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+                JSONObject commandForRss = new JSONObject(command);
+                commandForRss.remove("resources");
+                commandForRss.put("resource", type.name());
+                msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + ref.getName(), commandForRss));
+            }
+            msg.send();
         }
     }
 
