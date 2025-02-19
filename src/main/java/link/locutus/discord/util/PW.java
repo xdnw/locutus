@@ -435,9 +435,9 @@ public final class PW {
             return Math.max(0, cost);
         }
 
-        private static double top20AverageQuarter = 40d * 0.25;
+        private static double top20AverageQuarter = 40.8 * 0.25;
         public static double newNextCityCost(int currentCity, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency, boolean bureauOfDomesticAffairs) {
-            double cost = 100000 * Math.pow(currentCity - (top20AverageQuarter / 4), 3) + 150000 * (currentCity - (top20AverageQuarter / 4d)) + 75000;
+            double cost = 100000 * Math.pow(currentCity - (top20AverageQuarter), 3) + 150000 * (currentCity - (top20AverageQuarter)) + 75000;
             if (manifestDestiny) {
                 double factor = 0.05;
                 if (govSupportAgency) factor += 0.025;
