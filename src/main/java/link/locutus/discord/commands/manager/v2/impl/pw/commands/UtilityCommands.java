@@ -2546,7 +2546,9 @@ public class UtilityCommands {
 
     @Command(aliases = {"alliancecost", "aacost"}, desc = "Get the value of nations including their cities, projects and units")
     public String allianceCost(@Me IMessageIO channel, @Me GuildDB db,
-                               NationList nations, @Switch("u") boolean update, @Switch("s") @Timestamp Long snapshotDate) {
+                               NationList nations, @Switch("u") boolean update,
+                               @Switch("p") @Arg("Only include the cost of specific projects") Set<Project> includeProjects,
+                               @Switch("s") @Timestamp Long snapshotDate) {
         Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild());
         double infraCost = 0;
         double landCost = 0;
@@ -2557,6 +2559,7 @@ public class UtilityCommands {
         for (DBNation nation : nationSet) {
             Set<Project> projects = nation.getProjects();
             for (Project project : projects) {
+                if (includeProjects != null && !includeProjects.contains(project)) continue;
                 projectCost = ResourceType.addResourcesToA(projectCost, project.cost());
             }
             for (MilitaryUnit unit : MilitaryUnit.values) {

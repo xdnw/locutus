@@ -115,7 +115,7 @@ public enum Coalition {
         }
     },
 
-    GROUND_ALERTS("The coalition to use for alliance ground alerts. See setting: `AA_GROUND_UNIT_ALERTS`") {
+    GROUND_ALERTS("The coalition to use for orbis alliance ground alerts (if enabled). See setting: `AA_GROUND_UNIT_ALERTS`") {
         @Override
         public boolean hasPermission(Guild guild, User user) {
             return Roles.ADMIN.hasOnRoot(user);

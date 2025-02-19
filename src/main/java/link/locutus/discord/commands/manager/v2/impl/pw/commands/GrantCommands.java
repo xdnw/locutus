@@ -3024,6 +3024,7 @@ public class GrantCommands {
                            @Switch("l") Integer land_level,
                            @Switch("d") @Arg("Force the use of the provided policies for cost reduction") Set<DomesticPolicy> force_policy,
                            @Switch("fp") @Arg("These projects are not purchased but are included for cost reduction calculations") Set<Project> force_projects,
+                           @Switch("nc") @Arg("Use the new city cost formula") boolean new_city_formula,
                            @Switch("s") SpreadSheet sheet
                            ) throws GeneralSecurityException, IOException {
         if (force_projects == null) force_projects = Collections.emptySet();
@@ -3074,7 +3075,11 @@ public class GrantCommands {
                         boolean metPlanning = nation.hasProject(Projects.METROPOLITAN_PLANNING) || (force_projects.contains(Projects.METROPOLITAN_PLANNING) && city >= Projects.METROPOLITAN_PLANNING.requiredCities());
                         boolean govSupportAgency = nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) || force_projects.contains(Projects.GOVERNMENT_SUPPORT_AGENCY);
                         boolean domesticAffairs = nation.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS) || force_projects.contains(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
-                        cityCost += PW.City.nextCityCost(city, manifestDestiny, cityPlanning, advCityPlanning, metPlanning, govSupportAgency, domesticAffairs);
+                        if (new_city_formula) {
+                            cityCost += PW.City.newNextCityCost(city, manifestDestiny, cityPlanning, advCityPlanning, metPlanning, govSupportAgency, domesticAffairs);
+                        } else {
+                            cityCost += PW.City.nextCityCost(city, manifestDestiny, cityPlanning, advCityPlanning, metPlanning, govSupportAgency, domesticAffairs);
+                        }
                     }
                 }
             }

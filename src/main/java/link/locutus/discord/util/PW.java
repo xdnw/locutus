@@ -435,6 +435,18 @@ public final class PW {
             return Math.max(0, cost);
         }
 
+        private static double top20AverageQuarter = 40d * 0.25;
+        public static double newNextCityCost(int currentCity, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency, boolean bureauOfDomesticAffairs) {
+            double cost = 100000 * Math.pow(currentCity - (top20AverageQuarter / 4), 3) + 150000 * (currentCity - (top20AverageQuarter / 4d)) + 75000;
+            if (manifestDestiny) {
+                double factor = 0.05;
+                if (govSupportAgency) factor += 0.025;
+                if (bureauOfDomesticAffairs) factor += 0.0125;
+                cost *= (1 - factor);
+            }
+            return Math.max(0, cost);
+        }
+
         public static String getCityUrl(int cityId) {
             return "" + Settings.INSTANCE.PNW_URL() + "/city/id=" + cityId;
         }
