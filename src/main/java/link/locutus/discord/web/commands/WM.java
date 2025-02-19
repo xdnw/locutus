@@ -469,18 +469,18 @@ public class WM {
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.web.commands.api.GraphEndpoints.class,method="radiationStats")
-            public static class radiationStats extends CommandRef {
-                public static final radiationStats cmd = new radiationStats();
-            public radiationStats continents(String value) {
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.GraphEndpoints.class,method="radiationByTurn")
+            public static class radiationByTurn extends CommandRef {
+                public static final radiationByTurn cmd = new radiationByTurn();
+            public radiationByTurn continents(String value) {
                 return set("continents", value);
             }
 
-            public radiationStats start(String value) {
+            public radiationByTurn start(String value) {
                 return set("start", value);
             }
 
-            public radiationStats end(String value) {
+            public radiationByTurn end(String value) {
                 return set("end", value);
             }
 

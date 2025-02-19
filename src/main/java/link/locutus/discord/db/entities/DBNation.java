@@ -4115,18 +4115,13 @@ public abstract class DBNation implements NationOrAlliance {
             public List<Auth.TradeResult> get() {
                 List<String> responses = new ArrayList<>();
                 List<Map.Entry<ResourceType, Integer>> amounts = new ArrayList<>(amountMap.entrySet());
-                long start = System.currentTimeMillis();
                 for (int i = 0; i < amounts.size(); i++) {
                     Map.Entry<ResourceType, Integer> entry = amounts.get(i);
-                    // wait 5s between each trade
                     if (i > 0) {
-                        long diff = System.currentTimeMillis() - start;
-                        if (diff < 5000) {
-                            try {
-                                Thread.sleep(5000 - diff);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
+                        try {
+                            Thread.sleep(5000);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
                         }
                     }
                     String trade = auth.createDepositTrade(senderNation, entry.getKey(), entry.getValue());
@@ -5255,13 +5250,20 @@ public abstract class DBNation implements NationOrAlliance {
             if (wars.isEmpty()) {
                 return wars;
             }
+            Set<DBWar>[] finalCopy = new Set[1];
             Locutus.imp().getWarDb().getAttacksByWar(wars, f -> f == AttackType.VICTORY || f == AttackType.PEACE, f -> {
                 if (f.getDate() <= end) {
-                    wars.remove(new DBWar.DBWarKey(f.getWar_id()));
+                    Set<DBWar> value = finalCopy[0];
+                    if (value == null) {
+                        value = new ObjectOpenHashSet<>(wars);
+                        finalCopy[0] = value;
+                    }
+                    value.remove(new DBWar.DBWarKey(f.getWar_id()));
                 }
                 return false;
             }, f -> false);
-            return wars;
+            Set<DBWar> value = finalCopy[0];
+            return value == null ? wars : value;
         }
         return Locutus.imp().getWarDb().getActiveWars(data()._nationId());
     }

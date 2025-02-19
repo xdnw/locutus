@@ -1607,7 +1607,12 @@ public class WarDB extends DBMainV2 {
             boolean callEvents = !removedBounties.isEmpty();
 
             PoliticsAndWarV3 v3 = Locutus.imp().getV3();
-            Collection<Bounty> bounties = v3.readSnapshot(PagePriority.API_BOUNTIES, Bounty.class);
+            Collection<Bounty> bounties;
+            if (Settings.INSTANCE.ENABLED_COMPONENTS.SNAPSHOTS) {
+                bounties = v3.readSnapshot(PagePriority.API_BOUNTIES, Bounty.class);
+            } else {
+                bounties = v3.fetchBountiesWithInfo();
+            }
 
             if (bounties.isEmpty()) return;
             bounties = new HashSet<>(bounties); // Ensure uniqueness (in case of pagination concurrency issues)
@@ -1673,7 +1678,7 @@ public class WarDB extends DBMainV2 {
     public boolean updateAllWars(Consumer<Event> eventConsumer) {
         long now = System.currentTimeMillis();
         long diff = now - lastAllWars;
-        if (diff < TimeUnit.MINUTES.toMillis(10) || true) {
+        if (diff < TimeUnit.MINUTES.toMillis(10) || !Settings.INSTANCE.ENABLED_COMPONENTS.SNAPSHOTS) {
             lastAllWars = now;
             long start = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 61);
             return updateWarsSince(eventConsumer, start);

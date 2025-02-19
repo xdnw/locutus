@@ -81,9 +81,6 @@ public class AdvMultiReport {
             if (otherMultiResult.dateFetched > 0 && !otherMultiResult.getNetwork().isEmpty()) {
                 reciprocal = getPercentReciprocal(nationId, otherNationId, data, otherMultiResult);
                 reciprocal_nations = getPercentReciprocalNations(nationId, otherNationId, data, otherMultiResult);
-                System.out.println("Reciprocal: " + nationId + " " + reciprocal + " | " + otherMultiResult.getNetwork().size());
-            } else {
-                System.out.println("Not reciprocal: " + nationId + " " + otherNationId);
             }
             long lastLoginDiff = Math.abs(lastActive - lastLogin);
 

@@ -1,6 +1,8 @@
 package link.locutus.discord.apiv3.subscription;
 
+import com.politicsandwar.graphql.model.Alliance;
 import com.politicsandwar.graphql.model.Bounty;
+import com.politicsandwar.graphql.model.City;
 import com.politicsandwar.graphql.model.Nation;
 import com.pusher.client.connection.ConnectionState;
 import com.pusher.client.connection.ConnectionStateChange;
@@ -25,6 +27,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class PnwPusherShardManager {
     private PnwPusherHandler root;
@@ -111,19 +114,13 @@ public class PnwPusherShardManager {
         NationDB nationDB = Locutus.imp().getNationDB();
 
         { // nations
-//            root.subscribeBuilder(Nation.class, PnwPusherEvent.CREATE).build(nations -> {
+            root.subscribeBuilder(Locutus.loader().getApiKey(), Nation.class, PnwPusherEvent.CREATE).build(nations -> {
+                long ts = System.currentTimeMillis();
 //                for (Nation nation : nations) nationDB.markNationDirty(nation.getId());
-//                Locutus.imp().runEventsAsync(events -> nationDB.updateNations(nations, events));
-//            });
-//            root.subscribeBuilder(Nation.class, PnwPusherEvent.DELETE).build(nations -> {
-//                Locutus.imp().runEventsAsync(events -> nationDB.deleteNations(nations.stream().map(Nation::getId).collect(Collectors.toSet()), events));
-//            });
-            root.subscribeBuilder(Locutus.loader().getApiKey(), Bounty.class, PnwPusherEvent.CREATE).build(bounties -> {
-                try {
-                    spyTracker.checkBounties(bounties);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                Locutus.imp().runEventsAsync(events -> nationDB.updateNations(nations, events, ts));
+            });
+            root.subscribeBuilder(Locutus.loader().getApiKey(), Nation.class, PnwPusherEvent.DELETE).build(nations -> {
+                Locutus.imp().runEventsAsync(events -> nationDB.deleteNations(nations.stream().map(Nation::getId).collect(Collectors.toSet()), events));
             });
             root.subscribeBuilder(Locutus.loader().getApiKey(), Nation.class, PnwPusherEvent.UPDATE).build(nations -> {
                 try {
@@ -145,27 +142,37 @@ public class PnwPusherShardManager {
             }
         }
 
-//        { // cities
-//            root.subscribeBuilder(City.class, PnwPusherEvent.CREATE).build(cities ->
-//                    Locutus.imp().runEventsAsync(events -> nationDB.updateCities(cities, events)));
-//            root.subscribeBuilder(City.class, PnwPusherEvent.UPDATE).build(cities ->
-//                    Locutus.imp().runEventsAsync(events -> nationDB.updateCities(cities, events)));
-//            root.subscribeBuilder(City.class, PnwPusherEvent.DELETE).build(cities ->
-//                    Locutus.imp().runEventsAsync(events -> nationDB.deleteCities(cities, events)));
-//        }
-//
-//        { // alliance
-//            root.subscribeBuilder(Alliance.class, PnwPusherEvent.CREATE).build(alliances -> {
-//                Locutus.imp().runEventsAsync(events -> nationDB.processUpdatedAlliances(alliances, events));
-//            });
-//            root.subscribeBuilder(Alliance.class, PnwPusherEvent.UPDATE).build(alliances -> {
-//                Locutus.imp().runEventsAsync(events -> nationDB.processUpdatedAlliances(alliances, events));
-//            });
-//            root.subscribeBuilder(Alliance.class, PnwPusherEvent.DELETE).build(alliances -> {
-//                Locutus.imp().runEventsAsync(events -> nationDB.deleteAlliances(alliances.stream().map(Alliance::getId).collect(Collectors.toSet()), events));
-//            });
-//        }
-//
+        {// bounty
+            root.subscribeBuilder(Locutus.loader().getApiKey(), Bounty.class, PnwPusherEvent.CREATE).build(bounties -> {
+                try {
+                    spyTracker.checkBounties(bounties);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+        }
+
+        { // cities
+            root.subscribeBuilder(Locutus.loader().getApiKey(), City.class, PnwPusherEvent.CREATE).build(cities ->
+                    Locutus.imp().runEventsAsync(events -> nationDB.updateCities(cities, events)));
+            root.subscribeBuilder(Locutus.loader().getApiKey(), City.class, PnwPusherEvent.UPDATE).build(cities ->
+                    Locutus.imp().runEventsAsync(events -> nationDB.updateCities(cities, events)));
+            root.subscribeBuilder(Locutus.loader().getApiKey(), City.class, PnwPusherEvent.DELETE).build(cities ->
+                    Locutus.imp().runEventsAsync(events -> nationDB.deleteCities(cities, events)));
+        }
+
+        { // alliance
+            root.subscribeBuilder(Locutus.loader().getApiKey(), Alliance.class, PnwPusherEvent.CREATE).build(alliances -> {
+                Locutus.imp().runEventsAsync(events -> nationDB.processUpdatedAlliances(alliances, events));
+            });
+            root.subscribeBuilder(Locutus.loader().getApiKey(), Alliance.class, PnwPusherEvent.UPDATE).build(alliances -> {
+                Locutus.imp().runEventsAsync(events -> nationDB.processUpdatedAlliances(alliances, events));
+            });
+            root.subscribeBuilder(Locutus.loader().getApiKey(), Alliance.class, PnwPusherEvent.DELETE).build(alliances -> {
+                Locutus.imp().runEventsAsync(events -> nationDB.deleteAlliances(alliances.stream().map(Alliance::getId).collect(Collectors.toSet()), events));
+            });
+        }
+
         root.connect();
     }
 

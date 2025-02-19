@@ -550,11 +550,12 @@ public class ConflictCommands {
     @RolePermission(value = Roles.MILCOM, root = true)
 //    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String importCtowned(@Me GuildDB db, ConflictManager manager,
+                                @Arg("If only updating a single conflict (else, all will be updated)") @Default String conflictName,
                                 @Default("true") @Arg("If the cached version of the site is used")
                                 boolean useCache) throws SQLException, IOException, ParseException, ClassNotFoundException {
         CtownedFetcher fetcher = new CtownedFetcher(manager);
-        String response1 = fetcher.loadCtownedConflicts(db, useCache, ConflictCategory.NON_MICRO, "conflicts", "conflicts");
-        String response2 = fetcher.loadCtownedConflicts(db, useCache, ConflictCategory.MICRO, "conflicts/micros", "conflicts-micros");
+        String response1 = fetcher.loadCtownedConflicts(db, useCache, ConflictCategory.NON_MICRO, "conflicts", "conflicts", f -> conflictName == null || f.equalsIgnoreCase(conflictName));
+        String response2 = fetcher.loadCtownedConflicts(db, useCache, ConflictCategory.MICRO, "conflicts/micros", "conflicts-micros", f -> conflictName == null || f.equalsIgnoreCase(conflictName));
         List<String> warnings = new ArrayList<>();
         if (!response1.isEmpty()) warnings.add(response1);
         if (!response2.isEmpty()) warnings.add(response2);
@@ -725,7 +726,7 @@ public class ConflictCommands {
         }
         if (ctowned) {
             io.updateOptionally(msgFuture, "Importing from ctowned.net");
-            importCtowned(db, manager, true);
+            importCtowned(db, manager, null, true);
         }
         if (wiki) {
             io.updateOptionally(msgFuture, "Importing from wiki");

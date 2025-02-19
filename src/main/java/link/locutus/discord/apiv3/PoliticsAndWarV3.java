@@ -583,6 +583,16 @@ public class PoliticsAndWarV3 {
         }
     }
 
+    public List<Bounty> fetchBountiesWithInfo() {
+        return fetchBounties(f -> {}, proj -> {
+            proj.id();
+            proj.date();
+            proj.amount();
+            proj.nation_id();
+            proj.type();
+        });
+    }
+
     public List<Bounty> fetchBounties(Consumer<BountiesQueryRequest> filter, Consumer<BountyResponseProjection> query) {
         return fetchBounties(1000, filter, query, f -> ErrorResponse.THROW, f -> true);
     }

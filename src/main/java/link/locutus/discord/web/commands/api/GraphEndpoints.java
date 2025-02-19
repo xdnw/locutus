@@ -63,7 +63,7 @@ public class GraphEndpoints {
         return AlliancesNationMetricByDay.create(metric, start, end, mode, alliances, filter, includeApps).toHtmlJson();
     }
 
-    @Command(desc = "Compare the metric over time between multiple alliances")
+    @Command(desc = "Graph militarization (soldier, tank, aircraft, ship) over time of an alliance")
     @ReturnType(WebGraph.class)
     public WebGraph militarizationTime(DBAlliance alliance, @Default("7d") @Timestamp long start_time,
                                        @Switch("e") @Timestamp Long end_time) throws IOException {
@@ -409,33 +409,15 @@ public class GraphEndpoints {
         ).toHtmlJson();
     }
 
-    @Command()
+    @Command(desc = "Graph global and per continent radiation by turn over a specified time period")
     @ReturnType(WebGraph.class)
-    public WebGraph radiationStats(Set<Continent> continents, @Timestamp long start, @Default @Timestamp Long end) {
+    public WebGraph radiationByTurn(Set<Continent> continents, @Timestamp long start, @Default @Timestamp Long end) {
         RadiationByTurn table = new RadiationByTurn(continents, start, end == null ? Long.MAX_VALUE : end);
         WebGraph graph = table.toHtmlJson();
         return graph;
     }
 
-    @Command()
-    @ReturnType(WebGraph.class)
-    public WebGraph allianceStats(Set<AllianceMetric> metrics, @Timestamp long start, @Timestamp long end, Set<DBAlliance> coalition) {
-        String title = "aaStats";
-        String coalitionName = coalition.stream().map(DBAlliance::getName).collect(Collectors.joining(","));
-
-        long startTurn = TimeUtil.getTurn(start);
-        long endTurn = TimeUtil.getTurn(end);
-
-        if (startTurn < endTurn - Short.MAX_VALUE) throw new IllegalArgumentException("Time range too large");
-        if (endTurn > TimeUtil.getTurn()) throw new IllegalArgumentException("End turn must be a current or previous time");
-
-        Set<TableNumberFormat> formats = metrics.stream().map(AllianceMetric::getFormat).collect(Collectors.toSet());
-        TableNumberFormat format = formats.size() == 1 ? formats.iterator().next() : TableNumberFormat.SI_UNIT;
-
-        CoalitionMetricsGraph table = CoalitionMetricsGraph.create(metrics, startTurn, endTurn, coalitionName, coalition);
-        WebGraph graph = table.toHtmlJson();
-        return graph;
-    }
+    // global stats?
 
     @Command(desc = "Compare the tier stats of up to 10 alliances/nations on a single graph")
     @ReturnType(WebGraph.class)
@@ -536,6 +518,26 @@ public class GraphEndpoints {
 
 
         MultiCoalitionMetricGraph table = new MultiCoalitionMetricGraph(metric, startTurn, endTurn, coalitionNames, coalitionsArray);
+        WebGraph graph = table.toHtmlJson();
+        return graph;
+    }
+
+    @Command()
+    @ReturnType(WebGraph.class)
+    public WebGraph allianceStats(Set<AllianceMetric> metrics, @Timestamp long start, @Timestamp long end, Set<DBAlliance> coalition) {
+        String title = "aaStats";
+        String coalitionName = coalition.stream().map(DBAlliance::getName).collect(Collectors.joining(","));
+
+        long startTurn = TimeUtil.getTurn(start);
+        long endTurn = TimeUtil.getTurn(end);
+
+        if (startTurn < endTurn - Short.MAX_VALUE) throw new IllegalArgumentException("Time range too large");
+        if (endTurn > TimeUtil.getTurn()) throw new IllegalArgumentException("End turn must be a current or previous time");
+
+        Set<TableNumberFormat> formats = metrics.stream().map(AllianceMetric::getFormat).collect(Collectors.toSet());
+        TableNumberFormat format = formats.size() == 1 ? formats.iterator().next() : TableNumberFormat.SI_UNIT;
+
+        CoalitionMetricsGraph table = CoalitionMetricsGraph.create(metrics, startTurn, endTurn, coalitionName, coalition);
         WebGraph graph = table.toHtmlJson();
         return graph;
     }

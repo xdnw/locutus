@@ -519,7 +519,7 @@ public class GuildKey {
             return "API key found at the bottom of: <https://politicsandwar.com/account/>\n" +
                     "Be sure to enable all access you wish the bot to have, and have a sufficient position in-game (e.g. leader)\n" +
                     "Needed for alliance functions and information access, such as calculating resource dispersal, sending mail\n" +
-                    "![Api Key Example](https://cdn.discordapp.com/attachments/672310912090243092/1143703860481904691/AAAetVInX_AQsRH_PbhSwx7dANRzZ31ykmtLfBdS0-paNiZN1xt36VWmClVeuhc4FwlpP7gaeNGk_jrfV24mgYUyz3AxTPY6ljLZZKGn1YkE_6vbRztKs512.png)";
+                    "![Api Key Example](https://github.com/xdnw/locutus/blob/master/src/main/resources/img/api_key.png?raw=true)";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
 
@@ -1988,7 +1988,8 @@ public class GuildKey {
         public String help() {
             return "The channel to receive alerts when a bounty is placed";
         }
-    }.setupRequirements(f -> f.requireValidAlliance().requireActiveGuild());
+    }.setupRequirements(f -> f.requireActiveGuild());
+
     public static GuildSetting<MessageChannel> TREASURE_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BOUNTY) {
         @NoFormat
         @Command(descMethod = "help")
@@ -2000,7 +2001,8 @@ public class GuildKey {
         public String help() {
             return "The channel to receive alerts when a treasure moves to another nation or is about to reset";
         }
-    }.setupRequirements(f -> f.requireValidAlliance().requireActiveGuild());
+    }.setupRequirements(f -> f.requireActiveGuild());
+
     public static GuildSetting<MessageChannel> MEMBER_REBUY_INFRA_ALERT = new GuildChannelSetting(GuildSettingCategory.AUDIT) {
         @NoFormat
         @Command(descMethod = "help")

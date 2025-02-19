@@ -1484,7 +1484,7 @@ public class UtilityCommands {
             "- Having many networks, but only a few shared may be a sign of a VPN being used (there are legitimate reasons for using a VPN)\n" +
             "- It is against game rules to use evidence to threaten or coerce others\n" +
             "See: https://politicsandwar.com/rules/")
-    public String multi(@Me IMessageIO channel, DBNation nation) {
+    public String multi(@Me IMessageIO channel, @AllowDeleted DBNation nation) {
         MultiReport report = new MultiReport(nation.getNation_id());
         String result = report.toString();
 
@@ -1500,9 +1500,10 @@ public class UtilityCommands {
                 "- Sharing networks does not mean they are the same person (mobile networks, schools, public wifi, vpns, dynamic ips)\n" +
                 "- A network not shared 'concurrently' or within a short timeframe may be a false positive\n" +
                 "- Having many networks, but only a few shared may be a sign of a VPN being used (there are legitimate reasons for using a VPN)\n" +
-                "- It is against game rules to use evidence to threaten or coerce others\n" +
-                "See: https://politicsandwar.com/rules/" +
                 "```";
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+            disclaimer += ("\n**See also:** " + Settings.INSTANCE.WEB.FRONTEND_DOMAIN + "/#/multi_v2/" + nation.getId());
+        }
         return disclaimer;
     }
 
