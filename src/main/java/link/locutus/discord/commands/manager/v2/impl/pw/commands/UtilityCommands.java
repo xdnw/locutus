@@ -827,20 +827,31 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Calculate the costs of purchasing cities (from current to max)", aliases = {"citycost", "citycosts"})
-    public String CityCost(@Range(min=1, max=100) int currentCity, @Range(min=1, max=100) int maxCity, @Default("false") boolean manifestDestiny, @Default("false") boolean urbanPlanning, @Default("false") boolean advancedUrbanPlanning, @Default("false") boolean metropolitanPlanning,
+    public String CityCost(@Range(min=1, max=100) int currentCity, @Range(min=1, max=100) int maxCity,
+                           @Default("false") boolean manifestDestiny, @Default("false") boolean urbanPlanning, @Default("false") boolean advancedUrbanPlanning, @Default("false") boolean metropolitanPlanning,
                            @Default("false") boolean governmentSupportAgency,
-                           @Default("false") boolean domestic_affairs) {
+                           @Default("false") boolean domestic_affairs,
+                           @Switch("nc") @Arg("Use the new city cost formula") boolean new_city_formula) {
         if (maxCity > 1000) throw new IllegalArgumentException("Max cities 1000");
 
         double total = 0;
 
         for (int i = Math.max(1, currentCity); i < maxCity; i++) {
-            total += PW.City.nextCityCost(i, manifestDestiny,
-                    urbanPlanning && i >= Projects.URBAN_PLANNING.requiredCities(),
-                    advancedUrbanPlanning && i >= Projects.ADVANCED_URBAN_PLANNING.requiredCities(),
-                    metropolitanPlanning && i >= Projects.METROPOLITAN_PLANNING.requiredCities(),
-                    governmentSupportAgency,
-                    domestic_affairs);
+            if (new_city_formula) {
+                total += PW.City.newNextCityCost(i, manifestDestiny,
+                        urbanPlanning && i >= Projects.URBAN_PLANNING.requiredCities(),
+                        advancedUrbanPlanning && i >= Projects.ADVANCED_URBAN_PLANNING.requiredCities(),
+                        metropolitanPlanning && i >= Projects.METROPOLITAN_PLANNING.requiredCities(),
+                        governmentSupportAgency,
+                        domestic_affairs);
+            } else {
+                total += PW.City.nextCityCost(i, manifestDestiny,
+                        urbanPlanning && i >= Projects.URBAN_PLANNING.requiredCities(),
+                        advancedUrbanPlanning && i >= Projects.ADVANCED_URBAN_PLANNING.requiredCities(),
+                        metropolitanPlanning && i >= Projects.METROPOLITAN_PLANNING.requiredCities(),
+                        governmentSupportAgency,
+                        domestic_affairs);
+            }
         }
 
         return "$" + MathMan.format(total);
@@ -2554,10 +2565,12 @@ public class UtilityCommands {
         double infraCost = 0;
         double landCost = 0;
         double cityCost = 0;
+        double cityProjectRefund = 0;
         Map<ResourceType, Double> projectCost = new HashMap<>();
         Map<ResourceType, Double> militaryCost = new HashMap<>();
         Map<ResourceType, Double> buildingCost = new HashMap<>();
         for (DBNation nation : nationSet) {
+            cityProjectRefund += PW.City.getCostReduction(nation::hasProject);
             Set<Project> projects = nation.getProjects();
             for (Project project : projects) {
                 if (includeProjects != null && !includeProjects.contains(project)) continue;
@@ -2615,6 +2628,7 @@ public class UtilityCommands {
         response.append("\n").append("**Military**: $" + MathMan.format(ResourceType.convertedTotal(militaryCost)) + "\n`" + ResourceType.toString(militaryCost) + "`");
         response.append("\n").append("**Buildings**: $" + MathMan.format(ResourceType.convertedTotal(buildingCost)) + "\n`" + ResourceType.toString(buildingCost) + "`");
         response.append("\n").append("**Total**: $" + MathMan.format(ResourceType.convertedTotal(total)) + "\n`" + ResourceType.toString(total) + "`");
+        response.append("\n\nCity Project Refund (not incl. in total): $" + MathMan.format(cityProjectRefund));
 
         channel.create().embed(title, response.toString()).send();
         return null;

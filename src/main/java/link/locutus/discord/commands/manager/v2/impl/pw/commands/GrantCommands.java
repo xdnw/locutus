@@ -3025,6 +3025,7 @@ public class GrantCommands {
                            @Switch("d") @Arg("Force the use of the provided policies for cost reduction") Set<DomesticPolicy> force_policy,
                            @Switch("fp") @Arg("These projects are not purchased but are included for cost reduction calculations") Set<Project> force_projects,
                            @Switch("nc") @Arg("Use the new city cost formula") boolean new_city_formula,
+                           @Switch("er") boolean exclude_city_refund,
                            @Switch("s") SpreadSheet sheet
                            ) throws GeneralSecurityException, IOException {
         if (force_projects == null) force_projects = Collections.emptySet();
@@ -3044,6 +3045,7 @@ public class GrantCommands {
                 "avg_land",
                 "cities_bought",
                 "city_cost",
+                "city_refund_left",
                 "infra_cost",
                 "land_cost",
                 "projects_bought",
@@ -3052,6 +3054,8 @@ public class GrantCommands {
                 "cost_raw",
                 "total_converted"
         ));
+        headers.removeIf(String::isEmpty);
+
         sheet.setHeader(headers);
 
         double[] allNationCost = ResourceType.getBuffer();
@@ -3063,6 +3067,7 @@ public class GrantCommands {
         for (DBNation nation : receivers) {
             int citiesPurchased = 0;
             double cityCost = 0;
+            double costReduction = new_city_formula ? PW.City.getCostReduction(nation::hasProject) : 0d;
 
             if (cities != null) {
                 citiesPurchased = cities_up_to ? Math.max(0, cities - nation.getCities()) : cities;
@@ -3090,7 +3095,6 @@ public class GrantCommands {
                 Set<Project> finalForce_projects = force_projects;
                 Set<DomesticPolicy> finalForce_policy = force_policy;
                 Function<Double, Double> calcInfraCost = (Double infra) -> {
-                    // boolean aec, boolean cfce, boolean urbanization, boolean gsa
                     boolean aec = nation.hasProject(Projects.ADVANCED_ENGINEERING_CORPS) || finalForce_projects.contains(Projects.ADVANCED_ENGINEERING_CORPS);
                     boolean cfce = nation.hasProject(Projects.CENTER_FOR_CIVIL_ENGINEERING) || finalForce_projects.contains(Projects.CENTER_FOR_CIVIL_ENGINEERING);
                     boolean urbanization = nation.getDomesticPolicy() == DomesticPolicy.URBANIZATION || finalForce_policy.contains(DomesticPolicy.URBANIZATION);
@@ -3143,6 +3147,12 @@ public class GrantCommands {
                 }
             }
 
+            if (!exclude_city_refund) {
+                double tmp = cityCost;
+                cityCost = Math.max(0, cityCost - costReduction);
+                costReduction = Math.max(0, tmp - cityCost);
+            }
+
             headers.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
             headers.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
             headers.set(2, nation.getCities() + "");
@@ -3150,15 +3160,16 @@ public class GrantCommands {
             headers.set(4, MathMan.format(nation.getAvgLand()));
             headers.set(5, citiesPurchased + "");
             headers.set(6, MathMan.format(cityCost));
-            headers.set(7, MathMan.format(infraCost));
-            headers.set(8, MathMan.format(landCost));
-            headers.set(9, StringMan.join(projectsBought, ","));
-            headers.set(10, ResourceType.toString(projectCost));
-            headers.set(11, MathMan.format(ResourceType.convertedTotal(projectCost)));
+            headers.set(7, MathMan.format(costReduction));
+            headers.set(8, MathMan.format(infraCost));
+            headers.set(9, MathMan.format(landCost));
+            headers.set(10, StringMan.join(projectsBought, ","));
+            headers.set(11, ResourceType.toString(projectCost));
+            headers.set(12, MathMan.format(ResourceType.convertedTotal(projectCost)));
             double[] total = projectCost.clone();
             total[0] += cityCost + infraCost + landCost;
-            headers.set(12, ResourceType.toString(total));
-            headers.set(13, MathMan.format(ResourceType.convertedTotal(total)));
+            headers.set(13, ResourceType.toString(total));
+            headers.set(14, MathMan.format(ResourceType.convertedTotal(total)));
 
             sheet.addRow(headers);
 

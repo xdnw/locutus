@@ -80,8 +80,21 @@ import java.util.regex.Pattern;
 
 
 public final class PW {
-
     public static final class City {
+        public static double getCostReduction(Predicate<Project> projects) {
+            return getCostReduction(projects.test(Projects.URBAN_PLANNING),
+                    projects.test(Projects.ADVANCED_URBAN_PLANNING),
+                    projects.test(Projects.METROPOLITAN_PLANNING));
+        }
+
+        public static double getCostReduction(boolean up, boolean aup, boolean mp) {
+            double reduction = 0;
+            if (up) reduction += 173118000;
+            if (aup) reduction += 173118000;
+            if (mp) reduction += 173118000;
+            return reduction;
+        }
+
         public static final class Building {
             public static int SIZE = 27;
         }
