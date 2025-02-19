@@ -375,6 +375,7 @@ public enum Roles {
     }
 
     public boolean has(Member member, int alliance) {
+        if (member == null) return false;
         if (has(member)) return true;
         if (alliance == 0) return false;
         Role role = Locutus.imp().getGuildDB(member.getGuild()).getRole(this, (long) alliance);

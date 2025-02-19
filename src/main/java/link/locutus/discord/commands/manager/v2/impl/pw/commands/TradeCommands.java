@@ -1296,17 +1296,24 @@ public class TradeCommands {
                              ResourceType type,
                              @Arg("Date to start from")
                              @Timestamp long cutoff,
-                             @Default @ArgChoice(value = {"BUYING", "SELLING"}) String buyOrSell,
+                             @Default @ArgChoice(value = {"SOLD", "BOUGHT"}) String buyOrSell,
                              @Arg("Group rankings by each nation's current alliance")
                              @Switch("a") boolean groupByAlliance,
                              @Arg("Include trades done outside of standard market prices")
-                             @Switch("p") boolean includeMoneyTrades) {
+                             @Switch("p") boolean includeMoneyTrades,
+                             @Switch("n") Set<DBNation> nations) {
         if (type == ResourceType.MONEY || type == ResourceType.CREDITS) return "Invalid resource";
-        List<DBTrade> offers = db.getTrades(cutoff);
+        List<DBTrade> offers;
+        if (nations == null) {
+            offers = db.getTrades(cutoff);
+        } else {
+            Set<Integer> nationIds = nations.stream().map(f -> f.getNation_id()).collect(IntOpenHashSet::new, IntOpenHashSet::add, IntOpenHashSet::addAll);
+            offers = db.getTrades(nationIds, cutoff);
+        }
         if (!includeMoneyTrades) {
             offers.removeIf(f -> manager.isTradeOutsideNormPrice(f.getPpu(), f.getResource()));
         }
-        int findsign = buyOrSell.equalsIgnoreCase("BUYING") ? 1 : -1;
+        int findsign = buyOrSell.equalsIgnoreCase("SOLD") ? 1 : -1;
 
         Collection<Transfer> transfers = manager.toTransfers(offers, false);
         Map<Integer, double[]> inflows = manager.inflows(transfers, groupByAlliance);
@@ -1330,7 +1337,7 @@ public class TradeCommands {
         for (Map.Entry<Integer, Double> entry : sorted.entrySet()) {
             if (i++ >= 25) break;
             int nationId = entry.getKey();
-            double amount = entry.getValue();
+            double amount = Math.abs(entry.getValue());
             double myPpu = ppu.get(nationId)[type.ordinal()];
 //                nationName.add(MarkupUtil.markdownUrl(PW.getName(nationId, false), PW.getUrl(nationId, false)));
             nationName.add(PW.getName(nationId, groupByAlliance));
