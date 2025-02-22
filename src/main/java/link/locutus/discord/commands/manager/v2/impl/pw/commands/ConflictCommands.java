@@ -64,7 +64,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class ConflictCommands {
-    @Command(desc = "View a conflict's configured information")
+    @Command(desc = "View a conflict's configured information", viewable = true)
     public String info(ConflictManager manager, Conflict conflict, boolean showParticipants,
                        @Switch("d") boolean hideDeleted,
                        @Switch("i") boolean showIds) {
@@ -238,7 +238,7 @@ public class ConflictCommands {
                 "\nNote: this does not push the data to the site";
     }
 
-    @Command(desc = "Get a list of the conflicts in the database")
+    @Command(desc = "Get a list of the conflicts in the database", viewable = true)
     public String listConflicts(@Me IMessageIO io, @Me JSONObject command, ConflictManager manager, @Switch("i") boolean includeInactive) {
         Map<Integer, Conflict> conflicts = ArrayUtil.sortMap(manager.getConflictMap(), (o1, o2) -> {
             if (o1.getEndTurn() == Long.MAX_VALUE || o2.getEndTurn() == Long.MAX_VALUE) {
@@ -806,7 +806,7 @@ public class ConflictCommands {
     }
 
     @Command(desc = "List the ruleset for which conflicts are featured by this guild (if any are set)\n" +
-            "This consists of a list of either guilds that created the conflict, or individual conflicts")
+            "This consists of a list of either guilds that created the conflict, or individual conflicts", viewable = true)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String listFeaturedRuleset(ConflictManager manager, @Me GuildDB db) {
         List<Long> config = manager.getSourceSets().get(db.getIdLong());

@@ -56,6 +56,7 @@ public class ParametricCallable implements ICommand {
     private final boolean isStatic;
     private final String[] groups;
     private final String[] groupDescs;
+    private final boolean isViewable;
     private Supplier<String> descMethod;
 
     public ParametricCallable(CommandCallable parent, ParametricCallable clone, List<String> aliases) {
@@ -75,6 +76,7 @@ public class ParametricCallable implements ICommand {
         this.returnType = clone.returnType;
         this.groups = clone.groups;
         this.groupDescs = clone.groupDescs;
+        this.isViewable = clone.isViewable;
     }
 
     public ParametricCallable(CommandCallable parent, ValueStore store, Object object, Method method, Command definition) {
@@ -179,6 +181,7 @@ public class ParametricCallable implements ICommand {
             }
         }
 
+        this.isViewable = definition.viewable() || getAnnotation(NoForm.class) != null;
         this.aliases = new ArrayList<>(Arrays.asList(definition.aliases()));
         if (aliases.isEmpty()) aliases.add(method.getName());
 
@@ -256,6 +259,11 @@ public class ParametricCallable implements ICommand {
             names[i] = params[i].getName();
         }
         return names;
+    }
+
+    @Override
+    public boolean isViewable() {
+        return this.isViewable;
     }
 
     public Type getReturnType() {

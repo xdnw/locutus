@@ -61,7 +61,7 @@ import static link.locutus.discord.util.discord.DiscordUtil.getUserName;
 import static link.locutus.discord.util.discord.DiscordUtil.userUrl;
 
 public class ReportCommands {
-    @Command(desc=  "Generate a sheet of all the community reports for players")
+    @Command(desc=  "Generate a sheet of all the community reports for players", viewable = true)
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
     public String reportSheet(@Me IMessageIO io, @Me GuildDB db, ReportManager manager, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException, NoSuchFieldException, IllegalAccessException {
         List<ReportManager.Report> reports = manager.loadReports(null);
@@ -220,7 +220,7 @@ public class ReportCommands {
 
     @Command(desc = "Generate a google sheet of all loan information banks and alliances have submitted\n" +
             "If no nations are provided, only the loans for this server are returned\n" +
-            "If no loan status is provided, all loans are returned")
+            "If no loan status is provided, all loans are returned", viewable = true)
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
     public String getLoanSheet(@Me IMessageIO io, @Me GuildDB db, LoanManager manager, @Default Set<DBNation> nations, @Switch("s") SpreadSheet sheet, @Switch("l") Set<DBLoan.Status> loanStatus) throws GeneralSecurityException, IOException {
         List<DBLoan> loans;
@@ -1054,7 +1054,7 @@ public class ReportCommands {
         return "Comment removed.";
     }
 
-    @Command(desc = "Approv a report for a nation or user")
+    @Command(desc = "Approve a report for a nation or user")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS}, root = true, any = true)
     public String approveReport(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @ReportPerms ReportManager.Report report, @Switch("f") boolean force) {
         if (report.approved) {
@@ -1261,7 +1261,7 @@ public class ReportCommands {
 //    }
 
     // report search
-    @Command(desc = "List all reports about or submitted by a nation or user")
+    @Command(desc = "List all reports about or submitted by a nation or user", viewable = true)
     public String searchReports(ReportManager reportManager, @Switch("n") Integer nationIdReported, @Switch("d") Long userIdReported, @Switch("i") Integer reportingNation, @Switch("u") Long reportingUser) {
         List<ReportManager.Report> reports = reportManager.loadReports(nationIdReported, userIdReported, reportingNation, reportingUser);
         // list reports matching
@@ -1277,7 +1277,7 @@ public class ReportCommands {
     }
 
     // report show, incl comments
-    @Command(desc = "View a report and its comments")
+    @Command(desc = "View a report and its comments", viewable = true)
     public String showReport(ReportManager.Report report) {
         return "### " + report.toMarkdown(true);
     }

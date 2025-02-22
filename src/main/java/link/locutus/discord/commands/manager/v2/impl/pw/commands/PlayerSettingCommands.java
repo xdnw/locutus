@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 
 public class PlayerSettingCommands {
 
-    @Command(desc = "View an announcement you have access to")
+    @Command(desc = "View an announcement you have access to", viewable = true)
     @RolePermission(Roles.MEMBER)
     @Ephemeral
     public String viewAnnouncement(@Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User user, int ann_id, @Switch("n") DBNation nation) throws IOException {
@@ -238,7 +238,7 @@ public class PlayerSettingCommands {
                 "\nCheck your subscriptions with: " + CM.alerts.bank.list.cmd.toSlashMention();
     }
 
-    @Command(desc = "List your subscriptions to large bank transfers")
+    @Command(desc = "List your subscriptions to large bank transfers", viewable = true)
     @WhitelistPermission
     @RolePermission(Roles.MEMBER)
     public String bankAlertList(@Me User author,

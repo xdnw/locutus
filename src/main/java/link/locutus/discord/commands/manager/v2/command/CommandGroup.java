@@ -14,6 +14,7 @@ import link.locutus.discord.config.yaml.file.YamlConfiguration;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
 import org.apache.commons.lang3.ArrayUtils;
+import org.checkerframework.checker.units.qual.C;
 import org.json.JSONObject;
 
 import java.lang.reflect.Field;
@@ -37,6 +38,34 @@ public class CommandGroup implements ICommandGroup {
         this.validators = validators;
         this.parent = parent;
         this.aliases = Arrays.asList(aliases);
+    }
+
+    public Map.Entry<CommandCallable, String> getCallableAndPath(List<String> args) {
+        CommandCallable root = this;
+        List<String> path = new ArrayList<>();
+
+        Queue<String> stack = new ArrayDeque<>(args);
+        while (!stack.isEmpty()) {
+            String arg = stack.poll();
+            path.add(arg);
+            if (root instanceof CommandGroup cg && cg.get(arg) != null) {
+                root = cg.get(arg);
+            } else {
+                String primary = root.getPrimaryCommandId();
+                if (primary.isEmpty()) primary = "/";
+                String msg = "Command: `" + primary + "` of type " + root.getClass().getSimpleName() + " has no subcommand: `" + arg + "`";
+                if (root instanceof CommandGroup group) {
+                    msg += "\nValid subcommands: `" + StringMan.join(group.primarySubCommandIds(), ", ") + "`";
+                }
+                throw new IllegalArgumentException(msg);
+            }
+        }
+        return new AbstractMap.SimpleEntry<>(root, StringMan.join(path, " "));
+    }
+
+    @Override
+    public boolean isViewable() {
+        return false;
     }
 
     @Override

@@ -671,7 +671,7 @@ public class GrantCommands {
 
     // Template commands
 
-    @Command(desc = "List all grant templates for the specified category")
+    @Command(desc = "List all grant templates for the specified category", viewable = true)
     @RolePermission(Roles.MEMBER)
     public void templateList(@Me GuildDB db, @Me Guild guild, @Me JSONObject command, @Me User author, @Me Member member, @Me IMessageIO io,
                              @Arg("The category of templates to list\n" +
@@ -756,7 +756,7 @@ public class GrantCommands {
         io.send(result.toString());
     }
 
-    @Command(desc = "Full information about a grant template")
+    @Command(desc = "Full information about a grant template", viewable = true)
     @RolePermission(Roles.MEMBER)
     public String templateInfo(@Me JSONObject command, @Me DBNation me, @Me IMessageIO io, AGrantTemplate template,
                                @Arg("View additional info related to granting the template to this nation\n" +
@@ -3014,7 +3014,7 @@ public class GrantCommands {
 //        }
 //    }
 
-    @Command(desc = "Generate a sheet and summary of the cost of purchasing cities, infra, land, and projects for a set of nations")
+    @Command(desc = "Generate a sheet and summary of the cost of purchasing cities, infra, land, and projects for a set of nations", viewable = true)
     public String costBulk(@Me GuildDB db, @Me IMessageIO io,
                             Set<DBNation> receivers,
                            @Switch("c") @Range(min=1, max=100) Integer cities,

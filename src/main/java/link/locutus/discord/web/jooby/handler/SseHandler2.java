@@ -12,9 +12,9 @@ import java.io.IOException;
 import java.util.function.Consumer;
 
 public class SseHandler2 implements Handler {
-    private final Consumer<SseClient2> clientConsumer;
+    private final Consumer<SseMessageOutput> clientConsumer;
 
-    public SseHandler2(Consumer<SseClient2> clientConsumer) {
+    public SseHandler2(Consumer<SseMessageOutput> clientConsumer) {
         this.clientConsumer = clientConsumer;
     }
 
@@ -35,7 +35,7 @@ public class SseHandler2 implements Handler {
 
         ctx.res().flushBuffer();
 
-        clientConsumer.accept(new SseClient2(ctx));
+        clientConsumer.accept(new SseMessageOutput(ctx));
 
         async.addListener(new AsyncListener() {
             @Override

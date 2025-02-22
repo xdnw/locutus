@@ -6,6 +6,7 @@ import com.google.gson.reflect.TypeToken;
 import in.wilsonl.minifyhtml.Configuration;
 import in.wilsonl.minifyhtml.MinifyHtml;
 import io.javalin.http.*;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -61,6 +62,14 @@ public class WebUtil {
         Gson gson = new Gson();
         Type type = new TypeToken<Map<String, Object>>() {}.getType();
         return gson.fromJson(gson.toJson(obj), type);
+    }
+
+    public static Map<String, List<String>> getQueryMap(Context ctx) {
+        Map<String, List<String>> queryMap = new Object2ObjectOpenHashMap<>(ctx.queryParamMap());
+        for (Map.Entry<String, List<String>> entry : ctx.formParamMap().entrySet()) {
+            queryMap.put(entry.getKey(), entry.getValue());
+        }
+        return queryMap;
     }
 
     public static String mailLogin(ApiKeyPool pool, DBNation nation, boolean backend, boolean allowExisting) throws IOException {

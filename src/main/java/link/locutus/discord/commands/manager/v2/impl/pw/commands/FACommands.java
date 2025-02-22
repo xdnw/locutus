@@ -127,7 +127,7 @@ public class FACommands {
         return "Cancelled:\n- " + StringMan.join(changed, "\n- ");
     }
 
-    @Command(desc = "List the bot coalitions")
+    @Command(desc = "List the bot coalitions", viewable = true)
     @RolePermission(Roles.MEMBER)
     public String listCoalition(@Me User user, @Me GuildDB db, @Arg("Only list alliances or guilds containing this filter") @Default String filter, @Arg("List the alliance and guild ids instead of names") @Switch("i") boolean listIds, @Arg("Ignore deleted alliances") @Switch("d") boolean ignoreDeleted) {
         List<String> coalitionNames = new ArrayList<>(db.getCoalitionNames());
@@ -260,7 +260,7 @@ public class FACommands {
 
     // Write a long description
     @Command(desc = "List the treaties of the provided alliances\n" +
-            "Note: If you have the FORIEGN_AFFAIRS role you can view the pending treaties of your own alliance from its guild")
+            "Note: If you have the FORIEGN_AFFAIRS role you can view the pending treaties of your own alliance from its guild", viewable = true)
     public String treaties(@Me IMessageIO channel, @Me User user, Set<DBAlliance> alliances, @Default Predicate<Treaty> treatyFilter) {
         StringBuilder response = new StringBuilder();
         Set<Treaty> allTreaties = new LinkedHashSet<>();

@@ -106,7 +106,7 @@ import java.util.stream.Collectors;
 
 public class UnsortedCommands {
 
-    @Command(desc = "Generate a sheet of guild member nations and their unit buys today")
+    @Command(desc = "Generate a sheet of guild member nations and their unit buys today", viewable = true)
     @IsAlliance
     @HasApi
     public void unitBuySheet(
@@ -212,7 +212,7 @@ public class UnsortedCommands {
     }
 
     @Command(desc = "Generate a sheet of guild member nations that have free espionage spy operations\n" +
-            "Useful for finding who can participate in a spy blitz")
+            "Useful for finding who can participate in a spy blitz", viewable = true)
     @IsAlliance
     @HasApi
     public void freeSpyOpsSheet(
@@ -340,7 +340,7 @@ public class UnsortedCommands {
         return "You will be notified when " + target.getName() + " logs in (within the next 5d).";
     }
 
-    @Command(desc ="Generate a google sheet of tax revenue for a list of nations")
+    @Command(desc ="Generate a google sheet of tax revenue for a list of nations", viewable = true)
     @RolePermission(value = {Roles.ECON_STAFF, Roles.INTERNAL_AFFAIRS_STAFF}, any = true)
     @IsAlliance
     public String taxRevenueSheet(@Me IMessageIO io, @Me GuildDB db, @Default Set<DBNation> nations, @Switch("s") SpreadSheet sheet, @Switch("f") boolean forceUpdate,
@@ -466,7 +466,7 @@ public class UnsortedCommands {
         return null;
     }
 
-    @Command(desc ="View the resources in a nation or alliance")
+    @Command(desc ="View the resources in a nation or alliance", viewable = true)
     @RolePermission(Roles.MEMBER)
     @IsAlliance
     public String stockpile(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db, @Me DBNation me, @Me User author, NationOrAlliance nationOrAlliance) throws IOException {
@@ -540,7 +540,7 @@ public class UnsortedCommands {
         }
     }
 
-    @Command(desc = "List the public resource imports or exports of a nation or alliance to other nations or alliances over a period of time")
+    @Command(desc = "List the public resource imports or exports of a nation or alliance to other nations or alliances over a period of time", viewable = true)
     public String inflows(Set<NationOrAlliance> nationOrAlliances,
                           @Arg("Date to start from")
                           @Timestamp long cutoffMs,
@@ -717,7 +717,7 @@ public class UnsortedCommands {
         return "You are not logged in";
     }
 
-    @Command(desc = "List all in-game alliance members")
+    @Command(desc = "List all in-game alliance members", viewable = true)
     @IsAlliance
     public String listAllianceMembers(@Me IMessageIO channel, @Me JSONObject command, @Me GuildDB db, int page) {
         Set<DBNation> nations = db.getAllianceList().getNations();
@@ -1079,7 +1079,7 @@ public class UnsortedCommands {
     }
 
     @Command(desc = "Get the revenue of nations or alliances\n" +
-            "Equilibrium taxrate is where the value of raws consumed matches the value taxed")
+            "Equilibrium taxrate is where the value of raws consumed matches the value taxed", viewable = true)
     public String revenue(@Me GuildDB db, @Me IMessageIO channel, @Me DBNation me,
                           NationList nations,
                           @Arg("Include the revenue of nations unable to be taxed")
@@ -1190,7 +1190,7 @@ public class UnsortedCommands {
 //    double[] profitBuffer, int turns, long date, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean checkRpc, boolean noFood, double rads, boolean atWar) {
 
     @Command(desc = "Get the revenue of a city or build json\n" +
-            "Accepts `land` and `age` as json attributes")
+            "Accepts `land` and `age` as json attributes", viewable = true)
     public String cityRevenue(@Me IMessageIO channel,
                               @Arg("The city url or build json")
                               CityBuild city,
@@ -1253,7 +1253,7 @@ public class UnsortedCommands {
         return null;
     }
 
-    @Command(desc = "Get the military unit count history (dates/times) for a nation")
+    @Command(desc = "Get the military unit count history (dates/times) for a nation", viewable = true)
     public String unitHistory(@Me IMessageIO channel,
                               DBNation nation, MilitaryUnit unit, @Switch("p") Integer page) throws Exception {
         List<Map.Entry<Long, Integer>> history = nation.getUnitHistory(unit);
@@ -1339,7 +1339,7 @@ public class UnsortedCommands {
         return null;
     }
 
-    @Command(desc = "Get a ranking of alliances or nations by their resource production")
+    @Command(desc = "Get a ranking of alliances or nations by their resource production", viewable = true)
     public String findProducer(@Me IMessageIO channel, @Me JSONObject command, @Me Guild guild,
                                @Arg("The resources to rank production of")
                                Set<ResourceType> resources,
@@ -1432,7 +1432,7 @@ public class UnsortedCommands {
         return null;
     }
 
-    @Command(desc = "Estimate a nation's rebuy time based on unit purchase history")
+    @Command(desc = "Estimate a nation's rebuy time based on unit purchase history", viewable = true)
     public String rebuy(@Me IMessageIO channel,
                         DBNation nation) throws Exception {
         Map<Integer, Long> dcProb = nation.findDayChange();
@@ -1461,7 +1461,7 @@ public class UnsortedCommands {
         return null;
     }
 
-    @Command(desc = "List the alliance rank changes of a nation or alliance members")
+    @Command(desc = "List the alliance rank changes of a nation or alliance members", viewable = true)
     public static String leftAA(@Me IMessageIO io, @Me GuildDB db,
                          @AllowDeleted NationOrAlliance nationOrAlliance,
                          @Arg("Date to start from")
@@ -1918,7 +1918,7 @@ public class UnsortedCommands {
         return BankCommands.transferBulkWithErrors(io, command, author, me, db, sheet, note, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, convertToMoney, escrow_mode, bypassChecks, force, key, errors);
     }
 
-    @Command(desc = "Check if a nation is a reroll and print their reroll date")
+    @Command(desc = "Check if a nation is a reroll and print their reroll date", viewable = true)
     public static String reroll(@Me IMessageIO io, DBNation nation) {
         long date = nation.getRerollDate();
         if (date == Long.MAX_VALUE) {
@@ -1937,7 +1937,7 @@ public class UnsortedCommands {
             "Optional: Optimization restrictions",
             "Optional: Nation Setting (Continent, Projects, Tax Rate)",
             "Display Options"
-    })
+    }, viewable = true)
     public String optimalBuild(@Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
                                @Arg("A city url or build json to optimize")
                                CityBuild build,
@@ -2046,7 +2046,7 @@ public class UnsortedCommands {
         return new OptimalBuild().onCommand(io, guild, author, me, cmd, flags);
     }
 
-    @Command(desc = "Run audits on member nations and generate a google sheet of the results")
+    @Command(desc = "Run audits on member nations and generate a google sheet of the results", viewable = true)
     @IsAlliance
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MENTOR, Roles.INTERVIEWER}, any = true)
     public void auditSheet(@Me GuildDB db,
@@ -2429,7 +2429,7 @@ public class UnsortedCommands {
         return "Done. See " + CM.announcement.find.cmd.toSlashMention() + "\n" + author.getAsMention();
     }
 
-    @Command(desc = "List potential offshore alliances by the value of their bank transfers to nations over a period of time")
+    @Command(desc = "List potential offshore alliances by the value of their bank transfers to nations over a period of time", viewable = true)
     public String prolificOffshores(@Me IMessageIO io, @Me User author, @Me JSONObject command,
             @Range(min=1, max=365) int days,
                                     @Switch("f") boolean upload_file

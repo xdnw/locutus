@@ -634,7 +634,7 @@ public class BankCommands {
         return null;
     }
 
-    @Command(desc = "View a nation's taxability, in-game tax rate, and internal tax-rate")
+    @Command(desc = "View a nation's taxability, in-game tax rate, and internal tax-rate", viewable = true)
     @IsAlliance
     public String taxInfo(@Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User user, DBNation nation) {
         if (nation == null) nation = me;
@@ -805,7 +805,7 @@ public class BankCommands {
     }
 
     @Command(desc = "Generate csv of war cost by nation between alliances (for reimbursement)\n" +
-            "Filters out wars where nations did not perform actions")
+            "Filters out wars where nations did not perform actions", viewable = true)
     @RolePermission(Roles.ADMIN)
     public String warReimburseByNationCsv(@Arg("The alliances with nations you want to reimburse") Set<DBAlliance> allies,
                                           @Arg("The enemies during the conflict") Set<DBAlliance> enemies,
@@ -1472,7 +1472,7 @@ public class BankCommands {
         }
     }
 
-    @Command(desc = "Get a sheet of members and their revenue (compared to optimal city builds)")
+    @Command(desc = "Get a sheet of members and their revenue (compared to optimal city builds)", viewable = true)
     @RolePermission(value = {Roles.ECON_STAFF, Roles.ECON})
     @IsAlliance
     public String revenueSheet(@Me IMessageIO io, @Me GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet, @Switch("t") @Timestamp Long snapshotTime) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
@@ -1608,7 +1608,7 @@ public class BankCommands {
         return null;
     }
 
-    @Command(desc = "Get a sheet of members and their saved up warchest (can include deposits and potential revenue)")
+    @Command(desc = "Get a sheet of members and their saved up warchest (can include deposits and potential revenue)", viewable = true)
     @RolePermission(value = {Roles.ECON_STAFF, Roles.ECON, Roles.MILCOM, Roles.MILCOM_NO_PINGS})
     @IsAlliance
     public String warchestSheet(@Me GuildDB db, @Me IMessageIO io, Set<DBNation> nations,
@@ -2231,7 +2231,7 @@ public class BankCommands {
         return null;
     }
 
-    @Command(desc = "Sheet of projects each nation has")
+    @Command(desc = "Sheet of projects each nation has", viewable = true)
     @RolePermission(value = {Roles.ECON, Roles.INTERNAL_AFFAIRS}, any=true)
     public String ProjectSheet(@Me IMessageIO io, @Me GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet, @Switch("t") @Timestamp Long snapshotTime) throws GeneralSecurityException, IOException {
         Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db.getGuild());
@@ -2385,9 +2385,8 @@ public class BankCommands {
                     "Add `-l` to not include loans\n" +
                     "Add `-g` to not include grants\n" +
                     "Add `-p` to include past depositors\n" +
-                    "Add `-f` to force an update"
-
-    )
+                    "Add `-f` to force an update",
+            viewable = true)
     @RolePermission(Roles.ECON)
     public static String depositSheet(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db,
                                @Default Set<DBNation> nations,
@@ -2678,7 +2677,7 @@ public class BankCommands {
         }
     }
 
-    @Command(desc = "Get a sheet of in-game transfers for nations")
+    @Command(desc = "Get a sheet of in-game transfers for nations", viewable = true)
     @RolePermission(value = Roles.ECON)
     public String getIngameNationTransfers(@Me IMessageIO channel, @Me GuildDB db, @AllowDeleted Set<NationOrAlliance> senders, @AllowDeleted Set<NationOrAlliance> receivers,
                                            @Arg("Only transfers after timeframe") @Default("%epoch%") @Timestamp long start_time,
@@ -2698,7 +2697,7 @@ public class BankCommands {
         return null;
     }
 
-    @Command(desc = "Get a sheet of ingame transfers for nations, filtered by the sender")
+    @Command(desc = "Get a sheet of ingame transfers for nations, filtered by the sender", viewable = true)
     @RolePermission(value = Roles.ECON)
     public String IngameNationTransfersBySender(@Me IMessageIO channel, @Me GuildDB db, Set<NationOrAlliance> senders, @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
@@ -2711,7 +2710,7 @@ public class BankCommands {
 
     @Command(desc = "Get a sheet of ingame transfers for nations, filtered by the receiver", groups = {
             "Optional: Specify timeframe"
-    })
+    }, viewable = true)
     @RolePermission(value = Roles.ECON)
     public String IngameNationTransfersByReceiver(@Me IMessageIO channel, @Me GuildDB db,
                                                   Set<NationOrAlliance> receivers, @Arg(value = "Only list transfers after this time", group = 0)
@@ -2826,7 +2825,7 @@ public class BankCommands {
 
     @Command(desc = "Get a sheet of internal transfers for nations", groups = {
             "Optional: Specify timeframe"
-    })
+    }, viewable = true)
     @RolePermission(value = Roles.ECON)
     public String getNationsInternalTransfers(@Me IMessageIO channel, @Me GuildDB db,
                                               @AllowDeleted Set<DBNation> nations,
@@ -2853,7 +2852,7 @@ public class BankCommands {
         return null;
     }
 
-    @Command(desc = "Get a sheet of transfers")
+    @Command(desc = "Get a sheet of transfers", viewable = true)
     @RolePermission(value = Roles.ECON, root = true)
     public String getIngameTransactions(@Me IMessageIO channel, @Me GuildDB db,
                                         @AllowDeleted @Default NationOrAlliance sender,
@@ -2923,7 +2922,7 @@ public class BankCommands {
     @Command(desc = "Get a sheet of a nation or alliances transactions (excluding taxes)", groups = {
         "Optional: Specify timeframe",
         "Display Options",
-    })
+    }, viewable = true)
     @RolePermission(value = Roles.ECON)
     public String transactions(@Me IMessageIO channel, @Me GuildDB db, @Me User user,
                                @AllowDeleted NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild,
@@ -3258,7 +3257,7 @@ public class BankCommands {
     }
 
     @Command(desc = "List the assigned taxrate if REQUIRED_TAX_BRACKET or REQUIRED_INTERNAL_TAXRATE are set\n" +
-            "Note: this command does set nations brackets. See: `{prefix}tax setNationBracketAuto` and `{prefix}nation set taxinternalAuto` ")
+            "Note: this command does set nations brackets. See: `{prefix}tax setNationBracketAuto` and `{prefix}nation set taxinternalAuto` ", viewable = true)
     @IsAlliance
     @RolePermission(Roles.ECON_STAFF)
     public String listRequiredTaxRates(@Me IMessageIO io, @Me GuildDB db, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
@@ -3414,7 +3413,7 @@ public class BankCommands {
     }
 
     @Command(desc = "Get a sheet of a nation tax deposits over a period\n" +
-            "If a tax base is set for the nation or alliance then only the portion within member holdings are included by default")
+            "If a tax base is set for the nation or alliance then only the portion within member holdings are included by default", viewable = true)
     @RolePermission(value = Roles.ECON)
     @IsAlliance
     public String taxDeposits(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Arg("Set to 0/0 to include all taxes") @Default() TaxRate baseTaxRate, @Default() @Timestamp Long startDate, @Default() @Timestamp Long endDate, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
@@ -3464,7 +3463,7 @@ public class BankCommands {
         return null;
     }
 
-    @Command(desc = "Get a sheet of a nation's in-game tax records and full resource amounts over a period\n")
+    @Command(desc = "Get a sheet of a nation's in-game tax records and full resource amounts over a period", viewable = true)
     @RolePermission(value = Roles.ECON)
     @IsAlliance
     public String taxRecords(@Me IMessageIO io, @Me GuildDB db, DBNation nation, @Default() @Timestamp Long startDate, @Default() @Timestamp Long endDate, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
@@ -3610,7 +3609,7 @@ public class BankCommands {
     }
 
     @Command(desc="Displays the account balance for a nation, alliance or guild\n" +
-            "Balance info includes deposits, loans, grants, taxes and escrow")
+            "Balance info includes deposits, loans, grants, taxes and escrow", viewable = true)
     @RolePermission(Roles.MEMBER)
     @UserCommand
     public static String deposits(@Me Guild guild, @Me GuildDB db, @Me IMessageIO channel, @Me DBNation me, @Me User author,
@@ -4005,7 +4004,7 @@ public class BankCommands {
         return null;
     }
 
-    @Command(desc = "Calculate weekly interest payments for a loan")
+    @Command(desc = "Calculate weekly interest payments for a loan", viewable = true)
     public String weeklyInterest(@Arg("Principle amount") double amount, @Arg("Percent weekly interest") double pct, @Arg("Number of weeks to loan for") int weeks) {
         double totalInterest = weeks * (pct / 100d) * amount;
 
@@ -4050,7 +4049,7 @@ public class BankCommands {
     @Command(desc = "List all nations in the alliance and their in-game resource stockpile", groups = {
             "Optional: Specify Nations",
             "Display Options",
-    })
+    }, viewable = true)
     @RolePermission(any = true, value = {Roles.ECON_STAFF, Roles.ECON, Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM})
     @IsAlliance
     public String stockpileSheet(@Me GuildDB db, @Me IMessageIO channel,
@@ -4129,7 +4128,7 @@ public class BankCommands {
     }
 
     @Command(desc = "Generate a sheet of member tax brackets and internal tax rates\n" +
-            "`note: internal tax rate is the TAX_BASE and determines what % of their taxes is excluded from deposits`")
+            "`note: internal tax rate is the TAX_BASE and determines what % of their taxes is excluded from deposits`", viewable = true)
     @RolePermission(any = true, value = {Roles.ECON, Roles.ECON_STAFF})
     public String taxBracketSheet(@Me IMessageIO io, @Me GuildDB db, @Switch("f") boolean force, @Switch("a") boolean includeApplicants) throws Exception {
         SpreadSheet sheet = SpreadSheet.create(db, SheetKey.TAX_BRACKET_SHEET);

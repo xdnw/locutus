@@ -109,10 +109,12 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import static link.locutus.discord.commands.manager.v2.binding.annotation.Kw.*;
 
 public class AdminCommands {
 
-    @Command(desc = "Sync and debug war rooms")
+    @Command(desc = "Sync and debug war rooms",
+    keywords = {WAR, ROOM, SYNC, CHANNEL, UPDATE, WARCAT, CATEGORY})
     @RolePermission(Roles.ADMIN)
     public String syncWarrooms(@Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, @Switch("f") boolean force) throws IOException {
         long start = System.currentTimeMillis();
@@ -575,10 +577,9 @@ public class AdminCommands {
         return null;
     }
 
-    @Command(desc = "Generate a google spreadsheet for a guild setting value for a set of discord servers")
+    @Command(desc = "Generate a google spreadsheet for a guild setting value for a set of discord servers", viewable = true)
     @RolePermission(value = Roles.ADMIN, root = true)
     @Ephemeral
-    @Viewable
     public String infoBulk(@Me GuildDB db, @Me IMessageIO io, GuildSetting setting, Set<GuildDB> guilds, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.SETTINGS_SERVERS);
@@ -805,7 +806,8 @@ public class AdminCommands {
         return "Done!";
     }
 
-    @Command(desc = "Generate a sheet of recorded login times for a set of nations within a time range")
+    @Command(desc = "Generate a sheet of recorded login times for a set of nations within a time range", viewable = true,
+    keywords = {LOGIN, TIMES, USER, ACTIVITY, SESSION, HISTORY, TRACK, RECORD, TIMESTAMP, SPREADSHEET})
     public String loginTimes(@Me GuildDB db, @Me IMessageIO io, Set<DBNation> nations, @Timestamp long cutoff, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.NATION_SHEET);
@@ -964,7 +966,7 @@ public class AdminCommands {
         return (archive ? "Archived" : "Unarchived") + " announcement with id: #" + announcementId;
     }
 
-    @Command(desc = "Find the announcement for the closest matching invite")
+    @Command(desc = "Find the announcement for the closest matching invite", viewable = true)
     @RolePermission(Roles.ADMIN)
     @NoFormat
     public String find_invite(@Me GuildDB db, String invite) throws IOException {
@@ -977,7 +979,7 @@ public class AdminCommands {
         }
     }
 
-    @Command(desc = "Find the announcement closest matching a message")
+    @Command(desc = "Find the announcement closest matching a message", viewable = true)
     @RolePermission(Roles.ADMIN)
     @NoFormat
     public String find_announcement(@Me GuildDB db, int announcementId, String message) throws IOException {
@@ -1840,7 +1842,7 @@ public class AdminCommands {
     }
 
     @Command(desc = "List guilds which have not sent a recent message\n" +
-            "Note: Deprecated. Not reliable if message content intent is disabled")
+            "Note: Deprecated. Not reliable if message content intent is disabled", viewable = true)
     @Ephemeral
     @RolePermission(value = Roles.ADMIN, root = true)
     public String listExpiredGuilds(boolean checkMessages) {
@@ -1931,7 +1933,7 @@ public class AdminCommands {
         return "Leaving " + guild.getName();
     }
 
-    @Command(desc = "List accounts with the offshore which are inactive, as well as details about last owner/alliance activity and last transfer info")
+    @Command(desc = "List accounts with the offshore which are inactive, as well as details about last owner/alliance activity and last transfer info", viewable = true)
     @Ephemeral
     @RolePermission(value = Roles.ADMIN, root = true)
     public String listExpiredOffshores() {
@@ -2048,7 +2050,7 @@ public class AdminCommands {
         return response.toString();
     }
 
-    @Command(desc = "List the owners of the guilds Locutus is connected to")
+    @Command(desc = "List the owners of the guilds Locutus is connected to", viewable = true)
     @RolePermission(value = Roles.ADMIN, root = true)
     public String listGuildOwners() {
         ArrayList<GuildDB> guilds = new ArrayList<>(Locutus.imp().getGuildDatabases().values());
@@ -2239,7 +2241,7 @@ public class AdminCommands {
         return result.toString().trim();
     }
 
-    @Command
+    @Command(desc = "Generate a sheet of nation customization (or lack thereof), and mark specific nation ids in the sheet with the ids provided", viewable = true)
     public String multiInfoSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet, @Switch("m") Set<DBNation> mark) throws IOException, ParseException, GeneralSecurityException {
         Set<Integer> nationIds = new IntOpenHashSet(nations.stream().map(DBNation::getId).collect(Collectors.toSet()));
         Map<Integer, String> discords = new Int2ObjectOpenHashMap<>();
@@ -2388,7 +2390,7 @@ public class AdminCommands {
         return "Done";
     }
 
-    @Command(desc = "List players currently sharing a network or an active ban")
+    @Command(desc = "List players currently sharing a network or an active ban", viewable = true)
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     public synchronized String hasSameNetworkAsBan(@Me IMessageIO io, @Me User author, Set<DBNation> nations, @Switch("e") boolean listExpired,
                                                    @Switch("a") boolean onlySameAlliance,
@@ -2878,7 +2880,7 @@ public class AdminCommands {
         return "Done!";
     }
 
-    @Command(desc = "View info about trades with a given id")
+    @Command(desc = "View info about trades with a given id", viewable = true)
     @RolePermission(value = Roles.ADMIN, root = true)
     public String tradeId(Set<Integer> ids) {
         List<DBTrade> offers = new ArrayList<>();
@@ -2889,7 +2891,7 @@ public class AdminCommands {
         return "- " + StringMan.join(offers, "\n- ");
     }
 
-    @Command(desc = "View info about a guild with a given id")
+    @Command(desc = "View info about a guild with a given id", viewable = true)
     @RolePermission(value = Roles.ADMIN, root = true)
     public String guildInfo(Guild guild) {
         return guild.getName() + "/" + guild.getIdLong() + "\n" +
@@ -2897,7 +2899,7 @@ public class AdminCommands {
                 "Members: " + StringMan.getString(guild.getMembers());
     }
 
-    @Command(desc = "View meta information about a nation in the bot's database")
+    @Command(desc = "View meta information about a nation in the bot's database", viewable = true)
     @RolePermission(value = Roles.ADMIN, root = true)
     public String nationMeta(DBNation nation, NationMeta meta) {
         ByteBuffer buf = nation.getMeta(meta);

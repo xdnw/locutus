@@ -121,7 +121,7 @@ public class GPTCommands {
 
 
     @Command(desc = "Show the documents currently converting to a dataset\n" +
-            "Datasets are a list of information that can be used to generate chat responses")
+            "Datasets are a list of information that can be used to generate chat responses", viewable = true)
     @RolePermission(value = Roles.INTERNAL_AFFAIRS)
     public String showConverting(PWGPTHandler gpt, @Me User user, @Me IMessageIO io, @Me GuildDB db, @Switch("r") boolean showRoot, @Switch("a") boolean showOtherGuilds) {
         if (showOtherGuilds && !Roles.ADMIN.hasOnRoot(user)) {
@@ -257,7 +257,7 @@ public class GPTCommands {
     @Command(desc = "This command provides a list of accessible embedding datasets used for prompting GPT.\n" +
             "Embedding datasets consist of vectors representing text strings, allowing for comparison between different strings.\n" +
             "See: <https://github.com/xdnw/locutus/wiki> or <https://politicsandwar.fandom.com/wiki/Politics_and_War_Wiki>\n" +
-            "To view a specific dataset see: /chat embedding view")
+            "To view a specific dataset see: /chat embedding view", viewable = true)
     @RolePermission(value = Roles.AI_COMMAND_ACCESS)
     public String list_documents(PWGPTHandler gpt, @Me IMessageIO io, @Me GuildDB db, @Switch("r") boolean listRoot) {
         Set<EmbeddingSource> sources = gpt.getSources(db.getGuild(), listRoot);
@@ -431,7 +431,7 @@ public class GPTCommands {
     }
 
     @Command(desc = "List available chat providers, and their information.\n" +
-            "This includes status, rate limits, execution time, model, permissions, options.")
+            "This includes status, rate limits, execution time, model, permissions, options.", viewable = true)
     @RolePermission(Roles.AI_COMMAND_ACCESS)
     public String listChatProviders(PWGPTHandler pwGpt, @Me GuildDB db, @Me User user) {
         Set<GPTProvider> providers = pwGpt.getProviderManager().getProviders(db);
@@ -529,7 +529,7 @@ public class GPTCommands {
     }
 
     @Command(desc = "Locate a command you are looking for.\n" +
-            "Use keywords for relevant results, or ask a question.")
+            "Use keywords for relevant results, or ask a question.", viewable = true)
     @RolePermission(Roles.AI_COMMAND_ACCESS)
     public String find_command2(@Me IMessageIO io, ValueStore store, @Me GuildDB db, @Me User user, String search, @Default String instructions, @Switch("g") boolean useGPT, @Switch("n") Integer numResults) {
         Function<Integer, List<ParametricCallable>> getClosest = integer -> {
@@ -561,7 +561,7 @@ public class GPTCommands {
     }
 
     @Command(desc = "Locate a nation placeholder you are looking for.\n" +
-            "Use keywords for relevant results, or ask a question.")
+            "Use keywords for relevant results, or ask a question.", viewable = true)
     @RolePermission(Roles.AI_COMMAND_ACCESS)
     public String find_placeholder(NationPlaceholders placeholders, @Me IMessageIO io, ValueStore store, @Me GuildDB db, @Me User user, String search, @Default String instructions, @Switch("g") boolean useGPT, @Switch("n") Integer numResults) {
         Function<Integer, List<ParametricCallable>> getClosest = integer -> {
@@ -590,7 +590,7 @@ public class GPTCommands {
     }
 
     @Command(desc = "Locate a nation placeholder you are looking for.\n" +
-            "Use keywords for relevant results, or ask a question.")
+            "Use keywords for relevant results, or ask a question.", viewable = true)
     @RolePermission(Roles.AI_COMMAND_ACCESS)
     public String find_argument(@Me IMessageIO io, ValueStore store, @Me GuildDB db, @Me User user, String search, @Default String instructions, @Switch("g") boolean useGPT, @Switch("n") Integer numResults) {
         Function<Integer, List<Parser>> getClosest = integer -> {

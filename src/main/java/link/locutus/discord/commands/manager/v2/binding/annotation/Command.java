@@ -17,4 +17,7 @@ public @interface Command {
     String descMethod() default "";
     String[] groups() default {};
     String[] groupDescs() default {};
+    boolean viewable() default false;
+
+    Kw[] keywords() default {};
 }

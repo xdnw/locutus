@@ -123,7 +123,7 @@ public class ExchangeCommands {
         return result.getValue();
     }
 
-    @Command(desc = "Export shares to a spreadsheet")
+    @Command(desc = "Export shares to a spreadsheet", viewable = true)
     @RolePermission(guild = StockDB.ROOT_GUILD)
     public String exportShares(StockDB db, @Me DBNation me, @Me Exchange exchange, SpreadSheet sheet) {
         synchronized (db) {
@@ -333,7 +333,7 @@ public class ExchangeCommands {
         return response.toString().trim();
     }
 
-    @Command(desc = "Add stock to a nation")
+    @Command(desc = "Set company discord role color")
     @RolePermission(guild = StockDB.ROOT_GUILD)
     public String color(@Me User user, @Me DBNation me, StockDB db, @Me Exchange exchange, Rank rank, Color color) {
         if (exchange.getRank(me).id < Rank.HEIR.id && !Roles.ECON.hasOnRoot(user))

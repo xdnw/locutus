@@ -94,7 +94,7 @@ public class FunCommands {
         return message;
     }
 
-    @Command(desc = "Get a random joke from the joke file")
+    @Command(desc = "Get a random joke from the joke file", viewable = true)
     public String joke() {
         if (lines == null) {
             lines = Objects.requireNonNull(FileUtil.readFile("/fun/jokes.txt")).split("\\r?\\n");
@@ -102,7 +102,7 @@ public class FunCommands {
         return lines[ThreadLocalRandom.current().nextInt(lines.length)];
     }
 
-    @Command(desc = "We are the borg")
+    @Command(desc = "We are the borg", viewable = true)
     public String borg(@Default String msg) {
         if (msg == null || msg.isEmpty()) {
             return Messages.SLOGAN;

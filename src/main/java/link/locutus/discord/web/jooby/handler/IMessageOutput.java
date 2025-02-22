@@ -20,6 +20,4 @@ public interface IMessageOutput {
             throw new RuntimeException(e);
         }
     }
-
-    void sendEvent(String toString);
 }

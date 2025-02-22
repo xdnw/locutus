@@ -53,7 +53,7 @@ public class HelpCommands {
 //
 //    }
 
-    @Command(desc = "Check a message for moderation to see if it is flagged")
+    @Command(desc = "Check a message for moderation to see if it is flagged", viewable = true)
     public void moderation_check(@Me IMessageIO io, String input) throws IOException {
         List<String> inputs = List.of(input);
         List<ModerationResult> results = getGPT().getHandler().getModerator().moderate(inputs);
@@ -70,7 +70,7 @@ public class HelpCommands {
         msg.send();
     }
 
-    @Command(desc = "Display help information for a command argument type")
+    @Command(desc = "Display help information for a command argument type", viewable = true)
     public void argument(@Me IMessageIO io, Parser argument, @Switch("s") boolean skipOptionalArgs) {
         Key key = argument.getKey();
         String title = "`" + key.toSimpleString() + "`";
@@ -112,7 +112,7 @@ public class HelpCommands {
         io.create().embed(title, body.toString()).send();
     }
 
-    @Command(desc = "Show the description, usage information and permissions for a command")
+    @Command(desc = "Show the description, usage information and permissions for a command", viewable = true)
     public String command(@Me IMessageIO io, ValueStore store, PermissionHandler permisser, ICommand command) {
         String body = command.toBasicMarkdown(store, permisser, "/", false, true, true);
         String title = "/" + command.getFullPath();
@@ -137,7 +137,7 @@ public class HelpCommands {
         return null;
     }
 
-    @Command(desc = "Show the description, usage information and permissions for a nation placeholder")
+    @Command(desc = "Show the description, usage information and permissions for a nation placeholder", viewable = true)
     public String nation_placeholder(@Me IMessageIO io, ValueStore store, PermissionHandler permisser, @NationAttributeCallable ParametricCallable command) {
         String body = command.toBasicMarkdown(store, permisser, "/", false, true, true);
         String title = "/" + command.getFullPath();
@@ -160,7 +160,7 @@ public class HelpCommands {
     }
 
     @Command(desc = "Locate a setting you are looking for.\n" +
-            "Use keywords for relevant results, or ask a question.")
+            "Use keywords for relevant results, or ask a question.", viewable = true)
     public void find_setting(@Me IMessageIO io, ValueStore store, String query, @Range(min = 1, max = 25) @Default("5") int num_results) {
         try {
             IMessageBuilder msg = io.create();

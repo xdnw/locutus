@@ -99,7 +99,7 @@ import static org.example.jooq.bank.Tables.TRANSACTIONS_2;
 
 public class UtilityCommands {
     @Command(desc = "List the color blocs and their revenue\n" +
-            "Optionally switch nations or alliances to a color to view potential revenue changes")
+            "Optionally switch nations or alliances to a color to view potential revenue changes", viewable = true)
     public String calculateColorRevenue(@Default Set<DBNation> set_aqua,
                                         @Default Set<DBNation> set_black,
                                         @Default Set<DBNation> set_blue,
@@ -244,7 +244,7 @@ public class UtilityCommands {
         return lines.toString();
     }
 
-    @Command(desc = "list channels")
+    @Command(desc = "list channels", viewable = true)
     @RolePermission(Roles.ADMIN)
     public String channelCount(@Me IMessageIO channel, @Me Guild guild) {
         StringBuilder channelList = new StringBuilder();
@@ -268,7 +268,7 @@ public class UtilityCommands {
         return null;
     }
 
-    @Command(desc = "Find potential offshores used by an alliance")
+    @Command(desc = "Find potential offshores used by an alliance", viewable = true)
     @RolePermission(Roles.ECON)
     public String findOffshore(@Me IMessageIO channel, @Me JSONObject command, DBAlliance alliance, @Default @Timestamp Long cutoffMs) {
         if (cutoffMs == null) cutoffMs = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(200);
@@ -404,7 +404,7 @@ public class UtilityCommands {
 //        return response.toString();
 //    }
 
-    @Command(desc = "List all possible offshore alliances in the game")
+    @Command(desc = "List all possible offshore alliances in the game", viewable = true)
     @RolePermission(value = {Roles.ADMIN}, root = true)
     public String listOffshores() {
         StringBuilder response = new StringBuilder();
@@ -542,7 +542,7 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Return potential offshores for a list of enemy alliances\n" +
-            "If allies are specified, only offshores that are not allied with any of the allies will be returned")
+            "If allies are specified, only offshores that are not allied with any of the allies will be returned", viewable = true)
     @RolePermission(value = {Roles.ECON, Roles.MILCOM}, any = true)
     public String findOffshores(@Timestamp long cutoff, Set<DBAlliance> enemiesList, @Default() Set<DBAlliance> alliesList) {
         if (alliesList == null) alliesList = Collections.emptySet();
@@ -693,7 +693,7 @@ public class UtilityCommands {
         }
     }
 
-    @Command(desc = "Get a list a recent global war Non Aggression Pacts")
+    @Command(desc = "Get a list a recent global war Non Aggression Pacts", viewable = true)
     public String nap(@Default("false") boolean listExpired) {
         Map<Long, String> naps = new LinkedHashMap<>();
         naps.put(238332L * 7200 * 1000, "<https://politicsandwar.fandom.com/wiki/Blue_Balled>\n<https://forum.politicsandwar.com/index.php?/topic/36719-peace-all-in-a-day/>");
@@ -770,7 +770,7 @@ public class UtilityCommands {
 //        }
     }
     @Command(desc = "Rank the number of wars between two coalitions by nation or alliance\n" +
-            "Defaults to alliance ranking")
+            "Defaults to alliance ranking", viewable = true)
     public String warRanking(@Me JSONObject command, @Me IMessageIO channel, @Timestamp long time, Set<NationOrAlliance> attackers, Set<NationOrAlliance> defenders,
                              @Arg("Only include offensive wars in the ranking")
                              @Switch("o") boolean onlyOffensives,
@@ -826,7 +826,7 @@ public class UtilityCommands {
         return null;
     }
 
-    @Command(desc = "Calculate the costs of purchasing cities (from current to max)", aliases = {"citycost", "citycosts"})
+    @Command(desc = "Calculate the costs of purchasing cities (from current to max)", aliases = {"citycost", "citycosts"}, viewable = true)
     public String CityCost(@Range(min=1, max=100) int currentCity, @Range(min=1, max=100) int maxCity,
                            @Default("false") boolean manifestDestiny, @Default("false") boolean urbanPlanning, @Default("false") boolean advancedUrbanPlanning, @Default("false") boolean metropolitanPlanning,
                            @Default("false") boolean governmentSupportAgency,
@@ -857,7 +857,7 @@ public class UtilityCommands {
         return "$" + MathMan.format(total);
     }
 
-    @Command(desc = "Calculate the costs of purchasing infra (from current to max)", aliases = {"InfraCost", "infrastructurecost", "infra", "infrastructure", "infracosts"})
+    @Command(desc = "Calculate the costs of purchasing infra (from current to max)", aliases = {"InfraCost", "infrastructurecost", "infra", "infrastructure", "infracosts"}, viewable = true)
     public String InfraCost(@Range(min=0, max=40000) int currentInfra, @Range(min=0, max=40000) int maxInfra,
                             @Default("false") boolean urbanization,
                             @Default("false") boolean center_for_civil_engineering,
@@ -882,7 +882,7 @@ public class UtilityCommands {
         return "$" + MathMan.format(total);
     }
 
-    @Command(desc = "Calculate the costs of purchasing land (from current to max)", aliases = {"LandCost", "land", "landcosts"})
+    @Command(desc = "Calculate the costs of purchasing land (from current to max)", aliases = {"LandCost", "land", "landcosts"}, viewable = true)
     public String LandCost(@Range(min=0, max=40000) int currentLand,
                            @Range(min=0, max=40000) int maxLand,
                            @Default("false") boolean rapidExpansion,
@@ -909,7 +909,7 @@ public class UtilityCommands {
         return "$" + MathMan.format(total);
     }
 
-    @Command(desc = "Calculate the score of various things. Each argument is option, and can go in any order")
+    @Command(desc = "Calculate the score of various things. Each argument is option, and can go in any order", viewable = true)
     public String score(@Default DBNation nation,
                         @Switch("c") Integer cities,
                         @Switch("b") Integer soldiers,
@@ -972,7 +972,7 @@ public class UtilityCommands {
 
     }
 
-    @Command(desc = "Check how many turns are left in the city/project timer", aliases = {"TurnTimer", "Timer", "CityTimer", "ProjectTimer"})
+    @Command(desc = "Check how many turns are left in the city/project timer", aliases = {"TurnTimer", "Timer", "CityTimer", "ProjectTimer"}, viewable = true)
     @UserCommand
     public String TurnTimer(DBNation nation) throws IOException {
         StringBuilder response = new StringBuilder();
@@ -988,7 +988,7 @@ public class UtilityCommands {
         return response.toString();
     }
 
-    @Command(desc = "Check how many projects slots a nation has", aliases = {"ProjectSlots", "ProjectSlot", "projects"})
+    @Command(desc = "Check how many projects slots a nation has", aliases = {"ProjectSlots", "ProjectSlot", "projects"}, viewable = true)
     public static String ProjectSlots(DBNation nation) {
         Set<Project> projects = nation.getProjects();
         Map<ResourceType, Double> value = new HashMap<>();
@@ -1008,7 +1008,7 @@ public class UtilityCommands {
         return result.toString();
     }
 
-    @Command(desc = "Generate csv file of project costs")
+    @Command(desc = "Generate csv file of project costs", viewable = true)
     public String projectCostCsv() {
         StringBuilder response = new StringBuilder();
         response.append("PROJECT");
@@ -1031,7 +1031,7 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Get nation or bank loot history\n" +
-            "Shows how much you will receive if you defeat a nation")
+            "Shows how much you will receive if you defeat a nation", viewable = true)
     public static String loot(@Me IMessageIO output, @Me DBNation me, NationOrAlliance nationOrAlliance,
                               @Arg("Score of the defeated nation\n" +
                                       "i.e. For determining bank loot percent")
@@ -1165,7 +1165,7 @@ public class UtilityCommands {
         return null;
     }
 
-    @Command(desc = "Shows the cost of a project")
+    @Command(desc = "Shows the cost of a project", viewable = true)
     public String ProjectCost(@Me GuildDB db, @Me IMessageIO channel,
                               Set<Project> projects,
                               @Default("false") boolean technologicalAdvancement,
@@ -1365,7 +1365,7 @@ public class UtilityCommands {
 
     @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON,Roles.FOREIGN_AFFAIRS}, any=true)
     @Command(desc = "Create a sheet of alliances with customized columns\n" +
-            "See <https://github.com/xdnw/locutus/wiki/nation_placeholders> for a list of placeholders")
+            "See <https://github.com/xdnw/locutus/wiki/nation_placeholders> for a list of placeholders", viewable = true)
     @NoFormat
     public static String AllianceSheet(AlliancePlaceholders aaPlaceholders, @Me Guild guild, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildDB db,
                                 @Arg("The nations to include in each alliance")
@@ -1424,7 +1424,7 @@ public class UtilityCommands {
 
     @RolePermission(value = {Roles.MILCOM, Roles.ECON, Roles.INTERNAL_AFFAIRS}, any=true)
     @Command(desc = "A sheet of nations stats with customizable columns\n" +
-            "See <https://github.com/xdnw/locutus/wiki/nation_placeholders> for a list of placeholders")
+            "See <https://github.com/xdnw/locutus/wiki/nation_placeholders> for a list of placeholders", viewable = true)
     @NoFormat
     public static void NationSheet(NationPlaceholders placeholders, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildDB db,
                                    NationList nations,
@@ -1494,7 +1494,7 @@ public class UtilityCommands {
             "- A network not shared 'concurrently' or within a short timeframe may be a false positive\n" +
             "- Having many networks, but only a few shared may be a sign of a VPN being used (there are legitimate reasons for using a VPN)\n" +
             "- It is against game rules to use evidence to threaten or coerce others\n" +
-            "See: https://politicsandwar.com/rules/")
+            "See: https://politicsandwar.com/rules/", viewable = true)
     public String multi(@Me IMessageIO channel, @AllowDeleted DBNation nation) {
         MultiReport report = new MultiReport(nation.getNation_id());
         String result = report.toString();
@@ -1518,12 +1518,12 @@ public class UtilityCommands {
         return disclaimer;
     }
 
-    @Command(desc = "Return number of turns a nation has left of beige color bloc")
+    @Command(desc = "Return number of turns a nation has left of beige color bloc", viewable = true)
     public String beigeTurns(DBNation nation) {
         return nation.getBeigeTurns() + " turns";
     }
 
-    @Command(desc = "Return quickest attacks to beige an enemy at a resistance level", aliases = {"fastBeige", "quickestBeige", "quickBeige", "fastestBeige"})
+    @Command(desc = "Return quickest attacks to beige an enemy at a resistance level", aliases = {"fastBeige", "quickestBeige", "quickBeige", "fastestBeige"}, viewable = true)
     public String quickestBeige(@Range(min=1, max=100) int resistance,
                                 @Arg("Don't allow ground attacks")
                                 @Switch("g") boolean noGround,
@@ -1718,7 +1718,7 @@ public class UtilityCommands {
         return StringMan.join(results, "\n");
     }
 
-    @Command(desc = "Get info about your own nation")
+    @Command(desc = "Get info about your own nation", viewable = true)
     public String me(@Me JSONObject command, @Me Guild guild, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildDB db, @Switch("s") @Timestamp Long snapshotDate) throws IOException {
         return who(command, guild, channel, author, db, me, Collections.singleton(me), null, false, false, false, false, false, false, snapshotDate, null);
     }
@@ -1726,7 +1726,7 @@ public class UtilityCommands {
     @Command(aliases = {"who", "pnw-who", "who", "pw-who", "pw-info", "how", "where", "when", "why", "whois"},
             desc = "Get detailed information about a nation\n" +
                     "Nation argument can be nation name, id, link, or discord tag\n" +
-                    "e.g. `{prefix}who @borg`")
+                    "e.g. `{prefix}who @borg`", viewable = true)
     @UserCommand
     public static String who(@Me JSONObject command, @Me Guild guild, @Me IMessageIO channel, @Me User author, @Me GuildDB db, @Me @Default DBNation me,
                       @Arg("The nations to get info about")
@@ -2129,7 +2129,7 @@ public class UtilityCommands {
         return null;
     }
 
-    @Command(aliases = {"dnr", "caniraid"}, desc = "Check if declaring war on a nation is allowed by the guild's Do Not Raid (DNR) settings")
+    @Command(aliases = {"dnr", "caniraid"}, desc = "Check if declaring war on a nation is allowed by the guild's Do Not Raid (DNR) settings", viewable = true)
     public String dnr(@Me GuildDB db, DBNation nation) {
         Integer dnrTopX = db.getOrNull(GuildKey.DO_NOT_RAID_TOP_X);
         Set<Integer> enemies = db.getCoalition(Coalition.ENEMIES);
@@ -2184,7 +2184,7 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Rank alliances by their new members over a timeframe\n" +
-            "A recruitment is when a NONE which was not a former member within the timeframe gets set to member")
+            "A recruitment is when a NONE which was not a former member within the timeframe gets set to member", viewable = true)
     public String recruitmentRankings(@Me User author, @Me IMessageIO channel, @Me JSONObject command,
                                       @Arg("Date to start from")
                                       @Timestamp long cutoff,
@@ -2236,7 +2236,7 @@ public class UtilityCommands {
         return null;
     }
 
-    @Command(desc = "Get the cost of military units and their upkeep")
+    @Command(desc = "Get the cost of military units and their upkeep", viewable = true)
     public String unitCost(Map<MilitaryUnit, Long> units,
                            @Arg("Show the upkeep during war time")
                            @Default Boolean wartime) {
@@ -2284,7 +2284,7 @@ public class UtilityCommands {
         }
     }
 
-    @Command(desc = "Get the inactivity streak of a set of nations over a specified timeframe")
+    @Command(desc = "Get the inactivity streak of a set of nations over a specified timeframe", viewable = true)
     public String grayStreak(@Me GuildDB db, @Me IMessageIO io,
                                     Set<DBNation> nations,
                                     int daysInactive,
@@ -2356,7 +2356,7 @@ public class UtilityCommands {
     }
 
 
-    @Command(desc = "Get the VM history of a set of nations")
+    @Command(desc = "Get the VM history of a set of nations", viewable = true)
     public static String vmHistory(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws IOException, ParseException, ExecutionException, InterruptedException, GeneralSecurityException {
         CompletableFuture<IMessageBuilder> msgFuture = io.send("Mounting nation snapshots...");
         Map<Integer, List<Map.Entry<Integer, Integer>>> vmRanges = Locutus.imp().getDataDumper(true).load().getUtil().getCachedVmRanged(Long.MAX_VALUE, true);
@@ -2556,7 +2556,7 @@ public class UtilityCommands {
 //        return null;
     }
 
-    @Command(aliases = {"alliancecost", "aacost"}, desc = "Get the value of nations including their cities, projects and units")
+    @Command(aliases = {"alliancecost", "aacost"}, desc = "Get the value of nations including their cities, projects and units", viewable = true)
     public String allianceCost(@Me IMessageIO channel, @Me GuildDB db,
                                NationList nations, @Switch("u") boolean update,
                                @Switch("p") @Arg("Only include the cost of specific projects") Set<Project> includeProjects,
@@ -2634,7 +2634,7 @@ public class UtilityCommands {
         return null;
     }
 
-    @Command(desc = "Get the cost a specific amount of buildings")
+    @Command(desc = "Get the cost a specific amount of buildings", viewable = true)
     public static String buildingCost(CityBuild build) {
         JavaCity jc = new JavaCity(build);
         jc.setInfra(0d);
@@ -2664,7 +2664,7 @@ public class UtilityCommands {
     @Command(desc = "Add a watermark to a discord image\n" +
             "Use \\n to add a new line\n" +
             "Default color will be light gray if image is dark and dark gray if image is light\n" +
-            "Set `repeat: True` to repeat the watermark down the entire image")
+            "Set `repeat: True` to repeat the watermark down the entire image", viewable = true)
     public String addWatermark(@Me IMessageIO io, String imageUrl, String watermarkText, @Default Color color, @Default("0.05") @Range(min = 0.01, max=1) double opacity, @Default("Arial") Font font, @Switch("r") boolean repeat) {
         float opacityF = (float) opacity;
         // remove anything after ? mark
@@ -2681,7 +2681,7 @@ public class UtilityCommands {
         return null;
     }
 
-    @Command(desc = "Calculate how many days it takes to ROI on the last improvement slot for a specified infra level")
+    @Command(desc = "Calculate how many days it takes to ROI on the last improvement slot for a specified infra level", viewable = true)
     public String infraROI(DBCity city, @Range(min=600,max=3000) int infraLevel,
                            @Switch("c") Continent continent,
                            @Switch("r") Double rads,
@@ -2731,7 +2731,7 @@ public class UtilityCommands {
         return "Infra: " + MathMan.format(infraLevel - 50) + "->" + MathMan.format(infraLevel) + " will break even in " + MathMan.format(daysROI) + " days";
     }
 
-    @Command(desc = "Calculate how many days it takes to ROI on the last 50 land for a specified level")
+    @Command(desc = "Calculate how many days it takes to ROI on the last 50 land for a specified level", viewable = true)
     public String landROI(DBCity city, @Range(min=600,max=10000) double landLevel,
                            @Switch("c") Continent continent,
                            @Switch("r") Double rads,

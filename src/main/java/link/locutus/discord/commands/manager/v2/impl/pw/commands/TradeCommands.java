@@ -3,14 +3,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
-import link.locutus.discord.commands.manager.v2.binding.annotation.ArgChoice;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -21,10 +14,6 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
-import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
-import link.locutus.discord.commands.manager.v2.table.TimeDualNumericTable;
-import link.locutus.discord.commands.manager.v2.table.TimeFormat;
-import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
 import link.locutus.discord.commands.manager.v2.table.imp.RssTradeByDay;
 import link.locutus.discord.commands.manager.v2.table.imp.StockpileValueByDay;
 import link.locutus.discord.commands.manager.v2.table.imp.TradeMarginByDay;
@@ -51,7 +40,6 @@ import com.google.common.collect.Maps;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.WM;
-import link.locutus.discord.web.commands.binding.value_types.GraphType;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
@@ -79,7 +67,7 @@ public class TradeCommands {
 //    }
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
-    @Command(desc = "List the bot trade offers you have on discord")
+    @Command(desc = "List the bot trade offers you have on discord", viewable = true)
     public String myOffers(TradeManager tMan, @Me DBNation me) {
         Set<TradeDB.BulkTradeOffer> offers = tMan.getBulkOffers(f -> f.nation == me.getNation_id());
         if (offers.isEmpty()) {
@@ -94,7 +82,7 @@ public class TradeCommands {
     }
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
-    @Command(desc = "List the bot offers nations have on discord for you selling a given resource")
+    @Command(desc = "List the bot offers nations have on discord for you selling a given resource", viewable = true)
     public String sellList(TradeManager tMan,
                            ResourceType youSell,
                            @Default("MONEY") ResourceType youReceive,
@@ -139,7 +127,7 @@ public class TradeCommands {
     }
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
-    @Command(desc = "List the bot offers nations have on discord for you buying a given resource")
+    @Command(desc = "List the bot offers nations have on discord for you buying a given resource", viewable = true)
     public String buyList(TradeManager tMan, ResourceType youBuy, @Default("MONEY") ResourceType youProvide, @Default Set<DBNation> allowedTraders,
                           @Arg("Sort the offers by the lowest minimum offer price\n" +
                                   "Comparison prices for resources are converted to weekly average cash equivalent")
@@ -268,7 +256,7 @@ public class TradeCommands {
     }
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
-    @Command(desc = "View the details of a bot trade offer on discord")
+    @Command(desc = "View the details of a bot trade offer on discord", viewable = true)
     public String offerInfo(@Me JSONObject command, TradeManager tMan, @Me IMessageIO io,
                             @Arg("The id of a trade offer")
                             int offerId) {
@@ -496,7 +484,7 @@ public class TradeCommands {
     }
 
 
-    @Command(aliases = {"GlobalTradeAverage", "gta", "tradeaverage"}, desc = "Get the average trade price of resources over a period of time")
+    @Command(aliases = {"GlobalTradeAverage", "gta", "tradeaverage"}, desc = "Get the average trade price of resources over a period of time", viewable = true)
     public String GlobalTradeAverage(@Me JSONObject command, @Me IMessageIO channel,
                                      @Arg("Time to average over (from today)")
                                      @Timestamp long time) {
@@ -539,7 +527,7 @@ public class TradeCommands {
     }
 
     @Command(aliases = {"GlobalTradeVolume", "gtv", "tradevolume"},
-            desc = "Get the change in trade volume of each resource over a period of time")
+            desc = "Get the change in trade volume of each resource over a period of time", viewable = true)
     public String GlobalTradeVolume(@Me JSONObject command, @Me IMessageIO channel) {
         TradeManager trader = Locutus.imp().getTradeManager();
 
@@ -582,7 +570,7 @@ public class TradeCommands {
         return null;
     }
 
-    @Command(desc = "Show the total market value of resource amounts", aliases = {"resourcevalue", "convertedtotal"})
+    @Command(desc = "Show the total market value of resource amounts", aliases = {"resourcevalue", "convertedtotal"}, viewable = true)
     public String convertedTotal(Map<ResourceType, Double> resources,
                                  @Arg("Remove negative amounts and return the scaled resource amounts of equivalent value")
                                  @Switch("n") boolean normalize,
@@ -643,7 +631,7 @@ public class TradeCommands {
         return result.toString();
     }
 
-    @Command(desc = "Get the margin between buy and sell for each resource")
+    @Command(desc = "Get the margin between buy and sell for each resource", viewable = true)
     public static String tradeMargin(@Me JSONObject command, @Me IMessageIO channel, TradeManager trader,
                               @Arg("Display the margin percent instead of absolute difference")
                               @Switch("p") boolean usePercent) {
@@ -681,7 +669,7 @@ public class TradeCommands {
         return null;
     }
 
-    @Command(desc = "Get the current top buy and sell price of each resource")
+    @Command(desc = "Get the current top buy and sell price of each resource", viewable = true)
     public String tradePrice(@Me JSONObject command, @Me IMessageIO channel, TradeManager manager) {
         Map<ResourceType, Double> low = manager.getLow().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));
         Map<ResourceType, Double> high = manager.getHigh().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));
@@ -717,7 +705,7 @@ public class TradeCommands {
         return null;
     }
 
-    @Command(desc = "View an accumulation of all the net trades a nation made, grouped by nation.", aliases = {"TradeRanking", "TradeProfitRanking"})
+    @Command(desc = "View an accumulation of all the net trades a nation made, grouped by nation.", aliases = {"TradeRanking", "TradeProfitRanking"}, viewable = true)
     public String tradeRanking(@Me IMessageIO channel, @Me JSONObject command, Set<DBNation> nations,
                                @Arg("Date to start from")
                                @Timestamp long time,
@@ -803,8 +791,9 @@ public class TradeCommands {
     }
 
     @Command(desc = "Generate a google sheet of the amount traded of each resource at each price point over a period of time\n" +
-            "Credits are grouped by 10,000, food by 10, everything else is actual price")
+            "Credits are grouped by 10,000, food by 10, everything else is actual price", viewable = true)
     @RolePermission(Roles.MEMBER)
+    @Similar(CM.register.class)
     public String trending(@Me IMessageIO channel, @Me GuildDB db,
                            @Arg("Date to start from")
                            @Timestamp long time) throws GeneralSecurityException, IOException {
@@ -898,7 +887,7 @@ public class TradeCommands {
         return null;
     }
 
-    @Command(desc = "View an accumulation of all the net trades nations have made over a time period")
+    @Command(desc = "View an accumulation of all the net trades nations have made over a time period", viewable = true)
     public String tradeProfit(Set<DBNation> nations,
                               @Arg("Date to start from")
                               @Timestamp long time) throws GeneralSecurityException, IOException {
@@ -1002,7 +991,7 @@ public class TradeCommands {
 
 
     @Command(desc = "View an accumulation of all the net money trades a nation made, grouped by nation\n" +
-            "Money trades are selling resources for close to $0 or buying for very large money amounts")
+            "Money trades are selling resources for close to $0 or buying for very large money amounts", viewable = true)
     public String moneyTrades(TradeManager manager, DBNation nation,
                               @Arg("Date to start from")
                               @Timestamp long time, @Switch("f") boolean forceUpdate,
@@ -1130,7 +1119,7 @@ public class TradeCommands {
         return coalitions;
     }
 
-    @Command(desc = "Compare the stockpile in the offshore alliance in-game bank to the total account balances of all offshoring alliances/guilds")
+    @Command(desc = "Compare the stockpile in the offshore alliance in-game bank to the total account balances of all offshoring alliances/guilds", viewable = true)
     @RolePermission(Roles.ECON)
     @IsAlliance
     public static String compareOffshoreStockpile(@Me IMessageIO channel, @Me GuildDB db, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
@@ -1190,7 +1179,7 @@ public class TradeCommands {
         return null;
     }
 
-    @Command(desc = "Generate a graph comparing market values of two resource amounts by day")
+    @Command(desc = "Generate a graph comparing market values of two resource amounts by day", viewable = true)
     public String compareStockpileValueByDay(@Me GuildDB db, @Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Me JSONObject command,
                                              Map<ResourceType, Double> stockpile1,
                                              Map<ResourceType, Double> stockpile2,
@@ -1220,7 +1209,7 @@ public class TradeCommands {
         return "Done!";
     }
 
-    @Command(desc = "Generate a graph of average trade buy and sell margin by day")
+    @Command(desc = "Generate a graph of average trade buy and sell margin by day", viewable = true)
     public String trademarginbyday(@Me GuildDB db, @Me IMessageIO channel, TradeManager manager,
                                    @Timestamp long start, @Default @Timestamp Long end, @Me JSONObject command,
                                    @Arg("Use the margin percent instead of absolute difference")
@@ -1269,7 +1258,7 @@ public class TradeCommands {
         return null;
     }
 
-    @Command(desc = "Generate a graph of average trade buy and sell volume by day")
+    @Command(desc = "Generate a graph of average trade buy and sell volume by day", viewable = true)
     public String tradevolumebyday(@Me GuildDB db, @Me IMessageIO channel, TradeManager manager, @Me JSONObject command,
                                    @Timestamp long start, @Default @Timestamp Long end,
                                    @Switch("j") boolean attachJson,
@@ -1281,7 +1270,7 @@ public class TradeCommands {
         return null;
     }
 
-    @Command(desc = "Generate a graph of average trade buy and sell total by day")
+    @Command(desc = "Generate a graph of average trade buy and sell total by day", viewable = true)
     public String tradetotalbyday(@Me GuildDB db, @Me IMessageIO channel, TradeManager manager, @Me JSONObject command,
                                   @Timestamp long start, @Default @Timestamp Long end,
                                   @Switch("j") boolean attachJson,
@@ -1317,7 +1306,7 @@ public class TradeCommands {
         }
     }
 
-    @Command(desc = "List nations who have bought and sold the most of a resource over a period")
+    @Command(desc = "List nations who have bought and sold the most of a resource over a period", viewable = true)
     public String findTrader(@Me IMessageIO channel, @Me JSONObject command, TradeManager manager, link.locutus.discord.db.TradeDB db,
                              ResourceType type,
                              @Arg("Date to start from")
@@ -1503,7 +1492,7 @@ public class TradeCommands {
         return "Unsubscribed from " + resource + " alerts";
     }
 
-    @Command(desc = "View your trade alert subscriptions")
+    @Command(desc = "View your trade alert subscriptions", viewable = true)
     public String tradeSubs(@Me User author, @Me IMessageIO io) {
         List<TradeSubscription> subscriptions = Locutus.imp().getTradeManager().getTradeDb().getSubscriptions(author.getIdLong());
         if (subscriptions.isEmpty()) {

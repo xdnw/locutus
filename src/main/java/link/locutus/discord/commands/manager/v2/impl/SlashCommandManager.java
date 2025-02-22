@@ -752,7 +752,7 @@ public class SlashCommandManager extends ListenerAdapter {
 
     @Override
     public void onCommandAutoCompleteInteraction(@Nonnull CommandAutoCompleteInteractionEvent event) {
-        CommandManager2 commands = getCommands();
+        CommandManager2 manager = getCommands();
         long startNanos = System.nanoTime();
         User user = event.getUser();
         userIdToAutoCompleteTimeNs.put(user.getIdLong(), startNanos);
@@ -762,7 +762,7 @@ public class SlashCommandManager extends ListenerAdapter {
         String optionName = option.getName();
 
         List<String> pathArgs = StringMan.split(path, ' ');
-        Map.Entry<CommandCallable, String> cmdAndPath = commands.getCallableAndPath(pathArgs);
+        Map.Entry<CommandCallable, String> cmdAndPath = manager.getCommands().getCallableAndPath(pathArgs);
         CommandCallable cmd = cmdAndPath.getKey();
 
         if (cmd == null) {
@@ -795,12 +795,12 @@ public class SlashCommandManager extends ListenerAdapter {
                     Parser binding = param.getBinding();
                     Key key = binding.getKey();
                     Key parserKey = key.append(Autoparse.class);
-                    Parser parser = commands.getStore().get(parserKey);
+                    Parser parser = manager.getStore().get(parserKey);
 
                     if (parser == null) {
                         autoParse = false;
                         Key completerKey = key.append(Autocomplete.class);
-                        parser = commands.getStore().get(completerKey);
+                        parser = manager.getStore().get(completerKey);
                     }
 
                     if (parser == null) {
@@ -808,7 +808,7 @@ public class SlashCommandManager extends ListenerAdapter {
                         return;
                     }
 
-                    LocalValueStore<Object> locals = new LocalValueStore<>(commands.getStore());
+                    LocalValueStore<Object> locals = new LocalValueStore<>(manager.getStore());
                     locals.addProvider(Key.of(User.class, Me.class), event.getUser());
                     if (event.isFromGuild()) {
                         locals.addProvider(Key.of(Guild.class, Me.class), event.getGuild());
@@ -819,7 +819,7 @@ public class SlashCommandManager extends ListenerAdapter {
 
                     // Option with current value
                     List<String> args = new ArrayList<>(List.of(option.getValue()));
-                    ArgumentStack stack = new ArgumentStack(args, locals, commands.getValidators(), commands.getPermisser());
+                    ArgumentStack stack = new ArgumentStack(args, locals, manager.getValidators(), manager.getPermisser());
                     locals.addProvider(stack);
 
                     List<Choice> choices = new ArrayList<>();
