@@ -2560,6 +2560,7 @@ public class UtilityCommands {
     public String allianceCost(@Me IMessageIO channel, @Me GuildDB db,
                                NationList nations, @Switch("u") boolean update,
                                @Switch("p") @Arg("Only include the cost of specific projects") Set<Project> includeProjects,
+                               @Switch("nc") @Arg("Use the new city cost formula") boolean new_city_formula,
                                @Switch("s") @Timestamp Long snapshotDate) {
         Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild());
         double infraCost = 0;
@@ -2573,6 +2574,11 @@ public class UtilityCommands {
             cityProjectRefund += PW.City.getCostReduction(nation::hasProject);
             Set<Project> projects = nation.getProjects();
             for (Project project : projects) {
+                if (new_city_formula) {
+                    if (project == Projects.URBAN_PLANNING) continue;
+                    if (project == Projects.ADVANCED_URBAN_PLANNING) continue;
+                    if (project == Projects.METROPOLITAN_PLANNING) continue;
+                }
                 if (includeProjects != null && !includeProjects.contains(project)) continue;
                 projectCost = ResourceType.addResourcesToA(projectCost, project.cost());
             }
@@ -2581,6 +2587,7 @@ public class UtilityCommands {
                 militaryCost = ResourceType.addResourcesToA(militaryCost, ResourceType.resourcesToMap(unit.getCost(units)));
             }
             int cities = nation.getCities();
+            double nationCityCost = 0;
             for (int i = 1; i <= cities; i++) {
                 boolean manifest = true;
                 boolean cp = i > Projects.URBAN_PLANNING.requiredCities() && projects.contains(Projects.URBAN_PLANNING);
@@ -2588,8 +2595,15 @@ public class UtilityCommands {
                 boolean mp = i > Projects.METROPOLITAN_PLANNING.requiredCities() && projects.contains(Projects.METROPOLITAN_PLANNING);
                 boolean gsa = projects.contains(Projects.GOVERNMENT_SUPPORT_AGENCY);
                 boolean bda = projects.contains(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
-                cityCost += PW.City.nextCityCost(i, manifest, cp, acp, mp, gsa, bda);
+                if (new_city_formula) {
+                    nationCityCost += PW.City.newNextCityCost(i, manifest, cp, acp, mp, gsa, bda);
+                } else {
+                    nationCityCost += PW.City.nextCityCost(i, manifest, cp, acp, mp, gsa, bda);
+                }
             }
+
+            cityCost += nationCityCost;
+
             Map<Integer, JavaCity> cityMap = nation.getCityMap(update, update,false);
             for (Map.Entry<Integer, JavaCity> cityEntry : cityMap.entrySet()) {
                 JavaCity city = cityEntry.getValue();
