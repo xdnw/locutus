@@ -15,7 +15,6 @@ import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.NoForm;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveValidators;
@@ -47,8 +46,7 @@ import link.locutus.discord.web.commands.binding.*;
 import link.locutus.discord.web.commands.options.WebOptionBindings;
 import link.locutus.discord.web.commands.page.*;
 import link.locutus.discord.web.jooby.adapter.TsEndpointGenerator;
-import link.locutus.discord.web.jooby.handler.SseClient2;
-import com.google.gson.JsonObject;
+import link.locutus.discord.web.jooby.handler.SseMessageOutput;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.jetbrains.annotations.NotNull;
@@ -57,7 +55,6 @@ import org.msgpack.jackson.dataformat.MessagePackFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.net.URLDecoder;
@@ -265,18 +262,13 @@ public class PageHandler implements Handler {
         return false;
     }
 
-    private void sseMessage(SseClient2 sse, String message, boolean success) {
-        Map<String, Object> data = Map.of("content", message, "success", success);
-        sse.sendEvent(data);
-    }
-
     /**
      * From argument list
      * @param sse
      * @throws InterruptedException
      * @throws IOException
      */
-    public void sse(SseClient2 sse) {
+    public void sse(SseMessageOutput sse) {
         try {
             Context ctx = sse.ctx;
             Map<String, List<String>> queryMap = new Object2ObjectOpenHashMap<>(sse.ctx.queryParamMap());
@@ -288,32 +280,33 @@ public class PageHandler implements Handler {
             WebIO io = new WebIO(sse, AuthBindings.guild(ctx, null, null, false));
 
             if (cmds.isEmpty()) {
-                ArgumentStack stack = createStack(ctx);
+                List<String> inputArgs = StringMan.split(URLDecoder.decode(ctx.path().substring(1).replace("/", " ")), " ");
+                ArgumentStack stack = createStack(ctx, inputArgs);
                 String path = stack.consumeNext();
                 if (!path.equalsIgnoreCase("sse")) {
-                    sseMessage(sse, "Invalid path (not command): " + path, false);
+                    sse.sseMessage("Invalid path (not command): " + path, false);
                     return;
                 }
 
                 List<String> args = stack.getRemainingArgs();
                 CommandManager2 manager = Locutus.imp().getCommandManager().getV2();
-                Map.Entry<CommandCallable, String> cmdAndPath = manager.getCallableAndPath(args);
+                Map.Entry<CommandCallable, String> cmdAndPath = manager.getCommands().getCallableAndPath(args);
                 CommandCallable cmd = cmdAndPath.getKey();
 
                 try {
                     cmd.validatePermissions(stack.getStore(), stack.getPermissionHandler());
                 } catch (Throwable e) {
                     e.printStackTrace();
-                    sseMessage(sse, "No permission: " + e.getMessage(), false);
+                    sse.sseMessage("No permission: " + e.getMessage(), false);
                     return;
                 }
 
                 if (cmd instanceof ParametricCallable) {
                     LocalValueStore locals = stack.getStore();
                     Map<String, Object> fullCmdStr = parseQueryMap(queryMap, null);
-                    locals.addProvider(Key.of(JSONObject.class, Me.class), new JSONObject(fullCmdStr));
+                    locals.addProvider(Key.of(JSONObject.class, Me.class), new JSONObject(fullCmdStr).put("", cmd.getFullPath()));
                     locals.addProvider(Key.of(IMessageIO.class, Me.class), io);
-                    setupLocals(locals, ctx, null);
+                    setupLocals(locals, ctx);
 
                     ParametricCallable parametric = (ParametricCallable) cmd;
 
@@ -322,23 +315,23 @@ public class PageHandler implements Handler {
                     if (result != null) {
                         String formatted = MarkupUtil.formatDiscordMarkdown((result + "").trim(), io.getGuildOrNull());
                         if (!formatted.isEmpty()) {
-                            sseMessage(sse, formatted, true);
+                            sse.sseMessage(formatted, true);
                         }
                     }
                 } else {
-                    sseMessage(sse, "Invalid command: " + StringMan.getString(args), true);
+                    sse.sseMessage("Invalid command: " + StringMan.getString(args), true);
                 }
 
             } else if (cmds.size() == 1){
                 CommandManager2 v2 = Locutus.imp().getCommandManager().getV2();
-                LocalValueStore locals = setupLocals(null, ctx, null);
+                LocalValueStore locals = setupLocals(null, ctx);
                 String cmdStr = cmds.get(0);
                 v2.run(locals, io, cmdStr, false, true);
             } else {
-                sseMessage(sse, "Too many commands: " + StringMan.getString(cmds), false);
+                sse.sseMessage( "Too many commands: " + StringMan.getString(cmds), false);
             }
         } catch (Throwable e) {
-            sseMessage(sse, "Error: " + e.getMessage(), false);
+            sse.sseMessage( "Error: " + e.getMessage(), false);
             logger.log(Level.SEVERE, e.getMessage(), e);
         } finally {
             try {
@@ -480,17 +473,21 @@ public class PageHandler implements Handler {
 
     private ArgumentStack createStack(Context ctx) {
         String content = ctx.path();
+        String separator = "/";
+        boolean decode = true;
+
         if (content.isEmpty() || content.equals("/")) content = "/page/index";
         content = content.substring(1);
-        List<String> args = new ArrayList<>(Arrays.asList(content.split("/")));
+        List<String> args = new ArrayList<>(Arrays.asList(content.split(separator)));
         for (int i = 0; i < args.size(); i++) {
-            args.set(i, URLDecoder.decode(args.get(i)));
+            String decoded = decode ? URLDecoder.decode(args.get(i)) : args.get(i);
+            args.set(i, decoded);
         }
         return createStack(ctx, args);
     }
 
     private ArgumentStack createStack(Context ctx, List<String> args) {
-        LocalValueStore locals = setupLocals(null, ctx, args);
+        LocalValueStore locals = setupLocals(null, ctx);
         ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
         locals.addProvider(stack);
         return stack;
@@ -506,13 +503,13 @@ public class PageHandler implements Handler {
             ctx.header("Content-Type", "text/html;charset=UTF-8");
             String path = stack.getCurrent();
             boolean isPost = ctx.method() == HandlerType.POST;
+            List<String> args = new ArrayList<>(stack.getRemainingArgs());
+            CommandManager2 manager = Locutus.cmd().getV2();
 
             switch (path.toLowerCase(Locale.ROOT)) {
+
                 case "command": {
                     stack.consumeNext();
-                    List<String> args = new ArrayList<>(stack.getRemainingArgs());
-                    CommandManager2 manager = Locutus.cmd().getV2();
-
                     CommandCallable cmd = manager.getCommands().getCallable(args);
                     if (cmd == null) {
                         throw new IllegalArgumentException("No command found for `/" + StringMan.join(args, " ") + "`");
@@ -524,19 +521,16 @@ public class PageHandler implements Handler {
                     ctx.result(WebUtil.minify(cmd.toHtml(ws, stack.getPermissionHandler(), endpoint, true)));
                     break;
                 }
-                // page
                 case "api":
                     isApi = true;
                 default: {
-                    List<String> args = new ArrayList<>(stack.getRemainingArgs());
                     CommandCallable cmd = commands.getCallable(args, true);
                     if (cmd == null) {
                         throw new IllegalArgumentException("No page found for `/" + StringMan.join(args, " ") + "`");
                     }
-                    boolean run = isPost || (cmd instanceof ParametricCallable param && (param.getAnnotation(NoForm.class) != null));//!ctx.queryParamMap().isEmpty() || !args.isEmpty() || (cmd instanceof ParametricCallable param && (param.getUserParameters().isEmpty() || param.getAnnotation(NoForm.class) != null));
+                    boolean run = isPost || (cmd instanceof ParametricCallable param && param.isViewable());
                     Object result;
                     if (cmd instanceof ParametricCallable parametric && run) {
-
                         Map<String, Object> queryMap;
                         // where type = List<String>
                         Set<String> allowList = parametric.getUserParameters().stream().filter(f -> {
@@ -578,8 +572,12 @@ public class PageHandler implements Handler {
                         System.out.println(":||remove Call time " + ( - start + (start = System.currentTimeMillis())));
                         result = wrap(ws, cmdResult, ctx, isApi);
                         System.out.println(":||remove Wrap time " + ( - start + (start = System.currentTimeMillis())));
-                    } else {
+                    } else if (!isApi) {
                         result = cmd.toHtml(ws, stack.getPermissionHandler(), false);
+                    } else if (cmd instanceof ParametricCallable parametric) {
+                        throw new IllegalArgumentException("API endpoint is not viewable: `" + path + "`. Only informational commands can be executed without user confirmation.");
+                    } else {
+                        throw new IllegalArgumentException("No subcommand specified for `" + path + "` | remaining: " + StringMan.join(args, " "));
                     }
                     if (result != null) {
                         if (result instanceof byte[] bytes) {
@@ -674,7 +672,7 @@ public class PageHandler implements Handler {
         return call;
     }
 
-    private LocalValueStore setupLocals(LocalValueStore<Object> locals, Context ctx, List<String> args) {
+    public LocalValueStore setupLocals(LocalValueStore<Object> locals, Context ctx) {
         WebStore ws;
         if (locals == null) {
             locals = new LocalValueStore<>(store);
@@ -721,7 +719,7 @@ public class PageHandler implements Handler {
         return locals;
     }
 
-    public void sseCmdPage(SseClient2 sse) throws IOException {
+    public void sseCmdPage(SseMessageOutput sse) throws IOException {
         WebStore ws = null;
         try {
             Context ctx = sse.ctx;
@@ -729,22 +727,22 @@ public class PageHandler implements Handler {
             if (pathStr.startsWith("/")) pathStr = pathStr.substring(1);
             List<String> path = new ArrayList<>(Arrays.asList(pathStr.split("/")));
             path.remove("command");
-            LocalValueStore locals = setupLocals(null, ctx, path);
+            LocalValueStore locals = setupLocals(null, ctx);
             ws = (WebStore) locals.getProvided(WebStore.class);
             CommandCallable cmd = commands.getCallable(path);
             if (cmd == null) {
-                sseMessage(sse, "Command not found: " + path, false);
+                sse.sseMessage("Command not found: " + path, false);
                 return;
             }
             if (!(cmd instanceof ParametricCallable)) {
-                sseMessage(sse, "Not a valid executable command", false);
+                sse.sseMessage("Not a valid executable command", false);
                 return;
             }
 
             try {
                 cmd.validatePermissions(locals, permisser);
             } catch (Throwable e) {
-                sseMessage(sse, "No permission (2): " + e.getMessage(), false);
+                sse.sseMessage("No permission (2): " + e.getMessage(), false);
                 return;
             }
 

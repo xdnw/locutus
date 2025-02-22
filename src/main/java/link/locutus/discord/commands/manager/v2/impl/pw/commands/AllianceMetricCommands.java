@@ -369,7 +369,7 @@ public class AllianceMetricCommands {
     }
 
     @Command(desc = "Get alliance attributes by day\n" +
-            "If your metric does not relate to cities, set `skipCityData` to true to speed up the process.")
+            "If your metric does not relate to cities, set `skipCityData` to true to speed up the process.", viewable = true)
     @RolePermission(value = Roles.ADMIN, root = true)
     @NoFormat
     public String AlliancesDataByDay(@Me GuildDB db, @Me IMessageIO io, @Me JSONObject command,

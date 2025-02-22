@@ -554,7 +554,7 @@ public class IACommands {
         return msg;
     }
 
-    @Command(desc = "View the list of bans for a nation id")
+    @Command(desc = "View the list of bans for a nation id", viewable = true)
     public String viewBans(int nationId) {
         PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(nationId);
         Long userId = user == null ? null : user.getDiscordId();
@@ -592,7 +592,7 @@ public class IACommands {
     }
 
     @Command(desc = "Generate a sheet of nations and their day change\n" +
-            "Nations not in an alliance registered to this guild can only show the public day change estimate based on unit purchases")
+            "Nations not in an alliance registered to this guild can only show the public day change estimate based on unit purchases", viewable = true)
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
     @IsAlliance
     public void dayChangeSheet(@Me IMessageIO io, @Me GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
@@ -666,7 +666,7 @@ public class IACommands {
         }
         return "Added " + amt + " roles to members (note: it may take a few minutes to update)";
     }
-    @Command(desc = "View a list of reactions on a message sent by or mentioning the bot")
+    @Command(desc = "View a list of reactions on a message sent by or mentioning the bot", viewable = true)
     @RolePermission(Roles.ADMIN)
     @MessageCommand
     public String msgInfo(@Me IMessageIO channel, Message message, @Arg("List the ids of users who reacted")@Switch("i") boolean useIds) {
@@ -739,7 +739,7 @@ public class IACommands {
         return null;
     }
 
-    @Command(desc = "List the self roles that you can assign yourself via the bot")
+    @Command(desc = "List the self roles that you can assign yourself via the bot", viewable = true)
     public String listAssignableRoles(@Me GuildDB db, @Me Member member) {
         Map<Role, Set<Role>> assignable = db.getOrNull(GuildKey.ASSIGNABLE_ROLES);
         if (assignable == null || assignable.isEmpty()) {
@@ -1012,13 +1012,13 @@ public class IACommands {
         return mentor(command, io, db, me, mentee, force);
     }
 
-    @Command(desc = "List mentees, grouped by their respective mentors", aliases = {"mymentees"})
+    @Command(desc = "List mentees, grouped by their respective mentors", aliases = {"mymentees"}, viewable = true)
     @RolePermission(value=Roles.INTERNAL_AFFAIRS)
     public String myMentees(@Me Guild guild, @Me GuildDB db, @Me DBNation me, @Default("*") Set<DBNation> mentees, @Arg("Activity requirements for mentors") @Default("2w") @Timediff long timediff) throws InterruptedException, ExecutionException, IOException {
         return listMentors(guild, db, Collections.singleton(me), mentees, timediff, db.isWhitelisted(), true, false);
     }
 
-    @Command(desc = "List mentors, grouped by their respective mentees", aliases = {"listMentors", "mentors", "mentees"})
+    @Command(desc = "List mentors, grouped by their respective mentees", aliases = {"listMentors", "mentors", "mentees"}, viewable = true)
     @RolePermission(value=Roles.INTERNAL_AFFAIRS)
     public String listMentors(@Me Guild guild, @Me GuildDB db, @Default("*") Set<DBNation> mentors, @Default("*") Set<DBNation> mentees,
                               @Arg("Activity requirements for mentors") @Default("2w") @Timediff long timediff,
@@ -1248,7 +1248,7 @@ public class IACommands {
     }
 
     @Command(desc = "Ranking of nations by how many incentives they have received\n" +
-            "Settings: `REWARD_MENTOR` and `REWARD_REFERRAL`")
+            "Settings: `REWARD_MENTOR` and `REWARD_REFERRAL`", viewable = true)
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
     public String incentiveRanking(@Me GuildDB db, @Me IMessageIO io, @Me JSONObject command, @Timestamp long timestamp) {
         List<Transaction2> transactions = db.getTransactions(timestamp, false);
@@ -1310,7 +1310,7 @@ public class IACommands {
 
     @Command(desc = "Read and display an in-game message for an id from a nation's account\n" +
             "The nation must be your own or in the same alliance\n" +
-            "Login details via `{prefix}credentials login`")
+            "Login details via `{prefix}credentials login`", viewable = true)
     @RolePermission(Roles.MAIL)
     @IsAlliance
     public String readMail(@Me DBNation me, @Me GuildDB db, int message_id, @Default DBNation account) throws Exception {
@@ -1335,7 +1335,7 @@ public class IACommands {
     @Command(desc = "Show ingame mail and optionally the responses\n" +
             "Results are in a spreadsheet\n" +
             "A search term can be specified to only show messages containing that in the subject line\n" +
-            "By default only unread messages are checked")
+            "By default only unread messages are checked", viewable = true)
     @IsAlliance
     public String searchMail(@Me GuildDB db, @Me IMessageIO io,
                              @Me DBNation me,
@@ -1434,7 +1434,7 @@ public class IACommands {
     }
 
     @Command(desc = "Generate a list of nations and their expected raid loot\n" +
-            "e.g. `{prefix}sheets_milcom lootvaluesheet #cities<10,#position>1,#active_m<2880,someAlliance`")
+            "e.g. `{prefix}sheets_milcom lootvaluesheet #cities<10,#position>1,#active_m<2880,someAlliance`", viewable = true)
     @RolePermission(Roles.MILCOM)
     public String lootValueSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> attackers, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         attackers.removeIf(f -> f.active_m() > 10000);
@@ -1882,7 +1882,7 @@ public class IACommands {
     }
 
 
-    @Command(desc = "Get the top inactive players")
+    @Command(desc = "Get the top inactive players", viewable = true)
     public void inactive(@Me IMessageIO channel, @Me JSONObject command, Set<DBNation> nations, @Arg("Required days inactive") @Default("7") int days, @Switch("a") boolean includeApplicants, @Switch("v") boolean includeVacationMode, @Switch("p") int page) {
         if (!includeApplicants) nations.removeIf(f -> f.getPosition() <= 1);
         if (!includeVacationMode) nations.removeIf(f -> f.getVm_turns() > 0);
@@ -2205,7 +2205,7 @@ public class IACommands {
         return response.toString();
     }
 
-    @Command(desc = "List members who can see a discord channel")
+    @Command(desc = "List members who can see a discord channel", viewable = true)
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.ADMIN}, any = true)
     public String channelMembers(@Me GuildDB db, MessageChannel channel) {
         Set<Integer> aaIds = db.getAllianceIds();
@@ -2222,7 +2222,7 @@ public class IACommands {
         return StringMan.join(results, "\n");
     }
 
-    @Command(desc = "List all guild channels and what members have access to each")
+    @Command(desc = "List all guild channels and what members have access to each", viewable = true)
     @RolePermission(value = {Roles.ADMIN}, any = true)
     public String allChannelMembers(@Me GuildDB db) {
         Set<Integer> aaIds = db.getAllianceIds();
@@ -2243,7 +2243,7 @@ public class IACommands {
         return result.toString();
     }
 
-    @Command(desc = "List discord channels a member has access to")
+    @Command(desc = "List discord channels a member has access to", viewable = true)
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.ADMIN}, any = true)
     public String memberChannels(@Me Guild guild, Member member) {
         List<String> channels = guild.getTextChannels().stream().filter(f -> f.getMembers().contains(member)).map(f -> f.getAsMention()).collect(Collectors.toList());
@@ -2438,7 +2438,7 @@ public class IACommands {
         return "Done!";
     }
 
-    @Command(desc = "List the interview channels, by category + activity")
+    @Command(desc = "List the interview channels, by category + activity", viewable = true)
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, any=true)
     public String iachannels(@Me User author, @Me DBNation me, @Me Guild guild, @Me GuildDB db, String filter, @Arg("Highlight channels inactive for longer than the time specified") @Default("1d") @Timediff long time) throws IOException, GeneralSecurityException {
         try {
@@ -2587,7 +2587,7 @@ public class IACommands {
         return "Set `interview` to:\n```md\n" + message + "```\n\nUse " + CM.interview.questions.view.cmd.toSlashMention() + " to view";
     }
 
-    @Command(desc = "View the interview message")
+    @Command(desc = "View the interview message", viewable = true)
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, any = true)
     public String viewInterview(@Me GuildDB db, IACategory category) {
         String message = db.getCopyPasta("interview", true);
@@ -2597,7 +2597,7 @@ public class IACommands {
         return "Interview questions:\n" + message + "";
     }
 
-    @Command(desc = "List nations and their interview progress")
+    @Command(desc = "List nations and their interview progress", viewable = true)
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, any = true)
     @IsAlliance
     public String interviewSheet(@Me GuildDB db, @Me Guild guild, @Me IMessageIO io,

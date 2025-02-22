@@ -19,7 +19,7 @@ import java.util.function.Function;
 public class AttackCommands {
     @Command(aliases = "groundsim", desc = "Simulate a ground attack with the given attacker and defender troops\n" +
             "Halve the tank number if the opponent has air control\n" +
-            "Note: Use math via: `50/2`")
+            "Note: Use math via: `50/2`", viewable = true)
     public String groundSim(@Range(min = 0) int attSoldiersUnarmed, @Range(min = 0) int attSoldiers, @Range(min = 0) int attTanks, @Range(min = 0) int defSoldiersUnarmed, @Range(min = 0) int defSoldiers, @Range(min = 0) int defTanks) {
         if (attSoldiers != 0 && attSoldiersUnarmed != 0)
             return "You cannot attack with both armed and unarmed soldiers.";
@@ -53,7 +53,7 @@ public class AttackCommands {
         return response.toString();
     }
 
-    @Command(aliases = {"airsim", "airstrikesim", "planesim"}, desc = "Simulate an airstrike with the given attacker and defender aircraft")
+    @Command(aliases = {"airsim", "airstrikesim", "planesim"}, desc = "Simulate an airstrike with the given attacker and defender aircraft", viewable = true)
     public String airSim(int attAircraft, int defAircraft) {
         double attStr = attAircraft;
         double defStr = defAircraft;
@@ -73,7 +73,7 @@ public class AttackCommands {
     }
 
     // TODO muni/gas usage
-    @Command(desc = "Simulate an attack between two nations and return the odds and casualties")
+    @Command(desc = "Simulate an attack between two nations and return the odds and casualties", viewable = true)
     public String casualties(
                             AttackType attack,
                             WarType warType,
@@ -228,7 +228,7 @@ public class AttackCommands {
         return response.toString();
     }
 
-    @Command(aliases = {"shipSim", "navalSim"}, desc = "Simulate a naval battle with the given attacker and defender ships")
+    @Command(aliases = {"shipSim", "navalSim"}, desc = "Simulate a naval battle with the given attacker and defender ships", viewable = true)
     public String navalSim(int attShips, int defShips) {
         double attStr = attShips;
         double defStr = defShips;

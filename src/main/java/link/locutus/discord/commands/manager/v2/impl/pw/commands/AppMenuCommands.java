@@ -96,7 +96,7 @@ public class AppMenuCommands {
         return false;
     }
 
-    @Command(desc = "Open a custom saved menu for the discord guild")
+    @Command(desc = "Open a custom saved menu for the discord guild", viewable = true)
     @NoFormat
     @Ephemeral
     public void openMenu(@Me IMessageIO io, @Me GuildDB db, @Me User user, AppMenu menu) {
@@ -149,7 +149,7 @@ public class AppMenuCommands {
     }
 
     @Command(desc = "Set and display the temporary menu context for yourself\n" +
-            "This determines the buttons and their actions, for editing the menu, such as removing, renaming or swapping buttons")
+            "This determines the buttons and their actions, for editing the menu, such as removing, renaming or swapping buttons", viewable = true)
     @NoFormat
     @Ephemeral
     public void setMenuState(@Me IMessageIO io, @Me GuildDB db, @Me User user, AppMenu menu, MenuState state) {
@@ -372,7 +372,7 @@ public class AppMenuCommands {
         }
     }
 
-    @Command(desc = "List all custom discord menus set in the guild")
+    @Command(desc = "List all custom discord menus set in the guild", viewable = true)
     @NoFormat
     @Ephemeral
     public String list(@Me GuildDB db) {
@@ -388,7 +388,7 @@ public class AppMenuCommands {
         return sb.toString();
     }
 
-    @Command(desc = "Display the information for a custom discord menu set in the guild")
+    @Command(desc = "Display the information for a custom discord menu set in the guild", viewable = true)
     @NoFormat
     @Ephemeral
     public void info(@Me IMessageIO io, AppMenu menu) {

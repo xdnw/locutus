@@ -3,17 +3,10 @@ package link.locutus.discord.web.jooby;
 
 import com.aayushatharva.brotli4j.Brotli4jLoader;
 import io.javalin.community.ssl.SslPlugin;
-import io.javalin.compression.CompressionStrategy;
 import io.javalin.config.SizeUnit;
-import io.javalin.http.Header;
-import io.javalin.http.HttpStatus;
-import io.javalin.http.servlet.JavalinServletContext;
 import link.locutus.discord.Logg;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.web.WebUtil;
-import link.locutus.discord.web.commands.binding.AuthBindings;
-import link.locutus.discord.web.commands.binding.value_types.*;
 import link.locutus.discord.web.test.WebDB;
 import gg.jte.ContentType;
 import gg.jte.TemplateEngine;
@@ -28,21 +21,16 @@ import io.javalin.rendering.template.JavalinJte;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.pnw.PNWUser;
-import link.locutus.discord.web.jooby.handler.SseClient2;
+import link.locutus.discord.web.jooby.handler.SseMessageOutput;
 import link.locutus.discord.web.jooby.handler.SseHandler2;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 
 import java.io.File;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 import static link.locutus.discord.web.WebUtil.getPortOrSchemeDefault;
 
@@ -216,9 +204,9 @@ public class WebRoot {
 
         this.app.get("/robots.txt", ctx -> ctx.result("User-agent: *\nDisallow: /"));
 
-        this.app.get("/sse/**", new SseHandler2(new Consumer<SseClient2>() {
+        this.app.get("/sse/**", new SseHandler2(new Consumer<SseMessageOutput>() {
             @Override
-            public void accept(SseClient2 sse) {
+            public void accept(SseMessageOutput sse) {
                 pageHandler.sse(sse);
             }
         }));

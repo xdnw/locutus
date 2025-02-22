@@ -96,7 +96,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class StatCommands {
-    @Command(desc = "Display a graph of the number of attacks by the specified nations per day over a time period")
+    @Command(desc = "Display a graph of the number of attacks by the specified nations per day over a time period", viewable = true)
     public String warAttacksByDay(@Me IMessageIO io, @Me JSONObject command,
                                   @Default Set<DBNation> nations,
                                   @Arg("Period of time to graph") @Default @Timestamp Long cutoff,
@@ -127,7 +127,7 @@ public class StatCommands {
             "Exclude certain kinds of costs from the ranking",
             "City, war scaling, and enable ranking by alliance (instead of nation)",
             "Specify the kind of wars to include"
-    })
+    }, viewable = true)
     public String warCostRanking(@Me IMessageIO io, @Me JSONObject command,
                                  @Arg(value = "Start time of the period to rank\n" +
                                  "Defaults to 7d", group = 0)
@@ -278,7 +278,7 @@ public class StatCommands {
         return null;
     }
 
-    @Command(desc = "War costs stats between two coalitions")
+    @Command(desc = "War costs stats between two coalitions", viewable = true)
     public String myloot(@Me IMessageIO channel, @Me DBNation nation, @Me JSONObject command,
                          Set<NationOrAlliance> coalition2, @Timestamp long timeStart,
                          @Default @Timestamp Long timeEnd,
@@ -303,7 +303,7 @@ public class StatCommands {
                 allowedWarTypes, allowedWarStatus, allowedAttackTypes, allowedVictoryTypes, false, false, false, false);
     }
 
-    @Command(desc = "War costs of a single war\n(use warsCost for multiple wars)")
+    @Command(desc = "War costs of a single war\n(use warsCost for multiple wars)", viewable = true)
     public static String warCost(@Me User author, @Me Guild guild, @Me IMessageIO channel, DBWar war,
                           @Switch("u") boolean ignoreUnits,
                           @Switch("i") boolean ignoreInfra,
@@ -323,7 +323,7 @@ public class StatCommands {
         "Cost Exclusions",
         "Display Options",
         "War and attack type filters"
-    })
+    }, viewable = true)
     public static String warsCost(@Me IMessageIO channel,
                            @Me JSONObject command,
                           @Arg(value = "Nations required to be in the conflict against `coalition2`", group = 0)
@@ -455,7 +455,7 @@ public class StatCommands {
         return null;
     }
 
-    @Command(desc = "List resources available and radiation level in each continent")
+    @Command(desc = "List resources available and radiation level in each continent", viewable = true)
     public String continent(@Me IMessageIO io) {
         List<List<String>> table = new ArrayList<>();
         List<String> header = new ArrayList<>(Arrays.asList(""));
@@ -486,7 +486,7 @@ public class StatCommands {
         return null;
     }
 
-    @Command(desc = "Rank alliances by a metric")
+    @Command(desc = "Rank alliances by a metric", viewable = true)
     public void allianceRanking(@Me IMessageIO channel, @Me JSONObject command, AllianceMetric metric, @Default Set<DBAlliance> alliances, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile) {
         if (alliances == null) alliances = Locutus.imp().getNationDB().getAlliances();
         long turn = TimeUtil.getTurn();
@@ -504,7 +504,7 @@ public class StatCommands {
     }
 
     @NoFormat
-    @Command(desc = "Rank alliances by an alliance attribute")
+    @Command(desc = "Rank alliances by an alliance attribute", viewable = true)
     public void allianceAttributeRanking(@Me IMessageIO channel, @Me JSONObject command, TypedFunction<DBAlliance, Double> attribute, @Default Set<DBAlliance> alliances, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile) {
         if (alliances == null) alliances = Locutus.imp().getNationDB().getAlliances();
         long turn = TimeUtil.getTurn();
@@ -535,7 +535,7 @@ public class StatCommands {
         named.build(channel, command, title, uploadFile);
     }
 
-    @Command(desc = "Rank alliances by a metric over a specified time period")
+    @Command(desc = "Rank alliances by a metric over a specified time period", viewable = true)
     public void allianceRankingTime(@Me IMessageIO channel, @Me JSONObject command, Set<DBAlliance> alliances, AllianceMetric metric, @Timestamp long timeStart, @Timestamp long timeEnd, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile) {
         if (alliances == null) alliances = Locutus.imp().getNationDB().getAlliances();
         long turnStart = TimeUtil.getTurn(timeStart);
@@ -556,7 +556,7 @@ public class StatCommands {
         displayAllianceRanking(channel, command, metric.name(), metricsDiff, reverseOrder, uploadFile);
     }
 
-    @Command(desc = "Rank nations by an attribute")
+    @Command(desc = "Rank nations by an attribute", viewable = true)
     public void nationRanking(@Me IMessageIO channel, @Me GuildDB db,
                               @Me JSONObject command,
                               NationList nations,
@@ -595,7 +595,7 @@ public class StatCommands {
         named.build(channel, command, title, true);
     }
 
-    @Command(desc = "List the radiation in each continent")
+    @Command(desc = "List the radiation in each continent", viewable = true)
     public String radiation(TradeManager manager) {
         double global = 0;
         Map<Continent, Double> radsByCont = new LinkedHashMap<>();
@@ -621,7 +621,7 @@ public class StatCommands {
         return result.toString();
     }
 
-    @Command(desc = "View the percent times an alliance counters in-game wars")
+    @Command(desc = "View the percent times an alliance counters in-game wars", viewable = true)
     public String counterStats(@Me IMessageIO channel, DBAlliance alliance) {
         List<Map.Entry<DBWar, CounterStat>> counters = Locutus.imp().getWarDb().getCounters(Collections.singleton(alliance.getAlliance_id()));
 
@@ -664,7 +664,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Graph the attributes of the nations of two coalitions by city count\n" +
-            "e.g. How many nations, soldiers etc. are at each city")
+            "e.g. How many nations, soldiers etc. are at each city", viewable = true)
     public String attributeTierGraph(@Me IMessageIO channel, @Me GuildDB db,
                                      NationAttributeDouble metric,
                                      NationList coalition1,
@@ -887,7 +887,7 @@ public class StatCommands {
 
     @Command(desc = "Generate a graph of nation military strength by score between two coalitions\n" +
             "1 tank = 1/32 aircraft for strength calculations\n" +
-            "Effective score range is limited to 1.75x with a linear reduction of strength up to 40% to account for up-declares", aliases = {"strengthTierGraph"})
+            "Effective score range is limited to 1.75x with a linear reduction of strength up to 40% to account for up-declares", aliases = {"strengthTierGraph"}, viewable = true)
     public String strengthTierGraph(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
                                     NationList coalition1,
                                     NationList coalition2,
@@ -922,7 +922,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Generate a graph of spy counts by city count between two coalitions\n" +
-            "Nations which are applicants, in vacation mode or inactive (2 days) are excluded")
+            "Nations which are applicants, in vacation mode or inactive (2 days) are excluded", viewable = true)
     public String spyTierGraph(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
                                NationList coalition1,
                                NationList coalition2,
@@ -953,7 +953,7 @@ public class StatCommands {
         return null;
     }
 
-    @Command(desc = "Generate a graph of nation counts by score between two coalitions", aliases = {"scoreTierGraph", "scoreTierSheet"})
+    @Command(desc = "Generate a graph of nation counts by score between two coalitions", aliases = {"scoreTierGraph", "scoreTierSheet"}, viewable = true)
     public String scoreTierGraph(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
                                  NationList coalition1,
                                  NationList coalition2,
@@ -980,7 +980,7 @@ public class StatCommands {
         return null;
     }
 
-    @Command(desc = "Rank of nations by number of challenge baseball games from a specified date")
+    @Command(desc = "Rank of nations by number of challenge baseball games from a specified date", viewable = true)
     public void baseballRanking(BaseballDB db, @Me JSONObject command, @Me IMessageIO channel,
                                 @Arg("Date to start from")
                                 @Timestamp long date, @Switch("f") boolean uploadFile, @Switch("a") boolean byAlliance) {
@@ -1004,7 +1004,7 @@ public class StatCommands {
         ranks.build(channel, command, title, uploadFile);
     }
 
-    @Command(desc = "Rank of nations by number of challenge baseball games")
+    @Command(desc = "Rank of nations by number of challenge baseball games", viewable = true)
     public void baseballChallengeRanking(BaseballDB db, @Me IMessageIO channel, @Me JSONObject command, @Switch("f") boolean uploadFile,
                                          @Arg("Group the rankings by alliance instead of nations") @Switch("a") boolean byAlliance) {
         List<BBGame> games = db.getBaseballGames(f -> f.where(QueryCondition.greater("wager", 0)));
@@ -1028,7 +1028,7 @@ public class StatCommands {
         ranks.build(channel, command, title, uploadFile);
     }
 
-    @Command(desc = "List the baseball wager inflows for a nation id")
+    @Command(desc = "List the baseball wager inflows for a nation id", viewable = true)
     public String baseBallChallengeInflow(BaseballDB db, @Me IMessageIO channel, @Me JSONObject command, int nationId, @Default("timestamp:0") @Timestamp long dateSince, @Switch("u") boolean uploadFile) {
         List<BBGame> games = db.getBaseballGames(f -> f.where(QueryCondition.greater("wager", 0)
                 .and(QueryCondition.equals("home_nation_id", nationId).or(QueryCondition.equals("away_nation_id", nationId)))
@@ -1060,7 +1060,7 @@ public class StatCommands {
         return null;
     }
 
-    @Command(desc = "Rank of nations by challenge baseball game earnings")
+    @Command(desc = "Rank of nations by challenge baseball game earnings", viewable = true)
     public void baseballEarningsRanking(BaseballDB db, @Me IMessageIO channel, @Me JSONObject command,
                                         @Arg("Date to start from")
                                         @Timestamp long date, @Switch("f") boolean uploadFile,
@@ -1090,7 +1090,7 @@ public class StatCommands {
         ranks.build(channel, command, title, uploadFile);
     }
 
-    @Command(desc = "Rank of nations by challenge baseball challenge earnings")
+    @Command(desc = "Rank of nations by challenge baseball challenge earnings", viewable = true)
     public void baseballChallengeEarningsRanking(BaseballDB db, @Me IMessageIO channel, @Me JSONObject command, @Switch("f") boolean uploadFile,
                                                  @Arg("Group the rankings by alliance instead of nations")
                                                  @Switch("a") boolean byAlliance) {
@@ -1118,14 +1118,14 @@ public class StatCommands {
         ranks.build(channel, command, title, uploadFile);
     }
 
-    @Command(desc = "Generate ranking of war status by Alliance")
+    @Command(desc = "Generate ranking of war status by Alliance", viewable = true)
     public void warStatusRankingByAA(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command, Set<DBNation> attackers, Set<DBNation> defenders,
                                       @Arg("Date to start from")
                                      @Timestamp long time) {
         warStatusRankingBy(true, channel, command, attackers, defenders, time);
     }
 
-    @Command(desc = "Generate ranking of war status by Nation")
+    @Command(desc = "Generate ranking of war status by Nation", viewable = true)
     public void warStatusRankingByNation(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command, Set<DBNation> attackers, Set<DBNation> defenders,
                                          @Arg("Date to start from")
                                          @Timestamp long time) {
@@ -1162,7 +1162,7 @@ public class StatCommands {
             new SummedMapRankBuilder<>(expireByEntity).sort().nameKeys(f -> PW.getName(f, isAA)).build(channel, command, "Expiries");
     }
 
-    @Command(desc = "Generate a graph of nation military levels by city count between two coalitions")
+    @Command(desc = "Generate a graph of nation military levels by city count between two coalitions", viewable = true)
     public String mmrTierGraph(@Me GuildDB db, @Me IMessageIO channel,
                                NationList coalition1,
                                NationList coalition2, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants, @Switch("s") SpreadSheet sheet,
@@ -1321,7 +1321,7 @@ public class StatCommands {
         }
     }
 
-    @Command(desc = "Generate a bar char comparing the nation at each city count (tiering) between two coalitions")
+    @Command(desc = "Generate a bar char comparing the nation at each city count (tiering) between two coalitions", viewable = true)
     public String cityTierGraph(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
                                 NationList coalition1, NationList coalition2,
                                 @Switch("i") boolean includeInactives,
@@ -1350,7 +1350,7 @@ public class StatCommands {
         return null;
     }
 
-    @Command(desc = "Compare the metric over time between multiple alliances")
+    @Command(desc = "Compare the metric over time between multiple alliances", viewable = true)
     public void allianceMetricsCompareByTurn(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
                                                AllianceMetric metric, Set<DBAlliance> alliances,
                                                @Arg("Date to start from")
@@ -1371,7 +1371,7 @@ public class StatCommands {
         msg.send();
     }
 
-    @Command(desc = "Graph militarization (soldier, tank, aircraft, ship) over time of an alliance")
+    @Command(desc = "Graph militarization (soldier, tank, aircraft, ship) over time of an alliance", viewable = true)
     public String militarizationTime(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
                                      DBAlliance alliance, @Default("7d") @Timestamp long start_time,
                                      @Switch("e") @Timestamp Long end_time,
@@ -1392,7 +1392,7 @@ public class StatCommands {
         return null;
     }
 
-    @Command(desc = "Graph an alliance metric over time for two coalitions")
+    @Command(desc = "Graph an alliance metric over time for two coalitions", viewable = true)
     public void allianceMetricsAB(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
                                     AllianceMetric metric, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2,
                                     @Arg("Date to start from")
@@ -1413,7 +1413,7 @@ public class StatCommands {
     @RolePermission(value = {Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS, Roles.INTERNAL_AFFAIRS}, any = true)
     @Command(desc = "Create a google sheet of nations, grouped by alliance, with the specified columns\n" +
             "Prefix a column with `avg:` to force an average\n" +
-            "Prefix a column with `total:` to force a total")
+            "Prefix a column with `total:` to force a total", viewable = true)
     @NoFormat
     public String allianceNationsSheet(NationPlaceholders placeholders, AlliancePlaceholders aaPlaceholders, ValueStore store, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me Guild guild, @Me GuildDB db,
                                        Set<DBNation> nations,
@@ -1488,7 +1488,7 @@ public class StatCommands {
         return null;
     }
 
-    @Command(desc = "Graph global and per continent radiation by turn over a specified time period")
+    @Command(desc = "Graph global and per continent radiation by turn over a specified time period", viewable = true)
     public String radiationByTurn(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
                                   Set<Continent> continents,
                                   @Arg("Date to start from")
@@ -1503,7 +1503,7 @@ public class StatCommands {
         return "Done!";
     }
 
-    @Command(desc = "Graph the metric over time for a coalition")
+    @Command(desc = "Graph the metric over time for a coalition", viewable = true)
     public void allianceMetricsByTurn(@Me GuildDB db, @Me IMessageIO channel, @Me User user, @Me JSONObject command,
                                       AllianceMetric metric, Set<DBAlliance> coalition,
                                         @Arg("Date to start from")
@@ -1524,8 +1524,8 @@ public class StatCommands {
 
     @Command(
             desc = "Transfer sheet of war cost (for each nation) broken down by resource type\n" +
-                    "Useful to see costs incurred by fighting for each nation, to plan for future wars, or to help with reimbursement"
-    )
+                    "Useful to see costs incurred by fighting for each nation, to plan for future wars, or to help with reimbursement",
+            viewable = true)
     @RolePermission(Roles.MILCOM)
     public static String WarCostByResourceSheet(@Me IMessageIO channel, @Me JSONObject command, @Me GuildDB db,
                                                 Set<NationOrAlliance> attackers,
@@ -1684,7 +1684,7 @@ public class StatCommands {
                     "- net damage (unit, infrastructure, loot, consumption, total)\n" +
                     "- losses (unit, infrastructure, consumption, total)\n" +
                     "- damage inflicted (unit, infrastructure, consumption, total)\n" +
-                    "- net resources (money, gasoline, munitions, aluminum, steel)")
+                    "- net resources (money, gasoline, munitions, aluminum, steel)", viewable = true)
     @RolePermission(Roles.MILCOM)
     public static String WarCostByAllianceSheet(@Me IMessageIO channel, @Me Guild guild,
                                          Set<DBNation> nations,
@@ -1815,7 +1815,7 @@ public class StatCommands {
             "- Raids: Attacking nations which do not fight back\n" +
             "- Defenses: Attacked by a nation and fighting back\n" +
             "- Offenses: Attacking a nation which fights back\n" +
-            "- Wars: Combination of defensive and offensive wars (not raids)")
+            "- Wars: Combination of defensive and offensive wars (not raids)", viewable = true)
     @RolePermission(Roles.MILCOM)
     public String WarCostSheet(@Me IMessageIO channel, @Me GuildDB db, Set<NationOrAlliance> attackers, Set<NationOrAlliance> defenders, @Timestamp long time, @Default @Timestamp Long endTime,
                                @Switch("c") boolean excludeConsumption,
@@ -2024,7 +2024,7 @@ public class StatCommands {
     @Command(desc = """
                 Get the militirization levels of top 80 alliances.
                 Each bar is segmented into four sections, from bottom to top: (soldiers, tanks, planes, ships)
-                Each alliance is grouped by sphere and color coded.""")
+                Each alliance is grouped by sphere and color coded.""", viewable = true)
     public static String militaryRanking(@Me GuildDB db, @Me IMessageIO channel,
                                          @Default NationList nations,
                                          @Switch("n") Integer top_n_alliances,
@@ -2257,7 +2257,7 @@ public class StatCommands {
         return null;
     }
 
-    @Command(desc = "Create a google sheet of nations and the number of bad attacks they did over a timeframe")
+    @Command(desc = "Create a google sheet of nations and the number of bad attacks they did over a timeframe", viewable = true)
     public void attackBreakdownSheet(@Me IMessageIO io, @Me GuildDB db,
                                      Set<NationOrAlliance> attackers,
                                      Set<NationOrAlliance> defenders,
@@ -2395,7 +2395,7 @@ public class StatCommands {
         msg.send();
     }
 
-    @Command(desc = "Get a game graph by day")
+    @Command(desc = "Generate a graph for a global game statistic by day", viewable = true)
     public void orbisStatByDay(@Me IMessageIO channel, @Me GuildDB db, @Me JSONObject command,
                                  Set<OrbisMetric> metrics,
                                  @Default @Timestamp Long start,
@@ -2408,7 +2408,7 @@ public class StatCommands {
         msg.send();
     }
 
-    @Command(desc = "Get nth loot beige graph by score range")
+    @Command(desc = "Get nth loot beige graph by score range", viewable = true)
     public String NthBeigeLootByScoreRange(@Me IMessageIO io, @Me GuildDB db, @Me JSONObject command,
                                            @Default NationList nations, @Default("5") int n, @Default @Timestamp Long snapshotDate,
                                            @Switch("c") boolean attachCsv, @Switch("j") boolean attachJson, @Switch("ss") boolean attach_sheet) throws IOException {
@@ -2474,7 +2474,7 @@ public class StatCommands {
     }
 
     @Command(desc = "List the potential alliance merges over a period of time\n" +
-            "Determined by finding alliances where a large percent of members leave to join another alliance")
+            "Determined by finding alliances where a large percent of members leave to join another alliance", viewable = true)
     @RolePermission(Roles.ADMIN)
     public void listMerges(
             @Me GuildDB db,
@@ -2604,7 +2604,7 @@ public class StatCommands {
         sheet.attach(io.create(), "merges").send();
     }
 
-    @Command(desc = "Get the largest alliance bank loot per score")
+    @Command(desc = "Get the largest alliance bank loot per score", viewable = true)
     public String allianceByLoot(@Me User author, @Me IMessageIO channel, @Me JSONObject command,
         @Timestamp long time,
         @Arg("Display the estimated bank size instead of per score") @Switch("t") boolean show_total,
@@ -2640,7 +2640,7 @@ public class StatCommands {
         return null;
     }
 
-    @Command(desc = "Rank the alliances by the % (or total) attacks by type.")
+    @Command(desc = "Rank the alliances by the % (or total) attacks by type.", viewable = true)
     public String attackTypeRanking(@Me IMessageIO io, @Me JSONObject command,
             @Timestamp long time,
             AttackType type,
@@ -2702,7 +2702,7 @@ public class StatCommands {
             "The Sides Fighting",
             "Time period",
             "War and attack type filters"
-    })
+    }, viewable = true)
     public String attackTypeBreakdownAB(@Me IMessageIO channel,
                                         @Me JSONObject command,
                                         @Arg(value = "Nations required to be in the conflict against `coalition2`", group = 0)
@@ -2779,7 +2779,7 @@ public class StatCommands {
         return null;
     }
 
-    @Command(desc = "Get a line graph by day of the war stats between two coalitions")
+    @Command(desc = "Get a line graph by day of the war stats between two coalitions", viewable = true)
     public String warCostsByDay(@Me GuildDB db, @Me IMessageIO io, @Me JSONObject command,
             Set<NationOrAlliance> coalition1, Set<NationOrAlliance> coalition2,
             WarCostByDayMode type,
@@ -2836,7 +2836,7 @@ public class StatCommands {
         table.getData().add(values);
     }
 
-    @Command(desc = "Graph of cost by day of each coalitions wars vs everyone")
+    @Command(desc = "Graph of cost by day of each coalitions wars vs everyone", viewable = true)
     public String warsCostRankingByDay(@Me GuildDB db, @Me IMessageIO io, @Me JSONObject command,
             WarCostByDayMode type,
             WarCostMode mode,

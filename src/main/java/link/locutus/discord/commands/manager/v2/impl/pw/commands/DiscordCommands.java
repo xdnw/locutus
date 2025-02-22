@@ -315,7 +315,7 @@ public class DiscordCommands {
         return channel;
     }
 
-    @Command(desc = "Show the title, description and commands for a bot embed")
+    @Command(desc = "Show the title, description and commands for a bot embed", viewable = true)
     @RolePermission(value = Roles.ADMIN)
     @MessageCommand
     public String embedInfo(Message embedMessage, @Arg("Show commands to update`copyToMessage` with the info from the `embedMessage`") @Default Message copyToMessage) {
@@ -407,7 +407,7 @@ public class DiscordCommands {
         return arg;
     }
 
-    @Command(desc = "Return the discord invite link for the bot")
+    @Command(desc = "Return the discord invite link for the bot", viewable = true)
     public String invite() {
         return "<https://discord.com/api/oauth2/authorize?client_id=" + Settings.INSTANCE.APPLICATION_ID + "&permissions=395606879321&scope=bot>\n" +
                 "<https://github.com/xdnw/locutus/wiki>";
@@ -609,7 +609,7 @@ public class DiscordCommands {
     }
 
     @Command(desc = "Get the text from a discord image\n" +
-            "It is recommended to crop the image first")
+            "It is recommended to crop the image first", viewable = true)
     public String ocr(String discordImageUrl) {
         String text = ImageUtil.getText(discordImageUrl);
         return "```\n" +text + "\n```\n";

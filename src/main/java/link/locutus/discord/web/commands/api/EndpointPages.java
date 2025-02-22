@@ -3,35 +3,130 @@ package link.locutus.discord.web.commands.api;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.javalin.http.Context;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.*;
+import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
+import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.ReturnType;
+import link.locutus.discord.web.commands.WebIO;
 import link.locutus.discord.web.commands.binding.AuthBindings;
 import link.locutus.discord.web.commands.binding.DBAuthRecord;
 import link.locutus.discord.web.commands.binding.value_types.*;
 import link.locutus.discord.web.commands.page.PageHelper;
 import link.locutus.discord.web.jooby.PageHandler;
 import link.locutus.discord.web.jooby.WebRoot;
+import link.locutus.discord.web.jooby.handler.QueueMessageOutput;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static link.locutus.discord.web.jooby.PageHandler.CookieType.*;
 
 public class EndpointPages extends PageHelper {
+
+    @Command
+    @ReturnType(WebBulkQuery.class)
+    public WebBulkQuery query(Context context, WebStore ws, List<Map.Entry<String, Map<String, Object>>> queries) throws IOException {
+        PageHandler handler = WebRoot.getInstance().getPageHandler();
+        CommandGroup commands = handler.getCommands();
+        CommandCallable apiCommands = commands.get("api");
+
+        List<Object> result = new ObjectArrayList<>(Collections.nCopies(queries.size(), null));
+
+        for (int i = 0; i < queries.size(); i++) {
+            try {
+                Map.Entry<String, Map<String, Object>> entry = queries.get(i);
+                String key = entry.getKey();
+                System.out.println("KEY IS " + key);
+                if (key.equals("command")) {
+                    Object cmdResult = command(context, ws, entry.getValue());
+                    System.out.println("CMD RESULT IS " + cmdResult);
+                    result.set(i, cmdResult);
+                    continue;
+                }
+                Map<String, Object> value = entry.getValue();
+                List<String> path = key.contains("/") ? StringMan.split(key, "/") : List.of(key);
+                CommandCallable callable = apiCommands.getCallable(path);
+                if (callable instanceof ParametricCallable cmd) {
+                    result.set(i, handler.call(cmd, ws, context, value));
+                    continue;
+                } else {
+                    result.set(i, error("Invalid command: " + key));
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                result.set(i, error(e.getMessage()));
+            }
+        }
+        return new WebBulkQuery(result);
+    }
+
+    private AtomicLong commandUid = new AtomicLong(0);
+
+    @Command
+    @ReturnType(WebViewCommand.class)
+    public Object command(Context context, WebStore ws,
+                              Map<String, Object> data) {
+        if (data.size() == 1 && data.keySet().iterator().next().equals("data")) {
+            Object tmp = data.get("data");
+            if (tmp instanceof Map) {
+                data = (Map<String, Object>) tmp;
+            }
+        }
+        Object cmdObj = data.get("");
+        if (cmdObj == null || !(cmdObj instanceof String)) throw new IllegalArgumentException("No command provided");
+        String cmdStr = (String) cmdObj;
+        List<String> split = StringMan.split(cmdStr, " ");
+
+        CommandManager2 manager = Locutus.cmd().getV2();
+        Map.Entry<CommandCallable, String> cmdAndPath = manager.getCommands().getCallableAndPath(split);
+        String remainder = cmdAndPath.getValue();
+
+        CommandCallable callable = cmdAndPath.getKey();
+        if (callable instanceof ParametricCallable pc) {
+            if (!pc.isViewable()) {
+                throw new IllegalArgumentException("Command not viewable");
+            }
+            QueueMessageOutput queue = new QueueMessageOutput();
+            WebIO io = new WebIO(queue,  ws.getGuild());
+
+            LocalValueStore locals = manager.createLocals(null, ws.getGuild(), null, ws.getUser(), null, io, null);
+            JSONObject cmdJson = new JSONObject(data);
+            locals.addProvider(Key.of(JSONObject.class, Me.class), cmdJson);
+
+            Map<String, Object> params = new Object2ObjectLinkedOpenHashMap<>(data);
+            params.remove("");
+            Object[] parsed = pc.parseArgumentMap2(params, locals, manager.getValidators(), manager.getPermisser(), true);
+            Object result = pc.call(null, locals, parsed);
+            if (result != null) {
+                String formatted = MarkupUtil.formatDiscordMarkdown((result + "").trim(), io.getGuildOrNull());
+                if (!formatted.isEmpty()) {
+                    io.send(formatted);
+                }
+            }
+            return new WebViewCommand(commandUid.incrementAndGet(), queue.getQueue());
+        } else {
+            throw new IllegalArgumentException("Invalid command: " + cmdStr);
+        }
+    }
 
     @Command
     @ReturnType(WebSuccess.class)
@@ -134,38 +229,6 @@ public class EndpointPages extends PageHelper {
         }
         context.header("Set-Cookie", StringMan.join(removeCookieStrings, ", "));
         return success();
-    }
-
-    @Command
-    @ReturnType(WebBulkQuery.class)
-    public WebBulkQuery query(Context context, WebStore ws, List<Map.Entry<String, Map<String, Object>>> queries) throws IOException {
-        PageHandler handler = WebRoot.getInstance().getPageHandler();
-        CommandGroup commands = handler.getCommands();
-        CommandCallable apiCommands = commands.get("api");
-
-        List<Object> result = new ObjectArrayList<>(Collections.nCopies(queries.size(), null));
-
-        for (int i = 0; i < queries.size(); i++) {
-            Map.Entry<String, Map<String, Object>> entry = queries.get(i);
-            String key = entry.getKey();
-            Map<String, Object> value = entry.getValue();
-            List<String> path = key.contains("/") ? StringMan.split(key, "/") : List.of(key);
-            CommandCallable callable = apiCommands.getCallable(path);
-            String error;
-            if (callable instanceof ParametricCallable cmd) {
-                try {
-                    result.set(i, handler.call(cmd, ws, context, value));
-                    continue;
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    error = e.getMessage();
-                }
-            } else {
-                error = "Invalid command: " + key;
-            }
-            result.set(i, error(error));
-        }
-        return new WebBulkQuery(result);
     }
 
     @Command

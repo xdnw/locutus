@@ -55,7 +55,7 @@ import static link.locutus.discord.config.Messages.TAB_TYPE;
 public class CustomSheetCommands {
 
     @NoFormat
-    @Command(desc = "List the sheet keys in use")
+    @Command(desc = "List the sheet keys in use", viewable = true)
     @RolePermission(value = {Roles.ADMIN})
     public String listSheetKeys(@Me GuildDB db) {
         StringBuilder result = new StringBuilder();
@@ -150,7 +150,7 @@ public class CustomSheetCommands {
     }
 
     @NoFormat
-    @Command(desc = "List sheet templates for this guild")
+    @Command(desc = "List sheet templates for this guild", viewable = true)
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
     public String listSheetTemplates(@Me GuildDB db, @Default @PlaceholderType Class type) {
         List<String> errors = new ArrayList<>();
@@ -182,7 +182,7 @@ public class CustomSheetCommands {
     }
 
     @NoFormat
-    @Command(desc = "List selection aliases for this guild")
+    @Command(desc = "List selection aliases for this guild", viewable = true)
     public String listSelectionAliases(@Me GuildDB db, @Default @PlaceholderType Class type) {
         Map<Class, Map<String, SelectionAlias>> selections = new LinkedHashMap<>(db.getSheetManager().getSelectionAliases());
         if (type != null) {
@@ -203,7 +203,7 @@ public class CustomSheetCommands {
     }
 
     @NoFormat
-    @Command(desc = "List custom sheets for this guild")
+    @Command(desc = "List custom sheets for this guild", viewable = true)
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
     public String listCustomSheets(@Me GuildDB db) {
         Map<String, String> sheets = db.getSheetManager().getCustomSheets();
@@ -230,7 +230,7 @@ public class CustomSheetCommands {
     }
 
     @NoFormat
-    @Command(desc = "View a sheet template")
+    @Command(desc = "View a sheet template", viewable = true)
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
     public String viewTemplate(SheetTemplate sheet) {
         return sheet.toString() + "\n\n" +
@@ -362,7 +362,7 @@ public class CustomSheetCommands {
                 "See: " + CM.sheet_custom.view.cmd.toSlashMention();
     }
 
-    @Command(desc = "Get the google sheet url and view the tabs for a custom sheet, and their respective selection alias (rows) and sheet template (columns)")
+    @Command(desc = "Get the google sheet url and view the tabs for a custom sheet, and their respective selection alias (rows) and sheet template (columns)", viewable = true)
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
     public String info(CustomSheet sheet) {
         return sheet.toString();

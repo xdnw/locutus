@@ -130,7 +130,7 @@ public class NewsletterCommands {
         return "Newsletter `" + newsletter.getName() + "` deleted";
     }
 
-    @Command(desc = "View information about a newsletter")
+    @Command(desc = "View information about a newsletter", viewable = true)
     @IsGuild(value = {672217848311054346L, 672217848311054346L})
     public String info(@Me User user, NewsletterManager manager, @Me IMessageIO io, @Me GuildDB db, @Me Guild guild, Newsletter newsletter, @Switch("u") boolean listNations) {
         if (listNations && !Roles.INTERNAL_AFFAIRS.has(user, guild)) {
@@ -314,7 +314,7 @@ public class NewsletterCommands {
         return null;
     }
 
-    @Command(desc = "List all newsletters")
+    @Command(desc = "List all newsletters", viewable = true)
     @IsGuild(value = {672217848311054346L, 672217848311054346L})
     public String list(NewsletterManager manager, @Me User user, @Me DBNation nation) {
         Map<Integer, Newsletter> newsletters = manager.getNewsletters();

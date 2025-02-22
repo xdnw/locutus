@@ -26,7 +26,7 @@ public class BuildCommands {
     // get
     // assign
 
-    @Command(desc = "List the currently set build categories")
+    @Command(desc = "List the currently set build categories", viewable = true)
     @RolePermission(Roles.MEMBER)
     public String listall(@Me GuildDB db) {
         Map<String, List<CityBuildRange>> builds = db.getBuilds();
@@ -77,13 +77,13 @@ public class BuildCommands {
         return "Deleted builds with min-cities: `" + minCities + "`";
     }
 
-    @Command(desc = "Have the bot provide a pre set build based on city count")
+    @Command(desc = "Have the bot provide a pre set build based on city count", viewable = true)
     @RolePermission(Roles.MEMBER)
     public String assign(@Me IMessageIO io, @Me GuildDB db, String category, @Default("%user%") DBNation nation, @Default Integer cities) throws IOException, ExecutionException, InterruptedException {
         return AssignBuild.build(io, db, nation, cities == null ? nation.getCities() : cities, category);
     }
 
-    @Command(desc = "Print the current city builds being used by a nation")
+    @Command(desc = "Print the current city builds being used by a nation", viewable = true)
     public String get(DBNation nation, @Me IMessageIO channel) throws Exception {
         return GetBuild.onCommand(nation, channel);
     }

@@ -34,6 +34,8 @@ public interface CommandCallable {
 
     String simpleHelp();
 
+    boolean isViewable();
+
     List<String> aliases();
 
     Map<String, Object> toJson(PermissionHandler permHandler, boolean includeReturnType);

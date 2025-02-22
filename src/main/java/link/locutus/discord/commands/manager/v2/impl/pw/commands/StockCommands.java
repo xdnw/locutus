@@ -192,12 +192,12 @@ public class StockCommands {
         }
     }
 
-    @Command(aliases = {"balance", "bal", "deposits", "safekeep"}, desc = "Show a nations balance info")
+    @Command(aliases = {"balance", "bal", "deposits", "safekeep"}, desc = "Show a nations balance info", viewable = true)
     public String nation(@Me IMessageIO channel, StockDB db, @Me DBNation me, DBNation nation) {
         return info(channel, db, me, new NationOrExchange(nation));
     }
 
-    @Command(aliases = {"mybalance", "me"}, desc = "Show your own balance info")
+    @Command(aliases = {"mybalance", "me"}, desc = "Show your own balance info", viewable = true)
     public String me(@Me IMessageIO channel, StockDB db, @Me DBNation me) {
         return info(channel, db, me, new NationOrExchange(me));
     }
@@ -251,14 +251,14 @@ public class StockCommands {
         return null;
     }
 
-    @Command(aliases = {"info", "exchangeinfo"}, desc = "Show general info about an exchange")
+    @Command(aliases = {"info", "exchangeinfo"}, desc = "Show general info about an exchange", viewable = true)
     public String info(@Me IMessageIO channel, StockDB db, Exchange exchange) {
         String body = exchange.toString();
         channel.create().embed(exchange.symbol, body).send();
         return null;
     }
 
-    @Command(aliases = {"exchanges", "search", "find", "companies"}, desc = "List exchanges matching input")
+    @Command(aliases = {"exchanges", "search", "find", "companies"}, desc = "List exchanges matching input", viewable = true)
     public String exchanges(StockDB db, @Me DBNation me, String filter) {
         filter = filter.toLowerCase();
         List<String> equals = new ArrayList<>();
@@ -290,7 +290,7 @@ public class StockCommands {
         return "No exchanges found for: `" + filter + "`";
     }
 
-    @Command(desc = "List the buy/sell prices for exchanges")
+    @Command(desc = "List the buy/sell prices for exchanges", viewable = true)
     public String price(@Me IMessageIO channel, @Me JSONObject command, StockDB db, List<Exchange> exchanges) {
         List<String> exchangeNames = exchanges.stream().map(f -> f.symbol).collect(Collectors.toList());
 
@@ -325,7 +325,7 @@ public class StockCommands {
         return null;
     }
 
-    @Command(desc = "List any resources (and their margin) which are out of sync with ingame prices")
+    @Command(desc = "List any resources (and their margin) which are out of sync with ingame prices", viewable = true)
     public String rssmargin(@Me IMessageIO channel, @Me JSONObject command, StockDB db, @Switch("p") boolean usePercent) {
         StringBuilder response = new StringBuilder();
         for (ResourceType type : ResourceType.values) {
@@ -349,7 +349,7 @@ public class StockCommands {
         return response.toString().trim();
     }
 
-    @Command(desc = "List the buy/sell margin for exchanges")
+    @Command(desc = "List the buy/sell margin for exchanges", viewable = true)
     public String margin(@Me IMessageIO channel, @Me JSONObject command, StockDB db, List<Exchange> exchanges, @Switch("p") boolean usePercent) {
         List<String> exchangeNames = exchanges.stream().map(f -> f.symbol).collect(Collectors.toList());
 
@@ -381,7 +381,7 @@ public class StockCommands {
         return null;
     }
 
-    @Command(desc = "List a nation's trade profit")
+    @Command(desc = "List a nation's trade profit", viewable = true)
     public String profit(StockDB db, DBNation nation, @Timestamp long time) {
         List<StockTrade> trades = db.getClosedTradesByNation(nation.getNation_id(), time);
 
@@ -455,7 +455,7 @@ public class StockCommands {
         return response.trim();
     }
 
-    @Command(desc = "List average buy/sell price of an exchange over X days")
+    @Command(desc = "List average buy/sell price of an exchange over X days", viewable = true)
     public String average(@Me IMessageIO channel, @Me JSONObject command, @Me DBNation me, StockDB db, List<Exchange> exchanges, @Timediff long time) {
         List<String> exchangeNames = exchanges.stream().map(f -> f.symbol).collect(Collectors.toList());
 
@@ -491,7 +491,7 @@ public class StockCommands {
         return null;
     }
 
-    @Command(desc = "List open offers for an exchange")
+    @Command(desc = "List open offers for an exchange", viewable = true)
     public String market(@Me IMessageIO channel, @Me JSONObject command, @Me DBNation me, StockDB db, Exchange exchange, @Switch("b") boolean onlyBuyOffers, @Switch("s") boolean onlySellOffers, @Switch("p") int page) {
         if (!exchange.canView(me)) return exchange.name + " requires you to be " + exchange.requiredRank + " to view";
         Map.Entry<List<StockTrade>, List<StockTrade>> buySell = db.getBuySellOffersByCorp(exchange.id);
@@ -536,7 +536,7 @@ public class StockCommands {
         return result.length() > 0 ? result.toString() : null;
     }
 
-    @Command(desc = "List your open offers")
+    @Command(desc = "List your open offers", viewable = true)
     public String mytrades(@Me IMessageIO channel, @Me JSONObject command, StockDB db, @Me DBNation nation, @Switch("b") boolean onlyBuyOffers, @Switch("s") boolean onlySellOffers, @Switch("p") int page) {
         ArrayList<StockTrade> trades = new ArrayList<>(db.getOpenTrades(nation.getNation_id()).values());
         if (trades.isEmpty()) return "No open trades";
@@ -588,7 +588,7 @@ public class StockCommands {
         return result.length() > 0 ? result.toString() : null;
     }
 
-    @Command(desc = "List a nations share transactions")
+    @Command(desc = "List a nations share transactions", viewable = true)
     public String transactions(@Me IMessageIO channel, @Me JSONObject command, @Me DBNation me, StockDB db, DBNation nation, @Switch("p") int page) {
         int id = nation.getNation_id();
         List<StockTrade> trades = db.getClosedTradesByNation(id, 0);
@@ -614,7 +614,7 @@ public class StockCommands {
         return null;
     }
 
-    @Command(desc = "List exchange shareholders")
+    @Command(desc = "List exchange shareholders", viewable = true)
     public String shareholders(@Me IMessageIO channel, @Me JSONObject command, StockDB db, @Me DBNation me, Exchange exchange, @Switch("p") int page) {
         if (!exchange.canView(me)) return exchange.name + " requires you to be " + exchange.requiredRank + " to view";
 
@@ -632,7 +632,7 @@ public class StockCommands {
         return null;
     }
 
-    @Command(desc = "List a nations shares")
+    @Command(desc = "List a nations shares", viewable = true)
     public String shares(@Me IMessageIO channel, @Me JSONObject command, StockDB db, NationOrExchange nation, @Switch("p") int page) {
         Map<Exchange, Long> shares = db.getSharesByNation(nation.getId());
         if (shares.isEmpty()) return "No shareholders.";
@@ -738,7 +738,7 @@ public class StockCommands {
         return withdraw(db, me, alliance.getUrl(), resources);
     }
 
-    @Command(desc = "Graph of price history for exchanges")
+    @Command(desc = "Graph of price history for exchanges", viewable = true)
     public String history(StockDB db, List<Exchange> exchanges, @Timestamp long time) {
         for (Exchange exchange : exchanges) {
             List<StockTrade> trades = db.getTradesBoughtByCorp(exchange.id, time);

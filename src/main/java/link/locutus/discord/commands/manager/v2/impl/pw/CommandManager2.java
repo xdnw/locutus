@@ -732,23 +732,6 @@ public class CommandManager2 {
         return commands.getCallable(args);
     }
 
-    public Map.Entry<CommandCallable, String> getCallableAndPath(List<String> args) {
-        CommandCallable root = commands;
-        List<String> path = new ArrayList<>();
-
-        Queue<String> stack = new ArrayDeque<>(args);
-        while (!stack.isEmpty()) {
-            String arg = stack.poll();
-            path.add(arg);
-            if (root instanceof CommandGroup) {
-                root = ((CommandGroup) root).get(arg);
-            } else {
-                throw new IllegalArgumentException("Command: " + root.getPrimaryCommandId() + " of type " + root.getClass().getSimpleName() + " has no subcommand: " + arg);
-            }
-        }
-        return new AbstractMap.SimpleEntry<>(root, StringMan.join(path, " "));
-    }
-
     public void run(Guild guild, IMessageIO io, User author, String command, boolean async, boolean returnNotFound) {
         String fullCmdStr = DiscordUtil.trimContent(command).trim();
         if (!fullCmdStr.isEmpty() && Locutus.cmd().isModernPrefix(fullCmdStr.charAt(0))) {
