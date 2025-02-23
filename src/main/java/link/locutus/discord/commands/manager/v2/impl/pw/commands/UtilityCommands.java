@@ -1832,7 +1832,7 @@ public class UtilityCommands {
 
                 // Militarization graph
                 CM.alliance.stats.metricsByTurn militarization =
-                        CM.alliance.stats.metricsByTurn.cmd.metric(AllianceMetric.GROUND_PCT.name()).coalition(alliance.getQualifiedId()).time("7d");
+                        CM.alliance.stats.metricsByTurn.cmd.metric(AllianceMetric.GROUND_PCT.name()).coalition(alliance.getQualifiedId()).start("7d");
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, militarization, "Military Graph");
                 // Tiering graph
                 CM.stats_tier.cityTierGraph tiering =
