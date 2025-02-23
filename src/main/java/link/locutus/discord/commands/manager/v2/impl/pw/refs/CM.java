@@ -1990,17 +1990,17 @@ public class CM {
 
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.SettingCommands.class,method="importTransactions")
-            public static class import extends CommandRef {
-                public static final import cmd = new import();
-            public import server(String value) {
+            public static class import_transfers extends CommandRef {
+                public static final import_transfers cmd = new import_transfers();
+            public import_transfers server(String value) {
                 return set("server", value);
             }
 
-            public import nations(String value) {
+            public import_transfers nations(String value) {
                 return set("nations", value);
             }
 
-            public import force(String value) {
+            public import_transfers force(String value) {
                 return set("force", value);
             }
 
