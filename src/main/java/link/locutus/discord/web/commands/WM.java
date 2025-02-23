@@ -51,54 +51,54 @@ public class WM {
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.web.commands.api.GraphEndpoints.class,method="allianceMetricsAB")
-            public static class allianceMetricsAB extends CommandRef {
-                public static final allianceMetricsAB cmd = new allianceMetricsAB();
-            public allianceMetricsAB metric(String value) {
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.GraphEndpoints.class,method="allianceMetricAB")
+            public static class allianceMetricAB extends CommandRef {
+                public static final allianceMetricAB cmd = new allianceMetricAB();
+            public allianceMetricAB metric(String value) {
                 return set("metric", value);
             }
 
-            public allianceMetricsAB coalition1(String value) {
+            public allianceMetricAB coalition1(String value) {
                 return set("coalition1", value);
             }
 
-            public allianceMetricsAB coalition2(String value) {
+            public allianceMetricAB coalition2(String value) {
                 return set("coalition2", value);
             }
 
-            public allianceMetricsAB time(String value) {
+            public allianceMetricAB time(String value) {
                 return set("time", value);
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.web.commands.api.GraphEndpoints.class,method="allianceMetricsByTurn")
-            public static class allianceMetricsByTurn extends CommandRef {
-                public static final allianceMetricsByTurn cmd = new allianceMetricsByTurn();
-            public allianceMetricsByTurn metric(String value) {
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.GraphEndpoints.class,method="allianceMetricByTurn")
+            public static class allianceMetricByTurn extends CommandRef {
+                public static final allianceMetricByTurn cmd = new allianceMetricByTurn();
+            public allianceMetricByTurn metric(String value) {
                 return set("metric", value);
             }
 
-            public allianceMetricsByTurn coalition(String value) {
+            public allianceMetricByTurn coalition(String value) {
                 return set("coalition", value);
             }
 
-            public allianceMetricsByTurn time(String value) {
+            public allianceMetricByTurn time(String value) {
                 return set("time", value);
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.web.commands.api.GraphEndpoints.class,method="allianceMetricsCompareByTurn")
-            public static class allianceMetricsCompareByTurn extends CommandRef {
-                public static final allianceMetricsCompareByTurn cmd = new allianceMetricsCompareByTurn();
-            public allianceMetricsCompareByTurn metric(String value) {
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.GraphEndpoints.class,method="metric_compare_by_turn")
+            public static class metric_compare_by_turn extends CommandRef {
+                public static final metric_compare_by_turn cmd = new metric_compare_by_turn();
+            public metric_compare_by_turn metric(String value) {
                 return set("metric", value);
             }
 
-            public allianceMetricsCompareByTurn alliances(String value) {
+            public metric_compare_by_turn alliances(String value) {
                 return set("alliances", value);
             }
 
-            public allianceMetricsCompareByTurn time(String value) {
+            public metric_compare_by_turn time(String value) {
                 return set("time", value);
             }
 

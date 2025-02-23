@@ -79,6 +79,7 @@ generateTypeScript {
             'link.locutus.discord.web.commands.binding.value_types.WebTable',
             'link.locutus.discord.web.commands.binding.value_types.WebTableError',
             'link.locutus.discord.web.commands.binding.value_types.WebTarget',
+            'link.locutus.discord.web.commands.binding.value_types.WebViewCommand',
             'link.locutus.discord.web.commands.binding.value_types.WebTargets',
             'link.locutus.discord.web.commands.binding.value_types.WebTransaction',
             'link.locutus.discord.web.commands.binding.value_types.WebTransferResult',

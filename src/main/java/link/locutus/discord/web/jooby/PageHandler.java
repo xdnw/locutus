@@ -131,6 +131,12 @@ public class PageHandler implements Handler {
         this.commands.registerCommands(new TestPages());
         this.commands.registerCommands(this);
 
+        Map<String, ParametricCallable> legacy = new HashMap<>();
+        for (ParametricCallable f : Locutus.cmd().getV2().getCommands().getParametricCallables(f -> true)) {
+            String name = f.getMethod().getName().toLowerCase();
+            legacy.put(name, f);
+        }
+
         Set<Parser> parsers = new HashSet<>();
         for (ParametricCallable cmd : Locutus.cmd().getV2().getCommands().getParametricCallables(f -> {
             RolePermission rolePerm = f.getMethod().getAnnotation(RolePermission.class);

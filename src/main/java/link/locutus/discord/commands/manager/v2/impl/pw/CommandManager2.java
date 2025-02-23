@@ -269,6 +269,13 @@ public class CommandManager2 {
         getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "info", "info");
         getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "list", "list");
         getCommands().registerMethod(new CustomSheetCommands(), List.of("sheet_custom"), "fromFile", "from_file");
+        getCommands().registerMethod(new StatCommands(), List.of("alliance", "stats"), "compareStats", "coalition_metric_by_turn");
+        getCommands().registerMethod(new StatCommands(), List.of("alliance", "stats"), "allianceStats", "metrics_by_turn");
+        getCommands().registerMethod(new StatCommands(), List.of("alliance", "stats"), "compareTierStats", "tier_by_coalition");
+
+        getCommands().registerMethod(new StatCommands(), List.of("stats", "other"), "compareStats", "coalition_metric_by_turn");
+        getCommands().registerMethod(new StatCommands(), List.of("stats", "other"), "allianceStats", "aa_metrics_by_turn");
+        getCommands().registerMethod(new StatCommands(), List.of("stats", "tier"), "compareTierStats", "tier_by_coalition");
 //        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "openMenu", "open");
 //        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "deleteMenu", "delete");
 //        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "renameMenu", "title");

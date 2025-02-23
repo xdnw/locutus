@@ -18,6 +18,7 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -70,6 +71,7 @@ import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.web.WebUtil;
+import link.locutus.discord.web.commands.ReturnType;
 import link.locutus.discord.web.commands.WM;
 import link.locutus.discord.web.commands.binding.value_types.GraphType;
 import link.locutus.discord.web.commands.binding.value_types.WebGraph;
@@ -1351,7 +1353,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Compare the metric over time between multiple alliances", viewable = true)
-    public void allianceMetricsCompareByTurn(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
+    public void metric_compare_by_turn(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
                                                AllianceMetric metric, Set<DBAlliance> alliances,
                                                @Arg("Date to start from")
                                                @Timestamp long start,
@@ -1366,7 +1368,7 @@ public class StatCommands {
         TimeNumericTable table = MultiCoalitionMetricGraph.create(metric, turnStart, turnEnd, coalitionNames, coalitions);
         IMessageBuilder msg = table.writeMsg(channel.create(), TimeFormat.TURN_TO_DATE, metric.getFormat(), GraphType.LINE, turnStart, attachJson, attachCsv, attach_sheet ? db : null, SheetKey.ALLIANCE_METRIC_TURN);
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
-            msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.allianceMetricsCompareByTurn.cmd.getName(), command));
+            msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.metric_compare_by_turn.cmd.getName(), command));
         }
         msg.send();
     }
@@ -1393,7 +1395,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Graph an alliance metric over time for two coalitions", viewable = true)
-    public void allianceMetricsAB(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
+    public void allianceMetricAB(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
                                     AllianceMetric metric, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2,
                                     @Arg("Date to start from")
                                     @Timestamp long start,
@@ -1405,7 +1407,7 @@ public class StatCommands {
         TimeNumericTable table = MultiCoalitionMetricGraph.create(metric, turnStart, turnEnd, null, coalition1, coalition2);
         IMessageBuilder msg = table.writeMsg(channel.create(), TimeFormat.TURN_TO_DATE, metric.getFormat(), GraphType.LINE, turnStart, attachJson, attachCsv, attach_sheet ? db : null, SheetKey.ALLIANCE_METRIC_AB);
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
-            msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.allianceMetricsAB.cmd.getName(), command));
+            msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.allianceMetricAB.cmd.getName(), command));
         }
         msg.send();
     }
@@ -1492,10 +1494,11 @@ public class StatCommands {
     public String radiationByTurn(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
                                   Set<Continent> continents,
                                   @Arg("Date to start from")
-                                  @Timestamp long time, @Switch("j") boolean attachJson,
+                                    @Timestamp long start, @Default @Timestamp Long end,
+                                  @Switch("j") boolean attachJson,
                                   @Switch("c") boolean attachCsv, @Switch("s") boolean attach_sheet) throws IOException {
-        TimeNumericTable<Void> table = new RadiationByTurn(continents, time, Long.MAX_VALUE);
-        IMessageBuilder msg = table.writeMsg(channel.create(), TimeFormat.TURN_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, TimeUtil.getTurn(time), attachJson, attachCsv, attach_sheet ? db : null, SheetKey.RADIATION_BY_TURN);
+        TimeNumericTable<Void> table = new RadiationByTurn(continents, start, end == null ? Long.MAX_VALUE : end);
+        IMessageBuilder msg = table.writeMsg(channel.create(), TimeFormat.TURN_TO_DATE, TableNumberFormat.SI_UNIT, GraphType.LINE, TimeUtil.getTurn(start), attachJson, attachCsv, attach_sheet ? db : null, SheetKey.RADIATION_BY_TURN);
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.radiationByTurn.cmd.getName(), command));
         }
@@ -1504,7 +1507,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Graph the metric over time for a coalition", viewable = true)
-    public void allianceMetricsByTurn(@Me GuildDB db, @Me IMessageIO channel, @Me User user, @Me JSONObject command,
+    public void allianceMetricByTurn(@Me GuildDB db, @Me IMessageIO channel, @Me User user, @Me JSONObject command,
                                       AllianceMetric metric, Set<DBAlliance> coalition,
                                         @Arg("Date to start from")
                                         @Timestamp long start,
@@ -1517,7 +1520,7 @@ public class StatCommands {
         TimeNumericTable table = MultiCoalitionMetricGraph.create(metric, turnStart, turnEnd, coalitionNames, coalition);
         IMessageBuilder msg = table.writeMsg(channel.create(), TimeFormat.TURN_TO_DATE, metric.getFormat(), GraphType.LINE, turnStart, attachJson, attachCsv, attach_sheet ? db : null, SheetKey.ALLIANCE_METRICS_TURN);
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
-            msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.allianceMetricsByTurn.cmd.getName(), command));
+            msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.allianceMetricByTurn.cmd.getName(), command));
         }
         msg.append("Done! " + user.getAsMention()).send();
     }
@@ -2893,5 +2896,140 @@ public class StatCommands {
         }
         msg.send();
         return null;
+    }
+
+    @Command(desc = "Compare a stat of up to 10 alliances/coalitions on a single time graph", viewable = true)
+    public void compareStats(@Me IMessageIO io, @Me GuildDB db, @Me JSONObject command,
+            AllianceMetric metric,  @Timestamp long start, @Timestamp long end,
+                                 Set<DBAlliance> coalition1,
+                                 Set<DBAlliance> coalition2,
+                                 @Default Set<DBAlliance> coalition3,
+                                 @Default Set<DBAlliance> coalition4,
+                                 @Default Set<DBAlliance> coalition5,
+                                 @Default Set<DBAlliance> coalition6,
+                                 @Default Set<DBAlliance> coalition7,
+                                 @Default Set<DBAlliance> coalition8,
+                                 @Default Set<DBAlliance> coalition9,
+                                 @Default Set<DBAlliance> coalition10,
+                                 @Switch("j") boolean attach_json,
+                                 @Switch("c") boolean attach_csv, @Switch("ss") boolean attach_sheet) throws IOException {
+
+        List<Set<DBAlliance>> coalitions = new ArrayList<>();
+
+        coalitions.add(coalition1);
+        coalitions.add(coalition2);
+        coalitions.add(coalition3);
+        coalitions.add(coalition4);
+        coalitions.add(coalition5);
+        coalitions.add(coalition6);
+        coalitions.add(coalition7);
+        coalitions.add(coalition8);
+        coalitions.add(coalition9);
+        coalitions.add(coalition10);
+        coalitions.removeIf(f -> f== null || f.isEmpty());
+
+        List<String> coalitionNames = new ArrayList<>();
+        for (Set<DBAlliance> coalition : coalitions) {
+            String coalitionName = coalition.stream().map(DBAlliance::getName).collect(Collectors.joining(","));
+            coalitionNames.add(coalitionName);
+        }
+
+        Set<DBAlliance>[] coalitionsArray = coalitions.toArray(new Set[0]);
+
+        String title = "";
+
+        long startTurn = TimeUtil.getTurn(start);
+        long endTurn = TimeUtil.getTurn(end);
+
+        if (startTurn < endTurn - Short.MAX_VALUE) throw new IllegalArgumentException("Time range too large");
+        if (endTurn > TimeUtil.getTurn()) throw new IllegalArgumentException("End turn must be a current or previous time");
+
+
+        MultiCoalitionMetricGraph table = new MultiCoalitionMetricGraph(metric, startTurn, endTurn, coalitionNames, coalitionsArray);
+        IMessageBuilder msg = table.writeMsg(io.create(), attach_json, attach_csv, attach_sheet ? db : null, SheetKey.WAR_COST_RANKING_DAY);
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+            msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.compareStats.cmd.getName(), command));
+        }
+        msg.send();
+    }
+
+    @Command(desc = "Graph multiple metrics for a coalition of alliances over a period of time", viewable = true)
+    public void allianceStats(@Me IMessageIO io, @Me GuildDB db, @Me JSONObject command,
+                              Set<AllianceMetric> metrics, @Timestamp long start, @Timestamp long end, Set<DBAlliance> coalition,
+                              @Switch("j") boolean attach_json,
+                              @Switch("c") boolean attach_csv, @Switch("ss") boolean attach_sheet) throws IOException {
+        String title = "aaStats";
+        String coalitionName = coalition.stream().map(DBAlliance::getName).collect(Collectors.joining(","));
+
+        long startTurn = TimeUtil.getTurn(start);
+        long endTurn = TimeUtil.getTurn(end);
+
+        if (startTurn < endTurn - Short.MAX_VALUE) throw new IllegalArgumentException("Time range too large");
+        if (endTurn > TimeUtil.getTurn()) throw new IllegalArgumentException("End turn must be a current or previous time");
+
+        Set<TableNumberFormat> formats = metrics.stream().map(AllianceMetric::getFormat).collect(Collectors.toSet());
+        TableNumberFormat format = formats.size() == 1 ? formats.iterator().next() : TableNumberFormat.SI_UNIT;
+
+        CoalitionMetricsGraph table = CoalitionMetricsGraph.create(metrics, startTurn, endTurn, coalitionName, coalition);
+        IMessageBuilder msg = table.writeMsg(io.create(), attach_json, attach_csv, attach_sheet ? db : null, SheetKey.WAR_COST_RANKING_DAY);
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+            msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.allianceStats.cmd.getName(), command));
+        }
+        msg.send();
+    }
+
+    @Command(desc = "Compare the tier stats of up to 10 alliances/nations on a single graph")
+    public void compareTierStats(@Me IMessageIO io, @Me @Default GuildDB db, @Me JSONObject command,
+                                     NationAttributeDouble metric, NationAttributeDouble groupBy,
+                                     Set<DBNation> coalition1,
+                                     @Default Set<DBNation> coalition2,
+                                     @Default Set<DBNation> coalition3,
+                                     @Default Set<DBNation> coalition4,
+                                     @Default Set<DBNation> coalition5,
+                                     @Default Set<DBNation> coalition6,
+                                     @Default Set<DBNation> coalition7,
+                                     @Default Set<DBNation> coalition8,
+                                     @Default Set<DBNation> coalition9,
+                                     @Default Set<DBNation> coalition10,
+                                     @Switch("t") boolean total,
+                                     @Switch("a") boolean includeApps,
+                                     @Switch("v") boolean includeVm,
+                                     @Switch("i") boolean includeInactive,
+                                     @Switch("s") @Timestamp Long snapshotDate, @Switch("j") boolean attach_json,
+                                 @Switch("c") boolean attach_csv, @Switch("ss") boolean attach_sheet) throws IOException {
+
+        Map<String, Set<DBNation>> coalitionMap = new Object2ObjectLinkedOpenHashMap<>();
+        if (coalition1 != null) coalitionMap.put(command.getString("coalition1"), coalition1);
+        if (coalition2 != null) coalitionMap.put(command.getString("coalition2"), coalition2);
+        if (coalition3 != null) coalitionMap.put(command.getString("coalition3"), coalition3);
+        if (coalition4 != null) coalitionMap.put(command.getString("coalition4"), coalition4);
+        if (coalition5 != null) coalitionMap.put(command.getString("coalition5"), coalition5);
+        if (coalition6 != null) coalitionMap.put(command.getString("coalition6"), coalition6);
+        if (coalition7 != null) coalitionMap.put(command.getString("coalition7"), coalition7);
+        if (coalition8 != null) coalitionMap.put(command.getString("coalition8"), coalition8);
+        if (coalition9 != null) coalitionMap.put(command.getString("coalition9"), coalition9);
+        if (coalition10 != null) coalitionMap.put(command.getString("coalition10"), coalition10);
+
+        coalitionMap.entrySet().removeIf(f -> f.getValue() == null || f.getValue().isEmpty());
+        List<List<DBNation>> nations = new ArrayList<>();
+        List<String> coalitionNames = new ArrayList<>();
+
+        for (Map.Entry<String, Set<DBNation>> entry : coalitionMap.entrySet()) {
+            Set<DBNation> coalition = PW.getNationsSnapshot(entry.getValue(), entry.getKey(), snapshotDate, db);
+//            coalition.removeIf(f -> f.getVm_turns() != 0 || f.getPosition() <= 1 || f.active_m() > 7200);
+            coalition.removeIf(f ->
+                    (!includeApps && f.getPosition() <= 1) ||
+                            (!includeVm && f.getVm_turns() != 0) ||
+                            (!includeInactive && f.active_m() > 7200));
+            nations.add(new ObjectArrayList<>(coalition));
+            coalitionNames.add(entry.getKey());
+        }
+
+        EntityGroup table = new EntityGroup("", metric, nations, coalitionNames, groupBy, total);
+        IMessageBuilder msg = table.writeMsg(io.create(), attach_json, attach_csv, attach_sheet ? db : null, SheetKey.WAR_COST_RANKING_DAY);
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+            msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.compareTierStats.cmd.getName(), command));
+        }
+        msg.send();
     }
 }

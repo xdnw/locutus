@@ -137,7 +137,7 @@ public class GraphEndpoints {
 
     @Command(desc = "Compare the metric over time between multiple alliances")
     @ReturnType(WebGraph.class)
-    public WebGraph allianceMetricsCompareByTurn(AllianceMetric metric, Set<DBAlliance> alliances,
+    public WebGraph metric_compare_by_turn(AllianceMetric metric, Set<DBAlliance> alliances,
                                                  @Arg("Date to start from")
                                                  @Timestamp long start,
                                                  @Timestamp @Default Long end) throws IOException {
@@ -151,7 +151,7 @@ public class GraphEndpoints {
 
     @Command(desc = "Graph an alliance metric over time for two coalitions")
     @ReturnType(WebGraph.class)
-    public WebGraph allianceMetricsAB(AllianceMetric metric, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2,
+    public WebGraph allianceMetricAB(AllianceMetric metric, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2,
                                       @Arg("Date to start from")
                                       @Timestamp long start,
                                       @Timestamp @Default Long end) throws IOException {
@@ -163,7 +163,7 @@ public class GraphEndpoints {
 
     @Command(desc = "Graph the metric over time for a coalition")
     @ReturnType(WebGraph.class)
-    public WebGraph allianceMetricsByTurn(AllianceMetric metric, Set<DBAlliance> coalition,
+    public WebGraph allianceMetricByTurn(AllianceMetric metric, Set<DBAlliance> coalition,
                                           @Arg("Date to start from")
                                           @Timestamp long start,
                                           @Timestamp @Default Long end) throws IOException {

@@ -1080,54 +1080,54 @@ public class CM {
                 }
             }
             public static class stats{
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="allianceMetricsAB")
-                public static class allianceMetricsAB extends CommandRef {
-                    public static final allianceMetricsAB cmd = new allianceMetricsAB();
-                public allianceMetricsAB metric(String value) {
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="allianceMetricAB")
+                public static class allianceMetricAB extends CommandRef {
+                    public static final allianceMetricAB cmd = new allianceMetricAB();
+                public allianceMetricAB metric(String value) {
                     return set("metric", value);
                 }
 
-                public allianceMetricsAB coalition1(String value) {
+                public allianceMetricAB coalition1(String value) {
                     return set("coalition1", value);
                 }
 
-                public allianceMetricsAB coalition2(String value) {
+                public allianceMetricAB coalition2(String value) {
                     return set("coalition2", value);
                 }
 
-                public allianceMetricsAB time(String value) {
+                public allianceMetricAB time(String value) {
                     return set("time", value);
                 }
 
-                public allianceMetricsAB attachJson(String value) {
+                public allianceMetricAB attachJson(String value) {
                     return set("attachJson", value);
                 }
 
-                public allianceMetricsAB attachCsv(String value) {
+                public allianceMetricAB attachCsv(String value) {
                     return set("attachCsv", value);
                 }
 
                 }
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="allianceMetricsCompareByTurn")
-                public static class allianceMetricsCompareByTurn extends CommandRef {
-                    public static final allianceMetricsCompareByTurn cmd = new allianceMetricsCompareByTurn();
-                public allianceMetricsCompareByTurn metric(String value) {
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="metric_compare_by_turn")
+                public static class metric_compare_by_turn extends CommandRef {
+                    public static final metric_compare_by_turn cmd = new metric_compare_by_turn();
+                public metric_compare_by_turn metric(String value) {
                     return set("metric", value);
                 }
 
-                public allianceMetricsCompareByTurn alliances(String value) {
+                public metric_compare_by_turn alliances(String value) {
                     return set("alliances", value);
                 }
 
-                public allianceMetricsCompareByTurn time(String value) {
+                public metric_compare_by_turn time(String value) {
                     return set("time", value);
                 }
 
-                public allianceMetricsCompareByTurn attachJson(String value) {
+                public metric_compare_by_turn attachJson(String value) {
                     return set("attachJson", value);
                 }
 
-                public allianceMetricsCompareByTurn attachCsv(String value) {
+                public metric_compare_by_turn attachCsv(String value) {
                     return set("attachCsv", value);
                 }
 
@@ -1232,7 +1232,7 @@ public class CM {
                 }
 
                 }
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="allianceMetricsByTurn")
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="allianceMetricByTurn")
                 public static class metricsByTurn extends CommandRef {
                     public static final metricsByTurn cmd = new metricsByTurn();
                 public metricsByTurn metric(String value) {
@@ -13499,54 +13499,54 @@ public class CM {
             }
         }
         public static class stats_other{
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="allianceMetricsAB")
-            public static class allianceMetricsAB extends CommandRef {
-                public static final allianceMetricsAB cmd = new allianceMetricsAB();
-            public allianceMetricsAB metric(String value) {
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="allianceMetricAB")
+            public static class allianceMetricAB extends CommandRef {
+                public static final allianceMetricAB cmd = new allianceMetricAB();
+            public allianceMetricAB metric(String value) {
                 return set("metric", value);
             }
 
-            public allianceMetricsAB coalition1(String value) {
+            public allianceMetricAB coalition1(String value) {
                 return set("coalition1", value);
             }
 
-            public allianceMetricsAB coalition2(String value) {
+            public allianceMetricAB coalition2(String value) {
                 return set("coalition2", value);
             }
 
-            public allianceMetricsAB time(String value) {
+            public allianceMetricAB time(String value) {
                 return set("time", value);
             }
 
-            public allianceMetricsAB attachJson(String value) {
+            public allianceMetricAB attachJson(String value) {
                 return set("attachJson", value);
             }
 
-            public allianceMetricsAB attachCsv(String value) {
+            public allianceMetricAB attachCsv(String value) {
                 return set("attachCsv", value);
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="allianceMetricsCompareByTurn")
-            public static class allianceMetricsCompareByTurn extends CommandRef {
-                public static final allianceMetricsCompareByTurn cmd = new allianceMetricsCompareByTurn();
-            public allianceMetricsCompareByTurn metric(String value) {
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="metric_compare_by_turn")
+            public static class metric_compare_by_turn extends CommandRef {
+                public static final metric_compare_by_turn cmd = new metric_compare_by_turn();
+            public metric_compare_by_turn metric(String value) {
                 return set("metric", value);
             }
 
-            public allianceMetricsCompareByTurn alliances(String value) {
+            public metric_compare_by_turn alliances(String value) {
                 return set("alliances", value);
             }
 
-            public allianceMetricsCompareByTurn time(String value) {
+            public metric_compare_by_turn time(String value) {
                 return set("time", value);
             }
 
-            public allianceMetricsCompareByTurn attachJson(String value) {
+            public metric_compare_by_turn attachJson(String value) {
                 return set("attachJson", value);
             }
 
-            public allianceMetricsCompareByTurn attachCsv(String value) {
+            public metric_compare_by_turn attachCsv(String value) {
                 return set("attachCsv", value);
             }
 
