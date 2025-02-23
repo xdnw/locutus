@@ -1475,7 +1475,8 @@ public class BankCommands {
     @Command(desc = "Get a sheet of members and their revenue (compared to optimal city builds)", viewable = true)
     @RolePermission(value = {Roles.ECON_STAFF, Roles.ECON})
     @IsAlliance
-    public String revenueSheet(@Me IMessageIO io, @Me GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet, @Switch("t") @Timestamp Long snapshotTime) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
+    public String revenueSheet(@Me IMessageIO io, @Me GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet, @Switch("i") boolean include_untaxable,
+                               @Switch("t") @Timestamp Long snapshotTime) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
         Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db.getGuild());
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.REVENUE_SHEET);
@@ -1484,10 +1485,19 @@ public class BankCommands {
         Set<Integer> ids = db.getAllianceIds(false);
         int sizeOriginal = nationSet.size();
         nationSet.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id || !ids.contains(f.getAlliance_id()));
-        nationSet.removeIf(f -> f.active_m() > 7200 || f.isGray() || f.isBeige() || f.getVm_turns() > 0);
-        int numRemoved = sizeOriginal - nationSet.size();
+        int numRemovedNotAA = sizeOriginal - (sizeOriginal = nationSet.size());
+        nationSet.removeIf(f -> f.getVm_turns() > 0);
+        int numRemovedVM = sizeOriginal - (sizeOriginal = nationSet.size());
+        if (!include_untaxable) nationSet.removeIf(f -> !f.isTaxable());
+        int numRemovedUntaxable = sizeOriginal - (sizeOriginal = nationSet.size());
+
+        List<String> footer = new ArrayList<>();
+        if (numRemovedNotAA > 0) footer.add(numRemovedNotAA + " nations were removed for not being members of the guild's alliances");
+        if (numRemovedVM > 0) footer.add(numRemovedVM + " nations were removed for being in vacation mode");
+        if (numRemovedUntaxable > 0) footer.add(numRemovedUntaxable + " nations were removed for being untaxable");
+
         if (nationSet.isEmpty()) {
-            return "No nations to process. " + numRemoved + " nations were removed from the list. Please ensure they are members of your alliance";
+            return "No nations to process." + StringMan.join(footer, "\n");
         }
 
         List<String> header = new ArrayList<>(Arrays.asList(
@@ -1604,7 +1614,7 @@ public class BankCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(io.create(), "revenue").send();
+        sheet.attach(io.create(), "revenue").append(StringMan.join(footer, "\n")).send();
         return null;
     }
 
