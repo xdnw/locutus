@@ -66,8 +66,12 @@ public class WM {
                 return set("coalition2", value);
             }
 
-            public allianceMetricAB time(String value) {
-                return set("time", value);
+            public allianceMetricAB start(String value) {
+                return set("start", value);
+            }
+
+            public allianceMetricAB end(String value) {
+                return set("end", value);
             }
 
             }
@@ -82,24 +86,12 @@ public class WM {
                 return set("coalition", value);
             }
 
-            public allianceMetricByTurn time(String value) {
-                return set("time", value);
+            public allianceMetricByTurn start(String value) {
+                return set("start", value);
             }
 
-            }
-            @AutoRegister(clazz=link.locutus.discord.web.commands.api.GraphEndpoints.class,method="metric_compare_by_turn")
-            public static class metric_compare_by_turn extends CommandRef {
-                public static final metric_compare_by_turn cmd = new metric_compare_by_turn();
-            public metric_compare_by_turn metric(String value) {
-                return set("metric", value);
-            }
-
-            public metric_compare_by_turn alliances(String value) {
-                return set("alliances", value);
-            }
-
-            public metric_compare_by_turn time(String value) {
-                return set("time", value);
+            public allianceMetricByTurn end(String value) {
+                return set("end", value);
             }
 
             }
@@ -174,6 +166,14 @@ public class WM {
 
             public cityTierGraph snapshotDate(String value) {
                 return set("snapshotDate", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.EndpointPages.class,method="command")
+            public static class command extends CommandRef {
+                public static final command cmd = new command();
+            public command data(String value) {
+                return set("data", value);
             }
 
             }
@@ -419,6 +419,26 @@ public class WM {
             }
 
             }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.GraphEndpoints.class,method="metric_compare_by_turn")
+            public static class metric_compare_by_turn extends CommandRef {
+                public static final metric_compare_by_turn cmd = new metric_compare_by_turn();
+            public metric_compare_by_turn metric(String value) {
+                return set("metric", value);
+            }
+
+            public metric_compare_by_turn alliances(String value) {
+                return set("alliances", value);
+            }
+
+            public metric_compare_by_turn start(String value) {
+                return set("start", value);
+            }
+
+            public metric_compare_by_turn end(String value) {
+                return set("end", value);
+            }
+
+            }
             @AutoRegister(clazz=link.locutus.discord.web.commands.api.GraphEndpoints.class,method="militarizationTime")
             public static class militarizationTime extends CommandRef {
                 public static final militarizationTime cmd = new militarizationTime();
@@ -432,6 +452,30 @@ public class WM {
 
             public militarizationTime end_time(String value) {
                 return set("end_time", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.MultiEndpoints.class,method="multi_buster")
+            public static class multi_buster extends CommandRef {
+                public static final multi_buster cmd = new multi_buster();
+            public multi_buster nation(String value) {
+                return set("nation", value);
+            }
+
+            public multi_buster forceUpdate(String value) {
+                return set("forceUpdate", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.MultiEndpoints.class,method="multi_v2")
+            public static class multi_v2 extends CommandRef {
+                public static final multi_v2 cmd = new multi_v2();
+            public multi_v2 nation(String value) {
+                return set("nation", value);
+            }
+
+            public multi_v2 forceUpdate(String value) {
+                return set("forceUpdate", value);
             }
 
             }
@@ -683,6 +727,38 @@ public class WM {
 
             public table columns(String value) {
                 return set("columns", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.TaxEndpoints.class,method="tax_expense")
+            public static class tax_expense extends CommandRef {
+                public static final tax_expense cmd = new tax_expense();
+            public tax_expense start(String value) {
+                return set("start", value);
+            }
+
+            public tax_expense end(String value) {
+                return set("end", value);
+            }
+
+            public tax_expense nationList(String value) {
+                return set("nationList", value);
+            }
+
+            public tax_expense dontRequireGrant(String value) {
+                return set("dontRequireGrant", value);
+            }
+
+            public tax_expense dontRequireTagged(String value) {
+                return set("dontRequireTagged", value);
+            }
+
+            public tax_expense dontRequireExpiry(String value) {
+                return set("dontRequireExpiry", value);
+            }
+
+            public tax_expense includeDeposits(String value) {
+                return set("includeDeposits", value);
             }
 
             }

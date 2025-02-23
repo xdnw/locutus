@@ -169,6 +169,16 @@ public class AllianceCommands {
         }
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getEstimatedStockpile")
+        public static class getEstimatedStockpile extends CommandRef {
+            public static final getEstimatedStockpile cmd = new getEstimatedStockpile();
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getEstimatedStockpileValue")
+        public static class getEstimatedStockpileValue extends CommandRef {
+            public static final getEstimatedStockpileValue cmd = new getEstimatedStockpileValue();
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getFlag")
         public static class getFlag extends CommandRef {
             public static final getFlag cmd = new getFlag();
@@ -182,6 +192,14 @@ public class AllianceCommands {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getId")
         public static class getId extends CommandRef {
             public static final getId cmd = new getId();
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getLoot")
+        public static class getLoot extends CommandRef {
+            public static final getLoot cmd = new getLoot();
+        public getLoot score(String value) {
+            return set("score", value);
+        }
 
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getLootValue")
