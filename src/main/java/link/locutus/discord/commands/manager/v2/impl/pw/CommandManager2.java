@@ -265,7 +265,7 @@ public class CommandManager2 {
 
     public CommandManager2 registerDefaults() {
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "edit"), "addManualWars", "add_none_war");
-        getCommands().registerMethod(new SettingCommands(), List.of("bank"), "importTransactions", "import");
+        getCommands().registerMethod(new SettingCommands(), List.of("bank"), "importTransactions", "import_transfers");
         getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "info", "info");
         getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "list", "list");
         getCommands().registerMethod(new CustomSheetCommands(), List.of("sheet_custom"), "fromFile", "from_file");
