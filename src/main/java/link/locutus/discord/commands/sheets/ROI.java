@@ -466,17 +466,10 @@ public class ROI extends Command {
         }
         if (cityTurns <= 0) {
             boolean manifest = nation.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY;
-            boolean cityPlanning = Projects.URBAN_PLANNING.get(nation) > 0;
-            boolean advCityPlanning = Projects.ADVANCED_URBAN_PLANNING.get(nation) > 0;
-            boolean metroPlanning = Projects.METROPOLITAN_PLANNING.get(nation) > 0;
-
-            boolean getCityPlanning = numCities >= Projects.URBAN_PLANNING.requiredCities() && !cityPlanning;
-            boolean getAdvCityPlanning = numCities >= Projects.ADVANCED_URBAN_PLANNING.requiredCities() && !advCityPlanning;
-            boolean getMetroPlanning = numCities >= Projects.METROPOLITAN_PLANNING.requiredCities() && !advCityPlanning;
             boolean gsa = nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY);
             boolean bda = nation.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
 
-            double cityCost = PW.City.nextCityCost(numCities, manifest || true, cityPlanning || getCityPlanning, advCityPlanning || getAdvCityPlanning, metroPlanning || getMetroPlanning, gsa, bda);
+            double cityCost = PW.City.nextCityCost(numCities, manifest || true, false, false, false, gsa, bda);
             double[] buildCost = existingCity.calculateCost(new JavaCity());
             double[] totalCost = buildCost.clone();
 
@@ -485,13 +478,7 @@ public class ROI extends Command {
             double netProfit = baseProfit * days - costConverted;
             double roi = ((netProfit / costConverted) * 100 / days) * 7;
 
-            if (getCityPlanning) {
-                roiMap.add(new ROIResult(nation, Investment.CITY_PROJECT, "CITY_PLANNING", roi, ResourceType.resourcesToMap(totalCost), netProfit, baseProfit));
-            } else if (getAdvCityPlanning) {
-                roiMap.add(new ROIResult(nation, Investment.CITY_PROJECT, "ADVANCED_CITY_PLANNING", roi, ResourceType.resourcesToMap(totalCost), netProfit, baseProfit));
-            } else {
-                roiMap.add(new ROIResult(nation, Investment.CITY, (numCities + 1), roi, ResourceType.resourcesToMap(totalCost), netProfit, baseProfit));
-            }
+            roiMap.add(new ROIResult(nation, Investment.CITY, (numCities + 1), roi, ResourceType.resourcesToMap(totalCost), netProfit, baseProfit));
         }
 
         {

@@ -23,7 +23,7 @@ public class Projects {
             .cost(FOOD, 500000)
             .cost(URANIUM, 24000)
             .requiredCities(16)
-            .build();
+            .build().disable();
 
     public static final Project ARMS_STOCKPILE = new Builder("arms_stockpile", 2)
             .image("armsstockpile.png")
@@ -64,7 +64,7 @@ public class Projects {
             .cost(FOOD, 250000)
             .cost(URANIUM, 12000)
             .requiredCities(11)
-            .build();
+            .build().disable();
 
     public static final Project EMERGENCY_GASOLINE_RESERVE = new Builder("emergency_gasoline_reserve", 3)
             .image("emergencygasolinereserve.png")
@@ -297,7 +297,7 @@ public class Projects {
             .cost(URANIUM, 36000)
             .requiredCities(21)
             .requiredProjects(() -> new Project[]{URBAN_PLANNING, ADVANCED_URBAN_PLANNING})
-            .build();
+            .build().disable();
 
     public static final Project MILITARY_SALVAGE = new Builder("military_salvage", 31)
             .cost(MONEY, 20000000)
@@ -463,7 +463,7 @@ public class Projects {
             return this;
         }
 
-        public Project build() {
+        public AProject build() {
             return new AProject(id, apiName, imageName, resources, output, requiredCities, maxCities, requiredProjects, otherRequirements);
         }
 

@@ -156,4 +156,6 @@ public interface Project {
         String name = getImageName();
         return "" + Settings.INSTANCE.PNW_URL() + "/img/projects/" + name + (name.contains(".") ? "" : ".jpg");
     }
+
+    boolean isDisabled();
 }

@@ -1047,7 +1047,7 @@ public abstract class DBNation implements NationOrAlliance {
         if (nation.getCities() != null && this.data()._cities() != nation.getCities()) {
             dirty = true;
             if (copyOriginal == null && eventConsumer != null) copyOriginal = copy();
-            this.edit().setCities(nation.getCities());
+            this.setCities(nation.getCities());
             if (eventConsumer != null) eventConsumer.accept(new NationChangeCitiesEvent(copyOriginal, this));
         }
         if (nation.getScore() != null && nation.getScore() != this.data()._score()) {
@@ -2616,6 +2616,14 @@ public abstract class DBNation implements NationOrAlliance {
     public void setCities(int cities) {
         if (((cities > 20 && cities > this.data()._cities()) || (cities <= 20 && cities < this.data()._cities())) && this.data()._cities() != 0) {
             this.edit().setCityTimer(TimeUtil.getTurn() + GameTimers.CITY.getTurns());
+        }
+        double costReduction = data()._costReduction();
+        if (costReduction > 0) {
+            int currCity = this.data()._cities();
+            if (cities > currCity) {
+                double cost = PW.City.cityCost(this, currCity, cities);
+                this.edit().setCostReduction(Math.max(0, costReduction - cost));
+            }
         }
         this.edit().setCities(cities);
     }
@@ -6489,5 +6497,8 @@ public abstract class DBNation implements NationOrAlliance {
         return ResourceType.resourcesToMap(rss);
     }
 
-    // multi info placeholders
+    @Command(desc = "City refund from city planning projects")
+    public double getCityRefund() {
+        return data()._costReduction();
+    }
 }

@@ -2272,6 +2272,7 @@ public class BankCommands {
 
             for (int i = 0; i < Projects.values.length; i++) {
                 Project project = Projects.values[i];
+                if (project.isDisabled()) continue;
                 header.set(5 + i, nation.hasProject(project) + "");
             }
 

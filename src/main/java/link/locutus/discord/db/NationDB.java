@@ -1788,7 +1788,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 rs.getInt("tax_id"),
                 rs.getLong("gdp") / 100d,
                 0d,
-                rs.getString("discord")
+                rs.getString("discord"),
+                rs.getLong("city_refund") / 100d
         ));
     }
 
@@ -2370,6 +2371,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             // add gdp column to NATIONS2 BIGINT NOT NULL default 0
             executeStmt("ALTER TABLE NATIONS2 ADD COLUMN `gdp` BIGINT NOT NULL DEFAULT 0", true);
             executeStmt("ALTER TABLE NATIONS2 ADD COLUMN `discord` TEXT", true);
+            executeStmt("ALTER TABLE NATIONS2 ADD COLUMN `city_refund` BIGINT NOT NULL DEFAULT 0", true);
             update("DROP TABLE IF EXISTS NATIONS_WAR_SNAPSHOT");
 
             TablePreset.create("POSITIONS")
@@ -3288,7 +3290,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 0,
                 0,
                 0,
-                null
+                null,
+                0
         ));
     }
 
@@ -4971,12 +4974,13 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             } else {
                 stmt1.setString(37, nation.data()._discordStr());
             }
+            stmt1.setLong(38, Math.round(nation.getCityRefund() * 100d));
         };
     }
 
     public int[] saveNations(Collection<DBNation> nations) {
         if (nations.isEmpty()) return new int[0];
-        String query = "INSERT OR REPLACE INTO `NATIONS2`(nation_id,nation,leader,alliance_id,last_active,score,cities,domestic_policy,war_policy,soldiers,tanks,aircraft,ships,missiles,nukes,spies,entered_vm,leaving_vm,color,`date`,position,alliancePosition,continent,projects,cityTimer,projectTimer,beigeTimer,warPolicyTimer,domesticPolicyTimer,colorTimer,espionageFull,dc_turn,wars_won,wars_lost,tax_id,gdp,discord) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        String query = "INSERT OR REPLACE INTO `NATIONS2`(nation_id,nation,leader,alliance_id,last_active,score,cities,domestic_policy,war_policy,soldiers,tanks,aircraft,ships,missiles,nukes,spies,entered_vm,leaving_vm,color,`date`,position,alliancePosition,continent,projects,cityTimer,projectTimer,beigeTimer,warPolicyTimer,domesticPolicyTimer,colorTimer,espionageFull,dc_turn,wars_won,wars_lost,tax_id,gdp,discord,city_refund) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         ThrowingBiConsumer<DBNation, PreparedStatement> setNation = setNation();
         if (nations.size() == 1) {
             DBNation nation = nations.iterator().next();
