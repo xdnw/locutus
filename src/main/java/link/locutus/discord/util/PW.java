@@ -80,6 +80,7 @@ import java.util.regex.Pattern;
 
 
 public final class PW {
+
     public static final class City {
         public static double getCostReduction(Predicate<Project> projects) {
             return getCostReduction(projects.test(Projects.URBAN_PLANNING),
@@ -428,7 +429,7 @@ public final class PW {
             return total;
         }
 
-        private static double top20AverageQuarter = 40.8 * 0.25;
+        private static double top20AverageQuarter = 40.8216 * 0.25;
 //        public static double nextCityCost(int currentCity, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency, boolean bureauOfDomesticAffairs) {
 //            double cost = 50000*Math.pow(currentCity - 1, 3) + 150000 * (currentCity) + 75000;
 //            if (cityPlanning) {
