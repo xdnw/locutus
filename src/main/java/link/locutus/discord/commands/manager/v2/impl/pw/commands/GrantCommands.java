@@ -87,6 +87,7 @@ public class GrantCommands {
             @Arg(value = "Apply the specified domestic policy for determining cost", group = 4) @Switch("md") Boolean manifest_destiny,
             @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("gsa") Boolean gov_support_agency,
             @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("bda") Boolean domestic_affairs,
+            @Switch("er") boolean exclude_city_refund,
 
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
@@ -110,8 +111,17 @@ public class GrantCommands {
                             gov_support_agency != null ? gov_support_agency : receiver.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY),
                             domestic_affairs != null ? domestic_affairs : receiver.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS)
                     );
+
+                    String append = "";
+                    if (!exclude_city_refund) {
+                        double refund = receiver.getCityRefund();
+                        if (refund > 0) {
+                            cost = Math.max(0, cost - refund);
+                            append = " (using $" + MathMan.format(refund) + " from your city project refund)";
+                        }
+                    }
                     double[] resources = ResourceType.MONEY.toArray(cost);
-                    grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/city/create/> and purchase " + numBuy + " cities");
+                    grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/city/create/> and purchase " + numBuy + " cities" + append);
                     grant.setCost(f -> resources).setType(note);
                     return null;
                 }, DepositType.CITY, receiver -> {
