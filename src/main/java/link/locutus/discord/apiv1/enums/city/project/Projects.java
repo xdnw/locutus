@@ -411,6 +411,38 @@ public class Projects {
             .requiredProjects(() -> new Project[]{NUCLEAR_RESEARCH_FACILITY, MISSILE_LAUNCH_PAD, SPACE_PROGRAM})
             .build();
 
+    // Military Research Center
+    // <td>
+    //                            <img src="/img/resources/money.png" data-toggle="tooltip" title="" alt="Money" data-original-title="Money">
+    //            100,000,000.00        <br>            <img src="/img/resources/steel.png" data-toggle="tooltip" title="" alt="Steel" data-original-title="Steel">
+    //            10,000.00        <br>            <img src="/img/resources/aluminum.png" data-toggle="tooltip" title="" alt="Aluminum" data-original-title="Aluminum">
+    //            10,000.00        <br>            <img src="/img/resources/munitions.png" data-toggle="tooltip" title="" alt="Munitions" data-original-title="Munitions">
+    //            10,000.00        <br>            <img src="/img/resources/gasoline.png" data-toggle="tooltip" title="" alt="Gasoline" data-original-title="Gasoline">
+    //            10,000.00                    </td>
+    public static final Project MILITARY_RESEARCH_CENTER = new Builder("military_research_center", 39)
+            .cost(MONEY, 100_000_000)
+            .cost(STEEL, 10_000)
+            .cost(ALUMINUM, 10_000)
+            .cost(MUNITIONS, 10_000)
+            .cost(GASOLINE, 10_000)
+            .build();
+
+    // Military Doctrine
+    // <td>
+    //                            <img src="/img/resources/money.png" data-toggle="tooltip" title="" alt="Money" data-original-title="Money" aria-describedby="tooltip61962"><div class="tooltip fade top in" role="tooltip" id="tooltip61962" style="top: 6176.89px; left: 822.822px; display: block;"><div class="tooltip-arrow" style="left: 50%;"></div><div class="tooltip-inner">Money</div></div>
+    //            10,000,000.00        <br>            <img src="/img/resources/steel.png" data-toggle="tooltip" title="" alt="Steel" data-original-title="Steel">
+    //            10,000.00        <br>            <img src="/img/resources/aluminum.png" data-toggle="tooltip" title="" alt="Aluminum" data-original-title="Aluminum">
+    //            10,000.00        <br>            <img src="/img/resources/munitions.png" data-toggle="tooltip" title="" alt="Munitions" data-original-title="Munitions">
+    //            10,000.00        <br>            <img src="/img/resources/gasoline.png" data-toggle="tooltip" title="" alt="Gasoline" data-original-title="Gasoline">
+    //            10,000.00                    </td>
+    public static final Project MILITARY_DOCTRINE = new Builder("military_doctrine", 40)
+            .cost(MONEY, 10_000_000)
+            .cost(STEEL, 10_000)
+            .cost(ALUMINUM, 10_000)
+            .cost(MUNITIONS, 10_000)
+            .cost(GASOLINE, 10_000)
+            .build();
+
     public static int getScore() {
         return 20;
     }

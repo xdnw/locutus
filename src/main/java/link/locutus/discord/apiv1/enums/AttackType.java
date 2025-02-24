@@ -19,10 +19,16 @@ public enum AttackType {
     AIRSTRIKE_MONEY("Airstrike Money", 4, 12, MilitaryUnit.AIRCRAFT, MilitaryUnit.MONEY),
     AIRSTRIKE_SHIP("Airstrike Ships", 4, 12, MilitaryUnit.AIRCRAFT, MilitaryUnit.SHIP),
     AIRSTRIKE_AIRCRAFT("Dogfight", 4, 12, MilitaryUnit.AIRCRAFT), // airstrike aircraft
+
     NAVAL(4, 14, MilitaryUnit.SHIP),
+
     PEACE(0, 0),
     MISSILE(8, 18, MilitaryUnit.MISSILE),
     NUKE(12, 25, MilitaryUnit.NUKE),
+
+    NAVAL_INFRA(4, 14, MilitaryUnit.SHIP),
+    NAVAL_AIR(4, 14, MilitaryUnit.SHIP),
+    NAVAL_GROUND(4, 14, MilitaryUnit.SHIP),
     ;
 
     @Override
