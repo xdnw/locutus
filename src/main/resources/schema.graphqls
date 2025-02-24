@@ -375,6 +375,9 @@ type Nation {
   # Enumeration representing the war policy the nation is currently on ('ATTRITION', 'TURTLE', 'BLITZKRIEG', 'FORTRESS', 'MONEYBAGS', 'PIRATE', 'TACTICIAN', 'GUARDIAN', 'COVERT', or 'ARCANE')
   war_policy: WarPolicy
 
+  # Number of turns until this nation can change its war policy
+  war_policy_turns: Int
+
   # The domestic policy the nation is on [deprecated]
 #  dompolicy: String @deprecated(reason: "Use domestic_policy instead.")
 
@@ -968,6 +971,7 @@ type Nation {
 
   # How many offensive wars the nation is actively engaged in
   offensive_wars_count: Int
+
   # How many defensive wars the nation is actively engaged in
   defensive_wars_count: Int
   economic_policy: EconomicPolicy
@@ -975,6 +979,7 @@ type Nation {
   government_type: GovernmentType
   credits_redeemed_this_month: Int
   alliance_join_date: DateTimeAuto
+
   # The awards which the nation has on their nation page.
   awards: [Award]
   bulletins(
@@ -1000,7 +1005,7 @@ type Nation {
     edited_before: DateTime
     edited_since: DateTime
     orderBy: [NationBulletinRepliesOrderByOrderByClause!]
-): [BulletinReply]
+  ): [BulletinReply]
 }
 
 enum AlliancePositionEnum {
@@ -3000,7 +3005,7 @@ enum GovernmentType {
   THEOCRATIC_DEMOCRACY
   THEOCRATIC_DICTATORSHIP
   THEOCRATIC_REPUBLIC
-MINDHIVE
+  MINDHIVE
 }
 
 # Order by clause for Nation.bulletins.orderBy.
@@ -3361,7 +3366,8 @@ enum QueryTradesOrderByColumn {
   DATE_ACCEPTED
   OFFER_RESOURCE
   OFFER_AMOUNT
-  RETURN_AMOUNT
+  RETURN_AMOUNT @deprecated(reason: "Use PRICE instead.")
+  PRICE
 }
 
 # A paginated list of Trade items.
