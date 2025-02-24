@@ -121,11 +121,7 @@ public class GrantCommands {
                         }
                     }
                     double[] resources = ResourceType.MONEY.toArray(cost);
-<<<<<<< HEAD
-                    grant.setInstructions("Go to <" + Settings.PNW_URL() + "/city/create/> and purchase " + numBuy + " cities");
-=======
-                    grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/city/create/> and purchase " + numBuy + " cities" + append);
->>>>>>> city-cost
+                    grant.setInstructions("Go to <" + Settings.PNW_URL() + "/city/create/> and purchase " + numBuy + " cities" + append);
                     grant.setCost(f -> resources).setType(note);
                     return null;
                 }, DepositType.CITY, receiver -> {
