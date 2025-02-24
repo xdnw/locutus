@@ -49,7 +49,7 @@ public class TransferResources extends Command {
 
         if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
         if (me.isGray()) {
-            return "Please set your color off gray: <https://politicsandwar.com/nation/edit/>";
+            return "Please set your color off gray: <" + Settings.PNW_URL() + "/nation/edit/>";
         }
         String mention = author.getAsMention();
         args = new ArrayList<>(args);

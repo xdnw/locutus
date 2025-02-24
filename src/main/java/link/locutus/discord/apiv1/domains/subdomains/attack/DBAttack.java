@@ -177,7 +177,7 @@ public class DBAttack {
     }
 
     public String toUrl() {
-        return "" + Settings.INSTANCE.PNW_URL() + "/nation/war/timeline/war=" + getWar_id();
+        return "" + Settings.PNW_URL() + "/nation/war/timeline/war=" + getWar_id();
     }
 
     public Integer getLooted() {

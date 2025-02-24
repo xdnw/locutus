@@ -1,6 +1,7 @@
 package link.locutus.discord.util.offshore.test;
 
 import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
@@ -51,7 +52,7 @@ public class Keno {
         post.put("picks", picksStr);
         post.put("g-recaptcha-response", "");
         post.put("action", "validate_captcha");
-        String url = "https://politicsandwar.com/casino/keno/#play";
+        String url = Settings.PNW_URL() + "/casino/keno/#play";
 
         return PW.withLogin(new Callable<Map.Entry<Set<Integer>, String>>() {
             @Override

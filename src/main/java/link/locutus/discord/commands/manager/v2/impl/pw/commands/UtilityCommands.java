@@ -694,8 +694,9 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Get a list a recent global war Non Aggression Pacts", viewable = true)
-    public String nap(@Default("false") boolean listExpired) {
+    public static String nap(@Default("false") boolean listExpired) {
         Map<Long, String> naps = new LinkedHashMap<>();
+        naps.put(TimeUtil.getTimeFromTurn(227742), "https://politicsandwar.fandom.com/wiki/Brawlywood");
         naps.put(238332L * 7200 * 1000, "<https://politicsandwar.fandom.com/wiki/Blue_Balled>\n<https://forum.politicsandwar.com/index.php?/topic/36719-peace-all-in-a-day/>");
         naps.put(239436L * 7200 * 1000, "<https://forum.politicsandwar.com/index.php?/topic/39524-treaty-why-nap-when-you-can-sleep/>");
         naps.put(1726938000000L, "(Mid-turn, 5:00pm UTC) <https://forum.politicsandwar.com/index.php?/topic/41182-peace-casino-royale/>");
@@ -2004,7 +2005,7 @@ public class UtilityCommands {
 
             for (DBNation nation : sorted) {
                 StringBuilder entry = new StringBuilder();
-                entry.append("<" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">")
+                entry.append("<" + Settings.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">")
                         .append(" | " + String.format("%16s", nation.getNation()))
                         .append(" | " + String.format("%16s", nation.getAllianceName()))
                         .append("\n```")

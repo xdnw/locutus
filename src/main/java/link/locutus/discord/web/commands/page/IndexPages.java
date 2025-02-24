@@ -312,7 +312,7 @@ public class IndexPages extends PageHelper {
         JDA jda = Locutus.imp().getDiscordApi().getApis().iterator().next();
         String registerLink = (user == null || nation == null) ? CM.register.cmd.toCommandUrl() : null;
         String locutusInvite = null;
-        String joinLink = nation != null && nation.getAlliance_id() == 0 ? Settings.INSTANCE.PNW_URL() + "/alliances/" : null;
+        String joinLink = nation != null && nation.getAlliance_id() == 0 ? Settings.PNW_URL() + "/alliances/" : null;
 
         Set<GuildDB> dbs = new LinkedHashSet<>();
 

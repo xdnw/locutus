@@ -399,7 +399,7 @@ public class IACheckup {
 
                 if (!aaIds.contains(nation.getAlliance_id())) {
                     int id = aaIds.iterator().next();
-                    return new AbstractMap.SimpleEntry<>("NONE", "Please apply to the alliance ingame: https://politicsandwar.com/alliance/join/id=" + id);
+                    return new AbstractMap.SimpleEntry<>("NONE", "Please apply to the alliance ingame: " + Settings.PNW_URL() + "/alliance/join/id=" + id);
                 }
                 if (nation.getPosition() <= 1) {
                     return new AbstractMap.SimpleEntry<>("APPLICANT", "Please discuss with your mentor about becoming a member");
@@ -441,7 +441,7 @@ public class IACheckup {
                 if (avgBarracks > 4) {
                     return null;
                 }
-                String desc = "Soldiers are the best unit for looting enemies and necessary for fighting wars, and are cheap. Get 5 barracks in each of your cities. <https://politicsandwar.com/cities/>\n\n" +
+                String desc = "Soldiers are the best unit for looting enemies and necessary for fighting wars, and are cheap. Get 5 barracks in each of your cities. <" + Settings.PNW_URL() + "/cities/>\n\n" +
                         "*Note: You can sell off buildings, or buy more infrastructure if you are lacking building slots*";
                 return new AbstractMap.SimpleEntry<>(nation.getMMRBuildingStr(), desc);
             }
@@ -561,7 +561,7 @@ public class IACheckup {
                     }
                 }
                 String desc = "Having unnecessary resources or $$ on your nation will attract raiders. It is important to safekeep so it wont get stolen when you lose a war. Visit the alliance bank page and store funds for safekeeping:\n" +
-                        "https://politicsandwar.com/alliance/id=" + nation.getAlliance_id() + "&display=bank\n\n" +
+                        Settings.PNW_URL() + "/alliance/id=" + nation.getAlliance_id() + "&display=bank\n\n" +
                         "*Note: deposit $1 if you don't need to safekeep so we know that you understand how to use the bank*";
                 return new AbstractMap.SimpleEntry<>(false, desc);
             }
@@ -593,13 +593,13 @@ public class IACheckup {
             case SPY_COMMAND: {
                 if (nation.getMeta(NationMeta.INTERVIEW_SPIES) != null) return null;
                 String desc = "Try using the commands e.g.:\n" +
-                        "" + CM.nation.spies.cmd.nation("https://politicsandwar.com/nation/id=6") + "\n";
+                        "" + CM.nation.spies.cmd.nation(Settings.PNW_URL() + "/nation/id=6") + "\n";
                 return new AbstractMap.SimpleEntry<>(false, desc);
             }
             case LOOT_COMMAND: {
                 if (nation.getMeta(NationMeta.INTERVIEW_LOOT) != null) return null;
                 String desc = "Try using the commands e.g.:\n" +
-                        "" + CM.nation.loot.cmd.nationOrAlliance("https://politicsandwar.com/nation/id=6").toSlashCommand() + "\n";
+                        "" + CM.nation.loot.cmd.nationOrAlliance(Settings.PNW_URL() + "/nation/id=6").toSlashCommand() + "\n";
                 return new AbstractMap.SimpleEntry<>(false, desc);
             }
             case GENERATE_CITY_BUILDS: {
@@ -703,7 +703,7 @@ public class IACheckup {
                     "This would allow you to produce the resources needed to power your cities, which is useful under blockade. " +
                     "The AFRICA continent would allow you to be self sufficient for nuke production\n" +
                     "Options: " + StringMan.join(allowedContinents, ", ") +"\n" +
-                    "Edit: <https://politicsandwar.com/nation/edit/>\n" +
+                    "Edit: <" + Settings.PNW_URL() + "/nation/edit/>\n" +
                     "<https://politicsandwar.fandom.com/wiki/Resources#Natural_Resource_Availability_by_Continent>");
             return new AbstractMap.SimpleEntry<>(nation.getContinent(), message.toString());
         }
@@ -823,7 +823,8 @@ public class IACheckup {
             long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(3);
             int previousAir = nation.getUnitsAt(MilitaryUnit.AIRCRAFT, cutoff);
             if (previousAir == nation.getAircraft()) {
-                String desc = "Planes can attack ground, air, or sea and are the best unit for defending your infra and allies. You can buy aircraft from the military tab. <https://politicsandwar.com/nation/military/aircraft/>";
+                String desc = "Planes can attack ground, air, or sea and are the best unit for defending your infra and allies. " +
+                        "You can buy aircraft from the military tab. <" + Settings.PNW_URL() + "/nation/military/aircraft/>";
                 return new AbstractMap.SimpleEntry<>(MathMan.format(nation.getAircraftPct() * 100) + "%", desc);
             }
         }
@@ -849,7 +850,7 @@ public class IACheckup {
         StringBuilder body = new StringBuilder();
         body.append("The following raids have 12 unused MAP:");
         for (DBWar war : maxMapWars) {
-            body.append("\n").append("https://politicsandwar.com/nation/war/groundbattle/war=" + war.getWarId());
+            body.append("\n").append(Settings.PNW_URL() + "/nation/war/groundbattle/war=" + war.getWarId());
         }
         body.append("\nYou can get some of their $ by doing ground attacks, and then a portion of all their $/resources when you defeat them (as well as a cut of their alliance bank if they are in an alliance)");
         return new AbstractMap.SimpleEntry<>(warIds, body.toString());
@@ -1104,7 +1105,7 @@ public class IACheckup {
 
     private Map.Entry<Object, String> checkObjectives(DBNation nation) {
         if (nation.getCities() == 1) {
-            String message = "You can go to <" + Settings.INSTANCE.PNW_URL() + "/nation/objectives/>" + " and complete the objectives for some easy cash.";
+            String message = "You can go to <" + Settings.PNW_URL() + "/nation/objectives/>" + " and complete the objectives for some easy cash.";
             return new AbstractMap.SimpleEntry<>(false, message);
         }
         return null;
@@ -1124,7 +1125,7 @@ public class IACheckup {
                 } else {
                     msg = "`fortress` to reduce enemy MAP by 1";
                 }
-                msg = "You can go to <" + Settings.INSTANCE.PNW_URL() + "/nation/edit/>" + " and change your war policy to " + msg;
+                msg = "You can go to <" + Settings.PNW_URL() + "/nation/edit/>" + " and change your war policy to " + msg;
                 return new AbstractMap.SimpleEntry<>(policy, msg);
         }
         return null;
@@ -1246,7 +1247,7 @@ public class IACheckup {
 
         String message = null;
         if (!allowedColors.contains(color)) {
-            message = "You can go to <" + Settings.INSTANCE.PNW_URL() + "/nation/edit/>" + " and change your trade bloc from " + color + " to " + allianceColor.name() + " (for trade block revenue)";
+            message = "You can go to <" + Settings.PNW_URL() + "/nation/edit/>" + " and change your trade bloc from " + color + " to " + allianceColor.name() + " (for trade block revenue)";
             if (!nation.isGray() && !nation.isBeige()) {
                 message += "\nnote: You do not receive trade bloc income by being on a different color to the alliance";
             }

@@ -114,7 +114,7 @@ public class GrantCommands {
                             domestic_affairs != null ? domestic_affairs : receiver.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS)
                     );
                     double[] resources = ResourceType.MONEY.toArray(cost);
-                    grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/city/create/> and purchase " + numBuy + " cities");
+                    grant.setInstructions("Go to <" + Settings.PNW_URL() + "/city/create/> and purchase " + numBuy + " cities");
                     grant.setCost(f -> resources).setType(note);
                     return null;
                 }, DepositType.CITY, receiver -> {
@@ -170,7 +170,7 @@ public class GrantCommands {
                 boolean bda = domestic_affairs != null ? domestic_affairs : receiver.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
                 double[] cost = project.cost(ta, gsa, bda);
                 grant.setCost(f -> cost).setType(DepositType.PROJECT.withAmount(project.ordinal()));
-                grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/nation/projects/> and purchase `" + project.name() + "`");
+                grant.setInstructions("Go to <" + Settings.PNW_URL() + "/nation/projects/> and purchase `" + project.name() + "`");
                 return null;
             }, DepositType.PROJECT, receiver -> {
                 return ProjectTemplate.getRequirementsProject(db, me, receiver, null, project);
@@ -241,9 +241,9 @@ public class GrantCommands {
                     return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.INFRA.withValue().toString()).addMessage( "Nation already has infra level: " + infra_level);
                 }
                 if (single_new_city) {
-                    grant.setInstructions("Go to your NEW city from <" + Settings.INSTANCE.PNW_URL() + "/cities/> and enter `@" + infra_level + "` infra. Use the `@` symbol to buy UP TO an amount");
+                    grant.setInstructions("Go to your NEW city from <" + Settings.PNW_URL() + "/cities/> and enter `@" + infra_level + "` infra. Use the `@` symbol to buy UP TO an amount");
                 } else {
-                    grant.setInstructions("Go to EACH city from <" + Settings.INSTANCE.PNW_URL() + "/cities/> and enter `@" + infra_level + "` infra. Use the `@` symbol to buy UP TO an amount");
+                    grant.setInstructions("Go to EACH city from <" + Settings.PNW_URL() + "/cities/> and enter `@" + infra_level + "` infra. Use the `@` symbol to buy UP TO an amount");
                 }
                 grant.setCost(f -> ResourceType.MONEY.toArray(cost)).setType(DepositType.INFRA.withValue(infra_level, single_new_city ? 1 : receiver.getCities()));
                 return null;
@@ -303,9 +303,9 @@ public class GrantCommands {
                         return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.LAND.withValue().toString()).addMessage( "Nation already has " + to_land + " land");
                     }
                     if (single_new_city) {
-                        grant.setInstructions("Go to your NEW city from <" + Settings.INSTANCE.PNW_URL() + "/cities/> and enter `@" + to_land + "` land. Use the `@` symbol to buy UP TO an amount");
+                        grant.setInstructions("Go to your NEW city from <" + Settings.PNW_URL() + "/cities/> and enter `@" + to_land + "` land. Use the `@` symbol to buy UP TO an amount");
                     } else {
-                        grant.setInstructions("Go to EACH city from <" + Settings.INSTANCE.PNW_URL() + "/cities/> and enter `@" + to_land + "` land. Use the `@` symbol to buy UP TO an amount");
+                        grant.setInstructions("Go to EACH city from <" + Settings.PNW_URL() + "/cities/> and enter `@" + to_land + "` land. Use the `@` symbol to buy UP TO an amount");
                     }
                     grant.setCost(f -> ResourceType.MONEY.toArray(cost)).setType(DepositType.LAND.withValue(to_land, single_new_city ? 1 : receiver.getCities()));
                     return null;
@@ -365,7 +365,7 @@ public class GrantCommands {
                 unitsToGrant.forEach((unit, amount) -> {
                     cost.add(unit.getCost(amount.intValue()));
                 });
-                grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/nation/military/> and purchase `" + unitsToGrant + "`");
+                grant.setInstructions("Go to <" + Settings.PNW_URL() + "/nation/military/> and purchase `" + unitsToGrant + "`");
                 grant.setCost(f -> cost.build()).setType(DepositType.WARCHEST.withValue());
                 return null;
             },
@@ -426,7 +426,7 @@ public class GrantCommands {
                 }
                 ResourceType.ResourcesBuilder cost = ResourceType.builder();
                 unitsToGrant.forEach((unit, amount) -> cost.add(unit.getCost(amount)));
-                grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/nation/military/> and purchase `" + unitsToGrant + "`");
+                grant.setInstructions("Go to <" + Settings.PNW_URL() + "/nation/military/> and purchase `" + unitsToGrant + "`");
                 grant.setCost(f -> cost.build()).setType(DepositType.WARCHEST.withValue());
                 return null;
             }, DepositType.WARCHEST, receiver -> {

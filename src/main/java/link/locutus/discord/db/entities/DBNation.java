@@ -246,7 +246,7 @@ public abstract class DBNation implements NationOrAlliance {
 
         StringBuilder output = new StringBuilder();
 //        try {
-//            String endpoint = "" + Settings.INSTANCE.PNW_URL() + "/api/discord/validateDiscord.php?access_key=%s&nation_id=%s";
+//            String endpoint = "" + Settings.PNW_URL() + "/api/discord/validateDiscord.php?access_key=%s&nation_id=%s";
 //            endpoint = String.format(endpoint, Settings.INSTANCE.DISCORD.ACCESS_KEY, getNation_id());
 //
 //            String json = FileUtil.readStringFromURL(endpoint);
@@ -772,7 +772,7 @@ public abstract class DBNation implements NationOrAlliance {
         post.put("bracket_id", "" + bracket.taxId);
         post.put("change_member_bracket", "Update Nation's Bracket");
         post.put("nation_id", getNation_id() + "");
-        String url = String.format("" + Settings.INSTANCE.PNW_URL() + "/alliance/id=%s&display=taxes", data()._allianceId());
+        String url = String.format("" + Settings.PNW_URL() + "/alliance/id=%s&display=taxes", data()._allianceId());
 
         return PW.withLogin(() -> {
             String token = auth.getToken(PagePriority.BRACKET_SET_UNUSED, url);
@@ -2100,7 +2100,7 @@ public abstract class DBNation implements NationOrAlliance {
         body.append("Hey hey! I'm Danzek. If you would like any help, feel free to ask me here or on discord! :D<br>" +
                 "Here are some beginner tips for you<hr><br>");
         if (cities.size() == 1) {
-            body.append("<a href=\"https://politicsandwar.com/nation/objectives/\" class=\"btn btn-warning\"><i class=\"fas fa-book\" aria-hidden=\"true\"></i> Open Objectives</a>");
+            body.append("<a href=\"" + Settings.PNW_URL() + "/nation/objectives/\" class=\"btn btn-warning\"><i class=\"fas fa-book\" aria-hidden=\"true\"></i> Open Objectives</a>");
             body.append("<p>The tutorial runs you through some of the basics, and gives you some cash right away. Let me know if you need any assistance with them:</p>");
             body.append("<hr><br>");
         }
@@ -2111,12 +2111,12 @@ public abstract class DBNation implements NationOrAlliance {
 
             body.append("<p>The quickest way to make money is to raid:</p>");
             body.append("<ul>" +
-                    "<li>Go to the <a href=\"https://politicsandwar.com/nation/war/\">War Page</a> and click `Find Nations in War Range`</li>" +
+                    "<li>Go to the <a href=\"" + Settings.PNW_URL() + "/nation/war/\">War Page</a> and click `Find Nations in War Range`</li>" +
                     "<li>Attack up to 5 inactive nations (purple diamond next to them)</li>" +
                     "<li>Inactive people don't fight back</li>" +
                     "<li>take a portion of their resources when defeated</li>" +
                     "</ul>");
-            body.append("<a href=\"https://politicsandwar.com/index.php?id=15&keyword=" + data()._score() + "&cat=war_range&ob=cities&od=ASC&maximum=50&minimum=0&search=Go&beige=true&vmode=false&aligned=true&openslots=true\" class=\"btn btn-warning\"><i class=\"fas fa-chess-rook\" aria-hidden=\"true\"></i> Find War Targets</a>");
+            body.append("<a href=\"" + Settings.PNW_URL() + "/index.php?id=15&keyword=" + data()._score() + "&cat=war_range&ob=cities&od=ASC&maximum=50&minimum=0&search=Go&beige=true&vmode=false&aligned=true&openslots=true\" class=\"btn btn-warning\"><i class=\"fas fa-chess-rook\" aria-hidden=\"true\"></i> Find War Targets</a>");
             body.append("<a href=\"https://docs.google.com/document/d/1iuKHpSSQ9qYGFaKeE4Rv1lixyZcr6eO1ZTLyGJJLdd4/\" class=\"btn btn-warning\"><i class=\"fas fa-book\" aria-hidden=\"true\"></i> In Depth Raiding Guide</a>");
             body.append("<hr><br>");
         }
@@ -2128,7 +2128,7 @@ public abstract class DBNation implements NationOrAlliance {
         int i = 0;
         for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
             String title = "City " + (++i);
-            String url = "https://politicsandwar.com/city/id=" + entry.getKey();
+            String url = Settings.PNW_URL() + "/city/id=" + entry.getKey();
             JavaCity city = entry.getValue();
 
             List<String> cityCompliance = new ArrayList<>();
@@ -2324,7 +2324,7 @@ public abstract class DBNation implements NationOrAlliance {
     @Deprecated // Not working any more since you cant do it with an api key, only login
     public String commend(boolean isCommend) throws IOException {
         ApiKeyPool.ApiKey key = getApiKey(true);
-        String url = "https://politicsandwar.com/api/denouncements.php";
+        String url = Settings.PNW_URL() + "/api/denouncements.php";
         Map<String, String> post = new HashMap<>();
 
         if (isCommend) {
@@ -3067,9 +3067,9 @@ public abstract class DBNation implements NationOrAlliance {
     public String toMarkdown(boolean war, boolean showOff, boolean showSpies, boolean showInfra, boolean spies) {
         StringBuilder response = new StringBuilder();
         if (war) {
-            response.append("<" + Settings.INSTANCE.PNW_URL() + "/nation/war/declare/id=" + getNation_id() + ">");
+            response.append("<" + Settings.PNW_URL() + "/nation/war/declare/id=" + getNation_id() + ">");
         } else {
-            response.append("<" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + getNation_id() + ">");
+            response.append("<" + Settings.PNW_URL() + "/nation/id=" + getNation_id() + ">");
         }
         String beigeStr = null;
         if (data()._color() == NationColor.BEIGE) {
@@ -3842,7 +3842,7 @@ public abstract class DBNation implements NationOrAlliance {
         int i = 0;
         for (Map.Entry<Integer, JavaCity> entry : cities) {
             if (++i == index) {
-                String url = "" + Settings.INSTANCE.PNW_URL() + "/city/id=" + entry.getKey();
+                String url = "" + Settings.PNW_URL() + "/city/id=" + entry.getKey();
                 return url;
             }
         }
@@ -3851,12 +3851,12 @@ public abstract class DBNation implements NationOrAlliance {
 
     @Command(desc = "Game url for nation")
     public String getUrl() {
-        return "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + getNation_id();
+        return "" + Settings.PNW_URL() + "/nation/id=" + getNation_id();
     }
 
     @Command(desc = "Game url for alliance")
     public String getAllianceUrl() {
-        return "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + getAlliance_id();
+        return "" + Settings.PNW_URL() + "/alliance/id=" + getAlliance_id();
     }
 
     @Command(desc = "Markdown url for the nation")
@@ -4014,7 +4014,7 @@ public abstract class DBNation implements NationOrAlliance {
                     // for the key starting with <letter> and ending with `<letter>`
                     String key = stats.getKey();
                     String redacted = key.substring(0, 1) + "..." + key.substring(key.length() - 1);
-                    throw new IllegalArgumentException("Error: " + String.join(", ", errors) + " for key: `" + redacted + "` at <https://politicsandwar.com/account/#7>");
+                    throw new IllegalArgumentException("Error: " + String.join(", ", errors) + " for key: `" + redacted + "` at <" + Settings.PNW_URL() + "/account/#7>");
                 }
             }
 
@@ -4482,7 +4482,7 @@ public abstract class DBNation implements NationOrAlliance {
         if (title) {
             String nationUrl;
             if (war) {
-                String url = Settings.INSTANCE.PNW_URL() + "/nation/war/declare/id=" + getNation_id();
+                String url = Settings.PNW_URL() + "/nation/war/declare/id=" + getNation_id();
                 nationUrl = embed ? MarkupUtil.markdownUrl(getName(), url) : "<" + url + ">";
             } else {
                 nationUrl = getNationUrlMarkup();
@@ -4571,7 +4571,7 @@ public abstract class DBNation implements NationOrAlliance {
             post.put("to", getNation_id() + "");
             post.put("subject", subject);
             post.put("message", message);
-            String url = "" + Settings.INSTANCE.PNW_URL() + "/api/send-message/?key=" + pair.getKey();
+            String url = "" + Settings.PNW_URL() + "/api/send-message/?key=" + pair.getKey();
             String result = FileUtil.get(FileUtil.readStringFromURL(priority ? PagePriority.MAIL_SEND_SINGLE : PagePriority.MAIL_SEND_BULK, url, post, null));
             if (result.contains("Invalid API key")) {
                 pair.deleteApiKey();
@@ -6055,7 +6055,7 @@ public abstract class DBNation implements NationOrAlliance {
         Callable<Long> task = new Callable<Long>() {
             @Override
             public Long call() throws Exception {
-                String baseUrl = "" + Settings.INSTANCE.PNW_URL() + "/nation/espionage/eid=";
+                String baseUrl = "" + Settings.PNW_URL() + "/nation/espionage/eid=";
                 String url = baseUrl + getNation_id();
                 String html = auth.readStringFromURL(PagePriority.ESPIONAGE_FULL_UNUSED, url, Collections.emptyMap());
                 if (html.contains("This target has already had 3 espionage operations executed upon them today.")) {
@@ -6094,7 +6094,7 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     public String getDeclareUrl() {
-        return "https://politicsandwar.com/nation/war/declare/id=" + getNation_id();
+        return Settings.PNW_URL() + "/nation/war/declare/id=" + getNation_id();
     }
 
     @Command(desc = "Average land per city")

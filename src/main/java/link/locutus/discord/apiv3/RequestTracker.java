@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Logg;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -191,8 +192,8 @@ public class RequestTracker {
     public int getDomainId(URI url) {
         String urlStr = url.toString();
         String host;
-        if (urlStr.contains("api.politicsandwar.com/subscriptions/")) {
-            host = "api.politicsandwar.com/subscriptions";
+        if (urlStr.contains((Settings.INSTANCE.TEST ? "api-test" : "api") + ".politicsandwar.com/subscriptions/")) {
+            host = (Settings.INSTANCE.TEST ? "api-test" : "api") + ".politicsandwar.com/subscriptions";
         } else {
             host = url.getHost();
         }

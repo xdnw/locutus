@@ -38,7 +38,7 @@ public class ReadMailTask implements Callable<List<ReadMailTask.MailMessage>> {
         return PW.withLogin(() -> {
             List<MailMessage> messagesColor = new ArrayList<>();
             try {
-                String url = Settings.INSTANCE.PNW_URL() + "/inbox/message/id=" + id;
+                String url = Settings.PNW_URL() + "/inbox/message/id=" + id;
                 Document msgDom = Jsoup.parse(auth.readStringFromURL(PagePriority.MAIL_READ, url, Collections.emptyMap()));
                 Elements messages = msgDom.select(".blue-msg, .red-msg");
                 for (Element message : messages) {

@@ -154,6 +154,6 @@ public interface Project {
     @Command(desc = "The url of this project's image")
     default String getImageUrl() {
         String name = getImageName();
-        return "" + Settings.INSTANCE.PNW_URL() + "/img/projects/" + name + (name.contains(".") ? "" : ".jpg");
+        return "" + Settings.PNW_URL() + "/img/projects/" + name + (name.contains(".") ? "" : ".jpg");
     }
 }

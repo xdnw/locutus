@@ -340,7 +340,7 @@ public class JavaCity implements ICity {
             }
         }
 
-        Function<Integer, String> cityName = id -> id > 0 ? "<" + Settings.INSTANCE.PNW_URL() + "/city/id=" + id + ">" : "your new city";
+        Function<Integer, String> cityName = id -> id > 0 ? "<" + Settings.PNW_URL() + "/city/id=" + id + ">" : "your new city";
 
         StringBuilder response = new StringBuilder();
         int i = 0;
@@ -369,11 +369,11 @@ public class JavaCity implements ICity {
             if (cityId <= 0) {
                 cityIdStr = "CITY_ID> (replace CITY_ID with the city id)";
             }
-            importUrl = "<" + Settings.INSTANCE.PNW_URL() + "/city/improvements/import/id=" + cityId + (cityId > 0 ? ">" : "");
+            importUrl = "<" + Settings.PNW_URL() + "/city/improvements/import/id=" + cityId + (cityId > 0 ? ">" : "");
         } else if (isBulk) {
-            importUrl = "<" + Settings.INSTANCE.PNW_URL() + "/city/improvements/bulk-import/>";
+            importUrl = "<" + Settings.PNW_URL() + "/city/improvements/bulk-import/>";
         } else {
-            importUrl = "<" + Settings.INSTANCE.PNW_URL() + "/city/improvements/import/=CITY_ID> for each city in " + fromMap.keySet();
+            importUrl = "<" + Settings.PNW_URL() + "/city/improvements/import/=CITY_ID> for each city in " + fromMap.keySet();
         }
         response.append('\n').append(++i+". Go to " + importUrl);
         response.append('\n').append(++i+". Copy the following build:\n");
@@ -383,7 +383,7 @@ public class JavaCity implements ICity {
         if (!infraPurchases.isEmpty()) {
             for (Map.Entry<Integer, Double> entry : infraPurchases.entrySet()) {
                 if (entry.getValue() < 0 && !dontSellInfra) {
-                    response.append('\n').append(++i + ". (to sell) Enter @" + getInfra() + " infra in <" + Settings.INSTANCE.PNW_URL() + "/city/id=" + entry.getKey() + ">");
+                    response.append('\n').append(++i + ". (to sell) Enter @" + getInfra() + " infra in <" + Settings.PNW_URL() + "/city/id=" + entry.getKey() + ">");
                 }
             }
         }

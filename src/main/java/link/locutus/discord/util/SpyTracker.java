@@ -577,7 +577,7 @@ public class SpyTracker {
                 String time = DiscordUtil.timestamp(bounty.getDate().toEpochMilli(), null);
                 body.append("\n- " + PW.getMarkdownUrl(bounty.getNation_id(), false) + ": `$" + MathMan.format(bounty.getAmount()) + "` - " + time);
             }
-            body.append("\n<https://politicsandwar.com/world/bounties/>\n\n**Active Nations**:\n");
+            body.append("\n<" + Settings.PNW_URL() + "/world/bounties/>\n\n**Active Nations**:\n");
             for (Nation nation : active) {
                 int id = nation.getId();
                 long activeMs = start - nation.getLast_active().toEpochMilli();

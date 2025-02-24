@@ -6,6 +6,7 @@ import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.Coalition;
@@ -168,9 +169,9 @@ public class TradeListener {
             message.append("\n- You must be on the correct continent and color to get a treasure spawn");
         }
         message.append("\n- You will NOT receive color revenue if you are NOT your alliance color (or beige)");
-        message.append("\n- All Treasures: <https://politicsandwar.com/leaderboards/display=treasures>");
-        message.append("\n- All Colors: <https://politicsandwar.com/leaderboards/display=color>");
-        message.append("\n- Edit Color: <https://politicsandwar.com/nation/edit/>");
+        message.append("\n- All Treasures: <" + Settings.PNW_URL() + "/leaderboards/display=treasures>");
+        message.append("\n- All Colors: <" + Settings.PNW_URL() + "/leaderboards/display=color>");
+        message.append("\n- Edit Color: <" + Settings.PNW_URL() + "/nation/edit/>");
 
         AlertUtil.forEachChannel(f -> f.isWhitelisted() && f.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS), GuildKey.TREASURE_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
             @Override

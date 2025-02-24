@@ -1,5 +1,6 @@
 package link.locutus.discord.apiv1.enums;
 
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.MathMan;
 
 import java.util.Arrays;
@@ -14,16 +15,16 @@ public enum DepositType {
     IGNORE("Excluded from deposits"),
     TRADE("Sub type of deposits, earmarked as trading funds"),
 
-    CITY(GRANT, "Go to <https://politicsandwar.com/city/create/> and purchase a new city", "A city grant with a value either the number of cities, -1 for all cities, or the city id\n" +
+    CITY(GRANT, "Go to <https://{test}politicsandwar.com/city/create/> and purchase a new city", "A city grant with a value either the number of cities, -1 for all cities, or the city id\n" +
             "Can be applied alongside another modifier, e.g. `#land=2000 #city=-1` would be 2000 land for all cities",
             true),
-    PROJECT(GRANT, "Go to <https://politicsandwar.com/nation/projects/> and purchase the desired project",
+    PROJECT(GRANT, "Go to <https://{test}politicsandwar.com/nation/projects/> and purchase the desired project",
             "A project grant with the id or name for a value. `#project=BAUXITEWORKS`", true),
-    INFRA(GRANT, "Go to your city <https://politicsandwar.com/cities/> and purchase the desired infrastructure",
+    INFRA(GRANT, "Go to your city <https://{test}politicsandwar.com/cities/> and purchase the desired infrastructure",
             "A grant for infra level. Can be added with `#city`", true),
-    LAND(GRANT, "Go to your city <https://politicsandwar.com/cities/> and purchase the desired land", "A grant for a land level. Can be added with `#city`", true),
-    BUILD(GRANT, "Go to <https://politicsandwar.com/city/improvements/bulk-import/> and import the desired build", "A grant for a city build. The value is optional and is equal to `infra << 32 | land` (see: <https://bit-calculator.com/bit-shift-calculator> ). Can be added with `#city` / `#infra` / `#land`", true),
-    WARCHEST(GRANT, "Go to <https://politicsandwar.com/nation/military/> and purchase the desired units", "A grant for war resources", true),
+    LAND(GRANT, "Go to your city <https://{test}politicsandwar.com/cities/> and purchase the desired land", "A grant for a land level. Can be added with `#city`", true),
+    BUILD(GRANT, "Go to <https://{test}politicsandwar.com/city/improvements/bulk-import/> and import the desired build", "A grant for a city build. The value is optional and is equal to `infra << 32 | land` (see: <https://bit-calculator.com/bit-shift-calculator> ). Can be added with `#city` / `#infra` / `#land`", true),
+    WARCHEST(GRANT, "Go to <https://{test}politicsandwar.com/nation/military/> and purchase the desired units", "A grant for war resources", true),
     RAWS(GRANT, "Raw resources for city consumption", "", true),
 
     EXPIRE(GRANT, "Will be excluded from deposits after the specified time e.g. `#expire=60d`", "", false),
@@ -70,7 +71,7 @@ public enum DepositType {
     }
 
     public String getDescription() {
-        return description;
+        return description.replace("{test}", Settings.INSTANCE.TEST ? "test." : "");
     }
 
     public DepositType getParent() {

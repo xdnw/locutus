@@ -40,7 +40,7 @@ public class GetBuild extends Command {
         Map<CityBuild, List<String>> nMap = new HashMap<>();
         for (Map.Entry<Integer, JavaCity> entry : builds.entrySet()) {
             int cityId = entry.getKey();
-            String url = "" + Settings.INSTANCE.PNW_URL() + "/city/id=" + cityId;
+            String url = "" + Settings.PNW_URL() + "/city/id=" + cityId;
             String link = MarkupUtil.markdownUrl(cityId + "", url);
             JavaCity build = entry.getValue();
             nMap.computeIfAbsent(build.toCityBuild(), i -> Lists.newArrayList()).add(link);

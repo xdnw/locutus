@@ -42,7 +42,7 @@ public class MailRespondTask implements Callable<String> {
                 msgPost.put("body", message);
                 msgPost.put("sndmsg", "Send Message");
 
-                String url = "" + Settings.INSTANCE.PNW_URL() + "/inbox/message/id=" + convoid;
+                String url = "" + Settings.PNW_URL() + "/inbox/message/id=" + convoid;
                 String msgResponse = auth.readStringFromURL(PagePriority.MAIL_REPLY, url, msgPost);
                 if (msgResponse.contains("You have successfully sent a message.")) {
                     return "Message sent to " + leader + "! (check your out folder)\n```md\n" + message + "\n```";

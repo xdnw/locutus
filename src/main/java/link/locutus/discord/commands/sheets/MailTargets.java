@@ -220,7 +220,7 @@ public class MailTargets extends Command {
                         "- Reply to this message with any spy reports you do against enemies (even if not these targets)\n" +
                         "- Remember to buy spies every day\n\n");
 
-                String baseUrl = "https://politicsandwar.com/nation/espionage/eid=";
+                String baseUrl = Settings.PNW_URL() + "/nation/espionage/eid=";
                 for (int i = 0; i < mySpyOps.size(); i++) {
                     totalSpyTargets++;
                     Spyop spyop = mySpyOps.get(i);

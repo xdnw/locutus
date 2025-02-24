@@ -4,6 +4,7 @@ import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.Transaction2;
@@ -187,7 +188,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
 
     @Override
     public String getInstructions(DBNation sender, DBNation receiver, Integer parsed) {
-        return "Go to: https://politicsandwar.com/nation/revenue/\nAnd check your revenue to make sure it matches up with the resources sent";
+        return "Go to: " + Settings.PNW_URL() + "/nation/revenue/\nAnd check your revenue to make sure it matches up with the resources sent";
     }
 
     @Override

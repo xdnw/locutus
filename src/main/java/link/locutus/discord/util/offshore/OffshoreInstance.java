@@ -1811,7 +1811,7 @@ public class OffshoreInstance {
      *                 }
      *             }
      *             if (whitelistedError) {
-     *                 msg += "\nEnsure Whitelisted access is enabled in " + Settings.INSTANCE.PNW_URL() + "/account";
+     *                 msg += "\nEnsure Whitelisted access is enabled in " + Settings.PNW_URL() + "/account";
      *             }
      *             return Map.entry(TransferStatus.INVALID_API_KEY, msg);
      *         }
@@ -1871,7 +1871,7 @@ public class OffshoreInstance {
                 }
             }
             if (whitelistedError) {
-                messages.add("Ensure Whitelisted access is enabled in " + Settings.INSTANCE.PNW_URL() + "/account");
+                messages.add("Ensure Whitelisted access is enabled in " + Settings.PNW_URL() + "/account");
             }
 //            return Map.entry(TransferStatus.INVALID_API_KEY, msg);
             return new TransferResult(TransferStatus.INVALID_API_KEY, receiver, amount, note).addMessages(messages);

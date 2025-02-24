@@ -440,7 +440,7 @@ public class DiscordCommands {
         boolean notRegistered = DiscordUtil.getUserByNationId(nation.getNation_id()) == null;
         String fullDiscriminator = DiscordUtil.getFullUsername(user);
 
-        String errorMsg = "1. Go to: <" + Settings.INSTANCE.PNW_URL() + "/nation/edit/>\n" +
+        String errorMsg = "1. Go to: <" + Settings.PNW_URL() + "/nation/edit/>\n" +
                 "2. Scroll down to where it says Discord Username:\n" +
                 "3. Put your discord username `" + fullDiscriminator + "` in the field\n" +
                 "4. Click save\n" +
@@ -459,7 +459,7 @@ public class DiscordCommands {
          */
 
         String discordIdErrorMsg = "That nation is already registered to another user!" +
-                "1. Go to: <" + Settings.INSTANCE.PNW_URL() + "/nation/edit/>\n" +
+                "1. Go to: <" + Settings.PNW_URL() + "/nation/edit/>\n" +
                 "2. Scroll down to where it says Discord Username:\n" +
                 "3. Put your **DISCORD ID** `" + user.getIdLong() + "` in the field\n" +
                 "4. Click save\n" +

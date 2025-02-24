@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.MMRMatcher;
 import link.locutus.discord.db.guild.GuildKey;
@@ -23,7 +24,7 @@ import java.util.stream.Collectors;
 public class GrantRequirements {
     @Command
     public Grant.Requirement domesticPolicy(DomesticPolicy policy) {
-        return new Grant.Requirement("Domestic policy must be set to MANIFEST_DESTINY for city grants: <https://politicsandwar.com/nation/edit/>", false,
+        return new Grant.Requirement("Domestic policy must be set to MANIFEST_DESTINY for city grants: <" + Settings.PNW_URL() + "/nation/edit/>", false,
                 f -> f.getDomesticPolicy() == policy);
     }
 

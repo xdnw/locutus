@@ -6,6 +6,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.Transaction2;
@@ -252,10 +253,10 @@ public class CityTemplate extends AGrantTemplate<Integer> {
     @Override
     public String getInstructions(DBNation sender, DBNation receiver, Integer parsed) {
         if (parsed != null && parsed > 1) {
-            return "Go to: https://politicsandwar.com/city/create/\n" +
+            return "Go to: " + Settings.PNW_URL() + "/city/create/\n" +
                     "And buy " + parsed + " cities";
         }
-        return "Go to: https://politicsandwar.com/city/create/\n" +
+        return "Go to: " + Settings.PNW_URL() + "/city/create/\n" +
                 "And buy city your next city";
     }
 }

@@ -233,7 +233,7 @@ public class Who extends Command {
 //            List<String> results = new ArrayList<>();
 //
 //            for (DBNation nation : sorted) {
-//                String entry = "<" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">" +
+//                String entry = "<" + Settings.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">" +
 //                        " | " + String.format("%16s", nation.getNation()) +
 //                        " | " + String.format("%16s", nation.getAllianceName()) +
 //                        "\n```" +

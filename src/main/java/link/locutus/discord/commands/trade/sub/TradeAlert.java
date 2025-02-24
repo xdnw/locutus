@@ -109,7 +109,7 @@
 //    }
 //
 //    public String url(ResourceType type, boolean isBuy) {
-//        String url = "" + Settings.INSTANCE.PNW_URL() + "/index.php?id=90&display=world&resource1=%s&buysell=" + (isBuy ? "buy" : "sell") + "&ob=price&od=DEF";
+//        String url = "" + Settings.PNW_URL() + "/index.php?id=90&display=world&resource1=%s&buysell=" + (isBuy ? "buy" : "sell") + "&ob=price&od=DEF";
 //        return String.format(url, type.name().toLowerCase());
 //    }
 //}

@@ -326,7 +326,7 @@ public class WebPWBindings extends WebBindingHelper {
     @HtmlInput
     @Binding(types=DBWar.class)
     public String war(ParameterData param) {
-        String pattern = Pattern.quote(Settings.INSTANCE.PNW_URL() + "/nation/war/timeline/war") + "=[0-9]+";
+        String pattern = Pattern.quote(Settings.PNW_URL() + "/nation/war/timeline/war") + "=[0-9]+";
         return WebUtil.createInput(WebUtil.InputType.text, param, "pattern='" + pattern + "'");
     }
 

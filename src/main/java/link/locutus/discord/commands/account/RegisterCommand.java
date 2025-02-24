@@ -155,7 +155,7 @@ public class RegisterCommand extends Command {
 
         String fullDiscriminator = DiscordUtil.getFullUsername(user);
 
-        String errorMsg = "1. Go to: <" + Settings.INSTANCE.PNW_URL() + "/nation/edit/>\n" +
+        String errorMsg = "1. Go to: <" + Settings.PNW_URL() + "/nation/edit/>\n" +
                 "2. Scroll down to where it says Discord Username:\n" +
                 "3. Put your discord username `" + fullDiscriminator + "` in the field\n" +
                 "4. Click save\n" +
@@ -168,7 +168,7 @@ public class RegisterCommand extends Command {
         if (existingUser != null) {
             if (existingUser.getDiscordId() != id) {
                 errorMsg = "That nation is already registered to another user!" +
-                        "1. Go to: <" + Settings.INSTANCE.PNW_URL() + "/nation/edit/>\n" +
+                        "1. Go to: <" + Settings.PNW_URL() + "/nation/edit/>\n" +
                         "2. Scroll down to where it says Discord Username:\n" +
                         "3. Put your **DISCORD ID** `" + user.getIdLong() + "` in the field\n" +
                         "4. Click save\n" +
@@ -183,7 +183,7 @@ public class RegisterCommand extends Command {
                 nation.setNation_id(nationId);
                 String pnwDiscordName = nation.fetchUsername();
                 if (pnwDiscordName == null || pnwDiscordName.isEmpty()) {
-                    return "Unable to fetch username. Please ensure you have `Discord Username` set in <https://politicsandwar.com/nation/edit/>.";
+                    return "Unable to fetch username. Please ensure you have `Discord Username` set in <" + Settings.PNW_URL() + "/nation/edit/>.";
                 }
                 boolean success = true;
 

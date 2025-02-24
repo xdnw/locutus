@@ -134,7 +134,7 @@ public class IASheet extends Command {
         ArrayList<String> header = new ArrayList<>();
         header.add("");
         for (DBNation nation : nations) {
-            String nationUrl = "=HYPERLINK(\"" + Settings.INSTANCE.PNW_URL() + "/nation/id=%s\",\"%s\")";
+            String nationUrl = "=HYPERLINK(\"" + Settings.PNW_URL() + "/nation/id=%s\",\"%s\")";
             nationUrl = String.format(nationUrl, nation.getNation_id(), nation.getNation());
             header.add(nationUrl);
         }

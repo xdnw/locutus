@@ -79,7 +79,7 @@ public class CounterSpy extends Command {
         if (args.size() != 2 && args.size() != 3) return usage(args.size(), 2, 3, channel);
 
         DBNation enemy;
-        if (args.get(0).startsWith("" + Settings.INSTANCE.PNW_URL() + "/nation/war/")) {
+        if (args.get(0).startsWith("" + Settings.PNW_URL() + "/nation/war/")) {
             // war url
             int warId = Integer.parseInt(args.get(0).split("=")[1].replaceAll("/", ""));
             DBWar war = Locutus.imp().getWarDb().getWar(warId);

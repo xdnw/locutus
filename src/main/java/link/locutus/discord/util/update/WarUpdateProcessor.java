@@ -936,11 +936,11 @@ public class WarUpdateProcessor {
             }
 
             if (current.getDefender_id() == Locutus.loader().getNationId()) {
-                String body = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + Settings.INSTANCE.ALLIANCE_ID() + "&display=bank";
-                AlertUtil.displayTray("" + Settings.INSTANCE.PNW_URL() + "/nation/war/timeline/war=" + current.warId, body);
+                String body = "" + Settings.PNW_URL() + "/alliance/id=" + Settings.INSTANCE.ALLIANCE_ID() + "&display=bank";
+                AlertUtil.displayTray("" + Settings.PNW_URL() + "/nation/war/timeline/war=" + current.warId, body);
                 if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                     try {
-                        Desktop.getDesktop().browse(new URI("" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + Settings.INSTANCE.ALLIANCE_ID() + "&display=bank"));
+                        Desktop.getDesktop().browse(new URI("" + Settings.PNW_URL() + "/alliance/id=" + Settings.INSTANCE.ALLIANCE_ID() + "&display=bank"));
                     } catch (IOException | URISyntaxException e) {
                         e.printStackTrace();
                     }
@@ -1002,7 +1002,7 @@ public class WarUpdateProcessor {
         if (defender.active_m() < 10000) return;
         if (attacker.getWarPolicy() == WarPolicy.PIRATE) return;
 
-        String message = AutoAuditType.WAR_POLICY.message.replace("{war}", current.toUrl());
+        String message = AutoAuditType.WAR_POLICY.msg().replace("{war}", current.toUrl());
         AlertUtil.auditAlert(attacker, AutoAuditType.WAR_POLICY, f -> message);
     }
 
@@ -1016,7 +1016,7 @@ public class WarUpdateProcessor {
                 if (bounty.getType() == current.getWarType()) return null;
             }
 
-            String message = AutoAuditType.WAR_TYPE_NOT_RAID.message.replace("{war}",  current.toUrl())
+            String message = AutoAuditType.WAR_TYPE_NOT_RAID.msg().replace("{war}",  current.toUrl())
                     .replace("{type}", current.getWarType() + "");
             if (defender.active_m() > 10000) message += " as the enemy is inactive";
             else if (defender.getAvg_infra() <= 1000) message += " as the enemy already has reduced infra";

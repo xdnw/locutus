@@ -1083,7 +1083,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 
     @Command(desc = "Get the alliance's in-game link")
     public String getUrl() {
-        return "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + getAlliance_id();
+        return "" + Settings.PNW_URL() + "/alliance/id=" + getAlliance_id();
     }
 
     public boolean exists() {
@@ -1286,7 +1286,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         PoliticsAndWarV3 api = getApi(permissions);
         if (api == null) {
             String msg = "No api key found for " + getMarkdownUrl() + ". Please use" + CM.settings_default.registerApiKey.cmd.toSlashMention() + "\n" +
-                    "Api key can be found on <https://politicsandwar.com/account/>";
+                    "Api key can be found on <" + Settings.PNW_URL() + "/account/>";
             if (permissions.length > 0) msg += " and ensure your in-game position grants: " + StringMan.getString(permissions);
             throw new IllegalArgumentException(msg);
         }

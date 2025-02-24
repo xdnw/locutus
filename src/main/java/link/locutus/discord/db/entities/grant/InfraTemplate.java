@@ -6,6 +6,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
@@ -273,10 +274,10 @@ public class InfraTemplate extends AGrantTemplate<Double>{
 
         StringBuilder message = new StringBuilder();
         message.append("**If you have VIP**: ");
-        message.append("Go to: https://politicsandwar.com/cities/mass-infra-purchase/\nAnd enter: " + parsed);
+        message.append("Go to: " + Settings.PNW_URL() + "/cities/mass-infra-purchase/\nAnd enter: " + parsed);
         message.append("\n");
         message.append("**If you don't have VIP**: ");
-        message.append("Go to: https://politicsandwar.com/cities/\nAnd get each city to " + parsed + " infra");
+        message.append("Go to: " + Settings.PNW_URL() + "/\nAnd get each city to " + parsed + " infra");
 
         return  message.toString();
     }

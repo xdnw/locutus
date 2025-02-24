@@ -362,7 +362,7 @@ public class DBWar {
     }
 
     public String toUrl() {
-        return Settings.INSTANCE.PNW_URL() + "/nation/war/timeline/war=" + warId;
+        return Settings.PNW_URL() + "/nation/war/timeline/war=" + warId;
     }
 
     @Override

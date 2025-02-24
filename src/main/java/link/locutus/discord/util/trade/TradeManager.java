@@ -509,7 +509,7 @@ public class TradeManager {
             public Map<ResourceType, int[]> call() throws Exception {
                 Map<ResourceType, int[]> result = new EnumMap<ResourceType, int[]>(ResourceType.class);
 
-                String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/trade/history/";
+                String url = "" + Settings.PNW_URL() + "/nation/trade/history/";
                 String html = auth.readStringFromURL(PagePriority.TRADE_HISTORY, url, Collections.emptyMap());
 
                 String var = "var histcatexplong =";
@@ -553,7 +553,7 @@ public class TradeManager {
 //            @Override
 //            public Map<Long, Long> apply(Long aLong) {
 //                try {
-//                    String url = "" + Settings.INSTANCE.PNW_URL() + "/world-graphs/graphID=%s";
+//                    String url = "" + Settings.PNW_URL() + "/world-graphs/graphID=%s";
 //                    String html = FileUtil.readStringFromURL(PagePriority.WORLD_GRAPHS, String.format(url, type.getGraphId()));
 //
 //                    String var = String.format("total_%s_over_time_Trace1", type.name().toLowerCase());

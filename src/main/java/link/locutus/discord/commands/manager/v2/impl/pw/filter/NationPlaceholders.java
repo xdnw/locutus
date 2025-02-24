@@ -23,6 +23,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.INationSnapshot;
 import link.locutus.discord.db.entities.SheetTemplate;
@@ -77,7 +78,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
                 new SelectorInfo("ROLE_ID", "123456789012345678", "A discord role id"),
                 new SelectorInfo("@USER_MENTION", "@xdnw", "A discord user mention or name"),
                 new SelectorInfo("USER_ID", "123456789012345678", "A discord user id"),
-                new SelectorInfo("https://politicsandwar.com/index.php?id=15&tax_id=TAX_ID", "https://politicsandwar.com/index.php?id=15&tax_id=1234", "A full tax url"),
+                new SelectorInfo(Settings.PNW_URL() + "/index.php?id=15&tax_id=TAX_ID", Settings.PNW_URL() + "/index.php?id=15&tax_id=1234", "A full tax url"),
                 new SelectorInfo("TAX_ID", "tax_id=1234", "A tax bracket id or url"),
                 new SelectorInfo("*", null, "All nations"),
                 new SelectorInfo("nation(<timestamp>,<includeVM:bool>):SELECTOR", "nation(5d,true):*", "As a sheet tab name; a snapshot selector, with optional timestamp and includeVM")

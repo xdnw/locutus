@@ -307,7 +307,7 @@ public class WarCommand extends Command {
                         DBNation nation = nationNetValue.getKey();
 
                         response.append('\n')
-                                .append("<" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">")
+                                .append("<" + Settings.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">")
                                 .append(" | " + String.format("%16s", nation.getNation()))
                                 .append(" | " + String.format("%16s", nation.getAllianceName()));
 

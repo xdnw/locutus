@@ -131,7 +131,7 @@ public class ListMultisByAlliance extends Command {
             String nationUrl = url(nationId);
 
             String allianceName = nationDB.getAllianceName(nation.getAlliance_id());
-            String allianceUrl = "=HYPERLINK(\"" + Settings.INSTANCE.PNW_URL() + "/alliance/id=%s\",\"%s\")";
+            String allianceUrl = "=HYPERLINK(\"" + Settings.PNW_URL() + "/alliance/id=%s\",\"%s\")";
             allianceUrl = String.format(allianceUrl, nation.getAlliance_id(), allianceName);
 
             String multiStr = StringMan.join(entry.getValue().stream().map(this::url).collect(Collectors.toList()), "\t");
@@ -157,7 +157,7 @@ public class ListMultisByAlliance extends Command {
 
     private String url(int nationId) {
         String name = PW.getName(nationId, false);
-        String nationUrl = "=HYPERLINK(\"" + Settings.INSTANCE.PNW_URL() + "/nation/id=%s\",\"%s\")";
+        String nationUrl = "=HYPERLINK(\"" + Settings.PNW_URL() + "/nation/id=%s\",\"%s\")";
         return String.format(nationUrl, nationId, name);
     }
 }

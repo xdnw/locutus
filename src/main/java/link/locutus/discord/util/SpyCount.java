@@ -409,7 +409,7 @@ public class SpyCount {
     }
 
     public static boolean checkSpiesGreater(PagePriority priority, int id, Operation optype, int safety, int spies) throws IOException {
-        String url = "" + Settings.INSTANCE.PNW_URL() + "/war/espionage_get_odds.php?id1=%s&id2=%s&id3=%s&id4=%s&id5=%s";
+        String url = "" + Settings.PNW_URL() + "/war/espionage_get_odds.php?id1=%s&id2=%s&id3=%s&id4=%s&id5=%s";
         url = String.format(url, Locutus.loader().getNationId(), id, optype.ordinal(), safety, spies);
         String result = FileUtil.readStringFromURL(priority, url).trim();
         return result.startsWith("Greater");

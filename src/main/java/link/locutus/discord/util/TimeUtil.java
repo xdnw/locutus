@@ -218,37 +218,6 @@ public class TimeUtil {
 
     }
 
-    public static <T> T runTimeTask(String id, Supplier<Long> getTime, Function<Long, T> task) {
-        File folder = new File((Settings.INSTANCE.TEST ? "test" + File.separator : "") + "database" + File.separator + "timelocks");
-        if (!folder.exists()) folder.mkdirs();
-
-        String name = "." + id;
-        File[] files = folder.listFiles((dir, fn) -> fn.endsWith(name));
-        long lastTurn = 0;
-        for (File file : files) {
-            lastTurn = Math.max(lastTurn, Long.parseLong(file.getName().split("\\.")[0]));
-        }
-
-        long currentTurn = getTime.get();
-        if (currentTurn != lastTurn) {
-            T result = task.apply(currentTurn - lastTurn);
-            // set last run time
-            try {
-                if (new File(folder, currentTurn + name).createNewFile()) {
-                    for (File file : files) {
-                        file.deleteOnExit();
-                    }
-                } else {
-                    AlertUtil.displayChannel("Error", "Could not create lock file for task " + name, Settings.INSTANCE.DISCORD.CHANNEL.ADMIN_ALERTS);
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            return result;
-        }
-        return null;
-    }
-
     public static long getTurn() {
         long now = System.currentTimeMillis();
         long daysSince0 = TimeUnit.MILLISECONDS.toDays(now);
@@ -264,25 +233,39 @@ public class TimeUtil {
     }
 
     public static long getTimeFromDay(long day) {
+        if (Settings.INSTANCE.TEST) day *= 4;
+
         ZonedDateTime time = Instant.ofEpochMilli(0).atZone(ZoneOffset.UTC).plusDays(day);
         long millisecond = time.toEpochSecond() * 1000L;
         return millisecond;
     }
 
     public static long getTimeFromTurn(long turn) {
+        if (Settings.INSTANCE.TEST) turn *= 4;
         long day = (turn / 12);
         long hour = turn * 2 - (day * 24);
+
         ZonedDateTime time = Instant.ofEpochMilli(0).atZone(ZoneOffset.UTC).plusDays(day).plusHours(hour);
         long millisecond = time.toEpochSecond() * 1000L;
         return millisecond;
     }
 
     public static long getTurn(ZonedDateTime utc) {
+        if (Settings.INSTANCE.TEST) {
+            long value = ChronoUnit.MINUTES.between(Instant.EPOCH, utc);
+            return value / 30;
+        }
         return (utc.getHour() / 2) + getDay(utc) * 12L;
     }
 
     public static long getDayTurn() {
-        return ZonedDateTime.now(ZoneOffset.UTC).getHour() / 2;
+        ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
+        if (Settings.INSTANCE.TEST) {
+            int hours = now.getHour();
+            int min = now.getMinute();
+            return (hours * 2) + (min / 30);
+        }
+        return now.getHour() / 2;
     }
 
     public static long getDay() {
@@ -291,6 +274,10 @@ public class TimeUtil {
     }
 
     public static long getDay(ZonedDateTime utc) {
+        if (Settings.INSTANCE.TEST) {
+            long value = ChronoUnit.MINUTES.between(Instant.EPOCH, utc);
+            return value / 30;
+        }
         return ChronoUnit.DAYS.between(Instant.EPOCH, utc);
     }
 
@@ -300,10 +287,6 @@ public class TimeUtil {
 
     public static long getDayFromTurn(long turn) {
         return turn / 12;
-    }
-
-    public static <T> T runDayTask(String id, Function<Long, T> task) {
-        return runTimeTask(id, TimeUtil::getDay, task);
     }
 
     public static long getOrbisDate(long date) {
@@ -318,10 +301,6 @@ public class TimeUtil {
 
     public static long getOrigin() {
         return 16482268800000L / 11L;
-    }
-
-    public static <T> T runTurnTask(String id, Function<Long, T> task) {
-        return runTimeTask(id, TimeUtil::getTurn, task);
     }
 
     public static long parseDate(DateFormat format, String dateStr) {

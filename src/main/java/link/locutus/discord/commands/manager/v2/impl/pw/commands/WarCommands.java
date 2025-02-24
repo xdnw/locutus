@@ -1068,7 +1068,7 @@ public class WarCommands {
             double counterStrength = entry.getValue();
 
             response.append('\n')
-                    .append("<" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">")
+                    .append("<" + Settings.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">")
                     .append(" | " + String.format("%16s", nation.getNation()))
                     .append(" | " + String.format("%16s", nation.getAllianceName()));
 
@@ -1248,7 +1248,7 @@ public class WarCommands {
             DBNation nation = nationNetValue.getKey();
 
             response.append('\n')
-                    .append("<" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">")
+                    .append("<" + Settings.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">")
                     .append(" | " + String.format("%16s", nation.getNation()))
                     .append(" | " + String.format("%16s", nation.getAllianceName()));
 
@@ -3665,7 +3665,7 @@ public class WarCommands {
                                 "- Reply to this message with any spy reports you do against enemies (even if not these targets)\n" +
                                 "- Remember to buy spies every day :D\n\n");
 
-                String baseUrl = "https://politicsandwar.com/nation/espionage/eid=";
+                String baseUrl = Settings.PNW_URL() + "/espionage/eid=";
                 for (int i = 0; i < mySpyOps.size(); i++) {
                     totalSpyTargets++;
                     Spyop spyop = mySpyOps.get(i);

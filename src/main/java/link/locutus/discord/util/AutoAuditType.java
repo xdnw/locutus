@@ -1,11 +1,12 @@
 package link.locutus.discord.util;
 
 import link.locutus.discord.apiv1.enums.WarType;
+import link.locutus.discord.config.Settings;
 
 import java.util.Map;
 
 public enum AutoAuditType {
-    GRAY("Please go to <https://politicsandwar.com/nation/edit/> and click save (so that you receive color trade bloc revenue)"),
+    GRAY("Please go to <https://{test}politicsandwar.com/nation/edit/> and click save (so that you receive color trade bloc revenue)"),
     HIGH_INFRA("As a low tier nation (<c5), the most profitable way to make money is to raid. " +
             "Building past 1700 infra while raiding is generally not cost effective as infra at that level is more expensive to replace when lost from war." +
             "It is only recommended to replace lost infra when you lose power or multiple military buildings, or do not have enough to sustain a military."),
@@ -18,22 +19,26 @@ public enum AutoAuditType {
 
     WAR_TYPE_NOT_RAID("<{war}> is declared as a {type} but should be " + WarType.RAID),
 
-    WAR_POLICY("<{war}> is declared against an inactive enemy. You can go to <https://politicsandwar.com/nation/edit/> and switch your `WAR POLICY` to `PIRATE` to get 40% more loot"),
+    WAR_POLICY("<{war}> is declared against an inactive enemy. You can go to <https://{test}politicsandwar.com/nation/edit/> and switch your `WAR POLICY` to `PIRATE` to get 40% more loot"),
 
     INACTIVE("Please remember to login every day to deter raiders and collect the login bonus"),
 
-    WRONG_COLOR("Please go to <https://politicsandwar.com/nation/edit/> then set your color to match the alliance, and click save (so that you receive color trade bloc revenue)"),
+    WRONG_COLOR("Please go to <https://{test}politicsandwar.com/nation/edit/> then set your color to match the alliance, and click save (so that you receive color trade bloc revenue)"),
 
         ;
 
 
-    public final String message;
+    private final String message;
 
     AutoAuditType(String msg) {
         this.message = msg;
     }
 
+    public String msg() {
+        return message.replace("{test}", Settings.INSTANCE.TEST ? "test." : "");
+    }
+
     public Map.Entry<AutoAuditType, String> toPair() {
-        return Map.entry(this, this.message);
+        return Map.entry(this, this.msg());
     }
 }

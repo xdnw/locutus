@@ -487,14 +487,14 @@ public class GrantCmd extends Command {
 
                 resources = ResourceType.resourcesToMap(unit.getCost((int) amt));
                 grant = new Grant(me, DepositType.WARCHEST.withValue().ignore(ignore));
-                grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/military/" + unit.getName() + "/> and purchase " + (int) amt + " " + unit.getName());
+                grant.setInstructions("Go to <" + Settings.PNW_URL() + "/military/" + unit.getName() + "/> and purchase " + (int) amt + " " + unit.getName());
             } else {
                 if (me.projectSlots() <= me.getNumProjects() && !flags.contains('f')) {
                     throw new IllegalArgumentException("Error: " + me.getUrl() + " has full project slots " + (me.projectSlots() + "<=" + me.getNumProjects()));
                 }
                 resources = project.cost();
                 if (!force && ResourceType.convertedTotal(resources) > 2000000 && me.getDomesticPolicy() != DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT) {
-                    throw new IllegalArgumentException("Please set your Domestic Policy to `Technological Advancement` in <" + Settings.INSTANCE.PNW_URL() + "/nation/edit/> to save 5%.");
+                    throw new IllegalArgumentException("Please set your Domestic Policy to `Technological Advancement` in <" + Settings.PNW_URL() + "/nation/edit/> to save 5%.");
                 }
                 if (me.hasProject(project)) {
                     throw new IllegalArgumentException("You already have: " + project.name());
@@ -515,7 +515,7 @@ public class GrantCmd extends Command {
                 }
 
                 grant = new Grant(me, DepositType.PROJECT.withAmount(project.ordinal()).ignore(ignore));
-                grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/nation/projects/> and purchase " + project.name());
+                grant.setInstructions("Go to <" + Settings.PNW_URL() + "/nation/projects/> and purchase " + project.name());
             }
         }
 
@@ -786,9 +786,9 @@ public class GrantCmd extends Command {
         resources.put(ResourceType.MONEY, cost);
 
         if (numBuy == 1) {
-            result.append("Then go to <https://politicsandwar.com/city/create/> and create your new city.");
+            result.append("Then go to <" + Settings.PNW_URL() + "/city/create/> and create your new city.");
         } else {
-            result.append("Then go to <https://politicsandwar.com/city/create/> and buy " + numBuy + " new cities.");
+            result.append("Then go to <" + Settings.PNW_URL() + "/city/create/> and buy " + numBuy + " new cities.");
         }
         return result.toString();
     }

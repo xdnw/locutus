@@ -52,7 +52,7 @@ public enum InterviewQuestion implements Question {
         }
     },
 
-    APPLY_INGAME("please apply ingame: <https://politicsandwar.com/alliance/join/id={guild.alliance_id}>", true) {
+    APPLY_INGAME("please apply ingame: <https://{test}politicsandwar.com/alliance/join/id={guild.alliance_id}>", true) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             GuildDB db = Locutus.imp().getGuildDB(guild);
@@ -217,7 +217,7 @@ public enum InterviewQuestion implements Question {
 
     INFO("Checkout <#{guild.info_channel}> to find out who your government members are, and who to ask for help", false),
 
-    OBJECTIVES("Complete the objectives https://politicsandwar.com/nation/objectives/\n" +
+    OBJECTIVES("Complete the objectives https://{test}politicsandwar.com/nation/objectives/\n" +
             "If you'd like any funds or assistance, give us a ping", true) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
@@ -228,7 +228,7 @@ public enum InterviewQuestion implements Question {
         }
     },
 
-    COLOR("You can go to <" + Settings.INSTANCE.PNW_URL() + "/nation/edit/>" + " and change your trade bloc from {color} to {alliance.color} (for trade block revenue)\n\n" +
+    COLOR("You can go to <" + Settings.PNW_URL() + "/nation/edit/>" + " and change your trade bloc from {color} to {alliance.color} (for trade block revenue)\n\n" +
             "(Note, if you can't change your policy yet, you can skip this step and do it later)", true, "\u27A1\uFE0F", "\uD83D\uDEAB") {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
@@ -250,7 +250,7 @@ public enum InterviewQuestion implements Question {
         }
     },
 
-    PIRATE("Raiding is the best way to make $$ for new nations. Go to <" + Settings.INSTANCE.PNW_URL() + "/nation/edit/> and set your war policy to pirate to increase your raiding profit by 40%\n\n" +
+    PIRATE("Raiding is the best way to make $$ for new nations. Go to <" + Settings.PNW_URL() + "/nation/edit/> and set your war policy to pirate to increase your raiding profit by 40%\n\n" +
             "(Note, if you can't change your policy yet, you can skip this step and do it later)", true, "\u27A1\uFE0F", "\uD83D\uDEAB") {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
@@ -265,7 +265,7 @@ public enum InterviewQuestion implements Question {
     },
 
     BARRACKS("""
-            Soldiers are the best unit for looting enemies, and are cheap. Get 5 barracks in each of your cities. <https://politicsandwar.com/cities/>
+            Soldiers are the best unit for looting enemies, and are cheap. Get 5 barracks in each of your cities. <https://{test}politicsandwar.com/cities/>
 
             *Note: You can sell off buildings, or buy more infrastructure if you are lacking building slots*""", true) {
         @Override
@@ -286,7 +286,7 @@ public enum InterviewQuestion implements Question {
 
 
     SOLDIERS("""
-            You can buy some soldiers from the military tab: <https://politicsandwar.com/nation/military/>
+            You can buy some soldiers from the military tab: <https://{test}politicsandwar.com/nation/military/>
             It takes 3 days to max out soldiers from 0 (though you can start raiding right away)
 
             Note: Your city needs to be powered to recruit units. Let us know if you need any help powering cities!""", true) {
@@ -323,7 +323,7 @@ public enum InterviewQuestion implements Question {
 //    },
 
     DEPOSIT_RESOURCES("Having unnecessary resources or $$ on your nation will attract raiders. It is important to safekeep so it wont get stolen when you lose a war. Visit the alliance bank page and store funds for safekeeping:\n" +
-            "https://politicsandwar.com/alliance/id={guild.alliance_id}&display=bank\n\n" +
+            "https://{test}politicsandwar.com/alliance/id={guild.alliance_id}&display=bank\n\n" +
             "*Note: deposit $1 if you don't need to safekeep*", true) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
@@ -388,7 +388,7 @@ public enum InterviewQuestion implements Question {
             You should always purchase max spies every day. Without Intelligence Agency you can buy up to 50 spies.
 
             Please purchase spies from the military tab if you have not:
-            https://politicsandwar.com/nation/military/spies/""", false) {
+            https://{test}politicsandwar.com/nation/military/spies/""", false) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             return me.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE, true) > 0;
@@ -409,9 +409,9 @@ public enum InterviewQuestion implements Question {
 
     SPY_COMMAND("For intel, we also have tools to estimate enemy spy count and resources without wasting a spy op. " +
             "Try using the commands e.g.:\n" +
-            "`" + Settings.commandPrefix(true) + "spies https://politicsandwar.com/nation/id=6`\n" +
+            "`" + Settings.commandPrefix(true) + "spies https://{test}politicsandwar.com/nation/id=6`\n" +
             "and\n" +
-            "`" + Settings.commandPrefix(true) + "loot https://politicsandwar.com/nation/id=6`\n\n*note: loot estimates are a work in progress*", true) {
+            "`" + Settings.commandPrefix(true) + "loot https://{test}politicsandwar.com/nation/id=6`\n\n*note: loot estimates are a work in progress*", true) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             return me.getMeta(NationMeta.INTERVIEW_SPIES) != null && me.getMeta(NationMeta.INTERVIEW_LOOT) != null;
@@ -518,7 +518,7 @@ public enum InterviewQuestion implements Question {
     },
 
     ROI_COMMAND("National Projects provide nation level benefits:\n" +
-            "https://politicsandwar.com/nation/projects/\n" +
+            "https://{test}politicsandwar.com/nation/projects/\n" +
             "Cities (past your 10th) OR Projects can be purchased every 10 days. You start with 1 project slot, and get more for every 5k infra in your nation.\n\n" +
             "To see which projects the bot recommends (for a 120 day period), use:\n" +
             "> " + Settings.commandPrefix(true) + "roi {usermention} 120\n\n" +
@@ -634,7 +634,7 @@ public enum InterviewQuestion implements Question {
     }
 
     public String getContent() {
-        return content;
+        return content.replace("{test}", Settings.INSTANCE.TEST ? "test." : "");
     }
 
     public boolean isValidateOnInit() {

@@ -8,10 +8,10 @@ public class Messages {
 
     public static String SUCCESS = "Success. You are now a registered user.";
 
-    public static String CITY_URL = "" + Settings.INSTANCE.PNW_URL() + "/city/id=";
+    public static String CITY_URL = "" + Settings.PNW_URL() + "/city/id=";
 
-    public static String NATION_URL = "" + Settings.INSTANCE.PNW_URL() + "/nation/id=";
-    public static String ALLIANCE_URL = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=";
+    public static String NATION_URL = "" + Settings.PNW_URL() + "/nation/id=";
+    public static String ALLIANCE_URL = "" + Settings.PNW_URL() + "/alliance/id=";
 
     public static String BLOCKADE_HELP = "A blockade prevents you from sending or receiving funds (via bank or trade)\n" +
             "It can end when:\n" +
@@ -25,9 +25,8 @@ public class Messages {
             "Things you can do if you are desperately out of funds and cant wait:\n" +
             "- Daily login can provide some cash ($500k)\n" +
             "- Raiding (up to 5 raids), you can get cash from ground attacks or cash & other resources when you defeat a nation (see `/nation loot`)\n" +
-            "- Doing rewarded ads <https://politicsandwar.com/rewarded-ads/> or baseball (see sidebar)\n" +
             "- Selling buildings (or replacing them with some cheaper alternative) or selling units you don't need\n" +
-            "- Converted a credit to resources: <https://politicsandwar.com/donate/resources/>\n" +
+            "- Converted a credit to resources: <" + Settings.PNW_URL() + "/donate/resources/>\n" +
             "- Switching your build to another power source (or buildings to mine e.g. uranium)";
 
     public static String GLOBAL_ROLE_MAPPING_INFO = "A global role mapping to ID:0 (*) will grant access to that role for all registered alliances";

@@ -105,8 +105,8 @@ public class Settings extends Config {
         return legacy ? Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX : Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX;
     }
 
-    public String PNW_URL() {
-        return "https://" + (TEST ? "test." : "") + "politicsandwar.com";
+    public static String PNW_URL() {
+        return "https://" + (Settings.INSTANCE.TEST ? "test." : "") + "politicsandwar.com";
     }
     public int ALLIANCE_ID() {
         return Locutus.imp().getNationDB().getNationById(Locutus.loader().getNationId()).getAlliance_id();

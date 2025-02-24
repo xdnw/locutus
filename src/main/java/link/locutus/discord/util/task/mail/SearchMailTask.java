@@ -30,9 +30,9 @@ public class SearchMailTask implements Callable<List<Mail>> {
 
     public SearchMailTask(Auth auth, String query, boolean checkUnread, boolean checkRead, boolean readContent, BiConsumer<Mail, List<String>> onEach) {
         if (query == null || query.isEmpty()) {
-            this.url = "" + Settings.INSTANCE.PNW_URL() + "/index.php?id=16&backpage=%3C%3C&maximum=100&minimum=0&od=DESC&searchTerm=";
+            this.url = "" + Settings.PNW_URL() + "/index.php?id=16&backpage=%3C%3C&maximum=100&minimum=0&od=DESC&searchTerm=";
         } else {
-            this.url = "https://politicsandwar.com/index.php?id=16&backpage=%3C%3C&maximum=15000&minimum=0&od=DESC&searchTerm=" + URLEncoder.encode(query);
+            this.url = Settings.PNW_URL() + "/index.php?id=16&backpage=%3C%3C&maximum=15000&minimum=0&od=DESC&searchTerm=" + URLEncoder.encode(query);
         }
         this.checkUnread = checkUnread;
         this.checkRead = checkRead;
@@ -67,7 +67,7 @@ public class SearchMailTask implements Callable<List<Mail>> {
 
                 String html = auth.readStringFromURL(PagePriority.MAIL_SEARCH, url, post);
 
-                if (html.contains("Are You Human?\n") || html.contains("https://politicsandwar.com/human/")) {
+                if (html.contains("Are You Human?\n") || html.contains(Settings.PNW_URL() + "/human/")) {
                     throw new IllegalArgumentException("Captcha");
                 }
                 Document dom = Jsoup.parse(html);

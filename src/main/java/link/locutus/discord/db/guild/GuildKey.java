@@ -148,7 +148,7 @@ public class GuildKey {
                                 }
 
                                 if (!isValid) {
-                                    String url = Settings.INSTANCE.PNW_URL() + "/alliance/id=" + aaId;
+                                    String url = Settings.PNW_URL() + "/alliance/id=" + aaId;
                                     String content = FileUtil.readStringFromURL(PagePriority.ALLIANCE_ID_AUTH_CODE, url);
                                     String idStr = db.getGuild().getId();
 
@@ -165,7 +165,7 @@ public class GuildKey {
                                 }
 
                                 if (!isValid) {
-                                    String msg = "1. Go to: <" + Settings.INSTANCE.PNW_URL() + "/alliance/edit/id=" + aaId + ">\n" +
+                                    String msg = "1. Go to: <" + Settings.PNW_URL() + "/alliance/edit/id=" + aaId + ">\n" +
                                             "2. Scroll down to where it says Alliance Description:\n" +
                                             "3. Put your guild id `" + db.getIdLong() + "` somewhere in the text\n" +
                                             "4. Click save\n" +
@@ -516,7 +516,7 @@ public class GuildKey {
 
         @Override
         public String help() {
-            return "API key found at the bottom of: <https://politicsandwar.com/account/>\n" +
+            return "API key found at the bottom of: <" + Settings.PNW_URL() + "/account/>\n" +
                     "Be sure to enable all access you wish the bot to have, and have a sufficient position in-game (e.g. leader)\n" +
                     "Needed for alliance functions and information access, such as calculating resource dispersal, sending mail\n" +
                     "![Api Key Example](https://github.com/xdnw/locutus/blob/master/src/main/resources/img/api_key.png?raw=true)";

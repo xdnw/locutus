@@ -6,6 +6,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBBan;
@@ -123,7 +124,7 @@ public class MultiResult {
         PW.withLogin(new Callable<Void>() {
             @Override
             public Void call() throws Exception {
-                String url = "https://politicsandwar.com/index.php?id=178&nation_id=" + nationId;
+                String url = Settings.PNW_URL() + "/index.php?id=178&nation_id=" + nationId;
                 String html = auth.readStringFromURL(PagePriority.ACTIVE_PAGE, url, null, false);
 
                 Document doc = Jsoup.parse(html);

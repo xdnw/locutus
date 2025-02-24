@@ -169,7 +169,7 @@ public class TradePriceCmd extends Command {
     public String toString(DBTrade offer) {
         int id = offer.getBuyer() == 0 ? offer.getSeller() : offer.getBuyer();
         String name = PW.getName(id, false);
-        String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + id;
+        String url = "" + Settings.PNW_URL() + "/nation/id=" + id;
         return "$" + MathMan.format(offer.getPpu()) + "\n" + MathMan.format(offer.getQuantity()) + "\n" + MarkupUtil.markdownUrl(name, url);
     }
 }

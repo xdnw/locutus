@@ -200,7 +200,7 @@ public class WarCard {
 //
 //        StringBuilder description = new StringBuilder();
 //
-//        String warUrl = "" + Settings.INSTANCE.PNW_URL() + "/nation/war/timeline/war=" + warId;
+//        String warUrl = "" + Settings.PNW_URL() + "/nation/war/timeline/war=" + warId;
 //        description.append("Link: [\"" + pnwWar.getWarReason() + "\"\n](" + warUrl + ")");
 //
 //        description.append(formatNation(attacker, war, pnwWar));
@@ -269,7 +269,7 @@ public class WarCard {
             }
         }
 
-        String warUrl = "" + Settings.INSTANCE.PNW_URL() + "/nation/war/timeline/war=" + warId;
+        String warUrl = "" + Settings.PNW_URL() + "/nation/war/timeline/war=" + warId;
         String warReason = this.warReason == null ? "Click here" : this.warReason;
         description.append("Link: [\"" + warReason + "\"\n](" + warUrl + ")");
 
@@ -425,7 +425,7 @@ public class WarCard {
     }
 
     public IMessageBuilder embed(IMessageBuilder builder, boolean addReactions, boolean condense, boolean send) {
-        String warUrl = "" + Settings.INSTANCE.PNW_URL() + "/nation/war/timeline/war=" + warId;
+        String warUrl = "" + Settings.PNW_URL() + "/nation/war/timeline/war=" + warId;
         CommandRef cmd = CM.war.card.cmd.warId(warId + "");
         CommandRef counter = CM.war.counter.url.cmd.war(warUrl);
         CommandRef counterSpy = CM.spy.counter.cmd.enemy(war.getAttacker_id() + "").operations("*");
@@ -470,7 +470,7 @@ public class WarCard {
     }
 
     private String formatNation(boolean attacker) {
-        String nationFormat = "[%s](%s)- [%s](" + Settings.INSTANCE.PNW_URL() + "/alliance/id=%s)- %s- %s- %s\n" + // name - alliance - active
+        String nationFormat = "[%s](%s)- [%s](" + Settings.PNW_URL() + "/alliance/id=%s)- %s- %s- %s\n" + // name - alliance - active
                 "%s " +
                 "%s " +
                 "**Resistance**:\n" +

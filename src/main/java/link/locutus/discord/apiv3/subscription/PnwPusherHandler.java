@@ -21,6 +21,7 @@ import com.pusher.client.util.HttpChannelAuthorizer;
 import com.pusher.client.util.HttpUserAuthenticator;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.StringMan;
@@ -41,9 +42,11 @@ import java.util.stream.Collectors;
 public class PnwPusherHandler {
 
     public static final String HOST = "socket.politicsandwar.com";
-    public static final String AUTH_ENDPOINT = "https://api.politicsandwar.com/subscriptions/v1/auth";
+    public static final String AUTH_ENDPOINT = "https://" + (Settings.INSTANCE.TEST ? "api-test" : "api") +
+            ".politicsandwar.com/subscriptions/v1/auth";
 
-    public static final String CHANNEL_ENDPOINT = "https://api.politicsandwar.com/subscriptions/v1/subscribe/{model}/{event}?api_key={key}";
+    public static final String CHANNEL_ENDPOINT = "https://" + (Settings.INSTANCE.TEST ? "api-test" : "api") +
+            ".politicsandwar.com/subscriptions/v1/subscribe/{model}/{event}?api_key={key}";
 
     private Pusher pusher;
     private final ObjectMapper objectMapper;

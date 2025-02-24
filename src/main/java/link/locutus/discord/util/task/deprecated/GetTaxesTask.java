@@ -34,7 +34,7 @@ public class GetTaxesTask implements Callable<List<TaxDeposit>> {
     public synchronized List<TaxDeposit> call()  {
         int allianceId = auth.getAllianceId();
         GuildDB db = Locutus.imp().getGuildDBByAA(allianceId);
-        String taxUrl = String.format("" + Settings.INSTANCE.PNW_URL() + "/alliance/id=%s&display=banktaxes", allianceId);
+        String taxUrl = String.format("" + Settings.PNW_URL() + "/alliance/id=%s&display=banktaxes", allianceId);
 
         ResourceType[] resources = {ResourceType.MONEY, ResourceType.FOOD, ResourceType.COAL, ResourceType.OIL, ResourceType.URANIUM, ResourceType.LEAD, ResourceType.IRON, ResourceType.BAUXITE, ResourceType.GASOLINE, ResourceType.MUNITIONS, ResourceType.STEEL, ResourceType.ALUMINUM};
 

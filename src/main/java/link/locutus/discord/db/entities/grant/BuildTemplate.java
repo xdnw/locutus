@@ -8,6 +8,7 @@ import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
@@ -516,12 +517,12 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         StringBuilder instructions = new StringBuilder();
         if (parsed.size() == 1) {
             int id = parsed.keySet().iterator().next();
-            instructions.append("Go to <https://politicsandwar.com/city/improvements/import/id=" + id + "> and import the build:\n");
+            instructions.append("Go to <" + Settings.PNW_URL() + "/city/improvements/import/id=" + id + "> and import the build:\n");
         } else if (parsed.size() == receiver.getCities()) {
-            instructions.append("Go to <https://politicsandwar.com/city/improvements/bulk-import/> and import the build:\n");
+            instructions.append("Go to <" + Settings.PNW_URL() + "/city/improvements/bulk-import/> and import the build:\n");
         } else {
             Set<Integer> ids = parsed.keySet();
-            instructions.append("Go to <https://politicsandwar.com/city/improvements/import/id=> with the following city ids:\n");
+            instructions.append("Go to <" + Settings.PNW_URL() + "/city/improvements/import/id=> with the following city ids:\n");
             for (int id : ids) {
                 instructions.append("- ").append(id).append("\n");
             }

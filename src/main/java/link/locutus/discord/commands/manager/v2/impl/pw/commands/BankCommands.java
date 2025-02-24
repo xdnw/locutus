@@ -404,7 +404,7 @@ public class BankCommands {
         TriFunction<double[], Integer, String, String> toBankUrl = new TriFunction<>() {
             @Override
             public String apply(double[] resources, Integer allianceId, String note) {
-                StringBuilder url = new StringBuilder(Settings.INSTANCE.PNW_URL() + "/alliance/id=" + allianceId + "&display=bank" + (note != null ? "&d_note=" + note : ""));
+                StringBuilder url = new StringBuilder(Settings.PNW_URL() + "/alliance/id=" + allianceId + "&display=bank" + (note != null ? "&d_note=" + note : ""));
                 for (ResourceType type : ResourceType.values) {
                     double amt = resources[type.ordinal()];
                     if (amt > 0) {

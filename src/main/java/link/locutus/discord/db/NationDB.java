@@ -933,7 +933,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public List<Nation> getActive(boolean priority, boolean runEvents) throws IOException {
-        String url = "https://politicsandwar.com/index.php?id=15&keyword=&cat=everything&ob=lastactive&od=DESC&maximum=50&minimum=0&search=Go&vmode=false";
+        String url = Settings.PNW_URL() + "/index.php?id=15&keyword=&cat=everything&ob=lastactive&od=DESC&maximum=50&minimum=0&search=Go&vmode=false";
         String html = FileUtil.readStringFromURL(priority ? PagePriority.ACTIVE_PAGE : PagePriority.API_NATIONS_AUTO, url);
         List<Integer> nationIds = PW.getNationsFromTable(html, 0);
         Map<Integer, Integer> nationIdIndex = new HashMap<>();
@@ -2605,7 +2605,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             DBBan ban = entry.getValue();
             if (ban.reason == null || ban.reason.isEmpty()) continue;
 
-            String regex = "https://politicsandwar.com/nation/id=(\\d+)";
+            String regex = Settings.PNW_URL() + "/nation/id=(\\d+)";
 
             Pattern pattern = Pattern.compile(regex);
             Matcher matcher = pattern.matcher(ban.reason);

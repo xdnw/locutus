@@ -135,8 +135,8 @@ public class UnsortedCommands {
         aaList = aaList.subList(aaNations);
         List<String> columns = new ArrayList<>(
                 Arrays.asList(
-                        "=HYPERLINK(\"politicsandwar.com/nation/id={nation_id}\", \"{nation}\")",
-                        "=HYPERLINK(\"politicsandwar.com/alliance/id={alliance_id}\", \"{alliancename}\")",
+                        "=HYPERLINK(\"" + Settings.PNW_URL() + "/nation/id={nation_id}\", \"{nation}\")",
+                        "=HYPERLINK(\"" + Settings.PNW_URL() + "/alliance/id={alliance_id}\", \"{alliancename}\")",
                         "{score}",
                         "{cities}",
 
@@ -176,11 +176,11 @@ public class UnsortedCommands {
                 natDcTime -= TimeUnit.DAYS.toMillis(1);
             }
 
-            header.set(0, "=HYPERLINK(\"politicsandwar.com/nation/id={nation_id}\", \"{nation}\")"
+            header.set(0, "=HYPERLINK(\"" + Settings.PNW_URL() + "/nation/id={nation_id}\", \"{nation}\")"
                     .replace("{nation_id}", nation.getId() + "")
                     .replace("{nation}", nation.getName()));
 
-            header.set(1, "=HYPERLINK(\"politicsandwar.com/alliance/id={alliance_id}\", \"{alliancename}\")"
+            header.set(1, "=HYPERLINK(\"" + Settings.PNW_URL() + "/alliance/id={alliance_id}\", \"{alliancename}\")"
                     .replace("{alliance_id}", nation.getAlliance_id() + "")
                     .replace("{alliancename}", nation.getAllianceName()));
 
@@ -246,8 +246,8 @@ public class UnsortedCommands {
 
         List<String> columns = new ArrayList<>(
                 Arrays.asList(
-                        "=HYPERLINK(\"politicsandwar.com/nation/id={nation_id}\", \"{nation}\")",
-                        "=HYPERLINK(\"politicsandwar.com/alliance/id={alliance_id}\", \"{alliancename}\")",
+                        "=HYPERLINK(\"" + Settings.PNW_URL() + "/nation/id={nation_id}\", \"{nation}\")",
+                        "=HYPERLINK(\"" + Settings.PNW_URL() + "/alliance/id={alliance_id}\", \"{alliancename}\")",
                         "{score}",
                         "{cities}",
                         "{spies}",
@@ -288,11 +288,11 @@ public class UnsortedCommands {
                 daysSinceOp = currentDay - dayLastOp;
             }
 
-            header.set(0, "=HYPERLINK(\"politicsandwar.com/nation/id={nation_id}\", \"{nation}\")"
+            header.set(0, "=HYPERLINK(\"" + Settings.PNW_URL() + "/nation/id={nation_id}\", \"{nation}\")"
                     .replace("{nation_id}", nation.getId() + "")
                     .replace("{nation}", nation.getName()));
 
-            header.set(1, "=HYPERLINK(\"politicsandwar.com/alliance/id={alliance_id}\", \"{alliancename}\")"
+            header.set(1, "=HYPERLINK(\"" + Settings.PNW_URL() + "/alliance/id={alliance_id}\", \"{alliancename}\")"
                     .replace("{alliance_id}", nation.getAlliance_id() + "")
                     .replace("{alliancename}", nation.getAllianceName()));
 
@@ -506,7 +506,7 @@ public class UnsortedCommands {
     }
 
     private void sendIO(StringBuilder out, String selfName, boolean isAlliance, Map<Integer, List<Transaction2>> transferMap, long timestamp, boolean inflow) {
-        String URL_BASE = "" + Settings.INSTANCE.PNW_URL() + "/%s/id=%s";
+        String URL_BASE = "" + Settings.PNW_URL() + "/%s/id=%s";
         long days = TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - timestamp);
         for (Map.Entry<Integer, List<Transaction2>> entry : transferMap.entrySet()) {
             int id = entry.getKey();
@@ -634,15 +634,19 @@ public class UnsortedCommands {
         }
     }
 
-    @Command(desc="Set your api and bot key for the bot\n" +
-            "Your API key can be found on the account page: <https://politicsandwar.com/account/>\n" +
-            "See: <https://forms.gle/KbszjAfPVVz3DX9A7> and DM <@258298021266063360> to get a bot key")
+    public static String addApiKeyDesc() {
+        return "Set your api and bot key for the bot\n" +
+                "Your API key can be found on the account page: <" + Settings.PNW_URL() + "/account/>\n" +
+                "See: <https://forms.gle/KbszjAfPVVz3DX9A7> and DM <@258298021266063360> to get a bot key";
+    }
+
+    @Command(descMethod="addApiKeyDesc")
     @Ephemeral
     public String addApiKey(@Me IMessageIO io, String apiKey, @Default String verifiedBotKey) {
         apiKey = apiKey.trim();
         // check if string is HEX (case insensitive)
         if (!apiKey.matches("[0-9a-fA-F]+")) {
-            return "Invalid API key. Please use the API key found on the account page: <https://politicsandwar.com/account/>";
+            return "Invalid API key. Please use the API key found on the account page: <" + Settings.PNW_URL() + "/account/>";
         }
         try {
             IMessageBuilder msg = io.getMessage();

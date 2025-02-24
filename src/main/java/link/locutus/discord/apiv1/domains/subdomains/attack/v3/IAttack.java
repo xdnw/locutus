@@ -101,7 +101,7 @@ public interface IAttack {
     int getWar_id();
 
     default String toUrl() {
-        return "" + Settings.INSTANCE.PNW_URL() + "/nation/war/timeline/war=" + getWar_id();
+        return "" + Settings.PNW_URL() + "/nation/war/timeline/war=" + getWar_id();
     }
 
     default double getLossesConverted(double[] buffer, boolean attacker) {

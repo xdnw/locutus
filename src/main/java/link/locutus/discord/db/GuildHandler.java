@@ -381,7 +381,7 @@ public class GuildHandler {
                 if (user != null) {
                     type += " | " + user.getAsMention();
                 }
-                String title = type + ": " + current.getNation() + " | " + "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAllianceName();
+                String title = type + ": " + current.getNation() + " | " + "" + Settings.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAllianceName();
                 AlertUtil.displayChannel(title, current.toString(), channel.getIdLong());
             }
         }
@@ -391,14 +391,14 @@ public class GuildHandler {
                 String extra = (current.isGray()) ? "" : ", set your color to match the alliance ";
 
                 AlertUtil.auditAlert(current, AutoAuditType.GRAY, f ->
-                        "Please go to <https://politicsandwar.com/nation/edit/>" + extra + " and click save (so that you receive color trade bloc revenue)"
+                        "Please go to <" + Settings.PNW_URL() + "/nation/edit/>" + extra + " and click save (so that you receive color trade bloc revenue)"
                 );
             }
             if (!current.isBeige() && !current.isGray() && !current.isAllianceColor()) {
                 NationColor color = current.getAlliance().getColor();
 
                 AlertUtil.auditAlert(current, AutoAuditType.WRONG_COLOR, f ->
-                        "Please go to <https://politicsandwar.com/nation/edit/>, set your color to " + color + " and click save (so that you receive color trade bloc revenue)"
+                        "Please go to <" + Settings.PNW_URL() + "/nation/edit/>, set your color to " + color + " and click save (so that you receive color trade bloc revenue)"
                 );
             }
         }
@@ -419,14 +419,14 @@ public class GuildHandler {
                 String title;
                 if (current.getVm_turns() == 0 && (current.active_m() < 2880 || (!current.isGray() && !current.isBeige()))) {
                     type = "ACTIVE NATION SET TO APPLICANT";
-                    title = type + ": " + current.getNation() + " | " + "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAllianceName();
+                    title = type + ": " + current.getNation() + " | " + "" + Settings.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAllianceName();
                 } else {
                     if (current.getColor() == NationColor.GRAY) {
                         type = "INACTIVE GRAY NATION SET TO APPLICANT";
                     } else {
                         type = "INACTIVE TAXABLE NATION SET TO APPLICANT";
                     }
-                    title = type + ": " + current.getNation() + " | " + "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAllianceName();
+                    title = type + ": " + current.getNation() + " | " + "" + Settings.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAllianceName();
                 }
                 String message = "**" + title + "**\n" + current.toString() + "\n";
                 RateLimitUtil.queueMessage(channel, message, true, 60);
@@ -532,7 +532,7 @@ public class GuildHandler {
                     if (user != null) {
                         type += " | " + user.getAsMention();
                     }
-                    String title = type + ": " + current.getNation() + " | " + "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAllianceName();
+                    String title = type + ": " + current.getNation() + " | " + "" + Settings.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAllianceName();
 
                     String message = "**" + title + "**" + "\n" + current.toString() + "\n";
                     RateLimitUtil.queueMessage(channel, message, true, 60);
@@ -608,7 +608,7 @@ public class GuildHandler {
             DBCity current = event.getCurrent();
 
             if (previous.getInfra() <= threshold && current.getInfra() > threshold && (nation.getCities() < 8 || nation.getOff() >= 5)) {
-                AlertUtil.auditAlert(nation, AutoAuditType.HIGH_INFRA, (f) -> AutoAuditType.HIGH_INFRA.message + "\n" + current.getUrl());
+                AlertUtil.auditAlert(nation, AutoAuditType.HIGH_INFRA, (f) -> AutoAuditType.HIGH_INFRA.msg() + "\n" + current.getUrl());
             }
         }
     }
@@ -624,10 +624,10 @@ public class GuildHandler {
 
                 if (amt > 0) {
                     if (building == Buildings.FARM && !nation.hasProject(Projects.MASS_IRRIGATION) && nation.getAvgLand() < 2000) {
-                        String msg = AutoAuditType.UNPROFITABLE_FARMS.message;
+                        String msg = AutoAuditType.UNPROFITABLE_FARMS.msg();
                         AlertUtil.auditAlert(nation, AutoAuditType.UNPROFITABLE_FARMS, (f) -> " ```" + msg + "```" + "\n" + city.getUrl());
                     } else if (building == Buildings.WIND_POWER && (amt > 1 || (city.getInfra() <= 2000 || city.getInfra() > 2250))) {
-                        String msg = AutoAuditType.WIND_POWER.message;
+                        String msg = AutoAuditType.WIND_POWER.msg();
                         AlertUtil.auditAlert(nation, AutoAuditType.WIND_POWER, (f) -> " ```" + msg + "```" + "\n" + city.getUrl());
                     }
                 }
@@ -1939,7 +1939,7 @@ public class GuildHandler {
                                     int unraidable = 50000 * defender.getCities();
 
                                     if (attacker.getGroundStrength(true, false) > defender.getSoldiers() * 1.7_5) {
-                                        String bankUrl = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + defender.getAlliance_id() + "&display=bank";
+                                        String bankUrl = "" + Settings.PNW_URL() + "/alliance/id=" + defender.getAlliance_id() + "&display=bank";
                                         tips.add("Deposit your excess money in the bank or it will be stolen: " + bankUrl + " (only $" + MathMan.format(unraidable) + " is unraidable)");
                                     }
                                     Role faRole = Roles.FOREIGN_AFFAIRS.toRole(war.getDefender_aa(), db);
@@ -2490,7 +2490,7 @@ public class GuildHandler {
 
         alliance.getNations(f -> f.getPositionEnum().id > Rank.APPLICANT.id && f.getVm_turns() == 0 && f.lastActiveMs() > timeCheckStart && f.lastActiveMs() < timeCheckEnd).forEach(nation -> {
             AlertUtil.auditAlert(nation, AutoAuditType.INACTIVE, f ->
-                    AutoAuditType.INACTIVE.message
+                    AutoAuditType.INACTIVE.msg()
             );
         });
     }

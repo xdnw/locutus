@@ -97,9 +97,9 @@ public class WebUtil {
             List<Mail> mails = new SearchMailTask(Locutus.imp().getRootAuth(), title, true, true, false, null).call();
             String mailUrl;
             if (mails.size() > 0) {
-                mailUrl = Settings.INSTANCE.PNW_URL() + "/inbox/message/id=" + mails.get(0).id;
+                mailUrl = Settings.PNW_URL() + "/inbox/message/id=" + mails.get(0).id;
             } else {
-                mailUrl = Settings.INSTANCE.PNW_URL() + "/inbox/";
+                mailUrl = Settings.PNW_URL() + "/inbox/";
             }
             return mailUrl;
         } else {

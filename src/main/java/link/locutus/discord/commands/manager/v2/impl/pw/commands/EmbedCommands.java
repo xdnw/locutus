@@ -1107,7 +1107,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         Map.Entry<String, List<String>> allEnemies = Map.entry(
                 "~enemies,#position>1,#vm_turns=0,#active_m<10800",
                 Arrays.asList(
-                        "'=HYPERLINK(\"politicsandwar.com/nation/id={nation_id}\", \"{nation}\")'",
+                        "'=HYPERLINK(\"" + Settings.PNW_URL() + "/nation/id={nation_id}\", \"{nation}\")'",
                         "{alliancename}",
                         "{relativestrength}",
                         "{cities}",
@@ -1168,7 +1168,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         Map.Entry<String, List<String>> priorityEnemies = Map.entry(
                 "#cities>10,~enemies,#active_m<2880,#def<3,#off>0,#RelativeStrength>0.7,#vm_turns=0,#isbeige=0,#fighting(~allies)",
                 Arrays.asList(
-                        "'=HYPERLINK(\"politicsandwar.com/nation/id={nation_id}\", \"{nation}\")'",
+                        "'=HYPERLINK(\"" + Settings.PNW_URL() + "/nation/id={nation_id}\", \"{nation}\")'",
                         "{alliancename}",
                         "{relativestrength}",
                         "{strongestenemyrelative}",
@@ -1194,7 +1194,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         Map.Entry<String, List<String>> underutilizedAllies = Map.entry(
                 "~allies,#active_m<2880,#freeoffensiveslots>0,#tankpct>0.8,#aircraftpct>0.8,#RelativeStrength>1.3,#vm_turns=0,#isbeige=0",
                 Arrays.asList(
-                        "'=HYPERLINK(\"politicsandwar.com/nation/id={nation_id}\", \"{nation}\")'",
+                        "'=HYPERLINK(\"" + Settings.PNW_URL() + "/nation/id={nation_id}\", \"{nation}\")'",
                         "{alliancename}",
                         "{relativestrength}",
                         "{strongestenemyrelative}",
@@ -1280,7 +1280,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         Long channelId = outputChannel == null ? null : outputChannel.getIdLong();
 
         String columns = StringMan.join(Arrays.asList(
-                "'=HYPERLINK(\"politicsandwar.com/nation/id={nation_id}\", \"{nation}\")'",
+                "'=HYPERLINK(\"" + Settings.PNW_URL() + "/nation/id={nation_id}\", \"{nation}\")'",
                 "{alliancename}",
                 "{relativestrength}",
                 "{strongestenemyrelative}",
