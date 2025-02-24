@@ -256,7 +256,8 @@ public class TsEndpointGenerator {
                         {paramsJson},
                         (data: unknown) => data as ApiTypes.{typeName},
                         {cachePolicy},
-                        "{typeName}"
+                        "{typeName}",
+                        `{desc}`
                     ),
                     useDisplay: ({args, render, renderLoading, renderError}: 
                     {args: {argValues}, render: (data: ApiTypes.{typeName}) => React.ReactNode, renderLoading?: () => React.ReactNode, renderError?: (error: string) => React.ReactNode}): React.ReactNode => {
@@ -284,6 +285,7 @@ public class TsEndpointGenerator {
                 .replace("{cachePolicy}", "{" + StringMan.join(cachePolicy, ", ") + "}")
                 .replace("{argValuesAllOptional}", argValuesAllOptional)
                 .replace("{cacheArg}", cacheArg)
+                .replace("{desc}", cmd.simpleDesc().replace("`", "\\`"))
                 ;
         return new TsEndpoint(constName, tsDef);
     }

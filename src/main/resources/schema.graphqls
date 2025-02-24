@@ -1308,6 +1308,12 @@ type Alliance {
     # Selects all wars that started on or after the specified date
     after: DateTime
 
+    # Selects wars that ended on or before the specified date
+    ended_before: DateTime
+
+    # Selects wars that ended on or after the specified date
+    ended_after: DateTime
+
     # Selects all wars where the attacker's ID is the specified ID
     attid: [Int]
 
@@ -1365,6 +1371,23 @@ type Alliance {
 
   # The amount of food in the alliance bank, this field will return null unless you are in this alliance and have access to view its bank
   food: Float
+
+  # The awards which the alliane has on their alliance page.
+  awards: [Award]
+
+  # Ranking of the alliance in the leaderboards
+  rank: Int
+  bulletins(
+    id: [Int]
+    min_id: Int
+    max_id: Int
+    before: DateTime
+    after: DateTime
+    edited_before: DateTime
+    edited_since: DateTime
+    nation_id: [Int]
+    orderBy: [AllianceBulletinsOrderByOrderByClause!]
+  ): [Bulletin]
 }
 
 # Order by clause for Alliance.nations.orderBy.
