@@ -451,14 +451,14 @@ public final class PW {
 //        }
 
         public static double nextCityCost(int currentCity, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency, boolean bureauOfDomesticAffairs) {
-            double cost = 100000 * Math.pow((currentCity + 1) - (top20AverageQuarter), 3) + 150000 * ((currentCity + 1) - (top20AverageQuarter)) + 75000;
+            double cost = Math.max((currentCity + 1) * 100000, 100000 * Math.pow((currentCity + 1) - (top20AverageQuarter), 3) + 150000 * ((currentCity + 1) - (top20AverageQuarter)) + 75000);
             if (manifestDestiny) {
                 double factor = 0.05;
                 if (govSupportAgency) factor += 0.025;
                 if (bureauOfDomesticAffairs) factor += 0.0125;
                 cost *= (1 - factor);
             }
-            return Math.max(0, cost);
+            return Math.max(1, cost);
         }
 
         public static String getCityUrl(int cityId) {
