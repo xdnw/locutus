@@ -3151,8 +3151,8 @@ public class GrantCommands {
 
             if (!exclude_city_refund) {
                 double tmp = cityCost;
-                cityCost = Math.max(0, cityCost - costReduction);
-                costReduction = Math.max(0, tmp - cityCost);
+                cityCost = Math.max(1, cityCost - costReduction);
+                costReduction = Math.max(0, costReduction - tmp);
             }
 
             headers.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
