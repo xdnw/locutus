@@ -428,28 +428,28 @@ public final class PW {
             return total;
         }
 
-        public static double nextCityCost(int currentCity, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency, boolean bureauOfDomesticAffairs) {
-            double cost = 50000*Math.pow(currentCity - 1, 3) + 150000 * (currentCity) + 75000;
-            if (cityPlanning) {
-                cost -= 50000000;
-            }
-            if (advCityPlanning) {
-                cost -= 100000000;
-            }
-            if (metPlanning) {
-                cost -= 150_000_000;
-            }
-            if (manifestDestiny) {
-                double factor = 0.05;
-                if (govSupportAgency) factor += 0.025;
-                if (bureauOfDomesticAffairs) factor += 0.0125;
-                cost *= (1 - factor);
-            }
-            return Math.max(0, cost);
-        }
-
         private static double top20AverageQuarter = 40.8 * 0.25;
-        public static double newNextCityCost(int currentCity, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency, boolean bureauOfDomesticAffairs) {
+//        public static double nextCityCost(int currentCity, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency, boolean bureauOfDomesticAffairs) {
+//            double cost = 50000*Math.pow(currentCity - 1, 3) + 150000 * (currentCity) + 75000;
+//            if (cityPlanning) {
+//                cost -= 50000000;
+//            }
+//            if (advCityPlanning) {
+//                cost -= 100000000;
+//            }
+//            if (metPlanning) {
+//                cost -= 150_000_000;
+//            }
+//            if (manifestDestiny) {
+//                double factor = 0.05;
+//                if (govSupportAgency) factor += 0.025;
+//                if (bureauOfDomesticAffairs) factor += 0.0125;
+//                cost *= (1 - factor);
+//            }
+//            return Math.max(0, cost);
+//        }
+
+        public static double nextCityCost(int currentCity, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency, boolean bureauOfDomesticAffairs) {
             double cost = 100000 * Math.pow(currentCity - (top20AverageQuarter), 3) + 150000 * (currentCity - (top20AverageQuarter)) + 75000;
             if (manifestDestiny) {
                 double factor = 0.05;
