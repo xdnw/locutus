@@ -829,30 +829,20 @@ public class UtilityCommands {
 
     @Command(desc = "Calculate the costs of purchasing cities (from current to max)", aliases = {"citycost", "citycosts"}, viewable = true)
     public String CityCost(@Range(min=1, max=100) int currentCity, @Range(min=1, max=100) int maxCity,
-                           @Default("false") boolean manifestDestiny, @Default("false") boolean urbanPlanning, @Default("false") boolean advancedUrbanPlanning, @Default("false") boolean metropolitanPlanning,
+                           @Default("false") boolean manifestDestiny,
                            @Default("false") boolean governmentSupportAgency,
-                           @Default("false") boolean domestic_affairs,
-                           @Switch("nc") @Arg("Use the new city cost formula") boolean new_city_formula) {
+                           @Default("false") boolean domestic_affairs) {
         if (maxCity > 1000) throw new IllegalArgumentException("Max cities 1000");
 
         double total = 0;
 
         for (int i = Math.max(1, currentCity); i < maxCity; i++) {
-            if (new_city_formula) {
-                total += PW.City.newNextCityCost(i, manifestDestiny,
-                        urbanPlanning && i >= Projects.URBAN_PLANNING.requiredCities(),
-                        advancedUrbanPlanning && i >= Projects.ADVANCED_URBAN_PLANNING.requiredCities(),
-                        metropolitanPlanning && i >= Projects.METROPOLITAN_PLANNING.requiredCities(),
-                        governmentSupportAgency,
-                        domestic_affairs);
-            } else {
-                total += PW.City.nextCityCost(i, manifestDestiny,
-                        urbanPlanning && i >= Projects.URBAN_PLANNING.requiredCities(),
-                        advancedUrbanPlanning && i >= Projects.ADVANCED_URBAN_PLANNING.requiredCities(),
-                        metropolitanPlanning && i >= Projects.METROPOLITAN_PLANNING.requiredCities(),
-                        governmentSupportAgency,
-                        domestic_affairs);
-            }
+            total += PW.City.nextCityCost(i, manifestDestiny,
+                    false,
+                    false,
+                    false,
+                    governmentSupportAgency,
+                    domestic_affairs);
         }
 
         return "$" + MathMan.format(total);
@@ -2561,7 +2551,6 @@ public class UtilityCommands {
     public String allianceCost(@Me IMessageIO channel, @Me GuildDB db,
                                NationList nations, @Switch("u") boolean update,
                                @Switch("p") @Arg("Only include the cost of specific projects") Set<Project> includeProjects,
-                               @Switch("nc") @Arg("Use the new city cost formula") boolean new_city_formula,
                                @Switch("s") @Timestamp Long snapshotDate) {
         Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild());
         double infraCost = 0;
@@ -2575,11 +2564,10 @@ public class UtilityCommands {
             cityProjectRefund += PW.City.getCostReduction(nation::hasProject);
             Set<Project> projects = nation.getProjects();
             for (Project project : projects) {
-                if (new_city_formula) {
-                    if (project == Projects.URBAN_PLANNING) continue;
-                    if (project == Projects.ADVANCED_URBAN_PLANNING) continue;
-                    if (project == Projects.METROPOLITAN_PLANNING) continue;
-                }
+                if (project == Projects.URBAN_PLANNING) continue;
+                if (project == Projects.ADVANCED_URBAN_PLANNING) continue;
+                if (project == Projects.METROPOLITAN_PLANNING) continue;
+
                 if (includeProjects != null && !includeProjects.contains(project)) continue;
                 projectCost = ResourceType.addResourcesToA(projectCost, project.cost());
             }
@@ -2596,11 +2584,7 @@ public class UtilityCommands {
                 boolean mp = i > Projects.METROPOLITAN_PLANNING.requiredCities() && projects.contains(Projects.METROPOLITAN_PLANNING);
                 boolean gsa = projects.contains(Projects.GOVERNMENT_SUPPORT_AGENCY);
                 boolean bda = projects.contains(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
-                if (new_city_formula) {
-                    nationCityCost += PW.City.newNextCityCost(i, manifest, cp, acp, mp, gsa, bda);
-                } else {
-                    nationCityCost += PW.City.nextCityCost(i, manifest, cp, acp, mp, gsa, bda);
-                }
+                nationCityCost += PW.City.nextCityCost(i, manifest, cp, acp, mp, gsa, bda);
             }
 
             cityCost += nationCityCost;

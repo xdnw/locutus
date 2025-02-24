@@ -148,38 +148,38 @@ public class CityTemplate extends AGrantTemplate<Integer> {
             }
         }));
 
-        //c11 or higher and no UP
-        list.add(new Grant.Requirement("Must have the project: `" + Projects.URBAN_PLANNING + "` (when c" + Projects.URBAN_PLANNING.requiredCities() + " or higher)", true, new Function<DBNation, Boolean>() {
-            @Override
-            public Boolean apply(DBNation receiver) {
-                if(receiver.getCities() < Projects.URBAN_PLANNING.requiredCities())
-                    return true;
-
-                return receiver.hasProject(Projects.URBAN_PLANNING);
-            }
-        }));
-
-        //c16 or higher and no AUP
-        list.add(new Grant.Requirement("Must have the project: `" + Projects.ADVANCED_URBAN_PLANNING + "` (when c" + Projects.ADVANCED_URBAN_PLANNING.requiredCities() + " or higher)", true, new Function<DBNation, Boolean>() {
-            @Override
-            public Boolean apply(DBNation receiver) {
-                if(receiver.getCities() < Projects.ADVANCED_URBAN_PLANNING.requiredCities())
-                    return true;
-
-                return receiver.hasProject(Projects.ADVANCED_URBAN_PLANNING);
-            }
-        }));
-
-        //c21 or higher and no MP
-        list.add(new Grant.Requirement("Must have the project: `" + Projects.METROPOLITAN_PLANNING + "` (when c" + Projects.METROPOLITAN_PLANNING.requiredCities() + " or higher)", true, new Function<DBNation, Boolean>() {
-            @Override
-            public Boolean apply(DBNation receiver) {
-                if(receiver.getCities() < Projects.METROPOLITAN_PLANNING.requiredCities())
-                    return true;
-
-                return receiver.hasProject(Projects.METROPOLITAN_PLANNING);
-            }
-        }));
+//        //c11 or higher and no UP
+//        list.add(new Grant.Requirement("Must have the project: `" + Projects.URBAN_PLANNING + "` (when c" + Projects.URBAN_PLANNING.requiredCities() + " or higher)", true, new Function<DBNation, Boolean>() {
+//            @Override
+//            public Boolean apply(DBNation receiver) {
+//                if(receiver.getCities() < Projects.URBAN_PLANNING.requiredCities())
+//                    return true;
+//
+//                return receiver.hasProject(Projects.URBAN_PLANNING);
+//            }
+//        }));
+//
+//        //c16 or higher and no AUP
+//        list.add(new Grant.Requirement("Must have the project: `" + Projects.ADVANCED_URBAN_PLANNING + "` (when c" + Projects.ADVANCED_URBAN_PLANNING.requiredCities() + " or higher)", true, new Function<DBNation, Boolean>() {
+//            @Override
+//            public Boolean apply(DBNation receiver) {
+//                if(receiver.getCities() < Projects.ADVANCED_URBAN_PLANNING.requiredCities())
+//                    return true;
+//
+//                return receiver.hasProject(Projects.ADVANCED_URBAN_PLANNING);
+//            }
+//        }));
+//
+//        //c21 or higher and no MP
+//        list.add(new Grant.Requirement("Must have the project: `" + Projects.METROPOLITAN_PLANNING + "` (when c" + Projects.METROPOLITAN_PLANNING.requiredCities() + " or higher)", true, new Function<DBNation, Boolean>() {
+//            @Override
+//            public Boolean apply(DBNation receiver) {
+//                if(receiver.getCities() < Projects.METROPOLITAN_PLANNING.requiredCities())
+//                    return true;
+//
+//                return receiver.hasProject(Projects.METROPOLITAN_PLANNING);
+//            }
+//        }));
 
         // require city policy
         list.add(new Grant.Requirement("Requires domestic policy to be `" + DomesticPolicy.MANIFEST_DESTINY + "`", false, new Function<DBNation, Boolean>() {

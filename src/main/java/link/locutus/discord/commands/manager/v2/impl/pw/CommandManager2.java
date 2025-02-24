@@ -264,6 +264,8 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "syncCityRefund", "city_refund");
+
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "edit"), "addManualWars", "add_none_war");
         getCommands().registerMethod(new SettingCommands(), List.of("bank"), "importTransactions", "import_transfers");
         getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "info", "info");

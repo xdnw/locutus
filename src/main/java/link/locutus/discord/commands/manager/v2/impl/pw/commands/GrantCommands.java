@@ -85,11 +85,9 @@ public class GrantCommands {
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
 
             @Arg(value = "Apply the specified domestic policy for determining cost", group = 4) @Switch("md") Boolean manifest_destiny,
-            @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("up") Boolean urban_planning,
-            @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("aup") Boolean advanced_urban_planning,
-            @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("mp") Boolean metropolitan_planning,
             @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("gsa") Boolean gov_support_agency,
             @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("bda") Boolean domestic_affairs,
+            @Switch("er") boolean exclude_city_refund,
 
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
@@ -107,14 +105,27 @@ public class GrantCommands {
                     }
                     DepositType.DepositTypeInfo note = DepositType.CITY.withAmount(currentCity + numBuy);
                     double cost = PW.City.cityCost(currentCity, currentCity + numBuy, manifest_destiny != null ? manifest_destiny : receiver.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY,
-                            urban_planning != null ? urban_planning : receiver.hasProject(Projects.URBAN_PLANNING),
-                            advanced_urban_planning != null ? advanced_urban_planning : receiver.hasProject(Projects.ADVANCED_URBAN_PLANNING),
-                            metropolitan_planning != null ? metropolitan_planning : receiver.hasProject(Projects.METROPOLITAN_PLANNING),
+                            receiver.hasProject(Projects.URBAN_PLANNING),
+                            receiver.hasProject(Projects.ADVANCED_URBAN_PLANNING),
+                            receiver.hasProject(Projects.METROPOLITAN_PLANNING),
                             gov_support_agency != null ? gov_support_agency : receiver.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY),
                             domestic_affairs != null ? domestic_affairs : receiver.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS)
                     );
+
+                    String append = "";
+                    if (!exclude_city_refund) {
+                        double refund = receiver.getCityRefund();
+                        if (refund > 0) {
+                            cost = Math.max(0, cost - refund);
+                            append = " (using $" + MathMan.format(refund) + " from your city project refund)";
+                        }
+                    }
                     double[] resources = ResourceType.MONEY.toArray(cost);
+<<<<<<< HEAD
                     grant.setInstructions("Go to <" + Settings.PNW_URL() + "/city/create/> and purchase " + numBuy + " cities");
+=======
+                    grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/city/create/> and purchase " + numBuy + " cities" + append);
+>>>>>>> city-cost
                     grant.setCost(f -> resources).setType(note);
                     return null;
                 }, DepositType.CITY, receiver -> {
@@ -3024,7 +3035,6 @@ public class GrantCommands {
                            @Switch("l") Integer land_level,
                            @Switch("d") @Arg("Force the use of the provided policies for cost reduction") Set<DomesticPolicy> force_policy,
                            @Switch("fp") @Arg("These projects are not purchased but are included for cost reduction calculations") Set<Project> force_projects,
-                           @Switch("nc") @Arg("Use the new city cost formula") boolean new_city_formula,
                            @Switch("er") boolean exclude_city_refund,
                            @Switch("s") SpreadSheet sheet
                            ) throws GeneralSecurityException, IOException {
@@ -3067,7 +3077,7 @@ public class GrantCommands {
         for (DBNation nation : receivers) {
             int citiesPurchased = 0;
             double cityCost = 0;
-            double costReduction = new_city_formula ? PW.City.getCostReduction(nation::hasProject) : 0d;
+            double costReduction = nation.getCityRefund();
 
             if (cities != null) {
                 citiesPurchased = cities_up_to ? Math.max(0, cities - nation.getCities()) : cities;
@@ -3081,11 +3091,7 @@ public class GrantCommands {
                         boolean metPlanning = nation.hasProject(Projects.METROPOLITAN_PLANNING) || (force_projects.contains(Projects.METROPOLITAN_PLANNING) && city >= Projects.METROPOLITAN_PLANNING.requiredCities());
                         boolean govSupportAgency = nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) || force_projects.contains(Projects.GOVERNMENT_SUPPORT_AGENCY);
                         boolean domesticAffairs = nation.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS) || force_projects.contains(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
-                        if (new_city_formula) {
-                            cityCost += PW.City.newNextCityCost(city, manifestDestiny, cityPlanning, advCityPlanning, metPlanning, govSupportAgency, domesticAffairs);
-                        } else {
-                            cityCost += PW.City.nextCityCost(city, manifestDestiny, cityPlanning, advCityPlanning, metPlanning, govSupportAgency, domesticAffairs);
-                        }
+                        cityCost += PW.City.nextCityCost(city, manifestDestiny, cityPlanning, advCityPlanning, metPlanning, govSupportAgency, domesticAffairs);
                     }
                 }
             }
