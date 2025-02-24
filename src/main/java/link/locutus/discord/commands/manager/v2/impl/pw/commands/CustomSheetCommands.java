@@ -410,11 +410,15 @@ public class CustomSheetCommands {
                 selection = SheetBindings.selectionAlias(true, manager, store, tabName);
             } catch (IllegalArgumentException e) {
                 int index = tabName.indexOf(":");
+                int barIndex = tabName.indexOf(" | ");
                 if (index == -1) {
                     errors.add(TAB_TYPE.replace("{tab_name}", tabName) + " (1)");
                     continue;
                 }
                 String typeStr = tabName.substring(0, index);
+                if (barIndex < index && barIndex != -1) {
+                    typeStr = typeStr.substring(barIndex + 3);
+                }
                 String typeModifier = null;
                 if (typeStr.contains("(")) {
                     int end = typeStr.indexOf(")");

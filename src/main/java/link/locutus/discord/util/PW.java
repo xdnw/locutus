@@ -429,7 +429,7 @@ public final class PW {
             return total;
         }
 
-        private static double top20AverageQuarter = 40.8216 * 0.25;
+        private static final double top20AverageQuarter = 40 * 0.25;
 //        public static double nextCityCost(int currentCity, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency, boolean bureauOfDomesticAffairs) {
 //            double cost = 50000*Math.pow(currentCity - 1, 3) + 150000 * (currentCity) + 75000;
 //            if (cityPlanning) {
@@ -458,7 +458,7 @@ public final class PW {
                 if (bureauOfDomesticAffairs) factor += 0.0125;
                 cost *= (1 - factor);
             }
-            return Math.max(0, cost);
+            return Math.max(1, cost);
         }
 
         public static String getCityUrl(int cityId) {
