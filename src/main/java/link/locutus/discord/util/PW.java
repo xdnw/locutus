@@ -91,8 +91,8 @@ public final class PW {
         public static double getCostReduction(boolean up, boolean aup, boolean mp) {
             double reduction = 0;
             if (up) reduction += 173118000;
-            if (aup) reduction += 173118000;
-            if (mp) reduction += 173118000;
+            if (aup) reduction += 346236000;
+            if (mp) reduction += 519354000;
             return reduction;
         }
 
