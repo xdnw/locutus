@@ -1495,10 +1495,6 @@ public final class PW {
         };
     }
 
-    public static String getPostScript(String name, boolean nation, Map<ResourceType, Double> rss, String note) {
-        return ResourceType.resourcesToJson(name, nation, rss, note);
-    }
-
     public static double getOdds(double attStrength, double defStrength, int success) {
         attStrength = Math.pow(attStrength, 0.75);
         defStrength = Math.pow(defStrength, 0.75);

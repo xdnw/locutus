@@ -3,6 +3,7 @@ package link.locutus.discord.web.jooby;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.web.WebUtil;
 import org.json.JSONObject;
 
 import java.util.Map;
@@ -19,7 +20,7 @@ public class BankRequestHandler {
 
     public Future<String> addRequest(UUID uuid, NationOrAlliance recipient, double[] amt, String note) {
         // token
-        String txStr = ResourceType.resourcesToJson(recipient.getName(), recipient.isNation(), ResourceType.resourcesToMap(amt), note);
+        String txStr = WebUtil.GSON.toJson(ResourceType.resourcesToJson(recipient, ResourceType.resourcesToMap(amt), note));
         JSONObject json = new JSONObject();
         json.put("transfer", new JSONObject(txStr));
         json.put("token", uuid.toString());
