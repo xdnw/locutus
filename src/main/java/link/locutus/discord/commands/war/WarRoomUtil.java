@@ -352,7 +352,7 @@ public class WarRoomUtil {
     }
 
     public static CityRanges getRangeFromCategory(Category category) {
-        String[] split = category.getName().split("-", 2);
+        String[] split = category.getName().toLowerCase().split("-", 2);
         if (split.length == 2) {
             String filterStr = split[1];
             if (filterStr.charAt(0) == 'c') {
