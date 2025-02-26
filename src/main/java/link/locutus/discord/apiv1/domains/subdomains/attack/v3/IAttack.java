@@ -106,22 +106,6 @@ public interface IAttack {
         return "" + Settings.PNW_URL() + "/nation/war/timeline/war=" + getWar_id();
     }
 
-//    default double getLossesConverted(double[] buffer, boolean attacker, Function<Research, Integer> research) {
-//        return getLossesConverted(buffer, attacker, true, true, true, true, true, research);
-//    }
-//
-//    default double getLossesConverted(double[] buffer, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings, Function<Research, Integer> research) {
-//        return ResourceType.convertedTotal(getLosses(buffer, attacker, units, infra, consumption, includeLoot, includeBuildings, research));
-//    }
-//
-//    default double[] getLosses(double[] buffer, boolean attacker, Function<Research, Integer> research) {
-//        return getLosses(buffer, attacker, true, true, true, true, true, research);
-//    }
-//double[] getLosses(double[] buffer, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings, Function<Research, Integer> research);
-
-    // boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings
-    default void addInfraLosses(double[] buffer, boolean attacker, Function<Research, Integer> research);
-
     default int getResistance() {
         if (getSuccess() == SuccessType.UTTER_FAILURE) return 0;
         int damage;
@@ -176,6 +160,27 @@ public interface IAttack {
         }
         return null;
     }
+
+//    default double getLossesConverted(double[] buffer, boolean attacker) {
+//        return getLossesConverted(buffer, attacker, true, true, true, true, true);
+//    }
+//
+//    default double getLossesConverted(double[] buffer, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings) {
+//        return ResourceType.convertedTotal(getLosses(buffer, attacker, units, infra, consumption, includeLoot, includeBuildings));
+//    }
+//
+//    default double[] getLosses(double[] buffer, boolean attacker) {
+//        return getLosses(buffer, attacker, true, true, true, true, true);
+//    }
+//
+//    double[] getLosses(double[] buffer, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings);
+
+    double getAttLossValue();
+    double getDefLossValue();
+
+    double addLosses(double[] buffer, boolean attacker);
+    // boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings
+    default void addInfraLosses(double[] buffer, Function<Research, Integer> research);
 
     default DBWar getWar() {
         Locutus lc = Locutus.imp();
