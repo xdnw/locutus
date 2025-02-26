@@ -539,13 +539,13 @@ public class Settings extends Config {
         public String INTERFACE_NAME = "Locutus";
 
         @Comment("The url/ip/hostname for the backend")
-        public String BACKEND_DOMAIN = "https://locutus.link";
+        public String BACKEND_DOMAIN = "https://api.locutus.link";
 
         @Comment({"The url/ip/hostname for the front-end web interface",
         "The frontend is not hosted by the bot, or configured here, and is external, and available on GitHub Pages",
         "If the frontend has a nonstandard port, it should be included here",
         "For testing/development, you may set it to localhost"})
-        public String FRONTEND_DOMAIN = "https://xdnw.github.io/lc_cmd_react";
+        public String FRONTEND_DOMAIN = "https://www.locutus.link";
 
         @Comment({"File location of the ssl certificate",
         "- Locutus expects a privkey.pem and a fullchain.pem in the directory",

@@ -3872,6 +3872,11 @@ public abstract class DBNation implements NationOrAlliance {
         return getNationUrlMarkup();
     }
 
+    @Command(desc = "Markdown url to the bot's web page for the nation (instead of ingame page)")
+    public String getWebUrl() {
+        return MarkupUtil.markdownUrl(getName(), "<" + Settings.INSTANCE.WEB.FRONTEND_DOMAIN + "/nation/" + getId() + ">");
+    }
+
     @Command(desc = "Google sheet named url")
     public String getSheetUrl() {
         return MarkupUtil.sheetUrl(getName(), getUrl());
