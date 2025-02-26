@@ -93,6 +93,9 @@ import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Type;
@@ -136,6 +139,23 @@ public class AdminCommands {
         System.out.println("Saving " + toSave.size());
         Locutus.imp().getNationDB().saveNations(toSave);
         return "Updated and saved " + toSave.size() + " nations";
+
+    }
+
+    @Command(desc = "Set bot profile picture")
+    @RolePermission(Roles.ADMIN)
+    public String setProfile(String url) throws IOException, ParseException {
+        if (!ImageUtil.isDiscordImage(url)) {
+            throw new IllegalArgumentException("Invalid discord image url: `" + url + "`");
+        }
+        BufferedImage img = ImageUtil.image(url);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ImageIO.write(img, "png", baos);
+        baos.flush();
+        byte[] imageInByte = baos.toByteArray();
+        baos.close();
+
+        return "Set avatar to `" + url + "`";
 
     }
 

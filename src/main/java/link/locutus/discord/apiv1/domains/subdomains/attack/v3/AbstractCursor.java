@@ -3,10 +3,7 @@ package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 import com.politicsandwar.graphql.model.WarAttack;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
-import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.SuccessType;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBWar;
@@ -16,6 +13,7 @@ import link.locutus.discord.util.math.ArrayUtil;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 public abstract class AbstractCursor implements IAttack {
     protected DBWar war_cached;
@@ -133,9 +131,9 @@ public abstract class AbstractCursor implements IAttack {
 //    }
 
     @Override
-    public double[] getLosses(double[] buffer, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings) {
+    public double[] getLosses(double[] buffer, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings, Function<Research, Integer> research) {
         if (units) {
-            getUnitLossCost(buffer, attacker);
+            getUnitLossCost(buffer, attacker, research);
         }
         if (includeLoot) {
             double[] loot = getLoot();
@@ -182,7 +180,7 @@ public abstract class AbstractCursor implements IAttack {
 
     public abstract int getUnitLosses(MilitaryUnit unit, boolean attacker);
 
-    public abstract double[] getUnitLossCost(double[] buffer, boolean isAttacker);
+    public abstract double[] getUnitLossCost(double[] buffer, boolean isAttacker, Function<Research, Integer> research);
 
     public Map<MilitaryUnit, Integer> getUnitLosses2(boolean isAttacker) {
         int[] buffer = MilitaryUnit.getBuffer();

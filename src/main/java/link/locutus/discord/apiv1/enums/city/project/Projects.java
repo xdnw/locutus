@@ -425,6 +425,7 @@ public class Projects {
             .cost(ALUMINUM, 10_000)
             .cost(MUNITIONS, 10_000)
             .cost(GASOLINE, 10_000)
+            .requiredProjects(() -> new Project[]{PROPAGANDA_BUREAU})
             .build();
 
     // Military Doctrine
@@ -441,6 +442,7 @@ public class Projects {
             .cost(ALUMINUM, 10_000)
             .cost(MUNITIONS, 10_000)
             .cost(GASOLINE, 10_000)
+            .requiredProjects(() -> new Project[]{MILITARY_RESEARCH_CENTER})
             .build();
 
     public static int getScore() {

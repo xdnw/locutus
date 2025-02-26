@@ -278,6 +278,7 @@ public class CommandManager2 {
         getCommands().registerMethod(new StatCommands(), List.of("stats", "other"), "compareStats", "coalition_metric_by_turn");
         getCommands().registerMethod(new StatCommands(), List.of("stats", "other"), "allianceStats", "aa_metrics_by_turn");
         getCommands().registerMethod(new StatCommands(), List.of("stats", "tier"), "compareTierStats", "tier_by_coalition");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "bot"), "setProfile", "profile");
 //        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "openMenu", "open");
 //        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "deleteMenu", "delete");
 //        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "renameMenu", "title");

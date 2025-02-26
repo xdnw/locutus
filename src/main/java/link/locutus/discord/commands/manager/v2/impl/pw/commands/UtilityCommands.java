@@ -5,9 +5,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.Continent;
-import link.locutus.discord.apiv1.enums.DomesticPolicy;
-import link.locutus.discord.apiv1.enums.NationColor;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
@@ -54,12 +52,6 @@ import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.nation.MultiReport;
 import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import link.locutus.discord.util.task.roles.IAutoRoleTask;
-import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.WarPolicy;
-import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
@@ -2228,9 +2220,11 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Get the cost of military units and their upkeep", viewable = true)
-    public String unitCost(Map<MilitaryUnit, Long> units,
+    public String unitCost(@Me DBNation me,
+                            Map<MilitaryUnit, Long> units,
                            @Arg("Show the upkeep during war time")
-                           @Default Boolean wartime) {
+                           @Default Boolean wartime,
+                           @Switch("n") DBNation nation) {
         if (wartime == null) wartime = false;
         StringBuilder response = new StringBuilder();
 
@@ -2238,11 +2232,12 @@ public class UtilityCommands {
         double[] cost = ResourceType.getBuffer();
         double[] upkeep = ResourceType.getBuffer();
 
+        Function<Research, Integer> research = (nation == null ? me : nation)::getResearch;
         for (Map.Entry<MilitaryUnit, Long> entry : units.entrySet()) {
             MilitaryUnit unit = entry.getKey();
             Long amt = entry.getValue();
 
-            double[] unitCost = unit.getCost(amt.intValue()).clone();
+            double[] unitCost = unit.getCost(amt.intValue(), research).clone();
             double[] unitUpkeep = unit.getUpkeep(wartime).clone();
 
             unitUpkeep = PW.multiply(unitUpkeep, amt);

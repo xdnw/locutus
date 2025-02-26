@@ -3,6 +3,7 @@ package link.locutus.discord.apiv1.enums;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 
 import java.util.Map;
+import java.util.function.Function;
 
 public enum Research {
     // Increase max soldier count by 3000 and max tank count by 250
@@ -33,6 +34,7 @@ public enum Research {
     ));
 
     public static final Research[] values = values();
+    public static final Function<Research, Integer> ZERO = r -> 0;
 
     private final ResearchGroup group;
     private final Map<MilitaryUnit, Integer> capacityIncrease;

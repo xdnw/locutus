@@ -7,6 +7,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.Research;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -19,6 +20,7 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 public abstract class DamageCursor extends AbstractCursor{
 
@@ -81,11 +83,11 @@ public abstract class DamageCursor extends AbstractCursor{
     public abstract int getUnitLosses(MilitaryUnit unit, boolean attacker);
 
     @Override
-    public double[] getUnitLossCost(double[] buffer, boolean isAttacker) {
+    public double[] getUnitLossCost(double[] buffer, boolean isAttacker, Function<Research, Integer> research) {
         for (MilitaryUnit unit : getUnits()) {
             int losses = getUnitLosses(unit, isAttacker);
             if (losses > 0) {
-                for (Map.Entry<ResourceType, Double> entry : unit.getCostMap().entrySet()) {
+                for (Map.Entry<ResourceType, Double> entry : unit.getCostMap(research).entrySet()) {
                     buffer[entry.getKey().ordinal()] += entry.getValue() * losses;
                 }
             }

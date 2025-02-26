@@ -14,6 +14,8 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import java.util.Collection;
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.function.IntFunction;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -23,41 +25,47 @@ public enum MilitaryUnit {
     SOLDIER("soldiers", "\uD83D\uDC82", 0.0004,
             ResourceType.MONEY.builder(5).build(),
             ResourceType.MONEY.builder(1.25).add(ResourceType.FOOD, 1/750d).build(),
-            true,
-            MUNITIONS.toArray(1 / 5000d)
+            1.5,
+            MUNITIONS.toArray(1 / 5000d),
+            Research.GROUND_COST
     ),
     TANK("tanks", "\u2699",0.025,
             ResourceType.MONEY.builder(60).add(STEEL, 0.5d).build(),
             ResourceType.MONEY.toArray(50),
-            true,
-            GASOLINE.builder(1 / 100d).add(MUNITIONS, 1 / 100d).build()
+            1.5,
+            GASOLINE.builder(1 / 100d).add(MUNITIONS, 1 / 100d).build(),
+            Research.GROUND_COST
         ),
     AIRCRAFT("aircraft", "\u2708", 0.3,
-            ResourceType.MONEY.builder(4000).add(ALUMINUM, 5).build(),
-            ResourceType.MONEY.toArray(500),
-            true,
-            GASOLINE.builder(1 / 4d).add(MUNITIONS, 1 / 4d).build()
+            ResourceType.MONEY.builder(4000).add(ALUMINUM, 10).build(),
+            ResourceType.MONEY.toArray(750),
+            1.3333333333333333333333333333333,
+            GASOLINE.builder(1 / 4d).add(MUNITIONS, 1 / 4d).build(),
+            Research.AIR_COST
     ),
     SHIP("navy", "\uD83D\uDEA2", 1,
             ResourceType.MONEY.builder(50000).add(STEEL, 30).build(),
-            ResourceType.MONEY.toArray(3375),
-            true,
-            GASOLINE.builder(1.5).add(MUNITIONS, 2.5).build()
+            ResourceType.MONEY.toArray(3300),
+            1.5151515151515151515151515151515,
+            GASOLINE.builder(1).add(MUNITIONS, 1.75).build(),
+            Research.NAVAL_COST
     ),
 
     MONEY(null, "\uD83D\uDCB2", 0,
             // Is a unit type because you can airstrike money
             ResourceType.MONEY.builder(1).build(),
             ResourceType.MONEY.toArray(0),
-            false,
-            ResourceType.getBuffer()
+            1,
+            ResourceType.getBuffer(),
+            null
     ),
 
     MISSILE("missiles", "\uD83D\uDE80", 5,
-            ResourceType.MONEY.builder(150000).add(ALUMINUM, 100).add(GASOLINE, 75).add(MUNITIONS, 75).build(),
+            ResourceType.MONEY.builder(150000).add(ALUMINUM, 150).add(GASOLINE, 100).add(MUNITIONS, 100).build(),
             ResourceType.MONEY.toArray(21000),
-            true,
-            ResourceType.getBuffer()
+            1.5,
+            ResourceType.getBuffer(),
+            null
     ) {
         @Override
         public double getScore(int amt) {
@@ -65,10 +73,11 @@ public enum MilitaryUnit {
         }
     },
     NUKE("nukes", "\u2622", 15,
-             ResourceType.MONEY.builder(1750000).add(ALUMINUM, 750).add(GASOLINE, 500).add(URANIUM, 250).build(),
+             ResourceType.MONEY.builder(1750000).add(ALUMINUM, 1000).add(GASOLINE, 500).add(URANIUM, 500).build(),
             ResourceType.MONEY.toArray(35000),
-            true,
-            ResourceType.getBuffer()
+            1.5,
+            ResourceType.getBuffer(),
+            null
     ) {
         @Override
         public double getScore(int amt) {
@@ -79,16 +88,18 @@ public enum MilitaryUnit {
     SPIES("spies", "\uD83D\uDD0E", 0,
             ResourceType.MONEY.builder(50_000).build(),
             ResourceType.MONEY.toArray(2400),
-            true,
-            ResourceType.MONEY.toArray(3500)
+            1,
+            ResourceType.MONEY.toArray(3500),
+            null
     ),
 
     INFRASTRUCTURE(null, "\uD83C\uDFD7", 1 / 40d,
             // Is a unit type because you can airstrike infra
             ResourceType.MONEY.toArray(0),
             ResourceType.MONEY.toArray(0),
-            false,
-            ResourceType.getBuffer()
+            1,
+            ResourceType.getBuffer(),
+            null
     ),
     ;
 
@@ -99,6 +110,7 @@ public enum MilitaryUnit {
 
     protected final double score;
     private final double[] consumption;
+    private final Research costReducer;
     private double costConverted = -1;
     private final String name, emoji;
     private final double[] upkeepPeace;
@@ -106,20 +118,21 @@ public enum MilitaryUnit {
 
     public static MilitaryUnit[] values = values();
 
-    MilitaryUnit(String name, String emoji, double score, double[] cost, double[] peacetimeUpkeep, boolean multiplyWartimeUpkeep, double[] consumption) {
+    MilitaryUnit(String name, String emoji, double score, double[] cost, double[] peacetimeUpkeep, double multiplyWartimeUpkeep, double[] consumption, Research costReducer) {
         this.name = name;
         this.emoji = emoji;
         this.cost = cost;
         this.costMap = new EnumMap<>(ResourceType.class);
         costMap.putAll(resourcesToMap(cost));
         this.upkeepPeace = peacetimeUpkeep;
-        if (multiplyWartimeUpkeep) {
-            this.upkeepWar = PW.multiply(peacetimeUpkeep.clone(), 1.5);
+        if (multiplyWartimeUpkeep != 1) {
+            this.upkeepWar = PW.multiply(peacetimeUpkeep.clone(), multiplyWartimeUpkeep);
         } else {
             this.upkeepWar = peacetimeUpkeep;
         }
         this.consumption = consumption;
         this.score = score;
+        this.costReducer = costReducer;
     }
 
     @Command(desc = "Get the emoji for this unit")
@@ -237,7 +250,7 @@ public enum MilitaryUnit {
         return score * amt;
     }
 
-    public double[] getUpkeep(boolean war) {
+    public double[] getUpkeep(boolean war, Function<Research, Integer> research) {
         return war ? upkeepWar : upkeepPeace;
     }
 
@@ -270,15 +283,15 @@ public enum MilitaryUnit {
         return costConverted;
     }
 
-    public double[] getCost() {
+    public double[] getCost(Function<Research, Integer> research) {
         return this.cost;
     }
 
-    public Map<ResourceType, Double> getCostMap() {
+    public Map<ResourceType, Double> getCostMap(Function<Research, Integer> research) {
         return costMap;
     }
 
-    public double[] getCost(int amt) {
+    public double[] getCost(Function<Research, Integer> research, int amt) {
         if (amt > 0) {
             if (amt == 1) return cost;
             return PW.multiply(cost.clone(), amt);

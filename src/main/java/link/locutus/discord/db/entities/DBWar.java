@@ -3,9 +3,7 @@ package link.locutus.discord.db.entities;
 import com.politicsandwar.graphql.model.War;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
-import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.SuccessType;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.NationDB;
@@ -17,7 +15,6 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.task.war.WarCard;
 import link.locutus.discord.apiv1.domains.subdomains.SWarContainer;
-import link.locutus.discord.apiv1.enums.WarType;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -35,6 +32,7 @@ public class DBWar {
     private byte warStatusType;
     private final long date;
     private char attDefCities;
+    private int costBits = -1;
 
     public void setCities(DBWar existing, boolean fetchIfNotExisting) {
         if (existing != null) {
@@ -49,6 +47,31 @@ public class DBWar {
         if (fetchIfNotExisting && (getAttCities() == 0 || getDefCities() == 0)) {
             setAttCities(getCities(true));
             setDefCities(getCities(false));
+        }
+    }
+
+    public void setResearch(DBWar existing, boolean fetchIfNotExisting) {
+        if (existing != null && existing.costBits != -1) {
+            costBits = existing.costBits;
+            return;
+        }
+        if (fetchIfNotExisting) {
+            DBNation att = getNation(true);
+            DBNation def = getNation(false);
+            if (att != null) {
+                int r1 = att.getResearch(Research.GROUND_COST); // 5 bits of info
+                int r2 = att.getResearch(Research.AIR_COST); // 5 bits of info
+                int r3 = att.getResearch(Research.NAVAL_COST); // 5 bits of info
+                costBits = r1 | (r2 << 5) | (r3 << 10);
+            } else {
+                costBits = 0;
+            }
+            if (def != null) {
+                int r1 = def.getResearch(Research.GROUND_COST); // 5 bits of info
+                int r2 = def.getResearch(Research.AIR_COST); // 5 bits of info
+                int r3 = def.getResearch(Research.NAVAL_COST); // 5 bits of info
+                costBits |= (r1 << 15) | (r2 << 20) | (r3 << 25);
+            }
         }
     }
 
@@ -82,6 +105,30 @@ public class DBWar {
         if (attCities == 0) attCities = defCities;
         if (defCities == 0) defCities = attCities;
         this.attDefCities = (char) (attCities | (defCities << 8));
+    }
+
+    public int getCostBits() {
+        return costBits;
+    }
+
+    public int getAttResearch(Research research) {
+        if (costBits <= 0) return 0;
+        return switch (research) {
+            case GROUND_COST -> costBits & 0b11111;
+            case AIR_COST -> (costBits >> 5) & 0b11111;
+            case NAVAL_COST -> (costBits >> 10) & 0b11111;
+            default -> 0;
+        };
+    }
+
+    public int getDefResearch(Research research) {
+        if (costBits <= 0) return 0;
+        return switch (research) {
+            case GROUND_COST -> (costBits >> 15) & 0b11111;
+            case AIR_COST -> (costBits >> 20) & 0b11111;
+            case NAVAL_COST -> (costBits >> 25) & 0b11111;
+            default -> 0;
+        };
     }
 
     public int getAttCities() {

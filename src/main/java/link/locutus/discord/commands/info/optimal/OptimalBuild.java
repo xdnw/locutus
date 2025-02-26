@@ -505,21 +505,23 @@ public class OptimalBuild extends Command {
         if (positiceCash) {
             Function<CityNode, Boolean> parentGoal = goal;
             double[] profitBuffer = new double[ResourceType.values.length];
+            double upkeepCash = 0;
+            for (MilitaryUnit unit : MilitaryUnit.values) {
+                MilitaryBuilding building = unit.getBuilding();
+                if (building == null) continue;
+                int numBuilt = origin.getBuilding(building);
+                if (numBuilt == 0) continue;
+                int amt = building.getUnitCap() * numBuilt;
+                double[] upkeep = unit.getUpkeep(true, finalMe::getResearch);
+                upkeepCash += upkeep[0] * amt;
+            }
+            double finalUpkeepCash = upkeepCash;
             goal = city -> {
                 if (parentGoal.apply(city)) {
                     Arrays.fill(profitBuffer, 0);
                     city.profit(profitBuffer);
                     profitBuffer[0] += 500000d / numCities;
-                    for (MilitaryUnit unit : MilitaryUnit.values) {
-                        MilitaryBuilding building = unit.getBuilding();
-                        if (building == null) continue;
-                        int numBuilt = city.getBuilding(building);
-                        if (numBuilt == 0) continue;
-                        int amt = building.getUnitCap() * numBuilt;
-
-                        double[] upkeep = unit.getUpkeep(true);
-                        profitBuffer[0] -= upkeep[0] * amt;
-                    }
+                    profitBuffer[0] -= finalUpkeepCash;
                     return !(profitBuffer[0] < 0);
                 }
                 return false;

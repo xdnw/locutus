@@ -12,7 +12,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
-import link.locutus.discord.apiv1.enums.WarType;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.building.PowerBuilding;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -67,15 +67,6 @@ import link.locutus.discord.web.jooby.handler.CommandResult;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
-import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.Continent;
-import link.locutus.discord.apiv1.enums.DepositType;
-import link.locutus.discord.apiv1.enums.DomesticPolicy;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.NationColor;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
@@ -5860,7 +5851,8 @@ public abstract class DBNation implements NationOrAlliance {
     @Command(desc = "Total project slots (used + unused)")
     public int projectSlots() {
         int warBonus = this.data()._warsWon() + this.data()._warsLost() >= 100 ? 1 : 0;
-        int projectBonus = hasProject(Projects.RESEARCH_AND_DEVELOPMENT_CENTER) ? 2 : 0;
+        int projectBonus = (hasProject(Projects.RESEARCH_AND_DEVELOPMENT_CENTER) ? 2 : 0) +
+                (hasProject(Projects.MILITARY_RESEARCH_CENTER) ? 2 : 0);
         return ((int) getInfra() / 5000) + 1 + warBonus + projectBonus;
     }
 
@@ -6500,5 +6492,9 @@ public abstract class DBNation implements NationOrAlliance {
     @Command(desc = "City refund from city planning projects")
     public double getCityRefund() {
         return data()._costReduction();
+    }
+
+    public int getResearch(Research research) {
+        return 0;
     }
 }

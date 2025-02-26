@@ -51,6 +51,8 @@ public class AttackCost {
 
     private final int[] unit1 = new int[MilitaryUnit.values.length];
     private final int[] unit2 = new int[MilitaryUnit.values.length];
+    private final double[] unit1Cost = ResourceType.getBuffer();
+    private final double[] unit2Cost = ResourceType.getBuffer();
 
     private final double[] consumption1 = ResourceType.getBuffer();
     private final double[] consumption2 = ResourceType.getBuffer();
@@ -77,6 +79,8 @@ public class AttackCost {
         infrn2 += other.infrn2;
         ArrayUtil.apply(ArrayUtil.INT_ADD, unit1, other.unit1);
         ArrayUtil.apply(ArrayUtil.INT_ADD, unit2, other.unit2);
+        ResourceType.add(unit1Cost, other.unit1Cost);
+        ResourceType.add(unit2Cost, other.unit2Cost);
         ResourceType.add(consumption1, other.consumption1);
         ResourceType.add(consumption2, other.consumption2);
         if (buildings1 != null) ArrayUtil.apply(ArrayUtil.INT_ADD, buildings1, other.buildings1);
@@ -259,21 +263,7 @@ TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCo
     }
 
     public Map<ResourceType, Double> getUnitCost(boolean isPrimary) {
-        Map<MilitaryUnit, Integer> units = getUnitsLost(isPrimary);
-        Map<ResourceType, Double> unitCost = new HashMap<>();
-
-        for (Map.Entry<MilitaryUnit, Integer> unitAmt : units.entrySet()) {
-            MilitaryUnit unit = unitAmt.getKey();
-            int amt = unitAmt.getValue();
-            if (amt > 0) {
-                double[] cost = unit.getCost(amt);
-                for (int i = 0; i < cost.length; i++) {
-                    unitCost.put(ResourceType.values[i], unitCost.getOrDefault(ResourceType.values[i], 0d) + cost[i]);
-                }
-            }
-        }
-
-        return unitCost;
+        return ResourceType.resourcesToMap(isPrimary ? unit1Cost : unit2Cost);
     }
 
     public Set<Integer> getIds(boolean isPrimary) {
@@ -343,6 +333,8 @@ TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCo
                 }
                 attack.getUnitLosses(unit1, true);
                 attack.getUnitLosses(unit2, false);
+                attack.getLosses(unit1Cost, true, true, false, false, false, false);
+                attack.getLosses(unit2Cost, false, true, false, false, false, false);
                 attack.getLosses(loot1, true, false, false, false, true, false);
                 attack.getLosses(loot2, false, false, false, false, true, false);
                 attack.getLosses(consumption1, true, false, false, true, false, false);
@@ -359,6 +351,8 @@ TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCo
                 }
                 attack.getUnitLosses(unit1, false);
                 attack.getUnitLosses(unit2, true);
+                attack.getLosses(unit1Cost, false, true, false, false, false, false);
+                attack.getLosses(unit2Cost, true, true, false, false, false, false);
                 attack.getLosses(loot1, false, false, false, false, true, false);
                 attack.getLosses(loot2, true, false, false, false, true, false);
                 attack.getLosses(consumption1, false, false, false, true, false, false);

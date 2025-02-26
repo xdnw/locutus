@@ -3,6 +3,7 @@ package link.locutus.discord.apiv1.domains.subdomains.attack;
 import com.politicsandwar.graphql.model.WarAttack;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.WarAttacksContainer;
+import link.locutus.discord.apiv1.enums.Research;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -349,7 +350,7 @@ public class DBAttack {
                 MilitaryUnit unit = entry.getKey();
                 int amt = entry.getValue();
                 if (amt > 0) {
-                    double[] cost = unit.getCost(amt);
+                    double[] cost = unit.getCost(Research.ZERO, amt);
                     for (ResourceType type : ResourceType.values) {
                         double rssCost = cost[type.ordinal()];
                         if (rssCost > 0) {

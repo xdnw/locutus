@@ -1282,7 +1282,7 @@ public final class PW {
                 int amt = nation.getUnits(unit);
                 if (amt == 0) continue;
 
-                double[] upkeep = unit.getUpkeep(atWar);
+                double[] upkeep = unit.getUpkeep(atWar, nation::getResearch);
                 for (int i = 0; i < upkeep.length; i++) {
                     double value = upkeep[i];
                     if (value != 0) {
