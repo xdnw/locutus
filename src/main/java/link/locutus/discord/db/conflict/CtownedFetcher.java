@@ -127,7 +127,7 @@ public class CtownedFetcher {
         }
         Set<Integer> col1Ids = coalition1Names.stream().map(f -> manager.getAllianceId(f, startMs, true)).filter(Objects::nonNull).collect(Collectors.toSet());
         Set<Integer> col2Ids = coalition2Names.stream().map(f -> manager.getAllianceId(f, startMs, true)).filter(Objects::nonNull).collect(Collectors.toSet());
-        output.accept("Adding add: " + conflictName + " | " + startDate + "|  " + endDate + "\n" +
+        output.accept("Adding conflict: " + conflictName + " | " + startDate + "|  " + endDate + "\n" +
                 "- Col1: " + coalition1Names + "\n" +
                 "- Col2: " + coalition2Names);
         boolean isOverLap = col1Ids.stream().anyMatch(col2Ids::contains);
@@ -145,7 +145,7 @@ public class CtownedFetcher {
         if (wiki == null) wiki = "";
 
         Conflict conflict = manager.getConflict(conflictName);
-        if (conflict == null) {
+        if (conflict == null && !wiki.isEmpty()) {
             String finalWiki = wiki;
             conflict = manager.getConflictMap().values().stream().filter(f -> finalWiki.equalsIgnoreCase(f.getWiki())).findFirst().orElse(null);
         }

@@ -21,6 +21,7 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.IOUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -134,13 +135,13 @@ public enum ResourceType {
         return copy;
     }
 
-    public static String resourcesToJson(String receiver, boolean isNation, Map<ResourceType, Double> rss, String note) {
+    public static Map<String, String> resourcesToJson(NationOrAlliance receiver, Map<ResourceType, Double> rss, String note) {
         Map<String, String> post = new LinkedHashMap<>();
-        if (isNation) {
-            post.put("withrecipient", receiver);
+        if (receiver.isNation()) {
+            post.put("withrecipient", receiver.getName());
             post.put("withtype", "Nation");
         } else {
-            post.put("withrecipient", "" + receiver);
+            post.put("withrecipient", receiver.getName());
             post.put("withtype", "Alliance");
         }
         for (ResourceType type : values) {
@@ -156,7 +157,7 @@ public enum ResourceType {
 //        for (Map.Entry<String, String> entry : post.entrySet()) {
 //            entry.setValue("\"" + entry.getValue() + "\"");
 //        }
-        return WebUtil.GSON.toJson(post);
+        return post;
     }
 
     public static Map<ResourceType, Double> parseResources(String arg) {

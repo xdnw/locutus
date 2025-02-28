@@ -569,6 +569,11 @@ public class CM {
                 }
             }
             public static class sync2{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="syncCityRefund")
+                public static class city_refund extends CommandRef {
+                    public static final city_refund cmd = new city_refund();
+
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="reloadConfig")
                 public static class config extends CommandRef {
                     public static final config cmd = new config();
@@ -2726,28 +2731,12 @@ public class CM {
                 return set("manifestDestiny", value);
             }
 
-            public cost urbanPlanning(String value) {
-                return set("urbanPlanning", value);
-            }
-
-            public cost advancedUrbanPlanning(String value) {
-                return set("advancedUrbanPlanning", value);
-            }
-
-            public cost metropolitanPlanning(String value) {
-                return set("metropolitanPlanning", value);
-            }
-
             public cost governmentSupportAgency(String value) {
                 return set("governmentSupportAgency", value);
             }
 
             public cost domestic_affairs(String value) {
                 return set("domestic_affairs", value);
-            }
-
-            public cost new_city_formula(String value) {
-                return set("new_city_formula", value);
             }
 
             }
@@ -4468,6 +4457,14 @@ public class CM {
                 return set("escrow_mode", value);
             }
 
+            public build ping_role(String value) {
+                return set("ping_role", value);
+            }
+
+            public build ping_when_sent(String value) {
+                return set("ping_when_sent", value);
+            }
+
             public build bypass_checks(String value) {
                 return set("bypass_checks", value);
             }
@@ -4540,24 +4537,24 @@ public class CM {
                 return set("manifest_destiny", value);
             }
 
-            public city urban_planning(String value) {
-                return set("urban_planning", value);
-            }
-
-            public city advanced_urban_planning(String value) {
-                return set("advanced_urban_planning", value);
-            }
-
-            public city metropolitan_planning(String value) {
-                return set("metropolitan_planning", value);
-            }
-
             public city gov_support_agency(String value) {
                 return set("gov_support_agency", value);
             }
 
             public city domestic_affairs(String value) {
                 return set("domestic_affairs", value);
+            }
+
+            public city exclude_city_refund(String value) {
+                return set("exclude_city_refund", value);
+            }
+
+            public city ping_role(String value) {
+                return set("ping_role", value);
+            }
+
+            public city ping_when_sent(String value) {
+                return set("ping_when_sent", value);
             }
 
             public city bypass_checks(String value) {
@@ -4648,6 +4645,14 @@ public class CM {
                 return set("escrow_mode", value);
             }
 
+            public consumption ping_role(String value) {
+                return set("ping_role", value);
+            }
+
+            public consumption ping_when_sent(String value) {
+                return set("ping_when_sent", value);
+            }
+
             public consumption bypass_checks(String value) {
                 return set("bypass_checks", value);
             }
@@ -4690,10 +4695,6 @@ public class CM {
 
             public cost force_projects(String value) {
                 return set("force_projects", value);
-            }
-
-            public cost new_city_formula(String value) {
-                return set("new_city_formula", value);
             }
 
             public cost exclude_city_refund(String value) {
@@ -4784,6 +4785,14 @@ public class CM {
                 return set("domestic_affairs", value);
             }
 
+            public infra ping_role(String value) {
+                return set("ping_role", value);
+            }
+
+            public infra ping_when_sent(String value) {
+                return set("ping_when_sent", value);
+            }
+
             public infra bypass_checks(String value) {
                 return set("bypass_checks", value);
             }
@@ -4872,6 +4881,14 @@ public class CM {
                 return set("domestic_affairs", value);
             }
 
+            public land ping_role(String value) {
+                return set("ping_role", value);
+            }
+
+            public land ping_when_sent(String value) {
+                return set("ping_when_sent", value);
+            }
+
             public land bypass_checks(String value) {
                 return set("bypass_checks", value);
             }
@@ -4938,6 +4955,14 @@ public class CM {
 
             public mmr escrow_mode(String value) {
                 return set("escrow_mode", value);
+            }
+
+            public mmr ping_role(String value) {
+                return set("ping_role", value);
+            }
+
+            public mmr ping_when_sent(String value) {
+                return set("ping_when_sent", value);
             }
 
             public mmr bypass_checks(String value) {
@@ -5016,6 +5041,14 @@ public class CM {
                 return set("domestic_affairs", value);
             }
 
+            public project ping_role(String value) {
+                return set("ping_role", value);
+            }
+
+            public project ping_when_sent(String value) {
+                return set("ping_when_sent", value);
+            }
+
             public project bypass_checks(String value) {
                 return set("bypass_checks", value);
             }
@@ -5088,6 +5121,14 @@ public class CM {
                 return set("escrow_mode", value);
             }
 
+            public unit ping_role(String value) {
+                return set("ping_role", value);
+            }
+
+            public unit ping_when_sent(String value) {
+                return set("ping_when_sent", value);
+            }
+
             public unit bypass_checks(String value) {
                 return set("bypass_checks", value);
             }
@@ -5150,6 +5191,14 @@ public class CM {
 
             public warchest escrow_mode(String value) {
                 return set("escrow_mode", value);
+            }
+
+            public warchest ping_role(String value) {
+                return set("ping_role", value);
+            }
+
+            public warchest ping_when_sent(String value) {
+                return set("ping_when_sent", value);
             }
 
             public warchest bypass_checks(String value) {
@@ -6925,6 +6974,10 @@ public class CM {
 
             public revenueSheet sheet(String value) {
                 return set("sheet", value);
+            }
+
+            public revenueSheet include_untaxable(String value) {
+                return set("include_untaxable", value);
             }
 
             public revenueSheet snapshotTime(String value) {
@@ -12541,6 +12594,10 @@ public class CM {
                 return set("sheet", value);
             }
 
+            public revenueSheet include_untaxable(String value) {
+                return set("include_untaxable", value);
+            }
+
             public revenueSheet snapshotTime(String value) {
                 return set("snapshotTime", value);
             }
@@ -16137,6 +16194,14 @@ public class CM {
                 return set("bypass_checks", value);
             }
 
+            public raws ping_when_sent(String value) {
+                return set("ping_when_sent", value);
+            }
+
+            public raws ping_role(String value) {
+                return set("ping_role", value);
+            }
+
             public raws force(String value) {
                 return set("force", value);
             }
@@ -16203,6 +16268,10 @@ public class CM {
 
             public resources bypassChecks(String value) {
                 return set("bypassChecks", value);
+            }
+
+            public resources ping_when_sent(String value) {
+                return set("ping_when_sent", value);
             }
 
             public resources force(String value) {

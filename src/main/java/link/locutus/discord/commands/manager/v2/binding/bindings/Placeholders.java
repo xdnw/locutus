@@ -835,7 +835,7 @@ public abstract class Placeholders<T> extends BindingHelper {
             }
             full.append(")");
         }
-        BiFunction<T, Object[], Object> format = (object, paramVals) -> command.call(object, store, paramVals);
+        BiFunction<T, Object[], Object> format = (object, paramVals) -> object == null ? null : command.call(object, store, paramVals);
         if (isResolved) {
             Object[] argArr = resolved.apply(null);
             return TypedFunction.createParents(command.getReturnType(), f -> format.apply(f, argArr), "{" + full.toString() + "}", null);

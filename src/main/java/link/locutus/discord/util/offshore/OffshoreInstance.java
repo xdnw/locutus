@@ -1449,7 +1449,11 @@ public class OffshoreInstance {
 
     public TransferResult transfer(DBNation nation, Map<ResourceType, Double> transfer, String note, Map<DBAlliance, Map<ResourceType, Double>> transferRoute) {
         synchronized (BANK_LOCK) {
-            return transfer(null, nation, transfer, note, transferRoute);
+            Auth auth = null;
+            if (Settings.USE_V2) {
+                auth = getAlliance().getAuth(AlliancePermission.WITHDRAW_BANK);
+            }
+            return transfer(auth, nation, transfer, note, transferRoute);
         }
     }
 
@@ -1602,22 +1606,21 @@ public class OffshoreInstance {
             // todo test if game is still down
             WebRoot web = WebRoot.getInstance();
 
-            BankRequestHandler handler = web.getLegacyBankHandler();
+//            BankRequestHandler handler = web.getLegacyBankHandler();
             if (auth.getNationId() != Locutus.loader().getNationId() || auth.getAllianceId() != allianceId) {
                 throw new IllegalArgumentException("Game API is down currently");
             }
 
-            UUID uuid = UUID.randomUUID();
-            Future<String> request = handler.addRequest(uuid, receiver, ResourceType.resourcesToArray(transfer), note);
+            DBAlliance aa = getAlliance();
 
             try {
-                String response = request.get(20, TimeUnit.SECONDS);
+                String response = auth.withdrawResources(aa, receiver, ResourceType.resourcesToArray(transfer), note);
                 TransferResult category = categorize(receiver, transfer, note, response);
                 if (category.getStatus() == TransferStatus.SUCCESS || category.getStatus() == TransferStatus.SENT_TO_ALLIANCE_BANK) {
                     setLastSuccessfulTransfer(receiver, ResourceType.resourcesToArray(transfer));
                 }
                 return category;
-            } catch (InterruptedException | ExecutionException | TimeoutException e) {
+            } catch (Exception e) {
                 return new TransferResult(TransferStatus.OTHER, receiver, transfer, note).addMessage("Timeout: " + e.getMessage());
             }
         }

@@ -6,10 +6,7 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.DBAlliancePosition;
-import link.locutus.discord.db.entities.PendingTreaty;
-import link.locutus.discord.db.entities.TaxBracket;
-import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.network.IProxy;
 import link.locutus.discord.network.PassthroughProxy;
 import link.locutus.discord.pnw.NationOrAlliance;
@@ -737,6 +734,33 @@ public class Auth {
             }
         };
         return login ? PW.withLogin(task, auth) : task.call();
+    }
+
+    public String withdrawResources(DBAlliance alliance, NationOrAlliance receiver, double[] amount, String note) {
+        Map<String, String> post = ResourceType.resourcesToJson(receiver, ResourceType.resourcesToMap(amount), note);
+        int fromBank = alliance.getAlliance_id();
+
+        return PW.withLogin(() -> {
+            String result = readStringFromURL(PagePriority.BANK_DEPOSIT, "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", emptyMap());
+            Document dom = Jsoup.parse(result);
+            String token = dom.select("input[name=token]").attr("value");
+            post.put("token", token);
+            StringBuilder response = new StringBuilder();
+
+            result = readStringFromURL(PagePriority.TOKEN, "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", post);
+            dom = Jsoup.parse(result);
+            for (Element element : dom.getElementsByClass("alert")) {
+                String text = element.text();
+                if (text.startsWith("Player Advertisement by ")) {
+                    continue;
+                }
+                response.append('\n').append(text);
+            }
+            if (response.length() == 0) {
+                return "(not output)";
+            }
+            return response.toString();
+        }, this);
     }
 
     ///////////////////////

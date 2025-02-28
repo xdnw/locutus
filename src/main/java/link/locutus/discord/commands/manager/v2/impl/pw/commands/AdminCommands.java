@@ -327,7 +327,8 @@ public class AdminCommands {
         }
         long diff = System.currentTimeMillis() - start;
         io.create().append("Sync war rooms complete. Took: " + diff + "ms\n" +
-                "See the attached log file for task output").file("warcat.txt", full.toString()).send();
+                "See the attached log file for task output. To sort rooms, see: " + CM.war.room.sort.cmd.toSlashMention())
+                .file("warcat.txt", full.toString()).send();
 
         return null;
     }
@@ -2779,7 +2780,7 @@ public class AdminCommands {
                 iter.remove();
             }
             for (Category category : categories) {
-                if (category.getName().startsWith("warcat-")) {
+                if (category.getName().toLowerCase().startsWith("warcat-")) {
                     RateLimitUtil.queue(category.delete());
                 }
             }

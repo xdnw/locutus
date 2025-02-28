@@ -3079,6 +3079,9 @@ type GameInfo {
 
   # Current radiation figures in-game
   radiation: Radiation
+
+  # The current top 20% city Average
+  city_average: Float
 }
 
 type Radiation {
