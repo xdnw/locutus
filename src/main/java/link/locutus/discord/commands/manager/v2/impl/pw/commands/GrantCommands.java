@@ -146,7 +146,7 @@ public class GrantCommands {
             "Escrow",
             "Policy/Project cost reduction"
     })
-    @RolePermission(Roles.ECON)
+    @RolePermission(Roles.MEMBER)
     @IsAlliance
     public String grantProject(
             @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
@@ -177,6 +177,9 @@ public class GrantCommands {
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
+        if (!Roles.ECON.has(author, db.getGuild()) && (force || receivers.size() > 1 || receivers.iterator().next().getId() != me.getId())) {
+            throw new IllegalArgumentException("Missing role: " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
+        }
         return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
             (receiver, grant) -> {
                 if (receiver.hasProject(project)) {
@@ -202,7 +205,7 @@ public class GrantCommands {
             "Escrow",
             "Policy/Project cost reduction"
     })
-    @RolePermission(Roles.ECON)
+    @RolePermission(Roles.MEMBER)
     @IsAlliance
     public String grantInfra(
             @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
@@ -237,6 +240,9 @@ public class GrantCommands {
             @Switch("f") boolean force
 
     ) throws IOException, GeneralSecurityException {
+        if (!Roles.ECON.has(author, db.getGuild()) && (force || receivers.size() > 1 || receivers.iterator().next().getId() != me.getId())) {
+            throw new IllegalArgumentException("Missing role: " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
+        }
         return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
             (receiver, grant) -> {
                 double cost;
@@ -278,7 +284,7 @@ public class GrantCommands {
             "Escrow",
             "Policy/Project cost reduction"
     })
-    @RolePermission(Roles.ECON)
+    @RolePermission(Roles.MEMBER)
     @IsAlliance
     public String grantLand(
             @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
@@ -310,6 +316,9 @@ public class GrantCommands {
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
+        if (!Roles.ECON.has(author, db.getGuild()) && (force || receivers.size() > 1 || receivers.iterator().next().getId() != me.getId())) {
+            throw new IllegalArgumentException("Missing role: " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
+        }
         return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
                 (receiver, grant) -> {
                     double cost = receiver.getBuyLandCost(to_land,
@@ -340,7 +349,7 @@ public class GrantCommands {
             "Note options",
             "Escrow"
     })
-    @RolePermission(Roles.ECON)
+    @RolePermission(Roles.MEMBER)
     @IsAlliance
     public String grantUnit(
             @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
@@ -367,6 +376,9 @@ public class GrantCommands {
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
+        if (!Roles.ECON.has(author, db.getGuild()) && (force || receivers.size() > 1 || receivers.iterator().next().getId() != me.getId())) {
+            throw new IllegalArgumentException("Missing role: " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
+        }
         return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
             (receiver, grant) -> {
                 Map<MilitaryUnit, Long> unitsToGrant = new HashMap<>();
@@ -401,7 +413,7 @@ public class GrantCommands {
             "Note options",
             "Escrow",
     })
-    @RolePermission(Roles.ECON)
+    @RolePermission(Roles.MEMBER)
     @IsAlliance
     public String grantMMR(
             @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
@@ -426,6 +438,9 @@ public class GrantCommands {
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
+        if (!Roles.ECON.has(author, db.getGuild()) && (force || receivers.size() > 1 || receivers.iterator().next().getId() != me.getId())) {
+            throw new IllegalArgumentException("Missing role: " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
+        }
         return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
             (receiver, grant) -> {
                 int cities = receiver.getCities();
@@ -463,7 +478,7 @@ public class GrantCommands {
             "Note options",
             "Escrow"
     })
-    @RolePermission(Roles.ECON)
+    @RolePermission(Roles.MEMBER)
     @IsAlliance
     public String grantConsumption(
             @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
@@ -494,6 +509,9 @@ public class GrantCommands {
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
+        if (!Roles.ECON.has(author, db.getGuild()) && (force || receivers.size() > 1 || receivers.iterator().next().getId() != me.getId())) {
+            throw new IllegalArgumentException("Missing role: " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
+        }
         return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
                 (receiver, grant) -> {
                     int cities = receiver.getCities();
@@ -541,7 +559,7 @@ public class GrantCommands {
             "Note options",
             "Escrow"
     })
-    @RolePermission(Roles.ECON)
+    @RolePermission(Roles.MEMBER)
     @IsAlliance
     public String grantBuild(
             @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
@@ -572,6 +590,9 @@ public class GrantCommands {
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
+        if (!Roles.ECON.has(author, db.getGuild()) && (force || receivers.size() > 1 || receivers.iterator().next().getId() != me.getId())) {
+            throw new IllegalArgumentException("Missing role: " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
+        }
         if (city_ids != null) {
             if (receivers.size() > 1) {
                 throw new IllegalArgumentException("Cannot specify `city_ids` and multiple receivers (max 1)");
@@ -659,7 +680,7 @@ public class GrantCommands {
             "Note options",
             "Escrow"
     })
-    @RolePermission(Roles.ECON)
+    @RolePermission(Roles.MEMBER)
     @IsAlliance
     public String grantWarchest(
             @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
@@ -683,6 +704,9 @@ public class GrantCommands {
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
+        if (!Roles.ECON.has(author, db.getGuild()) && (force || receivers.size() > 1 || receivers.iterator().next().getId() != me.getId())) {
+            throw new IllegalArgumentException("Missing role: " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
+        }
         return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
             (receiver, grant) -> {
                 int cities = receiver.getCities();

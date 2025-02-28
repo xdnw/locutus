@@ -31,7 +31,7 @@ public class TransferResult {
     }
 
     public static String toFileString(Collection<TransferResult> list) {
-        return "Receiver\tStatus\nNote\nMessage" +
+        return "Receiver\tStatus\tNote\tMessage\n" +
                 list.stream().map(f ->
                         f.getReceiver().getName() + "\t" +
                         f.getStatus().name() + "\t" +
