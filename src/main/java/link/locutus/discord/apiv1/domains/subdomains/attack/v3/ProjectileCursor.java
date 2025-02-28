@@ -14,10 +14,23 @@ import java.util.Map;
 
 public abstract class ProjectileCursor extends DamageCursor {
     @Override
-    public int[] getUnitLosses(int[] buffer, boolean isAttacker) {
-        if (isAttacker)
-            buffer[getUnits()[0].ordinal()] += 1;
+    public int getAttUnitLosses(MilitaryUnit unit) {
+        return unit == getUnits()[0] ? 1 : 0;
+    }
+
+    @Override
+    public int[] getDefUnitLosses(int[] buffer) {
         return buffer;
+    }
+
+    @Override
+    public double[] addDefUnitCosts(double[] buffer, DBWar war) {
+        return buffer;
+    }
+
+    @Override
+    public int getDefUnitLosses(MilitaryUnit unit) {
+        return 0;
     }
 
     @Override

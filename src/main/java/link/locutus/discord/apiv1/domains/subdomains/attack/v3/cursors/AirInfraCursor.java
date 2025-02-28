@@ -76,4 +76,54 @@ public class AirInfraCursor extends UnitCursor {
         output.writeBit(defcas1 > 0);
         if (defcas1 > 0) output.writeVarInt(defcas1);
     }
+
+    @Override
+    public double getAttLossValue() {
+        return 0;
+    }
+
+    @Override
+    public double getDefLossValue() {
+        return 0;
+    }
+
+    @Override
+    public double addLosses(double[] buffer, boolean attacker) {
+        return 0;
+    }
+
+    @Override
+    public double[] addAttUnitCosts(double[] buffer, DBWar war) {
+        return new double[0];
+    }
+
+    @Override
+    public double[] addDefUnitCosts(double[] buffer, DBWar war) {
+        return new double[0];
+    }
+
+    @Override
+    public double[] addInfraCosts(double[] buffer) {
+        return new double[0];
+    }
+
+    @Override
+    public double[] addAttConsumption(double[] buffer) {
+        return new double[0];
+    }
+
+    @Override
+    public double[] addDefConsumption(double[] buffer) {
+        return new double[0];
+    }
+
+    @Override
+    public double[] addLoot(double[] buffer) {
+        return new double[0];
+    }
+
+    @Override
+    public double[] addBuildingCosts(double[] buffer) {
+        return new double[0];
+    }
 }

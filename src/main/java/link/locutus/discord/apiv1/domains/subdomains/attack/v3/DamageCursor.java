@@ -14,21 +14,19 @@ import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.io.BitBuffer;
 
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 
-public abstract class DamageCursor extends AbstractCursor{
+public abstract class DamageCursor extends AbstractCursor {
 
     protected SuccessType success;
     private int city_id;
     private int city_infra_before_cents;
     private int infra_destroyed_cents;
-    private Map<Byte, Byte> buildingsDestroyed = new Byte2ByteArrayMap();
+    private Map<Byte, Byte> buildingsDestroyed = null;
     private int num_improvements;
 
     @Override
@@ -55,7 +53,7 @@ public abstract class DamageCursor extends AbstractCursor{
         city_infra_before_cents = (int) Math.round(legacy.getCity_infra_before() * 100);
         infra_destroyed_cents = (int) Math.round(legacy.getInfra_destroyed() * 100);
         num_improvements = legacy.getImprovements_destroyed();
-        buildingsDestroyed.clear();
+        buildingsDestroyed = null;
         if (num_improvements > 0) {
             // default to Buildings.FARM.ordinal()
 //            buildingsDestroyed.put((byte) Buildings.FARM.ordinal(), (byte) num_improvements);
@@ -80,27 +78,111 @@ public abstract class DamageCursor extends AbstractCursor{
     public abstract MilitaryUnit[] getUnits();
 
     @Override
-    public abstract int getUnitLosses(MilitaryUnit unit, boolean attacker);
+    public abstract int getAttUnitLosses(MilitaryUnit unit);
 
     @Override
-    public double[] getUnitLossCost(double[] buffer, boolean isAttacker, Function<Research, Integer> research) {
+    public abstract int getDefUnitLosses(MilitaryUnit unit);
+
+//    @Override
+//    public double[] getUnitLossCost(double[] buffer, boolean isAttacker, Function<Research, Integer> research) {
+//        for (MilitaryUnit unit : getUnits()) {
+//            int losses = getUnitLosses(unit, isAttacker);
+//            if (losses > 0) {
+//                for (Map.Entry<ResourceType, Double> entry : unit.getCostMap(research).entrySet()) {
+//                    buffer[entry.getKey().ordinal()] += entry.getValue() * losses;
+//                }
+//            }
+//        }
+//        return buffer;
+//    }
+
+    // call super
+    double getAttLossValue();
+    double getDefLossValue();
+    double[] addDefLosses(double[] buffer);
+    double[] addAttLosses(double[] buffer);
+    // implement
+    double[] addAttUnitCosts(double[] buffer, DBWar war);
+    double[] addDefUnitCosts(double[] buffer, DBWar war);
+    double[] addAttConsumption(double[] buffer);
+    double[] addDefConsumption(double[] buffer);
+    double[] addLoot(double[] buffer); // ground, victory
+
+    @Override
+    public int[] getAttUnitLosses(int[] buffer) {
         for (MilitaryUnit unit : getUnits()) {
-            int losses = getUnitLosses(unit, isAttacker);
+            int losses = getAttUnitLosses(unit);
             if (losses > 0) {
-                for (Map.Entry<ResourceType, Double> entry : unit.getCostMap(research).entrySet()) {
-                    buffer[entry.getKey().ordinal()] += entry.getValue() * losses;
-                }
+                buffer[unit.ordinal()] += losses;
             }
         }
         return buffer;
     }
 
     @Override
-    public int[] getUnitLosses(int[] buffer, boolean isAttacker) {
+    public int[] getDefUnitLosses(int[] buffer) {
         for (MilitaryUnit unit : getUnits()) {
-            int losses = getUnitLosses(unit, isAttacker);
+            int losses = getDefUnitLosses(unit);
             if (losses > 0) {
                 buffer[unit.ordinal()] += losses;
+            }
+        }
+        return buffer;
+    }
+
+    @Override
+    public double[] addAttLosses(double[] buffer, DBWar war) {
+        addAttUnitCosts(buffer, null);
+        return buffer;
+    }
+
+    @Override
+    public double[] addDefLosses(double[] buffer, DBWar war) {
+        addInfraCosts(buffer);
+        addBuildingCosts(buffer);
+        addDefUnitCosts(buffer, war);
+        return buffer;
+    }
+
+    @Override
+    public double getDefLossValue(DBWar war) {
+        double value = getInfra_destroyed_value();
+        if (num_improvements != 0 && buildingsDestroyed != null) {
+            for (Map.Entry<Byte, Byte> entry : buildingsDestroyed.entrySet()) {
+                byte typeId = entry.getKey();
+                byte amt = entry.getValue();
+                Building building = Buildings.get(typeId);
+                value += building.getNMarketCost(amt);
+            }
+        }
+        return value;
+    }
+
+    @Override
+    public double getInfra_destroyed_value() {
+        double before = getCity_infra_before();
+        if (before > 0) {
+            double destroyed = getInfra_destroyed();
+            if (destroyed == 0) return 0;
+            return PW.City.Infra.calculateInfra(before - destroyed, before);
+        }
+        return 0;
+    }
+
+    @Override
+    public double[] addInfraCosts(double[] buffer) {
+        buffer[ResourceType.MONEY.ordinal()] += getInfra_destroyed_value();
+        return buffer;
+    }
+
+    @Override
+    public double[] addBuildingCosts(double[] buffer) {
+        if (num_improvements != 0 && buildingsDestroyed != null) {
+            for (Map.Entry<Byte, Byte> entry : buildingsDestroyed.entrySet()) {
+                byte typeId = entry.getKey();
+                byte amt = entry.getValue();
+                Building building = Buildings.get(typeId);
+                building.cost(buffer, amt);
             }
         }
         return buffer;
@@ -137,8 +219,8 @@ public abstract class DamageCursor extends AbstractCursor{
     }
 
     @Override
-    public Map<Building, Integer> getBuildingsDestroyed2() {
-        if (num_improvements == 0 || buildingsDestroyed.isEmpty()) {
+    public Map<Building, Integer> getBuildingsDestroyed() {
+        if (num_improvements == 0 || buildingsDestroyed == null) {
             return Collections.emptyMap();
         }
         Map<Building, Integer> result = new Object2ObjectOpenHashMap<>();
@@ -151,26 +233,8 @@ public abstract class DamageCursor extends AbstractCursor{
     }
 
     @Override
-    public double[] getBuildingCost(double[] buffer) {
-        if (num_improvements != 0 && !buildingsDestroyed.isEmpty()) {
-            for (Map.Entry<Byte, Byte> entry : buildingsDestroyed.entrySet()) {
-                byte typeId = entry.getKey();
-                byte amt = entry.getValue();
-                Building building = Buildings.get(typeId);
-                for (ResourceType type : ResourceType.values) {
-                    double rssCost = building.cost(type);
-                    if (rssCost > 0) {
-                        buffer[type.ordinal()] += rssCost * amt;
-                    }
-                }
-            }
-        }
-        return buffer;
-    }
-
-    @Override
     public void addBuildingsDestroyed(int[] destroyedBuffer) {
-        if (num_improvements > 0) {
+        if (num_improvements > 0 && buildingsDestroyed != null) {
             for (Map.Entry<Byte, Byte> entry : buildingsDestroyed.entrySet()) {
                 byte typeId = entry.getKey();
                 byte amt = entry.getValue();
@@ -181,7 +245,7 @@ public abstract class DamageCursor extends AbstractCursor{
 
     @Override
     public void addBuildingsDestroyed(char[] destroyedBuffer) {
-        if (num_improvements > 0) {
+        if (num_improvements > 0 && buildingsDestroyed != null) {
             for (Map.Entry<Byte, Byte> entry : buildingsDestroyed.entrySet()) {
                 byte typeId = entry.getKey();
                 byte amt = entry.getValue();
@@ -205,16 +269,19 @@ public abstract class DamageCursor extends AbstractCursor{
             output.writeVarInt(city_infra_before_cents);
             output.writeVarInt(infra_destroyed_cents);
             output.writeBits(num_improvements, 4);
-            if (buildingsDestroyed.size() != num_improvements) {
+            int size = buildingsDestroyed == null ? 0 : buildingsDestroyed.size();
+            if (size != num_improvements) {
                 output.writeBit(false);
             } else {
                 // 26 types of buildings (2^5)
                 output.writeBit(true);
-                for (Map.Entry<Byte, Byte> entry : buildingsDestroyed.entrySet()) {
-                    byte typeId = entry.getKey();
-                    byte amt = entry.getValue();
-                    for (int i = 0; i < amt; i++) {
-                        output.writeBits(typeId, 5);
+                if (buildingsDestroyed != null) {
+                    for (Map.Entry<Byte, Byte> entry : buildingsDestroyed.entrySet()) {
+                        byte typeId = entry.getKey();
+                        byte amt = entry.getValue();
+                        for (int i = 0; i < amt; i++) {
+                            output.writeBits(typeId, 5);
+                        }
                     }
                 }
             }
@@ -232,7 +299,7 @@ public abstract class DamageCursor extends AbstractCursor{
             infra_destroyed_cents = (int) input.readVarInt();
             num_improvements = (int) input.readBits(4);
 
-            buildingsDestroyed.clear();
+            buildingsDestroyed = num_improvements == 0 ? null : new Byte2ByteArrayMap();
             if (input.readBit()) {
                 for (int i = 0; i < num_improvements; i++) {
                     byte typeId = (byte) input.readBits(5);
@@ -244,7 +311,7 @@ public abstract class DamageCursor extends AbstractCursor{
             city_infra_before_cents = 0;
             infra_destroyed_cents = 0;
             num_improvements = 0;
-            buildingsDestroyed.clear();
+            buildingsDestroyed = null;
         }
     }
 
@@ -258,8 +325,9 @@ public abstract class DamageCursor extends AbstractCursor{
             city_infra_before_cents = (int) (attack.getCity_infra_before() * 100);
             infra_destroyed_cents = (int) (attack.getInfra_destroyed() * 100);
             num_improvements = 0;
-            buildingsDestroyed.clear();
-            for (String impName : attack.getImprovements_destroyed()) {
+            List<String> destroyedNames = attack.getImprovements_destroyed();
+            buildingsDestroyed = destroyedNames.isEmpty() ? null : new Byte2ByteArrayMap();
+            for (String impName : destroyedNames) {
                 Building building = Buildings.fromV3(impName);
                 if (building == null) {
                     throw new IllegalStateException("Unknown improvement: " + impName);
@@ -272,7 +340,7 @@ public abstract class DamageCursor extends AbstractCursor{
             city_infra_before_cents = 0;
             infra_destroyed_cents = 0;
             num_improvements = 0;
-            buildingsDestroyed.clear();
+            buildingsDestroyed = null;
         }
     }
 

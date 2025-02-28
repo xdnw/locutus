@@ -69,6 +69,12 @@ public class VictoryCursor extends FailedCursor {
     }
 
     @Override
+    public double[] addInfraCosts(double[] buffer) {
+        buffer[ResourceType.MONEY.ordinal()] += getInfra_destroyed_value();
+        return buffer;
+    }
+
+    @Override
     public void load(DBAttack legacy) {
         super.load(legacy);
         this.hasLoot = legacy.loot != null && !ResourceType.isZero(legacy.loot);

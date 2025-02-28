@@ -81,15 +81,7 @@ public interface IAttack {
     // skip getLooted
     double getCity_infra_before();
 
-    default double getInfra_destroyed_value() {
-        double before = getCity_infra_before();
-        if (before > 0) {
-            double destroyed = getInfra_destroyed();
-            if (destroyed == 0) return 0;
-            return PW.City.Infra.calculateInfra(before - destroyed, before);
-        }
-        return 0;
-    }
+    double getInfra_destroyed_value();
 
     double getAtt_gas_used();
     double getAtt_mun_used();
@@ -161,26 +153,19 @@ public interface IAttack {
         return null;
     }
 
-//    default double getLossesConverted(double[] buffer, boolean attacker) {
-//        return getLossesConverted(buffer, attacker, true, true, true, true, true);
-//    }
-//
-//    default double getLossesConverted(double[] buffer, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings) {
-//        return ResourceType.convertedTotal(getLosses(buffer, attacker, units, infra, consumption, includeLoot, includeBuildings));
-//    }
-//
-//    default double[] getLosses(double[] buffer, boolean attacker) {
-//        return getLosses(buffer, attacker, true, true, true, true, true);
-//    }
-//
-//    double[] getLosses(double[] buffer, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings);
+    double getAttLossValue(DBWar war);
+    double getDefLossValue(DBWar war);
 
-    double getAttLossValue();
-    double getDefLossValue();
+    double[] addAttLosses(double[] buffer, DBWar war);
+    double[] addDefLosses(double[] buffer, DBWar war);
+    double[] addAttUnitCosts(double[] buffer, DBWar war);
+    double[] addDefUnitCosts(double[] buffer, DBWar war);
+    double[] addInfraCosts(double[] buffer);
+    double[] addAttConsumption(double[] buffer);
+    double[] addDefConsumption(double[] buffer);
+    double[] addLoot(double[] buffer);
+    double[] addBuildingCosts(double[] buffer);
 
-    double addLosses(double[] buffer, boolean attacker);
-    // boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings
-    default void addInfraLosses(double[] buffer, Function<Research, Integer> research);
 
     default DBWar getWar() {
         Locutus lc = Locutus.imp();

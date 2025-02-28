@@ -22,6 +22,16 @@ public abstract class FailedCursor extends AbstractCursor {
     }
 
     @Override
+    public double getInfra_destroyed_value() {
+        return 0;
+    }
+
+    @Override
+    public double[] addInfraCosts(double[] buffer) {
+        return buffer;
+    }
+
+    @Override
     public double[] getUnitLossCost(double[] buffer, boolean isAttacker, Function<Research, Integer> research) {
         return buffer;
     }
@@ -92,7 +102,7 @@ public abstract class FailedCursor extends AbstractCursor {
     }
 
     @Override
-    public Map<Building, Integer> getBuildingsDestroyed2() {
+    public Map<Building, Integer> getBuildingsDestroyed() {
         return Collections.emptyMap();
     }
 
