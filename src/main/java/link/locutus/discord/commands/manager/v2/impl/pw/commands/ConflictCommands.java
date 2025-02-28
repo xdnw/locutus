@@ -554,8 +554,8 @@ public class ConflictCommands {
                                 @Default("true") @Arg("If the cached version of the site is used")
                                 boolean useCache) throws SQLException, IOException, ParseException, ClassNotFoundException {
         CtownedFetcher fetcher = new CtownedFetcher(manager);
-        String response1 = fetcher.loadCtownedConflicts(db, useCache, ConflictCategory.NON_MICRO, "conflicts", "conflicts", f -> conflictName == null || f.equalsIgnoreCase(conflictName));
-        String response2 = fetcher.loadCtownedConflicts(db, useCache, ConflictCategory.MICRO, "conflicts/micros", "conflicts-micros", f -> conflictName == null || f.equalsIgnoreCase(conflictName));
+        String response1 = fetcher.loadCtownedConflicts(db, useCache, ConflictCategory.NON_MICRO, "/conflicts", "conflicts", f -> conflictName == null || f.equalsIgnoreCase(conflictName));
+        String response2 = fetcher.loadCtownedConflicts(db, useCache, ConflictCategory.MICRO, "/conflicts/micros", "conflicts-micros", f -> conflictName == null || f.equalsIgnoreCase(conflictName));
         List<String> warnings = new ArrayList<>();
         if (!response1.isEmpty()) warnings.add(response1);
         if (!response2.isEmpty()) warnings.add(response2);
