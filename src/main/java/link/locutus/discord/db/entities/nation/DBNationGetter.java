@@ -41,5 +41,6 @@ public interface DBNationGetter {
     int _warsLost();
     int _taxId();
     double _gni();
+    double _costReduction();
     DBNationCache _cache();
 }

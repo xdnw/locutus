@@ -833,13 +833,6 @@ public class GuildHandler {
         if (!nation.hasProject(Projects.INTELLIGENCE_AGENCY)) return Collections.singleton(Projects.INTELLIGENCE_AGENCY);
         if (!nation.hasProject(Projects.PROPAGANDA_BUREAU)) return Collections.singleton(Projects.PROPAGANDA_BUREAU);
 
-        if (nation.getCities() == 11 && !nation.hasProject(Projects.URBAN_PLANNING)) return Collections.singleton(Projects.URBAN_PLANNING);
-
-        if (nation.hasProject(Projects.URBAN_PLANNING) && nation.getCities() == 16 && !nation.hasProject(Projects.ADVANCED_URBAN_PLANNING)) return Collections.singleton(Projects.ADVANCED_URBAN_PLANNING);
-
-        if (nation.getCities() < 11 && !nation.hasProject(Projects.URBAN_PLANNING) && nation.getNumProjects() >= 4) return Collections.singleton(Projects.URBAN_PLANNING);
-        if (nation.hasProject(Projects.URBAN_PLANNING) && nation.getCities() < 16 && !nation.hasProject(Projects.ADVANCED_URBAN_PLANNING) && nation.getNumProjects() >= 6) return Collections.singleton(Projects.ADVANCED_URBAN_PLANNING);
-
         List<Project> resourceProjects = new ArrayList<>(Arrays.asList(
                 Projects.IRON_WORKS,
                 Projects.EMERGENCY_GASOLINE_RESERVE,

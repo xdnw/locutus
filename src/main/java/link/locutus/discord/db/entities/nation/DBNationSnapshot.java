@@ -7,6 +7,7 @@ import link.locutus.discord.apiv3.csv.ColumnInfo;
 import link.locutus.discord.apiv3.csv.column.ProjectColumn;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
 import link.locutus.discord.db.entities.*;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 
 import java.io.IOException;
@@ -414,6 +415,11 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
     @Override
     public double _gni() {
         throw unsupported();
+    }
+
+    @Override
+    public double _costReduction() {
+        return PW.City.getCostReduction(hasProject(Projects.URBAN_PLANNING), hasProject(Projects.ADVANCED_URBAN_PLANNING), hasProject(Projects.METROPOLITAN_PLANNING));
     }
 
     @Override

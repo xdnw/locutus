@@ -42,4 +42,6 @@ public interface DBNationSetter {
     void setTax_id(int tax_id);
     void setGni(double gni);
     void setCache(DBNationCache cache);
+    void setCostReduction(boolean up, boolean aup, boolean mp);
+    void setCostReduction(double value);
 }

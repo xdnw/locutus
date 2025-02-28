@@ -763,6 +763,11 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         return PW.getMarkdownUrl(allianceId, true);
     }
 
+    @Command(desc = "Markdown url to the bot's web page for the nation (instead of ingame page)")
+    public String getWebUrl() {
+        return MarkupUtil.markdownUrl(getName(), "<" + Settings.INSTANCE.WEB.FRONTEND_DOMAIN + "/alliance/" + getId() + ">");
+    }
+
     @Override
     @Command
     public int getId() {

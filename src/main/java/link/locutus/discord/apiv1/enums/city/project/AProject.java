@@ -22,6 +22,7 @@ public class AProject implements Project {
     private final int maxCities;
     private String name;
     private int index;
+    private boolean disabled;
 
     public AProject(int id, String apiName, String imageName, Map<ResourceType, Double> cost, ResourceType output, int requiredCities, int maxCities, Supplier<Project[]> reqProjects, Predicate<DBNation> otherRequirements) {
         this.id = id;
@@ -34,6 +35,11 @@ public class AProject implements Project {
         this.maxCities = maxCities;
         this.reqProjects = reqProjects;
         this.otherRequirements = otherRequirements;
+    }
+
+    public AProject disable() {
+        this.disabled = true;
+        return this;
     }
 
     @Override
@@ -112,5 +118,10 @@ public class AProject implements Project {
 
     public int getLegacyIndex() {
         return index;
+    }
+
+    @Override
+    public boolean isDisabled() {
+        return disabled;
     }
 }

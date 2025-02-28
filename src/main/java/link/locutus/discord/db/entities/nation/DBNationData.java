@@ -3,6 +3,7 @@ package link.locutus.discord.db.entities.nation;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBNationCache;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 
 import java.util.Collection;
@@ -48,6 +49,7 @@ public class DBNationData implements DBNationSetter, DBNationGetter{
     private double gni;
 
     private String discord;
+    private double costReduction;
 
     private transient DBNationCache cache;
 
@@ -63,7 +65,8 @@ public class DBNationData implements DBNationSetter, DBNationGetter{
                     int tax_id,
                     double gni,
                     double gdp,
-                        String discord) {
+                        String discord,
+                        double costReduction) {
         this.nation_id = nation_id;
         this.nation = nation;
         this.leader = leader;
@@ -101,6 +104,7 @@ public class DBNationData implements DBNationSetter, DBNationGetter{
         this.tax_id = tax_id;
         this.gni = gni;
         this.discord = discord;
+        this.costReduction = costReduction;
     }
 
     public DBNationData() {
@@ -155,6 +159,7 @@ public class DBNationData implements DBNationSetter, DBNationGetter{
         this.tax_id = other._taxId();
         this.gni = other._gni();
 //        this.gdp = other.gdp;
+        this.costReduction = other._costReduction();
     }
 
     public DBNationData(String coalition, Collection<DBNation> nations, boolean average) {
@@ -532,5 +537,20 @@ public class DBNationData implements DBNationSetter, DBNationGetter{
 
     public void setCache(DBNationCache cache) {
         this.cache = cache;
+    }
+
+    @Override
+    public void setCostReduction(boolean up, boolean aup, boolean mp) {
+        this.costReduction = PW.City.getCostReduction(up, aup, mp);
+    }
+
+    @Override
+    public void setCostReduction(double costReduction) {
+        this.costReduction = costReduction;
+    }
+
+    @Override
+    public double _costReduction() {
+        return costReduction;
     }
 }

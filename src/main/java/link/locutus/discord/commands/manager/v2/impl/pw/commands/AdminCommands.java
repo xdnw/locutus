@@ -6,6 +6,7 @@ import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.Continent;
+import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -20,6 +21,7 @@ import link.locutus.discord.commands.war.WarRoom;
 import link.locutus.discord.commands.war.WarRoomUtil;
 import link.locutus.discord.db.*;
 import link.locutus.discord.db.entities.announce.AnnounceType;
+import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.task.mail.AlertMailTask;
@@ -112,6 +114,30 @@ import java.util.stream.Collectors;
 import static link.locutus.discord.commands.manager.v2.binding.annotation.Kw.*;
 
 public class AdminCommands {
+    @Command(desc = "Sync city refund data")
+    @RolePermission(Roles.ADMIN)
+    public String syncCityRefund() throws IOException, ParseException {
+        Set<DBNation> toSave = new HashSet<>();
+
+        DataDumpParser snapshot = Locutus.imp().getDataDumper(true);
+        for (Map.Entry<Integer, DBNationSnapshot> entry : snapshot.getNations(TimeUtil.getDay()).entrySet()) {
+            DBNationSnapshot nation = entry.getValue();
+            double reduction = nation._costReduction();
+            if (reduction <= 0) continue;
+            DBNation real = DBNation.getById(entry.getKey());
+            if (real == null) continue;
+            if (real.getCities() > nation.getCities()) {
+                reduction -= PW.City.cityCost(real, nation.getCities(), real.getCities());
+            }
+            if (reduction <= 0) continue;
+            real.edit().setCostReduction(reduction);
+            toSave.add(real);
+        }
+        System.out.println("Saving " + toSave.size());
+        Locutus.imp().getNationDB().saveNations(toSave);
+        return "Updated and saved " + toSave.size() + " nations";
+
+    }
 
     @Command(desc = "Sync and debug war rooms",
     keywords = {WAR, ROOM, SYNC, CHANNEL, UPDATE, WARCAT, CATEGORY})
