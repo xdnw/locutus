@@ -1162,6 +1162,11 @@ public class PWBindings extends BindingHelper {
         return map;
     }
 
+    @Binding(examples = {"{GROUND_COST=12,AIR_CAPACITY=2}"}, value = "A comma separated list of research and their amounts")
+    public Map<Research, Integer> research(String input) {
+        return Research.parseMap(input);
+    }
+
     @Binding(examples = {"money", "aluminum"}, value = "The name of a resource")
     public static ResourceType resource(String resource) {
         return ResourceType.parse(resource);

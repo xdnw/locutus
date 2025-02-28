@@ -429,7 +429,11 @@ public final class PW {
             return total;
         }
 
-        private static final double top20AverageQuarter = 40.8216 * 0.25;
+        public static void updateCityAverage() {
+            Locutus.imp().getV3().getGameInfo()
+        }
+
+        public static double CITY_AVERAGE = -1;
 //        public static double nextCityCost(int currentCity, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency, boolean bureauOfDomesticAffairs) {
 //            double cost = 50000*Math.pow(currentCity - 1, 3) + 150000 * (currentCity) + 75000;
 //            if (cityPlanning) {
@@ -451,6 +455,10 @@ public final class PW {
 //        }
 
         public static double nextCityCost(int currentCity, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency, boolean bureauOfDomesticAffairs) {
+            if (CITY_AVERAGE == -1) {
+                CITY_AVERAGE = Locutus.imp().getDiscordDB().getCityAverage(40.8216);
+            }
+            double top20AverageQuarter = CITY_AVERAGE * 0.25;
             double cost = Math.max(Math.pow(currentCity + 1, 2) * 100000, 100000 * Math.pow((currentCity + 1) - (top20AverageQuarter), 3) + 150000 * ((currentCity + 1) - (top20AverageQuarter)) + 75000);
             if (manifestDestiny) {
                 double factor = 0.05;

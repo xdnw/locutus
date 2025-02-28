@@ -4249,7 +4249,7 @@ public class BankCommands {
     @Command(desc = "Set the bot managed offshore for this guild\n" +
             "The alliance must use a guild with locutus settings `ALLIANCE_ID` and `API_KEY` set, and the coalitions `offshore` and `offshoring` set to include the offshore alliance")
     @RolePermission(value = Roles.ADMIN)
-    public String addOffshore(@Me IMessageIO io, @Me User user, @Me GuildDB root, @Me DBNation nation, @Me JSONObject command, DBAlliance offshoreAlliance, @Switch("n") boolean newAccount, @Switch("i") boolean importAccount, @Switch("f") boolean force) throws IOException {
+    public static String addOffshore(@Me IMessageIO io, @Me User user, @Me GuildDB root, @Me DBNation nation, @Me JSONObject command, DBAlliance offshoreAlliance, @Switch("n") boolean newAccount, @Switch("i") boolean importAccount, @Switch("f") boolean force) throws IOException {
         if (importAccount && newAccount) {
             throw new IllegalArgumentException("Cannot specify both `newAccount` and `importAccount` (pick one)");
         }

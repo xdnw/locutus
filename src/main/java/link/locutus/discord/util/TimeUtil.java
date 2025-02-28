@@ -233,7 +233,7 @@ public class TimeUtil {
     }
 
     public static long getTimeFromDay(long day) {
-        if (Settings.INSTANCE.TEST) day *= 4;
+        if (Settings.INSTANCE.TEST) day *= 2;
 
         ZonedDateTime time = Instant.ofEpochMilli(0).atZone(ZoneOffset.UTC).plusDays(day);
         long millisecond = time.toEpochSecond() * 1000L;
@@ -241,7 +241,7 @@ public class TimeUtil {
     }
 
     public static long getTimeFromTurn(long turn) {
-        if (Settings.INSTANCE.TEST) turn *= 4;
+        if (Settings.INSTANCE.TEST) turn *= 2;
         long day = (turn / 12);
         long hour = turn * 2 - (day * 24);
 
@@ -252,8 +252,8 @@ public class TimeUtil {
 
     public static long getTurn(ZonedDateTime utc) {
         if (Settings.INSTANCE.TEST) {
-            long value = ChronoUnit.MINUTES.between(Instant.EPOCH, utc);
-            return value / 30;
+            long value = ChronoUnit.HOURS.between(Instant.EPOCH, utc);
+            return value;
         }
         return (utc.getHour() / 2) + getDay(utc) * 12L;
     }
@@ -262,8 +262,7 @@ public class TimeUtil {
         ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
         if (Settings.INSTANCE.TEST) {
             int hours = now.getHour();
-            int min = now.getMinute();
-            return (hours * 2) + (min / 30);
+            return hours;
         }
         return now.getHour() / 2;
     }
@@ -275,8 +274,8 @@ public class TimeUtil {
 
     public static long getDay(ZonedDateTime utc) {
         if (Settings.INSTANCE.TEST) {
-            long value = ChronoUnit.MINUTES.between(Instant.EPOCH, utc);
-            return value / 30;
+            long value = ChronoUnit.HOURS.between(Instant.EPOCH, utc);
+            return value;
         }
         return ChronoUnit.DAYS.between(Instant.EPOCH, utc);
     }

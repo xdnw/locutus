@@ -9,16 +9,17 @@ import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 public abstract class ABuilding implements Building {
     private final int pollution;
     private final int cap;
     private final double[] costArr;
-    private final double costConverted;
+    private final Supplier<Double> costConverted;
 
     private final double[] upkeepArr;
     private final String name;
-    private final double upkeepConverted;
+    private final Supplier<Double> upkeepConverted;
     private int ordinal;
 
     public ABuilding(BuildingBuilder parent) {
@@ -30,13 +31,13 @@ public abstract class ABuilding implements Building {
         this.cap = cap;
         this.pollution = pollution;
         this.costArr = cost;
-        this.costConverted = ResourceType.convertedTotal(costArr);
+        this.costConverted = ResourceType.convertedCostLazy(costArr);
         this.upkeepArr = upkeep;
-        this.upkeepConverted = ResourceType.convertedTotal(upkeepArr);
+        this.upkeepConverted = ResourceType.convertedCostLazy(upkeepArr);
     }
 
     public double getUpkeepConverted(Predicate<Project> hasProject) {
-        return upkeepConverted;
+        return upkeepConverted.get();
     }
 
     @Override
@@ -51,7 +52,7 @@ public abstract class ABuilding implements Building {
 
     @Override
     public double getNMarketCost(double num) {
-        return costConverted * num;
+        return costConverted.get() * num;
     }
 
     @Override

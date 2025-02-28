@@ -244,7 +244,34 @@ public enum AttackType {
         double attModifier = defFortified ? 1.33 : 1;
 
         switch (this) {
-            case NAVAL -> {
+            case NAVAL, NAVAL_INFRA, NAVAL_AIR, NAVAL_GROUND -> {
+                double navalFactor = 1.3;
+                //NAVAL_INFRA: Current Infrastructure Damages, 30% Reduced Naval Casualties
+                //NAVAL: 30% Reduced Infrastructure, 30% Increased Naval Casualties (From new base rate)
+                //Naval Ground: 30% Reduced Infrastructure, 30% Reduced Naval Casualties. Removes Ground Control.
+                //Naval Air: 30% Reduced Infrastructure, 30% Reduced Naval Casualties. Removes Air Control.
+                switch (this) {
+                    case NAVAL: {
+                        navalFactor *= 1.3;
+                        infraFactor *= 0.7;
+                        break;
+                    }
+                    case NAVAL_INFRA: {
+                        navalFactor = 0.7;
+                        break;
+                    }
+                    case NAVAL_AIR: {
+                        navalFactor *= 0.7;
+                        infraFactor *= 0.7;
+                        break;
+                    }
+                    case NAVAL_GROUND: {
+                        navalFactor *= 0.7;
+                        infraFactor *= 0.7;
+                        break;
+                    }
+                }
+
                 int attShips = attacker.getUnits(MilitaryUnit.SHIP);
                 int defShips = defender.getUnits(MilitaryUnit.SHIP);
                 if (victory != SuccessType.UTTER_FAILURE) {
@@ -268,10 +295,10 @@ public enum AttackType {
                     double defStrMin = Math.max(attStr * 0.4 + 1, defStr * 0.4);
                     double defStrMax = defStr;
 
-                    attLossMin += (int) Math.round((defStrMin * 0.01375 * attModifier) * failures);
-                    attLossMax += (int) Math.round((defStrMax * 0.01375 * attModifier) * failures);
-                    defLossMin += (int) Math.round((attStrMin * 0.01375 * defModifier) * failures);
-                    defLossMax += (int) Math.round((attStrMax * 0.01375 * defModifier) * failures);
+                    attLossMin += (int) Math.round((defStrMin * 0.01375 * navalFactor * attModifier) * failures);
+                    attLossMax += (int) Math.round((defStrMax * 0.01375 * navalFactor * attModifier) * failures);
+                    defLossMin += (int) Math.round((attStrMin * 0.01375 * navalFactor * defModifier) * failures);
+                    defLossMax += (int) Math.round((attStrMax * 0.01375 * navalFactor * defModifier) * failures);
                 }
                 if (successes > 0) {
                     double attStrMin = Math.max(defStr * 0.4 + 1, attStr * 0.4);
@@ -280,10 +307,10 @@ public enum AttackType {
                     double defStrMin = defStr * 0.4;
                     double defStrMax = Math.min(defStr, attStr - 1);
 
-                    attLossMin += (int) Math.round((defStrMin * 0.01375 * attModifier) * successes);
-                    attLossMax += (int) Math.round((defStrMax * 0.01375 * attModifier) * successes);
-                    defLossMin += (int) Math.round((attStrMin * 0.01375 * defModifier) * successes);
-                    defLossMax += (int) Math.round((attStrMax * 0.01375 * defModifier) * successes);
+                    attLossMin += (int) Math.round((defStrMin * 0.01375 * navalFactor * attModifier) * successes);
+                    attLossMax += (int) Math.round((defStrMax * 0.01375 * navalFactor * attModifier) * successes);
+                    defLossMin += (int) Math.round((attStrMin * 0.01375 * navalFactor * defModifier) * successes);
+                    defLossMax += (int) Math.round((attStrMax * 0.01375 * navalFactor * defModifier) * successes);
                 }
 
                 attLossMin = Math.min(attLossMin, attShips);

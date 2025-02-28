@@ -24,8 +24,7 @@ public class Sudo extends Command implements Noformat {
 
     @Override
     public List<CommandRef> getSlashReference() {
-//        return List.of(CM.admin.sudo.user.cmd);
-        return null;
+        return List.of(CM.admin.command.sudo.cmd);
     }
     @Override
     public String help() {

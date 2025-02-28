@@ -11,10 +11,14 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import org.jetbrains.annotations.NotNull;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
-import java.util.Collection;
-import java.util.EnumMap;
-import java.util.Map;
+import java.io.IOException;
+import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -113,6 +117,7 @@ public enum MilitaryUnit {
     public static MilitaryUnit[] values = values();
 
     private Research costReducer;
+    private Research upkeepReducer;
 
     private double[] costReduction;
     private ResourceType[] costReductionRss;
@@ -148,7 +153,8 @@ public enum MilitaryUnit {
     }
 
     public void setResearch(Research research, double[] costReduction, double[] upkeepPeaceReduction, double[] upkeepWarReduction) {
-        this.costReducer = research;
+        this.costReducer = costReduction == null ? null : research;
+        this.upkeepReducer = upkeepPeaceReduction == null ? null : research;
         this.costReduction = costReduction;
         this.costReductionRss = ResourceType.getTypes(costReduction);
         this.costReductionConverted = ResourceType.convertedCostLazy(costReduction);
@@ -275,7 +281,15 @@ public enum MilitaryUnit {
         return score * amt;
     }
 
-    public double[] addUpkeep(double[] buffer, int amt, boolean war, Function<Research, Integer> research, double factor) {
+    public double[] addUpkeep(double[] buffer, int amt, boolean war, int researchBits, double factor) {
+        if (upkeepReducer == null) {
+            double[] baseUpkeep = war ? upkeepWar : upkeepPeace;
+            for (ResourceType type : upkeepRss) {
+                double costPer = baseUpkeep[type.ordinal()];
+                buffer[type.ordinal()] += costPer * amt * factor;
+            }
+            return buffer;
+        }
         double[] baseUpkeep;
         double[] upkeepReduction;
         if (war) {
@@ -285,7 +299,7 @@ public enum MilitaryUnit {
             baseUpkeep = upkeepPeace;
             upkeepReduction = upkeepPeaceReduction;
         }
-        int level = research.apply(costReducer);
+        int level = upkeepReducer.getLevel(researchBits);
         for (ResourceType type : upkeepRss) {
             double costPer = baseUpkeep[type.ordinal()] - upkeepReduction[type.ordinal()] * level;
             buffer[type.ordinal()] += costPer * amt * factor;
@@ -293,7 +307,15 @@ public enum MilitaryUnit {
         return buffer;
     }
 
-    public double[] addUpkeep(double[] buffer, int amt, boolean war, int researchBits, double factor) {
+    public double[] addUpkeep(double[] buffer, int amt, boolean war, Function<Research, Integer> research, double factor) {
+        if (upkeepReducer == null) {
+            double[] baseUpkeep = war ? upkeepWar : upkeepPeace;
+            for (ResourceType type : upkeepRss) {
+                double costPer = baseUpkeep[type.ordinal()];
+                buffer[type.ordinal()] += costPer * amt * factor;
+            }
+            return buffer;
+        }
         double[] baseUpkeep;
         double[] upkeepReduction;
         if (war) {
@@ -303,7 +325,7 @@ public enum MilitaryUnit {
             baseUpkeep = upkeepPeace;
             upkeepReduction = upkeepPeaceReduction;
         }
-        int level = costReducer.getLevel(researchBits);
+        int level = research.apply(upkeepReducer);
         for (ResourceType type : upkeepRss) {
             double costPer = baseUpkeep[type.ordinal()] - upkeepReduction[type.ordinal()] * level;
             buffer[type.ordinal()] += costPer * amt * factor;
@@ -335,6 +357,7 @@ public enum MilitaryUnit {
 
     public double getConvertedCost(Function<Research, Integer> research) {
         double value = costConverted.get();
+        if (costReducer == null) return value;
         int level = research.apply(costReducer);
         value -= costReductionConverted.get() * level;
         return value;
@@ -342,6 +365,7 @@ public enum MilitaryUnit {
 
     public double getConvertedCost(int researchBits) {
         double value = costConverted.get();
+        if (costReducer == null) return value;
         int level = costReducer.getLevel(researchBits);
         value -= costReductionConverted.get() * level;
         return value;
@@ -373,34 +397,34 @@ public enum MilitaryUnit {
     }
 
     public double[] addCost(double[] buffer, int amt, Function<Research, Integer> research) {
-        int level = research.apply(costReducer);
+        int level = costReducer == null ? 0 : research.apply(costReducer);
         if (amt < 0) {
             for (ResourceType type : costRss) {
                 if (type == ResourceType.MONEY) continue;
-                double costPer = this.cost[type.ordinal()] - costReduction[type.ordinal()] * level;
+                double costPer = this.cost[type.ordinal()] - (level == 0 ? 0 : costReduction[type.ordinal()]);
                 buffer[type.ordinal()] += costPer * amt * 0.75;
             }
             return buffer;
         }
         for (ResourceType type : costRss) {
-            double costPer = this.cost[type.ordinal()] - costReduction[type.ordinal()] * level;
+            double costPer = this.cost[type.ordinal()] - (level == 0 ? 0 : costReduction[type.ordinal()] * level);
             buffer[type.ordinal()] += costPer * amt;
         }
         return buffer;
     }
 
     public double[] addCost(double[] buffer, int amt, int researchBits) {
-        int level = costReducer.getLevel(researchBits);
+        int level = costReducer == null ? 0 : costReducer.getLevel(researchBits);
         if (amt < 0) {
             for (ResourceType type : costRss) {
                 if (type == ResourceType.MONEY) continue;
-                double costPer = this.cost[type.ordinal()] - costReduction[type.ordinal()] * level;
+                double costPer = this.cost[type.ordinal()] - (level == 0 ? 0 : costReduction[type.ordinal()] * level);
                 buffer[type.ordinal()] += costPer * amt * 0.75;
             }
             return buffer;
         }
         for (ResourceType type : costRss) {
-            double costPer = this.cost[type.ordinal()] - costReduction[type.ordinal()] * level;
+            double costPer = this.cost[type.ordinal()] - (level == 0 ? 0 : costReduction[type.ordinal()] * level);
             buffer[type.ordinal()] += costPer * amt;
         }
         return buffer;

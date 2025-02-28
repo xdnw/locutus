@@ -24,6 +24,7 @@ public enum DiscordMeta {
 
     BANK_RECS_SEQUENTIAL(false),
 
+    CITY_AVERAGE(false),
     ;
 
     public static DiscordMeta[] values = DiscordMeta.values();

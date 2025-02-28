@@ -10,11 +10,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
-import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.Continent;
-import link.locutus.discord.apiv1.enums.DomesticPolicy;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.NationColor;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
@@ -34,8 +30,6 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.TriConsumer;
@@ -983,6 +977,121 @@ public enum AllianceMetric implements IAllianceMetric {
             return null;
         }
     },
+
+    RESEARCH_VALUE(false, SI_UNIT) {
+        @Override
+        public Double apply(DBAlliance alliance) {
+            double total = 0;
+            for (DBNation nation : alliance.getMemberDBNations()) {
+                total += nation.getResearchValue();
+            }
+            return total;
+        }
+    },
+
+    RESEARCH_VALUE_AVG(true, DECIMAL_ROUNDED) {
+        @Override
+        public Double apply(DBAlliance alliance) {
+            double total = 0;
+            Set<DBNation> nations = alliance.getMemberDBNations();
+            for (DBNation nation : nations) {
+                total += nation.getResearchValue();
+            }
+            return total / nations.size();
+        }
+    },
+
+    RESEARCH_COUNT(false, SI_UNIT) {
+        @Override
+        public Double apply(DBAlliance alliance) {
+            double total = 0;
+            for (DBNation nation : alliance.getMemberDBNations()) {
+                total += nation.getResearchLevels().values().stream().mapToDouble(f -> f).sum();
+            }
+            return total;
+        }
+    },
+
+    RESEARCH_AVG(true, DECIMAL_ROUNDED) {
+        @Override
+        public Double apply(DBAlliance alliance) {
+            double total = 0;
+            Set<DBNation> nations = alliance.getMemberDBNations();
+            for (DBNation nation : nations) {
+                total += nation.getResearchLevels().values().stream().mapToDouble(f -> f).sum();
+            }
+            return total / nations.size();
+        }
+    },
+
+    GROUND_COST_AVG(true, SI_UNIT) {
+        @Override
+        public Double apply(DBAlliance alliance) {
+            double total = 0;
+            Set<DBNation> nations = alliance.getMemberDBNations();
+            for (DBNation nation : nations) {
+                total += nation.getResearch(Research.GROUND_COST);
+            }
+            return total / nations.size();
+        }
+    },
+    AIR_COST_AVG(true, SI_UNIT) {
+        @Override
+        public Double apply(DBAlliance alliance) {
+            double total = 0;
+            Set<DBNation> nations = alliance.getMemberDBNations();
+            for (DBNation nation : nations) {
+                total += nation.getResearch(Research.AIR_COST);
+            }
+            return total / nations.size();
+        }
+    },
+    NAVAL_COST_AVG(true, SI_UNIT) {
+        @Override
+        public Double apply(DBAlliance alliance) {
+            double total = 0;
+            Set<DBNation> nations = alliance.getMemberDBNations();
+            for (DBNation nation : nations) {
+                total += nation.getResearch(Research.NAVAL_COST);
+            }
+            return total / nations.size();
+        }
+    },
+    GROUND_CAPACITY_AVG(true, SI_UNIT) {
+        @Override
+        public Double apply(DBAlliance alliance) {
+            double total = 0;
+            Set<DBNation> nations = alliance.getMemberDBNations();
+            for (DBNation nation : nations) {
+                total += nation.getResearch(Research.GROUND_CAPACITY);
+            }
+            return total / nations.size();
+        }
+    },
+    AIR_CAPACITY_AVG(true, SI_UNIT) {
+        @Override
+        public Double apply(DBAlliance alliance) {
+            double total = 0;
+            Set<DBNation> nations = alliance.getMemberDBNations();
+            for (DBNation nation : nations) {
+                total += nation.getResearch(Research.AIR_CAPACITY);
+            }
+            return total / nations.size();
+        }
+    },
+    NAVAL_CAPACITY_AVG(true, SI_UNIT) {
+        @Override
+        public Double apply(DBAlliance alliance) {
+            double total = 0;
+            Set<DBNation> nations = alliance.getMemberDBNations();
+            for (DBNation nation : nations) {
+                total += nation.getResearch(Research.NAVAL_CAPACITY);
+            }
+            return total / nations.size();
+        }
+    },
+
+
 
     // war policy over time
     // projects over time

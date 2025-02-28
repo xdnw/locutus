@@ -298,6 +298,14 @@ public class CommandManager2 {
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "command"), "sudoNations", "sudo_nations");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "command"), "sudo", "sudo");
 
+        getCommands().registerMethod(new AdminCommands(), List.of("research"), "updateResearch", "sync");
+        getCommands().registerMethod(new ResearchCommands(), List.of("research"), "researchCost", "cost");
+        getCommands().registerMethod(new ResearchCommands(), List.of("research"), "getResearch", "view_nation");
+        getCommands().registerMethod(new ResearchCommands(), List.of("research"), "researchSheet", "sheet");
+
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "debug"), "newOffshore", "new_offshore");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "bot"), "upsertCommands", "update_commands");
+
 //        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "openMenu", "open");
 //        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "deleteMenu", "delete");
 //        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "renameMenu", "title");

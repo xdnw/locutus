@@ -86,6 +86,7 @@ public class PWGPTHandler {
     public void registerSources() {
         for (EmbeddingType type : EmbeddingType.values()) {
             EmbeddingSource source = handler.getEmbeddings().getOrCreateSource(type.name(), 0);
+            System.out.println("REMOVE:|| Register source " + type + " | " + source);
             sourceMap.put(type, source);
         }
     }
@@ -95,6 +96,7 @@ public class PWGPTHandler {
     }
 
     public void registerDefaults() {
+        System.out.println("REMOVE:|| Register sources");
         registerSources();
 
         registerCommandEmbeddings();

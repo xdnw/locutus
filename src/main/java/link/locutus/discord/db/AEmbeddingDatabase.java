@@ -352,7 +352,8 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
             long date_added = System.currentTimeMillis();
             // create
             source = new EmbeddingSource(-1, name, date_added, 0, guild_id);
-            ctx().execute("INSERT INTO sources (source_name, date_added, guild_id) VALUES (?, ?, ?)", source.source_name, source.date_added, source.guild_id);
+            // source_id INTEGER PRIMARY KEY AUTOINCREMENT, source_name VARCHAR NOT NULL, date_added BIGINT NOT NULL, hash BIGINT NOT NULL, guild_id BIGINT NOT NULL
+            ctx().execute("INSERT INTO sources (source_name, date_added, guild_id, hash) VALUES (?, ?, ?, ?)", source.source_name, source.date_added, source.guild_id, source.source_hash);
             // set source id
             @Nullable Record result = ctx().fetchOne("SELECT source_id FROM sources WHERE source_name = ? AND date_added = ? AND guild_id = ?", source.source_name, source.date_added, source.guild_id);
             int source_id = (Integer) result.getValue("source_id");

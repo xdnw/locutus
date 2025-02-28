@@ -1048,6 +1048,15 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
                 });
             }
         }
+    }
 
+    public double getCityAverage(double def) {
+        ByteBuffer value = getInfo(DiscordMeta.CITY_AVERAGE, 0);
+        if (value != null) return value.getDouble();
+        return def;
+    }
+
+    public void setCityAverage(double value) {
+        setInfo(DiscordMeta.CITY_AVERAGE, 0, ByteBuffer.allocate(Double.BYTES).putDouble(value).array());
     }
 }

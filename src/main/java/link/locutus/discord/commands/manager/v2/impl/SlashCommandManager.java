@@ -364,6 +364,17 @@ public class SlashCommandManager extends ListenerAdapter {
         registerCommandData(jda, generate);
     }
 
+    public void register(Guild guild) {
+        List<CommandData> toRegister = generateCommandData();
+        if (!toRegister.isEmpty()) {
+            List<net.dv8tion.jda.api.interactions.commands.Command> commands = RateLimitUtil.complete(guild.updateCommands().addCommands(toRegister));
+            for (net.dv8tion.jda.api.interactions.commands.Command command : commands) {
+                String path = command.getName();
+                commandIds.put(path, command.getIdLong());
+            }
+        }
+    }
+
     public void registerCommandData(JDA jda, List<CommandData> toRegister) {
         if (!toRegister.isEmpty()) {
             List<net.dv8tion.jda.api.interactions.commands.Command> commands = RateLimitUtil.complete(jda.updateCommands().addCommands(toRegister));

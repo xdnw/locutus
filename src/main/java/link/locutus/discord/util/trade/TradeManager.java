@@ -81,25 +81,44 @@ public class TradeManager {
             synchronized (this) {
                 if (gameAvg == null || (gameAvgUpdated < turn)) {
                     double[] tmp = ResourceType.getBuffer();
-                    PoliticsAndWarV3 api = Locutus.imp().getV3();
-                    Tradeprice price = api.getTradePrice();
+                    try {
+                        PoliticsAndWarV3 api = Locutus.imp().getV3();
+                        Tradeprice price = api.getTradePrice();
 
-                    tmp[ResourceType.MONEY.ordinal()] = 1;
-                    tmp[ResourceType.COAL.ordinal()] = price.getCoal();
-                    tmp[ResourceType.OIL.ordinal()] = price.getOil();
-                    tmp[ResourceType.URANIUM.ordinal()] = price.getUranium();
-                    tmp[ResourceType.IRON.ordinal()] = price.getIron();
-                    tmp[ResourceType.BAUXITE.ordinal()] = price.getBauxite();
-                    tmp[ResourceType.LEAD.ordinal()] = price.getLead();
-                    tmp[ResourceType.GASOLINE.ordinal()] = price.getGasoline();
-                    tmp[ResourceType.MUNITIONS.ordinal()] = price.getMunitions();
-                    tmp[ResourceType.STEEL.ordinal()] = price.getSteel();
-                    tmp[ResourceType.ALUMINUM.ordinal()] = price.getAluminum();
-                    tmp[ResourceType.FOOD.ordinal()] = price.getFood();
-                    tmp[ResourceType.CREDITS.ordinal()] = price.getCredits();
+                        tmp[ResourceType.MONEY.ordinal()] = 1;
+                        tmp[ResourceType.COAL.ordinal()] = price.getCoal();
+                        tmp[ResourceType.OIL.ordinal()] = price.getOil();
+                        tmp[ResourceType.URANIUM.ordinal()] = price.getUranium();
+                        tmp[ResourceType.IRON.ordinal()] = price.getIron();
+                        tmp[ResourceType.BAUXITE.ordinal()] = price.getBauxite();
+                        tmp[ResourceType.LEAD.ordinal()] = price.getLead();
+                        tmp[ResourceType.GASOLINE.ordinal()] = price.getGasoline();
+                        tmp[ResourceType.MUNITIONS.ordinal()] = price.getMunitions();
+                        tmp[ResourceType.STEEL.ordinal()] = price.getSteel();
+                        tmp[ResourceType.ALUMINUM.ordinal()] = price.getAluminum();
+                        tmp[ResourceType.FOOD.ordinal()] = price.getFood();
+                        tmp[ResourceType.CREDITS.ordinal()] = price.getCredits();
 
-                    gameAvgUpdated = turn;
-                    gameAvg = tmp;
+                        gameAvgUpdated = turn;
+                        gameAvg = tmp;
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        return switch (type) {
+                            case MONEY -> 1;
+                            case CREDITS -> 50_000_000;
+                            case FOOD -> 150;
+                            case COAL -> 3000;
+                            case OIL -> 3000;
+                            case URANIUM -> 3000;
+                            case LEAD -> 3000;
+                            case IRON -> 3000;
+                            case BAUXITE -> 3000;
+                            case GASOLINE -> 3000;
+                            case MUNITIONS -> 1750;
+                            case STEEL -> 3000;
+                            case ALUMINUM -> 2250;
+                        };
+                    }
                 }
             }
         }
@@ -214,7 +233,11 @@ public class TradeManager {
             highAvg = new double[ResourceType.values.length];
 
             if (Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS > 0) {
-                updateTradeList(null);
+                try {
+                    updateTradeList(null);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             } else {
                 Map<ResourceType, Integer> initDefaults = new EnumMap<>(ResourceType.class);
                 initDefaults.put(ResourceType.MONEY, 1);

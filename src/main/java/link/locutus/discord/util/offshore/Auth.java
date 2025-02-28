@@ -763,6 +763,68 @@ public class Auth {
         }, this);
     }
 
+    public String leaveAlliance(DBAlliance offshoreAA) {
+        int aaId = offshoreAA.getId();
+
+        Map<String, String> post = new HashMap<>();
+        post.put("disband_name", offshoreAA.getName());
+        post.put("password", getPassword());
+        post.put("leave_alliance", "true");
+        post.put("disband_confirm_1", "true");
+        post.put("disband_confirm_2", "true");
+        post.put("disband_confirm_3", "true");
+
+        return PW.withLogin(() -> {
+            String result = readStringFromURL(PagePriority.BANK_DEPOSIT, "" + Settings.PNW_URL() + "/alliance/leave/id=" + aaId, emptyMap());
+            Document dom = Jsoup.parse(result);
+            String token = dom.select("input[name=token]").attr("value");
+            post.put("token", token);
+            StringBuilder response = new StringBuilder();
+
+            result = readStringFromURL(PagePriority.TOKEN, "" + Settings.PNW_URL() + "/alliance/leave/id=" + aaId, post);
+            dom = Jsoup.parse(result);
+            for (Element element : dom.getElementsByClass("alert")) {
+                String text = element.text();
+                if (text.startsWith("Player Advertisement by ")) {
+                    continue;
+                }
+                response.append('\n').append(text);
+            }
+            if (response.length() == 0) {
+                return "(not output)";
+            }
+            return response.toString();
+        }, this);
+    }
+
+    public String apply(DBAlliance alliance) {
+        Map<String, String> post = new HashMap<>();
+        // submit: Apply
+        post.put("submit", "Apply");
+        // /alliance/join/id=
+        return PW.withLogin(() -> {
+            String result = readStringFromURL(PagePriority.BANK_DEPOSIT, "" + Settings.PNW_URL() + "/alliance/join/id=" + alliance.getId(), emptyMap());
+            Document dom = Jsoup.parse(result);
+            String token = dom.select("input[name=token]").attr("value");
+            post.put("token", token);
+            StringBuilder response = new StringBuilder();
+
+            result = readStringFromURL(PagePriority.TOKEN, "" + Settings.PNW_URL() + "/alliance/join/id=" + alliance.getId(), post);
+            dom = Jsoup.parse(result);
+            for (Element element : dom.getElementsByClass("alert")) {
+                String text = element.text();
+                if (text.startsWith("Player Advertisement by ")) {
+                    continue;
+                }
+                response.append('\n').append(text);
+            }
+            if (response.length() == 0) {
+                return "(not output)";
+            }
+            return response.toString();
+        }, this);
+    }
+
     ///////////////////////
 
     public enum TradeResultType {

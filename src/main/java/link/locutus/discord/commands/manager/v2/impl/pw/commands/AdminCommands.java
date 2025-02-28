@@ -24,6 +24,7 @@ import link.locutus.discord.db.entities.announce.AnnounceType;
 import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.util.*;
+import link.locutus.discord.util.offshore.TransferResult;
 import link.locutus.discord.util.task.mail.AlertMailTask;
 import link.locutus.discord.util.task.mail.MailApiResponse;
 import link.locutus.discord.util.task.multi.GetUid;
@@ -117,8 +118,57 @@ import java.util.stream.Collectors;
 import static link.locutus.discord.commands.manager.v2.binding.annotation.Kw.*;
 
 public class AdminCommands {
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String newOffshore(@Me IMessageIO io, @Me DBNation nation, DBAlliance alliance) throws IOException {
+        if (!Settings.INSTANCE.TEST) {
+            throw new IllegalArgumentException("Creating new offshore is disabled in production");
+        }
+        Auth auth = nation.getAuth(true);
+        if (alliance.getId() != nation.getAlliance_id()) {
+            throw new IllegalArgumentException("Your nation is not in the alliance you specified (if it is, please use the `!sync <nation>` command and try again)");
+        }
+        if (alliance.getMemberDBNations().size() > 1) {
+            throw new IllegalArgumentException("Alliance has more than 1 member. Please create a new alliance with only your nation");
+        }
+        // Send funds to new alliance
+        OffshoreInstance offshore = Locutus.imp().getRootBank();
+        DBAlliance offshoreAA = offshore.getAlliance();
+        Auth offshoreAuth = offshoreAA.getAuth(AlliancePermission.WITHDRAW_BANK);
+        User offshoreUser = offshoreAuth.getNation().getUser();
+
+        Map<ResourceType, Double> stockpile = offshoreAA.getStockpile();
+        if (stockpile.isEmpty()) {
+            throw new IllegalArgumentException("Offshore alliance has no stockpile (send $1 to it for the purposes of this command)");
+        }
+        io.send("Checked stockpile");
+        TransferResult result = offshore.transferUnsafe(offshoreAuth, alliance, stockpile, "#ignore");
+        io.send("Sent stockpile " + result.toLineString());
+        if (!result.getStatus().isSuccess()) {
+            throw new IllegalArgumentException("Failed to send funds to new alliance (send $1 to the offshore and try again?):\n" + result.toEmbedString());
+        }
+        Map<ResourceType, Double> stockpileTest = offshoreAA.getStockpile();
+        io.send("Checked new stockpile: " + ResourceType.toString(stockpileTest));
+        if (!stockpileTest.isEmpty()) {
+            throw new IllegalArgumentException("Stockpile was sent, but AA is not empty. Please contact support, or try again.");
+        }
+        // leave alliance ingame and apply to new aa
+        offshoreAuth.leaveAlliance(offshoreAA);
+        io.send("Left offshore alliance");
+        offshoreAuth.apply(alliance);
+        io.send("Applied to new alliance");
+        return BankCommands.addOffshore(io, offshoreUser, offshore.getGuildDB(), offshoreAuth.getNation(), null, alliance, false, false, true);
+    }
+
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String upsertCommands(@Me Guild guild) {
+        Locutus.imp().getSlashCommands().register(guild);
+        return "Done! (Restart your discord client to see changes)";
+    }
+
     @Command(desc = "Sync city refund data")
-    @RolePermission(Roles.ADMIN)
+    @RolePermission(value = Roles.ADMIN, root = true)
     public String syncCityRefund() throws IOException, ParseException {
         Set<DBNation> toSave = new HashSet<>();
 
@@ -139,7 +189,27 @@ public class AdminCommands {
         System.out.println("Saving " + toSave.size());
         Locutus.imp().getNationDB().saveNations(toSave);
         return "Updated and saved " + toSave.size() + " nations";
+    }
 
+    @Command(desc = "Force update of research data")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String updateResearch(@Me IMessageIO io, Set<DBNation> nations) throws IOException, ParseException {
+        CompletableFuture<IMessageBuilder> msgFuture = (io.sendMessage("Updating research. Please wait..."));
+        long start = System.currentTimeMillis();
+        for (DBNation nation : nations) {
+            try {
+                if (start + 10000 < System.currentTimeMillis()) {
+                    start = System.currentTimeMillis();
+                    io.updateOptionally(msgFuture, "Updating research for " + nation.getMarkdownUrl());
+                }
+                nation.updateResearch();
+            } catch (Exception e) {
+                e.printStackTrace();
+                io.create().append("Failed to update research for " + nation.getMarkdownUrl() + ": " + e.getMessage()).send();
+            }
+        }
+        Locutus.imp().getNationDB().saveNations(nations);
+        return "Updated and saved " + nations.size() + " nations";
     }
 
     @Command(desc = "Set bot profile picture")

@@ -2556,6 +2556,7 @@ public class UtilityCommands {
         Map<ResourceType, Double> projectCost = new HashMap<>();
         Map<ResourceType, Double> militaryCost = new HashMap<>();
         Map<ResourceType, Double> buildingCost = new HashMap<>();
+        Map<ResourceType, Double> researchCost = new HashMap<>();
         for (DBNation nation : nationSet) {
             cityProjectRefund += PW.City.getCostReduction(nation::hasProject);
             Set<Project> projects = nation.getProjects();
@@ -2603,6 +2604,9 @@ public class UtilityCommands {
                 double[] myBuildingCost = city.calculateCost(empty);
                 buildingCost = ResourceType.addResourcesToA(buildingCost, ResourceType.resourcesToMap(myBuildingCost));
             }
+
+            Map<Research, Integer> level = nation.getResearchLevels();
+            researchCost = ResourceType.add(researchCost, Research.cost(Collections.emptyMap(), level));
         }
 
         Map<ResourceType, Double> total = new HashMap<>();
@@ -2612,6 +2616,7 @@ public class UtilityCommands {
         total = ResourceType.add(total, projectCost);
         total = ResourceType.add(total, militaryCost);
         total = ResourceType.add(total, buildingCost);
+        total = ResourceType.add(total, researchCost);
         double totalConverted = ResourceType.convertedTotal(total);
         String title = nationSet.size() + " nations worth ~$" + MathMan.format(totalConverted);
 
@@ -2622,6 +2627,7 @@ public class UtilityCommands {
         response.append("\n").append("**Projects**: $" + MathMan.format(ResourceType.convertedTotal(projectCost)) + "\n`" + ResourceType.toString(projectCost) + "`");
         response.append("\n").append("**Military**: $" + MathMan.format(ResourceType.convertedTotal(militaryCost)) + "\n`" + ResourceType.toString(militaryCost) + "`");
         response.append("\n").append("**Buildings**: $" + MathMan.format(ResourceType.convertedTotal(buildingCost)) + "\n`" + ResourceType.toString(buildingCost) + "`");
+        response.append("\n").append("**Research**: $" + MathMan.format(ResourceType.convertedTotal(researchCost)) + "\n`" + ResourceType.toString(researchCost) + "`");
         response.append("\n").append("**Total**: $" + MathMan.format(ResourceType.convertedTotal(total)) + "\n`" + ResourceType.toString(total) + "`");
         response.append("\n\nCity Project Refund (not incl. in total): $" + MathMan.format(cityProjectRefund));
 

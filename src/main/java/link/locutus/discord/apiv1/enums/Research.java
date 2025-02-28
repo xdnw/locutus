@@ -1,11 +1,16 @@
 package link.locutus.discord.apiv1.enums;
 
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.util.PW;
+import org.jsoup.nodes.Document;
+import org.jsoup.select.Elements;
 
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public enum Research {
     // Decrease soldier cost by $0.1 and tank cost by $1 and 0.01 Steel, Reduce Soldier upkeep cost by $0.02 at peace, and $0.03 at war,
@@ -103,4 +108,82 @@ public enum Research {
     public String getName() {
         return name();
     }
+
+    public static Map<Research, Integer> parseMap(String input) {
+        return PW.parseEnumMap(input, Research.class, Integer.class);
+    }
+
+    public static Research parse(String input) {
+        return valueOf(input.toUpperCase().replace(' ', '_'));
+    }
+
+    public static Map<Research, Integer> parseResearch(Document doc) {
+        Elements tr = doc.select("tr:contains(Military Research)");
+
+        Map<Research, Integer> values = new EnumMap<>(Research.class);
+
+        if (!tr.isEmpty()) {
+            Elements td = tr.select("td");
+            if (td.size() > 1) {
+                List<String> elems = Arrays.asList(td.get(1).select("i").html()
+                                .split("<br>"))
+                        .stream().map(s -> s.replaceAll("[^0-9]", ""))
+                        .filter(s -> !s.isEmpty())
+                        .toList();
+                List<String> names = Arrays.asList(td.get(0).select("i").html()
+                                .split("<br>"))
+                        .stream().map(s -> s.replaceAll("[^a-zA-Z ]", ""))
+                        .filter(s -> !s.isEmpty())
+                        .toList();
+
+                System.out.println("HTML");
+                System.out.println(Arrays.asList(td.get(0).select("i").html()));
+                System.out.println(Arrays.asList(td.get(1).select("i").html()));
+                System.out.println("HTML END");
+
+                for (int i = 0; i < elems.size(); i++) {
+                    Research research = Research.parse(names.get(i));
+                    int value = Integer.parseInt(elems.get(i));
+                    if (value > 0) {
+                        values.put(research, value);
+                    }
+                }
+            }
+        }
+        return values;
+    }
+
+    public static Map<ResourceType, Double> cost(Map<Research, Integer> start_level, Map<Research, Integer> end_level) {
+        Map<ResourceType, Double> cost = new EnumMap<>(ResourceType.class);
+
+        int totalUpgrades = start_level.values().stream().mapToInt(Integer::intValue).sum();
+        Map<ResearchGroup, Integer> byGroup = start_level.entrySet().stream().collect(
+                Collectors.groupingBy(e -> e.getKey().getGroup(), Collectors.summingInt(Map.Entry::getValue)));
+
+        for (Map.Entry<Research, Integer> entry : end_level.entrySet()) {
+            Research r = entry.getKey();
+            int startValue = start_level.getOrDefault(entry.getKey(), 0);
+            int endValue = entry.getValue();
+            if (startValue == endValue) continue;
+            if (startValue > endValue) throw new IllegalArgumentException("Cannot decrease research level");
+
+            int treeUpgrades = byGroup.get(r.getGroup());
+            Map<ResourceType, Double> addCost = r.getCost(treeUpgrades, totalUpgrades, startValue, endValue);
+            cost = ResourceType.add(cost, addCost);
+
+            totalUpgrades += endValue - startValue;
+            byGroup.put(r.getGroup(), treeUpgrades + endValue - startValue);
+        }
+        return cost;
+    }
+
+    public static int toBits(Map<Research, Integer> levels) {
+        int bits = 0;
+        for (Map.Entry<Research, Integer> entry : levels.entrySet()) {
+            bits |= entry.getValue() << (entry.getKey().ordinal() * 5);
+        }
+        return bits;
+    }
+
+
 }

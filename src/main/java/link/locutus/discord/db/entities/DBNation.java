@@ -6542,4 +6542,39 @@ public abstract class DBNation implements NationOrAlliance {
     public int getResearchBits() {
         return data()._researchBits();
     }
+
+    public void updateResearch() throws IOException {
+        String url = this.getUrl();
+        Document doc = Jsoup.connect(url).get();
+        Map<Research, Integer> research = Research.parseResearch(doc);
+        int bits = Research.toBits(research);
+        this.edit().setResearchBits(bits);
+    }
+
+    @Command(desc = "The research levels this nation has")
+    public Map<Research, Integer> getResearchLevels() {
+        Map<Research, Integer> levels = new EnumMap<>(Research.class);
+        for (Research research : Research.values) {
+            int lvl = getResearch(research);
+            if (lvl > 0) {
+                levels.put(research, lvl);
+            }
+        }
+        return levels;
+    }
+
+    @Command(desc = "The number of research this nation has")
+    public int getNumResearch() {
+        return getResearchLevels().values().stream().mapToInt(Integer::intValue).sum();
+    }
+
+    @Command(desc = "Resource cost of all research this nation has")
+    public Map<ResourceType, Double> getResearchCost() {
+        return Research.cost(Collections.emptyMap(), getResearchLevels());
+    }
+
+    @Command(desc = "Market value of all the research this nation has")
+    public double  getResearchValue() {
+        return ResourceType.convertedTotal(getResearchCost());
+    }
 }
