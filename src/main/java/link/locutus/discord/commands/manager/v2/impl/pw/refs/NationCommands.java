@@ -142,6 +142,14 @@ public class NationCommands {
             public static final correctAllianceMMR cmd = new correctAllianceMMR();
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="countCities")
+        public static class countCities extends CommandRef {
+            public static final countCities cmd = new countCities();
+        public countCities filter(String value) {
+            return set("filter", value);
+        }
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="countWars")
         public static class countWars extends CommandRef {
             public static final countWars cmd = new countWars();
@@ -370,6 +378,34 @@ public class NationCommands {
         }
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getAverage")
+        public static class getAverage extends CommandRef {
+            public static final getAverage cmd = new getAverage();
+        public getAverage attribute(String value) {
+            return set("attribute", value);
+        }
+
+        public getAverage filter(String value) {
+            return set("filter", value);
+        }
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getAveragePer")
+        public static class getAveragePer extends CommandRef {
+            public static final getAveragePer cmd = new getAveragePer();
+        public getAveragePer attribute(String value) {
+            return set("attribute", value);
+        }
+
+        public getAveragePer per(String value) {
+            return set("per", value);
+        }
+
+        public getAveragePer filter(String value) {
+            return set("filter", value);
+        }
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getAvgBarracks")
         public static class getAvgBarracks extends CommandRef {
             public static final getAvgBarracks cmd = new getAvgBarracks();
@@ -585,6 +621,11 @@ public class NationCommands {
         public getCityMin attribute(String value) {
             return set("attribute", value);
         }
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getCityRefund")
+        public static class getCityRefund extends CommandRef {
+            public static final getCityRefund cmd = new getCityRefund();
 
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getCityTimerAbsoluteTurn")
@@ -1177,6 +1218,18 @@ public class NationCommands {
             public static final getTax_id cmd = new getTax_id();
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getTotal")
+        public static class getTotal extends CommandRef {
+            public static final getTotal cmd = new getTotal();
+        public getTotal attribute(String value) {
+            return set("attribute", value);
+        }
+
+        public getTotal filter(String value) {
+            return set("filter", value);
+        }
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getTotalLand")
         public static class getTotalLand extends CommandRef {
             public static final getTotalLand cmd = new getTotalLand();
@@ -1349,6 +1402,11 @@ public class NationCommands {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getWars_won")
         public static class getWars_won extends CommandRef {
             public static final getWars_won cmd = new getWars_won();
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getWebUrl")
+        public static class getWebUrl extends CommandRef {
+            public static final getWebUrl cmd = new getWebUrl();
 
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="hasAllPermission")

@@ -503,6 +503,11 @@ public class AllianceCommands {
             public static final getUrl cmd = new getUrl();
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getWebUrl")
+        public static class getWebUrl extends CommandRef {
+            public static final getWebUrl cmd = new getWebUrl();
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getWiki_link")
         public static class getWiki_link extends CommandRef {
             public static final getWiki_link cmd = new getWiki_link();
