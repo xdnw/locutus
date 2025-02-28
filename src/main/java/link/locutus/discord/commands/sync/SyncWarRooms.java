@@ -101,7 +101,7 @@ public class SyncWarRooms extends Command {
                             iter.remove();
                         }
                         for (Category category : categories) {
-                            if (category.getName().startsWith("warcat-")) {
+                            if (category.getName().toLowerCase().startsWith("warcat-")) {
                                 RateLimitUtil.queue(category.delete());
                             }
                         }

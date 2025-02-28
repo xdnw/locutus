@@ -384,7 +384,7 @@ public class CommandManager {
 
         Category category = GuildMessageChannel.getParentCategory();
         if (category == null) return;
-        if (!category.getName().startsWith("warcat")) return;
+        if (!category.getName().toLowerCase().startsWith("warcat")) return;
         GuildDB db = Locutus.imp().getGuildDB(guild);
         if (db == null) return;
         if (!db.isWhitelisted() && db.getOrNull(GuildKey.ENABLE_WAR_ROOMS) != Boolean.TRUE) return;

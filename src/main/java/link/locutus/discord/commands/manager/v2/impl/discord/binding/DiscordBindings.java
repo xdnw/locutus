@@ -154,7 +154,7 @@ public class DiscordBindings extends BindingHelper {
         Filter filter = param == null ? null : param.getAnnotation(Filter.class);
         if (filter != null) {
             categories = new ArrayList<>(categories);
-            categories.removeIf(f -> !f.getName().matches(filter.value()));
+            categories.removeIf(f -> !f.getName().toLowerCase().matches(filter.value()));
         }
         if (categories.isEmpty()) {
             if (MathMan.isInteger(category)) {

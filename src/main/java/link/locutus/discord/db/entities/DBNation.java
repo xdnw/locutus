@@ -26,6 +26,7 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.ScopedPlacehold
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
@@ -4555,6 +4556,37 @@ public abstract class DBNation implements NationOrAlliance {
             maxInfra = Math.max(city.getInfra(), maxInfra);
         }
         return maxInfra;
+    }
+
+    @Command(desc = "Sum of city attribute for specific cities this nation has")
+    public double getTotal(@NoFormat TypedFunction<DBCity, Double> attribute, @NoFormat @Default Predicate<DBCity> filter) {
+        Collection<DBCity> cities = this._getCitiesV3().values();
+        return cities.stream().filter(f -> filter == null || filter.test(f)).mapToDouble(attribute::apply).sum();
+    }
+
+    @Command(desc = "Average of city attribute for specific cities in nation")
+    public double getAverage(@NoFormat TypedFunction<DBCity, Double> attribute, @NoFormat @Default Predicate<DBCity> filter) {
+        Collection<DBCity> cities = this._getCitiesV3().values();
+        return cities.stream().filter(f -> filter == null || filter.test(f)).mapToDouble(attribute::apply).average().orElse(0);
+    }
+
+    @Command(desc = "Returns the average value of the given attribute per another attribute (such as infra)")
+    public double getAveragePer(@NoFormat TypedFunction<DBCity, Double> attribute, @NoFormat TypedFunction<DBCity, Double> per, @Default Predicate<DBCity> filter) {
+        Collection<DBCity> cities = this._getCitiesV3().values();
+        double total = 0;
+        double perTotal = 0;
+        for (DBCity city : cities) {
+            if (filter != null && !filter.test(city)) continue;
+            total += attribute.apply(city);
+            perTotal += per.apply(city);
+        }
+        return total / perTotal;
+    }
+
+    @Command(desc = "Count of cities in nation matching a filter")
+    public int countCities(@NoFormat @Default Predicate<DBCity> filter) {
+        if (filter == null) return getCities();
+        return (int) _getCitiesV3().values().stream().filter(filter).count();
     }
 
     @Command(desc = "The highest land level in their cities")
