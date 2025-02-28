@@ -94,7 +94,7 @@ public class NetProfitPerWar extends Command {
                             DBNation nation = nations.get(nationdId);
                             if (nation != null) {
                                 Arrays.fill(buffer, 0);
-                                return sign * attack.getLossesConverted(buffer, attack.getAttacker_id() == nationdId);
+                                return sign * (attack.getAttacker_id() == nationdId ? attack.getAttLossValue(attack.getWar()) : attack.getDefLossValue(attack.getWar()));
                             }
                             return 0;
                         })

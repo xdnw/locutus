@@ -1071,6 +1071,19 @@ public class NationCommands {
         }
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getResearch")
+        public static class getResearch extends CommandRef {
+            public static final getResearch cmd = new getResearch();
+        public getResearch research(String value) {
+            return set("research", value);
+        }
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getResearchBits")
+        public static class getResearchBits extends CommandRef {
+            public static final getResearchBits cmd = new getResearchBits();
+
+        }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.binding.DefaultPlaceholders.class,method="getResource")
         public static class getResource extends CommandRef {
             public static final getResource cmd = new getResource();

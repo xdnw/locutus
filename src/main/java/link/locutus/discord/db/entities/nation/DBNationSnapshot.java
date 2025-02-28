@@ -426,4 +426,9 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
     public DBNationCache _cache() {
         return null;
     }
+
+    @Override
+    public int _researchBits() {
+        return 0;
+    }
 }

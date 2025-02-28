@@ -332,33 +332,33 @@ public class CoalitionSide {
         if (isAttacker) {
             inflictedAndOffensiveStats.newAttack(war, attack, subCategory);
 
-            lossesAndDefensiveStats.apply(attack, true);
-            inflictedAndOffensiveStats.apply(attack, false);
+            lossesAndDefensiveStats.apply(attack, war, true);
+            inflictedAndOffensiveStats.apply(attack, war, false);
 
-            aaDamage.getKey().apply(attack, true);
-            aaDamage.getValue().apply(attack, false);
+            aaDamage.getKey().apply(attack, war, true);
+            aaDamage.getValue().apply(attack, war, false);
 
-            nationDamage.getKey().apply(attack, true);
-            nationDamage.getValue().apply(attack, false);
+            nationDamage.getKey().apply(attack, war, true);
+            nationDamage.getValue().apply(attack, war, false);
 
-            tierDamage.getKey().apply(attack, true);
-            tierDamage.getValue().apply(attack, false);
+            tierDamage.getKey().apply(attack, war, true);
+            tierDamage.getValue().apply(attack, war, false);
 
             applyAttackerStats(attackerAA, nationId, cities, day, p -> p.newAttack(war, attack, subCategory));
         } else {
             lossesAndDefensiveStats.newAttack(war, attack, subCategory);
 
-            lossesAndDefensiveStats.apply(attack, false);
-            inflictedAndOffensiveStats.apply(attack, true);
+            lossesAndDefensiveStats.apply(attack, war, false);
+            inflictedAndOffensiveStats.apply(attack, war, true);
 
-            aaDamage.getKey().apply(attack, false);
-            aaDamage.getValue().apply(attack, true);
+            aaDamage.getKey().apply(attack, war, false);
+            aaDamage.getValue().apply(attack, war, true);
 
-            nationDamage.getKey().apply(attack, false);
-            nationDamage.getValue().apply(attack, true);
+            nationDamage.getKey().apply(attack, war, false);
+            nationDamage.getValue().apply(attack, war, true);
 
-            tierDamage.getKey().apply(attack, false);
-            tierDamage.getValue().apply(attack, true);
+            tierDamage.getKey().apply(attack, war, false);
+            tierDamage.getValue().apply(attack, war, true);
 
             applyDefenderStats(attackerAA, nationId, cities, day, p -> p.newAttack(war, attack, subCategory));
         }

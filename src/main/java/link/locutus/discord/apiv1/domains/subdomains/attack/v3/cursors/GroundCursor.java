@@ -6,6 +6,7 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.UnitCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBWar;
@@ -20,6 +21,56 @@ public class GroundCursor extends UnitCursor {
     private int defcas2;
     private int defcas3;
     private long money_looted_cents;
+
+    @Override
+    public double[] addAttLosses(double[] buffer, DBWar war) {
+        double[] value = super.addAttLosses(buffer, war);
+        value[ResourceType.MONEY.ordinal()] -= money_looted_cents * 0.01;
+        return value;
+    }
+
+    @Override
+    public double[] addDefLosses(double[] buffer, DBWar war) {
+        double[] value = super.addDefLosses(buffer, war);
+        value[ResourceType.MONEY.ordinal()] += money_looted_cents * 0.01;
+        return value;
+    }
+
+    @Override
+    public double getAttLossValue(DBWar war) {
+        double value = super.getAttLossValue(war);
+        value += money_looted_cents * 0.01;
+        return value;
+    }
+
+    @Override
+    public double getDefLossValue(DBWar war) {
+        double value = super.getDefLossValue(war);
+        value += money_looted_cents * 0.01;
+        return value;
+    }
+
+    @Override
+    public double[] addDefLoot(double[] buffer) {
+        buffer[ResourceType.MONEY.ordinal()] += money_looted_cents * 0.01;
+        return buffer;
+    }
+
+    @Override
+    public double[] addAttLoot(double[] buffer) {
+        buffer[ResourceType.MONEY.ordinal()] -= money_looted_cents * 0.01;
+        return buffer;
+    }
+
+    @Override
+    public double getAttLootValue() {
+        return -money_looted_cents * 0.01;
+    }
+
+    @Override
+    public double getDefLootValue() {
+        return money_looted_cents * 0.01;
+    }
 
     @Override
     public void load(DBAttack legacy) {
@@ -61,11 +112,20 @@ public class GroundCursor extends UnitCursor {
     }
 
     @Override
-    public int getUnitLosses(MilitaryUnit unit, boolean attacker) {
+    public int getAttUnitLosses(MilitaryUnit unit) {
         return switch (unit) {
-            case SOLDIER -> attacker ? attcas1 : defcas1;
-            case TANK -> attacker ? attcas2 : defcas2;
-            case AIRCRAFT -> attacker ? 0 : defcas3;
+            case SOLDIER -> attcas1;
+            case TANK -> attcas2;
+            default -> 0;
+        };
+    }
+
+    @Override
+    public int getDefUnitLosses(MilitaryUnit unit) {
+        return switch (unit) {
+            case SOLDIER -> defcas1;
+            case TANK -> defcas2;
+            case AIRCRAFT -> defcas3;
             default -> 0;
         };
     }

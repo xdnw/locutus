@@ -7,7 +7,6 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.LootEntry;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.event.Event;
-import link.locutus.discord.event.game.SpyReportEvent;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.WarPolicy;
@@ -16,7 +15,6 @@ import link.locutus.discord.util.io.PagePriority;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -635,12 +633,12 @@ public class SpyCount {
 
     public static double getNetDamage(int attacking, DBNation defender, Operation operation, int safety, boolean countOpCost, boolean attackerHasSpySat) {
         double net = getNetSpyKills(attacking, defender.getSpies(), operation, safety, defender);
-        double netDamage = net * MilitaryUnit.SPIES.getConvertedCost();
+        double netDamage = net * MilitaryUnit.SPIES.getBaseMonetaryValue(1);
 
         double odds = getOdds(attacking, defender.getSpies(), safety, operation, defender);
         if (operation != Operation.SPIES) {
             double kills = getKills(attacking, defender, operation, attackerHasSpySat) * (odds / 100d);
-            netDamage += kills * operation.unit.getConvertedCost();
+            netDamage += kills * operation.unit.getBaseMonetaryValue(1);
         }
         if (countOpCost) {
             netDamage -= getCostPerSpy(safety) * attacking;
@@ -653,11 +651,11 @@ public class SpyCount {
         double losses = getFailedSpyLosses(attacking, defender.getSpies(), operation, safety);
         double kills = operation == Operation.SPIES ? getSpyKills(attacking, defender.getSpies(), defender.hasProject(Projects.SURVEILLANCE_NETWORK)) : 0;
 
-        double netDamage = kills * MilitaryUnit.SPIES.getConvertedCost();
+        double netDamage = kills * MilitaryUnit.SPIES.getBaseMonetaryValue(1);
 
         if (operation != Operation.SPIES) {
             kills = getKills(attacking, defender, operation, attackerHasSpySat) * (odds / 100d);
-            netDamage = kills * operation.unit.getConvertedCost();
+            netDamage = kills * operation.unit.getBaseMonetaryValue(1);
         }
         return netDamage;
     }

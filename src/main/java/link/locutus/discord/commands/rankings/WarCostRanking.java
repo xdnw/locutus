@@ -243,12 +243,12 @@ public class WarCostRanking extends Command {
             BiFunction<Boolean, AbstractCursor, Double> getValue = null;
             if (unitKill != null) {
                 MilitaryUnit finalUnit = unitKill;
-                getValue = (attacker, attack) -> (double) attack.getUnitLosses(finalUnit, !attacker);
+                getValue = (attacker, attack) -> (double) (!attacker ? attack.getAttUnitLosses(finalUnit) : attack.getDefUnitLosses(finalUnit));
             }
             if (unitLoss != null) {
                 if (getValue != null) throw new IllegalArgumentException("Cannot combine multiple type rankings (1)");
                 MilitaryUnit finalUnit = unitLoss;
-                getValue = (attacker, attack) -> (double) attack.getUnitLosses(finalUnit, attacker);
+                getValue = (attacker, attack) -> (double) (attacker ? attack.getAttUnitLosses(finalUnit) : attack.getDefUnitLosses(finalUnit));
             }
             if (attType != null) {
                 if (getValue != null) throw new IllegalArgumentException("Cannot combine multiple type rankings (2)");
@@ -261,17 +261,17 @@ public class WarCostRanking extends Command {
                 ResourceType finalResourceType = resourceType;
                 getValue = (attacker, attack) -> {
                     rssBuffer[finalResourceType.ordinal()] = 0;
-                    return Math.max(min, attack.getLosses(rssBuffer, attacker, units, infra, consumption, loot, buildings)[finalResourceType.ordinal()]);
+                    return Math.max(min, attack.addLosses(rssBuffer, attack.getWar(), attacker, units, infra, consumption, loot, buildings)[finalResourceType.ordinal()]);
                 };
             }
             if (getValue == null) {
                 getValue = (attacker, attack) -> {
-                    Arrays.fill(rssBuffer, 0);
                     if (!damage) {
-                        return attack.getLossesConverted(rssBuffer, attacker, units, infra, consumption, loot, buildings);
+                        return attack.getLossesConverted(attack.getWar(), attacker, units, infra, consumption, loot, buildings);
                     } else {
+                        Arrays.fill(rssBuffer, 0);
                         double total = 0;
-                        double[] losses = attack.getLosses(rssBuffer, attacker, units, infra, consumption, loot, buildings);
+                        double[] losses = attack.addLosses(rssBuffer, attack.getWar(), attacker, units, infra, consumption, loot, buildings);
                         for (ResourceType type : ResourceType.values) {
                             double val = losses[type.ordinal()];
                             if (val > 0) total += ResourceType.convertedTotal(type, val);

@@ -3932,8 +3932,8 @@ public abstract class DBNation implements NationOrAlliance {
                 for (MilitaryUnit other : units) {
                     if (other == unit) {
                         if (buffer == null) buffer = MilitaryUnit.getBuffer();
-                        int[] losses = attack.getUnitLosses(buffer, attack.getAttacker_id() == data()._nationId());
-                        lostInAttacks += losses[unit.ordinal()];
+                        int[] losses = attack.addUnitLosses(buffer, attack.getAttacker_id() == data()._nationId());
+                        lostInAttacks = losses[unit.ordinal()];
                         continue outer;
                     }
                 }
@@ -4979,11 +4979,11 @@ public abstract class DBNation implements NationOrAlliance {
 
     public long militaryValue(boolean ships) {
         long total = 0;
-        total += data()._soldiers() * MilitaryUnit.SOLDIER.getConvertedCost();
-        total += data()._tanks() * MilitaryUnit.TANK.getConvertedCost();
-        total += data()._aircraft() * MilitaryUnit.AIRCRAFT.getConvertedCost();
+        total += data()._soldiers() * MilitaryUnit.SOLDIER.getConvertedCost(this::getResearch);
+        total += data()._tanks() * MilitaryUnit.TANK.getConvertedCost(this::getResearch);
+        total += data()._aircraft() * MilitaryUnit.AIRCRAFT.getConvertedCost(this::getResearch);
         if (ships) {
-            total += this.data()._ships() * MilitaryUnit.SHIP.getConvertedCost();
+            total += this.data()._ships() * MilitaryUnit.SHIP.getConvertedCost(this::getResearch);
         }
         return total;
     }
@@ -5500,7 +5500,8 @@ public abstract class DBNation implements NationOrAlliance {
                 for (MilitaryUnit other : units) {
                     if (other == unit) {
                         if (buffer == null) buffer = MilitaryUnit.getBuffer();
-                        int[] losses = attack.getUnitLosses(buffer, attack.getAttacker_id() == data()._nationId());
+                        else buffer[unit.ordinal()] = 0;
+                        int[] losses = attack.addUnitLosses(buffer, attack.getAttacker_id() == data()._nationId());
                         long turn = TimeUtil.getTurn(attack.getDate());
                         int amt = losses[unit.ordinal()];
                         if (amt > 0) {
@@ -6531,7 +6532,14 @@ public abstract class DBNation implements NationOrAlliance {
         return data()._costReduction();
     }
 
+    @Command(desc = "The level this nation has for a specified research")
     public int getResearch(Research research) {
-        return 0;
+        return research.getLevel(getResearchBits());
+    }
+
+    // research bits
+    @Command(desc = "The raw data of all the research levels this nation has")
+    public int getResearchBits() {
+        return data()._researchBits();
     }
 }

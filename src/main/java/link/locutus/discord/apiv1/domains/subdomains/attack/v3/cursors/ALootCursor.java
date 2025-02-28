@@ -22,6 +22,46 @@ public class ALootCursor extends FailedCursor {
     private int alliance_id;
 
     @Override
+    public double[] addAttLoot(double[] buffer) {
+        if (hasLoot) {
+            ResourceType.subtract(buffer, looted);
+        }
+        return buffer;
+    }
+
+    @Override
+    public double[] addDefLoot(double[] buffer) {
+        if (hasLoot) {
+            ResourceType.add(buffer, looted);
+        }
+        return buffer;
+    }
+
+    @Override
+    public double getAttLootValue() {
+        return -ResourceType.convertedTotal(looted);
+    }
+
+    @Override
+    public double getDefLootValue() {
+        return ResourceType.convertedTotal(looted);
+    }
+
+    public double[] addDefLosses(double[] buffer, DBWar war) {
+        return addDefLoot(buffer);
+    }
+    public double[] addAttLosses(double[] buffer, DBWar war) {
+        ResourceType.subtract(buffer, looted);
+        return buffer;
+    }
+    public double getAttLossValue(DBWar war) {
+        return -ResourceType.convertedTotal(looted);
+    }
+    public double getDefLossValue(DBWar war) {
+        return ResourceType.convertedTotal(looted);
+    }
+
+    @Override
     public SuccessType getSuccess() {
         return SuccessType.PYRRHIC_VICTORY;
     }

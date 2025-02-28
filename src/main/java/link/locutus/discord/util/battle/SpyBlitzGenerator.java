@@ -146,7 +146,7 @@ public class SpyBlitzGenerator {
                             case AIRCRAFT:
                             case SHIP:
                             case MONEY:
-                                if (units * operation.unit.getConvertedCost() * 0.05 < 300000) continue;
+                                if (units * operation.unit.getConvertedCost(defender.getResearchBits()) * 0.05 < 300000) continue;
                                 break;
                         }
                     }

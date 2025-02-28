@@ -120,6 +120,13 @@ public class WebPWBindings extends WebBindingHelper {
     public String ResourceTypeSet(@Default ParameterData param) {
         return multipleSelect(param, Arrays.asList(ResourceType.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()), true);
     }
+
+    @HtmlInput
+    @Binding(types = {Set.class, Research.class}, multiple = true)
+    public String ResearchSet(@Default ParameterData param) {
+        return multipleSelect(param, Arrays.asList(Research.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()), true);
+    }
+
     @HtmlInput
     @Binding(types = {Set.class, SuccessType.class}, multiple = true)
     public String SuccessTypeSet(@Default ParameterData param) {
@@ -881,6 +888,12 @@ public class WebPWBindings extends WebBindingHelper {
     @Binding(types=ResourceType.class)
     public String resource(ParameterData param) {
         return multipleSelect(param, ResourceType.valuesList, rss -> new AbstractMap.SimpleEntry<>(rss.getName(), rss.getName()));
+    }
+
+    @HtmlInput
+    @Binding(types=Research.class)
+    public String Research(ParameterData param) {
+        return multipleSelect(param, Arrays.asList(Research.values), rss -> new AbstractMap.SimpleEntry<>(rss.getName(), rss.getName()));
     }
 
     @HtmlInput

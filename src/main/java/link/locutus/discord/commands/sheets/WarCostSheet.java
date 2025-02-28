@@ -198,7 +198,7 @@ public class WarCostSheet extends Command {
                         }
                     }
 
-                    cost.addCost(warAttacks, isPrimary, isSecondary);
+                    cost.addCost(warAttacks, war, isPrimary, isSecondary);
                 }
             }
 

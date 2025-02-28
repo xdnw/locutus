@@ -37,6 +37,7 @@ public class DamageStatGroup {
     public final double[] consumption = ResourceType.getBuffer();
     public final double[] loot = ResourceType.getBuffer();
     public final int[] units = new int[MilitaryUnit.values.length];
+    public final double[] costByUnit = new double[MilitaryUnit.values.length];
     public final char[] buildings = new char[Buildings.values().length];
     private long infraCents = 0;
     public static Map<ConflictColumn, Function<DamageStatGroup, Object>> createRanking() {
@@ -61,6 +62,7 @@ public class DamageStatGroup {
         Arrays.fill(consumption, 0);
         Arrays.fill(loot, 0);
         Arrays.fill(units, 0);
+        Arrays.fill(costByUnit, 0);
         Arrays.fill(buildings, (char) 0);
         infraCents = 0;
     }
@@ -81,15 +83,13 @@ public class DamageStatGroup {
             String desc = "Total number of destroyed " + unit.name().toLowerCase();
             ConflictColumn col = unit == MilitaryUnit.MISSILE || unit == MilitaryUnit.NUKE ? header(name, ColumnType.UNIT, desc, false) : ranking(name, ColumnType.UNIT, desc, false);
             map.put(col, p -> p.units[unit.ordinal()]);
-            map.put(ranking(unit.name().toLowerCase() + "_loss_value", ColumnType.UNIT, "Total market value of destroyed " + unit.name().toLowerCase(Locale.ROOT), false), p -> (long) (unit.getConvertedCost() * p.units[unit.ordinal()]));
+            map.put(ranking(unit.name().toLowerCase() + "_loss_value", ColumnType.UNIT, "Total market value of destroyed " + unit.name().toLowerCase(Locale.ROOT), false),
+                    p -> (long) (p.costByUnit[unit.ordinal()]));
         }
         map.put(ranking("unit_loss_value", ColumnType.UNIT, "Market value of destroyed units", false), p -> {
             double total = 0;
             for (int i = 0; i < p.units.length; i++) {
-                int amt = p.units[i];
-                if (amt > 0) {
-                    total += MilitaryUnit.values[i].getConvertedCost() * amt;
-                }
+                total += p.costByUnit[i];
             }
             return Math.round(total);
         });
@@ -157,12 +157,19 @@ public class DamageStatGroup {
         return map;
     }
 
-    public void apply(AbstractCursor attack, boolean isAttacker) {
-        attack.getLosses(totalCost, isAttacker, true, true, true, true, true);
-        attack.getLosses(consumption, isAttacker, false, false, true, false, false);
-        attack.getUnitLosses(units, isAttacker);
-        if (!isAttacker) {
-            attack.getLosses(loot, false, false, false, false, true, false);
+    public void apply(AbstractCursor attack, DBWar war, boolean isAttacker) {
+        if (isAttacker) {
+            attack.addAttUnitLosses(units);
+            attack.addAttUnitLossValueByUnit(costByUnit, war);
+            attack.addAttLosses(totalCost, war);
+            attack.addAttConsumption(consumption);
+        } else {
+            attack.addDefUnitLosses(units);
+            attack.addDefUnitLossValueByUnit(costByUnit, war);
+            attack.addDefLosses(totalCost, war);
+            attack.addDefConsumption(consumption);
+
+            attack.addDefLoot(loot);
             infraCents += Math.round(attack.getInfra_destroyed_value() * 100);
             attack.addBuildingsDestroyed(buildings);
         }

@@ -44,4 +44,5 @@ public interface DBNationSetter {
     void setCache(DBNationCache cache);
     void setCostReduction(boolean up, boolean aup, boolean mp);
     void setCostReduction(double value);
+    void setResearchBits(int researchBits);
 }

@@ -233,7 +233,7 @@ public class WarParser {
         for (AbstractCursor attack : getAttacks()) {
             T key = groupFunc.apply(attack);
             AttackCost cost = grouped.computeIfAbsent(key, f -> new AttackCost(nameA, nameB, buildings, ids, victories, wars, attacks));
-            cost.addCost(attack, attPrimary, attSecondary);
+            cost.addCost(attack, attack.getWar(), attPrimary, attSecondary);
         }
         return grouped;
     }
@@ -249,7 +249,7 @@ public class WarParser {
             long turn = TimeUtil.getTurn(attack.getDate());
             long day = turn / 12;
             AttackCost cost = warCostByDay.computeIfAbsent(day, f -> new AttackCost(nameA, nameB, buildings, ids, victories, wars, attacks));
-            cost.addCost(attack, attPrimary, attSecondary);
+            cost.addCost(attack, attack.getWar(), attPrimary, attSecondary);
         }
         return warCostByDay;
     }
@@ -263,12 +263,12 @@ public class WarParser {
             {
                 String other = attPrimary.apply(attack) ? nameB : nameA;
                 AttackCost cost = warCostByNation.computeIfAbsent(attack.getAttacker_id(), f -> new AttackCost(PW.getName(attack.getAttacker_id(), false), other, buildings, ids, victories, wars, attacks));
-                cost.addCost(attack, true);
+                cost.addCost(attack, attack.getWar(), true);
             }
             {
                 String other = attSecondary.apply(attack) ? nameA : nameB;
                 AttackCost cost = warCostByNation.computeIfAbsent(attack.getDefender_id(), f -> new AttackCost(PW.getName(attack.getDefender_id(), false), other, buildings, ids, victories, wars, attacks));
-                cost.addCost(attack, false);
+                cost.addCost(attack, attack.getWar(), false);
             }
         }
         return warCostByNation;
@@ -283,13 +283,13 @@ public class WarParser {
             {
                 String other = attPrimary.apply(attack) ? nameB : nameA;
                 AttackCost cost = warCostByAA.computeIfAbsent(war.getAttacker_aa(), f -> new AttackCost(PW.getName(war.getAttacker_aa(), true), other, buildings, ids, victories, wars, attacks));
-                cost.addCost(attack, true);
+                cost.addCost(attack, war, true);
             }
 
             {
                 String other = attSecondary.apply(attack) ? nameA : nameB;
                 AttackCost cost = warCostByAA.computeIfAbsent(war.getDefender_aa(), f -> new AttackCost(PW.getName(war.getDefender_aa(), true), other, buildings, ids, victories, wars, attacks));
-                cost.addCost(attack, false);
+                cost.addCost(attack, war, false);
             }
         }
         return warCostByAA;

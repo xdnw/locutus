@@ -96,7 +96,7 @@ public class DBWar {
         return (int) (TimeUtil.getTurn() - TimeUtil.getTurn(getDate()) + 60);
     }
 
-    public DBWar(int warId, int attacker_id, int defender_id, int attacker_aa, int defender_aa, WarType warType, WarStatus status, long date, int attCities, int defCities) {
+    public DBWar(int warId, int attacker_id, int defender_id, int attacker_aa, int defender_aa, WarType warType, WarStatus status, long date, int attCities, int defCities, int research) {
         this.warId = warId;
         this.nationIdPair = MathMan.pairInt(attacker_id, defender_id);
         this.allianceIdPair = MathMan.pairChars((char) attacker_aa, (char) defender_aa);
@@ -105,6 +105,7 @@ public class DBWar {
         if (attCities == 0) attCities = defCities;
         if (defCities == 0) defCities = attCities;
         this.attDefCities = (char) (attCities | (defCities << 8));
+        this.costBits = research;
     }
 
     public int getCostBits() {
@@ -129,6 +130,14 @@ public class DBWar {
             case NAVAL_COST -> (costBits >> 25) & 0b11111;
             default -> 0;
         };
+    }
+
+    public int getAttResearchBits() {
+        return costBits & 0b11111111111;
+    }
+
+    public int getDefResearchBits() {
+        return costBits >> 15;
     }
 
     public int getAttCities() {
@@ -204,7 +213,7 @@ public class DBWar {
     }
 
     public DBWar(War war, boolean cities) {
-         this(war.getId(), war.getAtt_id(), war.getDef_id(), war.getAtt_alliance_id(), war.getDef_alliance_id(), WarType.fromV3(war.getWar_type()), getStatus(war), war.getDate().toEpochMilli(), cities ? getCities(war.getAtt_id()) : 0, cities ? getCities(war.getDef_id()) : 0);
+         this(war.getId(), war.getAtt_id(), war.getDef_id(), war.getAtt_alliance_id(), war.getDef_alliance_id(), WarType.fromV3(war.getWar_type()), getStatus(war), war.getDate().toEpochMilli(), cities ? getCities(war.getAtt_id()) : 0, cities ? getCities(war.getDef_id()) : 0, 0);
     }
 
     private static int getAA(String aaStr) {
@@ -213,7 +222,7 @@ public class DBWar {
     }
 
     public DBWar(SWarContainer c) {
-        this(c.getWarID(), c.getAttackerID(), c.getDefenderID(), getAA(c.getAttackerAA()), getAA(c.getDefenderAA()), WarType.parse(c.getWarType()), WarStatus.parse(c.getStatus()), TimeUtil.parseDate(TimeUtil.WAR_FORMAT, c.getDate()), getCities(c.getAttackerID()), getCities(c.getDefenderID()));
+        this(c.getWarID(), c.getAttackerID(), c.getDefenderID(), getAA(c.getAttackerAA()), getAA(c.getDefenderAA()), WarType.parse(c.getWarType()), WarStatus.parse(c.getStatus()), TimeUtil.parseDate(TimeUtil.WAR_FORMAT, c.getDate()), getCities(c.getAttackerID()), getCities(c.getDefenderID()), 0);
     }
 
     public DBWar(DBWar other) {
@@ -473,7 +482,7 @@ public class DBWar {
         Function<AbstractCursor, Boolean> isPrimary = a -> a.getAttacker_id() == getAttacker_id();
         Function<AbstractCursor, Boolean> isSecondary = b -> b.getAttacker_id() == getDefender_id();
         AttackCost cost = new AttackCost(nameA, nameB, buildings, ids, victories, wars, inclAttacks);
-        cost.addCost(attacks, isPrimary, isSecondary);
+        cost.addCost(attacks, this, isPrimary, isSecondary);
         return cost;
     }
 

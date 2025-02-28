@@ -509,8 +509,8 @@ public class Conflict {
         otherSide.updateAttack(war, attack, defenderAA, attack.getDefender_id(), defCities, day, false, subCategory);
 
         getWarWebEntry(attackerAA, defenderAA).newAttack(war, attack, null);
-        getWarWebEntry(attackerAA, defenderAA).apply(attack, true);
-        getWarWebEntry(defenderAA, attackerAA).apply(attack, false);
+        getWarWebEntry(attackerAA, defenderAA).apply(attack, war, true);
+        getWarWebEntry(defenderAA, attackerAA).apply(attack, war, false);
 
         dirtyJson = true;
     }

@@ -1,10 +1,7 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.Research;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.SuccessType;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.WarDB;
@@ -19,33 +16,6 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public interface IAttack {
-    /*
-    "war_attack_id=" + getWar_attack_id() +
-                ", epoch=" + getDate() +
-                ", war_id=" + getWar_id() +
-                ", attacker_nation_id=" + getAttacker_id() +
-                ", defender_nation_id=" + getDefender_id() +
-                ", attack_type=" + getAttack_type() +
-                ", victor=" + getVictor() +
-                ", success=" + getSuccess() +
-                ", attcas1=" + getAttcas1() +
-                ", attcas2=" + getAttcas2() +
-                ", defcas1=" + getDefcas1() +
-                ", defcas2=" + getDefcas2() +
-                ", defcas3=" + getDefcas3() +
-                ", infra_destroyed=" + getInfra_destroyed() +
-                ", improvements_destroyed=" + getImprovements_destroyed() +
-                ", money_looted=" + getMoney_looted() +
-                ", loot=" + getLoot() +
-                ", lootPercent=" + getLootPercent() +
-                ", looted=" + getLooted() +
-                ", city_infra_before=" + getCity_infra_before() +
-                ", infra_destroyed_value=" + getInfra_destroyed_value() +
-                ", att_gas_used=" + getAtt_gas_used() +
-                ", att_mun_used=" + getAtt_mun_used() +
-                ", def_gas_used=" + getDef_gas_used() +
-                ", def_mun_used=" + getDef_mun_used() +
-                */
     boolean isAttackerIdGreater();
     int getAttacker_id();
     int getDefender_id();
@@ -155,17 +125,37 @@ public interface IAttack {
 
     double getAttLossValue(DBWar war);
     double getDefLossValue(DBWar war);
-
     double[] addAttLosses(double[] buffer, DBWar war);
     double[] addDefLosses(double[] buffer, DBWar war);
+
     double[] addAttUnitCosts(double[] buffer, DBWar war);
     double[] addDefUnitCosts(double[] buffer, DBWar war);
+    double getAttUnitLossValue(DBWar war);
+    double getDefUnitLossValue(DBWar war);
+    double[] addAttUnitLossValueByUnit(double[] valueByUnit, DBWar war);
+    double[] addDefUnitLossValueByUnit(double[] valueByUnit, DBWar war);
+
     double[] addInfraCosts(double[] buffer);
     double[] addAttConsumption(double[] buffer);
     double[] addDefConsumption(double[] buffer);
-    double[] addLoot(double[] buffer);
+    double getAttConsumptionValue();
+    double getDefConsumptionValue();
+    double[] addAttLoot(double[] buffer);
+    double[] addDefLoot(double[] buffer);
+    double getAttLootValue();
+    double getDefLootValue();
     double[] addBuildingCosts(double[] buffer);
+    double getBuildingLossValue();
 
+    int[] addAttUnitLosses(int[] buffer);
+    int[] addDefUnitLosses(int[] buffer);
+
+    int getAttUnitLosses(MilitaryUnit unit);
+    int getDefUnitLosses(MilitaryUnit unit);
+
+    default int[] addUnitLosses(int[] buffer, boolean isAttacker) {
+        return isAttacker ? addAttUnitLosses(buffer) : addDefUnitLosses(buffer);
+    }
 
     default DBWar getWar() {
         Locutus lc = Locutus.imp();
@@ -179,5 +169,69 @@ public interface IAttack {
 
     default AttackTypeSubCategory getSubCategory(BiFunction<DBNation, Long, Integer> checkActiveM) {
         return WarUpdateProcessor.subCategorize(this, checkActiveM);
+    }
+
+    @Deprecated
+    default double getLossesConverted(DBWar war, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings) {
+        double value = 0;
+        if (attacker) {
+            if (units) {
+                value += getAttUnitLossValue(war);
+            }
+            if (consumption) {
+                value += getAttConsumptionValue();
+            }
+            if (includeLoot) {
+                value += getAttLootValue();
+            }
+        } else {
+            if (units) {
+                value += getDefUnitLossValue(war);
+            }
+            if (infra) {
+                value += getInfra_destroyed_value();
+            }
+            if (consumption) {
+                value += getDefConsumptionValue();
+            }
+            if (includeLoot) {
+                value += getDefLootValue();
+            }
+            if (includeBuildings) {
+                value += getBuildingLossValue();
+            }
+        }
+        return value;
+    }
+
+    default double[] addLosses(double[] rssBuffer, DBWar war, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings) {
+        if (attacker) {
+            if (units) {
+                addAttUnitLossValueByUnit(rssBuffer, war);
+            }
+            if (consumption) {
+                addAttConsumption(rssBuffer);
+            }
+            if (includeLoot) {
+                addAttLoot(rssBuffer);
+            }
+        } else {
+            if (units) {
+                addDefUnitLossValueByUnit(rssBuffer, war);
+            }
+            if (infra) {
+                addInfraCosts(rssBuffer);
+            }
+            if (consumption) {
+                addDefConsumption(rssBuffer);
+            }
+            if (includeLoot) {
+                addDefLoot(rssBuffer);
+            }
+            if (includeBuildings) {
+                addBuildingCosts(rssBuffer);
+            }
+        }
+        return rssBuffer;
     }
 }

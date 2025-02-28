@@ -579,7 +579,7 @@ public class WarDB extends DBMainV2 {
 
         List<DBWar> wars = new ObjectArrayList<>();
         List<DBWar> saveWars = new ObjectArrayList<>();
-        query("SELECT id, attacker_id, defender_id, attacker_aa, defender_aa, war_type, status, date, attCities, defCities FROM wars " + whereClause, f -> {
+        query("SELECT id, attacker_id, defender_id, attacker_aa, defender_aa, war_type, status, date, attCities, defCities, research FROM wars " + whereClause, f -> {
         }, (ThrowingConsumer<ResultSet>) rs -> {
             while (rs.next()) {
                 DBWar war = create(rs);
@@ -1025,10 +1025,11 @@ public class WarDB extends DBMainV2 {
         }
 
         {
-            String create = "CREATE TABLE IF NOT EXISTS `WARS` (`id` INT NOT NULL PRIMARY KEY, `attacker_id` INT NOT NULL, `defender_id` INT NOT NULL, `attacker_aa` INT NOT NULL, `defender_aa` INT NOT NULL, `war_type` INT NOT NULL, `status` INT NOT NULL, `date` BIGINT NOT NULL, `attCities` INT NOT NULL, `defCities` INT NOT NULL)";
+            String create = "CREATE TABLE IF NOT EXISTS `WARS` (`id` INT NOT NULL PRIMARY KEY, `attacker_id` INT NOT NULL, `defender_id` INT NOT NULL, `attacker_aa` INT NOT NULL, `defender_aa` INT NOT NULL, `war_type` INT NOT NULL, `status` INT NOT NULL, `date` BIGINT NOT NULL, `attCities` INT NOT NULL, `defCities` INT NOT NULL, `research` INT NOT NULL)";
             executeStmt(create);
             executeStmt("ALTER TABLE `WARS` ADD COLUMN `attCities` INT NOT NULL DEFAULT 0", true);
             executeStmt("ALTER TABLE `WARS` ADD COLUMN `defCities` INT NOT NULL DEFAULT 0", true);
+            executeStmt("ALTER TABLE `WARS` ADD COLUMN `research` INT NOT NULL DEFAULT 0", true);
         };
 
         {
@@ -2049,7 +2050,8 @@ public class WarDB extends DBMainV2 {
         long date = rs.getLong(8);
         int attCities = rs.getInt(9);
         int defCities = rs.getInt(10);
-        return new DBWar(warId, attacker_id, defender_id, attacker_aa, defender_aa, war_type, status, date, attCities, defCities);
+        int research = rs.getInt(11);
+        return new DBWar(warId, attacker_id, defender_id, attacker_aa, defender_aa, war_type, status, date, attCities, defCities, research);
     }
 
     public DBWar getWar(int warId) {
@@ -2791,7 +2793,6 @@ public class WarDB extends DBMainV2 {
                             war -> war.getDate() <= end && war.possibleEndDate() >= start && ifWar.test(war)),
                     (war, data) -> factory.loadWithPretest(war, data, true, pretest), consumer);
         }
-
     }
 
     public List<AbstractCursor> getAttacks(long start, long end, Predicate<DBWar> ifWar, Predicate<AbstractCursor> filter) {
@@ -2976,9 +2977,11 @@ public class WarDB extends DBMainV2 {
         Set<DBWar> wars = getWarsByNation(nation_id);
         return getAttacksByWars(wars);
     }
+
     public List<AbstractCursor> getAttacks(int nation_id, long cuttoffMs) {
         return getAttacks(nation_id, cuttoffMs, Long.MAX_VALUE);
     }
+
     public List<AbstractCursor> getAttacks(int nation_id, long start, long end) {
         if (start <= 0 && end == Long.MAX_VALUE) return getAttacks(nation_id);
 

@@ -47,11 +47,13 @@ public class NavalCursor extends UnitCursor {
     }
 
     @Override
-    public int getUnitLosses(MilitaryUnit unit, boolean attacker) {
-        if (unit == MilitaryUnit.SHIP) {
-            return attacker ? attcas1 : defcas1;
-        }
-        return 0;
+    public int getAttUnitLosses(MilitaryUnit unit) {
+        return unit == MilitaryUnit.SHIP ? attcas1 : 0;
+    }
+
+    @Override
+    public int getDefUnitLosses(MilitaryUnit unit) {
+        return unit == MilitaryUnit.SHIP ? defcas1 : 0;
     }
 
     @Override

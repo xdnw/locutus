@@ -168,6 +168,12 @@ public class PWCompleter extends BindingHelper {
     }
 
     @Autocomplete
+    @Binding(types={Research.class})
+    public List<String> Research(String input) {
+        return StringMan.completeEnum(input, Research.class);
+    }
+
+    @Autocomplete
     @Binding(types={Coalition.class})
     public List<String> Coalition(String input) {
         return StringMan.completeEnum(input, Coalition.class);

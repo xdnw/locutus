@@ -612,15 +612,15 @@ public class LootEstimateTracker {
 
     public void onAttack(AbstractCursor attack, boolean hasSalvage) {
         // consumption
-        double[] attLoss = (attack.getLosses(ResourceType.getBuffer(), true, false, false, true, true, false));
-        double[] defLoss = (attack.getLosses(ResourceType.getBuffer(), false, false, false, true, true, false));
+        double[] attLoss = (attack.addAttConsumption(ResourceType.getBuffer()));
+        double[] defLoss = (attack.addDefConsumption(ResourceType.getBuffer()));
 
         // Handle airstrike money (since it comes under unit losses, which we are excluding)
         if (attack.getAttack_type() == AttackType.AIRSTRIKE_MONEY && attack.getDefcas1() > 0) {
             defLoss[ResourceType.MONEY.ordinal()] += attack.getDefcas1();
         }
         if (attack.getSuccess() != SuccessType.UTTER_FAILURE && hasSalvage) {
-            double[] unitLosses = attack.getLosses(ResourceType.getBuffer(), true, true, false, false, false, false);
+            double[] unitLosses = attack.addAttUnitCosts(ResourceType.getBuffer(), attack.getWar());
             attLoss[ResourceType.STEEL.ordinal()] -= unitLosses[ResourceType.STEEL.ordinal()] * 0.05;
             attLoss[ResourceType.ALUMINUM.ordinal()] -= unitLosses[ResourceType.ALUMINUM.ordinal()] * 0.05;
         }
@@ -703,7 +703,7 @@ public class LootEstimateTracker {
 
         int amt = current.getUnits(unit) - previous.getUnits(unit);
         if (amt != 0) {
-            double[] cost = unit.getCost(amt);
+            double[] cost = ResourceType.resourcesToArray(unit.getCost(amt, current::getResearch));
             add(current.getId(), event.getTimeCreated(), cost);
         }
     }

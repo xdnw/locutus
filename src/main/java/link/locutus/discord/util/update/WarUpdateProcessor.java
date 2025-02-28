@@ -651,7 +651,7 @@ public class WarUpdateProcessor {
                     if (attSoldiers * 0.4 > enemyStrength * 0.75) message += " (unarmed)";
 
                     double usageCostPerTank = (ResourceType.convertedTotal(ResourceType.MUNITIONS, 1) + ResourceType.convertedTotal(ResourceType.GASOLINE, 1)) / 100d;
-                    double cost = MilitaryUnit.TANK.getConvertedCost() * root.getAttcas2() + usageCostPerTank * attTanks;
+                    double cost = MilitaryUnit.TANK.getConvertedCost(attacker::getResearch) * root.getAttcas2() + usageCostPerTank * attTanks;
 
                     double extraInfraDestroyed = ((attTanks - (defTanks * 0.5)) * 0.01) * 0.95 * (root.getSuccess().ordinal() / 3d);
                     DBWar war = Locutus.imp().getWarDb().getWar(root.getWar_id());
@@ -795,7 +795,7 @@ public class WarUpdateProcessor {
 
                     String message = AttackTypeSubCategory.AIRSTRIKE_INFRA.message.replace("{amount}", attAir + "");
 
-                    double usageCost = root.getLossesConverted(ResourceType.getBuffer(), true, false, false, true, false, false);
+                    double usageCost = root.getLossesConverted(root.getWar(), true, false, false, true, false, false);
                     if (usageCost > root.getInfra_destroyed_value()) {
                         message += "\nYou used $" + MathMan.format(usageCost) + " worth of resources, and only destroyed $" + MathMan.format(root.getInfra_destroyed_value()) + " extra worth of infra";
                     } else {
@@ -823,7 +823,7 @@ public class WarUpdateProcessor {
                     if (attShips > 1 && defender.getAvg_infra() < 1850 && root.getCity_infra_before() <= 1850) {
                         String message = AttackTypeSubCategory.NAVAL_MAX_VS_NONE.message;
 
-                        double usageCost = root.getLossesConverted(ResourceType.getBuffer(), true, false, false, true, false, false);
+                        double usageCost = root.getLossesConverted(root.getWar(), true, false, false, true, false, false);
                         if (usageCost > root.getInfra_destroyed_value()) {
                             message += "\nYou used $" + MathMan.format(usageCost) + " worth of resources, and only destroyed $" + MathMan.format(root.getInfra_destroyed_value()) + " extra worth of infra";
                         } else {

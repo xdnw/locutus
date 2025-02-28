@@ -1761,7 +1761,7 @@ public class StatCommands {
                         AttackCost cost = getCost.apply(true);
                         DBWar war = allWars.get(attack.getWar_id());
                         boolean isAttacker = war.getAttacker_id() == attack.getAttacker_id() ? war.getAttacker_aa() == allianceId : war.getDefender_aa() == allianceId;
-                        cost.addCost(attack, isAttacker);
+                        cost.addCost(attack, war, isAttacker);
                         return Map.entry(cost, isAttacker);
                     }
                 });
@@ -1957,7 +1957,7 @@ public class StatCommands {
                         }
                     }
 
-                    cost.addCost(warAttacks, isPrimary, isSecondary);
+                    cost.addCost(warAttacks, war, isPrimary, isSecondary);
                 }
             }
 

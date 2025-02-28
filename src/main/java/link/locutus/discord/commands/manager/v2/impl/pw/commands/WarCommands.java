@@ -2027,9 +2027,9 @@ public class WarCommands {
                 lootValue = lootValue * (1 - depositChance);
 
                 if (fightChance > 0 && !canGroundLoot) {
-                    lootValue -= MilitaryUnit.AIRCRAFT.getConvertedCost() * Math.min(attacker.getAircraft(), defender.getAircraft()) +
-                            MilitaryUnit.SHIP.getConvertedCost() * Math.min(attacker.getShips(), defender.getShips()) +
-                            MilitaryUnit.TANK.getConvertedCost() * Math.min(attacker.getTanks(), defender.getTanks());
+                    lootValue -= MilitaryUnit.AIRCRAFT.getBaseMonetaryValue(1) * Math.min(attacker.getAircraft(), defender.getAircraft()) +
+                            MilitaryUnit.SHIP.getBaseMonetaryValue(1) * Math.min(attacker.getShips(), defender.getShips()) +
+                            MilitaryUnit.TANK.getBaseMonetaryValue(1) * Math.min(attacker.getTanks(), defender.getTanks());
                 }
 
                 return lootValue;

@@ -1,8 +1,10 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
+import com.google.api.client.util.ArrayMap;
 import com.politicsandwar.graphql.model.WarAttack;
 import it.unimi.dsi.fastutil.bytes.Byte2ByteArrayMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntArrayMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -78,38 +80,26 @@ public abstract class DamageCursor extends AbstractCursor {
     public abstract MilitaryUnit[] getUnits();
 
     @Override
+    public Map<MilitaryUnit, Integer> getUnitLosses2(boolean isAttacker) {
+        MilitaryUnit[] units = getUnits();
+        Map<MilitaryUnit, Integer> result = new Object2IntArrayMap<>(units.length);
+        for (MilitaryUnit unit : units) {
+            int amt = isAttacker ? getAttUnitLosses(unit) : getDefUnitLosses(unit);
+            if (amt > 0) {
+                result.put(unit, amt);
+            }
+        }
+        return result;
+    }
+
+    @Override
     public abstract int getAttUnitLosses(MilitaryUnit unit);
 
     @Override
     public abstract int getDefUnitLosses(MilitaryUnit unit);
 
-//    @Override
-//    public double[] getUnitLossCost(double[] buffer, boolean isAttacker, Function<Research, Integer> research) {
-//        for (MilitaryUnit unit : getUnits()) {
-//            int losses = getUnitLosses(unit, isAttacker);
-//            if (losses > 0) {
-//                for (Map.Entry<ResourceType, Double> entry : unit.getCostMap(research).entrySet()) {
-//                    buffer[entry.getKey().ordinal()] += entry.getValue() * losses;
-//                }
-//            }
-//        }
-//        return buffer;
-//    }
-
-    // call super
-    double getAttLossValue();
-    double getDefLossValue();
-    double[] addDefLosses(double[] buffer);
-    double[] addAttLosses(double[] buffer);
-    // implement
-    double[] addAttUnitCosts(double[] buffer, DBWar war);
-    double[] addDefUnitCosts(double[] buffer, DBWar war);
-    double[] addAttConsumption(double[] buffer);
-    double[] addDefConsumption(double[] buffer);
-    double[] addLoot(double[] buffer); // ground, victory
-
     @Override
-    public int[] getAttUnitLosses(int[] buffer) {
+    public int[] addAttUnitLosses(int[] buffer) {
         for (MilitaryUnit unit : getUnits()) {
             int losses = getAttUnitLosses(unit);
             if (losses > 0) {
@@ -120,7 +110,7 @@ public abstract class DamageCursor extends AbstractCursor {
     }
 
     @Override
-    public int[] getDefUnitLosses(int[] buffer) {
+    public int[] addDefUnitLosses(int[] buffer) {
         for (MilitaryUnit unit : getUnits()) {
             int losses = getDefUnitLosses(unit);
             if (losses > 0) {
@@ -146,7 +136,9 @@ public abstract class DamageCursor extends AbstractCursor {
 
     @Override
     public double getDefLossValue(DBWar war) {
+        // Infra
         double value = getInfra_destroyed_value();
+        // Building
         if (num_improvements != 0 && buildingsDestroyed != null) {
             for (Map.Entry<Byte, Byte> entry : buildingsDestroyed.entrySet()) {
                 byte typeId = entry.getKey();
@@ -155,7 +147,77 @@ public abstract class DamageCursor extends AbstractCursor {
                 value += building.getNMarketCost(amt);
             }
         }
+        value += getDefUnitLossValue(war);
         return value;
+    }
+
+    @Override
+    public double getAttLossValue(DBWar war) {
+        return getAttUnitLossValue(war);
+    }
+
+    @Override
+    public double[] addDefUnitCosts(double[] buffer, DBWar war) {
+        MilitaryUnit[] units = getUnits();
+        int research = war.getDefResearchBits();
+        for (MilitaryUnit unit : units) {
+            int amt = getDefUnitLosses(unit);
+            if (amt > 0) unit.addCost(buffer, amt, research);
+        }
+        return buffer;
+    }
+
+    @Override
+    public double getDefUnitLossValue(DBWar war) {
+        double value = 0;
+        MilitaryUnit[] units = getUnits();
+        int research = war.getDefResearchBits();
+        for (MilitaryUnit unit : units) {
+            value += unit.getConvertedCost(research) * getDefUnitLosses(unit);
+        }
+        return value;
+    }
+
+    @Override
+    public double getAttUnitLossValue(DBWar war) {
+        double value = 0;
+        MilitaryUnit[] units = getUnits();
+        int research = war.getAttResearchBits();
+        for (MilitaryUnit unit : units) {
+            value += unit.getConvertedCost(research) * getAttUnitLosses(unit);
+        }
+        return value;
+    }
+
+    @Override
+    public double[] addAttUnitCosts(double[] buffer, DBWar war) {
+        MilitaryUnit[] units = getUnits();
+        int research = war.getAttResearchBits();
+        for (MilitaryUnit unit : units) {
+            int amt = getAttUnitLosses(unit);
+            if (amt > 0) unit.addCost(buffer, amt, research);
+        }
+        return buffer;
+    }
+
+    @Override
+    public double[] addAttUnitLossValueByUnit(double[] valueByUnit, DBWar war) {
+        MilitaryUnit[] units = getUnits();
+        int research = war.getAttResearchBits();
+        for (MilitaryUnit unit : units) {
+            valueByUnit[unit.ordinal()] += unit.getConvertedCost(research) * getAttUnitLosses(unit);
+        }
+        return valueByUnit;
+    }
+
+    @Override
+    public double[] addDefUnitLossValueByUnit(double[] valueByUnit, DBWar war) {
+        MilitaryUnit[] units = getUnits();
+        int research = war.getDefResearchBits();
+        for (MilitaryUnit unit : units) {
+            valueByUnit[unit.ordinal()] += unit.getConvertedCost(research) * getDefUnitLosses(unit);
+        }
+        return valueByUnit;
     }
 
     @Override
@@ -189,33 +251,47 @@ public abstract class DamageCursor extends AbstractCursor {
     }
 
     @Override
+    public double getBuildingLossValue() {
+        double value = 0;
+        if (num_improvements != 0 && buildingsDestroyed != null) {
+            for (Map.Entry<Byte, Byte> entry : buildingsDestroyed.entrySet()) {
+                byte typeId = entry.getKey();
+                byte amt = entry.getValue();
+                Building building = Buildings.get(typeId);
+                value += building.getNMarketCost(amt);
+            }
+        }
+        return value;
+    }
+
+    @Override
     public int getAttcas1() {
         MilitaryUnit[] units = getUnits();
-        return getUnitLosses(units[0], true);
+        return getAttUnitLosses(units[0]);
     }
 
     @Override
     public int getDefcas1() {
         MilitaryUnit[] units = getUnits();
-        return getUnitLosses(units[0], false);
+        return getDefUnitLosses(units[0]);
     }
 
     @Override
     public int getAttcas2() {
         MilitaryUnit[] units = getUnits();
-        return units.length > 1 ? getUnitLosses(units[1], true) : 0;
+        return units.length > 1 ? getAttUnitLosses(units[1]) : 0;
     }
 
     @Override
     public int getDefcas2() {
         MilitaryUnit[] units = getUnits();
-        return units.length > 1 ? getUnitLosses(units[1], false) : 0;
+        return units.length > 1 ? getDefUnitLosses(units[1]) : 0;
     }
 
     @Override
     public int getDefcas3() {
         MilitaryUnit[] units = getUnits();
-        return units.length > 2 ? getUnitLosses(units[2], false) : 0;
+        return units.length > 2 ? getDefUnitLosses(units[2]) : 0;
     }
 
     @Override

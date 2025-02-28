@@ -26,24 +26,14 @@ import link.locutus.discord.util.IOUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.scheduler.CachedSupplier;
 import link.locutus.discord.web.WebUtil;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.ByteBuffer;
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -88,10 +78,25 @@ public enum ResourceType {
     MUNITIONS("munitions", "withmunitions", 19, 3500 , 32, 18, 5, 1.2, () -> Projects.ARMS_STOCKPILE, 6, LEAD),
     STEEL("steel", "withsteel", 23, 4000, 40, 9, 5, 1.36, () -> Projects.IRON_WORKS, 3, IRON, COAL),
     ALUMINUM("aluminum", "withaluminum", 8, 2500, 40, 9, 5, 1.36, () -> Projects.BAUXITEWORKS, 3, BAUXITE);
+
+    public static Supplier<Double> convertedCostLazy(double[] amount) {
+        return new CachedSupplier<>(() -> convertedTotal(amount));
+    }
+
     private static final Type RESOURCE_TYPE = new TypeToken<Map<ResourceType, Double>>() {}.getType();
     private static final Gson RESOURCE_GSON = new GsonBuilder()
             .registerTypeAdapter(RESOURCE_TYPE, new DoubleDeserializer())
             .create();
+
+    public static ResourceType[] getTypes(double[] costReduction) {
+        List<ResourceType> types = new LinkedList<>();
+        for (ResourceType type : values) {
+            if (costReduction[type.ordinal()] != 0) {
+                types.add(type);
+            }
+        }
+        return types.toArray(new ResourceType[0]);
+    }
 
     private static class DoubleDeserializer implements JsonDeserializer<Map<ResourceType, Double>> {
         @Override

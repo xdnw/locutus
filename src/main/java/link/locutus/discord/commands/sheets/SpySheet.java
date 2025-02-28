@@ -170,6 +170,7 @@ public class SpySheet extends Command {
             Integer mySpies = attacker.getSpies();
             if (mySpies == null || mySpies == 0) continue;
             for (DBNation defender : defenders) {
+                int research = defender.getResearchBits();
                 if (attacker.isInSpyRange(defender) && defender.getSpies() * 0.66 <= attacker.getSpies()) {
                     double loginRatio = loginProb.get(defender);
 
@@ -186,7 +187,7 @@ public class SpySheet extends Command {
                                 case AIRCRAFT:
                                 case SHIP:
                                 case MONEY:
-                                    if (units * operation.unit.getConvertedCost() * 0.05 < 300000) continue;
+                                    if (units * operation.unit.getConvertedCost(research) * 0.05 < 300000) continue;
                                     break;
                             }
                         }

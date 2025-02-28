@@ -50,6 +50,7 @@ public class DBNationData implements DBNationSetter, DBNationGetter{
 
     private String discord;
     private double costReduction;
+    private int researchBits;
 
     private transient DBNationCache cache;
 
@@ -66,7 +67,8 @@ public class DBNationData implements DBNationSetter, DBNationGetter{
                     double gni,
                     double gdp,
                         String discord,
-                        double costReduction) {
+                        double costReduction,
+                        int researchBits) {
         this.nation_id = nation_id;
         this.nation = nation;
         this.leader = leader;
@@ -105,6 +107,7 @@ public class DBNationData implements DBNationSetter, DBNationGetter{
         this.gni = gni;
         this.discord = discord;
         this.costReduction = costReduction;
+        this.researchBits = researchBits;
     }
 
     public DBNationData() {
@@ -160,6 +163,7 @@ public class DBNationData implements DBNationSetter, DBNationGetter{
         this.gni = other._gni();
 //        this.gdp = other.gdp;
         this.costReduction = other._costReduction();
+        this.researchBits = other._researchBits();
     }
 
     public DBNationData(String coalition, Collection<DBNation> nations, boolean average) {
@@ -552,5 +556,15 @@ public class DBNationData implements DBNationSetter, DBNationGetter{
     @Override
     public double _costReduction() {
         return costReduction;
+    }
+
+    @Override
+    public int _researchBits() {
+        return researchBits;
+    }
+
+    @Override
+    public void setResearchBits(int researchBits) {
+        this.researchBits = researchBits;
     }
 }

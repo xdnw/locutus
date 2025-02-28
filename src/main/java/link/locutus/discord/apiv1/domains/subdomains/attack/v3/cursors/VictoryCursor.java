@@ -6,6 +6,7 @@ import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.FailedCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.db.WarDB;
@@ -22,12 +23,61 @@ import java.util.Set;
 
 public class VictoryCursor extends FailedCursor {
     public boolean hasLoot = false;
-    public double[] looted = ResourceType.getBuffer();
+    public double[] looted = null;
     private int loot_percent_cents;
     private Map<Integer, Integer> city_infra_before_cents = new Int2IntOpenHashMap();
     private int infra_destroyed_percent_cents;
     private int infra_destroyed_cents;
     private long infra_destroyed_value_cents;
+
+    @Override
+    public double[] addDefLoot(double[] buffer) {
+        if (looted != null) {
+            ResourceType.add(buffer, looted);
+        }
+        return buffer;
+    }
+
+    @Override
+    public double[] addAttLoot(double[] buffer) {
+        if (looted != null) {
+            ResourceType.subtract(buffer, looted);
+        }
+        return buffer;
+    }
+
+    @Override
+    public double getAttLootValue() {
+        return -getDefLootValue();
+    }
+
+    @Override
+    public double getDefLootValue() {
+        return looted != null ? ResourceType.convertedTotal(looted) : 0;
+    }
+
+    @Override
+    public double[] addInfraCosts(double[] buffer) {
+        buffer[ResourceType.MONEY.ordinal()] += getInfra_destroyed_value();
+        return buffer;
+    }
+
+    public double[] addDefLosses(double[] buffer, DBWar war) {
+        if (looted != null) ResourceType.add(buffer, looted);
+        addInfraCosts(buffer);
+        return buffer;
+    }
+    public double[] addAttLosses(double[] buffer, DBWar war) {
+        if (looted != null) ResourceType.subtract(buffer, looted);
+        return buffer;
+    }
+    public double getAttLossValue(DBWar war) {
+        return looted != null ? -ResourceType.convertedTotal(looted) : 0;
+    }
+    public double getDefLossValue(DBWar war) {
+        return (looted != null ? ResourceType.convertedTotal(looted) : 0)
+                + getInfra_destroyed_value();
+    }
 
     @Override
     public AttackType getAttack_type() {
@@ -69,12 +119,6 @@ public class VictoryCursor extends FailedCursor {
     }
 
     @Override
-    public double[] addInfraCosts(double[] buffer) {
-        buffer[ResourceType.MONEY.ordinal()] += getInfra_destroyed_value();
-        return buffer;
-    }
-
-    @Override
     public void load(DBAttack legacy) {
         super.load(legacy);
         this.hasLoot = legacy.loot != null && !ResourceType.isZero(legacy.loot);
@@ -83,6 +127,7 @@ public class VictoryCursor extends FailedCursor {
             this.looted = legacy.loot;
         } else if (legacy.getMoney_looted() > 0) {
             hasLoot = true;
+            if (looted == null) looted = ResourceType.getBuffer();
             Arrays.fill(looted, 0);
             looted[ResourceType.MONEY.ordinal()] = legacy.getMoney_looted();
         }
@@ -130,6 +175,7 @@ public class VictoryCursor extends FailedCursor {
         }
 
         // loot
+        if (looted == null) looted = ResourceType.getBuffer();
         looted[ResourceType.MONEY.ordinal()] = attack.getMoney_looted();
         looted[ResourceType.COAL.ordinal()] = attack.getCoal_looted();
         looted[ResourceType.OIL.ordinal()] = attack.getOil_looted();
@@ -143,7 +189,12 @@ public class VictoryCursor extends FailedCursor {
         looted[ResourceType.ALUMINUM.ordinal()] = attack.getAluminum_looted();
         looted[ResourceType.FOOD.ordinal()] = attack.getFood_looted();
 
-        hasLoot = !ResourceType.isZero(looted);
+        if (ResourceType.isZero(looted)) {
+            hasLoot = false;
+            looted = null;
+        } else {
+            hasLoot = true;
+        }
 
         if (hasLoot) {
             // get war
@@ -176,6 +227,7 @@ public class VictoryCursor extends FailedCursor {
         // add current
         output.writeBit(hasLoot);
         if (hasLoot) {
+            if (looted == null) looted = ResourceType.getBuffer();
             output.writeVarInt(loot_percent_cents);
             output.writeVarLong(infra_destroyed_value_cents);
 

@@ -204,7 +204,7 @@ public class AttackQuery {
                     return;
                 }
                 DBWar war = wars.get(new DBWar.DBWarKey(attack.getWar_id()));
-                cost.addCost(attack, isPrimary.test(war, attack));
+                cost.addCost(attack, war, isPrimary.test(war, attack));
             }
         });
         return cost;

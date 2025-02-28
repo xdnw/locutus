@@ -324,7 +324,7 @@ public class BankCommands {
             if (unitResources != null) {
                 double[] rss = ResourceType.getBuffer();
                 for (Map.Entry<MilitaryUnit, Long> entry : unitResources.entrySet()) {
-                    rss = ResourceType.add(rss, entry.getKey().getCost(entry.getValue().intValue()));
+                    entry.getKey().addCost(rss, entry.getValue().intValue(), nation::getResearch);
                 }
                 toKeep = ResourceType.max(toKeep, rss);
             }
@@ -1262,7 +1262,7 @@ public class BankCommands {
             if (subtractNationsUnits != null && !subtractNationsUnits.isEmpty()) {
                 for (MilitaryUnit unit : subtractNationsUnits) {
                     int numUnits = nation.getUnits(unit);
-                    double[] cost = unit.getCost(numUnits);
+                    double[] cost = ResourceType.resourcesToArray(unit.getCost(numUnits, nation::getResearch));
                     for (int i = 0; i < cost.length; i++) {
                         amount[i] = Math.max(Math.min(0, amount[i]), amount[i] - cost[i]);
                     }

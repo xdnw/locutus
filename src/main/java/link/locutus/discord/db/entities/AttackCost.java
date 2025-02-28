@@ -43,9 +43,6 @@ public class AttackCost {
     private final double[] loot1 = ResourceType.getBuffer();
     private final double[] loot2 = ResourceType.getBuffer();
 
-    private final double[] total1 = ResourceType.getBuffer();
-    private final double[] total2 = ResourceType.getBuffer();
-
     private double infrn1 = 0;
     private double infrn2 = 0;
 
@@ -57,8 +54,11 @@ public class AttackCost {
     private final double[] consumption1 = ResourceType.getBuffer();
     private final double[] consumption2 = ResourceType.getBuffer();
 
-    private final int[] buildings1;// = new Object2IntOpenHashMap<>();
-    private final int[] buildings2;// = new Object2IntOpenHashMap<>();
+    private final int[] buildings1;
+    private final int[] buildings2;
+
+    private final double[] buildingsCost1 = ResourceType.getBuffer();
+    private final double[] buildingsCost2 = ResourceType.getBuffer();
 
     private final Set<Integer> ids1;// = new IntOpenHashSet();
     private final Set<Integer> ids2;// = new IntOpenHashSet();
@@ -73,8 +73,6 @@ public class AttackCost {
     public void addCost(AttackCost other) {
         ResourceType.add(loot1, other.loot1);
         ResourceType.add(loot2, other.loot2);
-        ResourceType.add(total1, other.total1);
-        ResourceType.add(total2, other.total2);
         infrn1 += other.infrn1;
         infrn2 += other.infrn2;
         ArrayUtil.apply(ArrayUtil.INT_ADD, unit1, other.unit1);
@@ -83,6 +81,8 @@ public class AttackCost {
         ResourceType.add(unit2Cost, other.unit2Cost);
         ResourceType.add(consumption1, other.consumption1);
         ResourceType.add(consumption2, other.consumption2);
+        ResourceType.add(buildingsCost1, other.buildingsCost1);
+        ResourceType.add(buildingsCost2, other.buildingsCost2);
         if (buildings1 != null) ArrayUtil.apply(ArrayUtil.INT_ADD, buildings1, other.buildings1);
         if (buildings2 != null) ArrayUtil.apply(ArrayUtil.INT_ADD, buildings2, other.buildings2);
         if (ids1 != null && other.ids1 != null) ids1.addAll(other.ids1);
@@ -140,7 +140,7 @@ TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCo
             );
             if (costEntry != null) {
                 AttackCost cost = costEntry.getKey();
-                cost.addCost(attack, costEntry.getValue());
+                cost.addCost(attack, attack.getWar(), costEntry.getValue());
             }
         };
 
@@ -214,8 +214,28 @@ TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCo
         return result;
     }
 
+    public double[] getAttTotal() {
+        return ResourceType.builder()
+                .add(unit1Cost)
+                .addMoney(infrn1)
+                .add(consumption1)
+                .add(loot1)
+                .add(buildingsCost1)
+                .build();
+    }
+
+    public double[] getDefTotal() {
+        return ResourceType.builder()
+                .add(unit2Cost)
+                .addMoney(infrn2)
+                .add(consumption2)
+                .add(loot2)
+                .add(buildingsCost2)
+                .build();
+    }
+
     public Map<ResourceType, Double> getTotal(boolean isPrimary) {
-        return ResourceType.resourcesToMap(isPrimary ? total1 : total2);
+        return ResourceType.resourcesToMap(isPrimary ? getAttTotal() : getDefTotal());
     }
 
     private Map<ResourceType, Double> getNetCost(Map<ResourceType, Double> map1, Map<ResourceType, Double> map2) {
@@ -295,17 +315,23 @@ TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCo
         return attacker ? victories1 : victories2;
     }
 
-    public void addCost(Collection<AbstractCursor> attacks, Function<AbstractCursor, Boolean> isPrimary, Function<AbstractCursor, Boolean> isSecondary) {
+    public void addCost(Collection<AbstractCursor> attacks, DBWar war, Function<AbstractCursor, Boolean> isPrimary, Function<AbstractCursor, Boolean> isSecondary) {
         for (AbstractCursor attack : attacks) {
-            addCost(attack, isPrimary, isSecondary);
+            addCost(attack, war, isPrimary, isSecondary);
         }
     }
 
-    public void addCost(AbstractCursor attack, boolean isAttacker) {
-        addCost(attack, p -> isAttacker, p -> !isAttacker);
+    public void addCost(Collection<AbstractCursor> attacks, Function<AbstractCursor, Boolean> isPrimary, Function<AbstractCursor, Boolean> isSecondary) {
+        for (AbstractCursor attack : attacks) {
+            addCost(attack, attack.getWar(), isPrimary, isSecondary);
+        }
     }
 
-    public void addCost(AbstractCursor attack, Function<AbstractCursor, Boolean> isPrimary, Function<AbstractCursor, Boolean> isSecondary) {
+    public void addCost(AbstractCursor attack, DBWar war, boolean isAttacker) {
+        addCost(attack, war, p -> isAttacker, p -> !isAttacker);
+    }
+
+    public void addCost(AbstractCursor attack, DBWar war, Function<AbstractCursor, Boolean> isPrimary, Function<AbstractCursor, Boolean> isSecondary) {
         boolean primary = isPrimary.apply(attack);
         boolean secondary = isSecondary.apply(attack);
 
@@ -331,16 +357,14 @@ TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCo
                     ids1.add(attack.getAttacker_id());
                     ids2.add(attack.getDefender_id());
                 }
-                attack.getUnitLosses(unit1, true);
-                attack.getUnitLosses(unit2, false);
-                attack.getLosses(unit1Cost, true, true, false, false, false, false);
-                attack.getLosses(unit2Cost, false, true, false, false, false, false);
-                attack.getLosses(loot1, true, false, false, false, true, false);
-                attack.getLosses(loot2, false, false, false, false, true, false);
-                attack.getLosses(consumption1, true, false, false, true, false, false);
-                attack.getLosses(consumption2, false, false, false, true, false, false);
-                attack.getLosses(total1, true, true, true, true, true, true);
-                attack.getLosses(total2, false, true, true, true, true, true);
+                attack.addAttUnitLosses(unit1);
+                attack.addDefUnitLosses(unit2);
+                attack.addAttUnitCosts(unit1Cost, war);
+                attack.addDefUnitCosts(unit2Cost, war);
+                attack.addAttLoot(loot1);
+                attack.addDefLoot(loot2);
+                attack.addAttConsumption(consumption1);
+                attack.addDefConsumption(consumption2);
                 infrn1 += attInfra;
                 infrn2 += defInfra;
                 if (buildings2 != null) attack.addBuildingsDestroyed(buildings2);
@@ -349,16 +373,14 @@ TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCo
                     ids2.add(attack.getAttacker_id());
                     ids1.add(attack.getDefender_id());
                 }
-                attack.getUnitLosses(unit1, false);
-                attack.getUnitLosses(unit2, true);
-                attack.getLosses(unit1Cost, false, true, false, false, false, false);
-                attack.getLosses(unit2Cost, true, true, false, false, false, false);
-                attack.getLosses(loot1, false, false, false, false, true, false);
-                attack.getLosses(loot2, true, false, false, false, true, false);
-                attack.getLosses(consumption1, false, false, false, true, false, false);
-                attack.getLosses(consumption2, true, false, false, true, false, false);
-                attack.getLosses(total1, false, true, true, true, true, true);
-                attack.getLosses(total2, true, true, true, true, true, true);
+                attack.addAttUnitLosses(unit2);
+                attack.addDefUnitLosses(unit1);
+                attack.addAttUnitCosts(unit2Cost, war);
+                attack.addDefUnitCosts(unit1Cost, war);
+                attack.addAttLoot(loot2);
+                attack.addDefLoot(loot1);
+                attack.addAttConsumption(consumption2);
+                attack.addDefConsumption(consumption1);
                 infrn1 += defInfra;
                 infrn2 += attInfra;
                 if (buildings1 != null) attack.addBuildingsDestroyed(buildings1);

@@ -170,18 +170,12 @@ public class Revenue extends Command {
             if (!nation.hasUnsetMil()) {
                 double factor = nation.getMilitaryUpkeepFactor();
                 boolean atWar = nation.getNumWars() > 0;
+                int researchBits = nation.getResearchBits();
 
                 for (MilitaryUnit unit : MilitaryUnit.values) {
                     int amt = nation.getUnits(unit);
                     if (amt == 0) continue;
-
-                    double[] upkeep = unit.getUpkeep(atWar);
-                    for (int i = 0; i < upkeep.length; i++) {
-                        double value = upkeep[i];
-                        if (value != 0) {
-                            milUp[i] -= value * amt * factor;
-                        }
-                    }
+                    milUp = unit.addUpkeep(milUp, amt, atWar, researchBits, factor);
                 }
             }
         }
@@ -195,11 +189,11 @@ public class Revenue extends Command {
 
         if (showTradeAndMilitary) {
             response.append('\n').append("Military upkeep:")
-                    .append("```").append(ResourceType.toString(milUp)).append("```");
+                    .append("```").append(ResourceType.toString(ResourceType.negative(milUp))).append("```");
 
             response.append('\n').append("Color Bonus: ```").append(MathMan.format(tradeBonus)).append("```");
 
-            Map<ResourceType, Double> total = ResourceType.add(ResourceType.resourcesToMap(cityProfit), ResourceType.resourcesToMap(milUp));
+            Map<ResourceType, Double> total = ResourceType.subResourcesToA(ResourceType.resourcesToMap(cityProfit), ResourceType.resourcesToMap(milUp));
             total.put(ResourceType.MONEY, total.getOrDefault(ResourceType.MONEY, 0d) + tradeBonus);
 
             response.append('\n').append("Combined Total:")

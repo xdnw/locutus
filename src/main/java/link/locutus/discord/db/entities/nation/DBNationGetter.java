@@ -42,5 +42,6 @@ public interface DBNationGetter {
     int _taxId();
     double _gni();
     double _costReduction();
+    int _researchBits();
     DBNationCache _cache();
 }

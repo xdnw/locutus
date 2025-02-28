@@ -7,6 +7,7 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
+import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.PW;
@@ -30,6 +31,83 @@ public abstract class UnitCursor extends DamageCursor {
         att_gas_used_cents = (int) Math.round(legacy.getAtt_gas_used() * 100);
         def_gas_used_cents = (int) Math.round(legacy.getDef_gas_used() * 100);
         has_salvage = false;
+    }
+
+    @Override
+    public double[] addAttLoot(double[] buffer) {
+        return buffer;
+    }
+
+    @Override
+    public double[] addDefLoot(double[] buffer) {
+        return buffer;
+    }
+
+    @Override
+    public double getAttLootValue() {
+        return 0;
+    }
+
+    @Override
+    public double getDefLootValue() {
+        return 0;
+    }
+
+    public double[] addAttConsumption(double[] buffer) {
+        buffer[ResourceType.MUNITIONS.ordinal()] += att_mun_used_cents * 0.01;
+        buffer[ResourceType.GASOLINE.ordinal()] += att_gas_used_cents * 0.01;
+        return buffer;
+    }
+    public double[] addDefConsumption(double[] buffer) {
+        buffer[ResourceType.MUNITIONS.ordinal()] += def_mun_used_cents * 0.01;
+        buffer[ResourceType.GASOLINE.ordinal()] += def_gas_used_cents * 0.01;
+        return buffer;
+    }
+    @Override
+    public double getAttConsumptionValue() {
+        return ResourceType.convertedTotal(ResourceType.MUNITIONS, att_mun_used_cents * 0.01) +
+                ResourceType.convertedTotal(ResourceType.GASOLINE, att_gas_used_cents * 0.01);
+    }
+
+    @Override
+    public double getDefConsumptionValue() {
+        return ResourceType.convertedTotal(ResourceType.MUNITIONS, def_mun_used_cents * 0.01) +
+                ResourceType.convertedTotal(ResourceType.GASOLINE, def_gas_used_cents * 0.01);
+    }
+
+    @Override
+    public double[] addAttLosses(double[] buffer, DBWar war) {
+        double[] value = super.addAttLosses(buffer, war);
+        if (has_salvage) {
+            value[ResourceType.ALUMINUM.ordinal()] *= 0.95;
+            value[ResourceType.STEEL.ordinal()] *= 0.95;
+        }
+        value = addAttConsumption(value);
+        return value;
+    }
+
+    @Override
+    public double[] addDefLosses(double[] buffer, DBWar war) {
+        double[] value = super.addDefLosses(buffer, war);
+        value = addDefConsumption(value);
+        return value;
+    }
+
+    @Override
+    public double getDefLossValue(DBWar war) {
+        double value = super.getDefLossValue(war);
+        value += ResourceType.convertedTotal(ResourceType.MUNITIONS, def_mun_used_cents * 0.01);
+        value += ResourceType.convertedTotal(ResourceType.GASOLINE, def_gas_used_cents * 0.01);
+        return value;
+    }
+
+    @Override
+    public double getAttLossValue(DBWar war) {
+        double value = super.getAttLossValue(war);
+        if (has_salvage) value *= 0.95;
+        value += ResourceType.convertedTotal(ResourceType.MUNITIONS, att_mun_used_cents * 0.01);
+        value += ResourceType.convertedTotal(ResourceType.GASOLINE, att_gas_used_cents * 0.01);
+        return value;
     }
 
     @Override

@@ -797,7 +797,7 @@ Soldiers is rand (88, 110) / 100 * Soldiers
             int originUnits = origin.getUnits(unit);
             int unitLosses = originUnits - getUnits(unit);
             if (unitLosses != 0) {
-                total += unit.getConvertedCost() * unitLosses;
+                total += unit.getBaseMonetaryValue(unitLosses);
             }
         }
         return total;

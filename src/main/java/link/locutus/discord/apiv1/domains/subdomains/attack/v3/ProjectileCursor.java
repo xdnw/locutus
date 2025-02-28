@@ -13,13 +13,51 @@ import java.util.Collections;
 import java.util.Map;
 
 public abstract class ProjectileCursor extends DamageCursor {
+
+    @Override
+    public double[] addAttConsumption(double[] buffer) {
+        return buffer;
+    }
+    @Override
+    public double getAttConsumptionValue() {
+        return 0;
+    }
+
+    @Override
+    public double getDefConsumptionValue() {
+        return 0;
+    }
+
+    @Override
+    public double[] addDefConsumption(double[] buffer) {
+        return buffer;
+    }
+    @Override
+    public double getAttLootValue() {
+        return 0;
+    }
+
+    @Override
+    public double getDefLootValue() {
+        return 0;
+    }
+    @Override
+    public double[] addAttLoot(double[] buffer) {
+        return buffer;
+    }
+
+    @Override
+    public double[] addDefLoot(double[] buffer) {
+        return buffer;
+    }
+
     @Override
     public int getAttUnitLosses(MilitaryUnit unit) {
         return unit == getUnits()[0] ? 1 : 0;
     }
 
     @Override
-    public int[] getDefUnitLosses(int[] buffer) {
+    public int[] addDefUnitLosses(int[] buffer) {
         return buffer;
     }
 

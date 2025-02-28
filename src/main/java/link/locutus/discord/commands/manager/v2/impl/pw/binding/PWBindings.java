@@ -204,6 +204,16 @@ public class PWBindings extends BindingHelper {
         return emumSet(BeigeReason.class, input);
     }
 
+    @Binding(value = "A comma separated list of military research")
+    public Set<Research> ResearchSet(String input) {
+        return emumSet(Research.class, input);
+    }
+
+    @Binding(value = "A military research")
+    public Research Research(String input) {
+        return emum(Research.class, input);
+    }
+
     @Binding(value = "A comma separated list of Growth Assets (cities, projects, infra, land)")
     public Set<GrowthAsset> GrowthAssets(String input) {
         return emumSet(GrowthAsset.class, input);

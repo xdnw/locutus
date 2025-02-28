@@ -73,7 +73,7 @@ public class WarCostByDay extends SimpleTable<AttackCost> {
             long turn = TimeUtil.getTurn(attack.getDate());
             long day = turn / 12;
             AttackCost cost = warCostByDay.computeIfAbsent(day, f -> new AttackCost(col1Str, col2Str, type == WarCostByDayMode.BUILDING, false, false, false, type.isAttackType));
-            cost.addCost(attack, Objects.requireNonNull(isPrimary), Objects.requireNonNull(isSecondary));
+            cost.addCost(attack, attack.getWar(), Objects.requireNonNull(isPrimary), Objects.requireNonNull(isSecondary));
         }
 
         this.min = Collections.min(warCostByDay.keySet());

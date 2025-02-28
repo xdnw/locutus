@@ -70,7 +70,7 @@ public class WarLossesPerCity extends Command {
             if (attack.getVictor() != 0) {
                 if (nationMap.containsKey(attack.getDefender_id())) {
                     Arrays.fill(buffer, 0d);
-                    double defLoss = attack.getLossesConverted(buffer, false);
+                    double defLoss = attack.getDefLossValue(attack.getWar());
                     totals.put(attack.getDefender_id(), totals.getOrDefault(attack.getDefender_id(), 0d) + defLoss);
                     counters.put(attack.getDefender_id(), counters.getOrDefault(attack.getDefender_id(), 0) + 1);
                 }

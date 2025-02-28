@@ -2233,12 +2233,13 @@ public class UtilityCommands {
         double[] upkeep = ResourceType.getBuffer();
 
         Function<Research, Integer> research = (nation == null ? me : nation)::getResearch;
+        double upkeepFactor = nation == null ? me.getMilitaryUpkeepFactor() : nation.getMilitaryUpkeepFactor();
         for (Map.Entry<MilitaryUnit, Long> entry : units.entrySet()) {
             MilitaryUnit unit = entry.getKey();
             Long amt = entry.getValue();
 
-            double[] unitCost = unit.getCost(amt.intValue(), research).clone();
-            double[] unitUpkeep = unit.getUpkeep(wartime).clone();
+            double[] unitCost = ResourceType.resourcesToArray(unit.getCost(amt.intValue(), research));
+            double[] unitUpkeep = unit.addUpkeep(ResourceType.getBuffer(), amt.intValue(), wartime, research, upkeepFactor).clone();
 
             unitUpkeep = PW.multiply(unitUpkeep, amt);
 
@@ -2568,7 +2569,7 @@ public class UtilityCommands {
             }
             for (MilitaryUnit unit : MilitaryUnit.values) {
                 int units = nation.getUnits(unit);
-                militaryCost = ResourceType.addResourcesToA(militaryCost, ResourceType.resourcesToMap(unit.getCost(units)));
+                militaryCost = ResourceType.addResourcesToA(militaryCost, unit.getCost(units, nation::getResearch));
             }
             int cities = nation.getCities();
             double nationCityCost = 0;

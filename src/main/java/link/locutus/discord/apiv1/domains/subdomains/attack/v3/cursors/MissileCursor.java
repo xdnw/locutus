@@ -25,8 +25,8 @@ public class MissileCursor extends ProjectileCursor {
     }
 
     @Override
-    public int getUnitLosses(MilitaryUnit unit, boolean attacker) {
-        return attacker && unit == MilitaryUnit.MISSILE ? 1 : 0;
+    public int getAttUnitLosses(MilitaryUnit unit) {
+        return unit == MilitaryUnit.MISSILE ? 1 : 0;
     }
 
     @Override

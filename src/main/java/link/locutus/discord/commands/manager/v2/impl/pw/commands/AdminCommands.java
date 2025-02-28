@@ -143,7 +143,7 @@ public class AdminCommands {
     }
 
     @Command(desc = "Set bot profile picture")
-    @RolePermission(Roles.ADMIN)
+    @RolePermission(value = Roles.ADMIN, root = true)
     public String setProfile(String url) throws IOException, ParseException {
         if (!ImageUtil.isDiscordImage(url)) {
             throw new IllegalArgumentException("Invalid discord image url: `" + url + "`");
@@ -152,14 +152,22 @@ public class AdminCommands {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ImageIO.write(img, "png", baos);
         baos.flush();
-        byte[] imageInByte = baos.toByteArray();
         baos.close();
+        byte[] imageInByte = baos.toByteArray();
+
+        Locutus.imp().getServer().getJDA().getSelfUser().getManager().setAvatar(Icon.from(imageInByte)).complete();
 
         return "Set avatar to `" + url + "`";
-
     }
 
-    @Command(desc = "Sync and debug war rooms",
+    @Command(desc = "Set bot name")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String setBotName(String name) throws IOException, ParseException {
+        Locutus.imp().getServer().getJDA().getSelfUser().getManager().setName(name).complete();
+        return "Set bot name to `" + name + "`";
+    }
+
+        @Command(desc = "Sync and debug war rooms",
     keywords = {WAR, ROOM, SYNC, CHANNEL, UPDATE, WARCAT, CATEGORY})
     @RolePermission(Roles.ADMIN)
     public String syncWarrooms(@Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, @Switch("f") boolean force) throws IOException {

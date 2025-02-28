@@ -81,13 +81,13 @@ public enum WarCostStat {
 
     public final BiFunction<Boolean, AbstractCursor, Double> getFunction(boolean excludeUnits, boolean excludeInfra, boolean excludeConsumption, boolean excludeLoot, boolean excludeBuildings) {
         if (unit != null) {
-            return (attacker, attack) -> (double) attack.getUnitLosses(unit(), attacker);
+            return (attacker, attack) -> (double) (attacker ? attack.getAttUnitLosses(unit()) : attack.getDefUnitLosses(unit()));
         } else if (resource != null) {
             double[] rssBuffer = ResourceType.getBuffer();
             Arrays.fill(rssBuffer, 0);
             return (attacker, attack) -> {
                 rssBuffer[resource.ordinal()] = 0;
-                return attack.getLosses(rssBuffer, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings)[resource.ordinal()];
+                return attack.addLosses(rssBuffer, attack.getWar(), attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings)[resource.ordinal()];
             };
         } else if (attack != null) {
             return (attacker, attack) -> attack.getAttack_type() == attack() ? 1d : 0d;
@@ -95,7 +95,7 @@ public enum WarCostStat {
             double[] rssBuffer = ResourceType.getBuffer();
             return (attacker, attack) -> {
                 Arrays.fill(rssBuffer, 0);
-                return attack.getLossesConverted(rssBuffer, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings);
+                return attack.getLossesConverted(attack.getWar(), attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings);
             };
         }
     }

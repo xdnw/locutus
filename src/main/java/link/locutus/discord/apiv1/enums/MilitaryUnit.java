@@ -1,6 +1,7 @@
 package link.locutus.discord.apiv1.enums;
 
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
@@ -15,7 +16,6 @@ import java.util.Collection;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.function.Function;
-import java.util.function.IntFunction;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -26,29 +26,25 @@ public enum MilitaryUnit {
             ResourceType.MONEY.builder(5).build(),
             ResourceType.MONEY.builder(1.25).add(ResourceType.FOOD, 1/750d).build(),
             1.5,
-            MUNITIONS.toArray(1 / 5000d),
-            Research.GROUND_COST
+            MUNITIONS.toArray(1 / 5000d)
     ),
     TANK("tanks", "\u2699",0.025,
             ResourceType.MONEY.builder(60).add(STEEL, 0.5d).build(),
             ResourceType.MONEY.toArray(50),
             1.5,
-            GASOLINE.builder(1 / 100d).add(MUNITIONS, 1 / 100d).build(),
-            Research.GROUND_COST
+            GASOLINE.builder(1 / 100d).add(MUNITIONS, 1 / 100d).build()
         ),
     AIRCRAFT("aircraft", "\u2708", 0.3,
             ResourceType.MONEY.builder(4000).add(ALUMINUM, 10).build(),
             ResourceType.MONEY.toArray(750),
             1.3333333333333333333333333333333,
-            GASOLINE.builder(1 / 4d).add(MUNITIONS, 1 / 4d).build(),
-            Research.AIR_COST
+            GASOLINE.builder(1 / 4d).add(MUNITIONS, 1 / 4d).build()
     ),
     SHIP("navy", "\uD83D\uDEA2", 1,
             ResourceType.MONEY.builder(50000).add(STEEL, 30).build(),
             ResourceType.MONEY.toArray(3300),
             1.5151515151515151515151515151515,
-            GASOLINE.builder(1).add(MUNITIONS, 1.75).build(),
-            Research.NAVAL_COST
+            GASOLINE.builder(1).add(MUNITIONS, 1.75).build()
     ),
 
     MONEY(null, "\uD83D\uDCB2", 0,
@@ -56,16 +52,14 @@ public enum MilitaryUnit {
             ResourceType.MONEY.builder(1).build(),
             ResourceType.MONEY.toArray(0),
             1,
-            ResourceType.getBuffer(),
-            null
+            ResourceType.getBuffer()
     ),
 
     MISSILE("missiles", "\uD83D\uDE80", 5,
             ResourceType.MONEY.builder(150000).add(ALUMINUM, 150).add(GASOLINE, 100).add(MUNITIONS, 100).build(),
             ResourceType.MONEY.toArray(21000),
             1.5,
-            ResourceType.getBuffer(),
-            null
+            ResourceType.getBuffer()
     ) {
         @Override
         public double getScore(int amt) {
@@ -76,8 +70,7 @@ public enum MilitaryUnit {
              ResourceType.MONEY.builder(1750000).add(ALUMINUM, 1000).add(GASOLINE, 500).add(URANIUM, 500).build(),
             ResourceType.MONEY.toArray(35000),
             1.5,
-            ResourceType.getBuffer(),
-            null
+            ResourceType.getBuffer()
     ) {
         @Override
         public double getScore(int amt) {
@@ -89,8 +82,7 @@ public enum MilitaryUnit {
             ResourceType.MONEY.builder(50_000).build(),
             ResourceType.MONEY.toArray(2400),
             1,
-            ResourceType.MONEY.toArray(3500),
-            null
+            ResourceType.MONEY.toArray(3500)
     ),
 
     INFRASTRUCTURE(null, "\uD83C\uDFD7", 1 / 40d,
@@ -98,8 +90,7 @@ public enum MilitaryUnit {
             ResourceType.MONEY.toArray(0),
             ResourceType.MONEY.toArray(0),
             1,
-            ResourceType.getBuffer(),
-            null
+            ResourceType.getBuffer()
     ),
     ;
 
@@ -108,20 +99,37 @@ public enum MilitaryUnit {
     private final double[] cost;
     private final Map<ResourceType, Double> costMap;
 
+    private final Supplier<Double> costConverted;
+    private final ResourceType[] costRss;
+    private final ResourceType[] consumeRss;
+
     protected final double score;
     private final double[] consumption;
-    private final Research costReducer;
-    private double costConverted = -1;
     private final String name, emoji;
     private final double[] upkeepPeace;
     private final double[] upkeepWar;
+    private final ResourceType[] upkeepRss;
 
     public static MilitaryUnit[] values = values();
 
-    MilitaryUnit(String name, String emoji, double score, double[] cost, double[] peacetimeUpkeep, double multiplyWartimeUpkeep, double[] consumption, Research costReducer) {
+    private Research costReducer;
+
+    private double[] costReduction;
+    private ResourceType[] costReductionRss;
+    private Supplier<Double> costReductionConverted;
+
+    private double[] upkeepPeaceReduction;
+    private double[] upkeepWarReduction;
+
+    private ResourceType[] upkeepReductionRss;
+    private Supplier<Double> upkeepPeaceReductionConverted;
+    private Supplier<Double> upkeepWarReductionConverted;
+
+    MilitaryUnit(String name, String emoji, double score, double[] cost, double[] peacetimeUpkeep, double multiplyWartimeUpkeep, double[] consumption) {
         this.name = name;
         this.emoji = emoji;
         this.cost = cost;
+        this.costConverted = ResourceType.convertedCostLazy(cost);
         this.costMap = new EnumMap<>(ResourceType.class);
         costMap.putAll(resourcesToMap(cost));
         this.upkeepPeace = peacetimeUpkeep;
@@ -130,9 +138,26 @@ public enum MilitaryUnit {
         } else {
             this.upkeepWar = peacetimeUpkeep;
         }
+        this.upkeepRss = resourcesToMap(peacetimeUpkeep).keySet().toArray(new ResourceType[0]);
+
         this.consumption = consumption;
         this.score = score;
-        this.costReducer = costReducer;
+
+        this.costRss = costMap.keySet().toArray(new ResourceType[0]);
+        this.consumeRss = resourcesToMap(consumption).keySet().toArray(new ResourceType[0]);
+    }
+
+    public void setResearch(Research research, double[] costReduction, double[] upkeepPeaceReduction, double[] upkeepWarReduction) {
+        this.costReducer = research;
+        this.costReduction = costReduction;
+        this.costReductionRss = ResourceType.getTypes(costReduction);
+        this.costReductionConverted = ResourceType.convertedCostLazy(costReduction);
+
+        this.upkeepPeaceReduction = upkeepPeaceReduction;
+        this.upkeepWarReduction = upkeepWarReduction;
+        this.upkeepReductionRss = ResourceType.getTypes(upkeepPeaceReduction);
+        this.upkeepPeaceReductionConverted = ResourceType.convertedCostLazy(upkeepPeaceReduction);
+        this.upkeepWarReductionConverted = ResourceType.convertedCostLazy(upkeepWarReduction);
     }
 
     @Command(desc = "Get the emoji for this unit")
@@ -250,8 +275,40 @@ public enum MilitaryUnit {
         return score * amt;
     }
 
-    public double[] getUpkeep(boolean war, Function<Research, Integer> research) {
-        return war ? upkeepWar : upkeepPeace;
+    public double[] addUpkeep(double[] buffer, int amt, boolean war, Function<Research, Integer> research, double factor) {
+        double[] baseUpkeep;
+        double[] upkeepReduction;
+        if (war) {
+            baseUpkeep = upkeepWar;
+            upkeepReduction = upkeepWarReduction;
+        } else {
+            baseUpkeep = upkeepPeace;
+            upkeepReduction = upkeepPeaceReduction;
+        }
+        int level = research.apply(costReducer);
+        for (ResourceType type : upkeepRss) {
+            double costPer = baseUpkeep[type.ordinal()] - upkeepReduction[type.ordinal()] * level;
+            buffer[type.ordinal()] += costPer * amt * factor;
+        }
+        return buffer;
+    }
+
+    public double[] addUpkeep(double[] buffer, int amt, boolean war, int researchBits, double factor) {
+        double[] baseUpkeep;
+        double[] upkeepReduction;
+        if (war) {
+            baseUpkeep = upkeepWar;
+            upkeepReduction = upkeepWarReduction;
+        } else {
+            baseUpkeep = upkeepPeace;
+            upkeepReduction = upkeepPeaceReduction;
+        }
+        int level = costReducer.getLevel(researchBits);
+        for (ResourceType type : upkeepRss) {
+            double costPer = baseUpkeep[type.ordinal()] - upkeepReduction[type.ordinal()] * level;
+            buffer[type.ordinal()] += costPer * amt * factor;
+        }
+        return buffer;
     }
 
     public String getName() {
@@ -276,36 +333,77 @@ public enum MilitaryUnit {
         return null;
     }
 
-    public double getConvertedCost() {
-        if (costConverted == -1) {
-            costConverted = convertedTotal(cost);
-        }
-        return costConverted;
+    public double getConvertedCost(Function<Research, Integer> research) {
+        double value = costConverted.get();
+        int level = research.apply(costReducer);
+        value -= costReductionConverted.get() * level;
+        return value;
     }
 
-    public double[] getCost(Function<Research, Integer> research) {
-        return this.cost;
+    public double getConvertedCost(int researchBits) {
+        double value = costConverted.get();
+        int level = costReducer.getLevel(researchBits);
+        value -= costReductionConverted.get() * level;
+        return value;
     }
 
-    public Map<ResourceType, Double> getCostMap(Function<Research, Integer> research) {
-        return costMap;
-    }
-
-    public double[] getCost(Function<Research, Integer> research, int amt) {
-        if (amt > 0) {
-            if (amt == 1) return cost;
-            return PW.multiply(cost.clone(), amt);
-        } else if (amt < 0) {
-            // 0% of money + 75% of resources
+    @Command(desc = "Base resource cost of this unit")
+    public Map<ResourceType, Double> getBaseCost(@Default Integer amount) {
+        if (amount == null) amount = 1;
+        else if (amount < 0) {
             double[] copy = cost.clone();
             copy[0] = 0;
-            PW.multiply(copy, amt);
-            for (int i = 1; i < copy.length; i++) {
-                copy[i] *= 0.75;
-            }
-            return copy;
+            PW.multiply(copy, amount * 0.75);
+            return resourcesToMap(copy);
         }
-        return ResourceType.getBuffer();
+        return resourcesToMap(PW.multiply(cost.clone(), amount));
+    }
+
+    @Command
+    public double getBaseMonetaryValue(@Default Integer amount) {
+        if (amount == null) amount = 1;
+        else if (amount < 0) {
+            double value = 0;
+            for (ResourceType type : costRss) {
+                if (type == ResourceType.MONEY) continue;
+                value += cost[type.ordinal()] * amount * 0.75;
+            }
+        }
+        return ResourceType.convertedTotal(cost) * amount;
+    }
+
+    public double[] addCost(double[] buffer, int amt, Function<Research, Integer> research) {
+        int level = research.apply(costReducer);
+        if (amt < 0) {
+            for (ResourceType type : costRss) {
+                if (type == ResourceType.MONEY) continue;
+                double costPer = this.cost[type.ordinal()] - costReduction[type.ordinal()] * level;
+                buffer[type.ordinal()] += costPer * amt * 0.75;
+            }
+            return buffer;
+        }
+        for (ResourceType type : costRss) {
+            double costPer = this.cost[type.ordinal()] - costReduction[type.ordinal()] * level;
+            buffer[type.ordinal()] += costPer * amt;
+        }
+        return buffer;
+    }
+
+    public double[] addCost(double[] buffer, int amt, int researchBits) {
+        int level = costReducer.getLevel(researchBits);
+        if (amt < 0) {
+            for (ResourceType type : costRss) {
+                if (type == ResourceType.MONEY) continue;
+                double costPer = this.cost[type.ordinal()] - costReduction[type.ordinal()] * level;
+                buffer[type.ordinal()] += costPer * amt * 0.75;
+            }
+            return buffer;
+        }
+        for (ResourceType type : costRss) {
+            double costPer = this.cost[type.ordinal()] - costReduction[type.ordinal()] * level;
+            buffer[type.ordinal()] += costPer * amt;
+        }
+        return buffer;
     }
 
     public double[] getConsumption() {
@@ -320,5 +418,7 @@ public enum MilitaryUnit {
         }
     }
 
-
+    public Map<ResourceType, Double> getCost(int amt, Function<Research, Integer> research) {
+        return ResourceType.resourcesToMap(addCost(ResourceType.getBuffer(), amt, research));
+    }
 }

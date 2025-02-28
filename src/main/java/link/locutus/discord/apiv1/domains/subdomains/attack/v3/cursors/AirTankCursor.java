@@ -44,10 +44,15 @@ public class AirTankCursor extends UnitCursor {
     }
 
     @Override
-    public int getUnitLosses(MilitaryUnit unit, boolean attacker) {
+    public int getAttUnitLosses(MilitaryUnit unit) {
+        return unit == MilitaryUnit.AIRCRAFT ? attcas1 : 0;
+    }
+
+    @Override
+    public int getDefUnitLosses(MilitaryUnit unit) {
         return switch (unit) {
-            case AIRCRAFT -> attacker ? attcas1 : defcas1;
-            case TANK -> attacker ? 0 : defcas2;
+            case AIRCRAFT -> defcas1;
+            case TANK -> defcas2;
             default -> 0;
         };
     }

@@ -279,6 +279,25 @@ public class CommandManager2 {
         getCommands().registerMethod(new StatCommands(), List.of("stats", "other"), "allianceStats", "aa_metrics_by_turn");
         getCommands().registerMethod(new StatCommands(), List.of("stats", "tier"), "compareTierStats", "tier_by_coalition");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "bot"), "setProfile", "profile");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "bot"), "setBotName", "rename");
+
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "runMilitarizationAlerts", "militarization_alerts");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "checkActiveConflicts", "active_conflicts");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "dumpWiki", "export_wiki");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "debug"), "apiUsageStats", "api_usage");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "bot"), "removeInvalidOffshoring", "remove_deleted_offshores");
+        getCommands().registerMethod(new DiscordCommands(), List.of("admin", "bot"), "importEmojis", "import_emojis");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "bot"), "importGuildKeys", "import_settings");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "list"), "listAuthenticated", "authenticated");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "list"), "listExpiredGuilds", "expired_guilds");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "list"), "listExpiredOffshores", "expired_offshores");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "list"), "listGuildOwners", "guild_owners");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "list"), "loginTimes", "login_times");
+        getCommands().registerMethod(new IACommands(), List.of("admin", "debug"), "msgInfo", "msg_info");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "bot"), "stop", "stop");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "command"), "sudoNations", "sudo_nations");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "command"), "sudo", "sudo");
+
 //        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "openMenu", "open");
 //        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "deleteMenu", "delete");
 //        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "renameMenu", "title");

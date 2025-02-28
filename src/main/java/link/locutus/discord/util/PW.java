@@ -1276,19 +1276,13 @@ public final class PW {
 
         // Add military upkeep
         if (militaryUpkeep && !nation.hasUnsetMil()) {
-            double factor = nation.getMilitaryUpkeepFactor();
+            double factor = nation.getMilitaryUpkeepFactor() * turns / 12;
+            int research = nation.getResearchBits();
 
             for (MilitaryUnit unit : MilitaryUnit.values) {
                 int amt = nation.getUnits(unit);
                 if (amt == 0) continue;
-
-                double[] upkeep = unit.getUpkeep(atWar, nation::getResearch);
-                for (int i = 0; i < upkeep.length; i++) {
-                    double value = upkeep[i];
-                    if (value != 0) {
-                        profitBuffer[i] -= value * amt * factor * turns / 12;
-                    }
-                }
+                unit.addUpkeep(profitBuffer, amt, atWar, research, -factor);
             }
         }
 

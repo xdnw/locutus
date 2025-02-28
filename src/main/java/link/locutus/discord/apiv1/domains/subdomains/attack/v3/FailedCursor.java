@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Research;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
+import link.locutus.discord.db.entities.DBWar;
 
 import java.util.Collections;
 import java.util.Map;
@@ -17,27 +18,113 @@ public abstract class FailedCursor extends AbstractCursor {
     }
 
     @Override
-    public int[] getUnitLosses(int[] buffer, boolean isAttacker) {
+    public int[] addAttUnitLosses(int[] buffer) {
         return buffer;
     }
 
     @Override
-    public double getInfra_destroyed_value() {
+    public int[] addDefUnitLosses(int[] buffer) {
+        return buffer;
+    }
+
+    @Override
+    public double[] addAttUnitLossValueByUnit(double[] valueByUnit, DBWar war) {
+        return valueByUnit;
+    }
+
+    @Override
+    public double[] addDefUnitLossValueByUnit(double[] valueByUnit, DBWar war) {
+        return valueByUnit;
+    }
+
+    @Override
+    public int getAttUnitLosses(MilitaryUnit unit) {
         return 0;
     }
 
     @Override
-    public double[] addInfraCosts(double[] buffer) {
+    public int getDefUnitLosses(MilitaryUnit unit) {
+        return 0;
+    }
+
+    @Override public double getAttLossValue(DBWar war) {
+        return 0;
+    }
+    @Override public double getDefLossValue(DBWar war) {
+        return 0;
+    }
+    @Override public double[] addAttLosses(double[] buffer, DBWar war) {
+        return buffer;
+    }
+    @Override public double[] addDefLosses(double[] buffer, DBWar war) {
+        return buffer;
+    }
+    @Override public double[] addAttUnitCosts(double[] buffer, DBWar war) {
+        return buffer;
+    }
+    @Override
+    public double getAttUnitLossValue(DBWar war) {
+        return 0;
+    }
+    @Override
+    public double getDefUnitLossValue(DBWar war) {
+        return 0;
+    }
+    @Override public double[] addDefUnitCosts(double[] buffer, DBWar war) {
+        return buffer;
+    }
+    @Override public double[] addInfraCosts(double[] buffer) {
+        return buffer;
+    }
+    @Override public double[] addAttConsumption(double[] buffer) {
         return buffer;
     }
 
     @Override
-    public double[] getUnitLossCost(double[] buffer, boolean isAttacker, Function<Research, Integer> research) {
+    public double getAttConsumptionValue() {
+        return 0;
+    }
+
+    @Override
+    public double getDefConsumptionValue() {
+        return 0;
+    }
+
+    @Override public double[] addDefConsumption(double[] buffer) {
+        return buffer;
+    }
+    @Override
+    public double[] addAttLoot(double[] buffer) {
         return buffer;
     }
 
     @Override
-    public int getUnitLosses(MilitaryUnit unit, boolean attacker) {
+    public double getAttLootValue() {
+        return 0;
+    }
+
+    @Override
+    public double getDefLootValue() {
+        return 0;
+    }
+
+    @Override
+    public double[] addDefLoot(double[] buffer) {
+        return buffer;
+    }
+
+    @Override
+    public double[] addBuildingCosts(double[] buffer) {
+        return buffer;
+    }
+
+    @Override
+    public double getBuildingLossValue() {
+        return 0;
+    }
+
+    @Override
+    public double getInfra_destroyed_value() {
         return 0;
     }
 

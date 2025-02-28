@@ -325,79 +325,7 @@ public class DBAttack {
         }
     }
 
-    public double getLossesConverted(boolean attacker) {
-        return ResourceType.convertedTotal(getLosses(attacker));
-    }
-
-    public double getLossesConverted(boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot) {
-        return ResourceType.convertedTotal(getLosses(attacker, units, infra, consumption, includeLoot));
-    }
-
-    public Map<ResourceType, Double> getLosses(boolean attacker) {
-        return getLosses(attacker, true, true, true, true);
-    }
-
     private static double intOverflow = 2147483647 / 100d;
-
-    public Map<ResourceType, Double> getLosses(boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot) {
-        if ((getAttack_type() == AttackType.NUKE || getAttack_type() == AttackType.MISSILE) && getSuccess() == 0) {
-            setInfra_destroyed_value(0);
-        }
-        Map<ResourceType, Double> losses = new HashMap<>();
-        if (units) {
-            Map<MilitaryUnit, Integer> unitLosses = getUnitLosses(attacker);
-            for (Map.Entry<MilitaryUnit, Integer> entry : unitLosses.entrySet()) {
-                MilitaryUnit unit = entry.getKey();
-                int amt = entry.getValue();
-                if (amt > 0) {
-                    double[] cost = unit.getCost(Research.ZERO, amt);
-                    for (ResourceType type : ResourceType.values) {
-                        double rssCost = cost[type.ordinal()];
-                        if (rssCost > 0) {
-                            losses.put(type, losses.getOrDefault(type, 0d) + rssCost);
-                        }
-                    }
-                }
-            }
-        }
-
-        if (includeLoot) {
-            if (getVictor() != 0) {
-                if (loot != null) {
-                    Map<ResourceType, Double> lootDouble = ResourceType.resourcesToMap(loot);
-                    if (attacker ? getVictor() == getAttacker_id() : getVictor() == getDefender_id()) {
-                        losses = ResourceType.subResourcesToA(losses, lootDouble);
-                    } else if (attacker ? getVictor() == getDefender_id() : getVictor() == getAttacker_id()) {
-                        losses = ResourceType.addResourcesToA(losses, lootDouble);
-                    }
-                }
-                else if (getMoney_looted() != 0) {
-                    int sign = (getVictor() == (attacker ? getAttacker_id() : getDefender_id())) ? -1 : 1;
-                    losses.put(ResourceType.MONEY, losses.getOrDefault(ResourceType.MONEY, 0d) + getMoney_looted() * sign);
-                }
-            }
-        }
-        if (attacker ? getVictor() == getDefender_id() : getVictor() == getAttacker_id()) {
-            if (infra && getInfra_destroyed_value() != 0) {
-                if (getInfra_destroyed_value() == intOverflow) {
-                    setInfra_destroyed_value(PW.City.Infra.calculateInfra(this.getCity_infra_before() - getInfra_destroyed(), this.getCity_infra_before()));
-                }
-                losses.put(ResourceType.MONEY, (losses.getOrDefault(ResourceType.MONEY, 0d) + getInfra_destroyed_value()));
-            }
-        }
-
-        if (consumption) {
-            Double mun = attacker ? getAtt_mun_used() : getDef_mun_used();
-            Double gas = attacker ? getAtt_gas_used() : getDef_gas_used();
-            if (mun != null) {
-                losses.put(ResourceType.MUNITIONS, (losses.getOrDefault(ResourceType.MUNITIONS, 0d) + mun));
-            }
-            if (gas != null) {
-                losses.put(ResourceType.GASOLINE, (losses.getOrDefault(ResourceType.GASOLINE, 0d) + gas));
-            }
-        }
-        return losses;
-    }
 
     public int getVictor() {
         return getSuccess() > 0 ? getAttacker_id() : getDefender_id();

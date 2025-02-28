@@ -383,7 +383,7 @@ public class GrantCommands {
                 }
                 ResourceType.ResourcesBuilder cost = ResourceType.builder();
                 unitsToGrant.forEach((unit, amount) -> {
-                    cost.add(unit.getCost(amount.intValue()));
+                    cost.add(unit.getCost(amount.intValue(), receiver::getResearch));
                 });
                 grant.setInstructions("Go to <" + Settings.PNW_URL() + "/nation/military/> and purchase `" + unitsToGrant + "`");
                 grant.setCost(f -> cost.build()).setType(DepositType.WARCHEST.withValue());
@@ -446,7 +446,7 @@ public class GrantCommands {
                     return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.WARCHEST.withValue().toString()).addMessage("Nation already has the units");
                 }
                 ResourceType.ResourcesBuilder cost = ResourceType.builder();
-                unitsToGrant.forEach((unit, amount) -> cost.add(unit.getCost(amount)));
+                unitsToGrant.forEach((unit, amount) -> cost.add(unit.getCost(amount, receiver::getResearch)));
                 grant.setInstructions("Go to <" + Settings.PNW_URL() + "/nation/military/> and purchase `" + unitsToGrant + "`");
                 grant.setCost(f -> cost.build()).setType(DepositType.WARCHEST.withValue());
                 return null;
@@ -510,7 +510,7 @@ public class GrantCommands {
                     numAttacks.forEach((unit, amount) -> {
                         if (amount <= 0) return;
                         if (unit == MilitaryUnit.MISSILE || unit == MilitaryUnit.NUKE) {
-                            cost.add(unit.getCost(amount));
+                            cost.add(unit.getCost(amount, receiver::getResearch));
                             return;
                         }
                         int maxUnits = unit.getMaxMMRCap(cities, receiver::hasProject);

@@ -3,25 +3,52 @@ import link.locutus.discord.commands.manager.v2.command.AutoRegister;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 public class CM {
         public static class admin{
-            public static class alliance{
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="runMilitarizationAlerts")
-                public static class military_alerts extends CommandRef {
-                    public static final military_alerts cmd = new military_alerts();
+            public static class bot{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.DiscordCommands.class,method="importEmojis")
+                public static class import_emojis extends CommandRef {
+                    public static final import_emojis cmd = new import_emojis();
+                public import_emojis guild(String value) {
+                    return set("guild", value);
+                }
 
                 }
-            }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="apiUsageStats")
-            public static class apiUsageStats extends CommandRef {
-                public static final apiUsageStats cmd = new apiUsageStats();
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="importGuildKeys")
+                public static class import_settings extends CommandRef {
+                    public static final import_settings cmd = new import_settings();
 
-            }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="removeInvalidOffshoring")
-            public static class clear_deleted_coalition_entries extends CommandRef {
-                public static final clear_deleted_coalition_entries cmd = new clear_deleted_coalition_entries();
-            public clear_deleted_coalition_entries coalition(String value) {
-                return set("coalition", value);
-            }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="setProfile")
+                public static class profile extends CommandRef {
+                    public static final profile cmd = new profile();
+                public profile url(String value) {
+                    return set("url", value);
+                }
 
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="removeInvalidOffshoring")
+                public static class remove_deleted_offshores extends CommandRef {
+                    public static final remove_deleted_offshores cmd = new remove_deleted_offshores();
+                public remove_deleted_offshores coalition(String value) {
+                    return set("coalition", value);
+                }
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="setBotName")
+                public static class rename extends CommandRef {
+                    public static final rename cmd = new rename();
+                public rename name(String value) {
+                    return set("name", value);
+                }
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="stop")
+                public static class stop extends CommandRef {
+                    public static final stop cmd = new stop();
+                public stop save(String value) {
+                    return set("save", value);
+                }
+
+                }
             }
             public static class command{
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="runForNations")
@@ -44,20 +71,58 @@ public class CM {
                 }
 
                 }
-            }
-            public static class conflicts{
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="checkActiveConflicts")
-                public static class check extends CommandRef {
-                    public static final check cmd = new check();
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="sudo")
+                public static class sudo extends CommandRef {
+                    public static final sudo cmd = new sudo();
+                public sudo command(String value) {
+                    return set("command", value);
+                }
+
+                public sudo user(String value) {
+                    return set("user", value);
+                }
+
+                public sudo nation(String value) {
+                    return set("nation", value);
+                }
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="sudoNations")
+                public static class sudo_nations extends CommandRef {
+                    public static final sudo_nations cmd = new sudo_nations();
+                public sudo_nations nations(String value) {
+                    return set("nations", value);
+                }
+
+                public sudo_nations command(String value) {
+                    return set("command", value);
+                }
 
                 }
             }
             public static class debug{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="apiUsageStats")
+                public static class api_usage extends CommandRef {
+                    public static final api_usage cmd = new api_usage();
+
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="guildInfo")
                 public static class guild extends CommandRef {
                     public static final guild cmd = new guild();
                 public guild guild(String value) {
                     return set("guild", value);
+                }
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="msgInfo")
+                public static class msg_info extends CommandRef {
+                    public static final msg_info cmd = new msg_info();
+                public msg_info message(String value) {
+                    return set("message", value);
+                }
+
+                public msg_info useIds(String value) {
+                    return set("useIds", value);
                 }
 
                 }
@@ -98,19 +163,6 @@ public class CM {
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.DiscordCommands.class,method="importEmojis")
-            public static class importEmoji extends CommandRef {
-                public static final importEmoji cmd = new importEmoji();
-            public importEmoji guild(String value) {
-                return set("guild", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="importGuildKeys")
-            public static class importGuildKeys extends CommandRef {
-                public static final importGuildKeys cmd = new importGuildKeys();
-
-            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="leaveServer")
             public static class leaveServer extends CommandRef {
                 public static final leaveServer cmd = new leaveServer();
@@ -120,6 +172,45 @@ public class CM {
 
             }
             public static class list{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="listAuthenticated")
+                public static class authenticated extends CommandRef {
+                    public static final authenticated cmd = new authenticated();
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="listExpiredGuilds")
+                public static class expired_guilds extends CommandRef {
+                    public static final expired_guilds cmd = new expired_guilds();
+                public expired_guilds checkMessages(String value) {
+                    return set("checkMessages", value);
+                }
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="listExpiredOffshores")
+                public static class expired_offshores extends CommandRef {
+                    public static final expired_offshores cmd = new expired_offshores();
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="listGuildOwners")
+                public static class guild_owners extends CommandRef {
+                    public static final guild_owners cmd = new guild_owners();
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="loginTimes")
+                public static class login_times extends CommandRef {
+                    public static final login_times cmd = new login_times();
+                public login_times nations(String value) {
+                    return set("nations", value);
+                }
+
+                public login_times cutoff(String value) {
+                    return set("cutoff", value);
+                }
+
+                public login_times sheet(String value) {
+                    return set("sheet", value);
+                }
+
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="hasSameNetworkAsBan")
                 public static class multis extends CommandRef {
                     public static final multis cmd = new multis();
@@ -168,57 +259,6 @@ public class CM {
                 }
 
                 }
-            }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="listAuthenticated")
-            public static class listAuthenticated extends CommandRef {
-                public static final listAuthenticated cmd = new listAuthenticated();
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="listExpiredGuilds")
-            public static class listExpiredGuilds extends CommandRef {
-                public static final listExpiredGuilds cmd = new listExpiredGuilds();
-            public listExpiredGuilds checkMessages(String value) {
-                return set("checkMessages", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="listExpiredOffshores")
-            public static class listExpiredOffshores extends CommandRef {
-                public static final listExpiredOffshores cmd = new listExpiredOffshores();
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="listGuildOwners")
-            public static class listGuildOwners extends CommandRef {
-                public static final listGuildOwners cmd = new listGuildOwners();
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="loginTimes")
-            public static class list_login_times extends CommandRef {
-                public static final list_login_times cmd = new list_login_times();
-            public list_login_times nations(String value) {
-                return set("nations", value);
-            }
-
-            public list_login_times cutoff(String value) {
-                return set("cutoff", value);
-            }
-
-            public list_login_times sheet(String value) {
-                return set("sheet", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="msgInfo")
-            public static class msgInfo extends CommandRef {
-                public static final msgInfo cmd = new msgInfo();
-            public msgInfo message(String value) {
-                return set("message", value);
-            }
-
-            public msgInfo useIds(String value) {
-                return set("useIds", value);
-            }
-
             }
             public static class queue{
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="conditionalMessageSettings")
@@ -340,44 +380,6 @@ public class CM {
 
                 public unset force(String value) {
                     return set("force", value);
-                }
-
-                }
-            }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="stop")
-            public static class stop extends CommandRef {
-                public static final stop cmd = new stop();
-            public stop save(String value) {
-                return set("save", value);
-            }
-
-            }
-            public static class sudo{
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="sudoNations")
-                public static class nations extends CommandRef {
-                    public static final nations cmd = new nations();
-                public nations nations(String value) {
-                    return set("nations", value);
-                }
-
-                public nations command(String value) {
-                    return set("command", value);
-                }
-
-                }
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="sudo")
-                public static class user extends CommandRef {
-                    public static final user cmd = new user();
-                public user command(String value) {
-                    return set("command", value);
-                }
-
-                public user user(String value) {
-                    return set("user", value);
-                }
-
-                public user nation(String value) {
-                    return set("nation", value);
                 }
 
                 }
@@ -569,6 +571,11 @@ public class CM {
                 }
             }
             public static class sync2{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="checkActiveConflicts")
+                public static class active_conflicts extends CommandRef {
+                    public static final active_conflicts cmd = new active_conflicts();
+
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="syncCityRefund")
                 public static class city_refund extends CommandRef {
                     public static final city_refund cmd = new city_refund();
@@ -579,12 +586,25 @@ public class CM {
                     public static final config cmd = new config();
 
                 }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="dumpWiki")
+                public static class export_wiki extends CommandRef {
+                    public static final export_wiki cmd = new export_wiki();
+                public export_wiki pathRelative(String value) {
+                    return set("pathRelative", value);
+                }
+
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="syncMail")
                 public static class mail extends CommandRef {
                     public static final mail cmd = new mail();
                 public mail account(String value) {
                     return set("account", value);
                 }
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="runMilitarizationAlerts")
+                public static class militarization_alerts extends CommandRef {
+                    public static final militarization_alerts cmd = new militarization_alerts();
 
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="syncTaxes")
@@ -612,16 +632,6 @@ public class CM {
                     public static final uid cmd = new uid();
                 public uid all(String value) {
                     return set("all", value);
-                }
-
-                }
-            }
-            public static class wiki{
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="dumpWiki")
-                public static class save extends CommandRef {
-                    public static final save cmd = new save();
-                public save pathRelative(String value) {
-                    return set("pathRelative", value);
                 }
 
                 }
@@ -16488,6 +16498,10 @@ public class CM {
 
             public cost wartime(String value) {
                 return set("wartime", value);
+            }
+
+            public cost nation(String value) {
+                return set("nation", value);
             }
 
             }

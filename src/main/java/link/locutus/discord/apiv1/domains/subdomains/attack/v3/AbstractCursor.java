@@ -10,6 +10,7 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.io.BitBuffer;
 import link.locutus.discord.util.math.ArrayUtil;
 
+import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -173,14 +174,8 @@ public abstract class AbstractCursor implements IAttack {
 
     public abstract Set<Integer> getCityIdsDamaged();
 
-    public abstract int[] getAttUnitLosses(int[] buffer);
-    public abstract int[] getDefUnitLosses(int[] buffer);
-
-    public abstract int getAttUnitLosses(MilitaryUnit unit);
-    public abstract int getDefUnitLosses(MilitaryUnit unit);
-
     public Map<MilitaryUnit, Integer> getUnitLosses2(boolean isAttacker) {
         int[] buffer = MilitaryUnit.getBuffer();
-        return ArrayUtil.toMap(getUnitLosses(buffer, isAttacker), MilitaryUnit.values);
+        return ArrayUtil.toMap(addUnitLosses(buffer, isAttacker), MilitaryUnit.values);
     }
 }
