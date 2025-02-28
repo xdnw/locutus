@@ -144,6 +144,6 @@ public class TransferCommand extends Command {
                 String.valueOf(bypassChecks)
         ).toJson();
 
-        return BankCommands.transfer(channel, command, author, me, guildDb, receiver, transfer, depositType, nationAccount, allianceAccount, offshoreAccount, taxAccount, false, onlyMissingFunds, expire, decay, token, convertCash, escrowMode, bypassChecks, false);
+        return BankCommands.transfer(channel, command, author, me, guildDb, receiver, transfer, depositType, nationAccount, allianceAccount, offshoreAccount, taxAccount, false, onlyMissingFunds, expire, decay, token, convertCash, escrowMode, bypassChecks, false, false);
     }
 }

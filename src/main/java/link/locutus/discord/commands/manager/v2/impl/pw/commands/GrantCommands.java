@@ -91,7 +91,7 @@ public class GrantCommands {
             @Switch("er") boolean exclude_city_refund,
 
             @Switch("pr") Roles ping_role,
-            @Switch("cc") MessageChannel ping_when_sent,
+            @Switch("ps") boolean ping_when_sent,
 
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
@@ -103,7 +103,7 @@ public class GrantCommands {
             int currentCity = receiver.getCities();
             return Math.max(upTo ? amount - currentCity : amount, 0);
         };
-        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
+        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
                 (receiver, grant) -> {
                     int currentCity = receiver.getCities();
                     int numBuy = getNumBuy.apply(receiver);
@@ -171,10 +171,13 @@ public class GrantCommands {
             @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("gsa") Boolean gov_support_agency,
             @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("bda") Boolean domestic_affairs,
 
+            @Switch("pr") Roles ping_role,
+            @Switch("ps") boolean ping_when_sent,
+
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
-        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
+        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
             (receiver, grant) -> {
                 if (receiver.hasProject(project)) {
                     return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.PROJECT.withValue().toString()).addMessage("Nation already has project: " + project.name());
@@ -228,12 +231,13 @@ public class GrantCommands {
             @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("cfce") Boolean center_for_civil_engineering,
             @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("gsa") Boolean gov_support_agency,
             @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("bda") Boolean domestic_affairs,
-
+            @Switch("pr") Roles ping_role,
+            @Switch("ps") boolean ping_when_sent,
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
 
     ) throws IOException, GeneralSecurityException {
-        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
+        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
             (receiver, grant) -> {
                 double cost;
                 if (single_new_city) {
@@ -301,11 +305,12 @@ public class GrantCommands {
             @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("ala") Boolean arable_land_agency,
             @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("gsa") Boolean gov_support_agency,
             @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("bda") Boolean domestic_affairs,
-
+            @Switch("pr") Roles ping_role,
+            @Switch("ps") boolean ping_when_sent,
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
-        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
+        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
                 (receiver, grant) -> {
                     double cost = receiver.getBuyLandCost(to_land,
                             rapid_expansion != null ? rapid_expansion : false,
@@ -357,11 +362,12 @@ public class GrantCommands {
             @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2)@Switch("c") boolean convertToMoney,
 
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
-
+            @Switch("pr") Roles ping_role,
+            @Switch("ps") boolean ping_when_sent,
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
-        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
+        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
             (receiver, grant) -> {
                 Map<MilitaryUnit, Long> unitsToGrant = new HashMap<>();
                 units.forEach((unit, amount) -> {
@@ -415,11 +421,12 @@ public class GrantCommands {
             @Arg(value = "Have the transfer not deduct from balance", group = 2) @Switch("i") boolean ignore, 
             @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2) @Switch("c") boolean convertToMoney,
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
-
+            @Switch("pr") Roles ping_role,
+            @Switch("ps") boolean ping_when_sent,
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
-        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
+        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
             (receiver, grant) -> {
                 int cities = receiver.getCities();
                 Map<MilitaryUnit, Integer> unitsToGrant = new HashMap<>();
@@ -482,11 +489,12 @@ public class GrantCommands {
             @Arg(value = "Have the transfer not deduct from balance", group = 3) @Switch("i") boolean ignore,
             @Arg(value = "Have the transfer valued as cash in nation holdings", group = 3)@Switch("c") boolean convertToMoney,
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 4) @Switch("em") EscrowMode escrow_mode,
-
+            @Switch("pr") Roles ping_role,
+            @Switch("ps") boolean ping_when_sent,
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
-        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
+        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
                 (receiver, grant) -> {
                     int cities = receiver.getCities();
                     Map<MilitaryUnit, Integer> numAttacks = new LinkedHashMap<>(Map.of(
@@ -559,6 +567,8 @@ public class GrantCommands {
             @Arg(value = "Have the transfer valued as cash in nation holdings", group = 3) @Switch("c") boolean convertToMoney,
 
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 4) @Switch("em") EscrowMode escrow_mode,
+            @Switch("pr") Roles ping_role,
+            @Switch("ps") boolean ping_when_sent,
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
@@ -580,7 +590,7 @@ public class GrantCommands {
         if (!notes.isEmpty()) {
             notes.add("You can append partial city json to a city url to modify an existing build");
         }
-        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
+        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
                 (receiver, grant) -> {
                     JavaCity grantTo = new JavaCity(build);
                     try {
@@ -668,10 +678,12 @@ public class GrantCommands {
             @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2) @Switch("c") boolean convertToMoney,
 
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
+            @Switch("pr") Roles ping_role,
+            @Switch("ps") boolean ping_when_sent,
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
-        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, force,
+        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
             (receiver, grant) -> {
                 int cities = receiver.getCities();
                 Map<ResourceType, Double> perCity = db.getPerCityWarchest(receiver);

@@ -16208,7 +16208,9 @@ public class CM {
             public resources force(String value) {
                 return set("force", value);
             }
-
+            public resources ping_when_sent(String value) {
+                return set("ping_when_sent", value);
+            }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="withdraw")
             public static class self extends CommandRef {

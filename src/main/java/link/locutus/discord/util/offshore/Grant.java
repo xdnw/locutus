@@ -2,6 +2,7 @@ package link.locutus.discord.util.offshore;
 
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.EscrowMode;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -506,13 +507,16 @@ public class Grant {
             boolean convertToMoney,
             EscrowMode escrow_mode,
             boolean bypass_checks,
+            Roles pingRole,
+            boolean pingWhenSent,
             boolean force,
             BiFunction<DBNation, Grant, TransferResult> getCostInfo,
             DepositType baseNote,
-            Function<DBNation, List<Grant.Requirement>> getRequirements,
-            Roles pingRole,
-            MessageChannel pingWhenSent
+            Function<DBNation, List<Grant.Requirement>> getRequirements
     ) throws GeneralSecurityException, IOException {
+        if (receivers.size() > 1 && pingWhenSent) {
+            throw new IllegalArgumentException("The argument `ping_when_sent` can only be used with a single receiver");
+        }
         List<TransferResult> errors = new ArrayList<>();
         SpreadSheet sheet = receivers.size() > 1 ? SpreadSheet.create(db, SheetKey.GRANT_SHEET) : null;
         if (sheet != null) {
@@ -633,8 +637,7 @@ public class Grant {
         if (grantByReceiver.isEmpty()) {
             io.create().embed("No Grants Created", "Summary: `" + TransferResult.count(errors) + "`\n\n" +
                             "See attached `errors.csv`")
-                    .file("errors.csv", TransferResult.toFileString(errors))
-                    .send();
+                    .file("errors.csv", TransferResult.toFileString(errors)).send();
             return null;
         }
 
@@ -660,6 +663,7 @@ public class Grant {
                     .escrow_mode(escrow_mode != null ? escrow_mode.name() : null)
                     .bypassChecks(bypass_checks ? "true" : null)
                     .force(force ? "true" : null)
+                    .ping_when_sent(pingWhenSent ? "true" : null)
                     .toJson();
             StringBuilder msg = new StringBuilder();
             msg.append(ResourceType.toString(resources)).append("\n")

@@ -1333,9 +1333,14 @@ public class BankCommands {
 
 
                            @Arg("Skip checking receiver activity, blockade, VM etc.")
-                           @Switch("b") boolean bypass_checks,
+                                      @Switch("b") boolean bypass_checks,
+                                  @Switch("p") boolean ping_when_sent,
+                           @Switch("pr") Roles ping_role,
                            @Switch("f") boolean force) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
         Set<DBNation> nations = new HashSet<>(nationList.getNations());
+        if (ping_when_sent && nations.size() > 1) {
+            throw new IllegalArgumentException("Cannot set `ping_when_sent` for multiple nations");
+        }
 
         AllianceList allianceList = db.getAllianceList();
         if (allianceList == null) {
@@ -1442,10 +1447,16 @@ public class BankCommands {
                     String.valueOf(deduct_as_cash)).escrow_mode(
                     escrow_mode == null ? null : escrow_mode.name()).bypassChecks(
                     String.valueOf(bypass_checks)).force(
-                    String.valueOf(force)
-            ).toJson();
+                    String.valueOf(force)).ping_when_sent(
+                    ping_when_sent ? "true" : null).toJson();
 
-            return transfer(io, command, author, me, db, nation, transfer, bank_note, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, false, expire, decay, null, deduct_as_cash, escrow_mode, bypass_checks, force);
+            if (ping_role != null) {
+                Role role = ping_role.toRole2(db);
+                if (role != null) {
+                    io.send(role.getAsMention());
+                }
+            }
+            return transfer(io, command, author, me, db, nation, transfer, bank_note, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, false, expire, decay, null, deduct_as_cash, escrow_mode, bypass_checks, ping_when_sent, force);
         } else {
             UUID key = UUID.randomUUID();
             TransferSheet sheet = new TransferSheet(db).write(fundsToSendNations, new LinkedHashMap<>()).build();
@@ -1859,6 +1870,7 @@ public class BankCommands {
                 deduct_as_cash,
                 escrow_mode,
                 bypass_checks,
+                false,
                 force);
     }
 
@@ -2095,6 +2107,7 @@ public class BankCommands {
                                   @Arg("Transfer valued at cash equivalent in nation holdings") @Switch("c") boolean convertCash,
                                   @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
                                   @Switch("b") boolean bypassChecks,
+                                  @Switch("p") boolean ping_when_sent,
                                   @Switch("f") boolean force) throws IOException {
         if (existingTaxAccount) {
             if (taxAccount != null) throw new IllegalArgumentException("You can't specify both `tax_id` and `existingTaxAccount`");
@@ -2237,7 +2250,23 @@ public class BankCommands {
             return null;
         }
 
-        channel.create().embed(result.toTitleString(), result.toEmbedString()).send();
+        IMessageBuilder msg = channel.create().embed(result.toTitleString(), result.toEmbedString());
+
+        if (ping_when_sent && receiver.isNation()) {
+            User user = receiver.asNation().getUser();
+            if (user != null) {
+                MessageChannel notify = GuildKey.GRANT_REQUEST_CHANNEL.getOrNull(guildDb);
+                if (notify == null) notify = guildDb.getResourceChannel(receiver.getAlliance_id());
+                if (notify == null) notify = guildDb.getResourceChannel(0);
+                if (notify != null) {
+                    DiscordUtil.sendMessage(notify, user.getAsMention() + " " + result.getMessageJoined(false));
+                } else {
+                    msg.append(user.getAsMention());
+                }
+            }
+        }
+
+        msg.send();
         return null;
     }
 
