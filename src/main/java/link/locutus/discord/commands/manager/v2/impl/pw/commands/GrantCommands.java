@@ -43,6 +43,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -61,7 +62,7 @@ public class GrantCommands {
             "Escrow",
             "Policy/Project cost reduction"
     })
-    @RolePermission(Roles.ECON)
+    @RolePermission(Roles.MEMBER)
     @IsAlliance
     public String grantCity(
             @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
@@ -89,9 +90,15 @@ public class GrantCommands {
             @Arg(value = "Apply the specified project for determining cost", group = 4) @Switch("bda") Boolean domestic_affairs,
             @Switch("er") boolean exclude_city_refund,
 
+            @Switch("pr") Roles ping_role,
+            @Switch("cc") MessageChannel ping_when_sent,
+
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
+        if (!Roles.ECON.has(author, db.getGuild()) && (force || receivers.size() > 1 || receivers.iterator().next().getId() != me.getId())) {
+            throw new IllegalArgumentException("Missing role: " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
+        }
         Function<DBNation, Integer> getNumBuy = receiver -> {
             int currentCity = receiver.getCities();
             return Math.max(upTo ? amount - currentCity : amount, 0);

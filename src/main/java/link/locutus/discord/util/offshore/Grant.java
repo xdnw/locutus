@@ -19,6 +19,7 @@ import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -508,7 +509,9 @@ public class Grant {
             boolean force,
             BiFunction<DBNation, Grant, TransferResult> getCostInfo,
             DepositType baseNote,
-            Function<DBNation, List<Grant.Requirement>> getRequirements
+            Function<DBNation, List<Grant.Requirement>> getRequirements,
+            Roles pingRole,
+            MessageChannel pingWhenSent
     ) throws GeneralSecurityException, IOException {
         List<TransferResult> errors = new ArrayList<>();
         SpreadSheet sheet = receivers.size() > 1 ? SpreadSheet.create(db, SheetKey.GRANT_SHEET) : null;
