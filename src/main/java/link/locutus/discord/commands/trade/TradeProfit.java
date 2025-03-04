@@ -45,7 +45,8 @@ public class TradeProfit extends Command {
     @Override
     public String desc() {
         return "View an accumulation of all the net trades a nation made, grouped by nation.\n" +
-                "Add `-s` to view the result in sheet form";
+                "Add `-s` to view the result in sheet form\n" +
+                "Add `-o` to include outlier trades";
     }
 
     @Override
@@ -86,6 +87,8 @@ public class TradeProfit extends Command {
 
         Map<ResourceType, Long> salesPrice = new HashMap<>();
 
+        boolean includeOutliers = flags.contains('o');
+
         int numTrades = 0;
         for (DBTrade trade : trades) {
             Integer buyer = trade.getBuyer();
@@ -99,7 +102,7 @@ public class TradeProfit extends Command {
             if (!Double.isFinite(per)) continue;
             ResourceType type = trade.getResource();
 
-            if (per <= 1 || (per > 10000 || (type == ResourceType.FOOD && per > 1000))) {
+            if (!includeOutliers && (per <= 1 || (per > 10000 || (type == ResourceType.FOOD && per > 1000)))) {
                 continue;
             }
 
