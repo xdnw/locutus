@@ -359,6 +359,7 @@ public class GrantCommands {
             @Arg(value = "Multiple the units specified by the receivers cities", group = 0) boolean scale_per_city,
             @Arg(value = "Only send funds for units the receiver is lacking", group = 0) boolean only_missing_units,
             @Arg(value = "Only send funds the receiver is lacking from the amount", group = 0) @Switch("m") boolean onlySendMissingFunds,
+            @Arg(value = "Don't send any cash, only other resources", group = 0) @Switch("nc") boolean no_cash,
 
             @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation depositsAccount,
             @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance useAllianceBank,
@@ -397,8 +398,12 @@ public class GrantCommands {
                 unitsToGrant.forEach((unit, amount) -> {
                     cost.add(unit.getCost(amount.intValue()));
                 });
+                double[] costArr = cost.build();
+                if (no_cash) {
+                    costArr[0] = 0;
+                }
                 grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/nation/military/> and purchase `" + unitsToGrant + "`");
-                grant.setCost(f -> cost.build()).setType(DepositType.WARCHEST.withValue());
+                grant.setCost(f -> costArr).setType(DepositType.WARCHEST.withValue());
                 return null;
             },
             DepositType.WARCHEST, receiver -> {
