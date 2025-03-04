@@ -958,9 +958,11 @@ public class IACommands {
         }
 
         Set<Integer> lackingIds = lacking.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
+        Set<String> userMentions = lacking.stream().map(f -> f.getUserId()).filter(f -> f != null).map(f -> "<@" + f + ">").collect(Collectors.toSet());
 
         StringBuilder response = new StringBuilder("**Nations lacking spies**");
         response.append("\nIDs: " + StringMan.getString(lackingIds));
+        response.append("\nUser Mentions: `" + StringMan.join(userMentions, "") + "`");
         for (DBNation nation : lacking) {
             response.append("\n" + nation.getNation() + ": " + nation.getSpies() + "/" + nation.getSpyCap());
         }
