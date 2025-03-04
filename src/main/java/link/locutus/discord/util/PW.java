@@ -1507,18 +1507,18 @@ public final class PW {
         attStrength = Math.pow(attStrength, 0.75);
         defStrength = Math.pow(defStrength, 0.75);
 
-        double a1 = attStrength * 0.4;
-        double a2 = attStrength;
-        double b1 = defStrength * 0.4;
-        double b2 = defStrength;
+        double attMin = attStrength * 0.4;
+        double attMax = attStrength;
+        double defMin = defStrength * 0.4;
+        double defMax = defStrength;
 
         // Skip formula for common cases (for performance)
         if (attStrength <= 0) return success == 0 ? 1 : 0;
         if (defStrength * 2.5 <= attStrength) return success == 3 ? 1 : 0;
-        if (a2 <= b1 || b2 <= a1) return success == 0 ? 1 : 0;
+        if (attMax <= defMin || defMax <= attMin) return success == 0 ? 1 : 0;
 
-        double sampleSpace = (a2 - a1) * (b2 - b1);
-        double overlap = Math.min(a2, b2) - Math.max(a1, b1);
+        double sampleSpace = (attMax - attMin) * (defMax - defMin);
+        double overlap = Math.min(attMax, defMax) - Math.max(attMin, defMin);
         double p = (overlap * overlap * 0.5) / sampleSpace;
         if (attStrength > defStrength) p = 1 - p;
 

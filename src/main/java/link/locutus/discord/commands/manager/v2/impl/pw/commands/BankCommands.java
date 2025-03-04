@@ -158,7 +158,13 @@ public class BankCommands {
                                    @Arg(value = "Number of days of city raw resource consumption to keep\n" +
                                            "Recommended value: 5", group = 2)
                                        @Range(min = 0)
-                                   @Switch("r") Double rawsDays,
+                                       @Switch("r") Double rawsDays,
+
+                                   @Arg(value = "Alternatively specify a number of days of raws for each individual resource type\n" +
+                                           "Overrides any value set for `rawsDays`\n" +
+                                           "Ommitted resources will use 0 if `rawsDays` is not provided", group = 2)
+                                       @Range(min = 0)
+                                       @Switch("rb") Map<ResourceType, Double> raws_days_by_resource,
 
                                    @Arg(value = "Do not keep money above the daily login bonus\n" +
                                            "Requires `rawsDays` to be set", group = 2) @Switch("d") boolean rawsNoDailyCash,
@@ -175,6 +181,9 @@ public class BankCommands {
                                    @Switch("kt") Map<ResourceType, Double> keepTotal,
                                    @Arg(value = "Keep resources for purchasing specific units", group = 2)
                                    @Switch("ur") Map<MilitaryUnit, Long> unitResources,
+
+                                   @Arg(value = "Do not keep any money for units", group = 2)
+                                   @Switch("uc") boolean units_no_cash,
 
                                    @Arg(value = "Note to add to the deposit\n" +
                                            "Defaults to deposits", group = 3)
@@ -196,16 +205,16 @@ public class BankCommands {
         if (customMessage != null && !dm && !mailResults) {
             throw new IllegalArgumentException("Cannot specify `customMessage` without specifying `dm` or `mailResults`");
         }
-        if (amount != null && (rawsDays != null || keepWarchestFactor != null || keepPerCity != null || keepTotal != null || unitResources != null)) {
+        if (amount != null && (rawsDays != null || raws_days_by_resource != null || keepWarchestFactor != null || keepPerCity != null || keepTotal != null || unitResources != null)) {
             throw new IllegalArgumentException("Cannot specify `amount` to deposit with other deposit modes.");
         }
-        if (rawsNoDailyCash && rawsDays == null) {
+        if (rawsNoDailyCash && (rawsDays == null && raws_days_by_resource == null)) {
             throw new IllegalArgumentException("Cannot specify `rawsNoDailyCash` (`-d`) without specifying `rawsDays`");
         }
-        if (rawsNoCash && rawsDays == null) {
+        if (rawsNoCash && (rawsDays == null && raws_days_by_resource == null)) {
             throw new IllegalArgumentException("Cannot specify `rawsNoCash` (`-c`) without specifying `rawsDays`");
         }
-        if (sheetAmounts != null && (rawsDays != null || keepWarchestFactor != null || keepPerCity != null || keepTotal != null || unitResources != null)) {
+        if (sheetAmounts != null && (rawsDays != null || raws_days_by_resource == null || keepWarchestFactor != null || keepPerCity != null || keepTotal != null || unitResources != null)) {
             throw new IllegalArgumentException("Cannot specify `sheetAmounts` to deposit with other deposit modes.");
         }
         if (nations.isEmpty()) return "No nations found";
@@ -260,16 +269,50 @@ public class BankCommands {
 
         AllianceList allianceList = new SimpleNationList(remainingNations).toAllianceList();
 
-        if (rawsDays != null) {
-            if (rawsDays < 1/12d) {
-                throw new IllegalArgumentException("rawsDays must be > 1 turns (1/12 days)");
+        if (rawsDays != null || raws_days_by_resource != null) {
+            if (rawsDays != null && rawsDays < 1/12d) {
+                throw new IllegalArgumentException("rawsDays must be > 1 turns (1/12 days), not: `" + rawsDays + "`");
             }
+            if (raws_days_by_resource != null) {
+                for (Map.Entry<ResourceType, Double> entry : raws_days_by_resource.entrySet()) {
+                    if (entry.getValue() < 1/12d) {
+                        throw new IllegalArgumentException("Each value of `raws_days_by_resource` must be > 1 turns (1/12 days), not: `" + entry.getValue() + "` for `" + entry.getKey() + "`");
+                    }
+                }
+            }
+            double[] daysByResource = ResourceType.getBuffer();
+            if (rawsDays != null) {
+                for (ResourceType type : ResourceType.values) {
+                    daysByResource[type.ordinal()] = rawsDays;
+                }
+            }
+            if (raws_days_by_resource != null) {
+                for (Map.Entry<ResourceType, Double> entry : raws_days_by_resource.entrySet()) {
+                    daysByResource[entry.getKey().ordinal()] = entry.getValue();
+                }
+            }
+
             allianceList.updateCities();
-            Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> funds = allianceList.calculateDisburse(nations, null, rawsDays, false, false, true, rawsNoDailyCash, rawsNoCash, true, false);
-            for (Map.Entry<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> entry : funds.entrySet()) {
+            Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> funds1d = allianceList.calculateDisburse(nations, null, 1, false, false, true, rawsNoDailyCash, rawsNoCash, true, false);
+            Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> funds2d = allianceList.calculateDisburse(nations, null, 2, false, false, true, rawsNoDailyCash, rawsNoCash, true, false);
+
+            for (Map.Entry<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> entry : funds1d.entrySet()) {
                 DBNation nation = entry.getKey();
                 OffshoreInstance.TransferStatus status = entry.getValue().getKey();
-                double[] rss = entry.getValue().getValue();
+                double[] rss1d = entry.getValue().getValue();
+                double[] rss2d = funds2d.get(nation).getValue();
+                // multiply by amt
+                double[] rss = ResourceType.getBuffer();
+                for (int i = 0; i < rss1d.length; i++) {
+                    double days = daysByResource[i];
+                    if (days == 0) continue;
+                    if (Math.round(rss1d[i] * 100) == Math.round(rss2d[i] * 100)) {
+                        rss[i] = rss1d[i];
+                    } else {
+                        rss[i] = rss1d[i] * days;
+                    }
+                }
+
                 if (rawsNoDailyCash) {
                     rss[ResourceType.MONEY.ordinal()] = Math.max(50000 * nation.getCities(), rss[ResourceType.MONEY.ordinal()]);
                 }
@@ -325,6 +368,9 @@ public class BankCommands {
                 double[] rss = ResourceType.getBuffer();
                 for (Map.Entry<MilitaryUnit, Long> entry : unitResources.entrySet()) {
                     entry.getKey().addCost(rss, entry.getValue().intValue(), nation::getResearch);
+                }
+                if (units_no_cash) {
+                    rss[ResourceType.MONEY.ordinal()] = 0;
                 }
                 toKeep = ResourceType.max(toKeep, rss);
             }

@@ -890,7 +890,8 @@ public class TradeCommands {
     @Command(desc = "View an accumulation of all the net trades nations have made over a time period", viewable = true)
     public String tradeProfit(Set<DBNation> nations,
                               @Arg("Date to start from")
-                              @Timestamp long time) throws GeneralSecurityException, IOException {
+                              @Timestamp long time,
+                              @Switch("o") boolean include_outliers) throws GeneralSecurityException, IOException {
         Set<Integer> nationIds = nations.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
 
         List<DBTrade> trades = nationIds.size() > 1000 ? Locutus.imp().getTradeManager().getTradeDb().getTrades(time) : Locutus.imp().getTradeManager().getTradeDb().getTrades(nationIds, time);
@@ -918,8 +919,10 @@ public class TradeCommands {
             double per = trade.getPpu();
             ResourceType type = trade.getResource();
 
-            if (per <= 1 || (per > 10000 || (type == ResourceType.FOOD && per > 1000))) {
-                continue;
+            if (!include_outliers) {
+                if (per <= 1 || (per > 10000 || (type == ResourceType.FOOD && per > 1000))) {
+                    continue;
+                }
             }
 
             int sign = (nationIds.contains(seller) ^ trade.isBuy()) ? 1 : -1;

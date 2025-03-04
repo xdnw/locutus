@@ -634,8 +634,13 @@ public class Grant {
                 sheet.addRow(row);
             }
         }
+        String footer = "";
+        if (receivers.size() == 1) {
+            footer = "Receiver: " + receivers.iterator().next().getMarkdownUrl();
+        }
+
         if (grantByReceiver.isEmpty()) {
-            io.create().embed("No Grants Created", "Summary: `" + TransferResult.count(errors) + "`\n\n" +
+            io.create().embed("No Grants Created", "Summary: `" + TransferResult.count(errors) + "`\n" + footer + "\n" +
                             "See attached `errors.csv`")
                     .file("errors.csv", TransferResult.toFileString(errors)).send();
             return null;
@@ -643,6 +648,12 @@ public class Grant {
 
         String typeStr = (ignore ? DepositType.IGNORE : DepositType.GRANT).name();
         if (sheet == null) {
+            if (pingRole != null) {
+                Role role = pingRole.toRole2(db);
+                if (role != null) {
+                    io.send(role.getAsMention());
+                }
+            }
             DBNation receiver = receivers.iterator().next();
             Grant grant = grantByReceiver.get(receiver);
             double[] resources = grant.cost();
