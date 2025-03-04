@@ -75,6 +75,10 @@ public class DBWar {
         }
     }
 
+    public int getResearchBits() {
+        return costBits;
+    }
+
     public static final class DBWarKey {
         public final int id;
         public DBWarKey(int id) {

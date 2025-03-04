@@ -276,6 +276,7 @@ public class VictoryCursor extends FailedCursor {
                 infra_destroyed_percent_cents = 0;
             }
 
+            if (looted == null) looted = ResourceType.getBuffer();
             for (ResourceType type : ResourceType.values) {
                 if (type == ResourceType.CREDITS) continue;
                 if (input.readBit()) looted[type.ordinal()] = input.readVarLong() * 0.01d;

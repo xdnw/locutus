@@ -992,7 +992,7 @@ public class TradeCommands {
 
     @Command(desc = "View an accumulation of all the net money trades a nation made, grouped by nation\n" +
             "Money trades are selling resources for close to $0 or buying for very large money amounts", viewable = true)
-    public String moneyTrades(TradeManager manager, DBNation nation,
+    public String moneyTrades(TradeManager manager, @AllowDeleted DBNation nation,
                               @Arg("Date to start from")
                               @Timestamp long time, @Switch("f") boolean forceUpdate,
                               @Arg("Return a deposits add command for each grouping")

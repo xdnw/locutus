@@ -238,38 +238,69 @@ public class TradeManager {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-            } else {
-                Map<ResourceType, Integer> initDefaults = new EnumMap<>(ResourceType.class);
-                initDefaults.put(ResourceType.MONEY, 1);
-                initDefaults.put(ResourceType.CREDITS, 25_000_000);
-                initDefaults.put(ResourceType.FOOD, 100);
-                initDefaults.put(ResourceType.COAL, 3800);
-                initDefaults.put(ResourceType.OIL, 3700);
-                initDefaults.put(ResourceType.URANIUM, 3250);
-                initDefaults.put(ResourceType.LEAD, 4100);
-                initDefaults.put(ResourceType.IRON, 3900);
-                initDefaults.put(ResourceType.BAUXITE, 3800);
-                initDefaults.put(ResourceType.GASOLINE, 3150);
-                initDefaults.put(ResourceType.MUNITIONS, 1850);
-                initDefaults.put(ResourceType.STEEL, 3800);
-                initDefaults.put(ResourceType.ALUMINUM, 2650);
-                for (ResourceType type : ResourceType.values) {
-                    int def = initDefaults.getOrDefault(type, 3000);
-                    low[type.ordinal()] = def;
-                    high[type.ordinal()] = def;
-                    lowAvg[type.ordinal()] = def;
-                    highAvg[type.ordinal()] = def;
-                }
             }
         } else {
+            int[] buyPerRss = new int[ResourceType.values.length];
+            int[] sellPerRss = new int[ResourceType.values.length];
+            for (DBTrade trade : trades) {
+                if (trade.isBuy()) {
+                    buyPerRss[trade.getResource().ordinal()]++;
+                } else {
+                    sellPerRss[trade.getResource().ordinal()]++;
+                }
+            }
             Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> averages = getAverage(trades);
             lowAvg = ResourceType.resourcesToArray(averages.getKey());
             highAvg = ResourceType.resourcesToArray(averages.getValue());
+            // reset lowAvg and highAvg for resources with less than 10 trades
+            for (ResourceType type : ResourceType.values) {
+                if (type == ResourceType.MONEY || type == ResourceType.CREDITS) continue;
+                int i = type.ordinal();
+                if (buyPerRss[i] < 10 || sellPerRss[i] < 10) {
+                    lowAvg[i] = 0;
+                    highAvg[i] = 0;
+                }
+            }
         }
+
+        Map<ResourceType, Integer> initDefaults = new EnumMap<>(ResourceType.class);
+        initDefaults.put(ResourceType.MONEY, 1);
+        initDefaults.put(ResourceType.CREDITS, 50_000_000);
+        if (Settings.INSTANCE.TEST) {
+            initDefaults.put(ResourceType.FOOD, 10);
+            initDefaults.put(ResourceType.COAL, 25);
+            initDefaults.put(ResourceType.OIL, 25);
+            initDefaults.put(ResourceType.URANIUM, 25);
+            initDefaults.put(ResourceType.LEAD, 25);
+            initDefaults.put(ResourceType.IRON, 25);
+            initDefaults.put(ResourceType.BAUXITE, 25);
+            initDefaults.put(ResourceType.GASOLINE, 150);
+            initDefaults.put(ResourceType.MUNITIONS, 100);
+            initDefaults.put(ResourceType.STEEL, 200);
+            initDefaults.put(ResourceType.ALUMINUM, 100);
+        } else {
+            initDefaults.put(ResourceType.FOOD, 100);
+            initDefaults.put(ResourceType.COAL, 3800);
+            initDefaults.put(ResourceType.OIL, 3700);
+            initDefaults.put(ResourceType.URANIUM, 3250);
+            initDefaults.put(ResourceType.LEAD, 4100);
+            initDefaults.put(ResourceType.IRON, 3900);
+            initDefaults.put(ResourceType.BAUXITE, 3800);
+            initDefaults.put(ResourceType.GASOLINE, 3150);
+            initDefaults.put(ResourceType.MUNITIONS, 1850);
+            initDefaults.put(ResourceType.STEEL, 3800);
+            initDefaults.put(ResourceType.ALUMINUM, 2650);
+        }
+        for (ResourceType type : ResourceType.values) {
+            int def = initDefaults.getOrDefault(type, 3000);
+            if (lowAvg[type.ordinal()] <= 0) lowAvg[type.ordinal()] = def;
+            if (highAvg[type.ordinal()] <= 0) highAvg[type.ordinal()] = def;
+        }
+
         lowAvg[0] = 1;
-        lowAvg[ResourceType.CREDITS.ordinal()] = 25_000_000;
+        lowAvg[ResourceType.CREDITS.ordinal()] = 50_000_000;
         highAvg[0] = 1;
-        highAvg[ResourceType.CREDITS.ordinal()] = 25_000_000;
+        highAvg[ResourceType.CREDITS.ordinal()] = 50_000_000;
 
         loadActiveTrades();
         return this;
@@ -992,6 +1023,12 @@ public class TradeManager {
             setRadiation(Continent.ANTARCTICA, info.getAntarctica());
 
             this.gameDate = gameInfo.getGame_date();
+
+            Double cityAvg = gameInfo.getCity_average();
+            if (cityAvg != null && Math.round(cityAvg * 10000) != Math.round(PW.City.CITY_AVERAGE * 10000)) {
+                Locutus.imp().getDiscordDB().setCityAverage(cityAvg);
+                PW.City.CITY_AVERAGE = cityAvg;
+            }
         } catch (RuntimeException ignore) {
             ignore.printStackTrace();
             // update radiation values to current turn
@@ -1000,7 +1037,11 @@ public class TradeManager {
             }
         }
 
-        return radiation.get(continent).getKey();
+        Map.Entry<Double, Long> contRad = radiation.get(continent);
+        if (contRad == null) {
+            return 0;
+        }
+        return contRad.getKey();
     }
 
     private Instant gameDate;

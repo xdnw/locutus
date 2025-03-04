@@ -1708,6 +1708,7 @@ public class WarDB extends DBMainV2 {
         for (DBWar war : dbWars) {
             activeWarsToFetch.remove(war.getWarId());
         }
+
         updateWars(dbWars, null, eventConsumer, true);
 
         if (!activeWarsToFetch.isEmpty()) {
@@ -1885,7 +1886,9 @@ public class WarDB extends DBMainV2 {
         for (DBWar war : dbWars) {
             DBWar existing = warsById.get(war);
             if ((existing == null && !war.isActive()) || (existing != null && (war.getStatus() == existing.getStatus() ||
-                    (!existing.isActive() && (existing.getStatus() != WarStatus.EXPIRED || existing.getTurnsLeft() <= 0))))) continue;
+                    (!existing.isActive() && (existing.getStatus() != WarStatus.EXPIRED || existing.getTurnsLeft() <= 0))))) {
+                continue;
+            }
 
             prevWars.add(existing == null ? null : new DBWar(existing));
             newWars.add(war);
@@ -1986,7 +1989,7 @@ public class WarDB extends DBMainV2 {
 //            }
 //        }
 
-        String query = "INSERT OR REPLACE INTO `wars`(`id`, `attacker_id`, `defender_id`, `attacker_aa`, `defender_aa`, `war_type`, `status`, `date`, `attCities`, `defCities`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String query = "INSERT OR REPLACE INTO `wars`(`id`, `attacker_id`, `defender_id`, `attacker_aa`, `defender_aa`, `war_type`, `status`, `date`, `attCities`, `defCities`, `research`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         ThrowingBiConsumer<DBWar, PreparedStatement> setStmt = (war, stmt) -> {
             stmt.setInt(1, war.warId);
@@ -1999,6 +2002,7 @@ public class WarDB extends DBMainV2 {
             stmt.setLong(8, war.getDate());
             stmt.setInt(9, war.getAttCities());
             stmt.setInt(10, war.getDefCities());
+            stmt.setInt(11, war.getResearchBits());
         };
         if (values.size() == 1) {
             DBWar value = values.iterator().next();

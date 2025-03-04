@@ -305,6 +305,8 @@ public class CommandManager2 {
 
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "debug"), "newOffshore", "new_offshore");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "bot"), "upsertCommands", "update_commands");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "syncCityAvg", "city_avg");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "syncAlliances", "alliances");
 
 //        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "openMenu", "open");
 //        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "deleteMenu", "delete");

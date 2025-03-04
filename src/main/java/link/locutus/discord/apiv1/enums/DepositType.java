@@ -25,6 +25,7 @@ public enum DepositType {
     LAND(GRANT, "Go to your city <https://{test}politicsandwar.com/cities/> and purchase the desired land", "A grant for a land level. Can be added with `#city`", true),
     BUILD(GRANT, "Go to <https://{test}politicsandwar.com/city/improvements/bulk-import/> and import the desired build", "A grant for a city build. The value is optional and is equal to `infra << 32 | land` (see: <https://bit-calculator.com/bit-shift-calculator> ). Can be added with `#city` / `#infra` / `#land`", true),
     WARCHEST(GRANT, "Go to <https://{test}politicsandwar.com/nation/military/> and purchase the desired units", "A grant for war resources", true),
+    RESEARCH(GRANT, "Go to <https://{test}politicsandwar.com/nation/military/research/> and purchase the desired research", "A grant for research", true),
     RAWS(GRANT, "Raw resources for city consumption", "", true),
 
     EXPIRE(GRANT, "Will be excluded from deposits after the specified time e.g. `#expire=60d`", "", false),

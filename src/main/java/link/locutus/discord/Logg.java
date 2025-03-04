@@ -21,6 +21,7 @@ public class Logg {
     private static final boolean DEBUG = true;
 
     public static void text(Object obj) {
+        System.out.println(":||ERROR " + obj);
         LOGGER.error(obj);
     }
 

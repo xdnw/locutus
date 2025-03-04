@@ -1,5 +1,6 @@
 package link.locutus.wiki.pages;
 
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.wiki.BotWikiGen;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -84,11 +85,31 @@ public class WikiDepositsPage extends BotWikiGen {
                 "Set the arguments for the categories you do not wish to reset to false",
                 CM.deposits.reset.cmd.nations("").ignoreGrants("true").ignoreLoans("true").ignoreTaxes("true").ignoreBankDeposits("true").ignoreEscrow("true").toString(),
                 commandMarkdownSpoiler(CM.deposits.reset.cmd),
+                "Note: You can also create a deposit sheet and use the bulk add balance or reset to adjust balances via a spreadsheet",
                 "# Allow members to withdraw or offshore",
                 "See: " + linkPage("banking"),
                 "# Resource conversion",
-                "Allow members to withdraw any resource as long as their balance has a positive market value",
+                "Some of these settings will require member withdrawals to already be enabled",
+                "## Allow members to deposit with `#cash` bank note",
+                "Allow members to use `#cash` to have resources deposited into their account as their weekly average market value (configurable)",
                 commandMarkdownSpoiler(CM.settings_bank_access.RESOURCE_CONVERSION.cmd),
+                "## Set conversion rates",
+                """
+                Set the rate (as a percent of market value) each resource converts to cash
+                defaults to 100% of weekly market average
+                `*` matches all nations. A filter can be e.g. a tax bracket, a discord role, spreadsheet etc.""",
+                CM.settings_bank_access.ADD_RSS_CONVERSION_RATE.cmd.filter("*").prices("{food=60, ... }").toString(),
+                "## Force conversion of all new deposits",
+                commandMarkdownSpoiler(CM.settings_bank_access.FORCE_RSS_CONVERSION.cmd),
+                "## View rates",
+                CM.settings.info.cmd.key(GuildKey.RSS_CONVERSION_RATES.name()).toString(),
+                "## Restrict resource conversion to a discord role",
+                "Enable resource conversion for people with a role (instead of everyone)",
+                CM.role.setAlias.cmd.locutusRole(Roles.RESOURCE_CONVERSION.name()).discordRole("@discordRole").toString(),
+                "## Allow negative resource withdrawals",
+                "As long as a member's total balance value remains positive",
+                // /settings_bank_access allow_negative_rss enabled:Tru
+                commandMarkdownSpoiler(CM.settings_bank_access.ALLOW_NEGATIVE_RESOURCES.cmd),
                 "# Alerts",
                 commandMarkdownSpoiler(CM.settings_bank_info.ADDBALANCE_ALERT_CHANNEL.cmd),
                 CM.role.setAlias.cmd.locutusRole(Roles.ECON_WITHDRAW_ALERTS.name()).discordRole("@Econ Withdraw Alerts").toString(),

@@ -546,7 +546,8 @@ public class ParametricCallable implements ICommand {
             return method.invoke(callOn, paramVals);
         } catch (IllegalArgumentException e) {
             e.printStackTrace();
-            System.out.println(e.getMessage());
+            System.out.println("Error running " +
+                    method.getDeclaringClass().getSimpleName() + "#" + method.getName() + "\n" + e.getMessage());
             throw new CommandUsageException(this, e.getMessage());
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);

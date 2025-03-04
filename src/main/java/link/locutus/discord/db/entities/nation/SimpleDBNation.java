@@ -19,6 +19,10 @@ public class SimpleDBNation extends DBNation {
         return data;
     }
 
+    public DBNationData getData() {
+        return data;
+    }
+
     @Override
     public DBNation copy() {
         return new SimpleDBNation(new DBNationData(data));

@@ -52,7 +52,7 @@ public class OptimalBuild extends Command {
 
     @Override
     public boolean checkPermission(Guild server, User user) {
-        return Roles.MEMBER.has(user, server);
+        return true;
     }
 
     @Override

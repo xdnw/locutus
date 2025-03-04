@@ -1612,6 +1612,7 @@ public class PoliticsAndWarV3 {
     public GameInfo getGameInfo() {
         Game_infoQueryResponse result = request(PagePriority.API_GAME_TIME, false, new Game_infoQueryRequest(), new GameInfoResponseProjection()
                         .game_date()
+//                        .city_average()
                         .radiation(new RadiationResponseProjection().all$()),
                 Game_infoQueryResponse.class);
         if (result.game_info() == null) throw new GraphQLException("Error fetching game info " + result.toString());

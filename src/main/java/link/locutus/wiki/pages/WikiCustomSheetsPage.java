@@ -117,6 +117,7 @@ public class WikiCustomSheetsPage extends BotWikiGen {
                 """,
                 commandMarkdownSpoiler(CM.sheet_custom.auto.cmd),
                 // Ensure the bot owner has edit access to a sheet
+                "Note: You can prefix the tab name with a description using a bar e.g. `Tab Name | nation:Rose,#position>1`",
                 "## Selection alias",
                 "A name you set for a selection",
                 "To reference your named selection, use e.g. `$myAlias` or `select:myAlias`",

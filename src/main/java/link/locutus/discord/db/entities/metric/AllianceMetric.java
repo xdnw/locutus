@@ -983,7 +983,7 @@ public enum AllianceMetric implements IAllianceMetric {
         public Double apply(DBAlliance alliance) {
             double total = 0;
             for (DBNation nation : alliance.getMemberDBNations()) {
-                total += nation.getResearchValue();
+                total += ResourceType.convertedTotal(Research.cost(nation.getResearchLevels()));
             }
             return total;
         }
@@ -995,7 +995,7 @@ public enum AllianceMetric implements IAllianceMetric {
             double total = 0;
             Set<DBNation> nations = alliance.getMemberDBNations();
             for (DBNation nation : nations) {
-                total += nation.getResearchValue();
+                total += ResourceType.convertedTotal(Research.cost(nation.getResearchLevels()));
             }
             return total / nations.size();
         }

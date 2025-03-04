@@ -5,6 +5,7 @@ import com.google.common.reflect.TypeToken;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.politicsandwar.graphql.model.GameInfo;
 import it.unimi.dsi.fastutil.bytes.ByteOpenHashSet;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -430,7 +431,12 @@ public final class PW {
         }
 
         public static void updateCityAverage() {
-            Locutus.imp().getV3().getGameInfo()
+            GameInfo gameInfo = Locutus.imp().getV3().getGameInfo();
+            Double avg = gameInfo.getCity_average();
+            if (avg != null) {
+                CITY_AVERAGE = avg;
+                Locutus.imp().getDiscordDB().setCityAverage(avg);
+            }
         }
 
         public static double CITY_AVERAGE = -1;

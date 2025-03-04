@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 
@@ -99,13 +100,33 @@ public class AttackCommands {
                             @Switch("ud") boolean unequipDefenderSoldiers,
 
                             @Switch("ap") Set<Project> attackerProjects,
-                            @Switch("dp") Set<Project> defenderProjects
+                            @Switch("dp") Set<Project> defenderProjects,
+
+                            @Switch("ai") Integer attacker_infra,
+                            @Switch("di") Integer defender_infra
     ) {
         if (att_ground_control && attack != AttackType.GROUND) {
             throw new IllegalArgumentException("Ground control can only be used with ground attacks, not " + attack.name());
         }
         DBNation attacker = (selfIsDefender ? enemy : me).copy();
         DBNation defender = (selfIsDefender ? me : enemy).copy();
+        if (attacker_infra != null) {
+            attacker = new SimpleDBNation(((SimpleDBNation) attacker).getData()) {
+                @Override
+                public double maxCityInfra() {
+                    return attacker_infra;
+                }
+            };
+        }
+        if (defender_infra != null) {
+            defender = new SimpleDBNation(((SimpleDBNation) defender).getData()) {
+                @Override
+                public double maxCityInfra() {
+                    return defender_infra;
+                }
+            };
+        }
+
         if (attackerMilitary != null) {
             for (Map.Entry<MilitaryUnit, Long> entry : attackerMilitary.entrySet()) {
                 attacker.setUnits(entry.getKey(), entry.getValue().intValue());
@@ -138,13 +159,14 @@ public class AttackCommands {
         StringBuilder response = new StringBuilder();
         response.append("**" + attack.name() + "**: ");
 
+        DBNation finalDefender = defender;
         BiFunction<MilitaryUnit, Integer, Double> getCost = (unit, amount) -> {
             if (unit == MilitaryUnit.INFRASTRUCTURE) {
-                double start = defender.maxCityInfra();
+                double start = finalDefender.maxCityInfra();
                 double end = Math.max(start - amount, 0);
                 return PW.City.Infra.calculateInfra(end, start);
             }
-            return unit.getConvertedCost(defender::getResearch) * amount;
+            return unit.getConvertedCost(finalDefender::getResearch) * amount;
         };
         Function<Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>>, String> getAvgStr = (entry) -> {
             long avg = Math.round((entry.getValue().getKey() + entry.getValue().getValue()) / 2d);
@@ -184,6 +206,9 @@ public class AttackCommands {
             case AIRSTRIKE_MONEY:
             case AIRSTRIKE_SHIP:
             case AIRSTRIKE_AIRCRAFT:
+            case NAVAL_INFRA:
+            case NAVAL_GROUND:
+            case NAVAL_AIR:
             case NAVAL: {
                 double attStr = 0;
                 double defStr = 0;
@@ -245,15 +270,5 @@ public class AttackCommands {
         response.append("\n\nNote: For a guaranteed IT, you need 3.4x enemy strength");
 
         return response.toString();
-    }
-
-    public String nameSuccess(int type) {
-        return switch (type) {
-            case 0 -> "Failure";
-            case 1 -> "Pyrrhic";
-            case 2 -> "Moderate";
-            case 3 -> "Immense";
-            default -> "UNKNOWN";
-        };
     }
 }

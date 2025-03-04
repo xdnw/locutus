@@ -167,6 +167,27 @@ public class AdminCommands {
         return "Done! (Restart your discord client to see changes)";
     }
 
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String syncCityAvg(@Default Double force_value) {
+        if (force_value != null) {
+            PW.City.CITY_AVERAGE = force_value;
+            Locutus.imp().getDiscordDB().setCityAverage(force_value);
+            return "Force set city average to " + force_value;
+        } else {
+            PW.City.updateCityAverage();
+            return "Updated city average to " + PW.City.CITY_AVERAGE;
+        }
+    }
+
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String syncAlliances() {
+        Locutus.imp().getNationDB().updateAlliances(f -> {}, Event::post);
+        return "Done!";
+    }
+
+
     @Command(desc = "Sync city refund data")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncCityRefund() throws IOException, ParseException {
@@ -2264,7 +2285,6 @@ public class AdminCommands {
     @Command(desc = "Fetch and update nations from the API\n" +
             "If no nations are specified, then all will be fetched\n" +
             "Note: This does not update cities")
-    @RolePermission(value = Roles.ADMIN, root = true)
     public String syncNations(NationDB db, @Default Set<DBNation> nations, @Switch("d") boolean dirtyNations) throws IOException, ParseException {
         if (dirtyNations) {
             db.updateDirtyNations(Event::post);
@@ -2579,7 +2599,7 @@ public class AdminCommands {
             return !contains;
         });
 
-        if (forceUpdate && !uidsByNationExisting.isEmpty()) {
+        if (forceUpdate) {
             Set<DBNation> nationsToUpdate = new HashSet<>();
 
             CompletableFuture<IMessageBuilder> msgFuture = io.sendMessage("Updating...");

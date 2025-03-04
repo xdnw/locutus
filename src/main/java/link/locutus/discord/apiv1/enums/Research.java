@@ -5,10 +5,7 @@ import link.locutus.discord.util.PW;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
-import java.util.Arrays;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -73,6 +70,18 @@ public enum Research {
         }
     }
 
+    public static void main(String[] args) {
+        Map<Research, Integer> start = new HashMap<>();
+        Map<Research, Integer> end = new HashMap<>();
+        start.put(AIR_CAPACITY, 10);
+        start.put(GROUND_CAPACITY, 5);
+
+        end.put(AIR_CAPACITY, 10);
+        end.put(GROUND_CAPACITY, 6);
+        Map<ResourceType, Double> cost = cost(start, end, 0.95);
+        System.out.println(ResourceType.toString(cost));
+    }
+
     public int getLevel(int researchBits) {
         return (researchBits >> (ordinal() * 5)) & 0b11111;
     }
@@ -83,23 +92,27 @@ public enum Research {
     }
 
     @Command
-    public Map<ResourceType, Double> getCost(int treeUpgrades, int totalUpgrades, int startLevel, int endLevel) {
+    public Map<ResourceType, Double> getCost(int treeUpgrades, int totalUpgrades, int startLevel, int endLevel, double factor) {
         if (endLevel > 20) throw new IllegalArgumentException("End level cannot be greater than 20");
         if (startLevel < 0) throw new IllegalArgumentException("Start level cannot be less than 0");
 
         int numUpgrades = endLevel - startLevel;
         double[] cost = ResourceType.getBuffer();
 
-        for (int i = 0; i < numUpgrades; i++) {
-            cost[ResourceType.MONEY.ordinal()] += 1000000 * (totalUpgrades + i) + (75000 * Math.pow((totalUpgrades + i), 1.75) * (totalUpgrades + i) / 20);
+        for (int i = 1; i < numUpgrades + 1; i++) {
+            cost[ResourceType.MONEY.ordinal()] += (1000000 * (totalUpgrades + i) + (75000 * Math.pow((totalUpgrades + i), 1.75) * (totalUpgrades + i) / 20d)) * factor;
 
-            int treeCost = 100 * (treeUpgrades + i) + (Math.round((treeUpgrades + i) / 5) / 5) * 500 + (Math.round((treeUpgrades + i) / 10) / 10) * 1000 + (Math.round((treeUpgrades + i) / 20) / 20) * 1000;
-            cost[ResourceType.GASOLINE.ordinal()] += treeCost;
-            cost[ResourceType.MUNITIONS.ordinal()] += treeCost;
-            cost[ResourceType.STEEL.ordinal()] += treeCost;
-            cost[ResourceType.ALUMINUM.ordinal()] += 4 * treeCost;
+            int treeCost = (int) (100 * (treeUpgrades + i) +
+                                (Math.round((treeUpgrades + i) / 5d) * 500) +
+                                (Math.round((treeUpgrades + i) / 10d) * 1000) +
+                                (Math.round((treeUpgrades + i) / 20d) * 1000));
+            cost[ResourceType.GASOLINE.ordinal()] += treeCost * factor;
+            cost[ResourceType.MUNITIONS.ordinal()] += treeCost * factor;
+            cost[ResourceType.STEEL.ordinal()] += treeCost * factor;
+            cost[ResourceType.ALUMINUM.ordinal()] += 4 * treeCost * factor;
 
-            cost[ResourceType.FOOD.ordinal()] += (startLevel + i) * 10000;
+            // Individual cost
+            cost[ResourceType.FOOD.ordinal()] += (startLevel + i) * 10000 * factor;
         }
         return ResourceType.resourcesToMap(cost);
     }
@@ -115,6 +128,17 @@ public enum Research {
 
     public static Research parse(String input) {
         return valueOf(input.toUpperCase().replace(' ', '_'));
+    }
+
+    public static Map<Research, Integer> fromBits(int bits) {
+        Map<Research, Integer> levels = new EnumMap<>(Research.class);
+        for (Research r : values) {
+            int level = r.getLevel(bits);
+            if (level > 0) {
+                levels.put(r, level);
+            }
+        }
+        return levels;
     }
 
     public static Map<Research, Integer> parseResearch(Document doc) {
@@ -153,7 +177,11 @@ public enum Research {
         return values;
     }
 
-    public static Map<ResourceType, Double> cost(Map<Research, Integer> start_level, Map<Research, Integer> end_level) {
+    public static Map<ResourceType, Double> cost(Map<Research, Integer> end_level) {
+        return cost(Collections.emptyMap(), end_level, 1);
+    }
+
+    public static Map<ResourceType, Double> cost(Map<Research, Integer> start_level, Map<Research, Integer> end_level, double factor) {
         Map<ResourceType, Double> cost = new EnumMap<>(ResourceType.class);
 
         int totalUpgrades = start_level.values().stream().mapToInt(Integer::intValue).sum();
@@ -168,7 +196,9 @@ public enum Research {
             if (startValue > endValue) throw new IllegalArgumentException("Cannot decrease research level");
 
             int treeUpgrades = byGroup.get(r.getGroup());
-            Map<ResourceType, Double> addCost = r.getCost(treeUpgrades, totalUpgrades, startValue, endValue);
+
+            System.out.println("Tree " + treeUpgrades + " | total: " + totalUpgrades + " | start: " + startValue + " | end: " + endValue);
+            Map<ResourceType, Double> addCost = r.getCost(treeUpgrades, totalUpgrades, startValue, endValue, factor);
             cost = ResourceType.add(cost, addCost);
 
             totalUpgrades += endValue - startValue;

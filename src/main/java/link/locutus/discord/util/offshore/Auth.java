@@ -961,7 +961,7 @@ public class Auth {
             if (amtStr != null) {
                 Double amt = MathMan.parseDouble(amtStr);
                 amt = Math.max(0, amt - warchest.getOrDefault(type, 0d));
-                total += Locutus.imp().getTradeManager().getLow(type) * amt;
+                total += Locutus.imp().getTradeManager().getHighAvg(type) * amt;
             }
         }
         if (total < 3000000) return null;

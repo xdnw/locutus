@@ -208,7 +208,10 @@ public class AlertUtil {
     }
 
     public static void error(String title, String body, boolean pingOwner) {
-        if (Settings.INSTANCE.DISCORD.CHANNEL.ERRORS == 0) return;
+        if (Settings.INSTANCE.DISCORD.CHANNEL.ERRORS == 0) {
+            System.err.println(title + ": " + body);
+            return;
+        }
         if (title == null) title = "error";
         else if (title.toLowerCase().contains("captcha")) return;
         try {

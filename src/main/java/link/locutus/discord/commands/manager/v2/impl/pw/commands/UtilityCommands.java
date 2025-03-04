@@ -2606,7 +2606,7 @@ public class UtilityCommands {
             }
 
             Map<Research, Integer> level = nation.getResearchLevels();
-            researchCost = ResourceType.add(researchCost, Research.cost(Collections.emptyMap(), level));
+            researchCost = ResourceType.add(researchCost, Research.cost(Collections.emptyMap(), level, 1));
         }
 
         Map<ResourceType, Double> total = new HashMap<>();

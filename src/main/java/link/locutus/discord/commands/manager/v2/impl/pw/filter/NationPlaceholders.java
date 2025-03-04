@@ -313,6 +313,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
     }
 
     public Set<DBNation> parseSingleElem(ValueStore store, String name, INationSnapshot snapshot, boolean allowDeleted) {
+        name = name.trim();
         long start = System.currentTimeMillis();
         Set<DBNation> selection = PlaceholdersMap.getSelection(this, store, name);
         if (selection != null) return selection;

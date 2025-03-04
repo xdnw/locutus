@@ -1025,6 +1025,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             ids = new ArrayList<>(dirtyNations);
             dirtyNations.clear();
         }
+        if (ids.isEmpty()) return;
         updateNations(ids, eventConsumer);
     }
 
@@ -1260,7 +1261,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         if (bulk) markDirtyIncorrectCities(true, true);
         int estimatedCitiesToFetch = estimateCities(nationIds);
         if (estimatedCitiesToFetch >= PoliticsAndWarV3.CITIES_PER_PAGE * 30) {
-            System.out.println("Updating all cities (2)");
             updateAllCities(eventConsumer);
             return;
         }
@@ -1293,7 +1293,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
         int dirtyNationCities = estimateCities(dirtyCityNations);
         if (dirtyCities.size() > 15000 || dirtyNationCities > 15000) {
-            System.out.println("Updating all cities (dirty)");
             updateAllCities(eventConsumer);
             return true;
         }
@@ -1819,6 +1818,9 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                         alliance.getFlagurl(),
                         alliance.getForumurl(),
                         alliance.getIrcchan(),
+                        null,
+                        null,
+                        null,
                         null,
                         null,
                         null,

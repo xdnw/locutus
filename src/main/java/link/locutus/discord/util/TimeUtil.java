@@ -108,7 +108,7 @@ public class TimeUtil {
         long lastTurn = TimeUtil.getTurn(now - minute);
         long nextTurn = TimeUtil.getTurn(now + minute);
         if (lastTurn != nextTurn) return false;
-        double amt = (nextTurn % 12 == 0) ? 10.2d : 1.2d;
+        double amt = (nextTurn % 12 == 0 && !Settings.INSTANCE.TEST) ? 10.2d : 1.2d;
         long turnChangeTimer = TimeUtil.getTurn((long) (now - minute * amt));
         return turnChangeTimer == nextTurn;
     }
@@ -219,6 +219,10 @@ public class TimeUtil {
     }
 
     public static long getTurn() {
+        if (Settings.INSTANCE.TEST) {
+            long value = ChronoUnit.HOURS.between(Instant.EPOCH, Instant.now());
+            return value;
+        }
         long now = System.currentTimeMillis();
         long daysSince0 = TimeUnit.MILLISECONDS.toDays(now);
         long hoursInCurrentDay = TimeUnit.MILLISECONDS.toHours(now % 86400000);
@@ -241,7 +245,9 @@ public class TimeUtil {
     }
 
     public static long getTimeFromTurn(long turn) {
-        if (Settings.INSTANCE.TEST) turn *= 2;
+        if (Settings.INSTANCE.TEST) {
+            return TimeUnit.HOURS.toMillis(turn);
+        }
         long day = (turn / 12);
         long hour = turn * 2 - (day * 24);
 
@@ -281,6 +287,10 @@ public class TimeUtil {
     }
 
     public static long getDay(long timestamp) {
+        if (Settings.INSTANCE.TEST) {
+            long value = ChronoUnit.HOURS.between(Instant.EPOCH, Instant.ofEpochMilli(timestamp));
+            return value / 12;
+        }
         return ChronoUnit.DAYS.between(Instant.EPOCH, Instant.ofEpochMilli(timestamp));
     }
 

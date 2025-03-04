@@ -6563,6 +6563,11 @@ public abstract class DBNation implements NationOrAlliance {
         return levels;
     }
 
+    @Command
+    public double getResearchCostFactor() {
+        return hasProject(Projects.MILITARY_DOCTRINE) ? 0.95 : 1;
+    }
+
     @Command(desc = "The number of research this nation has")
     public int getNumResearch() {
         return getResearchLevels().values().stream().mapToInt(Integer::intValue).sum();
@@ -6570,7 +6575,7 @@ public abstract class DBNation implements NationOrAlliance {
 
     @Command(desc = "Resource cost of all research this nation has")
     public Map<ResourceType, Double> getResearchCost() {
-        return Research.cost(Collections.emptyMap(), getResearchLevels());
+        return Research.cost(Collections.emptyMap(), getResearchLevels(), getResearchCostFactor());
     }
 
     @Command(desc = "Market value of all the research this nation has")

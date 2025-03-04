@@ -227,7 +227,8 @@ public class MailTargets extends Command {
                     String safety = spyop.safety == 3 ? "covert" : spyop.safety == 2 ? "normal" : "quick";
 
                     String name = spyop.defender.getNation() + " | " + spyop.defender.getAllianceName();
-                    String nationUrl = MarkupUtil.htmlUrl(name, "https://tinyurl.com/y26weu7d/id=" + spyop.defender.getNation_id());
+                    String url = Settings.PNW_URL() + "/nation/espionage/eid=" + spyop.defender.getNation_id();
+                    String nationUrl = MarkupUtil.htmlUrl(name, url);
 
                     String spyUrl = baseUrl + spyop.defender.getNation_id();
                     String attStr = spyop.operation.name() + "|" + safety + "|" + spyop.spies + "\"";

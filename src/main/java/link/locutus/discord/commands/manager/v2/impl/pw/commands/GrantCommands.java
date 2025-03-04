@@ -666,7 +666,7 @@ public class GrantCommands {
             Set<DBNation> receivers,
             @Range(min=0.01, max=50) double ratio,
 
-            @Arg(value = "Only send funds the receiver is lacking from the amount", group = 0) @Switch("m") boolean onlySendMissingFunds, 
+            @Arg(value = "Only send funds the receiver is lacking from the amount", group = 0) @Switch("m") boolean onlySendMissingFunds,
             @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation depositsAccount,
             @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance useAllianceBank,
             @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance useOffshoreAccount,
@@ -674,7 +674,7 @@ public class GrantCommands {
             @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean existingTaxAccount,
             @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
             @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
-            @Arg(value = "Have the transfer not deduct from balance", group = 2) @Switch("i") boolean ignore, 
+            @Arg(value = "Have the transfer not deduct from balance", group = 2) @Switch("i") boolean ignore,
             @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2) @Switch("c") boolean convertToMoney,
 
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
@@ -684,15 +684,57 @@ public class GrantCommands {
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
         return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
-            (receiver, grant) -> {
-                int cities = receiver.getCities();
-                Map<ResourceType, Double> perCity = db.getPerCityWarchest(receiver);
-                Map<ResourceType, Double> wc = PW.multiply(perCity, (double) cities * ratio);
-                grant.setCost(f -> ResourceType.resourcesToArray(wc)).setType(DepositType.WARCHEST.withValue());
-                return null;
-            }, DepositType.WARCHEST, receiver -> {
-                return null;
-            });
+                (receiver, grant) -> {
+                    int cities = receiver.getCities();
+                    Map<ResourceType, Double> perCity = db.getPerCityWarchest(receiver);
+                    Map<ResourceType, Double> wc = PW.multiply(perCity, (double) cities * ratio);
+                    grant.setCost(f -> ResourceType.resourcesToArray(wc)).setType(DepositType.WARCHEST.withValue());
+                    return null;
+                }, DepositType.WARCHEST, receiver -> {
+                    return null;
+                });
+    }
+
+    @Command(desc = "Grant research cost to nations", groups = {
+            "Amount option",
+            "Account options",
+            "Note options",
+            "Escrow"
+    })
+    @RolePermission(Roles.ECON)
+    @IsAlliance
+    public String grantResearch(
+            @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
+            Set<DBNation> receivers,
+            Map<Research, Integer> research,
+
+            @Arg(value = "Grant the research cost from zero prior research", group = 0) @Switch("z") boolean research_from_zero,
+            @Arg(value = "Only send funds the receiver is lacking from the amount", group = 0) @Switch("m") boolean onlySendMissingFunds,
+            @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation depositsAccount,
+            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance useAllianceBank,
+            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance useOffshoreAccount,
+            @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket taxAccount,
+            @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean existingTaxAccount,
+            @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
+            @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
+            @Arg(value = "Have the transfer not deduct from balance", group = 2) @Switch("i") boolean ignore,
+            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2) @Switch("c") boolean convertToMoney,
+
+            @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
+            @Switch("pr") Roles ping_role,
+            @Switch("ps") boolean ping_when_sent,
+            @Switch("b") boolean bypass_checks,
+            @Switch("f") boolean force
+    ) throws IOException, GeneralSecurityException {
+        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
+                (receiver, grant) -> {
+                    Map<Research, Integer> base = research_from_zero ? new HashMap<>() : receiver.getResearchLevels();
+                    Map<ResourceType, Double> cost = Research.cost(base, research, receiver.getResearchCostFactor());
+                    grant.setCost(f -> ResourceType.resourcesToArray(cost)).setType(DepositType.WARCHEST.withValue());
+                    return null;
+                }, DepositType.WARCHEST, receiver -> {
+                    return null;
+                });
     }
 
     // Template commands

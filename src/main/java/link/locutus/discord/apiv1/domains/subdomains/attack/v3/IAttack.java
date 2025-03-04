@@ -207,7 +207,7 @@ public interface IAttack {
     default double[] addLosses(double[] rssBuffer, DBWar war, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings) {
         if (attacker) {
             if (units) {
-                addAttUnitLossValueByUnit(rssBuffer, war);
+                addAttUnitCosts(rssBuffer, war);
             }
             if (consumption) {
                 addAttConsumption(rssBuffer);
@@ -217,7 +217,7 @@ public interface IAttack {
             }
         } else {
             if (units) {
-                addDefUnitLossValueByUnit(rssBuffer, war);
+                addDefUnitCosts(rssBuffer, war);
             }
             if (infra) {
                 addInfraCosts(rssBuffer);

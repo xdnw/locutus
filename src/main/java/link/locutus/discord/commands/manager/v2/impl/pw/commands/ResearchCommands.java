@@ -15,6 +15,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.sheet.SpreadSheet;
 
@@ -27,7 +28,9 @@ import java.util.stream.Collectors;
 public class ResearchCommands {
 
     @Command(desc = "Get the cost of a research upgrade", viewable = true)
-    public String researchCost(Map<Research, Integer> start_level, Map<Research, Integer> end_level) {
+    public String researchCost(Map<Research, Integer> start_level, Map<Research, Integer> end_level, @Default Boolean military_doctrine) {
+        double factor = military_doctrine == Boolean.TRUE ? 0.95 : 1;
+
         StringBuilder response = new StringBuilder();
         Map<ResourceType, Double> cost = new EnumMap<>(ResourceType.class);
 
@@ -44,10 +47,12 @@ public class ResearchCommands {
             if (startValue == endValue) continue;
             if (startValue > endValue) throw new IllegalArgumentException("Cannot decrease research level");
 
-            int treeUpgrades = byGroup.get(r.getGroup());
-            Map<ResourceType, Double> addCost = r.getCost(treeUpgrades, totalUpgrades, startValue, endValue);
-            response.append("**" + r.name() + ":** " + startValue + " -> " + endValue + ": worth ~$" + ResourceType.convertedTotal(addCost) + "\n");
+            int treeUpgrades = byGroup.getOrDefault(r.getGroup(), 0);
+            Map<ResourceType, Double> addCost = r.getCost(treeUpgrades, totalUpgrades, startValue, endValue, factor);
+            cost = ResourceType.add(cost, addCost);
+            response.append("**" + r.name() + ":** " + startValue + " -> " + endValue + ": worth ~$" + MathMan.format(ResourceType.convertedTotal(addCost)) + "\n");
             response.append("- cost: `" + ResourceType.toString(addCost) + "`\n");
+
 
             totalUpgrades += endValue - startValue;
             byGroup.put(r.getGroup(), treeUpgrades + endValue - startValue);
@@ -56,7 +61,7 @@ public class ResearchCommands {
         }
 
         if (numResearch > 0) {
-            response.append("\n**Total Cost:** worth~$" + ResourceType.convertedTotal(cost) + "\n");
+            response.append("\n**Total Cost:** worth~$" + MathMan.format(ResourceType.convertedTotal(cost)) + "\n");
             response.append("- cost: `" + ResourceType.toString(cost) + "`\n");
         } else if (numResearch == 0) {
             return "No research upgrades specified";
@@ -110,7 +115,7 @@ public class ResearchCommands {
             row.add(nation.getCities());
             Map<Research, Integer> levels = nation.getResearchLevels();
             row.add(levels.values().stream().mapToInt(Integer::intValue).sum());
-            Map<ResourceType, Double> cost = Research.cost(Collections.emptyMap(), levels);
+            Map<ResourceType, Double> cost = Research.cost(Collections.emptyMap(), levels, nation.getResearchCostFactor());
             row.add(ResourceType.toString(cost));
             row.add(ResourceType.convertedTotal(cost));
             for (Research r : Research.values()) {

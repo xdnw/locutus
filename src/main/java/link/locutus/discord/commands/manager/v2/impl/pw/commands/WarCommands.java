@@ -3534,8 +3534,6 @@ public class WarCommands {
         Map<String, Object> blitzSheetSummary = new LinkedHashMap<>();
         Map<String, Object> spySheetSummary = new LinkedHashMap<>();
 
-        if (dm && !Roles.MAIL.hasOnRoot(author)) return "You do not have permission to dm users";
-
         if (blitzSheet != null) {
             warDefAttMap = BlitzGenerator.getTargets(blitzSheet, useLeader, 0, f -> 3, 0.75, PW.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true, (a, b) -> {}, (a) -> blitzSheetSummary.putAll(a));
         }
@@ -3564,6 +3562,18 @@ public class WarCommands {
         Set<DBNation> allAttackers = new LinkedHashSet<>();
         allAttackers.addAll(warAttDefMap.keySet());
         allAttackers.addAll(spyAttDefMap.keySet());
+
+        if (dm) {
+            if (header != null && !header.isEmpty() && !Roles.MAIL.hasOnRoot(author)) {
+                return "You do not have permission to dm custom messages. Try again without `header` set";
+            }
+            for (DBNation nation : allAttackers) {
+                if (!db.isAllianceId(nation.getAlliance_id())) {
+                    throw new IllegalArgumentException("You do not have permission to DM nations outside this alliance (" + nation.getMarkdownUrl() + ")\n" +
+                            "Set `dm` to false, register the alliance, or provide a different target list");
+                }
+            }
+        }
 
         String date = TimeUtil.YYYY_MM_DD.format(ZonedDateTime.now());
         String subject = "Targets-" + date + "/" + channel.getIdLong();
@@ -3665,14 +3675,15 @@ public class WarCommands {
                                 "- Reply to this message with any spy reports you do against enemies (even if not these targets)\n" +
                                 "- Remember to buy spies every day :D\n\n");
 
-                String baseUrl = Settings.PNW_URL() + "/espionage/eid=";
+                String baseUrl = Settings.PNW_URL() + "/nation/espionage/eid=";
                 for (int i = 0; i < mySpyOps.size(); i++) {
                     totalSpyTargets++;
                     Spyop spyop = mySpyOps.get(i);
                     String safety = spyop.safety == 3 ? "covert" : spyop.safety == 2 ? "normal" : "quick";
 
                     String name = spyop.defender.getNation() + " | " + spyop.defender.getAllianceName();
-                    String nationUrl = MarkupUtil.htmlUrl(name, "https://tinyurl.com/y26weu7d/id=" + spyop.defender.getNation_id());
+                    String url = Settings.PNW_URL() + "/nation/espionage/eid=" + spyop.defender.getNation_id();
+                    String nationUrl = MarkupUtil.htmlUrl(name, url);
 
                     String spyUrl = baseUrl + spyop.defender.getNation_id();
                     String attStr = spyop.operation.name() + "|" + safety + "|" + spyop.spies + "\"";

@@ -255,6 +255,7 @@ public final class Locutus extends ListenerAdapter {
             } else {
                 throw new IllegalStateException("Invalid guild: " + Settings.INSTANCE.ROOT_SERVER + " as `root-server` in " + Settings.INSTANCE.getDefaultFile().getAbsolutePath());
             }
+            System.out.println("Repeating ttasks " + Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS);
             if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS) {
                 initRepeatingTasks();
                 Logg.text("Initialized API fetching tasks (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
@@ -552,6 +553,7 @@ public final class Locutus extends ListenerAdapter {
                 this.multiUpdater.run();
             }, 1, TimeUnit.MINUTES);
         }
+        System.out.println("Init repeating tasks " + Settings.INSTANCE.TASKS.ENABLE_TURN_TASKS);
         if (Settings.INSTANCE.TASKS.ENABLE_TURN_TASKS) {
             AtomicLong lastTurn = new AtomicLong();
             taskTrack.addTask("Turn Change", new CaughtTask() {
@@ -579,6 +581,7 @@ public final class Locutus extends ListenerAdapter {
             }, 60, TimeUnit.SECONDS);
         }
         if (Settings.USE_V2) {
+            System.out.println("V2 tasks");
             taskTrack.addTask("Update Nations V2 (No VM)", () -> {
                 runEventsAsync(events -> getNationDB().updateNationsV2(false, events));
             }, Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS, TimeUnit.SECONDS);
@@ -599,6 +602,7 @@ public final class Locutus extends ListenerAdapter {
                 }
             }, Settings.INSTANCE.TASKS.ALL_WAR_SECONDS, TimeUnit.SECONDS);
         } else {
+            System.out.println("V3 tasks");
 //            taskTrack.addTask("Nation (Active)", () -> {
 //                try {
 //                    runEventsAsync(events -> getNationDB().updateMostActiveNations(490, events));
@@ -698,12 +702,14 @@ public final class Locutus extends ListenerAdapter {
 //
 //            }, Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS, TimeUnit.SECONDS);
 
+            System.out.println("Add task all war/attack");
             taskTrack.addTask("All War/Attack", () -> {
                 synchronized (warUpdateLock) {
                     if (Settings.USE_V2) {
                         runEventsAsync(getWarDb()::updateAllWarsV2);
                         runEventsAsync(e -> getWarDb().updateAttacks(true, e, true));
                     } else {
+                        System.out.println("Update wars");
                         runEventsAsync(getWarDb()::updateAllWars);
                         runEventsAsync(getWarDb()::updateAttacks);
                     }
@@ -903,6 +909,9 @@ public final class Locutus extends ListenerAdapter {
     public void onGuildJoin(@Nonnull GuildJoinEvent event) {
         manager.put(event.getGuild().getIdLong(), event.getJDA());
         event.getGuild().loadMembers();
+        if (Settings.INSTANCE.TEST && getSlashCommands() instanceof SlashCommandManager slash) {
+            slash.register(event.getGuild());
+        }
     }
 
     @Override

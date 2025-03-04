@@ -257,7 +257,7 @@ public enum AttackType {
                         break;
                     }
                     case NAVAL_INFRA: {
-                        navalFactor = 0.7;
+                        navalFactor *= 0.7;
                         break;
                     }
                     case NAVAL_AIR: {

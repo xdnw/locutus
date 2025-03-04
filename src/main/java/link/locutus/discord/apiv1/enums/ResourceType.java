@@ -169,6 +169,11 @@ public enum ResourceType {
         if (arg.endsWith("},")) {
             arg = arg.substring(0, arg.length() - 1);
         }
+        if (arg.endsWith(",}")) {
+            arg = arg.substring(0, arg.length() - 2) + "}";
+        } else if (arg.endsWith(",")) {
+            arg = arg.substring(0, arg.length() - 1);
+        }
         boolean allowBodmas = arg.contains("{") && StringMan.containsAny("+-*/^%", arg.replaceAll("\\{[^}]+}", ""));
         return parseResources(arg, allowBodmas);
     }

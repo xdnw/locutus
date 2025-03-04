@@ -93,6 +93,18 @@ public enum TemplateTypes {
             return RawsTemplate.getRequirements(null, null, null, null, null);
         }
     },
+    RESEARCH(DepositType.RESEARCH, ResearchTemplate.class) {
+        @Override
+        public CommandRef getCommandMention() {
+//            return CM.grant_template.create.research.cmd;
+            return null;//TODO CM REF
+        }
+
+        @Override
+        public List<Grant.Requirement> getRequirements(boolean confirm) {
+            return ResearchTemplate.getRequirements(null, null, null, null, null);
+        }
+    },
 
     ;
 
