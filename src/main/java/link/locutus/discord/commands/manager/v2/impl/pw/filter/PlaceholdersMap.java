@@ -370,15 +370,26 @@ public class PlaceholdersMap {
             int taxId = PW.parseTaxId(input);
             return (Set) Locutus.imp().getNationDB().getNationsByBracket(taxId);
         }
-        if (input.charAt(0) == '~') input = input.substring(1);
-        if (input.startsWith("coalition:")) input = input.substring("coalition:".length());
         if (input.startsWith("<@&") && db != null) {
             Role role = db.getGuild().getRoleById(input.substring(3, input.length() - 1));
             return (Set) NationPlaceholders.getByRole(db.getGuild(), input, role, Locutus.imp().getNationDB());
         }
-        Set<Integer> coalition = db.getCoalition(input);
+        boolean isCoalition = false;
+        String coalitionStr = input;
+        if (input.charAt(0) == '~') {
+            isCoalition = true;
+            coalitionStr = input.substring(1);
+        }
+        if (input.startsWith("coalition:")) {
+            coalitionStr = input.substring("coalition:".length());
+            isCoalition = true;
+        }
+        Set<Integer> coalition = db.getCoalition(coalitionStr);
         if (!coalition.isEmpty()) {
             return coalition.stream().map(DBAlliance::getOrCreate).collect(Collectors.toSet());
+        }
+        if (isCoalition) {
+            throw new IllegalArgumentException("No alliances found for coalition `" + coalitionStr + "`. See " + CM.coalition.add.cmd.toSlashMention());
         }
         if (db != null) {
             // get role by name
