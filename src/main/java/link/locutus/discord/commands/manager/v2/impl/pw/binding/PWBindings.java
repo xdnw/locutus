@@ -52,15 +52,7 @@ import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSettingCategory;
 import link.locutus.discord.event.mail.MailReceivedEvent;
-import link.locutus.discord.pnw.AllianceList;
-import link.locutus.discord.pnw.BeigeReason;
-import link.locutus.discord.pnw.CityRanges;
-import link.locutus.discord.pnw.GuildOrAlliance;
-import link.locutus.discord.pnw.NationList;
-import link.locutus.discord.pnw.NationOrAlliance;
-import link.locutus.discord.pnw.NationOrAllianceOrGuild;
-import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
-import link.locutus.discord.pnw.SimpleNationList;
+import link.locutus.discord.pnw.*;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AutoAuditType;
@@ -623,12 +615,18 @@ public class PWBindings extends BindingHelper {
 
     @Binding(value = "nation id, name or url", examples = {"Borg", "<@664156861033086987>", "Danzek", "189573", "https://politicsandwar.com/nation/id=189573"})
     public static DBNation nation(@Default @Me User selfUser, String input, @Default ParameterData data) {
-        DBNation nation = DiscordUtil.parseNation(input);
+        boolean allowDeleted = data != null && data.getAnnotation(AllowDeleted.class) != null;
+        DBNation nation = DiscordUtil.parseNation(input, allowDeleted);
         if (nation == null) {
             if (selfUser != null && (input.equalsIgnoreCase("%user%") || input.equalsIgnoreCase("{usermention}"))) {
+                if (allowDeleted) {
+                    PNWUser user = nation.getDBUser();
+                    if (user != null) {
+                        return DBNation.getOrCreate(user.getNationId());
+                    }
+                }
                 nation = DiscordUtil.getNation(selfUser);
             } else {
-                boolean allowDeleted = data != null && data.getAnnotation(AllowDeleted.class) != null;
                 if (MathMan.isInteger(input) && allowDeleted) {
                     return DBNation.getOrCreate(Integer.parseInt(input));
                 }
