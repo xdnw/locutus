@@ -19,16 +19,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
-import link.locutus.discord.db.entities.grant.AGrantTemplate;
-import link.locutus.discord.db.entities.grant.BuildTemplate;
-import link.locutus.discord.db.entities.grant.CityTemplate;
-import link.locutus.discord.db.entities.grant.GrantTemplateManager;
-import link.locutus.discord.db.entities.grant.InfraTemplate;
-import link.locutus.discord.db.entities.grant.LandTemplate;
-import link.locutus.discord.db.entities.grant.ProjectTemplate;
-import link.locutus.discord.db.entities.grant.RawsTemplate;
-import link.locutus.discord.db.entities.grant.TemplateTypes;
-import link.locutus.discord.db.entities.grant.WarchestTemplate;
+import link.locutus.discord.db.entities.grant.*;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.SimpleNationList;
@@ -755,13 +746,14 @@ public class GrantCommands {
             @Switch("b") boolean bypass_checks,
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
+        int researchBits = Research.toBits(research);
         return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
                 (receiver, grant) -> {
                     Map<Research, Integer> base = research_from_zero ? new HashMap<>() : receiver.getResearchLevels();
                     Map<ResourceType, Double> cost = Research.cost(base, research, receiver.getResearchCostFactor());
-                    grant.setCost(f -> ResourceType.resourcesToArray(cost)).setType(DepositType.WARCHEST.withValue());
+                    grant.setCost(f -> ResourceType.resourcesToArray(cost)).setType(DepositType.RESEARCH.withAmount(researchBits));
                     return null;
-                }, DepositType.WARCHEST, receiver -> {
+                }, DepositType.RESEARCH, receiver -> {
                     return null;
                 });
     }
@@ -961,7 +953,7 @@ public class GrantCommands {
                                         @Arg("Add a default decaying expiry time to grants sent via this template\n" +
                                                 "e.g. 60d\n" +
                                                 "The granter can specify an expiry shorter than this value")
-                                            @Switch("decay") @Timediff Long decayTime,
+                                        @Switch("decay") @Timediff Long decayTime,
                                         @Arg("Do not include grants in member balances by default\n" +
                                                 "Defaults to false")
                                         @Switch("ignore") boolean allowIgnore,
@@ -987,6 +979,114 @@ public class GrantCommands {
             throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
         }
         ProjectTemplate template = new ProjectTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), project, expireTime == null ? 0 : expireTime, decayTime == null ? 0 : decayTime, allowIgnore);
+        AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
+        if (existing != null && existing.getType() != template.getType()) {
+            throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());
+        }
+        // confirmation
+        if (!force) {
+            String body = template.toFullString(me, null, null);
+            Set<Integer> aaIds = db.getAllianceIds();
+            Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(allowedRecipients.toCached(Long.MAX_VALUE));
+            nations.removeIf(f -> !aaIds.contains(f.getAlliance_id()));
+            if (nations.isEmpty()) {
+                body = "**WARNING: NO NATIONS MATCHING `" + allowedRecipients.getFilter() + "`**\n\n" + body;
+            }
+            if (existing != null) {
+                body = "**OVERWRITE EXISTING TEMPLATE**\n\n" +
+                        "View the existing template: " + CM.grant_template.info.cmd.toSlashMention() +
+                        "\n\n" + body;
+            }
+            String prefix = existing != null ? "Overwrite " : "Create ";
+            io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send();
+            return null;
+        }
+        manager.saveTemplate(template);
+        return "The template: `" + template.getName() + "` has been created. Templates must be enabled to be used. See:\n" +
+                "- " + CM.grant_template.enable.cmd.toSlashMention() + "\n" +
+                "- " + CM.grant_template.delete.cmd.toSlashMention() + "\n" +
+                "- " + CM.grant_template.send.cmd.toSlashMention();
+    }
+
+    @Command(desc = "Create a new research grant template")
+    @RolePermission(Roles.ECON)
+    public String templateCreateResearch(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
+                                        @Arg("The name of the template\n" +
+                                                "Alphanumerical") String name,
+                                        @Arg("A filter for nations allowed to receive this grant\n" +
+                                                "Use your alliance link for all nations\n" +
+                                                "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
+                                        NationFilter allowedRecipients,
+                                        @Arg("The project to grant")
+                                        Map<Research, Integer> research,
+                                        @Arg("If the research cost should be granted from 0\n" +
+                                                "Instead of the price from the receiver's current research is")
+                                        boolean from_zero,
+                                        @Arg("The role that can grant this template to others\n" +
+                                                "Defaults to the ECON role (see `{prefix}role setalias`)")
+                                        @Switch("e") Role econRole,
+                                        @Arg("The role that can grant this template to itself\n" +
+                                                "Defaults to disabled")
+                                        @Switch("s") Role selfRole,
+                                        @Arg("The tax bracket account to use for withdrawals\n" +
+                                                "e.g. For a growth circle\n" +
+                                                "Defaults to None\n" +
+                                                "See: <https://github.com/xdnw/locutus/wiki/tax_automation#tax-bracket-accounts>")
+                                        @Switch("b")TaxBracket bracket,
+                                        @Arg("If the receiver's tax bracket is used as the tax bracket account\n" +
+                                                "Defaults to false\n" +
+                                                "Alternative to `bracket`")
+                                        @Switch("r") boolean useReceiverBracket,
+                                        @Arg("Global grants allowed for this template\n" +
+                                                "Defaults to unlimited")
+                                        @Switch("mt") Integer maxTotal,
+                                        @Arg("Grants allowed for this template per day\n" +
+                                                "Defaults to unlimited")
+                                        @Switch("md") Integer maxDay,
+                                        @Arg("Grants allowed for this template per day by the same sender\n" +
+                                                "Defaults to unlimited")
+                                        @Switch("mgd") Integer maxGranterDay,
+                                        @Arg("Grants allowed for this template by the same sender\n" +
+                                                "Defaults to unlimited")
+                                        @Switch("mgt") Integer maxGranterTotal,
+                                        @Arg("Add a default expiry time to grants sent via this template\n" +
+                                                "e.g. 60d\n" +
+                                                "The granter can specify an expiry shorter than this value")
+                                        @Switch("expire") @Timediff Long expireTime,
+                                        @Arg("Add a default decaying expiry time to grants sent via this template\n" +
+                                                "e.g. 60d\n" +
+                                                "The granter can specify an expiry shorter than this value")
+                                        @Switch("decay") @Timediff Long decayTime,
+                                        @Arg("Do not include grants in member balances by default\n" +
+                                                "Defaults to false")
+                                        @Switch("ignore") boolean allowIgnore,
+                                        @Switch("f") boolean force) {
+        name = name.toUpperCase(Locale.ROOT).trim();
+        // Ensure name is alphanumericalund
+        if (!name.matches("[A-Z0-9_-]+")) {
+            throw new IllegalArgumentException("The name must be alphanumericalunderscore, not `" + name + "`");
+        }
+        GrantTemplateManager manager = db.getGrantTemplateManager();
+        // check a template does not exist by that name
+        String finalName = name;
+        if (econRole == null) econRole = Roles.ECON_STAFF.toRole2(db);
+        if (econRole == null) econRole = Roles.ECON.toRole2(db);
+        if (econRole == null) {
+            throw new IllegalArgumentException("No `econRole` found. Please provide one, or set a default ECON_STAFF via " + CM.role.setAlias.cmd.toSlashMention());
+        }
+        if (selfRole == null) selfRole = Roles.ECON.toRole2(db);
+        if (selfRole == null) {
+            throw new IllegalArgumentException("No `selfRole` found. Please provide one, or set a default ECON via " + CM.role.setAlias.cmd.toSlashMention());
+        }
+        if (bracket != null && useReceiverBracket) {
+            throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
+        }
+        int researchBits = Research.toBits(research);
+        ResearchTemplate template = new ResearchTemplate(db, false, name, allowedRecipients, econRole.getIdLong(),
+                selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket,
+                maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay,
+                maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(),
+                researchBits, from_zero, expireTime == null ? 0 : expireTime, decayTime == null ? 0 : decayTime, allowIgnore);
         AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
         if (existing != null && existing.getType() != template.getType()) {
             throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());

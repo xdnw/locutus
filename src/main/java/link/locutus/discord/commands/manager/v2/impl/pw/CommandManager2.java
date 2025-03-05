@@ -264,6 +264,9 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        getCommands().registerMethod(new GrantCommands(), List.of("grant_template", "create"), "templateCreateResearch", "research");
+        getCommands().registerMethod(new GrantCommands(), List.of("grant"), "grantResearch", "research");
+
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "syncCityRefund", "city_refund");
 
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "edit"), "addManualWars", "add_none_war");

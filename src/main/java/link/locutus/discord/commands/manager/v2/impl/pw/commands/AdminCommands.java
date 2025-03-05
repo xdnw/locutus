@@ -108,9 +108,7 @@ import java.security.GeneralSecurityException;
 import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -2425,7 +2423,7 @@ public class AdminCommands {
         Map<BigInteger, Integer> uidCounts = new Object2IntOpenHashMap<>();
         Map<Integer, BigInteger> uidByNation = new Object2ObjectOpenHashMap<>();
         for (DBNation nation : nations) {
-            BigInteger uid = nation.getLatestUid();
+            BigInteger uid = nation.getLatestUid(true);
             if (uid != null) {
                 uidCounts.merge(uid, 1, Integer::sum);
             }
@@ -2535,6 +2533,8 @@ public class AdminCommands {
         return "Done";
     }
 
+    private static ConcurrentHashMap<Integer, Long> UPDATED_UID = new ConcurrentHashMap<>();
+
     @Command(desc = "List players currently sharing a network or an active ban", viewable = true)
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     public synchronized String hasSameNetworkAsBan(@Me IMessageIO io, @Me User author, Set<DBNation> nations, @Switch("e") boolean listExpired,
@@ -2567,6 +2567,78 @@ public class AdminCommands {
                 sharesDiscord.computeIfAbsent(userId, k -> new HashSet<>()).add(nation);
             }
         }
+
+        CompletableFuture<IMessageBuilder> msgFuture = io.sendMessage("Updating...");
+        IMessageBuilder msg = null;
+        long start = System.currentTimeMillis();
+
+        Set<Integer> nationIdsWithUids = new HashSet<>();
+        for (Set<DBNation> nationSet : uidsByNationExisting.values()) {
+            for (DBNation nation : nationSet) {
+                nationIdsWithUids.add(nation.getId());
+            }
+        }
+        List<DBNation> nationsList = new ArrayList<>(nations);
+        long now = System.currentTimeMillis();
+        for (int i = 0; i < nationsList.size(); i++) {
+            DBNation nation = nationsList.get(i);
+            if (!forceUpdate && nation.getVm_turns() > 0 || nation.active_m() > 10080) continue;
+            long dateUpdated = UPDATED_UID.getOrDefault(nation.getId(), 0L);
+            if (dateUpdated != 0 && (!forceUpdate || now - dateUpdated < TimeUnit.DAYS.toMillis(1))) continue;
+            if (!nationIdsWithUids.contains(nation.getId())) {
+                if (System.currentTimeMillis() - start > 10000) {
+                    msg = io.updateOptionally(msgFuture, "Fetching " + nation.getNation() + "(" + i + "/" + nationsList.size() + ")");
+                    start = System.currentTimeMillis();
+                }
+                UPDATED_UID.put(nation.getId(), now);
+                BigInteger uid = nation.getLatestUid(true);
+                if (uid == null) {
+                    uid = nation.getLatestUid(false);
+                    if (i + 1 < nationsList.size()) {
+                        // sleep
+                        try {
+                            Thread.sleep(ThreadLocalRandom.current().nextInt(200, 400));
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }
+                if (uid != null) {
+                    uidsByNationExisting.computeIfAbsent(uid, k -> new HashSet<>()).add(nation);
+                }
+            }
+        }
+
+        if (forceUpdate) {
+            Set<DBNation> nationsToUpdate = new HashSet<>();
+            for (Set<DBNation> nationSet : uidsByNationExisting.values()) {
+                nationsToUpdate.addAll(nationSet);
+            }
+            int i = 1;
+            for (DBNation nation : nationsToUpdate) {
+                long dateUpdated = UPDATED_UID.getOrDefault(nation.getId(), 0L);
+                if (System.currentTimeMillis() - start > 10000) {
+                    msg = io.updateOptionally(msgFuture, "Updating " + nation.getNation() + "(" + i + "/" + nationsToUpdate.size() + ")");
+                    start = System.currentTimeMillis();
+                }
+                if (System.currentTimeMillis() - start > 10000) {
+                    msg = io.updateOptionally(msgFuture, "Updating " + nation.getNation() + "(" + i + "/" + nationsToUpdate.size() + ")");
+                    start = System.currentTimeMillis();
+                }
+                nation.fetchUid(true);
+                try {
+                    Thread.sleep(ThreadLocalRandom.current().nextInt(200, 400));
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                i++;
+            }
+            if (msg != null && msg.getId() > 0) {
+                io.delete(msg.getId());
+            }
+            return hasSameNetworkAsBan(io, author, nations, listExpired, onlySameAlliance, onlySimilarTime, sortByAgeDays, sortByLogin, false);
+        }
+
         sharesDiscord.entrySet().removeIf(entry -> entry.getValue().size() <= 1);
 
         // remove uidsBynationExisting when values size <= 1
@@ -2598,31 +2670,6 @@ public class AdminCommands {
             }
             return !contains;
         });
-
-        if (forceUpdate) {
-            Set<DBNation> nationsToUpdate = new HashSet<>();
-
-            CompletableFuture<IMessageBuilder> msgFuture = io.sendMessage("Updating...");
-            IMessageBuilder msg = null;
-
-            long start = System.currentTimeMillis();
-            for (Set<DBNation> nationSet : uidsByNationExisting.values()) {
-                nationsToUpdate.addAll(nationSet);
-            }
-            int i = 1;
-            for (DBNation nation : nationsToUpdate) {
-                if (System.currentTimeMillis() - start > 10000) {
-                    msg = io.updateOptionally(msgFuture, "Updating " + nation.getNation() + "(" + i + "/" + nationsToUpdate.size() + ")");
-                    start = System.currentTimeMillis();
-                }
-                nation.fetchUid(true);
-                i++;
-            }
-            if (msg != null && msg.getId() > 0) {
-                io.delete(msg.getId());
-            }
-            return hasSameNetworkAsBan(io, author, nations, listExpired, onlySameAlliance, onlySimilarTime, sortByAgeDays, sortByLogin, false);
-        }
 
         // get the bans
         Map<Integer, DBBan> bans = Locutus.imp().getNationDB().getBansByNation();

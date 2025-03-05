@@ -384,7 +384,7 @@ public class AppMenuCommands {
             String desc = descLines[0] + (descLines.length > 1 ? "..." : "");
             sb.append("> " + desc).append("\n");
         }
-        sb.append("\nSee: TODO CM REF");
+        sb.append("\nSee: " + CM.menu.info.cmd.toSlashMention() + " for more details");
         return sb.toString();
     }
 

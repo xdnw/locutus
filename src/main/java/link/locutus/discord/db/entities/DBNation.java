@@ -64,6 +64,7 @@ import link.locutus.discord.util.task.mail.MailApiSuccess;
 import link.locutus.discord.util.task.multi.GetUid;
 import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import link.locutus.discord.util.trade.TradeManager;
+import link.locutus.discord.util.update.NationUpdateProcessor;
 import link.locutus.discord.web.jooby.handler.CommandResult;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -4774,9 +4775,9 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "The unique network id of this nation")
-    public BigInteger getLatestUid() throws IOException {
+    public BigInteger getLatestUid(@Default boolean do_not_fetch) throws IOException {
         BigInteger latest = Locutus.imp().getDiscordDB().getLatestUuid(getId());
-        if (latest == null && isValid()) {
+        if (latest == null && isValid() && !do_not_fetch) {
             latest = fetchUid(false);
         }
         return latest;
@@ -6546,7 +6547,8 @@ public abstract class DBNation implements NationOrAlliance {
     public void updateResearch() throws IOException {
         String url = this.getUrl();
         Document doc = Jsoup.connect(url).get();
-        Map<Research, Integer> research = Research.parseResearch(doc);
+        NationUpdateProcessor.NationUpdate update = NationUpdateProcessor.updateNation(this, doc);
+        Map<Research, Integer> research = update.research;;
         int bits = Research.toBits(research);
         this.edit().setResearchBits(bits);
     }

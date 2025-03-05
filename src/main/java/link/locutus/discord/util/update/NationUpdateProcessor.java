@@ -6,6 +6,8 @@ import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
+import link.locutus.discord.apiv1.enums.Research;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -47,8 +49,11 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
+import org.jsoup.nodes.Document;
+import org.jsoup.select.Elements;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -61,6 +66,33 @@ import static link.locutus.discord.db.guild.GuildKey.BAN_ALERT_CHANNEL;
 
 public class NationUpdateProcessor {
     private static Map<Integer, Integer> ACTIVITY_ALERTS = new PassiveExpiringMap<Integer, Integer>(240, TimeUnit.MINUTES);
+
+    public static class NationUpdate {
+        public BigInteger uuid;
+        public boolean verified;
+        public Map<Research, Integer> research;
+    }
+
+    public static NationUpdate updateNation(DBNation nation, Document dom) {
+        NationUpdate result = new NationUpdate();
+
+        Elements uuidTd = dom.select("td:contains(Unique ID)");
+        if (!uuidTd.isEmpty()) {
+            String hexString = uuidTd.first().nextElementSibling().text();
+            result.uuid = new BigInteger(hexString, 16);
+            result.verified = dom.select(".fa-check-circle").size() > 0;
+            if (result.verified) {
+                Locutus.imp().getDiscordDB().addVerified(nation.getNation_id());
+            }
+            Locutus.imp().getDiscordDB().addUUID(nation.getNation_id(), result.uuid);
+        } else {
+            Logg.text("Failed to fetch uid for " + nation.getNation_id() + " (not found)");
+        }
+
+        result.research = Research.parseResearch(dom);
+
+        return result;
+    }
 
     public static void onActivityCheck() {
         Map<Integer, Integer> membersByAA = new Int2IntOpenHashMap(); // only <7d non vm nations

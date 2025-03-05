@@ -1164,7 +1164,13 @@ public class PWBindings extends BindingHelper {
 
     @Binding(examples = {"{GROUND_COST=12,AIR_CAPACITY=2}"}, value = "A comma separated list of research and their amounts")
     public Map<Research, Integer> research(String input) {
-        return Research.parseMap(input);
+        Map<Research, Integer> result = Research.parseMap(input);
+        for (Map.Entry<Research, Integer> entry : result.entrySet()) {
+            if (entry.getValue() < 0 || entry.getValue() > 20) {
+                throw new IllegalArgumentException("Invalid research value: " + entry.getValue() + " for " + entry.getKey() + ". Must be between 0 and 20");
+            }
+        }
+        return result;
     }
 
     @Binding(examples = {"money", "aluminum"}, value = "The name of a resource")

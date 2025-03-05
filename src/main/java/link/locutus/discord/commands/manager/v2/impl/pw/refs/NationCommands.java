@@ -860,6 +860,9 @@ public class NationCommands {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getLatestUid")
         public static class getLatestUid extends CommandRef {
             public static final getLatestUid cmd = new getLatestUid();
+        public getLatestUid do_not_fetch(String value) {
+            return set("do_not_fetch", value);
+        }
 
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getLeader")
@@ -976,6 +979,11 @@ public class NationCommands {
             public static final getNumReports cmd = new getNumReports();
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getNumResearch")
+        public static class getNumResearch extends CommandRef {
+            public static final getNumResearch cmd = new getNumResearch();
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getNumWars")
         public static class getNumWars extends CommandRef {
             public static final getNumWars cmd = new getNumWars();
@@ -1082,6 +1090,26 @@ public class NationCommands {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getResearchBits")
         public static class getResearchBits extends CommandRef {
             public static final getResearchBits cmd = new getResearchBits();
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getResearchCost")
+        public static class getResearchCost extends CommandRef {
+            public static final getResearchCost cmd = new getResearchCost();
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getResearchCostFactor")
+        public static class getResearchCostFactor extends CommandRef {
+            public static final getResearchCostFactor cmd = new getResearchCostFactor();
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getResearchLevels")
+        public static class getResearchLevels extends CommandRef {
+            public static final getResearchLevels cmd = new getResearchLevels();
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getResearchValue")
+        public static class getResearchValue extends CommandRef {
+            public static final getResearchValue cmd = new getResearchValue();
 
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.binding.DefaultPlaceholders.class,method="getResource")

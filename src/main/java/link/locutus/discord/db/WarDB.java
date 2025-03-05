@@ -1691,7 +1691,6 @@ public class WarDB extends DBMainV2 {
     }
 
     public boolean updateWarsSince(Consumer<Event> eventConsumer, long date) {
-        Set<Integer> activeWarsToFetch = new LinkedHashSet<>(getWarsSince(date).keySet());
         PoliticsAndWarV3 api = Locutus.imp().getV3();
         List<War> wars = api.fetchWarsWithInfo(r -> {
             r.setAfter(new Date(date));
@@ -1704,6 +1703,8 @@ public class WarDB extends DBMainV2 {
         }
 
         List<DBWar> dbWars = wars.stream().map(DBWar::new).collect(Collectors.toList());
+
+        Set<Integer> activeWarsToFetch = getActiveWars().stream().map(DBWar::getWarId).collect(Collectors.toSet());
         int numActive = activeWarsToFetch.size();
         for (DBWar war : dbWars) {
             activeWarsToFetch.remove(war.getWarId());

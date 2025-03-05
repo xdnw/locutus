@@ -228,8 +228,8 @@ public abstract class Placeholders<T> extends BindingHelper {
         }
         db.getSheetManager().addSheetTemplate(sheet);
         return (created ? "Created" : "Updated") + " sheet template named: " + sheet + "\n\n" +
-                "Rename via TODO CM REF\n" +
-                "Add more columns via TODO CM REF\n" +
+                "Rename via " + CM.sheet_template.rename.cmd.toSlashMention() + "\n" +
+                "Add more columns via `/sheet_template add`\n" +
                 "Remove columns via";
     }
 

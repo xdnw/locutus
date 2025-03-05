@@ -108,6 +108,27 @@ public class GrantTemplateManager {
                 "`repeatable` BIGINT NOT NULL, " +
                 "`allow_ignore` BOOLEAN NOT NULL)";
 
+        String research = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_RESEARCH` " +
+                "(`enabled` INTEGER NOT NULL, " +
+                "`date_created` BIGINT NOT NULL, " +
+                "`name` VARCHAR NOT NULL PRIMARY KEY, " +
+                "`research` BIGINT NOT NULL, " +
+                "`from_zero` BOOLEAN NOT NULL, " +
+                "`nation_filter` VARCHAR NOT NULL, " +
+                "`econ_role` BIGINT NOT NULL, " +
+                "`self_role` BIGINT NOT NULL, " +
+                "`from_bracket` BIGINT NOT NULL, " +
+                "`use_receiver_bracket` BOOLEAN NOT NULL, " +
+                "`max_total` INT NOT NULL, " +
+                "`max_day` INT NOT NULL, " +
+                "`max_granter_day` INT NOT NULL, " +
+                "`max_granter_total` INT NOT NULL, " +
+                "`expire` BIGINT NOT NULL, " +
+                "`decay` BIGINT NOT NULL, " +
+                "`repeatable` BIGINT NOT NULL, " +
+                "`allow_ignore` BOOLEAN NOT NULL)";
+
+
         String cities = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_CITY` " +
                 "(`enabled` INTEGER NOT NULL, " +
                 "`min_city` INT NOT NULL, " +
@@ -149,6 +170,7 @@ public class GrantTemplateManager {
                 "`decay` BIGINT NOT NULL, " +
                 "`repeatable` BIGINT NOT NULL, " +
                 "`allow_ignore` BOOLEAN NOT NULL)";
+
         String infra = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_INFRA` " +
                 "(`enabled` INTEGER NOT NULL, " +
                 "`level` BIGINT NOT NULL, " +
@@ -256,6 +278,7 @@ public class GrantTemplateManager {
 //        }
 
         db.executeStmt(projects);
+        db.executeStmt(research);
         db.executeStmt(cities);
         db.executeStmt(warchest);
         db.executeStmt(land);

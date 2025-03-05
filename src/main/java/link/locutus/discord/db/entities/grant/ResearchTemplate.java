@@ -120,83 +120,47 @@ public class ResearchTemplate extends AGrantTemplate<Void>{
                 return nation.getProjectTurns() <= 0;
             }
         }));
-//TODO CM REF
-//        // received project already
-//        list.add(new Grant.Requirement("Must not have received a transfer for " + (project == null ? "`{project}`" : project) + " already", false, new Function<DBNation, Boolean>() {
-//            @Override
-//            public Boolean apply(DBNation nation) {
-//                String findNote = "#research=";
-//                outer:
-//                for (Transaction2 transaction : nation.getTransactions(-1, true)) {
-//                    if (transaction.note == null) continue;
-//                    String noteLower = transaction.note.toLowerCase();
-//                    if (noteLower.contains(findNote)) {
-//                        String rss = PW.parseTransferHashNotes(transaction.note).get("#research");
-//                        if (rss == null || !MathMan.isInteger(rss)) continue;
-//                        int researchBits = Integer.parseInt(rss);
-//                        Map<Research, Integer> researchMap = Research.fromBits(researchBits);
-//                        for (Map.Entry<Research, Integer> entry : research.entrySet()) {
-//                            if (researchMap.getOrDefault(entry.getKey(), 0) < entry.getValue()) {
-//                                continue outer;
-//                            }
-//                        }
-//
-//                    }
-//                }
-//                return true;
-//            }
-//        }));
-//
-//        // already got project grant in past 10 days
-//        list.add(new Grant.Requirement("Has NOT received a project grant in the past 10 days", false, new Function<DBNation, Boolean>() {
-//            @Override
-//            public Boolean apply(DBNation nation) {
-//                List<GrantTemplateManager.GrantSendRecord> received = db.getGrantTemplateManager().getRecordsByReceiver(nation.getId());
-//                long cutoff = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119);
-//                received.removeIf(f -> f.date <= cutoff || f.grant_type != TemplateTypes.PROJECT);
-//                return received.size() == 0;
-//            }
-//        }));
-//
-//        // already have project
-//        list.add(new Grant.Requirement("Nation does NOT have the project " + (project == null ? "`{project}`" : project.name()), false, new Function<DBNation, Boolean>() {
-//            @Override
-//            public Boolean apply(DBNation nation) {
-//                return !nation.hasProject(project);
-//            }
-//        }));
-//        // required projects
-//        list.add(new Grant.Requirement("Requires the projects: " + (project == null ? "`{required_projects}`" : "`" + StringMan.getString(project.requiredProjects()) + "`"), false, new Function<DBNation, Boolean>() {
-//            @Override
-//            public Boolean apply(DBNation nation) {
-//                for (Project req : project.requiredProjects()) {
-//                    if (!nation.hasProject(req)) {
-//                        return false;
-//                    }
-//                }
-//                return true;
-//            }
-//        }));
-//
-//        // max city
-//        if (project == null || project.maxCities() != Integer.MAX_VALUE) {
-//            list.add(new Grant.Requirement("Project requires at most " + (project == null ? "`{max_cities}`" : "`" + project.maxCities() + "`") + " cities", false, new Function<DBNation, Boolean>() {
-//                @Override
-//                public Boolean apply(DBNation nation) {
-//                    return project.maxCities() == Integer.MAX_VALUE || nation.getCities() <= project.maxCities();
-//                }
-//            }));
-//        }
-//
-//        // min city
-//        if (project == null || project.requiredCities() != 0) {
-//            list.add(new Grant.Requirement("Project requires at least " + (template == null ? "`{min_cities}`" : "`" + project.requiredCities() + "`") + " cities", false, new Function<DBNation, Boolean>() {
-//                @Override
-//                public Boolean apply(DBNation nation) {
-//                    return nation.getCities() >= project.requiredCities();
-//                }
-//            }));
-//        }
+        // received project already
+        list.add(new Grant.Requirement("Must not have received a transfer for " + (research == null ? "`{research}`" : research) + " already", false, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation nation) {
+                String findNote = "#research=";
+                outer:
+                for (Transaction2 transaction : nation.getTransactions(-1, true)) {
+                    if (transaction.note == null) continue;
+                    String noteLower = transaction.note.toLowerCase();
+                    if (noteLower.contains(findNote)) {
+                        String rss = PW.parseTransferHashNotes(transaction.note).get("#research");
+                        if (rss == null || !MathMan.isInteger(rss)) continue;
+                        int researchBits = Integer.parseInt(rss);
+                        Map<Research, Integer> researchMap = Research.fromBits(researchBits);
+                        for (Map.Entry<Research, Integer> entry : research.entrySet()) {
+                            if (researchMap.getOrDefault(entry.getKey(), 0) < entry.getValue()) {
+                                continue outer;
+                            }
+                        }
+
+                    }
+                }
+                return true;
+            }
+        }));
+
+        //nation does not have ALA
+        list.add(new Grant.Requirement("Requires the project: `" + Projects.MILITARY_RESEARCH_CENTER + "`", false, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation receiver) {
+                return receiver.hasProject(Projects.MILITARY_RESEARCH_CENTER);
+            }
+        }));
+
+        //nation does not have AEC
+        list.add(new Grant.Requirement("Requires the project: `" + Projects.MILITARY_DOCTRINE + "`", true, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation receiver) {
+                return receiver.hasProject(Projects.MILITARY_DOCTRINE);
+            }
+        }));
 
         // domestic policy is technological advancement
         list.add(new Grant.Requirement("Domestic policy must be `" + DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT.name() + "`", true, new Function<DBNation, Boolean>() {

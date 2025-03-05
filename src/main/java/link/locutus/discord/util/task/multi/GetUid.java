@@ -7,6 +7,7 @@ import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.io.PagePriority;
+import link.locutus.discord.util.update.NationUpdateProcessor;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
@@ -32,19 +33,9 @@ public class GetUid implements Callable<BigInteger> {
         String html = FileUtil.readStringFromURL(pp.ordinal(), pp.getAllowedBufferingMs(), pp.getAllowableDelayMs(), url);
         Document dom = Jsoup.parse(html);
         try {
-            Elements uuidTd = dom.select("td:contains(Unique ID)");
-            if (!uuidTd.isEmpty()) {
-                String hexString = uuidTd.first().nextElementSibling().text();
-                this.uuid = new BigInteger(hexString, 16);
-                this.verified = dom.select(".fa-check-circle").size() > 0;
-                if (verified) {
-                    Locutus.imp().getDiscordDB().addVerified(nation.getNation_id());
-                }
-                Locutus.imp().getDiscordDB().addUUID(nation.getNation_id(), uuid);
-            } else {
-                Logg.text("Failed to fetch uid for " + nation.getNation_id() + " (not found)");
-            }
-            return uuid;
+            NationUpdateProcessor.NationUpdate update = NationUpdateProcessor.updateNation(nation, dom);
+
+            return update.uuid;
         } catch (Throwable e) {
             e.printStackTrace();
             AlertUtil.error("Failed to fetch uid", PW.getAlert(dom));
