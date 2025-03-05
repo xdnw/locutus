@@ -96,8 +96,7 @@ public enum TemplateTypes {
     RESEARCH(DepositType.RESEARCH, ResearchTemplate.class) {
         @Override
         public CommandRef getCommandMention() {
-//            return CM.grant_template.create.research.cmd;
-            return null;//TODO CM REF
+            return CM.grant_template.create.research.cmd;
         }
 
         @Override

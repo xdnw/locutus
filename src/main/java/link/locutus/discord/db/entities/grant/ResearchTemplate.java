@@ -64,20 +64,19 @@ public class ResearchTemplate extends AGrantTemplate<Void>{
 
     @Override
     public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String repeatable) {
-//        return CM.grant_template.create.research.cmd.name(name).allowedRecipients(allowedRecipients)
-//                .research(StringMan.getString(research)).econRole(
-//                econRole).selfRole(
-//                selfRole).bracket(
-//                bracket).useReceiverBracket(
-//                useReceiverBracket).maxTotal(
-//                maxTotal).maxDay(
-//                maxDay).from_zero(from_zero ? "true" : null).maxGranterDay(
-//                maxGranterDay).maxGranterTotal(
-//                maxGranterTotal).expireTime(
-//                allowExpire).decayTime(
-//                allowDecay).allowIgnore(
-//                allowIgnore).toString();
-        return null; //TODO CM REF
+        return CM.grant_template.create.research.cmd.name(name).allowedRecipients(allowedRecipients)
+                .research(StringMan.getString(research)).econRole(
+                econRole).selfRole(
+                selfRole).bracket(
+                bracket).useReceiverBracket(
+                useReceiverBracket).maxTotal(
+                maxTotal).maxDay(
+                maxDay).from_zero(from_zero ? "true" : null).maxGranterDay(
+                maxGranterDay).maxGranterTotal(
+                maxGranterTotal).expireTime(
+                allowExpire).decayTime(
+                allowDecay).allowIgnore(
+                allowIgnore).toString();
     }
 
 
