@@ -1386,7 +1386,7 @@ public class StatCommands {
 
         List<AllianceMetric> metrics = new ArrayList<>(Arrays.asList(AllianceMetric.SOLDIER_PCT, AllianceMetric.TANK_PCT, AllianceMetric.AIRCRAFT_PCT, AllianceMetric.SHIP_PCT));
         CoalitionMetricsGraph table = CoalitionMetricsGraph.create(metrics, startTurn, endTurn, alliance.getName(), Collections.singleton(alliance));
-        IMessageBuilder msg = table.writeMsg(channel.create(), TimeFormat.TURN_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, GraphType.LINE, start_time, attach_json, attach_csv, attach_sheet ? db : null, SheetKey.MILITARIZATION_TIME);
+        IMessageBuilder msg = table.writeMsg(channel.create(), TimeFormat.TURN_TO_DATE, TableNumberFormat.PERCENTAGE_ONE, GraphType.LINE, startTurn, attach_json, attach_csv, attach_sheet ? db : null, SheetKey.MILITARIZATION_TIME);
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.militarizationTime.cmd.getName(), command));
         }

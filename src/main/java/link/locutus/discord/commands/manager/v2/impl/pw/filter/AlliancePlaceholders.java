@@ -81,7 +81,7 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
 
     @Override
     public Set<String> getSheetColumns() {
-        return Set.of("alliance", "{id}", "{name}", "{getname}", "{getid}");
+        return new LinkedHashSet<>(List.of("alliance", "{id}", "{name}", "{getname}", "{getid}"));
     }
 
     public AllianceInstanceAttributeDouble getMetricDouble(ValueStore store, String id) {
