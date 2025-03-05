@@ -6567,7 +6567,7 @@ public abstract class DBNation implements NationOrAlliance {
 
     @Command
     public double getResearchCostFactor() {
-        return hasProject(Projects.MILITARY_DOCTRINE) ? 0.95 : 1;
+        return Research.costFactor(hasProject(Projects.MILITARY_DOCTRINE));
     }
 
     @Command(desc = "The number of research this nation has")

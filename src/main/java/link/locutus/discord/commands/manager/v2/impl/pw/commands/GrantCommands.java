@@ -3222,6 +3222,8 @@ public class GrantCommands {
                            @Switch("d") @Arg("Force the use of the provided policies for cost reduction") Set<DomesticPolicy> force_policy,
                            @Switch("fp") @Arg("These projects are not purchased but are included for cost reduction calculations") Set<Project> force_projects,
                            @Switch("er") boolean exclude_city_refund,
+                           @Switch("r") Map<Research, Integer> research,
+                           @Switch("rz") boolean research_from_zero,
                            @Switch("s") SpreadSheet sheet
                            ) throws GeneralSecurityException, IOException {
         if (force_projects == null) force_projects = Collections.emptySet();
@@ -3247,6 +3249,8 @@ public class GrantCommands {
                 "projects_bought",
                 "project_cost",
                 "project_converted",
+                "research_cost",
+                "research_converted",
                 "cost_raw",
                 "total_converted"
         ));
@@ -3345,6 +3349,14 @@ public class GrantCommands {
                 costReduction = Math.max(0, costReduction - tmp);
             }
 
+            Map<ResourceType, Double> researchCost = new HashMap<>();
+            if (research != null) {
+                boolean md = nation.hasProject(Projects.MILITARY_DOCTRINE) || force_projects.contains(Projects.MILITARY_DOCTRINE);
+                double researchReduction = Research.costFactor(md);
+                Map<Research, Integer> start = research_from_zero ? new HashMap<>() : nation.getResearchLevels();
+                researchCost = Research.cost(start, research, researchReduction);
+            }
+
             headers.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
             headers.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
             headers.set(2, nation.getCities() + "");
@@ -3358,10 +3370,12 @@ public class GrantCommands {
             headers.set(10, StringMan.join(projectsBought, ","));
             headers.set(11, ResourceType.toString(projectCost));
             headers.set(12, MathMan.format(ResourceType.convertedTotal(projectCost)));
+            headers.set(13, ResourceType.toString(projectCost));
+            headers.set(14, MathMan.format(ResourceType.convertedTotal(projectCost)));
             double[] total = projectCost.clone();
             total[0] += cityCost + infraCost + landCost;
-            headers.set(13, ResourceType.toString(total));
-            headers.set(14, MathMan.format(ResourceType.convertedTotal(total)));
+            headers.set(15, ResourceType.toString(total));
+            headers.set(16, MathMan.format(ResourceType.convertedTotal(total)));
 
             sheet.addRow(headers);
 

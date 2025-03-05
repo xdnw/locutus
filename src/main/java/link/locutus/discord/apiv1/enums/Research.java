@@ -82,6 +82,10 @@ public enum Research {
         System.out.println(ResourceType.toString(cost));
     }
 
+    public static double costFactor(boolean militaryDoctrine) {
+         return militaryDoctrine ? 0.95 : 1;
+    }
+
     public int getLevel(int researchBits) {
         return (researchBits >> (ordinal() * 5)) & 0b11111;
     }
