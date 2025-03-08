@@ -1,5 +1,6 @@
 @import link.locutus.discord.commands.manager.v2.binding.WebStore
 @import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM
+@import link.locutus.discord.config.Settings
 @import link.locutus.discord.user.Roles
 @import link.locutus.discord.db.GuildDB
 @import net.dv8tion.jda.api.entities.Guild
@@ -9,7 +10,7 @@
 @param String discordUrl
 @param String mailUrl
 @template.main(ws = ws, title = "Pick a login method", content = @`
-    <h3>How would you like to log in?</h3>
+    <h3>${Settings.INSTANCE.TEST ? "TEST SERVER: " : ""}How would you like to log in?</h3>
     <ul class="nav nav-pills flex-row" id="js-pills-1" role="tablist">
         <li class="nav-item border border-dark rounded-0">
             <button class="nav-link active text-start d-flex align-items-center fw-bold rounded-0" id="profile-pill" data-bs-toggle="pill" data-bs-target="#profile-pill-pane" type="button" role="tab" aria-controls="profile-pill-pane" aria-selected="true">

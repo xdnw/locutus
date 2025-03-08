@@ -6,19 +6,18 @@ import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.util.scheduler.TriFunction;
 
 import java.util.Set;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-public abstract class SimplePlaceholders<T> extends Placeholders<T> {
+public abstract class SimplePlaceholders<T, M> extends Placeholders<T, M> {
 
     private final String help;
-    private final TriFunction<Placeholders<T>, ValueStore, String, Set<T>> parse;
-    private final TriFunction<Placeholders<T>, ValueStore, String, Predicate<T>> parsePredicate;
+    private final TriFunction<Placeholders<T, M>, ValueStore, String, Set<T>> parse;
+    private final TriFunction<Placeholders<T, M>, ValueStore, String, Predicate<T>> parsePredicate;
     private final Function<T, String> getName;
 
-    public SimplePlaceholders(Class<T> type, ValueStore store, ValidatorStore validators, PermissionHandler permisser, String help, TriFunction<Placeholders<T>, ValueStore, String, Set<T>> parse, TriFunction<Placeholders<T>, ValueStore, String, Predicate<T>> parsePredicate, Function<T, String> getName) {
-        super(type, store, validators, permisser);
+    public SimplePlaceholders(Class<T> type, Class<M> modifier, ValueStore store, ValidatorStore validators, PermissionHandler permisser, String help, TriFunction<Placeholders<T, M>, ValueStore, String, Set<T>> parse, TriFunction<Placeholders<T, M>, ValueStore, String, Predicate<T>> parsePredicate, Function<T, String> getName) {
+        super(type, modifier, store, validators, permisser);
         this.help = help;
         this.parse = parse;
         this.parsePredicate = parsePredicate;

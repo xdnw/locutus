@@ -1801,7 +1801,7 @@ public class GuildHandler {
                                             body.append("- " + Rank.byId(attacker.getPosition()));
                                         }
                                     }
-                                    body.append(" ```\nc" + attacker.getCities() + " | " + attacker.getAvg_infra() + "\uD83C\uDFD7 | " + MathMan.format(attacker.getScore()) + "ns``` ");
+                                    body.append(" ```\nc" + attacker.getCities() + " | " + (Math.round(attacker.getAvg_infra())) + "\uD83C\uDFD7 | " + Math.round(attacker.getScore()) + "ns``` ");
                                     body.append("``` " + attacker.getSoldiers()).append(" \uD83D\uDC82").append(" | ");
                                     body.append(attacker.getTanks()).append(" \u2699").append(" | ");
                                     body.append(attacker.getAircraft()).append(" \u2708").append(" | ");

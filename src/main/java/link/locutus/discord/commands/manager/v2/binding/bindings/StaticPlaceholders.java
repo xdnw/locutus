@@ -9,16 +9,13 @@ import link.locutus.discord.util.scheduler.TriFunction;
 
 import java.util.Arrays;
 import java.util.Set;
-import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-public abstract class StaticPlaceholders<T> extends SimplePlaceholders<T> {
+public abstract class StaticPlaceholders<T> extends SimpleVoidPlaceholders<T> {
     private final Supplier<T[]> enumValues;
 
-    public StaticPlaceholders(Class<T> type, Supplier<T[]> values, ValueStore store, ValidatorStore validators, PermissionHandler permisser, String help, TriFunction<Placeholders<T>, ValueStore, String, Set<T>> parse) {
+    public StaticPlaceholders(Class<T> type, Supplier<T[]> values, ValueStore store, ValidatorStore validators, PermissionHandler permisser, String help, TriFunction<Placeholders<T, Void>, ValueStore, String, Set<T>> parse) {
         super(type, store, validators, permisser, help, parse, (inst, valueStore, s) -> {
             Set<T> parsed = parse.apply(inst, valueStore, s);
             return parsed::contains;

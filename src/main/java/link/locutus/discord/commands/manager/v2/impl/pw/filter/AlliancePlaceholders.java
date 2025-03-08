@@ -3,11 +3,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.SelectorInfo;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
@@ -41,11 +37,11 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-public class AlliancePlaceholders extends Placeholders<DBAlliance> {
+public class AlliancePlaceholders extends Placeholders<DBAlliance, Long> {
     private final Map<String, AllianceInstanceAttribute> customMetrics = new HashMap<>();
 
     public AlliancePlaceholders(ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
-        super(DBAlliance.class, store, validators, permisser);
+        super(DBAlliance.class, Long.class, store, validators, permisser);
     }
 
     @Override
@@ -189,6 +185,12 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
         TypedFunction<DBAlliance, ?> typeFunction = formatRecursively(store, id, null, 0, false, true);
         if (typeFunction == null) return null;
         return new AllianceInstanceAttribute<>(id, "", typeFunction.getType(), typeFunction);
+    }
+
+    @Override
+    public Set<DBAlliance> parseSet(ValueStore store2, String input, Long modifier) {
+        // TODO CM REF
+        return super.parseSet(store2, input, modifier);
     }
 
     @Override

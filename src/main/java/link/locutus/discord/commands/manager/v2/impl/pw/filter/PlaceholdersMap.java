@@ -96,40 +96,40 @@ public class PlaceholdersMap {
         return getClassName(clazz.getSimpleName());
     }
 
-    public static Placeholders<DBNation> NATIONS = null;
-    public static Placeholders<DBAlliance> ALLIANCES = null;
-    public static Placeholders<NationOrAlliance> NATION_OR_ALLIANCE = null;
-    public static Placeholders<Continent> CONTINENTS = null;
-    public static Placeholders<GuildDB> GUILDS = null;
-    public static Placeholders<Project> PROJECTS = null;
-    public static Placeholders<Treaty> TREATIES = null;
-    public static Placeholders<DBBan> BANS = null;
-    public static Placeholders<ResourceType> RESOURCE_TYPES = null;
-    public static Placeholders<AttackType> ATTACK_TYPES = null;
-    public static Placeholders<MilitaryUnit> MILITARY_UNITS = null;
-    public static Placeholders<TreatyType> TREATY_TYPES = null;
-    public static Placeholders<DBTreasure> TREASURES = null;
-    public static Placeholders<NationColor> NATION_COLORS = null;
-    public static Placeholders<Building> BUILDINGS = null;
-    public static Placeholders<IACheckup.AuditType> AUDIT_TYPES = null;
-    public static Placeholders<NationList> NATION_LIST = null;
-    public static Placeholders<DBBounty> BOUNTIES = null;
-    public static Placeholders<DBCity> CITIES = null;
-    public static Placeholders<TaxBracket> TAX_BRACKETS = null;
-    public static Placeholders<UserWrapper> USERS = null;
-    public static Placeholders<Transaction2> TRANSACTIONS = null;
-    public static Placeholders<DBTrade> TRADES = null;
-    public static Placeholders<IAttack> ATTACKS = null;
-    public static Placeholders<DBWar> WARS = null;
-    public static Placeholders<TaxDeposit> TAX_DEPOSITS = null;
-    public static Placeholders<GuildSetting> SETTINGS = null;
-    public static Placeholders<Conflict> CONFLICTS = null;
-    public static Placeholders<TextChannelWrapper> CHANNELS = null;
+    public static Placeholders<DBNation, NationModifier> NATIONS = null;
+    public static Placeholders<DBAlliance, Void> ALLIANCES = null;
+    public static Placeholders<NationOrAlliance, Void> NATION_OR_ALLIANCE = null;
+    public static Placeholders<Continent, Void> CONTINENTS = null;
+    public static Placeholders<GuildDB, Void> GUILDS = null;
+    public static Placeholders<Project, Void> PROJECTS = null;
+    public static Placeholders<Treaty, Void> TREATIES = null;
+    public static Placeholders<DBBan, Void> BANS = null;
+    public static Placeholders<ResourceType, Void> RESOURCE_TYPES = null;
+    public static Placeholders<AttackType, Void> ATTACK_TYPES = null;
+    public static Placeholders<MilitaryUnit, Void> MILITARY_UNITS = null;
+    public static Placeholders<TreatyType, Void> TREATY_TYPES = null;
+    public static Placeholders<DBTreasure, Void> TREASURES = null;
+    public static Placeholders<NationColor, Void> NATION_COLORS = null;
+    public static Placeholders<Building, Void> BUILDINGS = null;
+    public static Placeholders<IACheckup.AuditType, Void> AUDIT_TYPES = null;
+    public static Placeholders<NationList, Void> NATION_LIST = null;
+    public static Placeholders<DBBounty, Void> BOUNTIES = null;
+    public static Placeholders<DBCity, Void> CITIES = null;
+    public static Placeholders<TaxBracket, Void> TAX_BRACKETS = null;
+    public static Placeholders<UserWrapper, Void> USERS = null;
+    public static Placeholders<Transaction2, Void> TRANSACTIONS = null;
+    public static Placeholders<DBTrade, Void> TRADES = null;
+    public static Placeholders<IAttack, Void> ATTACKS = null;
+    public static Placeholders<DBWar, Void> WARS = null;
+    public static Placeholders<TaxDeposit, Void> TAX_DEPOSITS = null;
+    public static Placeholders<GuildSetting, Void> SETTINGS = null;
+    public static Placeholders<Conflict, Void> CONFLICTS = null;
+    public static Placeholders<TextChannelWrapper, Void> CHANNELS = null;
 
     // --------------------------------------------------------------------
 
 
-    private final Map<Class<?>, Placeholders<?>> placeholders = new ConcurrentHashMap<>();
+    private final Map<Class<?>, Placeholders<?, ?>> placeholders = new ConcurrentHashMap<>();
     private final ValueStore store;
     private final ValidatorStore validators;
     private final PermissionHandler permisser;
@@ -191,7 +191,7 @@ public class PlaceholdersMap {
             fields.put(enclosedType, field);
         }
 
-        for (Map.Entry<Class<?>, Placeholders<?>> entry : this.placeholders.entrySet()) {
+        for (Map.Entry<Class<?>, Placeholders<?, ?>> entry : this.placeholders.entrySet()) {
             Class<?> enclosedType = entry.getKey();
             Field field = fields.get(enclosedType);
             if (field == null) {
@@ -211,8 +211,8 @@ public class PlaceholdersMap {
 //        this.placeholders.put(AGrantTemplate.class, createGrantTemplates());
     }
 
-    public <T> Placeholders<T> get(Class<T> type) {
-        return (Placeholders<T>) this.placeholders.get(type);
+    public <T, M> Placeholders<T, M> get(Class<T> type) {
+        return (Placeholders<T, M>) this.placeholders.get(type);
     }
 
     public <T> Class<T> parseType(String name) {
@@ -221,10 +221,10 @@ public class PlaceholdersMap {
         return (Class<T>) this.placeholders.keySet().stream().filter(f -> getClassName(f).equalsIgnoreCase(finalName)).findFirst().orElse(null);
     }
 
-    public static <T> Set<T> getSelection(Placeholders<T> instance, ValueStore store, String input) {
+    public static <T, M> Set<T> getSelection(Placeholders<T, M> instance, ValueStore store, String input) {
         return getSelection(instance, store, input, true);
     }
-    public static <T> Set<T> getSelection(Placeholders<T> instance, ValueStore store, String input, boolean throwError) {
+    public static <T, M> Set<T> getSelection(Placeholders<T, M> instance, ValueStore store, String input, boolean throwError) {
         Class<T> type = instance.getType();
         boolean isSelection = false;
         String inputAlias = input;
@@ -247,7 +247,9 @@ public class PlaceholdersMap {
                 SelectionAlias<T> selection = db.getSheetManager().getSelectionAlias(inputAlias, type);
                 if (selection != null) {
                     String query = selection.getSelection();
-                    return instance.parseSet(store, query, selection.getModifier());
+                    String modifierStr = selection.getModifier();
+                    M modifier = modifierStr == null || modifierStr.isEmpty() ? null : instance.parseModifierLegacy(store, modifierStr);
+                    return instance.parseSet(store, query, modifier);
                 }
                 if (throwError) {
                     Map<String, SelectionAlias<T>> options = db.getSheetManager().getSelectionAliases(type);
@@ -261,10 +263,10 @@ public class PlaceholdersMap {
         return null;
     }
 
-    private Placeholders<Continent> createContinents() {
+    private Placeholders<Continent, Void> createContinents() {
         return new StaticPlaceholders<Continent>(Continent.class, Continent::values, store, validators, permisser,
                 "One of the game continents",
-                (ThrowingTriFunction<Placeholders<Continent>, ValueStore, String, Set<Continent>>) (inst, store, input) -> {
+                (ThrowingTriFunction<Placeholders<Continent, Void>, ValueStore, String, Set<Continent>>) (inst, store, input) -> {
                     Set<Continent> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Continent.values()));
@@ -442,10 +444,10 @@ public class PlaceholdersMap {
         throw new IllegalArgumentException("Invalid nation or alliance: `" + input + "`");
     }
 
-    private Placeholders<NationOrAlliance> createNationOrAlliances() {
-        NationPlaceholders nationPlaceholders = (NationPlaceholders) get(DBNation.class);
-        AlliancePlaceholders alliancePlaceholders = (AlliancePlaceholders) get(DBAlliance.class);
-        return new Placeholders<NationOrAlliance>(NationOrAlliance.class, store, validators, permisser) {
+    private Placeholders<NationOrAlliance, NationModifier> createNationOrAlliances() {
+        NationPlaceholders nationPlaceholders = (NationPlaceholders) (Placeholders) get(DBNation.class);
+        AlliancePlaceholders alliancePlaceholders = (AlliancePlaceholders) (Placeholders) get(DBAlliance.class);
+        return new Placeholders<NationOrAlliance, NationModifier>(NationOrAlliance.class, NationModifier.class, store, validators, permisser) {
             @Override
             public Set<String> getSheetColumns() {
                 return new LinkedHashSet<>(List.of("nation", "alliance"));
@@ -559,10 +561,10 @@ public class PlaceholdersMap {
         };
     }
 
-    private Placeholders<GuildDB> createGuildDB() {
-        return new SimplePlaceholders<GuildDB>(GuildDB.class, store, validators, permisser,
+    private Placeholders<GuildDB, Void> createGuildDB() {
+        return new SimpleVoidPlaceholders<GuildDB>(GuildDB.class, store, validators, permisser,
                 "A discord guild",
-                (ThrowingTriFunction<Placeholders<GuildDB>, ValueStore, String, Set<GuildDB>>) (inst, store, input) -> {
+                (ThrowingTriFunction<Placeholders<GuildDB, Void>, ValueStore, String, Set<GuildDB>>) (inst, store, input) -> {
                     Set<GuildDB> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     User user = (User) store.getProvided(Key.of(User.class, Me.class), true);
@@ -591,7 +593,7 @@ public class PlaceholdersMap {
                         throw new IllegalArgumentException("You (" + user + ") are not in the guild with id: `" + id + "`");
                     }
                     return Set.of(guild);
-                }, (ThrowingTriFunction<Placeholders<GuildDB>, ValueStore, String, Predicate<GuildDB>>) (inst, store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<GuildDB, Void>, ValueStore, String, Predicate<GuildDB>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) {
                 return f -> true;
             }
@@ -664,10 +666,10 @@ public class PlaceholdersMap {
         };
     }
 
-    private Placeholders<DBBan> createBans() {
-        return new SimplePlaceholders<DBBan>(DBBan.class,  store, validators, permisser,
+    private Placeholders<DBBan, Void> createBans() {
+        return new SimpleVoidPlaceholders<DBBan>(DBBan.class,  store, validators, permisser,
                 "A game ban",
-                (ThrowingTriFunction<Placeholders<DBBan>, ValueStore, String, Set<DBBan>>) (inst, store, input) -> {
+                (ThrowingTriFunction<Placeholders<DBBan, Void>, ValueStore, String, Set<DBBan>>) (inst, store, input) -> {
                     Set<DBBan> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) {
@@ -677,7 +679,7 @@ public class PlaceholdersMap {
                         return SpreadSheet.parseSheet(input, List.of("bans"), true, (type, str) -> PWBindings.ban(str));
                     }
                     return Set.of(PWBindings.ban(input));
-                }, (ThrowingTriFunction<Placeholders<DBBan>, ValueStore, String, Predicate<DBBan>>) (inst, store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<DBBan, Void>, ValueStore, String, Predicate<DBBan>>) (inst, store, input) -> {
                     if (input.equalsIgnoreCase("*")) return f -> true;
                     if (SpreadSheet.isSheet(input)) {
                         Set<Integer> sheet = SpreadSheet.parseSheet(input, List.of("bans"), true,
@@ -688,7 +690,7 @@ public class PlaceholdersMap {
                         int id = Integer.parseInt(input);
                         return f -> f.getNation_id() == id;
                     }
-                    NationPlaceholders nationPlaceholders = (NationPlaceholders) get(DBNation.class);
+                    NationPlaceholders nationPlaceholders = (NationPlaceholders) (Placeholders) get(DBNation.class);
                     Predicate<DBNation> filter = nationPlaceholders.parseSingleFilter(store, input);
                     return f -> {
                         DBNation nation = DBNation.getById(f.nation_id);
@@ -761,10 +763,10 @@ public class PlaceholdersMap {
         };
     }
 
-    private Placeholders<NationList> createNationList() {
-        return new SimplePlaceholders<NationList>(NationList.class, store, validators, permisser,
+    private Placeholders<NationList, NationModifier> createNationList() {
+        return new SimplePlaceholders<NationList, NationModifier>(NationList.class, NationModifier.class, store, validators, permisser,
                 "One or more groups of nations",
-                (ThrowingTriFunction<Placeholders<NationList>, ValueStore, String, Set<NationList>>) (inst, store, input) -> {
+                (ThrowingTriFunction<Placeholders<NationList, NationModifier>, ValueStore, String, Set<NationList>>) (inst, store, input) -> {
                     Set<NationList> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
@@ -787,7 +789,7 @@ public class PlaceholdersMap {
                         String filterStr = input.substring(index + 1, input.length() - 1);
                         filterName = "[" + filterStr + "]";
                         input = input.substring(0, index);
-                        NationPlaceholders placeholders = (NationPlaceholders) get(DBNation.class);
+                        NationPlaceholders placeholders = (NationPlaceholders) (Placeholders) get(DBNation.class);
                         filter = placeholders.parseFilter(store, filterStr);
                     }
 
@@ -810,7 +812,7 @@ public class PlaceholdersMap {
                             lists.add(new SimpleNationList(Locutus.imp().getNationDB().getNationsByAlliance(db.getCoalition(coalition))).setFilter(filterName));
                         }
                     } else {
-                        NationPlaceholders placeholders = (NationPlaceholders) get(DBNation.class);
+                        NationPlaceholders placeholders = (NationPlaceholders) (Placeholders) get(DBNation.class);
                         lists.add(new SimpleNationList(placeholders.parseSet(store, input)).setFilter(filterName));
                     }
                     Set<NationList> result = new HashSet<>();
@@ -825,7 +827,7 @@ public class PlaceholdersMap {
                         result.addAll(lists);
                     }
                     return result;
-                }, (ThrowingTriFunction<Placeholders<NationList>, ValueStore, String, Predicate<NationList>>) (inst, store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<NationList, NationModifier>, ValueStore, String, Predicate<NationList>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
             throw new IllegalArgumentException("NationList predicates other than `*` are unsupported. Please use DBNation instead");
         }, new Function<NationList, String>() {
@@ -898,7 +900,7 @@ public class PlaceholdersMap {
         if (MathMan.isInteger(input) || input.contains("/city/id=")) {
             return Set.of(PWBindings.cityUrl(input));
         }
-        NationPlaceholders nationPlaceholders = (NationPlaceholders) get(DBNation.class);
+        NationPlaceholders nationPlaceholders = (NationPlaceholders) (Placeholders) get(DBNation.class);
         Set<DBNation> nations = nationPlaceholders.parseSingleElem(store, input, false);
         Set<DBCity> cities = new LinkedHashSet<>();
         for (DBNation nation : nations) {
@@ -1040,10 +1042,10 @@ public class PlaceholdersMap {
         };
     }
 
-    private Placeholders<UserWrapper> createUsers() {
-        return new SimplePlaceholders<UserWrapper>(UserWrapper.class, store, validators, permisser,
+    private Placeholders<UserWrapper, Void> createUsers() {
+        return new SimpleVoidPlaceholders<UserWrapper>(UserWrapper.class, store, validators, permisser,
                 "A discord user",
-                (ThrowingTriFunction<Placeholders<UserWrapper>, ValueStore, String, Set<UserWrapper>>) (inst, store, input) -> {
+                (ThrowingTriFunction<Placeholders<UserWrapper, Void>, ValueStore, String, Set<UserWrapper>>) (inst, store, input) -> {
                     Set<UserWrapper> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), true);
@@ -1053,7 +1055,7 @@ public class PlaceholdersMap {
                         return member.stream().map(UserWrapper::new).collect(Collectors.toSet());
                     }
                     return parseUserSingle(guild, input);
-                }, (ThrowingTriFunction<Placeholders<UserWrapper>, ValueStore, String, Predicate<UserWrapper>>) (inst, store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<UserWrapper, Void>, ValueStore, String, Predicate<UserWrapper>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
 
             GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), true);
@@ -1133,10 +1135,10 @@ public class PlaceholdersMap {
 
     }
 
-    private Placeholders<TextChannelWrapper> createChannels() {
-        return new SimplePlaceholders<TextChannelWrapper>(TextChannelWrapper.class, store, validators, permisser,
+    private Placeholders<TextChannelWrapper, Void> createChannels() {
+        return new SimpleVoidPlaceholders<TextChannelWrapper>(TextChannelWrapper.class, store, validators, permisser,
                 "A discord channel",
-                (ThrowingTriFunction<Placeholders<TextChannelWrapper>, ValueStore, String, Set<TextChannelWrapper>>) (inst, store, input) -> {
+                (ThrowingTriFunction<Placeholders<TextChannelWrapper, Void>, ValueStore, String, Set<TextChannelWrapper>>) (inst, store, input) -> {
                     Set<TextChannelWrapper> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), true);
@@ -1146,7 +1148,7 @@ public class PlaceholdersMap {
                         return channels.stream().map(TextChannelWrapper::new).collect(Collectors.toSet());
                     }
                     return parseChannelSingle(guild, input);
-                }, (ThrowingTriFunction<Placeholders<TextChannelWrapper>, ValueStore, String, Predicate<TextChannelWrapper>>) (inst, store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<TextChannelWrapper, Void>, ValueStore, String, Predicate<TextChannelWrapper>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
 
             GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), true);
@@ -1222,10 +1224,10 @@ public class PlaceholdersMap {
 
     }
 
-    private Placeholders<DBCity> createCities() {
-        return new SimplePlaceholders<DBCity>(DBCity.class, store, validators, permisser,
+    private Placeholders<DBCity, Void> createCities() {
+        return new SimpleVoidPlaceholders<DBCity>(DBCity.class, store, validators, permisser,
                 "A city",
-                (ThrowingTriFunction<Placeholders<DBCity>, ValueStore, String, Set<DBCity>>) (inst, store, input) -> {
+                (ThrowingTriFunction<Placeholders<DBCity, Void>, ValueStore, String, Set<DBCity>>) (inst, store, input) -> {
                     Set<DBCity> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) {
@@ -1240,7 +1242,7 @@ public class PlaceholdersMap {
                         return cities;
                     }
                     return parseCitiesSingle(store, input);
-                }, (ThrowingTriFunction<Placeholders<DBCity>, ValueStore, String, Predicate<DBCity>>) (inst, store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<DBCity, Void>, ValueStore, String, Predicate<DBCity>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
             if (MathMan.isInteger(input) || input.contains("/city/id=")) {
                 DBCity city = PWBindings.cityUrl(input);
@@ -1256,7 +1258,7 @@ public class PlaceholdersMap {
                 }
                 return f -> cityIds.contains(f.getId());
             }
-            NationPlaceholders nationPlaceholders = (NationPlaceholders) get(DBNation.class);
+            NationPlaceholders nationPlaceholders = (NationPlaceholders) (Placeholders) get(DBNation.class);
             Predicate<DBNation> filter = nationPlaceholders.parseSingleFilter(store, input);
             return f -> {
                 DBNation nation = DBNation.getById(f.getNation_id());
@@ -1369,7 +1371,7 @@ public class PlaceholdersMap {
             TaxBracket bracket = PWBindings.bracket(db, input);
             return Set.of(bracket);
         }
-        NationPlaceholders natFormat = (NationPlaceholders) get(DBNation.class);
+        NationPlaceholders natFormat = (NationPlaceholders) (Placeholders) get(DBNation.class);
         Set<DBNation> nations = natFormat.parseSingleElem(store, input, false);
         Set<TaxBracket> brackets = new ObjectOpenHashSet<>();
         Set<Integer> ids = new IntOpenHashSet();
@@ -1418,10 +1420,10 @@ public class PlaceholdersMap {
         return result;
     }
 
-    public Placeholders<TaxDeposit> createTaxDeposit() {
-        return new SimplePlaceholders<TaxDeposit>(TaxDeposit.class, store, validators, permisser,
+    public Placeholders<TaxDeposit, Void> createTaxDeposit() {
+        return new SimpleVoidPlaceholders<TaxDeposit>(TaxDeposit.class, store, validators, permisser,
                 "A tax record",
-                (ThrowingTriFunction<Placeholders<TaxDeposit>, ValueStore, String, Set<TaxDeposit>>) (inst, store, input) -> {
+                (ThrowingTriFunction<Placeholders<TaxDeposit, Void>, ValueStore, String, Set<TaxDeposit>>) (inst, store, input) -> {
                     Set<TaxDeposit> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) {
@@ -1460,7 +1462,7 @@ public class PlaceholdersMap {
                     Set<Integer> ids = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
                     return getTaxes(store, null, null, ids, null);
 
-                }, (ThrowingTriFunction<Placeholders<TaxDeposit>, ValueStore, String, Predicate<TaxDeposit>>) (inst, store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<TaxDeposit, Void>, ValueStore, String, Predicate<TaxDeposit>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
             if (SpreadSheet.isSheet(input)) {
                 Set<Integer> ids = new IntOpenHashSet();
@@ -1488,7 +1490,7 @@ public class PlaceholdersMap {
                 int id = Integer.parseInt(input.substring(input.indexOf('=') + 1));
                 return f -> f.tax_id == id;
             }
-            NationPlaceholders nationPlaceholders = (NationPlaceholders) get(DBNation.class);
+            NationPlaceholders nationPlaceholders = (NationPlaceholders) (Placeholders) get(DBNation.class);
             Predicate<DBNation> nationFilter = nationPlaceholders.parseSingleFilter(store, input);
             return f -> {
                 DBNation nation = DBNation.getOrCreate(f.nationId);
@@ -1559,11 +1561,11 @@ public class PlaceholdersMap {
         };
     }
 
-    public Placeholders<Conflict> createConflicts() {
-        return new SimplePlaceholders<Conflict>(Conflict.class, store, validators, permisser,
+    public Placeholders<Conflict, Void> createConflicts() {
+        return new SimpleVoidPlaceholders<Conflict>(Conflict.class, store, validators, permisser,
                 "Public and registered alliance conflicts added to the bot\n" +
                         "Unlisted conflicts are not supported by conflict selectors",
-                (ThrowingTriFunction<Placeholders<Conflict>, ValueStore, String, Set<Conflict>>) (inst, store, input) -> {
+                (ThrowingTriFunction<Placeholders<Conflict, Void>, ValueStore, String, Set<Conflict>>) (inst, store, input) -> {
                     Set<Conflict> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     ConflictManager manager = Locutus.imp().getWarDb().getConflicts();
@@ -1574,7 +1576,7 @@ public class PlaceholdersMap {
                         return SpreadSheet.parseSheet(input, List.of("conflict"), true, (type, str) -> PWBindings.conflict(manager, str));
                     }
                     return Set.of(PWBindings.conflict(manager, input));
-                }, (ThrowingTriFunction<Placeholders<Conflict>, ValueStore, String, Predicate<Conflict>>) (inst, store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<Conflict, Void>, ValueStore, String, Predicate<Conflict>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
             ConflictManager cMan = Locutus.imp().getWarDb().getConflicts();
             if (SpreadSheet.isSheet(input)) {
@@ -1647,10 +1649,10 @@ public class PlaceholdersMap {
         };
     }
 
-    public Placeholders<GuildSetting> createGuildSettings() {
-        return new SimplePlaceholders<GuildSetting>(GuildSetting.class, store, validators, permisser,
+    public Placeholders<GuildSetting, Void> createGuildSettings() {
+        return new SimpleVoidPlaceholders<GuildSetting>(GuildSetting.class, store, validators, permisser,
                 "A bot setting in a guild",
-                (ThrowingTriFunction<Placeholders<GuildSetting>, ValueStore, String, Set<GuildSetting>>) (inst, store, input) -> {
+                (ThrowingTriFunction<Placeholders<GuildSetting, Void>, ValueStore, String, Set<GuildSetting>>) (inst, store, input) -> {
                     Set<GuildSetting> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) {
@@ -1660,7 +1662,7 @@ public class PlaceholdersMap {
                         return SpreadSheet.parseSheet(input, List.of("setting"), true, (type, str) -> PWBindings.key(str));
                     }
                     return Set.of(PWBindings.key(input));
-                }, (ThrowingTriFunction<Placeholders<GuildSetting>, ValueStore, String, Predicate<GuildSetting>>) (inst, store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<GuildSetting, Void>, ValueStore, String, Predicate<GuildSetting>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
             if (SpreadSheet.isSheet(input)) {
                 Set<GuildSetting> settings = SpreadSheet.parseSheet(input, List.of("setting"), true, (type, str) -> PWBindings.key(str));
@@ -1757,10 +1759,10 @@ public class PlaceholdersMap {
         return attacks;
     }
 
-    public Placeholders<IAttack> createAttacks() {
-        return new SimplePlaceholders<IAttack>(IAttack.class, store, validators, permisser,
+    public Placeholders<IAttack, Void> createAttacks() {
+        return new SimpleVoidPlaceholders<IAttack>(IAttack.class, store, validators, permisser,
                 "An attack in a war",
-                (ThrowingTriFunction<Placeholders<IAttack>, ValueStore, String, Set<IAttack>>) (inst, store, input) -> {
+                (ThrowingTriFunction<Placeholders<IAttack, Void>, ValueStore, String, Set<IAttack>>) (inst, store, input) -> {
                     Set<IAttack> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     if (SpreadSheet.isSheet(input)) {
@@ -1805,7 +1807,7 @@ public class PlaceholdersMap {
                     Set<Integer> nationIds = natOrAA.stream().filter(NationOrAlliance::isNation).map(NationOrAlliance::getId).collect(Collectors.toSet());
                     Set<Integer> aaIds = natOrAA.stream().filter(NationOrAlliance::isAlliance).map(NationOrAlliance::getId).collect(Collectors.toSet());
                     return getAttacks(Set.of(), Set.of(), nationIds, aaIds);
-                }, (ThrowingTriFunction<Placeholders<IAttack>, ValueStore, String, Predicate<IAttack>>) (inst, store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<IAttack, Void>, ValueStore, String, Predicate<IAttack>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
             if (SpreadSheet.isSheet(input)) {
                 Set<Integer> attackIds = new IntOpenHashSet();
@@ -1945,10 +1947,10 @@ public class PlaceholdersMap {
         };
     }
 
-    public Placeholders<DBWar> createWars() {
-        return new SimplePlaceholders<DBWar>(DBWar.class, store, validators, permisser,
+    public Placeholders<DBWar, Void> createWars() {
+        return new SimpleVoidPlaceholders<DBWar>(DBWar.class, store, validators, permisser,
                 "A war",
-                (ThrowingTriFunction<Placeholders<DBWar>, ValueStore, String, Set<DBWar>>) (inst, store, input) -> {
+                (ThrowingTriFunction<Placeholders<DBWar, Void>, ValueStore, String, Set<DBWar>>) (inst, store, input) -> {
                     Set<DBWar> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     if (SpreadSheet.isSheet(input)) {
@@ -1992,7 +1994,7 @@ public class PlaceholdersMap {
                     Set<Integer> natIds = natOrAA.stream().filter(NationOrAlliance::isNation).map(NationOrAlliance::getId).collect(Collectors.toSet());
                     Set<Integer> aaIds = natOrAA.stream().filter(NationOrAlliance::isAlliance).map(NationOrAlliance::getId).collect(Collectors.toSet());
                     return Locutus.imp().getWarDb().getWarsForNationOrAlliance(natIds, aaIds);
-                }, (ThrowingTriFunction<Placeholders<DBWar>, ValueStore, String, Predicate<DBWar>>) (inst, store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<DBWar, Void>, ValueStore, String, Predicate<DBWar>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
             if (SpreadSheet.isSheet(input)) {
                 Set<Integer> warIds = new IntOpenHashSet();
@@ -2091,10 +2093,10 @@ public class PlaceholdersMap {
         };
     }
 
-    public Placeholders<TaxBracket> createBrackets() {
-        return new SimplePlaceholders<TaxBracket>(TaxBracket.class, store, validators, permisser,
+    public Placeholders<TaxBracket, Void> createBrackets() {
+        return new SimpleVoidPlaceholders<TaxBracket>(TaxBracket.class, store, validators, permisser,
                 "A tax bracket",
-                (ThrowingTriFunction<Placeholders<TaxBracket>, ValueStore, String, Set<TaxBracket>>) (inst, store2, input) -> {
+                (ThrowingTriFunction<Placeholders<TaxBracket, Void>, ValueStore, String, Set<TaxBracket>>) (inst, store2, input) -> {
                     Set<TaxBracket> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     GuildDB db = (GuildDB) store2.getProvided(Key.of(GuildDB.class, Me.class), false);
@@ -2118,7 +2120,7 @@ public class PlaceholdersMap {
                         return brackets;
                     }
                     return bracketSingle(store2, db, input);
-                }, (ThrowingTriFunction<Placeholders<TaxBracket>, ValueStore, String, Predicate<TaxBracket>>) (inst, store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<TaxBracket, Void>, ValueStore, String, Predicate<TaxBracket>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) {
                 return f -> true;
             }
@@ -2130,7 +2132,7 @@ public class PlaceholdersMap {
                 int id = PW.parseTaxId(input);
                 return f -> f.getId() == id;
             }
-            AlliancePlaceholders aaPlaceholders = (AlliancePlaceholders) get(DBAlliance.class);
+            AlliancePlaceholders aaPlaceholders = (AlliancePlaceholders) (Placeholders) get(DBAlliance.class);
             Predicate<DBAlliance> filter = aaPlaceholders.parseSingleFilter(store, input);
             return f -> {
                 if (f.getId() == 0) return false;
@@ -2202,10 +2204,10 @@ public class PlaceholdersMap {
         };
     }
 
-    private Placeholders<DBTrade> createTrades() {
-        return new SimplePlaceholders<DBTrade>(DBTrade.class, store, validators, permisser,
+    private Placeholders<DBTrade, Void> createTrades() {
+        return new SimpleVoidPlaceholders<DBTrade>(DBTrade.class, store, validators, permisser,
                 "A completed trade",
-                (ThrowingTriFunction<Placeholders<DBTrade>, ValueStore, String, Set<DBTrade>>) (inst, store, input) -> {
+                (ThrowingTriFunction<Placeholders<DBTrade, Void>, ValueStore, String, Set<DBTrade>>) (inst, store, input) -> {
                     Set<DBTrade> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) {
@@ -2220,7 +2222,7 @@ public class PlaceholdersMap {
                         return Set.of(Locutus.imp().getTradeManager().getTradeDb().getTradeById(id));
                     }
                     throw new IllegalArgumentException("Only trade ids are supported, not `" + input + "`");
-                }, (ThrowingTriFunction<Placeholders<DBTrade>, ValueStore, String, Predicate<DBTrade>>) (inst, store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<DBTrade, Void>, ValueStore, String, Predicate<DBTrade>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) {
                 return f -> true;
             }
@@ -2232,7 +2234,7 @@ public class PlaceholdersMap {
                 int id = Integer.parseInt(input);
                 return f -> f.getTradeId() == id;
             }
-            NationPlaceholders nationPlaceholders = (NationPlaceholders) get(DBNation.class);
+            NationPlaceholders nationPlaceholders = (NationPlaceholders) (Placeholders) get(DBNation.class);
             Predicate<DBNation> filter = nationPlaceholders.parseSingleFilter(store, input);
             return f -> {
                 DBNation sender = DBNation.getById(f.getSeller());
@@ -2299,10 +2301,10 @@ public class PlaceholdersMap {
         };
     }
 
-    private Placeholders<Transaction2> createTransactions() {
-        return new SimplePlaceholders<Transaction2>(Transaction2.class, store, validators, permisser,
+    private Placeholders<Transaction2, Void> createTransactions() {
+        return new SimpleVoidPlaceholders<Transaction2>(Transaction2.class, store, validators, permisser,
                 "A bank transaction",
-                (ThrowingTriFunction<Placeholders<Transaction2>, ValueStore, String, Set<Transaction2>>) (inst, store, input) -> {
+                (ThrowingTriFunction<Placeholders<Transaction2, Void>, ValueStore, String, Set<Transaction2>>) (inst, store, input) -> {
                     Set<Transaction2> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), false);
@@ -2323,7 +2325,7 @@ public class PlaceholdersMap {
                         return filterTransactions(nation, user, db, transactions);
                     }
                     throw new IllegalArgumentException("Invalid transaction id: " + input);
-                }, (ThrowingTriFunction<Placeholders<Transaction2>, ValueStore, String, Predicate<Transaction2>>) (inst, store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<Transaction2, Void>, ValueStore, String, Predicate<Transaction2>>) (inst, store, input) -> {
             GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), false);
             User user = (User) store.getProvided(Key.of(User.class, Me.class), false);
             DBNation nation = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
@@ -2360,7 +2362,7 @@ public class PlaceholdersMap {
             }
 
             @Override
-            public Set<Transaction2> deserializeSelection(ValueStore store, String input, String modifier) {
+            public Set<Transaction2> deserializeSelection(ValueStore store, String input, Void modifier) {
                 String type = input.substring(0, input.indexOf("{"));
                 input = input.substring(input.indexOf("{"));
 
@@ -2529,10 +2531,10 @@ public class PlaceholdersMap {
         };
     }
 
-    private Placeholders<DBBounty> createBounties() {
-        return new SimplePlaceholders<DBBounty>(DBBounty.class, store, validators, permisser,
+    private Placeholders<DBBounty, Void> createBounties() {
+        return new SimpleVoidPlaceholders<DBBounty>(DBBounty.class, store, validators, permisser,
                 "A bounty",
-                (ThrowingTriFunction<Placeholders<DBBounty>, ValueStore, String, Set<DBBounty>>) (inst, store, input) -> {
+                (ThrowingTriFunction<Placeholders<DBBounty, Void>, ValueStore, String, Set<DBBounty>>) (inst, store, input) -> {
                     Set<DBBounty> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) {
@@ -2559,7 +2561,7 @@ public class PlaceholdersMap {
                         }
                     }
                     return bountySet;
-                }, (ThrowingTriFunction<Placeholders<DBBounty>, ValueStore, String, Predicate<DBBounty>>) (inst, store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<DBBounty, Void>, ValueStore, String, Predicate<DBBounty>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
             if (SpreadSheet.isSheet(input)) {
                 Set<Integer> sheet = SpreadSheet.parseSheet(input, List.of("bounty"), true,
@@ -2570,7 +2572,7 @@ public class PlaceholdersMap {
                 int id = Integer.parseInt(input);
                 return f -> f.getId() == id;
             }
-            NationPlaceholders natPlac = (NationPlaceholders) get(DBNation.class);
+            NationPlaceholders natPlac = (NationPlaceholders) (Placeholders) get(DBNation.class);
             Predicate<DBNation> filter = natPlac.parseSingleFilter(store, input);
             return f -> {
                 DBNation nation = DBNation.getById(f.getNationId());
@@ -2641,10 +2643,10 @@ public class PlaceholdersMap {
         };
     }
 
-    private Placeholders<Treaty> createTreaty() {
-        return new SimplePlaceholders<Treaty>(Treaty.class, store, validators, permisser,
+    private Placeholders<Treaty, Void> createTreaty() {
+        return new SimpleVoidPlaceholders<Treaty>(Treaty.class, store, validators, permisser,
                 "A treaty between two alliances",
-                (ThrowingTriFunction<Placeholders<Treaty>, ValueStore, String, Set<Treaty>>) (inst, store, input) -> {
+                (ThrowingTriFunction<Placeholders<Treaty, Void>, ValueStore, String, Set<Treaty>>) (inst, store, input) -> {
                     Set<Treaty> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) {
@@ -2671,7 +2673,7 @@ public class PlaceholdersMap {
                     return Locutus.imp().getNationDB().getTreatiesMatching(f -> {
                         return (aa1.contains(f.getFromId())) && (aa2.contains(f.getToId())) || (aa1.contains(f.getToId())) && (aa2.contains(f.getFromId()));
                     });
-                }, (ThrowingTriFunction<Placeholders<Treaty>, ValueStore, String, Predicate<Treaty>>) (inst, store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<Treaty, Void>, ValueStore, String, Predicate<Treaty>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
             if (SpreadSheet.isSheet(input)) {
                 Set<Treaty> sheet = SpreadSheet.parseSheet(input, List.of("treaty"), true,
@@ -2786,10 +2788,10 @@ public class PlaceholdersMap {
         };
     }
 
-    private Placeholders<Project> createProjects() {
+    private Placeholders<Project, Void> createProjects() {
         return new StaticPlaceholders<Project>(Project.class, Projects::values, store, validators, permisser,
                 "A project",
-                (ThrowingTriFunction<Placeholders<Project>, ValueStore, String, Set<Project>>) (inst, store, input) -> {
+                (ThrowingTriFunction<Placeholders<Project, Void>, ValueStore, String, Set<Project>>) (inst, store, input) -> {
                     Set<Project> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Projects.values));
@@ -2852,10 +2854,10 @@ public class PlaceholdersMap {
         };
     }
 
-    private Placeholders<ResourceType> createResourceType() {
+    private Placeholders<ResourceType, Void> createResourceType() {
         return new StaticPlaceholders<ResourceType>(ResourceType.class, ResourceType::values, store, validators, permisser,
         "A game resource",
-        (ThrowingTriFunction<Placeholders<ResourceType>, ValueStore, String, Set<ResourceType>>) (inst, store, input) -> {
+        (ThrowingTriFunction<Placeholders<ResourceType, Void>, ValueStore, String, Set<ResourceType>>) (inst, store, input) -> {
             Set<ResourceType> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
             if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(ResourceType.values));
@@ -2912,10 +2914,10 @@ public class PlaceholdersMap {
         };
     }
 
-    private Placeholders<AttackType> createAttackTypes() {
+    private Placeholders<AttackType, Void> createAttackTypes() {
         return new StaticPlaceholders<AttackType>(AttackType.class, AttackType::values, store, validators, permisser,
                 "A war attack type",
-                (ThrowingTriFunction<Placeholders<AttackType>, ValueStore, String, Set<AttackType>>) (inst, store, input) -> {
+                (ThrowingTriFunction<Placeholders<AttackType, Void>, ValueStore, String, Set<AttackType>>) (inst, store, input) -> {
                     Set<AttackType> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(AttackType.values));
@@ -2972,10 +2974,10 @@ public class PlaceholdersMap {
         };
     }
 
-    private Placeholders<MilitaryUnit> createMilitaryUnit() {
+    private Placeholders<MilitaryUnit, Void> createMilitaryUnit() {
         return new StaticPlaceholders<MilitaryUnit>(MilitaryUnit.class, MilitaryUnit::values, store, validators, permisser,
                 "A military unit type",
-                (ThrowingTriFunction<Placeholders<MilitaryUnit>, ValueStore, String, Set<MilitaryUnit>>) (inst, store, input) -> {
+                (ThrowingTriFunction<Placeholders<MilitaryUnit, Void>, ValueStore, String, Set<MilitaryUnit>>) (inst, store, input) -> {
                     Set<MilitaryUnit> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(MilitaryUnit.values));
@@ -3032,10 +3034,10 @@ public class PlaceholdersMap {
         };
     }
 
-    private Placeholders<TreatyType> createTreatyType() {
+    private Placeholders<TreatyType, Void> createTreatyType() {
         return new StaticPlaceholders<TreatyType>(TreatyType.class, TreatyType::values, store, validators, permisser,
                 "A treaty type",
-                (ThrowingTriFunction<Placeholders<TreatyType>, ValueStore, String, Set<TreatyType>>) (inst, store, input) -> {
+                (ThrowingTriFunction<Placeholders<TreatyType, Void>, ValueStore, String, Set<TreatyType>>) (inst, store, input) -> {
                     Set<TreatyType> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(TreatyType.values));
@@ -3092,11 +3094,11 @@ public class PlaceholdersMap {
         };
     }
 
-    private Placeholders<DBTreasure> createTreasure() {
+    private Placeholders<DBTreasure, Void> createTreasure() {
         Supplier<DBTreasure[]> treasures = () -> Locutus.imp().getNationDB().getTreasuresByName().values().toArray(new DBTreasure[0]);
         return new StaticPlaceholders<DBTreasure>(DBTreasure.class, treasures, store, validators, permisser,
                 "A treasure",
-                (ThrowingTriFunction<Placeholders<DBTreasure>, ValueStore, String, Set<DBTreasure>>) (inst, store, input) -> {
+                (ThrowingTriFunction<Placeholders<DBTreasure, Void>, ValueStore, String, Set<DBTreasure>>) (inst, store, input) -> {
                     Set<DBTreasure> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Locutus.imp().getNationDB().getTreasuresByName().values());
@@ -3153,10 +3155,10 @@ public class PlaceholdersMap {
         };
     }
 
-    private Placeholders<IACheckup.AuditType> createAuditType() {
+    private Placeholders<IACheckup.AuditType, Void> createAuditType() {
         return new StaticPlaceholders<IACheckup.AuditType>(IACheckup.AuditType.class, IACheckup.AuditType::values, store, validators, permisser,
                 "A bot audit type for a nation",
-                (ThrowingTriFunction<Placeholders<IACheckup.AuditType>, ValueStore, String, Set<IACheckup.AuditType>>) (inst, store, input) -> {
+                (ThrowingTriFunction<Placeholders<IACheckup.AuditType, Void>, ValueStore, String, Set<IACheckup.AuditType>>) (inst, store, input) -> {
                     Set<IACheckup.AuditType> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(IACheckup.AuditType.values()));
@@ -3213,10 +3215,10 @@ public class PlaceholdersMap {
         };
     }
 
-    private Placeholders<NationColor> createNationColor() {
+    private Placeholders<NationColor, Void> createNationColor() {
         return new StaticPlaceholders<NationColor>(NationColor.class, NationColor::values, store, validators, permisser,
                 "A nation color",
-                (ThrowingTriFunction<Placeholders<NationColor>, ValueStore, String, Set<NationColor>>) (inst, store, input) -> {
+                (ThrowingTriFunction<Placeholders<NationColor, Void>, ValueStore, String, Set<NationColor>>) (inst, store, input) -> {
                     Set<NationColor> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(NationColor.values()));
@@ -3273,10 +3275,10 @@ public class PlaceholdersMap {
         };
     }
 
-    private Placeholders<Building> createBuilding() {
+    private Placeholders<Building, Void> createBuilding() {
         return new StaticPlaceholders<Building>(Building.class, Buildings::values, store, validators, permisser,
                 "A city building type",
-                (ThrowingTriFunction<Placeholders<Building>, ValueStore, String, Set<Building>>) (inst, store, input) -> {
+                (ThrowingTriFunction<Placeholders<Building, Void>, ValueStore, String, Set<Building>>) (inst, store, input) -> {
                     Set<Building> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Buildings.values()));

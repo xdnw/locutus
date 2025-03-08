@@ -1,7 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 
 import io.javalin.http.RedirectResponse;
-import it.unimi.dsi.fastutil.objects.ObjectArraySet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
@@ -9,7 +8,6 @@ import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
-import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.binding.bindings.SelectorInfo;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
@@ -18,7 +16,6 @@ import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
@@ -32,7 +29,6 @@ import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
-import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
@@ -52,11 +48,12 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-public class NationPlaceholders extends Placeholders<DBNation> {
+public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
+
     private final Map<String, NationAttribute> customMetrics = new HashMap<>();
 
     public NationPlaceholders(ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
-        super(DBNation.class, store, validators, permisser);
+        super(DBNation.class, NationModifier.class, store, validators, permisser);
     }
 
     @Override
@@ -96,7 +93,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
     }
 
     @Override
-    public Set<DBNation> deserializeSelection(ValueStore store, String input, String modifier) {
+    public Set<DBNation> deserializeSelection(ValueStore store, String input, NationModifier modifier) {
         Set<DBNation> superSet = super.deserializeSelection(store, input, modifier);
         List<Function<DBNation, Double>> sortCriteria = List.of(
                 n -> (double) n.getAlliance_id(),
@@ -113,6 +110,14 @@ public class NationPlaceholders extends Placeholders<DBNation> {
             }
             return 0;
         }).collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    @NoFormat
+    @Command(desc = "Nation snapshot settings (optional)")
+    public NationModifier create(@Arg("The date to use, rounded to the nearest day") @Switch("t") @Timestamp Long timestamp,
+                                 @Switch("d") boolean allow_deleted,
+                                 @Arg("If VM nations are fetched if a snapshot date is specified")@Switch("v") boolean load_snapshot_vm) {
+        return new NationModifier(timestamp, allow_deleted, load_snapshot_vm);
     }
 
     @NoFormat
@@ -239,6 +244,11 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         return result;
     }
 
+    @Override
+    public NationModifier parseModifierLegacy(ValueStore store, String input) {
+        return NationModifier.parse(input);
+    }
+
     public static Set<DBNation> getByRole(Guild guild, String name, Role role, INationSnapshot snapshot) {
         if (role == null) throw new IllegalArgumentException("Invalid role: `" + name + "`");
         List<Member> members = guild.getMembersWithRoles(role);
@@ -250,17 +260,14 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         return nations;
     }
 
-    private INationSnapshot getSnapshot(String modifier) {
-        if (modifier != null && !modifier.isEmpty()) {
+    private INationSnapshot getSnapshot(NationModifier modifier) {
+        if (modifier != null && modifier.timestamp != null) {
             DataDumpParser parser = Locutus.imp().getDataDumper(true);
             try {
                 parser.load();
-                List<String> args = StringMan.split(modifier, ",");
-                Long timestamp = args.size() > 0 ? PrimitiveBindings.timestamp(args.get(0)) : null;
-                Long day = timestamp != null ? TimeUtil.getDay(timestamp) : null;
-                boolean includeVm = args.size() > 1 ? PrimitiveBindings.Boolean(args.get(1)) : false;
+                Long day = TimeUtil.getDay(modifier.timestamp);
                 if (day != null && day != TimeUtil.getDay()) {
-                    return parser.getSnapshotDelegate(day, true, includeVm);
+                    return parser.getSnapshotDelegate(day, true, modifier.load_snapshot_vm);
                 }
             } catch (ParseException e) {
                 throw new RuntimeException(e);
@@ -272,12 +279,9 @@ public class NationPlaceholders extends Placeholders<DBNation> {
     }
 
     @Override
-    public Set<DBNation> parseSet(ValueStore store2, String input, String modifier) {
-        return parseSet(store2, input, modifier, true);
-    }
-    public Set<DBNation> parseSet(ValueStore store2, String input, String modifier, boolean allowDeleted) {
+    public Set<DBNation> parseSet(ValueStore store2, String input, NationModifier modifier) {
         INationSnapshot snapshot = getSnapshot(modifier);
-        return parseSet(store2, input, snapshot, allowDeleted);
+        return parseSet(store2, input, snapshot, modifier == null ? false : modifier.allow_deleted);
     }
 
     public Set<DBNation> parseSet(ValueStore store2, String input, INationSnapshot snapshot, boolean allowDeleted) {

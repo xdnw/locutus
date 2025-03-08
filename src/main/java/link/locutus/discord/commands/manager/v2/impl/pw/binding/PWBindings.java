@@ -19,6 +19,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationModifier;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
@@ -933,43 +934,9 @@ public class PWBindings extends BindingHelper {
     }
 
     public static Set<NationOrAlliance> nationOrAlliance(ParameterData data, @Default @Me Guild guild, String input, boolean forceAllowDeleted, @Default @Me User author, @Default @Me DBNation me) {
-        Placeholders<NationOrAlliance> placeholders = Locutus.cmd().getV2().getPlaceholders().get(NationOrAlliance.class);
+        Placeholders<NationOrAlliance, NationModifier> placeholders = Locutus.cmd().getV2().getPlaceholders().get(NationOrAlliance.class);
+        NationModifier modifier = new NationModifier(null, forceAllowDeleted, false);
         return placeholders.parseSet(guild, author, me, input);
-//        Set<NationOrAlliance> result = new LinkedHashSet<>();
-//        for (String group : input.split("\\|+")) {
-//            List<String> remainder = new ArrayList<>();
-//            if (!group.contains("#")) {
-//                List<String> args = StringMan.split(group, ',');
-//
-//                GuildDB db = Locutus.imp().getGuildDB(guild);
-//                for (String arg : args) {
-//                    try {
-//                        DBAlliance aa = alliance(data, arg);
-//                        if (forceAllowDeleted || (data != null && data.getAnnotation(AllowDeleted.class) != null) || aa.exists()) {
-//                            result.add(aa);
-//                            continue;
-//                        }
-//                    } catch (IllegalArgumentException ignore) {
-//                    }
-//                    if (db != null) {
-//                        if (arg.charAt(0) == '~') arg = arg.substring(1);
-//                        Set<Integer> coalition = db.getCoalition(arg);
-//                        if (!coalition.isEmpty()) {
-//                            result.addAll(coalition.stream().map(DBAlliance::getOrCreate).collect(Collectors.toSet()));
-//                            continue;
-//                        }
-//                    }
-//                    remainder.add(arg);
-//                }
-//            } else {
-//                remainder.add(group);
-//            }
-//            if (!remainder.isEmpty()) {
-//                result.addAll(nations(data, guild, StringMan.join(remainder, ","), forceAllowDeleted, author, me));
-//            }
-//        }
-//        if (result.isEmpty()) throw new IllegalArgumentException("Invalid nations or alliances: `" + input + "`");
-//        return result;
     }
 
     @Binding(examples = "borg,AA:Cataclysm,647252780817448972", value = "A comma separated list of nations, alliances and guild ids")
@@ -1713,13 +1680,13 @@ public class PWBindings extends BindingHelper {
 
     @Binding
     public Predicate<DBWar> warFilter(ValueStore store, String input) {
-        Placeholders<DBWar> placeholders = Locutus.cmd().getV2().getPlaceholders().get(DBWar.class);
+        Placeholders<DBWar, Void> placeholders = Locutus.cmd().getV2().getPlaceholders().get(DBWar.class);
         return placeholders.parseFilter(store, input);
     }
 
     @Binding
     public Predicate<IAttack> attackFilter(ValueStore store, String input) {
-        Placeholders<IAttack> placeholders = Locutus.cmd().getV2().getPlaceholders().get(IAttack.class);
+        Placeholders<IAttack, Void> placeholders = Locutus.cmd().getV2().getPlaceholders().get(IAttack.class);
         return placeholders.parseFilter(store, input);
     }
 

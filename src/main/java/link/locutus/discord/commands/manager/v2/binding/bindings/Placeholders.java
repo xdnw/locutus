@@ -30,6 +30,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.math.LazyMathEntity;
 import link.locutus.discord.util.math.ReflectionUtil;
+import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.lang3.StringEscapeUtils;
@@ -54,18 +55,23 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-public abstract class Placeholders<T> extends BindingHelper {
+public abstract class Placeholders<T, M> extends BindingHelper {
     private final ValidatorStore validators;
     private final PermissionHandler permisser;
     private final CommandGroup commands;
+
     private final Class<T> instanceType;
+    private final Class<M> modifierType;
     private final ValueStore store;
+
+    private ParametricCallable createModifier;
 
 //    private final ValueStore math2Type;
 //    private final ValueStore type2Math;
 
-    public Placeholders(Class<T> type, ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
+    public Placeholders(Class<T> type, Class<M> modifierType, ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
         this.instanceType = type;
+        this.modifierType = modifierType;
 
         this.validators = validators;
         this.permisser = permisser;
@@ -75,9 +81,31 @@ public abstract class Placeholders<T> extends BindingHelper {
 //        this.math2Type = new SimpleValueStore();
 //        this.type2Math = new SimpleValueStore();
         this.getCommands().registerCommands(new DefaultPlaceholders());
+        Method create = ReflectionUtil.getMethodByName(getClass(), "create");
+        if (create != null) {
+            this.createModifier = ParametricCallable.generateFromMethod(null, this, create, store);
+        }
     }
 
-    public Placeholders<T> init() {
+    public ParametricCallable getCreateModifier() {
+        return createModifier;
+    }
+
+    public Map.Entry<String, M> parseModifier(ValueStore store, Map<String, Object> args) {
+        if (createModifier != null && args.containsKey("")) {
+            Object selection = args.remove("");
+            Object[] parsed = createModifier.parseArgumentMap2(args, store, validators, permisser, true);
+            M modifierVal = (M) createModifier.call(this, store, parsed);
+            return Map.entry((String) selection, modifierVal);
+        }
+        return null;
+    }
+
+    public M parseModifierLegacy(ValueStore store, String input) {
+        return null;
+    }
+
+    public Placeholders<T, M> init() {
         this.commands.registerCommandsClass(getType());
 //        new PWMath2Type().register(math2Type);
 //        new PWType2Math().register(type2Math);
@@ -92,11 +120,15 @@ public abstract class Placeholders<T> extends BindingHelper {
         return instanceType;
     }
 
-    protected static <T> String _addSelectionAlias(Placeholders<T> instance, @Me JSONObject command, @Me GuildDB db, String name, Set<T> elems, String argumentName) {
+    public Class<M> getModifier() {
+        return modifierType;
+    }
+
+    protected static <T, M> String _addSelectionAlias(Placeholders<T, M> instance, @Me JSONObject command, @Me GuildDB db, String name, Set<T> elems, String argumentName) {
         return _addSelectionAlias(instance, "", command, db, name, argumentName);
     }
 
-    protected static <T> String _addSelectionAlias(Placeholders<T> instance, String prefix, @Me JSONObject command, @Me GuildDB db, String name, String... argumentNames) {
+    protected static <T, M> String _addSelectionAlias(Placeholders<T, M> instance, String prefix, @Me JSONObject command, @Me GuildDB db, String name, String... argumentNames) {
         name = name.toLowerCase(Locale.ROOT);
         if (argumentNames.length == 0) {
             throw new IllegalArgumentException("No arguments provided");
@@ -207,7 +239,7 @@ public abstract class Placeholders<T> extends BindingHelper {
         }
     }
 
-    protected static <T> String _addColumns(Placeholders<T> placeholders, @Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet, TypedFunction<T, String>... columns) {
+    protected static <T, M> String _addColumns(Placeholders<T, M> placeholders, @Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet, TypedFunction<T, String>... columns) {
         boolean created = false;
         if (sheet == null) {
             created = true;
@@ -264,7 +296,7 @@ public abstract class Placeholders<T> extends BindingHelper {
         }
     }
 
-    public Placeholders<T> register(Object obj) {
+    public Placeholders<T, M> register(Object obj) {
         this.commands.registerCommands(obj);
         return this;
     }
@@ -344,7 +376,7 @@ public abstract class Placeholders<T> extends BindingHelper {
     protected abstract Set<T> parseSingleElem(ValueStore store, String input);
     protected abstract Predicate<T> parseSingleFilter(ValueStore store, String input);
 
-    public Set<T> deserializeSelection(ValueStore store, String input, String modifier) {
+    public Set<T> deserializeSelection(ValueStore store, String input, M modifier) {
         return parseSet(store, input, modifier);
     }
 
@@ -419,10 +451,14 @@ public abstract class Placeholders<T> extends BindingHelper {
     }
 
     public Set<T> parseSet(Guild guild, User author, DBNation nation, String input) {
-        return parseSet(createLocals(guild, author, nation), input);
+        return parseSet(guild, author, nation, input, null);
     }
 
-    public Set<T> parseSet(ValueStore store2, String input, String modifier) {
+    public Set<T> parseSet(Guild guild, User author, DBNation nation, String input, M modifier) {
+        return parseSet(createLocals(guild, author, nation), input, modifier);
+    }
+
+    public Set<T> parseSet(ValueStore store2, String input, M modifier) {
         return parseSet(store2, input);
     }
 
@@ -709,7 +745,7 @@ public abstract class Placeholders<T> extends BindingHelper {
                 functionName = arg.trim();
                 argumentString = "";
             }
-            Placeholders<T> placeholders = this;
+            Placeholders<T, M> placeholders = this;
             if (previousFunc != null) {
                 Type type = previousFunc.getType();
                 if (type instanceof Class) {

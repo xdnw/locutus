@@ -89,7 +89,7 @@ public class PageHandler implements Handler {
 //        new StockBinding().register(store);
         PlaceholdersMap placeholders = Locutus.imp().getCommandManager().getV2().getPlaceholders();
         for (Class<?> type : placeholders.getTypes()) {
-            Placeholders<?> ph = placeholders.get(type);
+            Placeholders<?, ?> ph = placeholders.get(type);
             ph.register(store);
         }
 

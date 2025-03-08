@@ -307,22 +307,22 @@ public class SlashCommandManager extends ListenerAdapter {
                 List<UpdateCommandDesc> updaters = new ObjectArrayList<>();
                 SlashCommandData cmd = adaptCommands(commandNames, callable, id, null, null, updaters);
                 UpdateCommandDesc.updateAll(updaters, 100, 100, false, true, true, true, true, true);
-                if (getSize(cmd) > 4000) {
+                if (getSize(cmd) > 8000) {
                     UpdateCommandDesc.updateAll(updaters, 100, 100, false, true, true, false, true, true);
                 }
-                if (getSize(cmd) > 4000) {
+                if (getSize(cmd) > 8000) {
                     UpdateCommandDesc.updateAll(updaters, 100, 100, false, true, true, false, false, true);
                 }
-                if (getSize(cmd) > 4000) {
+                if (getSize(cmd) > 8000) {
                     UpdateCommandDesc.updateAll(updaters, 100, 100, false, true, false, false, false, true);
                 }
-                if (getSize(cmd) > 4000) {
+                if (getSize(cmd) > 8000) {
                     UpdateCommandDesc.updateAll(updaters, 100, 100, true, true, false, false, false, true);
                 }
-                if (getSize(cmd) > 4000) {
+                if (getSize(cmd) > 8000) {
                     UpdateCommandDesc.updateAll(updaters, 100, 100, true, true, false, false, false, false);
                 }
-                if (getSize(cmd) > 4000) {
+                if (getSize(cmd) > 8000) {
                     UpdateCommandDesc.updateAll(updaters, 0, 0, true, true, false, false, false, false);
                 }
                 toRegister.add(cmd);
@@ -348,11 +348,12 @@ public class SlashCommandManager extends ListenerAdapter {
         for (CommandData cmd : toRegister) {
             if (cmd instanceof SlashCommandData slash) {
                 int size = getSize(slash);
-                if (size > 4000) {
+                if (size > 8000) {
                     StringBuilder builder = new StringBuilder();
                     printSize(slash, builder, 0);
                     System.out.println(builder);
-                    throw new IllegalArgumentException("Command " + cmd.getName() + "too large: " + size + "");
+                    System.out.println(cmd);
+                    throw new IllegalArgumentException("Command " + cmd.getName() + " is too large: " + size + "");
                 }
             }
         }

@@ -66,7 +66,7 @@ When the return type is boolean (true/false), it will be resolved to either 1 or
 - `(#myFunction<(#myOtherFunction+5)`
 """;
 
-    public static String printPlaceholders(Placeholders<?> placeholders, ValueStore store) {
+    public static String printPlaceholders(Placeholders<?, ?> placeholders, ValueStore store) {
         String operators = Arrays.stream(ArrayUtil.MathOperator.values()).map(f -> f.name() + ": `"+ f.getSymbol() + "`").reduce((a, b) -> a + "\n- " + b).orElse("");
 
         Set<SelectorInfo> selectors = placeholders.getSelectorInfo();

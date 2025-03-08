@@ -136,11 +136,17 @@ public class CommandManager2 {
         Map<String, Object> phRoot = new LinkedHashMap<>();
         List<Class<?>> phTypesSorted = placeholders.getTypes().stream().sorted(Comparator.comparing(f -> PlaceholdersMap.getClassName(f))).toList();
         for (Class<?> t : phTypesSorted) {
-            Placeholders<?> ph = placeholders.get(t);
+            Placeholders<?, ?> ph = placeholders.get(t);
             Map<String, Object> json = new LinkedHashMap<>();
 
             Map<String, Object> bindings = ph.getCommands().toJson(permHandler, true);
             json.put("commands", bindings);
+
+            ParametricCallable create = ph.getCreateModifier();
+            if (create != null) {
+                System.out.println("ADD CREATE " + t.getSimpleName());
+                json.put("create", create.toJson(permHandler, false));
+            }
 
             Set<SelectorInfo> selectors = ph.getSelectorInfo();
             List<String[]> arr = selectors.stream().map(f -> new String[]{f.format(), f.example(), f.desc()}).toList();
@@ -179,7 +185,7 @@ public class CommandManager2 {
         this.placeholders = new PlaceholdersMap(store, validators, permisser);
         // Register bindings
         for (Class<?> type : placeholders.getTypes()) {
-            Placeholders<?> ph = placeholders.get(type);
+            Placeholders<?, ?> ph = placeholders.get(type);
             ph.register(store);
         }
         // Initialize commands (staged after bindings as there might be cross dependency)
@@ -694,7 +700,7 @@ public class CommandManager2 {
 
         List<String> missing = new ArrayList<>();
         for (Class<?> type : placeholders.getTypes()) {
-            Placeholders<?> ph = placeholders.get(type);
+            Placeholders<?, ?> ph = placeholders.get(type);
 
             Method methodAlias = null;
             Method methodColumns = null;
@@ -755,11 +761,11 @@ public class CommandManager2 {
     }
 
     public NationPlaceholders getNationPlaceholders() {
-        return (NationPlaceholders) this.placeholders.get(DBNation.class);
+        return (NationPlaceholders) (Placeholders) this.placeholders.get(DBNation.class);
     }
 
     public AlliancePlaceholders getAlliancePlaceholders() {
-        return (AlliancePlaceholders) this.placeholders.get(DBAlliance.class);
+        return (AlliancePlaceholders) (Placeholders) this.placeholders.get(DBAlliance.class);
     }
 
     public PlaceholdersMap getPlaceholders() {

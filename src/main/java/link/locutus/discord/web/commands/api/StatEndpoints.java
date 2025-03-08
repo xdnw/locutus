@@ -60,17 +60,26 @@ public class StatEndpoints {
     // TODO validate permissions
     @Command
     @ReturnType(WebTable.class)
-    public <T> WebTable table(ValueStore store, @Me @Default User user, @PlaceholderType Class type, String selection_str, @TextArea List<String> columns) {
-        System.out.println("Columns " + columns.size() + " | " + columns);
+    public <T> WebTable table(ValueStore store, @Me @Default User user, @PlaceholderType Class type,
+                              String selection_str,
+                              @TextArea List<String> columns) {
+        System.out.println("Columns " + columns.size() + " | " + columns + " | " + selection_str);
         Class<T> typeCasted = (Class<T>) type;
         Map<Integer, List<WebTableError>> errors = new LinkedHashMap<>();
         int maxPerCol = 3;
 
         PlaceholdersMap map = Locutus.cmd().getV2().getPlaceholders();
-        Placeholders<T> ph = map.get(typeCasted);
-
-        String modifier = null;
-
+        Placeholders<T, Object> ph = map.get(typeCasted);
+        Object modifier = null;
+        if (selection_str.startsWith("{") && selection_str.endsWith("}")) {
+            JSONObject json = new JSONObject(selection_str);
+            Map<String, Object> args = json.toMap();
+            Map.Entry<String, ?> entry = ph.parseModifier(store, args);
+            if (entry != null && entry.getValue() != null) {
+                selection_str = entry.getKey();
+                modifier = entry.getValue();
+            }
+        }
         Set<T> selection = ph.parseSet(store, selection_str, modifier);
         ValueStore<T> cacheStore = PlaceholderCache.createCache(selection, typeCasted);
 

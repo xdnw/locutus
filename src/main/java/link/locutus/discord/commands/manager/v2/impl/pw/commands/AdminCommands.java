@@ -215,16 +215,27 @@ public class AdminCommands {
     public String updateResearch(@Me IMessageIO io, Set<DBNation> nations) throws IOException, ParseException {
         CompletableFuture<IMessageBuilder> msgFuture = (io.sendMessage("Updating research. Please wait..."));
         long start = System.currentTimeMillis();
-        for (DBNation nation : nations) {
+        List<DBNation> nationList = new ArrayList<>(nations);
+        int backoff = 1000;
+        for (int i = 0; i < nationList.size(); i++) {
+            DBNation nation = nationList.get(i);
             try {
                 if (start + 10000 < System.currentTimeMillis()) {
                     start = System.currentTimeMillis();
-                    io.updateOptionally(msgFuture, "Updating research for " + nation.getMarkdownUrl());
+                    io.updateOptionally(msgFuture, "Updating research for " + nation.getMarkdownUrl() + " (" + (i + 1) + "/" + nationList.size() + ")");
                 }
                 nation.updateResearch();
+                Thread.sleep(350);
+                backoff = 1000;
             } catch (Exception e) {
                 e.printStackTrace();
                 io.create().append("Failed to update research for " + nation.getMarkdownUrl() + ": " + e.getMessage()).send();
+                try {
+                    Thread.sleep(backoff);
+                    backoff += 1000;
+                } catch (InterruptedException ex) {
+                    throw new RuntimeException(ex);
+                }
             }
         }
         Locutus.imp().getNationDB().saveNations(nations);

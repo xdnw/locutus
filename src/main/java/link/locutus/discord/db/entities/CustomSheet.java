@@ -106,7 +106,7 @@ public class CustomSheet {
                 continue;
             }
 
-            Placeholders<Object> ph = Locutus.cmd().getV2().getPlaceholders().get(type);
+            Placeholders<Object, Object> ph = Locutus.cmd().getV2().getPlaceholders().get(type);
             if (ph == null) {
                 errors.add("[Tab: `" + tabName + "`] Invalid type: `" + type.getSimpleName() + "`");
                 continue;
@@ -115,7 +115,8 @@ public class CustomSheet {
             Map<String, Integer> maxErrors = new HashMap<>();
             Future<?> future = executor.submit(() -> {
                 try {
-                    Set<Object> selection = ph.deserializeSelection(store, alias.getSelection(), alias.getModifier());
+                    Object modifier = alias.getModifier() == null ? null : ph.parseModifierLegacy(store, alias.getModifier());
+                    Set<Object> selection = ph.deserializeSelection(store, alias.getSelection(), modifier);
                     List<String> columns = template.getColumns();
                     List<Object> header = new ArrayList<>(columns);
                     for (int i = 0; i < header.size(); i++) {

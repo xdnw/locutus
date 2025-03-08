@@ -101,7 +101,7 @@ public class WarCostAB extends Command {
         long start = MathMan.isInteger(args.get(2)) ? System.currentTimeMillis() - TimeUnit.DAYS.toMillis(Long.parseLong(args.get(2))) : PrimitiveBindings.timestamp(args.get(2));
         Long end = args.size() == 4 ? (MathMan.isInteger(args.get(3)) ? System.currentTimeMillis() - TimeUnit.DAYS.toMillis(Long.parseLong(args.get(3))) : PrimitiveBindings.timestamp(args.get(3))) : null;
 
-        Placeholders<IAttack> phAttacks = Locutus.imp().getCommandManager().getV2().getPlaceholders().get(IAttack.class);
+        Placeholders<IAttack, Void> phAttacks = Locutus.imp().getCommandManager().getV2().getPlaceholders().get(IAttack.class);
         Set<AttackType> attackTypes = attackTypeStr == null ? null : PWBindings.AttackTypes(phAttacks.createLocals(guild, author, me), attackTypeStr);
         Set<SuccessType> successTypes = attackSuccesStr == null ? null : PWBindings.SuccessTypes(attackSuccesStr);
         Set<WarType> warTypes = warTypeStr == null ? null : PWBindings.WarTypes(warTypeStr);

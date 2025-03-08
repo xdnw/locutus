@@ -50,7 +50,7 @@ public class TsEndpointGenerator {
         {
             // generateTsPlaceholderBuilder (unused)
         }
-        if (true){
+        if (true) {
             CommandManager2 cmdInst = Locutus.cmd().getV2();
             SimpleValueStore<Object> store = new SimpleValueStore<>();
             new WebOptionBindings().register(store);
@@ -309,7 +309,7 @@ public class TsEndpointGenerator {
                 type == Character.class;
     }
 
-    public static String generateTsPlaceholderBuilder(Placeholders<?> placeholder) throws IOException {
+    public static String generateTsPlaceholderBuilder(Placeholders<?, ?> placeholder) throws IOException {
         String boilerPlate = """
                 class {className} extends AbstractBuilder {
                     constructor() {
@@ -370,7 +370,7 @@ public class TsEndpointGenerator {
         return classStr;
     }
 
-    public static <T> void generatePlaceholderPojos(@Nullable File root, Placeholders<T> placeholders) throws IOException {
+    public static <T> void generatePlaceholderPojos(@Nullable File root, Placeholders<T, ?> placeholders) throws IOException {
         if (root == null) root = new File("src/main/java");
 
         String fileName = placeholders.getType().getSimpleName() + "_Web";

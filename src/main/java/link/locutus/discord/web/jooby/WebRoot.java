@@ -124,7 +124,8 @@ public class WebRoot {
                                 Settings.INSTANCE.WEB.BACKEND_DOMAIN,
                         Settings.INSTANCE.WEB.FRONTEND_DOMAIN,
                         "http://localhost",
-                        "http://localhost:" + getPortOrSchemeDefault(Settings.INSTANCE.WEB.FRONTEND_DOMAIN),
+                                "http://localhost:" + getPortOrSchemeDefault(Settings.INSTANCE.WEB.FRONTEND_DOMAIN),
+                                "http://localhost:5173",
                         "http://127.0.0.1",
                         "http://127.0.0.1:" + getPortOrSchemeDefault(Settings.INSTANCE.WEB.FRONTEND_DOMAIN)
                         );
@@ -171,36 +172,6 @@ public class WebRoot {
 //                ((JavalinServletContext) ctx).getTasks().clear();
 //            }
 //        });
-
-        this.app.get("/bankrequests", new Handler() {
-            @Override
-            public void handle(@NotNull Context context) throws Exception {
-                if (!Settings.WHITELISTED_IPS.contains(context.ip())) {
-                    Logg.text("Not whitelisted: " + context.ip());
-                    return;
-                }
-                JSONObject request = legacyBankHandler.pollRequest();
-                if (request != null) {
-                    context.result(request.toString());
-                } else {
-                    context.result("");
-                }
-            }
-        });
-
-        this.app.post("/bankcallback*", new Handler() {
-            @Override
-            public void handle(@NotNull Context context) throws Exception {
-                if (!Settings.WHITELISTED_IPS.contains(context.ip())) {
-                    Logg.text("Not whitelisted: " + context.ip());
-                    return;
-                }
-                UUID token = UUID.fromString(context.queryParam("token"));
-                String message = context.queryParam("result");
-
-                legacyBankHandler.callBack(token, message);
-            }
-        });
 
         this.app.get("/robots.txt", ctx -> ctx.result("User-agent: *\nDisallow: /"));
 
