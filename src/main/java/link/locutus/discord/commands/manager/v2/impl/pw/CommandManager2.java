@@ -144,7 +144,6 @@ public class CommandManager2 {
 
             ParametricCallable create = ph.getCreateModifier();
             if (create != null) {
-                System.out.println("ADD CREATE " + t.getSimpleName());
                 json.put("create", create.toJson(permHandler, false));
             }
 
