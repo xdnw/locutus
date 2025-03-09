@@ -199,7 +199,7 @@ public enum Research {
             if (startValue == endValue) continue;
             if (startValue > endValue) throw new IllegalArgumentException("Cannot decrease research level");
 
-            int treeUpgrades = byGroup.get(r.getGroup());
+            int treeUpgrades = byGroup.getOrDefault(r.getGroup(), 0);
 
             System.out.println("Tree " + treeUpgrades + " | total: " + totalUpgrades + " | start: " + startValue + " | end: " + endValue);
             Map<ResourceType, Double> addCost = r.getCost(treeUpgrades, totalUpgrades, startValue, endValue, factor);
