@@ -9,6 +9,7 @@ import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.ShrinkableEmbed;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationModifier;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
@@ -403,13 +404,13 @@ public class DiscordUtil {
             message = io.create();
         }
 
-        EmbedBuilder builder = new EmbedBuilder();
+        ShrinkableEmbed builder = new ShrinkableEmbed();
         builder.setTitle(title);
         builder.setDescription(body.toString());
         if (footer != null) builder.setFooter(footer);
 
         message.clearEmbeds();
-        message.embed(builder.build());
+        message.embed(builder);
         message.clearButtons();
         message.addCommands(reactions);
 
@@ -435,9 +436,9 @@ public class DiscordUtil {
             return;
         }
         String finalTitle = title;
-        createEmbedCommand(channel, new Consumer<EmbedBuilder>() {
+        createEmbedCommand(channel, new Consumer<ShrinkableEmbed>() {
             @Override
-            public void accept(EmbedBuilder builder) {
+            public void accept(ShrinkableEmbed builder) {
                 String titleFinal = finalTitle;
                 if (titleFinal.length() >= 200) {
                     titleFinal = titleFinal.substring(0, 197) + "..";
@@ -449,7 +450,7 @@ public class DiscordUtil {
         }, reactionArguments);
     }
 
-    public static void createEmbedCommand(MessageChannel channel, Consumer<EmbedBuilder> builder, String... reactionArguments) {
+    public static void createEmbedCommand(MessageChannel channel, Consumer<ShrinkableEmbed> builder, String... reactionArguments) {
         if (reactionArguments.length % 2 != 0) {
             throw new IllegalArgumentException("invalid pairs: " + StringMan.getString(reactionArguments));
         }
@@ -481,12 +482,11 @@ public class DiscordUtil {
     }
 
 
-    public static void createEmbedCommand(MessageChannel channel, Consumer<EmbedBuilder> consumer, Map<String, String> reactionArguments) {
-        EmbedBuilder builder = new EmbedBuilder();
+    public static void createEmbedCommand(MessageChannel channel, Consumer<ShrinkableEmbed> consumer, Map<String, String> reactionArguments) {
+        ShrinkableEmbed builder = new ShrinkableEmbed();
         consumer.accept(builder);
-        MessageEmbed embed = builder.build();
 
-        new DiscordChannelIO(channel, null).create().embed(embed).addCommands(reactionArguments).send();
+        new DiscordChannelIO(channel, null).create().embed(builder).addCommands(reactionArguments).send();
     }
 
 //    public static String format2(Guild guild, User callerUser, DBNation callerNation, String message, User user, DBNation nation) {

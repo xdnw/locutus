@@ -22,16 +22,7 @@ import static link.locutus.discord.util.MarkupUtil.formatDiscordMarkdown;
 import static link.locutus.discord.util.MarkupUtil.markdownToHTML;
 
 public abstract class AMessageBuilder implements IMessageBuilder {
-    public static int MAX_CONTENT_LENGTH = Message.MAX_CONTENT_LENGTH;
-
-    public static int MAX_EMBED_TITLE = MessageEmbed.TITLE_MAX_LENGTH;
-    public static int MAX_EMBED_DESCRIPTION = MessageEmbed.DESCRIPTION_MAX_LENGTH;
-    public static int MAX_EMBED_FOOTER = MessageEmbed.TEXT_MAX_LENGTH;
-    public static int MAX_EMBED_LENGTH = MessageEmbed.EMBED_MAX_LENGTH_BOT;
-
-    public static int URL_MAX_LENGTH = MessageEmbed.URL_MAX_LENGTH;
-
-    public final List<Shrinkable> contentShrinkables = new LinkedList<>();
+    public final ShrinkList contentShrink = new ShrinkList();
 
     public final Map<String, String> buttons = new LinkedHashMap<>();
     public final Map<String, String> links = new LinkedHashMap<>();
@@ -49,25 +40,24 @@ public abstract class AMessageBuilder implements IMessageBuilder {
     public User author;
 
     public void flatten() {
-        for (MessageEmbed embed : embeds) {
-            content.append("## " + embed.getTitle() + "\n");
-            content.append(">>> " + embed.getDescription() + "\n");
-            MessageEmbed.Footer embedFooter = embed.getFooter();
-            String footerText = embedFooter != null ? embedFooter.getText() : null;
-            List<MessageEmbed.Field> fields = embed.getFields();
-            if (fields != null) {
-                for (MessageEmbed.Field field : fields) {
-                    content.append("> **" + field.getName() + "**: " + field.getValue() + "\n");
-                }
+        for (ShrinkableEmbed embed : embeds) {
+            embed.shrinkDefault();
+            contentShrink.add("## ").add(embed.getTitle()).add("\n")
+                    .add(">>> ").add(embed.getDescription()).add("\n");
+            Shrinkable footer = embed.getFooter();
+            if (footer != null && !footer.get().isEmpty()) {
+                contentShrink.add("_").add(footer).add("_\n");
             }
-            if (footerText != null && footerText.isEmpty()) {
-                content.append("> _" + footerText + "_\n");
+            if (embed.getFields() != null) {
+                for (ShrinkableField field : embed.getFields()) {
+                    contentShrink.add("> **").add(field.name).add("**: ").add(field.value).add("\n");
+                }
             }
         }
         embeds.clear();
         buttons.clear();
         for (Map.Entry<String, String> entry : links.entrySet()) {
-            content.append("> [" + entry.getValue() + "](" + entry.getKey() + ")\n");
+            contentShrink.add("> [" + entry.getValue() + "](" + entry.getKey() + ")\n");
         }
         links.clear();
     }
@@ -77,10 +67,6 @@ public abstract class AMessageBuilder implements IMessageBuilder {
         this.id = id;
         this.timeCreated = timeCreated;
         this.author = author;
-    }
-
-    public String getContent() {
-        return content.toString().trim();
     }
 
     public Map<String, String> getButtons() {
@@ -114,15 +100,16 @@ public abstract class AMessageBuilder implements IMessageBuilder {
     }
 
     @Override
-    public void addJson(Map<String, Object> root, boolean includeFiles, boolean includeButtons, boolean includeTables) {
-        if (!content.isEmpty()) {
+    public void addJson(Map<String, Object> root, boolean includeFiles, boolean includeButtons, boolean includeTables, boolean shrinkEmbeds) {
+        if (!contentShrink.isEmpty()) {
             String existing = root.computeIfAbsent("content", k -> "").toString().trim();
-            root.put("content", existing + content.toString().trim());
+            root.put("content", existing + contentShrink.toString().trim());
         }
         if (!embeds.isEmpty()) {
             List<Map<String, Object>> embedArray = (List<Map<String, Object>>) root.computeIfAbsent("embeds", k -> new ArrayList<>());
-            for (MessageEmbed embed : embeds) {
-                embedArray.add(embed.toData().toMap());
+            for (ShrinkableEmbed embed : embeds) {
+                if (shrinkEmbeds) embed.shrinkDefault();
+                embedArray.add(embed.toData());
             }
             root.put("embeds", embedArray);
         }
@@ -180,14 +167,14 @@ public abstract class AMessageBuilder implements IMessageBuilder {
     public void appendJson(JsonObject json) {
         // Load content
         if (json.has("content")) {
-            this.content.append(json.get("content").getAsString());
+            this.contentShrink.add(json.get("content").getAsString());
         }
 
         // Load embeds
         if (json.has("embeds")) {
             for (var embedJson : json.getAsJsonArray("embeds")) {
                 JsonObject embedObj = embedJson.getAsJsonObject();
-                EmbedBuilder builder = new EmbedBuilder();
+                ShrinkableEmbed builder = new ShrinkableEmbed();
                 String titleOrNull = embedObj.has("title") ? embedObj.get("title").getAsString() : null;
                 if (titleOrNull != null) builder.setTitle(titleOrNull);
                 String descriptionOrNull = embedObj.has("description") ? embedObj.get("description").getAsString() : null;
@@ -195,7 +182,7 @@ public abstract class AMessageBuilder implements IMessageBuilder {
                 String footerOrNull = embedObj.has("footer") ? embedObj.get("footer").getAsString() : null;
                 if (footerOrNull != null) builder.setFooter(footerOrNull);
                 String urlOrNull = embedObj.has("url") ? embedObj.get("url").getAsString() : null;
-                if (urlOrNull != null) builder.setUrl(urlOrNull);
+//                if (urlOrNull != null) builder.setUrl(urlOrNull);
                 JsonArray fieldsOrNull = embedObj.has("fields") ? embedObj.getAsJsonArray("fields") : null;
                 if (fieldsOrNull != null) {
                     for (var fieldJson : fieldsOrNull) {
@@ -206,7 +193,7 @@ public abstract class AMessageBuilder implements IMessageBuilder {
                         builder.addField(name, value, inline);
                     }
                 }
-                this.embeds.add(builder.build());
+                this.embeds.add(builder);
             }
         }
 
@@ -272,16 +259,16 @@ public abstract class AMessageBuilder implements IMessageBuilder {
 
     public String toSimpleHtml(boolean includeFiles, boolean includeButtons) {
         StringBuilder html = new StringBuilder();
-        html.append("<p>").append(markdownToHTML(formatDiscordMarkdown(content.toString().trim(), getGuildOrNull()))).append("</p>");
-        for (MessageEmbed embed : embeds) {
-            String title = embed.getTitle();
-            String description = markdownToHTML(formatDiscordMarkdown(embed.getDescription(), getGuildOrNull()));
+        html.append("<p>").append(markdownToHTML(formatDiscordMarkdown(contentShrink.toString().trim(), getGuildOrNull()))).append("</p>");
+        for (ShrinkableEmbed embed : embeds) {
+            String title = embed.getTitle().get();
+            String description = markdownToHTML(formatDiscordMarkdown(embed.getDescription().get(), getGuildOrNull()));
             String footerText = null;
-            MessageEmbed.Footer footer = embed.getFooter();
+            Shrinkable footer = embed.getFooter();
             if (footer != null) {
-                footerText = markdownToHTML(formatDiscordMarkdown(footer.getText(), getGuildOrNull()));
+                footerText = markdownToHTML(formatDiscordMarkdown(footer.get(), getGuildOrNull()));
             }
-            List<MessageEmbed.Field> fields = embed.getFields();
+            List<ShrinkableField> fields = embed.getFields();
             StringBuilder embedHtml = new StringBuilder();
             embedHtml.append("<div class=\"bg-danger img-rounded img-thumbnail card\">");
             embedHtml.append("<h3>").append(title).append("</h3>");
@@ -289,8 +276,8 @@ public abstract class AMessageBuilder implements IMessageBuilder {
             if (fields != null && !fields.isEmpty()) {
                 embedHtml.append("<table class=\"table table-striped table-bordered table-hover\">");
                 embedHtml.append("<tr><th>Field</th><th>Value</th></tr>");
-                for (MessageEmbed.Field field : fields) {
-                    embedHtml.append("<tr><td>").append(field.getName()).append("</td><td>").append(field.getValue()).append("</td></tr>");
+                for (ShrinkableField field : fields) {
+                    embedHtml.append("<tr><td>").append(field.name.get()).append("</td><td>").append(field.value.get()).append("</td></tr>");
                 }
                 embedHtml.append("</table>");
             }
@@ -345,8 +332,10 @@ public abstract class AMessageBuilder implements IMessageBuilder {
      * @return the output
      */
     public IMessageBuilder writeTo(IMessageBuilder output) {
-        if (!content.isEmpty()) output.append(content.toString().trim());
-        for (MessageEmbed embed : embeds) {
+        if (!contentShrink.isEmpty()) {
+            contentShrink.items.forEach(output::append);
+        }
+        for (ShrinkableEmbed embed : embeds) {
             output.embed(embed);
         }
         for (Map.Entry<String, String> entry : buttons.entrySet()) {
@@ -373,7 +362,7 @@ public abstract class AMessageBuilder implements IMessageBuilder {
     }
 
     @Override
-    public List<MessageEmbed> getEmbeds() {
+    public List<ShrinkableEmbed> getEmbeds() {
         return embeds;
     }
 
@@ -394,7 +383,7 @@ public abstract class AMessageBuilder implements IMessageBuilder {
 
     @Override
     public IMessageBuilder clear() {
-        content.setLength(0);
+        contentShrink.items.clear();
         buttons.clear();
         embeds.clear();
         images.clear();
@@ -419,7 +408,13 @@ public abstract class AMessageBuilder implements IMessageBuilder {
 
     @Override
     public IMessageBuilder append(String content) {
-        this.content.append(content);
+        this.contentShrink.add(content);
+        return this;
+    }
+
+    @Override
+    public IMessageBuilder append(Shrinkable msg) {
+        this.contentShrink.add(msg);
         return this;
     }
 
@@ -430,29 +425,29 @@ public abstract class AMessageBuilder implements IMessageBuilder {
 
     @Override
     public IMessageBuilder embed(String title, String body, String footer) {
-        EmbedBuilder embed = new EmbedBuilder().setTitle(title).setDescription(body);
+        ShrinkableEmbed embed = new ShrinkableEmbed().setTitle(title).setDescription(body);
         if (footer != null && !footer.isEmpty()) {
             embed.setFooter(footer);
         }
-        embeds.add(embed.build());
+        embeds.add(embed);
         return this;
     }
 
     @Override
-    public IMessageBuilder embed(MessageEmbed embed) {
+    public IMessageBuilder embed(ShrinkableEmbed embed) {
         this.embeds.add(embed);
         return this;
     }
 
     @Override
     public IMessageBuilder commandInline(CommandRef ref) {
-        content.append(ref.toSlashCommand());
+        contentShrink.add(ref.toSlashCommand());
         return this;
     }
 
     @Override
     public IMessageBuilder commandLinkInline(CommandRef ref) {
-        content.append(ref.toSlashMention());
+        contentShrink.add(ref.toSlashMention());
         return this;
     }
 
@@ -482,6 +477,6 @@ public abstract class AMessageBuilder implements IMessageBuilder {
     }
 
     public boolean isEmpty() {
-        return content.isEmpty() && embeds.isEmpty() && buttons.isEmpty() && images.isEmpty() && files.isEmpty() && links.isEmpty() && tables.isEmpty();
+        return contentShrink.isEmpty() && embeds.isEmpty() && buttons.isEmpty() && images.isEmpty() && files.isEmpty() && links.isEmpty() && tables.isEmpty();
     }
 }

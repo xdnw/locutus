@@ -5,6 +5,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.ShrinkableEmbed;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -195,14 +196,14 @@ public class WarRoomUtil {
             body.append("\n");
             body.append("Note: These figures are only updated every 5m");
 
-            EmbedBuilder builder = new EmbedBuilder();
+            ShrinkableEmbed builder = new ShrinkableEmbed();
 
             builder.setDescription(body.toString().replaceAll(" \\| ", "|"));
 
 
             msg.clearEmbeds();
             msg.clearButtons();
-            msg.embed(builder.build());
+            msg.embed(builder);
             msg.commandButton(CommandBehavior.UNPRESS, CM.war.room.pin.cmd, "Update");
             try {
                 CompletableFuture<IMessageBuilder> sent = msg.send();

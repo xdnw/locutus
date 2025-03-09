@@ -18,11 +18,6 @@ public class StringMessageBuilder extends AMessageBuilder {
         super(new StringMessageIO(null, guild), 0, System.currentTimeMillis(), null);
     }
 
-    @Override
-    public String toString() {
-        return "STRING MESSAGE BUILDER: " + toSimpleMarkdown();
-    }
-
     public static StringMessageBuilder fromText(String body, boolean onlyParseJson, Guild guild) {
         StringMessageBuilder msg = new StringMessageBuilder(guild);
         JsonObject bodyJson = null;

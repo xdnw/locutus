@@ -25,6 +25,18 @@ public class Shrinkable {
         this.keepFactor = keepFactor;
     }
 
+    public Shrinkable(Shrinkable shrinkable) {
+        this.small = shrinkable.small;
+        this.large = shrinkable.large;
+        this.keepFactor = shrinkable.keepFactor;
+        this.isIdentical = shrinkable.isIdentical;
+        this.isSmall = shrinkable.isSmall;
+    }
+
+    public Shrinkable clone() {
+        return new Shrinkable(this);
+    }
+
     public static int calcSize(Collection<Shrinkable> shrinkables) {
         return shrinkables.stream().mapToInt(Shrinkable::getSize).sum();
     }
@@ -34,9 +46,18 @@ public class Shrinkable {
     }
 
     public static void shrink(int totalSize, Shrinkable... messages) {
-        if (messages.length == 0) return;
-        if (messages.length == 1) {
-            messages[0].shrink(totalSize);
+        shrink(totalSize, Arrays.asList(messages));
+    }
+
+    public <T extends Collection<Shrinkable>> T addTo(T collection) {
+        collection.add(this);
+        return collection;
+    }
+
+    public static void shrink(int totalSize, List<Shrinkable> messages) {
+        if (messages.size() == 0) return;
+        if (messages.size() == 1) {
+            messages.get(0).shrink(totalSize);
             return;
         }
 
@@ -64,6 +85,10 @@ public class Shrinkable {
         }
     }
 
+    public static Shrinkable of(String s) {
+        return new Shrinkable(s);
+    }
+
     public int getSize() {
         return isSmall ? small.length() : large.length();
     }
@@ -78,6 +103,11 @@ public class Shrinkable {
             return large.length() - small.length();
         }
         return 0;
+    }
+
+    public Shrinkable shrink() {
+        isSmall = true;
+        return this;
     }
 
     public boolean isIdentical() {
