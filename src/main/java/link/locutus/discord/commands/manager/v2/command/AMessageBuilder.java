@@ -10,6 +10,7 @@ import link.locutus.discord.web.commands.binding.value_types.GraphType;
 import link.locutus.discord.web.commands.binding.value_types.WebGraph;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
 
@@ -21,13 +22,27 @@ import static link.locutus.discord.util.MarkupUtil.formatDiscordMarkdown;
 import static link.locutus.discord.util.MarkupUtil.markdownToHTML;
 
 public abstract class AMessageBuilder implements IMessageBuilder {
-    public final StringBuilder content = new StringBuilder();
+    public static int MAX_CONTENT_LENGTH = Message.MAX_CONTENT_LENGTH;
+
+    public static int MAX_EMBED_TITLE = MessageEmbed.TITLE_MAX_LENGTH;
+    public static int MAX_EMBED_DESCRIPTION = MessageEmbed.DESCRIPTION_MAX_LENGTH;
+    public static int MAX_EMBED_FOOTER = MessageEmbed.TEXT_MAX_LENGTH;
+    public static int MAX_EMBED_LENGTH = MessageEmbed.EMBED_MAX_LENGTH_BOT;
+
+    public static int URL_MAX_LENGTH = MessageEmbed.URL_MAX_LENGTH;
+
+    public final List<Shrinkable> contentShrinkables = new LinkedList<>();
+
     public final Map<String, String> buttons = new LinkedHashMap<>();
     public final Map<String, String> links = new LinkedHashMap<>();
+
     public final List<GraphMessageInfo> tables = new ArrayList<>();
-    public final List<MessageEmbed> embeds = new ArrayList<>();
+
+    public final List<ShrinkableEmbed> embeds = new ArrayList<>();
+
     public final Map<String, byte[]> images = new HashMap<>();
     public final Map<String, byte[]> files = new HashMap<>();
+
     private final IMessageIO parent;
     public long id;
     public long timeCreated;
