@@ -221,6 +221,7 @@ public class AllianceList {
             }
             for (Treaty treaty : entry.getValue()) {
                 DBAlliance to = treaty.getTo();
+                System.out.println("TREATY " + treaty.getId() + " " + treaty.getFrom().getMarkdownUrl() + " -> " + to.getMarkdownUrl() + " | " + treaty.isPending());
                 if (!treaty.isPending() || !contains(to)) continue;
 
                 changed.add(to.approveTreaty(treaty.getId()));

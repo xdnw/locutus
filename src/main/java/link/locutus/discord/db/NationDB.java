@@ -820,6 +820,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             toDelete.remove(dbTreaty);
 
             if (dbTreaty.isPending()) continue;
+            System.out.println("TURN ENDS " + treaty.getTurns_left() + " | " + dbTreaty.getTurnEnds());
             if (dbTreaty.getTurnEnds() <= turn) continue;
             if (!allTreaties.contains(dbTreaty)) {
                 added.add(dbTreaty);

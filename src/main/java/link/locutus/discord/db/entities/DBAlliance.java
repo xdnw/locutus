@@ -1747,11 +1747,16 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 
     @Command
     public Map<String, Object> getMilitarizationGraph(@Default @Timestamp Long start, @Default @Timestamp Long end) {
+        Set<AllianceMetric> metrics = new LinkedHashSet<>(List.of(AllianceMetric.SOLDIER_PCT, AllianceMetric.TANK_PCT, AllianceMetric.AIRCRAFT_PCT, AllianceMetric.SHIP_PCT));
+        return getMetricsGraph(metrics, start, end);
+    }
+
+    @Command
+    public Map<String, Object> getMetricsGraph(Set<AllianceMetric> metrics, @Default @Timestamp Long start, @Default @Timestamp Long end) {
         if (end == null) end = System.currentTimeMillis();
         if (start == null) start = end - TimeUnit.DAYS.toMillis(7);
         long startTurn = TimeUtil.getTurn(start);
         long endTurn = TimeUtil.getTurn(end);
-        List<AllianceMetric> metrics = List.of(AllianceMetric.SOLDIER_PCT, AllianceMetric.TANK_PCT, AllianceMetric.AIRCRAFT_PCT, AllianceMetric.SHIP_PCT);
         CoalitionMetricsGraph table = CoalitionMetricsGraph.create(metrics, startTurn, endTurn, this.getName(), Collections.singleton(this));
         WebGraph toSerialize = table.toHtmlJson();
         return WebUtil.convertToMap(toSerialize);

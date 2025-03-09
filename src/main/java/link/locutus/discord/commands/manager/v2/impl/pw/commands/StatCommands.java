@@ -489,7 +489,10 @@ public class StatCommands {
     }
 
     @Command(desc = "Rank alliances by a metric", viewable = true)
-    public void allianceRanking(@Me IMessageIO channel, @Me JSONObject command, AllianceMetric metric, @Default Set<DBAlliance> alliances, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile) {
+    public void allianceRanking(@Me IMessageIO channel, @Me JSONObject command,
+                                AllianceMetric metric, @Default Set<DBAlliance> alliances, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile,
+                                @Switch("n") Integer num_results,
+                                @Switch("h") Set<DBAlliance> highlight) {
         if (alliances == null) alliances = Locutus.imp().getNationDB().getAlliances();
         long turn = TimeUtil.getTurn();
         Set<Integer> aaIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
@@ -502,12 +505,18 @@ public class StatCommands {
             double diff = entry.getValue().get(metric).values().iterator().next();
             metricsDiff.put(alliance, diff);
         }
-        displayAllianceRanking(channel, command, metric.name(), metricsDiff, reverseOrder, uploadFile);
+        displayAllianceRanking(channel, command, metric.name(), metricsDiff, reverseOrder, uploadFile, num_results, highlight);
     }
 
     @NoFormat
     @Command(desc = "Rank alliances by an alliance attribute", viewable = true)
-    public void allianceAttributeRanking(@Me IMessageIO channel, @Me JSONObject command, TypedFunction<DBAlliance, Double> attribute, @Default Set<DBAlliance> alliances, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile) {
+    public void allianceAttributeRanking(@Me IMessageIO channel, @Me JSONObject command,
+                                         TypedFunction<DBAlliance, Double> attribute,
+                                         @Default Set<DBAlliance> alliances,
+                                         @Switch("n") Integer num_results,
+                                         @Switch("r") boolean reverseOrder,
+                                         @Switch("f") boolean uploadFile,
+                                         @Switch("h") Set<DBAlliance> highlight) {
         if (alliances == null) alliances = Locutus.imp().getNationDB().getAlliances();
         long turn = TimeUtil.getTurn();
         Set<Integer> aaIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
@@ -520,11 +529,11 @@ public class StatCommands {
         }
 
         String title = command.getString("attribute");
-        displayAllianceRanking(channel, command, title, attributeByAlliance, reverseOrder, uploadFile);
+        displayAllianceRanking(channel, command, title, attributeByAlliance, reverseOrder, uploadFile, num_results, highlight);
     }
 
-    public void displayAllianceRanking(IMessageIO channel, JSONObject command, String metricName, Map<DBAlliance, Double> metricsDiff, boolean reverseOrder, boolean uploadFile) {
-
+    public void displayAllianceRanking(IMessageIO channel, JSONObject command, String metricName, Map<DBAlliance, Double> metricsDiff, boolean reverseOrder, boolean uploadFile,
+                                       Integer numResults, Set<DBAlliance> highlight) {
         SummedMapRankBuilder<DBAlliance, Double> builder = new SummedMapRankBuilder<>(metricsDiff);
         if (reverseOrder) {
             builder = builder.sortAsc();
@@ -533,12 +542,16 @@ public class StatCommands {
         }
         String title = "Top " + metricName + " by alliance";
 
-        RankBuilder<String> named = builder.nameKeys(DBAlliance::getName);
+        RankBuilder<String> named = builder.nameKeys(f -> {});
+        if (numResults != null) named = named.limit(numResults);
         named.build(channel, command, title, uploadFile);
     }
 
     @Command(desc = "Rank alliances by a metric over a specified time period", viewable = true)
-    public void allianceRankingTime(@Me IMessageIO channel, @Me JSONObject command, Set<DBAlliance> alliances, AllianceMetric metric, @Timestamp long timeStart, @Timestamp long timeEnd, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile) {
+    public void allianceRankingTime(@Me IMessageIO channel, @Me JSONObject command,
+                                    Set<DBAlliance> alliances, AllianceMetric metric, @Timestamp long timeStart, @Timestamp long timeEnd, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile,
+                                    @Switch("n") Integer num_results,
+                                    @Switch("h") Set<DBAlliance> highlight) {
         if (alliances == null) alliances = Locutus.imp().getNationDB().getAlliances();
         long turnStart = TimeUtil.getTurn(timeStart);
         long turnEnd = TimeUtil.getTurn(timeEnd);
@@ -555,7 +568,7 @@ public class StatCommands {
             double dataEnd = entry.getValue().get(metric).values().iterator().next();
             metricsDiff.put(alliance, dataEnd - dataStart);
         }
-        displayAllianceRanking(channel, command, metric.name(), metricsDiff, reverseOrder, uploadFile);
+        displayAllianceRanking(channel, command, metric.name(), metricsDiff, reverseOrder, uploadFile, num_results, highlight);
     }
 
     @Command(desc = "Rank nations by an attribute", viewable = true)
