@@ -542,7 +542,7 @@ public class StatCommands {
         }
         String title = "Top " + metricName + " by alliance";
 
-        RankBuilder<String> named = builder.nameKeys(f -> {});
+        RankBuilder<String> named = builder.nameKeys(DBAlliance::getName);
         if (numResults != null) named = named.limit(numResults);
         named.build(channel, command, title, uploadFile);
     }
