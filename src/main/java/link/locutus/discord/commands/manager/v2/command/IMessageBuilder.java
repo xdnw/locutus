@@ -85,6 +85,9 @@ public interface IMessageBuilder {
     IMessageBuilder append(Shrinkable msg);
 
     @CheckReturnValue
+    IMessageBuilder embed(MessageEmbed embed);
+
+    @CheckReturnValue
     default IMessageBuilder embed(String title, String body) {
         return embed(title, body, null);
     }

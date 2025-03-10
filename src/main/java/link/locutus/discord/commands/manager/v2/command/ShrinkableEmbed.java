@@ -7,6 +7,7 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import org.jetbrains.annotations.NotNull;
 
+import java.awt.*;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +17,7 @@ public class ShrinkableEmbed {
     private Shrinkable description;
     private Shrinkable footer;
     private List<ShrinkableField> fields = new ObjectArrayList<>();
+    private Color color;
 
     public ShrinkableEmbed() {
 
@@ -26,9 +28,14 @@ public class ShrinkableEmbed {
         this.description = embed.description.clone();
         this.footer = embed.footer.clone();
         this.fields = new ObjectArrayList<>(embed.fields.size());
+        this.color = embed.color;
         for (ShrinkableField field : embed.fields) {
             this.fields.add(field.clone());
         }
+    }
+
+    public ShrinkableEmbed(MessageEmbed embed) {
+
     }
 
     public ShrinkableEmbed title(Shrinkable title) {
@@ -47,7 +54,7 @@ public class ShrinkableEmbed {
     }
 
     public ShrinkableEmbed field(Shrinkable name, Shrinkable value, boolean inline) {
-
+        this.fields.add(new ShrinkableField(name, value, inline));
         return this;
     }
 
@@ -72,7 +79,7 @@ public class ShrinkableEmbed {
         return this;
     }
 
-    public MessageEmbed build() {
+    public EmbedBuilder builder() {
         shrinkDefault();
         EmbedBuilder builder = new EmbedBuilder()
                 .setTitle(title.get());
@@ -82,7 +89,14 @@ public class ShrinkableEmbed {
         if (footer != null) {
             builder.setFooter(footer.get());
         }
-        return builder.build();
+        if (color != null) {
+            builder.setColor(color);
+        }
+        return builder;
+    }
+
+    public MessageEmbed build() {
+        return builder().build();
     }
 
     public Shrinkable getTitle() {
@@ -140,6 +154,19 @@ public class ShrinkableEmbed {
             }
             data.put("fields", fieldsData);
         }
+        if (color != null) {
+            data.put("color",  color.getRGB() & 0xFFFFFF);
+        }
         return data;
+    }
+
+    public ShrinkableEmbed setColor(Color color) {
+        this.color = color;
+        return this;
+    }
+
+    public ShrinkableEmbed appendDescription(String s) {
+        this.description.append(s);
+        return this;
     }
 }

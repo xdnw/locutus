@@ -24,6 +24,7 @@ import net.dv8tion.jda.api.utils.messages.MessageEditData;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 
 public class DiscordHookIO implements IMessageIO {
     private final InteractionHook hook;
@@ -96,7 +97,7 @@ public class DiscordHookIO implements IMessageIO {
 
     @Override
     public IMessageBuilder create() {
-        return new DiscordMessageBuilder(this, null);
+        return new DiscordMessageBuilder(this, (Message) null);
     }
 
     @Override
@@ -110,44 +111,27 @@ public class DiscordHookIO implements IMessageIO {
                 CompletableFuture<Message> future = RateLimitUtil.queue(hook.editMessageById(builder.getId(), discMsg.buildEdit(true)));
                 return future.thenApply(msg -> new DiscordMessageBuilder(this, msg));
             }
-            if (discMsg.content.length() > 2000) {
-                DiscordUtil.sendMessage(hook, discMsg.content.toString().trim());
-                discMsg.content.setLength(0);
+            if (discMsg.isEmpty()) return CompletableFuture.completedFuture(builder);
+
+            List<MessageCreateData> messages = discMsg.build(true);
+            List<Future<Message>> futures = new ArrayList<>();
+            for (MessageCreateData message : messages) {
+                CompletableFuture<Message> future = RateLimitUtil.queue(hook.sendMessage(message));
+                futures.add(future);
             }
-            CompletableFuture<IMessageBuilder> msgFuture = null;
-            boolean sendFiles = true;
-            if (!discMsg.content.isEmpty() || !discMsg.buttons.isEmpty() || !discMsg.embeds.isEmpty()) {
-                MessageCreateData message = discMsg.build(true);
-                if (message.getContent().length() > 20000) {
-                    Message result = null;
-                    if (!discMsg.buttons.isEmpty() || !discMsg.embeds.isEmpty()) {
-                        message = discMsg.build(false);
-                        result = RateLimitUtil.complete(hook.sendMessage(message));
+            return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+            .thenApply(v -> {
+                List<Message> responseMsgs = new ArrayList<>();
+                for (Future<Message> future : futures) {
+                    try {
+                        Message msg = future.get();
+                        responseMsgs.add(msg);
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
-                    CompletableFuture<Message> future = DiscordUtil.sendMessage(hook, discMsg.content.toString().trim());
-                    if (result != null) {
-                        assert future != null;
-                        msgFuture = future.thenApply(f -> new DiscordMessageBuilder(this, f));
-                    }
-                } else {
-                    sendFiles = false;
-                    CompletableFuture<Message> future = RateLimitUtil.queue(hook.sendMessage(message));
-                    msgFuture = future.thenApply(f -> new DiscordMessageBuilder(this, f));
                 }
-            }
-            if (sendFiles && (!discMsg.files.isEmpty() || !discMsg.images.isEmpty() || !discMsg.tables.isEmpty())) {
-                List<Map.Entry<String, byte[]>> allFiles = new ArrayList<>();
-                allFiles.addAll(discMsg.files.entrySet());
-                allFiles.addAll(discMsg.images.entrySet());
-                allFiles.addAll(discMsg.buildTables());
-                Message result = null;
-                for (Map.Entry<String, byte[]> entry : allFiles) {
-                    result = RateLimitUtil.complete(hook.sendFiles(FileUpload.fromData(entry.getValue(), entry.getKey())));
-                }
-                if (result != null && msgFuture == null)
-                    msgFuture = CompletableFuture.completedFuture(new DiscordMessageBuilder(this, result));
-            }
-            return msgFuture;
+                return new DiscordMessageBuilder(this, responseMsgs);
+            });
         } else {
             System.out.println("Unsupported message builder: " + builder.getClass().getName());
             throw new IllegalArgumentException("Only DiscordMessageBuilder is supported.");

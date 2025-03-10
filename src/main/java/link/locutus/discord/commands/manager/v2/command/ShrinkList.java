@@ -1,6 +1,8 @@
 package link.locutus.discord.commands.manager.v2.command;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import link.locutus.discord.util.discord.DiscordUtil;
+import net.dv8tion.jda.api.entities.Message;
 
 import java.util.List;
 
@@ -40,6 +42,11 @@ public class ShrinkList {
         return size;
     }
 
+    public ShrinkList shrinkDefault() {
+        Shrinkable.shrink(Message.MAX_CONTENT_LENGTH, items);
+        return this;
+    }
+
     public ShrinkList shrink() {
         for (Shrinkable item : items) {
             item.shrink();
@@ -49,5 +56,16 @@ public class ShrinkList {
 
     public boolean isEmpty() {
         return items.isEmpty();
+    }
+
+    public List<String> split(int maxContentLength) {
+        String message = toString();
+         if (message.contains("@everyone")) {
+            message = message.replace("@everyone", "");
+        }
+        if (message.contains("@here")) {
+            message = message.replace("@here", "");
+        }
+        return DiscordUtil.wrap(message, maxContentLength);
     }
 }

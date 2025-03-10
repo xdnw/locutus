@@ -181,7 +181,7 @@ public abstract class AMessageBuilder implements IMessageBuilder {
                 if (descriptionOrNull != null) builder.setDescription(descriptionOrNull);
                 String footerOrNull = embedObj.has("footer") ? embedObj.get("footer").getAsString() : null;
                 if (footerOrNull != null) builder.setFooter(footerOrNull);
-                String urlOrNull = embedObj.has("url") ? embedObj.get("url").getAsString() : null;
+//                String urlOrNull = embedObj.has("url") ? embedObj.get("url").getAsString() : null;
 //                if (urlOrNull != null) builder.setUrl(urlOrNull);
                 JsonArray fieldsOrNull = embedObj.has("fields") ? embedObj.getAsJsonArray("fields") : null;
                 if (fieldsOrNull != null) {
@@ -193,6 +193,7 @@ public abstract class AMessageBuilder implements IMessageBuilder {
                         builder.addField(name, value, inline);
                     }
                 }
+
                 this.embeds.add(builder);
             }
         }
@@ -245,6 +246,15 @@ public abstract class AMessageBuilder implements IMessageBuilder {
             long id = json.get("author").getAsLong();
             this.author = DiscordUtil.getUser(id);
         }
+    }
+
+    public IMessageBuilder embed(MessageEmbed embed) {
+        embeds.add(new ShrinkableEmbed(embed));
+        Map<String, String> reactions = DiscordUtil.getReactions(embed);
+        if (reactions != null && !reactions.isEmpty()) {
+            addCommands(reactions);
+        }
+        return this;
     }
 
     @Override

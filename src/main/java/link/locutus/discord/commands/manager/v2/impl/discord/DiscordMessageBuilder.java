@@ -1,12 +1,13 @@
 package link.locutus.discord.commands.manager.v2.impl.discord;
 
 import com.google.gson.JsonObject;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.commands.manager.v2.command.AMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.ShrinkableEmbed;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
@@ -25,6 +26,7 @@ import org.apache.http.message.BasicNameValuePair;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -37,6 +39,42 @@ public class DiscordMessageBuilder extends AMessageBuilder {
 
     public DiscordMessageBuilder(MessageChannel channel, Message message) {
         this(new DiscordChannelIO(channel, () -> message), message);
+    }
+
+    public DiscordMessageBuilder(IMessageIO discordHookIO, List<Message> responseMsgs) {
+        this(discordHookIO, responseMsgs.isEmpty() ? null : responseMsgs.get(responseMsgs.size() - 1));
+        for (int i = 0; i < responseMsgs.size() - 1; i++) {
+            appendMessage(responseMsgs.get(i));
+        }
+    }
+
+    public DiscordMessageBuilder(IMessageIO parent, @Nullable Message message) {
+        super(parent, 0, 0, null);
+        if (message != null) {
+            id = message.getIdLong();
+            appendMessage(message);
+            try {
+                this.timeCreated = message.getTimeCreated().toInstant().toEpochMilli();
+                this.author = message.getAuthor();
+            } catch (UnsupportedOperationException ignore) {
+            }
+        }
+    }
+
+    public DiscordMessageBuilder appendMessage(Message message) {
+        contentShrink.add(message.getContentRaw());
+        message.getButtons().forEach(b -> {
+            String url = b.getUrl();
+            if (url != null && !url.isEmpty()) {
+                links.put(b.getUrl(), b.getLabel());
+            } else {
+                buttons.put(b.getId(), b.getLabel());
+            }
+        });
+        for (MessageEmbed embed : message.getEmbeds()) {
+            embed(embed);
+        }
+        return this;
     }
 
     @Override
@@ -57,19 +95,9 @@ public class DiscordMessageBuilder extends AMessageBuilder {
         return super.writeTo(output);
     }
 
-    private void loadCommandsFromEmbeds() {
-        for (MessageEmbed embed : embeds) {
-            Map<String, String> reactions = DiscordUtil.getReactions(embed);
-            if (reactions != null && !reactions.isEmpty()) {
-                remapLongCommands.putAll(reactions);
-            }
-        }
-    }
-
     @Override
     public void appendJson(JsonObject json) {
         super.appendJson(json);
-        loadCommandsFromEmbeds();
     }
 
     @Override
@@ -77,34 +105,11 @@ public class DiscordMessageBuilder extends AMessageBuilder {
         RateLimitUtil.queueMessage(getParent(), new Function<IMessageBuilder, Boolean>() {
             @Override
             public Boolean apply(IMessageBuilder msg) {
-                if (embeds.isEmpty() && images.isEmpty() && tables.isEmpty() && files.isEmpty() && buttons.isEmpty() && content.isEmpty()) return false;
+                if (embeds.isEmpty() && images.isEmpty() && tables.isEmpty() && files.isEmpty() && buttons.isEmpty() && contentShrink.isEmpty()) return false;
                 writeTo(msg);
                 return true;
             }
         }, true, null);
-    }
-
-    public DiscordMessageBuilder(IMessageIO parent, @Nullable Message message) {
-        super(parent, 0, 0, null);
-        if (message != null) {
-            id = message.getIdLong();
-            content.append(message.getContentRaw());
-            message.getButtons().forEach(b -> {
-                String url = b.getUrl();
-                if (url != null && !url.isEmpty()) {
-                    links.put(b.getUrl(), b.getLabel());
-                } else {
-                    buttons.put(b.getId(), b.getLabel());
-                }
-            });
-            embeds.addAll(message.getEmbeds());
-            loadCommandsFromEmbeds();
-            try {
-                this.timeCreated = message.getTimeCreated().toInstant().toEpochMilli();
-                this.author = message.getAuthor();
-            } catch (UnsupportedOperationException ignore) {
-            }
-        }
     }
 
     public MessageEditData buildEdit(boolean includeContent) {
@@ -123,26 +128,26 @@ public class DiscordMessageBuilder extends AMessageBuilder {
             }
         }
         if (!embeds.isEmpty()) {
+            List<MessageEmbed> discEmbeds = new ArrayList<>(embeds.stream().map(ShrinkableEmbed::build).toList());
+
             if (!remapLongCommands.isEmpty()) {
-                MessageEmbed embed = embeds.get(0);
+                MessageEmbed embed = discEmbeds.get(0);
                 EmbedBuilder builder = new EmbedBuilder(embed);
                 List<NameValuePair> pairs = remapLongCommands.entrySet().stream()
                         .map((Function<Map.Entry<String, String>, NameValuePair>)
                                 e -> new BasicNameValuePair(e.getKey(), e.getValue()))
                         .collect(Collectors.toList());
                 String query = URLEncodedUtils.format(pairs, "UTF-8");
-
                 builder.setThumbnail("https://example.com?" + query);
-                embeds.set(0, builder.build());
+                discEmbeds.set(0, builder.build());
 //            embed.setImage("https://example.com?" + query);
             }
-
-            discBuilder.setEmbeds(embeds);
+            discBuilder.setEmbeds(discEmbeds);
         } else if (!remapLongCommands.isEmpty()) {
             throw new IllegalStateException("Cannot remap long commands without embeds: " + StringMan.getString(remapLongCommands));
         }
 
-        if (includeContent && !content.isEmpty()) discBuilder.setContent(content.toString().trim());
+        if (includeContent && !contentShrink.isEmpty()) discBuilder.setContent(contentShrink.shrinkDefault().toString().trim());
 
         return discBuilder.build();
     }
@@ -170,21 +175,16 @@ public class DiscordMessageBuilder extends AMessageBuilder {
         return buttonObjs;
     }
 
-    public MessageCreateData build(boolean includeContent) {
-        MessageCreateBuilder discBuilder = new MessageCreateBuilder();
-        List<Button> buttons = toButtonObjs();
-        if (!buttons.isEmpty()) {
-            while (!buttons.isEmpty()) {
-                List<Button> group = buttons.subList(0, Math.min(5, buttons.size()));
-                buttons = buttons.subList(group.size(), buttons.size());
-                discBuilder.addActionRow(group);
-            }
-        }
-
+    public List<MessageCreateData> build(boolean includeContent) {
+        List<MessageCreateBuilder> all = new ObjectArrayList<>();
+        MessageCreateBuilder latest = new MessageCreateBuilder();
+        all.add(latest);
+        // add embeds
         if (!embeds.isEmpty()) {
+            List<EmbedBuilder> toAdd = new ObjectArrayList<>();
             if (embeds.size() == 1 && ((images.size() == 1 && tables.size() == 0) || (images.size() == 0 && tables.size() == 1))) {
-                MessageEmbed embed = embeds.get(0);
-                EmbedBuilder builder = new EmbedBuilder(embed);
+                ShrinkableEmbed embed = embeds.get(0);
+                EmbedBuilder builder = new ShrinkableEmbed(embed).builder();
                 String imgName;
                 if (images.size() == 1) {
                     Map.Entry<String, byte[]> entry = images.entrySet().iterator().next();
@@ -194,24 +194,45 @@ public class DiscordMessageBuilder extends AMessageBuilder {
                 }
                 String name = "attachment://" + imgName;
                 builder.setImage(name);
-                embeds.set(0, builder.build());
+                toAdd.add(builder);
+            } else {
+                for (ShrinkableEmbed embed : embeds) {
+                    EmbedBuilder builder = new ShrinkableEmbed(embed).builder();
+                    toAdd.add(builder);
+                }
             }
             if (!remapLongCommands.isEmpty()) {
-                MessageEmbed embed = embeds.get(0);
-                EmbedBuilder builder = new EmbedBuilder(embed);
+                EmbedBuilder lastEmbedBuilder = toAdd.get(toAdd.size() - 1);
                 List<NameValuePair> pairs = remapLongCommands.entrySet().stream()
                         .map((Function<Map.Entry<String, String>, NameValuePair>)
                                 e -> new BasicNameValuePair(e.getKey(), e.getValue()))
                         .collect(Collectors.toList());
                 String query = URLEncodedUtils.format(pairs, "UTF-8");
+                List<MessageEmbed> latestEmbeds = latest.getEmbeds();
 
-                builder.setThumbnail("https://example.com?" + query);
-                embeds.set(0, builder.build());
+                lastEmbedBuilder.setThumbnail("https://example.com?" + query);
             }
-            discBuilder.setEmbeds(embeds);
+            for (int i = 0; i < toAdd.size(); i++) {
+                EmbedBuilder builder = toAdd.get(i);
+                latest.addEmbeds(builder.build());
+                if (latest.getEmbeds().size() == 10 && i < toAdd.size() - 1) {
+                    latest = new MessageCreateBuilder();
+                    all.add(latest);
+                }
+            }
         } else if (!remapLongCommands.isEmpty()) {
             throw new IllegalStateException("Cannot remap long commands without embeds: " + StringMan.getString(remapLongCommands));
         }
+        // add buttons
+        List<Button> buttons = toButtonObjs();
+        if (!buttons.isEmpty()) {
+            while (!buttons.isEmpty()) {
+                List<Button> group = buttons.subList(0, Math.min(5, buttons.size()));
+                buttons = buttons.subList(group.size(), buttons.size());
+                latest.addActionRow(group);
+            }
+        }
+        // Files
         if (includeContent && (!files.isEmpty() || !images.isEmpty() || !tables.isEmpty())) {
             List<FileUpload> upload = new ArrayList<>();
             for (Map.Entry<String, byte[]> entry : files.entrySet()) {
@@ -225,12 +246,36 @@ public class DiscordMessageBuilder extends AMessageBuilder {
                 upload.add(FileUpload.fromData(entry.getValue(), entry.getKey()));
             }
             if (!upload.isEmpty()) {
-                discBuilder.setFiles(upload);
+                latest.setFiles(upload);
             }
         }
-        if (includeContent && !content.isEmpty()) discBuilder.setContent(content.toString().trim());
-
-        return discBuilder.build();
+        // Content
+        if (includeContent && !contentShrink.isEmpty()) {
+            int size = contentShrink.getSize();
+            if (size > 20000) {
+                String str = contentShrink.toString();
+                byte[] data = str.getBytes(StandardCharsets.UTF_8);
+                int maxSize = Message.MAX_FILE_SIZE;
+                if (data.length >= maxSize) {
+                    data = Arrays.copyOf(data, maxSize - 2);
+                    latest.setContent("Error: Message too long, truncated to " + (maxSize - 2) + " bytes.");
+                }
+                latest.setFiles(List.of(FileUpload.fromData(data, "message.txt")));
+            } else {
+                List<String> messages = contentShrink.split(Message.MAX_CONTENT_LENGTH);
+                for (int i = 0; i < messages.size(); i++) {
+                    MessageCreateBuilder builder;
+                    if (all.size() >= i + 1) {
+                        builder = all.get(i);
+                    } else {
+                        builder = new MessageCreateBuilder();
+                        all.add(builder);
+                    }
+                    builder.setContent(messages.get(i));
+                }
+            }
+        }
+        return all.stream().map(MessageCreateBuilder::build).collect(Collectors.toList());
     }
 
     public List<Map.Entry<String, byte[]>> buildTables() {

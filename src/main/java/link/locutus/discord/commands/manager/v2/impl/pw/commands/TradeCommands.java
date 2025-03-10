@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.ShrinkableEmbed;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
@@ -512,13 +513,13 @@ public class TradeCommands {
         }
 
         String timeStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - time);
-        MessageEmbed embed = new EmbedBuilder()
+        ShrinkableEmbed embed = new ShrinkableEmbed()
                 .appendDescription("low: `" + ResourceType.toString(lowMap) + "`\n")
                 .appendDescription("high: `" + ResourceType.toString(highMap) + "`\n")
                 .setTitle("Global Trade Average " + timeStr)
                 .addField("Resource", StringMan.join(resourceNames, "\n"), true)
                 .addField("Low", StringMan.join(low, "\n"), true)
-                .addField("High", StringMan.join(high, "\n"), true).build();
+                .addField("High", StringMan.join(high, "\n"), true);
         channel.create()
                 .embed(embed)
                 .commandButton(command, "Refresh")
@@ -559,12 +560,11 @@ public class TradeCommands {
             weekly.add("```diff\n" + weekPrefix + MathMan.format(weeklyChangePct) + "%```");
         }
 
-        channel.create().embed(new EmbedBuilder()
+        channel.create().embed(new ShrinkableEmbed()
                 .setTitle("Global Trade Volume")
                 .addField("Resource", "\u200B\n" + StringMan.join(resourceNames, "\n"), true)
                 .addField("Daily", StringMan.join(daily, " "), true)
                 .addField("Weekly", StringMan.join(weekly, " "), true)
-                .build()
         ).commandButton(command, "Refresh").send();
 
         return null;
@@ -659,11 +659,10 @@ public class TradeCommands {
             diffList.add(o1 == null ? "" : (MathMan.format(diff) + (usePercent ? "%" : "")));
         }
 
-        channel.create().embed(new EmbedBuilder()
+        channel.create().embed(new ShrinkableEmbed()
                 .setTitle("Trade Margin")
                 .addField("Resource", StringMan.join(resourceNames, "\n"), true)
                 .addField("margin", StringMan.join(diffList, "\n"), true)
-                .build()
         ).commandButton(command, "Refresh").send();
 
         return null;
@@ -693,14 +692,13 @@ public class TradeCommands {
             highList.add(o2 == null ? "" : MathMan.format(o2));
         }
 
-        channel.create().embed(new EmbedBuilder()
+        channel.create().embed(new ShrinkableEmbed()
                 .setTitle("Trade Price")
                 .appendDescription("low: `" + ResourceType.toString(low) + "`\n")
                 .appendDescription("high: `" + ResourceType.toString(high) + "`\n")
                 .addField("Resource", StringMan.join(resourceNames, "\n"), true)
                 .addField(lowKey, StringMan.join(lowList, "\n"), true)
                 .addField(highKey, StringMan.join(highList, "\n"), true)
-                .build()
         ).commandButton(command, "Refresh").send();
         return null;
     }
@@ -1363,12 +1361,11 @@ public class TradeCommands {
             ppuList.add("$" + MathMan.format(myPpu));
         }
 
-        channel.create().embed(new EmbedBuilder()
+        channel.create().embed(new ShrinkableEmbed()
                 .setTitle("Trade Price")
                 .addField("Nation", StringMan.join(nationName, "\n"), true)
                 .addField("Amt", StringMan.join(amtList, "\n"), true)
                 .addField("Ppu", StringMan.join(ppuList, "\n"), true)
-                .build()
         ).commandButton(command, "Refresh").send();
         return null;
     }

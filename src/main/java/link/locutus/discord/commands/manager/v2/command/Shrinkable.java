@@ -7,8 +7,8 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import java.util.*;
 
 public class Shrinkable {
-    private final String small;
-    private final String large;
+    private String small;
+    private String large;
     private final int keepFactor;
     private boolean isIdentical;
     private boolean isSmall;
@@ -132,5 +132,15 @@ public class Shrinkable {
 
     public String large() {
         return large;
+    }
+
+    public Shrinkable append(String s) {
+        small += s;
+        if (isIdentical) {
+            large = small;
+        } else {
+            large += s;
+        }
+        return this;
     }
 }

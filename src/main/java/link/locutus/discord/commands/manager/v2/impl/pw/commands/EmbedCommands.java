@@ -12,12 +12,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.bindings.MathOperation;
-import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
-import link.locutus.discord.commands.manager.v2.command.CommandRef;
-import link.locutus.discord.commands.manager.v2.command.ICommand;
-import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
-import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.command.ParameterData;
+import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
@@ -91,15 +86,15 @@ public class EmbedCommands {
     public String title(@Me User user, @Me IMessageIO io, @Me Guild guild, Message discMessage, String title) {
         checkMessagePerms(user, guild, discMessage);
         DiscordMessageBuilder message = new DiscordMessageBuilder(discMessage.getChannel(), discMessage);
-        List<MessageEmbed> embeds = message.getEmbeds();
+        List<ShrinkableEmbed> embeds = message.getEmbeds();
         if (embeds.size() != 1) return "No embeds found";
-        MessageEmbed embed = embeds.get(0);
+        ShrinkableEmbed embed = embeds.get(0);
 
-        EmbedBuilder builder = new EmbedBuilder(embed);
+        ShrinkableEmbed builder = new ShrinkableEmbed(embed);
         builder.setTitle(title);
 
         message.clearEmbeds();
-        message.embed(builder.build());
+        message.embed(builder);
         message.send();
         io.create().embed("Set Title", "Done! See: " + discMessage.getJumpUrl()).cancelButton("Dismiss").send();
         return null;
@@ -111,20 +106,20 @@ public class EmbedCommands {
     public String description(@Me User user, @Me IMessageIO io, @Me Guild guild, Message discMessage, String description) {
         checkMessagePerms(user, guild, discMessage);
         DiscordMessageBuilder message = new DiscordMessageBuilder(discMessage.getChannel(), discMessage);
-        List<MessageEmbed> embeds = message.getEmbeds();
+        List<ShrinkableEmbed> embeds = message.getEmbeds();
         if (embeds.size() != 1) return "No embeds found";
-        MessageEmbed embed = embeds.get(0);
+        ShrinkableEmbed embed = embeds.get(0);
 
-        EmbedBuilder builder = new EmbedBuilder(embed);
+        ShrinkableEmbed builder = new ShrinkableEmbed(embed);
         description = description.replace("\\n", "\n");
-        String existing = embed.getDescription();
+        String existing = embed.getDescription().get();
         if (existing != null && description.contains("{description}")) {
             description = description.replace("{description}", existing);
         }
         builder.setDescription(description);
 
         message.clearEmbeds();
-        message.embed(builder.build());
+        message.embed(builder);
         message.send();
         io.create().embed("Set Description", "Done! See: " + discMessage.getJumpUrl()).cancelButton("Dismiss").send();
         return null;

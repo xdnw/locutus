@@ -9,6 +9,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.ShrinkableEmbed;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
 import link.locutus.discord.commands.stock.Exchange;
@@ -313,11 +314,11 @@ public class StockCommands {
             highList.add(o2 == null ? "" : MathMan.format(o2));
         }
 
-        MessageEmbed embed = new EmbedBuilder()
+        ShrinkableEmbed embed = new ShrinkableEmbed()
                 .setTitle("Trade price")
                 .addField("Exchange", StringMan.join(exchangeNames, "\n"), true)
                 .addField("Buying", StringMan.join(lowList, "\n"), true)
-                .addField("Selling", StringMan.join(highList, "\n"), true).build();
+                .addField("Selling", StringMan.join(highList, "\n"), true);
 
         channel.create().embed(embed)
                 .commandButton(command, "Refresh")
@@ -372,9 +373,9 @@ public class StockCommands {
         String refreshEmoji = "Refresh";
 
         channel.create().embed(
-                        new EmbedBuilder().setTitle("Trade margin")
+                        new ShrinkableEmbed().setTitle("Trade margin")
                                 .addField("Exchange", StringMan.join(exchangeNames, "\n"), true)
-                                .addField("Margin", StringMan.join(margin, "\n"), true).build()
+                                .addField("Margin", StringMan.join(margin, "\n"), true)
                 )
                 .commandButton(command, "Refresh")
                 .send();
@@ -480,12 +481,11 @@ public class StockCommands {
             highList.add(o2 == null ? "" : MathMan.format(o2));
         }
 
-        channel.create().embed(new EmbedBuilder()
+        channel.create().embed(new ShrinkableEmbed()
                         .setTitle("Trade average")
                         .addField("Exchange", StringMan.join(exchangeNames, "\n"), true)
                         .addField("Buying", StringMan.join(lowList, "\n"), true)
                         .addField("Selling", StringMan.join(highList, "\n"), true)
-                        .build()
                 ).commandButton(command, "Refresh")
                 .send();
         return null;

@@ -5,6 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.ShrinkableEmbed;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -74,11 +75,11 @@ public class GlobalTradeAverage extends Command {
         }
 
         String timeStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, cutOff);
-        MessageEmbed embed = new EmbedBuilder()
+        ShrinkableEmbed embed = new ShrinkableEmbed()
                 .setTitle("Global Trade Average " + timeStr)
                 .addField("Resource", StringMan.join(resourceNames, "\n"), true)
                 .addField("Low", StringMan.join(low, "\n"), true)
-                .addField("High", StringMan.join(high, "\n"), true).build();
+                .addField("High", StringMan.join(high, "\n"), true);
         channel.create()
                 .embed(embed)
                 .commandButton(DiscordUtil.trimContent(fullCommandRaw), "Refresh")

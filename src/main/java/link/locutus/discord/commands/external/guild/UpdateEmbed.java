@@ -82,7 +82,6 @@ public class UpdateEmbed extends Command {
         List<ShrinkableEmbed> embeds = message.getEmbeds();
         if (embeds.size() != 1) return "No embeds found";
         ShrinkableEmbed embed = embeds.get(0);
-
         ShrinkableEmbed builder = new ShrinkableEmbed(embed);
 
         String setColor = DiscordUtil.parseArg(args, "color");
@@ -97,7 +96,7 @@ public class UpdateEmbed extends Command {
 
         String setDesc = DiscordUtil.parseArg(args, "description");
         if (setDesc != null) {
-            builder.setDescription(DiscordCommands.parse(setDesc.replace(("{description}"), Objects.requireNonNull(embed.getDescription())), embed, message).replace("%user%", author.getAsMention()));
+            builder.setDescription(DiscordCommands.parse(setDesc.replace(("{description}"), Objects.requireNonNull(embed.getDescription().get())), embed, message).replace("%user%", author.getAsMention()));
         }
 
 
@@ -106,7 +105,7 @@ public class UpdateEmbed extends Command {
         }
 
         message.clearEmbeds();
-        message.embed(builder.build());
+        message.embed(builder);
         message.send();
 
         return null;
