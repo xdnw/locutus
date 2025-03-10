@@ -26,7 +26,7 @@ public class ShrinkableEmbed {
     public ShrinkableEmbed(ShrinkableEmbed embed) {
         this.title = embed.title.clone();
         this.description = embed.description.clone();
-        this.footer = embed.footer.clone();
+        this.footer = embed.footer == null ? null : embed.footer.clone();
         this.fields = new ObjectArrayList<>(embed.fields.size());
         this.color = embed.color;
         for (ShrinkableField field : embed.fields) {
@@ -35,7 +35,19 @@ public class ShrinkableEmbed {
     }
 
     public ShrinkableEmbed(MessageEmbed embed) {
-
+        this.title = Shrinkable.of(embed.getTitle());
+        this.description = Shrinkable.of(embed.getDescription());
+        MessageEmbed.Footer footerObj = embed.getFooter();
+        if (footerObj != null) {
+            String footerStr = footerObj.getText();
+            if (footerStr != null && !footerStr.isEmpty()) {
+                this.footer = Shrinkable.of(footerStr);
+            }
+        }
+        this.color = embed.getColor();
+        for (MessageEmbed.Field field : embed.getFields()) {
+            fields.add(new ShrinkableField(field.getName(), field.getValue(), field.isInline()));
+        }
     }
 
     public ShrinkableEmbed title(Shrinkable title) {
@@ -62,7 +74,7 @@ public class ShrinkableEmbed {
         List<Shrinkable> all = new ObjectArrayList<>(3 + fields.size() * 2);
         all.add(title);
         all.add(description);
-        all.add(footer);
+        if (footer != null) all.add(footer);
         for (ShrinkableField field : fields) {
             all.add(field.name);
             all.add(field.value);
@@ -71,7 +83,7 @@ public class ShrinkableEmbed {
 
         title.shrink(titleSize);
         description.shrink(descSize);
-        footer.shrink(footerSize);
+        if (footer != null) footer.shrink(footerSize);
         for (ShrinkableField field : fields) {
             field.name.shrink(titleSize);
             field.value.shrink(valueSize);

@@ -66,6 +66,6 @@ public class ShrinkList {
         if (message.contains("@here")) {
             message = message.replace("@here", "");
         }
-        return DiscordUtil.wrap(message, maxContentLength);
+        return DiscordUtil.wrap(message, maxContentLength, 1000);
     }
 }

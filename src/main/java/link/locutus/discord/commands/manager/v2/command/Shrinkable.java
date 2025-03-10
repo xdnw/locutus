@@ -20,6 +20,7 @@ public class Shrinkable {
     }
 
     public Shrinkable(String small, String large, int keepFactor) {
+        if (small == null) throw new IllegalArgumentException("Cannot have null string");
         this.small = small;
         this.large = large;
         this.keepFactor = keepFactor;

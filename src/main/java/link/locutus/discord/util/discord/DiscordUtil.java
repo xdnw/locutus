@@ -70,6 +70,7 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Matcher;
@@ -1028,7 +1029,7 @@ public class DiscordUtil {
             System.out.println("\n\n------ split by word ------\n\n");
             String input1 = "Hello world an other word";
             int maxSize = 5;
-            List<String> result1 = DiscordUtil.wrap(input1, maxSize);
+            List<String> result1 = DiscordUtil.wrap(input1, maxSize, 0);
             for (String line : result1) {
                 System.out.println("Line {" + line + "}");
                 assertTrue(line.length() <= maxSize,
@@ -1040,7 +1041,7 @@ public class DiscordUtil {
             System.out.println("\n\n------ split long word but not other words ------\n\n");
             String input = "Hello thisisareallylongword world an other word";
             int maxSize = 5;
-            List<String> result = DiscordUtil.wrap(input, maxSize);
+            List<String> result = DiscordUtil.wrap(input, maxSize, 0);
             for (String line : result) {
                 System.out.println("Line {" + line + "}");
                 assertTrue(line.length() <= maxSize,
@@ -1053,7 +1054,7 @@ public class DiscordUtil {
             System.out.println("\n\n------ split by newline ------\n\n");
             String input = "Hello world\nan other word";
             int maxSize = 15;
-            List<String> result = DiscordUtil.wrap(input, maxSize);
+            List<String> result = DiscordUtil.wrap(input, maxSize, 0);
             for (String line : result) {
                 System.out.println("Line {" + line + "}");
                 assertTrue(line.length() <= maxSize,
@@ -1065,7 +1066,7 @@ public class DiscordUtil {
             System.out.println("\n\n------ split long text without spaces ------\n\n");
             String input2 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
             int maxSize2 = 4;
-            List<String> result2 = DiscordUtil.wrap(input2, maxSize2);
+            List<String> result2 = DiscordUtil.wrap(input2, maxSize2, 0);
             for (String line : result2) {
                 System.out.println("Line {" + line + "}");
                 assertTrue(line.length() <= maxSize2,
@@ -1077,7 +1078,7 @@ public class DiscordUtil {
             System.out.println("\n\n------ split outside code block ------\n\n");
             String input3 = "before code block\n```\ncodeblock\n```\nsome text afterwards";
             int maxSize3 = 20;
-            List<String> result3 = DiscordUtil.wrap(input3, maxSize3);
+            List<String> result3 = DiscordUtil.wrap(input3, maxSize3, 0);
             for (String line : result3) {
                 System.out.println("Line {" + line + "}");
                 assertTrue(line.length() <= maxSize3,
@@ -1089,7 +1090,7 @@ public class DiscordUtil {
             System.out.println("\n\n------ split outside quoted text ------\n\n");
             String input4 = "Adklsaj dsa dasdsads asd \"qu o-td s-d\" section with a small-break test testing.";
             int maxSize4 = 15;
-            List<String> result4 = DiscordUtil.wrap(input4, maxSize4);
+            List<String> result4 = DiscordUtil.wrap(input4, maxSize4, 0);
             for (String line : result4) {
                 System.out.println("Line {" + line + "}");
                 assertTrue(line.length() <= maxSize4,
@@ -1102,7 +1103,7 @@ public class DiscordUtil {
             System.out.println("\n\n------ quote small break ------\n\n");
             String input5 = "A dsa das asd asd asd \"quo dsa sad sa ted\" section with a small-break test.";
             int maxSize5 = 12;
-            List<String> result5 = DiscordUtil.wrap(input5, maxSize5);
+            List<String> result5 = DiscordUtil.wrap(input5, maxSize5, 0);
             for (String line : result5) {
                 System.out.println("Line {" + line + "}");
                 assertTrue(line.length() <= maxSize5,
@@ -1114,7 +1115,7 @@ public class DiscordUtil {
             System.out.println("\n\n------ split bracketed text ------\n\n");
             String input6 = "aaaaaaa[bracket] [bracket] [bracket] [bracket][bracket]s[bracket]dd[bracket]ddd[bracket]dddd[bracket]ddddd[bracket] section with a small-break test.";
             int maxSize6 = 10;
-            List<String> result6 = DiscordUtil.wrap(input6, maxSize6);
+            List<String> result6 = DiscordUtil.wrap(input6, maxSize6, 0);
             for (String line : result6) {
                 System.out.println("Line {" + line + "}");
                 assertTrue(line.length() <= maxSize6,
@@ -1124,84 +1125,201 @@ public class DiscordUtil {
 
     }
 
-    public static List<String> wrap(String input, int maxSize) {
+    public static List<String> wrap(String input, int maxSize, int minSize) {
+        if (input.length() <= maxSize) {
+            return List.of(input);
+        }
+        System.out.println("INPUT " + input);
+
         List<String> lines = new ArrayList<>();
         if (input == null || input.isEmpty()) {
             return lines;
         }
-        StringBuilder currentLine = new StringBuilder();
-        boolean inCodeBlock = false;
-        boolean inQuote = false;
-        char bracketOpen = 0;
+
         int i = 0;
+        int startCodeBlock = -1;
+        int endCodeBlock = -1;
+        int quoteI = -1;
+        int bracketOpenI = -1;
+
+        int lastI = 0;
+
+        int foundSplitI = -1;
+        int foundSplitPriority = -1;
+
         while (i < input.length()) {
             char c = input.charAt(i);
-            // Check for code block toggling
-            if (c == '`' && i + 2 < input.length()
-                    && input.charAt(i + 1) == '`'
-                    && input.charAt(i + 2) == '`') {
-                inCodeBlock = !inCodeBlock;
-                currentLine.append("```");
-                i += 3;
-                continue;
-            }
-            // Check for quotes
-            if (!inCodeBlock && StringMan.isQuote(c)) {
-                inQuote = !inQuote;
-            }
-            // Check for brackets
-            if (!inCodeBlock && !inQuote && StringMan.isBracketForwards(c)) {
-                bracketOpen = c;
-            } else if (!inCodeBlock && !inQuote && bracketOpen != 0 && c == StringMan.getMatchingBracket(bracketOpen)) {
-                bracketOpen = 0;
-            }
-            currentLine.append(c);
-            // If exceeding maxSize, try to break before splitting the current input
-            if (currentLine.length() >= maxSize) {
-                int breakPos = findPreferredBreak(currentLine);
-                if (breakPos <= 0) {
-                    // Force break at maxSize if no safe break point found
-                    breakPos = maxSize;
-                } else {
-                    // If the safe break char is newline or space then remove it
-                    char delim = currentLine.charAt(breakPos);
-                    if (delim == '\n' || delim == ' ') {
-                        breakPos++;
+            boolean forceSplit = false;
+            int size = i - lastI;
+
+            // Should determine priority based on the above
+            if (i - lastI > maxSize || forceSplit) {
+                boolean prependCodeBlock = false;
+                if (startCodeBlock != -1 && startCodeBlock < lastI) {
+                    prependCodeBlock = true;
+                }
+
+                int splitAt = foundSplitI > 0 ? foundSplitI : i - 1;
+                int splitAtFinal = splitAt;
+                char c1 = input.length() > lastI ? input.charAt(lastI + 1) : '_';
+                char c2 = splitAt > 0 ? input.charAt(splitAt - 1) : '_';
+                if (c1 == ' ' || c1 == '\n') {
+                    lastI++;
+                }
+                if (c2 == ' ' || c2 == '\n') {
+                    splitAtFinal--;
+                }
+
+                StringBuilder sequence = new StringBuilder();
+                if (prependCodeBlock) {
+                    sequence.append("```");
+                }
+                sequence.append(input, lastI, splitAtFinal);
+                if (startCodeBlock != -1) {
+                    sequence.append("```");
+                }
+                lines.add(sequence.toString());
+                System.out.println("Add sequence " + sequence);
+                lastI = splitAt;
+                foundSplitI = -1;
+                foundSplitPriority = -1;
+                if (input.length() > lastI && (input.charAt(lastI) == ' ' || input.charAt(lastI) == '\n')) {
+                    lastI++;
+                    i++;
+                }
+            } else {
+                switch (c) {
+                    case '`':
+                        if (i + 2 < input.length()
+                                && input.charAt(i + 1) == '`'
+                                && input.charAt(i + 2) == '`') {
+                            if (startCodeBlock == -1) {
+                                startCodeBlock = i;
+                                endCodeBlock = input.indexOf("```", i + 3);
+                                if (endCodeBlock != -1) {
+                                    int codeBlockSize = endCodeBlock - i + (startCodeBlock < lastI ? 6 : 3);
+                                    if (codeBlockSize <= maxSize) {
+                                        foundSplitPriority = 16;
+                                        if (codeBlockSize + size > maxSize) {
+                                            forceSplit = true;
+                                            foundSplitI = i;
+                                        } else {
+                                            i = endCodeBlock;
+                                            foundSplitI = endCodeBlock;
+                                            continue;
+                                        }
+                                    } else {
+                                        if (size + 3 > maxSize) {
+                                            forceSplit = true;
+                                        } else {
+                                            i += 3;
+                                            continue;
+                                        }
+                                    }
+                                } else {
+                                    startCodeBlock = -1;
+                                }
+                            } else {
+                                startCodeBlock = -1;
+                                endCodeBlock = -1;
+                                if (size + (startCodeBlock < lastI ? 6 : 3) > maxSize) {
+                                    forceSplit = true;
+                                } else {
+                                    i += 3;
+                                    continue;
+                                }
+                            }
+                        }
+                        break;
+                    case '\n': {
+                        bracketOpenI = -1;
+                        quoteI = -1;
+                        int priority = 15;
+                        if (size >= minSize && priority >= foundSplitPriority) {
+                            foundSplitI = i;
+                            foundSplitPriority = priority;
+                        }
+                        break;
                     }
+                    case ' ': {
+                        if (size >= minSize) {
+                            int priority = 3;
+                            if (quoteI != -1) priority += 3;
+                            if (bracketOpenI != -1) priority += 6;
+                            if (priority >= foundSplitPriority) {
+                                foundSplitI = i;
+                                foundSplitPriority = priority;
+                            }
+                        }
+                        break;
+                    }
+                    case ';':
+                    case ':': {
+                        if (size >= minSize) {
+                            int priority = 2;
+                            if (quoteI != -1) priority += 3;
+                            if (bracketOpenI != -1) priority += 6;
+                            if (priority >= foundSplitPriority) {
+                                foundSplitI = i;
+                                foundSplitPriority = priority;
+                            }
+                        }
+                        break;
+                    }
+                    case ',':
+                        if (size >= minSize) {
+                            int priority = 1;
+                            if (quoteI != -1) priority += 3;
+                            if (bracketOpenI != -1) priority += 6;
+                            if (priority >= foundSplitPriority) {
+                                foundSplitI = i;
+                                foundSplitPriority = priority;
+                            }
+                        }
+                        break;
+                    default:
+                        if (StringMan.isQuote(c)) {
+                            if (quoteI == -1) {
+                                quoteI = i;
+                                foundSplitI = i;
+                                foundSplitPriority = 13;
+                            } else {
+                                quoteI = -1;
+                                if (size < maxSize && size >= minSize) {
+                                    foundSplitI = i + 1;
+                                    foundSplitPriority = 13;
+                                }
+                            }
+                        } else if (bracketOpenI == -1 && StringMan.isBracketForwards(c)) {
+                            bracketOpenI = i;
+                            foundSplitI = i;
+                            foundSplitPriority = 14;
+                        } else if (bracketOpenI != -1 && StringMan.isBracketEnding(c)) {
+                            bracketOpenI = -1;
+                            if (size < maxSize && size >= minSize) {
+                                foundSplitI = i + 1;
+                                foundSplitPriority = 14;
+                            }
+                        }
                 }
-                String segment = currentLine.substring(0, breakPos);
-                // When in code block, close the block and re-open it in the remainder
-                if (inCodeBlock) {
-                    segment += "```";
-                }
-                lines.add(segment);
-                String remainder = currentLine.substring(breakPos);
-                currentLine.setLength(0);
-                if (inCodeBlock) {
-                    currentLine.append("```");
-                }
-                currentLine.append(remainder);
             }
             i++;
         }
-        if (currentLine.length() > 0) {
-            // If still inside a code block, close it
-            if (inCodeBlock) {
-                currentLine.append("```");
+        if (lastI < input.length()) {
+            String remaining = input.substring(lastI).trim();
+            if (remaining.length() > 0) {
+                if (startCodeBlock != -1 && startCodeBlock < lastI) {
+                    remaining = "```" + remaining;
+                }
+                lines.add(remaining);
+                System.out.println("Add remaining " + remaining);
             }
-            lines.add(currentLine.toString());
         }
         return lines;
     }
 
-    /**
-     * Prioritize a safe break point in three levels:
-     * 1. Newline characters.
-     * 2. Space characters.
-     * 3. Comma or hyphen (returns index + 1 so that the punctuation is kept at the end of the line).
-     * Returns -1 if no safe break is found.
-     */
-    private static int findPreferredBreak(CharSequence seq) {
+    // This method tries to break at a space, comma, or hyphen
+    private static int findSafeBreak(CharSequence seq) {
         // First try newline
         for (int i = seq.length() - 1; i >= 0; i--) {
             if (seq.charAt(i) == '\n') {

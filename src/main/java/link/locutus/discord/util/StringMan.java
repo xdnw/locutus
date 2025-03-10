@@ -484,6 +484,18 @@ public class StringMan {
         }
     }
 
+    public static boolean isBracketEnding(char c) {
+        switch (c) {
+            case ']':
+            case ')':
+            case '}':
+            case '>':
+                return true;
+            default:
+                return false;
+        }
+    }
+
     public static String prettyFormat(double d) {
         if (d == Double.MIN_VALUE) return "-∞";
         if (d == Double.MAX_VALUE) return "∞";
