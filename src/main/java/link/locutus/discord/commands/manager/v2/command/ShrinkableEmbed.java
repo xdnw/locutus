@@ -35,8 +35,8 @@ public class ShrinkableEmbed {
     }
 
     public ShrinkableEmbed(MessageEmbed embed) {
-        this.title = Shrinkable.of(embed.getTitle());
-        this.description = Shrinkable.of(embed.getDescription());
+        this.title = Shrinkable.of(embed.getTitle() == null ? "" : embed.getTitle());
+        this.description = Shrinkable.of(embed.getDescription() == null ? "" : embed.getDescription());
         MessageEmbed.Footer footerObj = embed.getFooter();
         if (footerObj != null) {
             String footerStr = footerObj.getText();
