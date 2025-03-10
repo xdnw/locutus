@@ -122,7 +122,7 @@ public abstract class DamageCursor extends AbstractCursor {
 
     @Override
     public double[] addAttLosses(double[] buffer, DBWar war) {
-        addAttUnitCosts(buffer, null);
+        addAttUnitCosts(buffer, war);
         return buffer;
     }
 
@@ -182,7 +182,7 @@ public abstract class DamageCursor extends AbstractCursor {
     public double getAttUnitLossValue(DBWar war) {
         double value = 0;
         MilitaryUnit[] units = getUnits();
-        int research = war.getAttResearchBits();
+        int research = war == null ? 0 : war.getAttResearchBits();
         for (MilitaryUnit unit : units) {
             value += unit.getConvertedCost(research) * getAttUnitLosses(unit);
         }
@@ -192,7 +192,7 @@ public abstract class DamageCursor extends AbstractCursor {
     @Override
     public double[] addAttUnitCosts(double[] buffer, DBWar war) {
         MilitaryUnit[] units = getUnits();
-        int research = war.getAttResearchBits();
+        int research = war == null ? 0 : war.getAttResearchBits();
         for (MilitaryUnit unit : units) {
             int amt = getAttUnitLosses(unit);
             if (amt > 0) unit.addCost(buffer, amt, research);
@@ -203,7 +203,7 @@ public abstract class DamageCursor extends AbstractCursor {
     @Override
     public double[] addAttUnitLossValueByUnit(double[] valueByUnit, DBWar war) {
         MilitaryUnit[] units = getUnits();
-        int research = war.getAttResearchBits();
+        int research = war == null ? 0 : war.getAttResearchBits();
         for (MilitaryUnit unit : units) {
             valueByUnit[unit.ordinal()] += unit.getConvertedCost(research) * getAttUnitLosses(unit);
         }

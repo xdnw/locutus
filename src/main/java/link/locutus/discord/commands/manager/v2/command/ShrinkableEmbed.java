@@ -33,8 +33,8 @@ public class ShrinkableEmbed {
     }
 
     public ShrinkableEmbed(MessageEmbed embed) {
-        this.title = Shrinkable.of(embed.getTitle());
-        this.description = Shrinkable.of(embed.getDescription());
+        this.title = Shrinkable.of(embed.getTitle() == null ? "" : embed.getTitle());
+        this.description = Shrinkable.of(embed.getDescription() == null ? "" : embed.getDescription());
         MessageEmbed.Footer footerObj = embed.getFooter();
         if (footerObj != null) {
             String footerStr = footerObj.getText();
@@ -70,10 +70,11 @@ public class ShrinkableEmbed {
 
     public ShrinkableEmbed shrink(int totalSize, int titleSize, int descSize, int footerSize, int valueSize) {
         List<Shrinkable> all = new ObjectArrayList<>(3 + fields.size() * 2);
-        all.add(title);
-        all.add(description);
+        if (title != null) all.add(title);
+        if (description != null) all.add(description);
         if (footer != null) all.add(footer);
         for (ShrinkableField field : fields) {
+            if (field.name == null || field.value == null) System.out.println("Field is null");
             all.add(field.name);
             all.add(field.value);
         }
