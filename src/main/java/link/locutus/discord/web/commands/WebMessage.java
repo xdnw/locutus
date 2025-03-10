@@ -45,7 +45,7 @@ public class WebMessage extends AMessageBuilder {
 
     @Override
     public IMessageBuilder embed(String title, String body, String footer) {
-        embeds.add(new ShrinkableEmbed().setTitle(title).appendDescription(formatDiscordMarkdown(body, getParent().getGuildOrNull())).setFooter(footer));
+        embeds.add(new ShrinkableEmbed().setTitle(title).description(formatDiscordMarkdown(body, getParent().getGuildOrNull())).setFooter(footer));
         return this;
     }
 

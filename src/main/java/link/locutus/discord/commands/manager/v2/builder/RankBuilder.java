@@ -3,6 +3,8 @@ package link.locutus.discord.commands.manager.v2.builder;
 import com.google.common.base.Function;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.Shrinkable;
+import link.locutus.discord.commands.manager.v2.command.ShrinkableEmbed;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -87,25 +89,6 @@ public class RankBuilder<T> {
         return this;
     }
 
-    public void build(User author, IMessageIO channel, String command, String title, boolean upload) {
-        List<String> items = toItems(limit);
-        String emoji = "Refresh";
-        StringBuilder itemsStr = new StringBuilder();
-        for (int i = 0; i < items.size(); i++) {
-            itemsStr.append(items.get(i)).append("\n");
-        }
-        System.out.println("ITEMS " + itemsStr);
-        if (author != null) itemsStr.append("\n" + author.getAsMention());
-        IMessageBuilder msg = channel.create().embed(title, itemsStr.toString());
-        if (command != null) msg = msg.commandButton(command.toString(), emoji);
-
-        if (upload && values.size() > limit) {
-            msg.file(title + ".txt", toString());
-        }
-
-        msg.send();
-    }
-
     public void build(User author, IMessageIO channel, String fullCommandRaw, String title) {
         build(author, channel, DiscordUtil.trimContent(fullCommandRaw), title, false);
     }
@@ -130,17 +113,38 @@ public class RankBuilder<T> {
         build(author, channel, cmd, title, false);
     }
 
-    public void build(User author, MessageChannel channel, String cmd, String title, boolean upload) {
+    public void build(User author, IMessageIO channel, String command, String title, boolean upload) {
         List<String> items = toItems(limit);
         String emoji = "Refresh";
-        StringBuilder itemsStr = new StringBuilder("```\n");
+        StringBuilder itemsStr = new StringBuilder();
         for (int i = 0; i < items.size(); i++) {
             itemsStr.append(items.get(i)).append("\n");
+        }
+        if (author != null) itemsStr.append("\n" + author.getAsMention());
+        IMessageBuilder msg = channel.create().embed(title, itemsStr.toString());
+        if (command != null) msg = msg.commandButton(command.toString(), emoji);
+
+        if (upload && values.size() > limit) {
+            msg.file(title + ".txt", toString());
+        }
+
+        msg.send();
+    }
+
+    public void build(User author, MessageChannel channel, String cmd, String title, boolean upload) {
+        List<Shrinkable> items = toItems(limit);
+        String emoji = "Refresh";
+        ShrinkableEmbed embed = new ShrinkableEmbed().title(title);
+        embed.append()
+        for (int i = 0; i < items.size(); i++) {
+            embed.append(items.get(i)).append("\n");
         }
         itemsStr.append("```");
         if (author != null) itemsStr.append("\n" + author.getAsMention());
 
         DiscordChannelIO io = new DiscordChannelIO(channel);
+
+
         IMessageBuilder msg = io.create().embed(title, itemsStr.toString());
         if (cmd != null && !cmd.isBlank()) msg = msg.commandButton(cmd, emoji);
 
@@ -151,10 +155,15 @@ public class RankBuilder<T> {
         msg.send();
     }
 
-    public List<String> toItems(int limit) {
-        List<String> items = new ArrayList<>();
+    public List<Shrinkable> toItems(int limit) {
+        List<Shrinkable> items = new ArrayList<>();
         for (int i = 0; i < Math.min(limit, values.size()); i++) {
-            items.add((i + 1) + ". " + values.get(i).toString());
+            T elem = values.get(i);
+            if (elem instanceof Shrinkable s && !s.isIdentical()) {
+                items.add(s.prepend(i + 1 + ". "));
+            } else {
+                items.add(Shrinkable.of((i + 1) + ". " + elem.toString()));
+            }
         }
         return items;
     }

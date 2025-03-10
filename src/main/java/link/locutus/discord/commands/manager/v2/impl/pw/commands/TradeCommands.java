@@ -41,9 +41,7 @@ import com.google.common.collect.Maps;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.WM;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
-import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.collections4.CollectionUtils;
 import org.json.JSONObject;
@@ -514,8 +512,8 @@ public class TradeCommands {
 
         String timeStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - time);
         ShrinkableEmbed embed = new ShrinkableEmbed()
-                .appendDescription("low: `" + ResourceType.toString(lowMap) + "`\n")
-                .appendDescription("high: `" + ResourceType.toString(highMap) + "`\n")
+                .append("low: `" + ResourceType.toString(lowMap) + "`\n")
+                .append("high: `" + ResourceType.toString(highMap) + "`\n")
                 .setTitle("Global Trade Average " + timeStr)
                 .addField("Resource", StringMan.join(resourceNames, "\n"), true)
                 .addField("Low", StringMan.join(low, "\n"), true)
@@ -694,8 +692,8 @@ public class TradeCommands {
 
         channel.create().embed(new ShrinkableEmbed()
                 .setTitle("Trade Price")
-                .appendDescription("low: `" + ResourceType.toString(low) + "`\n")
-                .appendDescription("high: `" + ResourceType.toString(high) + "`\n")
+                .append("low: `" + ResourceType.toString(low) + "`\n")
+                .append("high: `" + ResourceType.toString(high) + "`\n")
                 .addField("Resource", StringMan.join(resourceNames, "\n"), true)
                 .addField(lowKey, StringMan.join(lowList, "\n"), true)
                 .addField(highKey, StringMan.join(highList, "\n"), true)

@@ -33,6 +33,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.Shrinkable;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.Attribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
@@ -542,7 +543,7 @@ public class StatCommands {
         }
         String title = "Top " + metricName + " by alliance";
 
-        RankBuilder<String> named = builder.nameKeys(DBAlliance::getName);
+        RankBuilder<Shrinkable> named = builder.nameKeysShrink(f -> Shrinkable.of(f.getName(), f.getMarkdownUrl()));
         if (numResults != null) named = named.limit(numResults);
         named.build(channel, command, title, uploadFile);
     }

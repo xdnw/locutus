@@ -2,19 +2,17 @@ package link.locutus.discord.commands.manager.v2.command;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import link.locutus.discord.util.ImageUtil;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
-import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
 public class ShrinkableEmbed {
     private Shrinkable title;
-    private Shrinkable description;
+    private IShrinkable description;
+
     private Shrinkable footer;
     private List<ShrinkableField> fields = new ObjectArrayList<>();
     private Color color;
@@ -142,7 +140,7 @@ public class ShrinkableEmbed {
     }
 
     public ShrinkableEmbed setFooter(String footer) {
-        this.footer = Shrinkable.of(footer);
+        this.footer = footer == null ? null : Shrinkable.of(footer);
         return this;
     }
 
@@ -177,8 +175,22 @@ public class ShrinkableEmbed {
         return this;
     }
 
-    public ShrinkableEmbed appendDescription(String s) {
-        this.description.append(s);
+    public ShrinkableEmbed append(String s) {
+        if (this.description == null) {
+            this.description = Shrinkable.of(s);
+        } else {
+            this.description.append(s);
+        }
+        return this;
+    }
+
+    public ShrinkableEmbed description(String s) {
+        this.description = Shrinkable.of(s);
+        return this;
+    }
+
+    public ShrinkableEmbed title(String title) {
+        this.title = Shrinkable.of(title);
         return this;
     }
 }

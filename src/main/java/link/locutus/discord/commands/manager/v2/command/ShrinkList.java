@@ -12,6 +12,14 @@ public class ShrinkList {
 
     }
 
+    public ShrinkList clone() {
+        ShrinkList result = new ShrinkList();
+        for (Shrinkable item : items) {
+            result.items.add(item.clone());
+        }
+        return result;
+    }
+
     public ShrinkList add(String s) {
         if (!s.isEmpty()) {
             items.add(Shrinkable.of(s));
