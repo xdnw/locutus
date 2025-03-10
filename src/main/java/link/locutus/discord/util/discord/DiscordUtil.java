@@ -443,7 +443,6 @@ public class DiscordUtil {
         createEmbedCommand(channel, new Consumer<ShrinkableEmbed>() {
             @Override
             public void accept(ShrinkableEmbed builder) {
-                builder.shrinkDefault();
                 String titleFinal = finalTitle;
                 if (titleFinal.length() > MessageEmbed.TITLE_MAX_LENGTH) {
                     titleFinal = titleFinal.substring(0, MessageEmbed.TITLE_MAX_LENGTH - 3) + "..";
@@ -451,6 +450,7 @@ public class DiscordUtil {
                 builder.setTitle(titleFinal);
                 builder.setDescription(message);
                 if (footer != null) builder.setFooter(footer);
+                builder.shrinkDefault();
             }
         }, reactionArguments);
     }
