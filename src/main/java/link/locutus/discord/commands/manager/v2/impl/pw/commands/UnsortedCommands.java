@@ -1546,9 +1546,13 @@ public class UnsortedCommands {
                 String diffStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff);
                 response.append(diffStr + "\t" + natStr + "\t" + actionsStr + "\n");
             }
-            if (response.length() > 2000) {
-                msg.file("history.txt", response.toString());
-                msg.append("See attached `history.txt`");
+            if (response.length() > Message.MAX_CONTENT_LENGTH) {
+                if (response.length() > MessageEmbed.DESCRIPTION_MAX_LENGTH) {
+                    msg.file("history.txt", response.toString());
+                    msg.append("See attached `history.txt`");
+                } else {
+                    msg.embed("Departures", response.toString());
+                }
             } else {
                 msg.append(response.toString());
             }

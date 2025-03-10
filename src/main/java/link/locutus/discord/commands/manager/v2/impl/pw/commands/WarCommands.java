@@ -28,6 +28,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.Activity;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.nation.DBNationData;
 import link.locutus.discord.db.entities.nation.SimpleDBNation;
@@ -61,14 +62,11 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.util.update.LeavingBeigeAlert;
 import net.dv8tion.jda.api.OnlineStatus;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.StandardGuildMessageChannel;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.json.JSONObject;
@@ -3428,11 +3426,12 @@ public class WarCommands {
             String title = "Create";
             if (errors.get() > 0) {
                 title += " with " + errors.get() + " errors";
-                if (response.length() > 2000) {
+                String bodyPrefix = "\n\n__**Errors:**__\n";
+                if (response.length() + bodyPrefix.length() > MessageEmbed.DESCRIPTION_MAX_LENGTH) {
                     msg = msg.file(errors.get() + "_errors.txt", response.toString());
                     body.append("\n\n**See `errors.txt` for details**");
                 } else {
-                    body.append("\n\n__**Errors:**__\n").append(response);
+                    body.append(bodyPrefix).append(response);
                 }
             }
             msg.embed(title, body.toString())

@@ -70,6 +70,7 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -433,8 +434,8 @@ public class DiscordUtil {
     }
 
     public static void createEmbedCommandWithFooter(MessageChannel channel, String title, String message, String footer, String... reactionArguments) {
-        if (message.length() > 2000 && reactionArguments.length == 0) {
-            if (title.length() >= 1024) title = title.substring(0, 1020) + "...";
+        if (message.length() + (footer == null ? 0 : footer.length()) > MessageEmbed.DESCRIPTION_MAX_LENGTH && reactionArguments.length == 0) {
+            if (title.length() > MessageEmbed.TITLE_MAX_LENGTH) title = title.substring(0, MessageEmbed.TITLE_MAX_LENGTH - 3) + "...";
             DiscordUtil.upload(channel, title, message);
             return;
         }
@@ -442,9 +443,10 @@ public class DiscordUtil {
         createEmbedCommand(channel, new Consumer<ShrinkableEmbed>() {
             @Override
             public void accept(ShrinkableEmbed builder) {
+                builder.shrinkDefault();
                 String titleFinal = finalTitle;
-                if (titleFinal.length() >= 200) {
-                    titleFinal = titleFinal.substring(0, 197) + "..";
+                if (titleFinal.length() > MessageEmbed.TITLE_MAX_LENGTH) {
+                    titleFinal = titleFinal.substring(0, MessageEmbed.TITLE_MAX_LENGTH - 3) + "..";
                 }
                 builder.setTitle(titleFinal);
                 builder.setDescription(message);
@@ -1129,8 +1131,6 @@ public class DiscordUtil {
         if (input.length() <= maxSize) {
             return List.of(input);
         }
-        System.out.println("INPUT " + input);
-
         List<String> lines = new ArrayList<>();
         if (input == null || input.isEmpty()) {
             return lines;
@@ -1178,7 +1178,9 @@ public class DiscordUtil {
                 if (startCodeBlock != -1) {
                     sequence.append("```");
                 }
-                lines.add(sequence.toString());
+                if (!sequence.isEmpty()) {
+                    lines.add(sequence.toString());
+                }
                 System.out.println("Add sequence " + sequence);
                 lastI = splitAt;
                 foundSplitI = -1;
@@ -1312,7 +1314,6 @@ public class DiscordUtil {
                     remaining = "```" + remaining;
                 }
                 lines.add(remaining);
-                System.out.println("Add remaining " + remaining);
             }
         }
         return lines;
@@ -1356,28 +1357,16 @@ public class DiscordUtil {
         if (message.contains("@here")) {
             message = message.replace("@here", "");
         }
-        message = WordUtils.wrap(message, 2000, "\n", true, ",");
-        if (message.length() > 2000) {
-            String[] lines = message.split("\\r?\\n");
-            StringBuilder buffer = new StringBuilder();
-            for (String line : lines) {
-                if (buffer.length() + 1 + line.length() > 2000) {
-                    String str = buffer.toString().trim();
-                    if (!str.isEmpty()) {
-                        RateLimitUtil.complete(hook.sendMessage(str));
-                    }
-                    buffer.setLength(0);
-                }
-                buffer.append('\n').append(line);
+        List<String> lines = DiscordUtil.wrap(message, Message.MAX_CONTENT_LENGTH, 500);
+        CompletableFuture<Message> last = null;
+        for (String line : lines) {
+            if (last == null) {
+                last = RateLimitUtil.queue(hook.sendMessage(line));
+            } else {
+                last = last.thenCompose(previousMessage -> RateLimitUtil.queue(hook.sendMessage(line)));
             }
-            String finalMsg = buffer.toString().trim();
-            if (finalMsg.length() != 0) {
-                return RateLimitUtil.queue(hook.sendMessage(finalMsg));
-            }
-        } else if (!message.isEmpty()) {
-            return RateLimitUtil.queue(hook.sendMessage(message));
         }
-        return null;
+        return last;
     }
 
     public static CompletableFuture<List<Message>> sendMessage(MessageChannel channel, String message) {
@@ -1394,44 +1383,25 @@ public class DiscordUtil {
         if (message.contains("@here")) {
             message = message.replace("@here", "");
         }
-        if (message.length() > 2000) {
-            message = WordUtils.wrap(message, 2000, "\n", true, "[,\n ]");
-            String[] lines = message.split("\\r?\\n");
-            List<CompletableFuture<Message>> futures = new ArrayList<>();
-            StringBuilder buffer = new StringBuilder();
-            for (String line : lines) {
-                if (buffer.length() + 1 + line.length() > 2000) {
-                    String str = buffer.toString().trim();
-                    if (!str.isEmpty()) {
-                        futures.add(RateLimitUtil.queue(channel.sendMessage(str)));
-                    }
-                    buffer.setLength(0);
-                }
-                buffer.append('\n').append(line);
-            }
-            if (buffer.length() != 0) {
-                String str = buffer.toString().trim();
-                if (!str.isEmpty()) {
-                    futures.add(RateLimitUtil.queue(channel.sendMessage(str)));
-                }
-            }
-            return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-                    .thenApply(v -> futures.stream()
-                            .map(CompletableFuture::join)
-                            .collect(Collectors.toList()));
-        } else if (!message.isEmpty()) {
+        List<String> lines = DiscordUtil.wrap(message, Message.MAX_CONTENT_LENGTH, 500);
+        // If the message fits into one message, send it directly.
+        if (lines.size() == 1) {
             return RateLimitUtil.queue(channel.sendMessage(message)).thenApply(List::of);
         }
-        return null;
-    }
 
-//    public static Set<DBNation> parseNations(Guild guild, String query) {
-//        return parseNations(guild, query, false, false);
-//    }
-//
-//    public static Set<DBNation> parseNations(Guild guild, String aa, boolean noApplicants, boolean starIsSelf) {
-//        return parseNations(guild, aa, noApplicants, starIsSelf, false);
-//    }
+        // Otherwise, send each line sequentially and collect the results.
+        List<Message> sentMessages = new ArrayList<>();
+        CompletableFuture<Void> chain = CompletableFuture.completedFuture(null);
+
+        for (String line : lines) {
+            chain = chain.thenCompose(ignored ->
+                    RateLimitUtil.queue(channel.sendMessage(line))
+                            .thenAccept(sentMessages::add)
+            );
+        }
+
+        return chain.thenApply(ignored -> sentMessages);
+    }
 
     public static void withWebhook(String name, String url, WebhookEmbed embed) {
         WebhookClientBuilder builder = new WebhookClientBuilder(url); // or id, token

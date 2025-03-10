@@ -262,7 +262,7 @@ public class DiscordMessageBuilder extends AMessageBuilder {
                 }
                 latest.setFiles(List.of(FileUpload.fromData(data, "message.txt")));
             } else {
-                List<String> messages = contentShrink.split(Message.MAX_CONTENT_LENGTH);
+                List<String> messages = contentShrink.split(Message.MAX_CONTENT_LENGTH, Message.MAX_CONTENT_LENGTH / 4);
                 for (int i = 0; i < messages.size(); i++) {
                     MessageCreateBuilder builder;
                     if (all.size() >= i + 1) {

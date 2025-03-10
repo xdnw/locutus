@@ -57,6 +57,7 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.concrete.VoiceChannel;
@@ -1296,11 +1297,14 @@ public class UtilityCommands {
         String body = "`note: Results may differ if settings or users change`\n" +
                 result.getSyncDbResult();
         String resultStr = result.toString();
-        if (body.length() + resultStr.length() < 2000) {
-            body += "\n\n------------\n\n" + resultStr;
+        String separator = "\n\n------------\n\n";
+        boolean attachFile = false;
+        if (body.length() + resultStr.length() + separator.length() <= MessageEmbed.DESCRIPTION_MAX_LENGTH) {
+            body += separator + resultStr;
+            attachFile = true;
         }
         IMessageBuilder msg = channel.create().confirmation("Auto role all", body, command);
-        if (body.length() + resultStr.length() >= 2000) {
+        if (attachFile) {
             msg = msg.file("role_changes.txt", result.toString());
         }
 
@@ -1483,13 +1487,22 @@ public class UtilityCommands {
         String result = report.toString();
 
         String title = PW.getName(nation.getNation_id(), false) + " multi report";
-        if (result.length() + title.length() >= 2000) {
+        IMessageBuilder msg = channel.create();
+        boolean attachFile = true;
+        if (result.length() + title.length() > MessageEmbed.EMBED_MAX_LENGTH_BOT || result.length() > MessageEmbed.DESCRIPTION_MAX_LENGTH) {
             String condensed = report.toString(true);
-            if (condensed.length() + title.length() < 2000) {
-                channel.create().embed(PW.getName(nation.getNation_id(), false), condensed).send();
+            if (condensed.length() + title.length() <= MessageEmbed.EMBED_MAX_LENGTH_BOT && condensed.length() <= MessageEmbed.DESCRIPTION_MAX_LENGTH) {
+                msg.embed( PW.getName(nation.getNation_id(), false), condensed);
             }
+        } else {
+            msg.embed( PW.getName(nation.getNation_id(), false), result);
+            attachFile = false;
         }
-        channel.create().embed(title, result).send();
+
+        if (!attachFile) {
+            msg.file(title + ".txt", result);
+        }
+
         String disclaimer = "```Disclaimer:\n" +
                 "- Sharing networks does not mean they are the same person (mobile networks, schools, public wifi, vpns, dynamic ips)\n" +
                 "- A network not shared 'concurrently' or within a short timeframe may be a false positive\n" +
@@ -1498,7 +1511,10 @@ public class UtilityCommands {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             disclaimer += ("\n**See also:** " + Settings.INSTANCE.WEB.FRONTEND_DOMAIN + "/#/multi_v2/" + nation.getId());
         }
-        return disclaimer;
+
+        msg.append(disclaimer).send();
+
+        return null;
     }
 
     @Command(desc = "Return number of turns a nation has left of beige color bloc", viewable = true)

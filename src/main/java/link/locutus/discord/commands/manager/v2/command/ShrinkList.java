@@ -58,7 +58,7 @@ public class ShrinkList {
         return items.isEmpty();
     }
 
-    public List<String> split(int maxContentLength) {
+    public List<String> split(int maxContentLength, int minSize) {
         String message = toString();
          if (message.contains("@everyone")) {
             message = message.replace("@everyone", "");
@@ -66,6 +66,6 @@ public class ShrinkList {
         if (message.contains("@here")) {
             message = message.replace("@here", "");
         }
-        return DiscordUtil.wrap(message, maxContentLength, 1000);
+        return DiscordUtil.wrap(message, maxContentLength, minSize);
     }
 }
