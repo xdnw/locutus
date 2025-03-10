@@ -122,7 +122,7 @@ public abstract class DamageCursor extends AbstractCursor {
 
     @Override
     public double[] addAttLosses(double[] buffer, DBWar war) {
-        addAttUnitCosts(buffer, null);
+        addAttUnitCosts(buffer, war);
         return buffer;
     }
 
