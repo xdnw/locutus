@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 
 public class RankBuilder<T> {
     private List<T> values;
+    private int limit = 25;
 
     public RankBuilder(List<T> values) {
         this.values = values;
@@ -70,7 +71,7 @@ public class RankBuilder<T> {
     }
 
     public RankBuilder<T> limit(int amount) {
-        values = values.subList(0, Math.min(values.size(), amount));
+        limit = amount;
         return this;
     }
 
@@ -87,16 +88,18 @@ public class RankBuilder<T> {
     }
 
     public void build(User author, IMessageIO channel, String command, String title, boolean upload) {
-        List<String> items = toItems(25);
+        List<String> items = toItems(limit);
         String emoji = "Refresh";
-        String itemsStr = StringMan.join(items, "\n") + "\n";
-        if (command != null) itemsStr += "\nPress `" + emoji + "` to refresh";
-        if (author != null) itemsStr += "\n" + author.getAsMention();
-
-        IMessageBuilder msg = channel.create().embed(title, itemsStr);
+        StringBuilder itemsStr = new StringBuilder();
+        for (int i = 0; i < items.size(); i++) {
+            itemsStr.append(items.get(i)).append("\n");
+        }
+        System.out.println("ITEMS " + itemsStr);
+        if (author != null) itemsStr.append("\n" + author.getAsMention());
+        IMessageBuilder msg = channel.create().embed(title, itemsStr.toString());
         if (command != null) msg = msg.commandButton(command.toString(), emoji);
 
-        if (upload && values.size() > 25) {
+        if (upload && values.size() > limit) {
             msg.file(title + ".txt", toString());
         }
 
@@ -128,16 +131,17 @@ public class RankBuilder<T> {
     }
 
     public void build(User author, MessageChannel channel, String cmd, String title, boolean upload) {
-        List<String> items = toItems(25);
+        List<String> items = toItems(limit);
         String emoji = "Refresh";
-        String itemsStr = "```\n" + StringMan.join(items, "\n") + "\n```";
-        if (cmd != null) itemsStr += "\nPress `" + emoji + "` to refresh";
-        if (author != null) itemsStr += "\n" + author.getAsMention();
-
-        String[] args = cmd == null ? new String[0] : new String[]{emoji, cmd};
+        StringBuilder itemsStr = new StringBuilder("```\n");
+        for (int i = 0; i < items.size(); i++) {
+            itemsStr.append(items.get(i)).append("\n");
+        }
+        itemsStr.append("```");
+        if (author != null) itemsStr.append("\n" + author.getAsMention());
 
         DiscordChannelIO io = new DiscordChannelIO(channel);
-        IMessageBuilder msg = io.create().embed(title, itemsStr);
+        IMessageBuilder msg = io.create().embed(title, itemsStr.toString());
         if (cmd != null && !cmd.isBlank()) msg = msg.commandButton(cmd, emoji);
 
         if (upload && values.size() > 25) {

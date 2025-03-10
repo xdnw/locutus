@@ -5,6 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.ShrinkableEmbed;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
@@ -142,12 +143,11 @@ public class TradePriceCmd extends Command {
             highList.add(o2 == null ? "" : MathMan.format(o2));
         }
 
-        channel.create().embed(new EmbedBuilder()
+        channel.create().embed(new ShrinkableEmbed()
                 .setTitle("Trade Price")
                 .addField("Resource", StringMan.join(resourceNames, "\n"), true)
                 .addField(lowKey, StringMan.join(lowList, "\n"), true)
                 .addField(highKey, StringMan.join(highList, "\n"), true)
-                .build()
         ).commandButton(DiscordUtil.trimContent(fullCommandRaw), "Refresh").send();
         return null;
     }

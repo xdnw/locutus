@@ -45,8 +45,6 @@ public interface IMessageBuilder {
         }
     }
 
-    public abstract String getContent();
-
     public abstract Map<String, String> getButtons();
 
     public Map<String, String> getLinks();
@@ -57,22 +55,22 @@ public interface IMessageBuilder {
 
     public Map<String, byte[]> getFiles();
 
-    static JsonElement toJson(String appendText, List<? extends IMessageBuilder> messages, boolean includeFiles, boolean includeButtons, boolean includeTables) {
+    static JsonElement toJson(String appendText, List<? extends IMessageBuilder> messages, boolean includeFiles, boolean includeButtons, boolean includeTables, boolean shrinkEmbeds) {
         Map<String, Object> root = new LinkedHashMap<>();
         if (appendText != null && !appendText.isEmpty()) root.put("content", appendText);
         if (messages != null) {
             for (IMessageBuilder message : messages) {
-                message.addJson(root, includeFiles, includeButtons, includeTables);
+                message.addJson(root, includeFiles, includeButtons, includeTables, shrinkEmbeds);
             }
         }
         return StringMan.toJson(root);
     }
 
-    public abstract void addJson(Map<String, Object> root, boolean includeFiles, boolean includeButtons, boolean includeTables);
+    public abstract void addJson(Map<String, Object> root, boolean includeFiles, boolean includeButtons, boolean includeTables, boolean shrinkEmbeds);
 
     default JsonElement toJson() {
         Map<String, Object> root = new LinkedHashMap<>();
-        addJson(root, true, true, true);
+        addJson(root, true, true, true, true);
         return StringMan.toJson(root);
     }
 
@@ -84,10 +82,22 @@ public interface IMessageBuilder {
     IMessageBuilder append(String content);
 
     @CheckReturnValue
-    IMessageBuilder embed(String title, String body);
+    IMessageBuilder append(Shrinkable msg);
 
     @CheckReturnValue
-    IMessageBuilder embed(String title, String body, String footer);
+    IMessageBuilder embed(MessageEmbed embed);
+
+    @CheckReturnValue
+    default IMessageBuilder embed(String title, String body) {
+        return embed(title, body, null);
+    }
+
+    @CheckReturnValue
+    default IMessageBuilder embed(String title, String body, String footer) {
+        ShrinkableEmbed embed = new ShrinkableEmbed().title(Shrinkable.of(title)).description(Shrinkable.of(body));
+        if (footer != null) embed.footer(Shrinkable.of(footer));
+        return embed(embed);
+    }
 
     @CheckReturnValue
     IMessageBuilder commandInline(CommandRef ref);
@@ -130,32 +140,6 @@ public interface IMessageBuilder {
             CM.modal.create attach = CM.modal.create.cmd.command(path).arguments(StringMan.join(promptFor, ",")).defaults(argumentJson);
             return commandButton(behavior, attach, message);
         }
-
-    default String toSimpleMarkdown() {
-        StringBuilder markdown = new StringBuilder();
-        markdown.append(getContent()).append("\n");
-        for (MessageEmbed embed : getEmbeds()) {
-            String title = embed.getTitle();
-            String description = embed.getDescription();
-            String footerText = null;
-            MessageEmbed.Footer footer = embed.getFooter();
-            if (footer != null) {
-                footerText = footer.getText();
-            }
-            List<MessageEmbed.Field> fields = embed.getFields();
-            markdown.append("## ").append(title).append("\n");
-            markdown.append(">>> ").append(description).append("\n");
-            if (fields != null && !fields.isEmpty()) {
-                for (MessageEmbed.Field field : fields) {
-                    markdown.append("> **").append(field.getName()).append("**: ").append(field.getValue()).append("\n");
-                }
-            }
-            if (footerText != null && !footerText.isEmpty()) {
-                markdown.append("> _").append(footerText).append("_\n");
-            }
-        }
-        return markdown.toString();
-    }
 
     @CheckReturnValue
     default IMessageBuilder commandButton(CommandBehavior behavior, CommandRef ref, String message) {
@@ -305,13 +289,13 @@ public interface IMessageBuilder {
             reactions.put("Next \u27A1\uFE0F", prefix + nextPageCmd);
         }
 
-        EmbedBuilder builder = new EmbedBuilder();
+        ShrinkableEmbed builder = new ShrinkableEmbed();
         builder.setTitle(title);
         builder.setDescription(body.toString());
         if (footer != null) builder.setFooter(footer);
 
         clearEmbeds();
-        embed(builder.build());
+        embed(builder);
         clearButtons();
         addCommands(reactions);
 
@@ -399,17 +383,14 @@ public interface IMessageBuilder {
 
     User getAuthor();
 
-    List<MessageEmbed> getEmbeds();
+    List<ShrinkableEmbed> getEmbeds();
 
     long getTimeCreated();
 
     IMessageBuilder clearEmbeds();
 
     @CheckReturnValue
-    default IMessageBuilder embed(MessageEmbed embed) {
-        embed(embed.getTitle(), embed.getDescription(), embed.getFooter() == null ? null : embed.getFooter().getText());
-        return this;
-    }
+    IMessageBuilder embed(ShrinkableEmbed embed);
 
     /**
      * Key pair (name, command)

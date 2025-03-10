@@ -1,10 +1,8 @@
 package link.locutus.discord.commands.manager.v2.impl.discord;
 
 import com.google.gson.Gson;
-import link.locutus.discord.commands.manager.v2.command.AModalBuilder;
-import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
-import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
@@ -28,6 +26,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.function.Supplier;
 
 public class DiscordChannelIO implements IMessageIO {
@@ -81,7 +80,7 @@ public class DiscordChannelIO implements IMessageIO {
 
     @Override
     public IMessageBuilder create() {
-        return new DiscordMessageBuilder(this, null);
+        return new DiscordMessageBuilder(this, (Message) null);
     }
 
     @Deprecated
@@ -97,51 +96,27 @@ public class DiscordChannelIO implements IMessageIO {
                 CompletableFuture<Message> future = RateLimitUtil.queue(channel.editMessageById(builder.getId(), discMsg.buildEdit(true)));
                 return future.thenApply(msg -> new DiscordMessageBuilder(this, msg));
             }
-            if (discMsg.embeds.size() > 10) {
-                for (MessageEmbed embed : discMsg.embeds) {
-                    discMsg.content.append("**").append(embed.getTitle()).append("**\n");
-                    discMsg.content.append(embed.getDescription()).append("\n");
-                }
-                discMsg.embeds.clear();
+            if (discMsg.isEmpty()) return CompletableFuture.completedFuture(builder);
+
+            List<MessageCreateData> messages = discMsg.build(true);
+            List<Future<Message>> futures = new ArrayList<>();
+            for (MessageCreateData message : messages) {
+                CompletableFuture<Message> future = RateLimitUtil.queue(channel.sendMessage(message));
+                futures.add(future);
             }
-            if (discMsg.content.length() > 2000) {
-                CompletableFuture<List<Message>> future1 = DiscordUtil.sendMessage(channel, discMsg.content.toString().trim());
-                discMsg.content.setLength(0);
-            }
-            CompletableFuture<IMessageBuilder> msgFuture = null;
-            boolean sendFiles = true;
-            if (!discMsg.content.isEmpty() || !discMsg.buttons.isEmpty() || !discMsg.embeds.isEmpty()) {
-                MessageCreateData message = discMsg.build(true);
-                if (message.getContent().length() > 20000) {
-                    Message result = null;
-                    if (!discMsg.buttons.isEmpty() || !discMsg.embeds.isEmpty()) {
-                        message = discMsg.build(false);
-                        result = RateLimitUtil.complete(channel.sendMessage(message));
+            return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                .thenApply(v -> {
+                List<Message> responseMsgs = new ArrayList<>();
+                for (Future<Message> future : futures) {
+                    try {
+                        Message msg = future.get();
+                        responseMsgs.add(msg);
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
-                    CompletableFuture<List<Message>> future = DiscordUtil.sendMessage(channel, discMsg.content.toString().trim());
-                    if (result != null) {
-                        assert future != null;
-                        msgFuture = future.thenApply(f -> new DiscordMessageBuilder(this, f.getLast()));
-                    }
-                } else {
-                    sendFiles = false;
-                    CompletableFuture<Message> future = RateLimitUtil.queue(channel.sendMessage(message));
-                    msgFuture = future.thenApply(f -> new DiscordMessageBuilder(this, f));
                 }
-            }
-            if (sendFiles && (!discMsg.files.isEmpty() || !discMsg.images.isEmpty() || !discMsg.tables.isEmpty())) {
-                List<Map.Entry<String, byte[]>> allFiles = new ArrayList<>();
-                allFiles.addAll(discMsg.files.entrySet());
-                allFiles.addAll(discMsg.images.entrySet());
-                allFiles.addAll(discMsg.buildTables());
-                Message result = null;
-                for (Map.Entry<String, byte[]> entry : allFiles) {
-                    result = RateLimitUtil.complete(channel.sendFiles(FileUpload.fromData(entry.getValue(), entry.getKey())));
-                }
-                if (result != null && msgFuture == null)
-                    msgFuture = CompletableFuture.completedFuture(new DiscordMessageBuilder(this, result));
-            }
-            return msgFuture;
+                return new DiscordMessageBuilder(this, responseMsgs);
+            });
         } else {
             throw new IllegalArgumentException("Only DiscordMessageBuilder is supported.");
         }

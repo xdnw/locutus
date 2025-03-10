@@ -5,6 +5,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.ShrinkableEmbed;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.DiscordCommands;
@@ -78,11 +79,10 @@ public class UpdateEmbed extends Command {
             return "This command can only be run when bound to a Locutus embed.";
         }
 
-        List<MessageEmbed> embeds = message.getEmbeds();
+        List<ShrinkableEmbed> embeds = message.getEmbeds();
         if (embeds.size() != 1) return "No embeds found";
-        MessageEmbed embed = embeds.get(0);
-
-        EmbedBuilder builder = new EmbedBuilder(embed);
+        ShrinkableEmbed embed = embeds.get(0);
+        ShrinkableEmbed builder = new ShrinkableEmbed(embed);
 
         String setColor = DiscordUtil.parseArg(args, "color");
         if (setColor != null) {
@@ -91,12 +91,12 @@ public class UpdateEmbed extends Command {
 
         String setTitle = DiscordUtil.parseArg(args, "title");
         if (setTitle != null) {
-            builder.setTitle(DiscordCommands.parse(setTitle.replace(("{title}"), Objects.requireNonNull(embed.getTitle())), embed, message));
+            builder.setTitle(DiscordCommands.parse(setTitle.replace(("{title}"), Objects.requireNonNull(embed.getTitle().get())), embed, message));
         }
 
         String setDesc = DiscordUtil.parseArg(args, "description");
         if (setDesc != null) {
-            builder.setDescription(DiscordCommands.parse(setDesc.replace(("{description}"), Objects.requireNonNull(embed.getDescription())), embed, message).replace("%user%", author.getAsMention()));
+            builder.setDescription(DiscordCommands.parse(setDesc.replace(("{description}"), Objects.requireNonNull(embed.getDescription().get())), embed, message).replace("%user%", author.getAsMention()));
         }
 
 
@@ -105,7 +105,7 @@ public class UpdateEmbed extends Command {
         }
 
         message.clearEmbeds();
-        message.embed(builder.build());
+        message.embed(builder);
         message.send();
 
         return null;

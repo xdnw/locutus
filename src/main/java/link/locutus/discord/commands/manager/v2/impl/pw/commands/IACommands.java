@@ -1996,7 +1996,7 @@ public class IACommands {
                 header.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
                 header.set(2, "");
                 header.set(3, subjectFormat);
-                header.set(4, IMessageBuilder.toJson(bodyFormat, messages, true, true, true).toString());
+                header.set(4, IMessageBuilder.toJson(bodyFormat, messages, true, true, true, true).toString());
 
                 sheet.addRow(header);
                 success++;
@@ -2006,7 +2006,7 @@ public class IACommands {
                 } else if (messages.isEmpty()) {
                     respType = CommandResult.EMPTY_RESPONSE;
                 }
-                errors.put(nation, new AbstractMap.SimpleEntry<>(respType, IMessageBuilder.toJson("", messages, false, false, false).toString()));
+                errors.put(nation, new AbstractMap.SimpleEntry<>(respType, IMessageBuilder.toJson("", messages, false, false, false, true).toString()));
             }
         }
 

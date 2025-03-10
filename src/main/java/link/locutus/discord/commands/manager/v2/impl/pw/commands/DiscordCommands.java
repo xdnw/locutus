@@ -7,10 +7,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
-import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
-import link.locutus.discord.commands.manager.v2.command.ICommand;
-import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
-import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
@@ -375,32 +372,32 @@ public class DiscordCommands {
             return "Missing: " + Roles.INTERNAL_AFFAIRS.toDiscordRoleNameElseInstructions(guild);
         }
 
-        List<MessageEmbed> embeds = message.getEmbeds();
+        List<ShrinkableEmbed> embeds = message.getEmbeds();
         if (embeds.size() != 1) return "No embeds found";
-        MessageEmbed embed = embeds.get(0);
+        ShrinkableEmbed embed = embeds.get(0);
 
-        EmbedBuilder builder = new EmbedBuilder(embed);
+        ShrinkableEmbed builder = new ShrinkableEmbed(embed);
 
         if (color != null) {
             builder.setColor(color);
         }
 
         if (title != null) {
-            builder.setTitle(parse(title.replace(("{title}"), Objects.requireNonNull(embed.getTitle())), embed, message));
+            builder.setTitle(parse(title.replace(("{title}"), Objects.requireNonNull(embed.getTitle().get())), embed, message));
         }
 
         if (desc != null) {
-            builder.setDescription(parse(desc.replace(("{description}"), Objects.requireNonNull(embed.getDescription())), embed, message));
+            builder.setDescription(parse(desc.replace(("{description}"), Objects.requireNonNull(embed.getDescription().get())), embed, message));
         }
 
         message.clearEmbeds();
-        message.embed(builder.build());
+        message.embed(builder);
         message.send();
 
         return null;
     }
 
-    public static String parse(String arg, MessageEmbed embed, IMessageBuilder message) {
+    public static String parse(String arg, ShrinkableEmbed embed, IMessageBuilder message) {
         long timestamp = message.getTimeCreated();
         long diff = System.currentTimeMillis() - timestamp;
         arg = arg.replace("{timediff}", TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff));

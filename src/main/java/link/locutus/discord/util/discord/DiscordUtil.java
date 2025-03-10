@@ -9,6 +9,7 @@ import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.ShrinkableEmbed;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationModifier;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
@@ -69,11 +70,15 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import static graphql.Assert.assertTrue;
 
 public class DiscordUtil {
     public static Color BACKGROUND_COLOR = Color.decode("#36393E");
@@ -403,13 +408,13 @@ public class DiscordUtil {
             message = io.create();
         }
 
-        EmbedBuilder builder = new EmbedBuilder();
+        ShrinkableEmbed builder = new ShrinkableEmbed();
         builder.setTitle(title);
         builder.setDescription(body.toString());
         if (footer != null) builder.setFooter(footer);
 
         message.clearEmbeds();
-        message.embed(builder.build());
+        message.embed(builder);
         message.clearButtons();
         message.addCommands(reactions);
 
@@ -429,18 +434,19 @@ public class DiscordUtil {
     }
 
     public static void createEmbedCommandWithFooter(MessageChannel channel, String title, String message, String footer, String... reactionArguments) {
-        if (message.length() > 2000 && reactionArguments.length == 0) {
-            if (title.length() >= 1024) title = title.substring(0, 1020) + "...";
+        if (message.length() + (footer == null ? 0 : footer.length()) > MessageEmbed.DESCRIPTION_MAX_LENGTH && reactionArguments.length == 0) {
+            if (title.length() > MessageEmbed.TITLE_MAX_LENGTH) title = title.substring(0, MessageEmbed.TITLE_MAX_LENGTH - 3) + "...";
             DiscordUtil.upload(channel, title, message);
             return;
         }
         String finalTitle = title;
-        createEmbedCommand(channel, new Consumer<EmbedBuilder>() {
+        createEmbedCommand(channel, new Consumer<ShrinkableEmbed>() {
             @Override
-            public void accept(EmbedBuilder builder) {
+            public void accept(ShrinkableEmbed builder) {
+                builder.shrinkDefault();
                 String titleFinal = finalTitle;
-                if (titleFinal.length() >= 200) {
-                    titleFinal = titleFinal.substring(0, 197) + "..";
+                if (titleFinal.length() > MessageEmbed.TITLE_MAX_LENGTH) {
+                    titleFinal = titleFinal.substring(0, MessageEmbed.TITLE_MAX_LENGTH - 3) + "..";
                 }
                 builder.setTitle(titleFinal);
                 builder.setDescription(message);
@@ -449,7 +455,7 @@ public class DiscordUtil {
         }, reactionArguments);
     }
 
-    public static void createEmbedCommand(MessageChannel channel, Consumer<EmbedBuilder> builder, String... reactionArguments) {
+    public static void createEmbedCommand(MessageChannel channel, Consumer<ShrinkableEmbed> builder, String... reactionArguments) {
         if (reactionArguments.length % 2 != 0) {
             throw new IllegalArgumentException("invalid pairs: " + StringMan.getString(reactionArguments));
         }
@@ -481,12 +487,11 @@ public class DiscordUtil {
     }
 
 
-    public static void createEmbedCommand(MessageChannel channel, Consumer<EmbedBuilder> consumer, Map<String, String> reactionArguments) {
-        EmbedBuilder builder = new EmbedBuilder();
+    public static void createEmbedCommand(MessageChannel channel, Consumer<ShrinkableEmbed> consumer, Map<String, String> reactionArguments) {
+        ShrinkableEmbed builder = new ShrinkableEmbed();
         consumer.accept(builder);
-        MessageEmbed embed = builder.build();
 
-        new DiscordChannelIO(channel, null).create().embed(embed).addCommands(reactionArguments).send();
+        new DiscordChannelIO(channel, null).create().embed(builder).addCommands(reactionArguments).send();
     }
 
 //    public static String format2(Guild guild, User callerUser, DBNation callerNation, String message, User user, DBNation nation) {
@@ -1000,6 +1005,344 @@ public class DiscordUtil {
         return null;
     }
 
+//    public static List<String> wrap(String input, int maxSize) {
+//        // Markdown based breakpoints
+//        // 1st priority: Avoid splitting inside brackets, quotes, or code blocks unless not possible to avoid
+//        // - quotes should be assumed ending within the line, so errant quotes aren't a problem
+//        // - Code blocks are multi line and use ```
+//        // - If forced to split within a code bloc, add ``` to the new sequence
+//        // - Ignore quotes that don't have a match (you can split them)
+//
+//        // 2nd Priority Avoid breaking mid line unless not possible to avoid
+//        // If breaking within the line, try to break at a space, comma, or hyphen (in that order)
+//        // - Avoid breaking with code blocks, quotes, or brackets unless not possible
+//        // - Ignore quotes that don't have a match (you can split them)
+//
+//        // Relevant methods:
+//        // - StringMan.isQuote(char c): boolean
+//        // - StringMan.isBracketForwards(char c): boolean
+//        // - StringMan.getMatchingBracket(char c): char (returns the opposite bracket character)
+//        // - StringMan.findMatchingBracket(CharSequence sequence, int index): int (the index)
+//    }
+
+    public static void main(String[] args) {
+        // Simple test with spaces
+        {
+            System.out.println("\n\n------ split by word ------\n\n");
+            String input1 = "Hello world an other word";
+            int maxSize = 5;
+            List<String> result1 = DiscordUtil.wrap(input1, maxSize, 0);
+            for (String line : result1) {
+                System.out.println("Line {" + line + "}");
+                assertTrue(line.length() <= maxSize,
+                        () -> "Line exceeds max size: " + line);
+            }
+        }
+
+        { // ensure it splits within a word when a word exceeds maxSize
+            System.out.println("\n\n------ split long word but not other words ------\n\n");
+            String input = "Hello thisisareallylongword world an other word";
+            int maxSize = 5;
+            List<String> result = DiscordUtil.wrap(input, maxSize, 0);
+            for (String line : result) {
+                System.out.println("Line {" + line + "}");
+                assertTrue(line.length() <= maxSize,
+                        () -> "Line exceeds max size: " + line);
+            }
+
+        }
+
+        { // Ensure it splits on newline when safe
+            System.out.println("\n\n------ split by newline ------\n\n");
+            String input = "Hello world\nan other word";
+            int maxSize = 15;
+            List<String> result = DiscordUtil.wrap(input, maxSize, 0);
+            for (String line : result) {
+                System.out.println("Line {" + line + "}");
+                assertTrue(line.length() <= maxSize,
+                        () -> "Line exceeds max size: " + line);
+            }
+        }
+
+        { // ensure it breaks within a word when a word exceeds maxSize
+            System.out.println("\n\n------ split long text without spaces ------\n\n");
+            String input2 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+            int maxSize2 = 4;
+            List<String> result2 = DiscordUtil.wrap(input2, maxSize2, 0);
+            for (String line : result2) {
+                System.out.println("Line {" + line + "}");
+                assertTrue(line.length() <= maxSize2,
+                        () -> "Should force break without spaces" + line);
+            }
+        }
+
+        {// Code block test
+            System.out.println("\n\n------ split outside code block ------\n\n");
+            String input3 = "before code block\n```\ncodeblock\n```\nsome text afterwards";
+            int maxSize3 = 20;
+            List<String> result3 = DiscordUtil.wrap(input3, maxSize3, 0);
+            for (String line : result3) {
+                System.out.println("Line {" + line + "}");
+                assertTrue(line.length() <= maxSize3,
+                        () -> "Line in code block test exceeds " + maxSize3);
+            }
+        }
+
+        {// Quote test
+            System.out.println("\n\n------ split outside quoted text ------\n\n");
+            String input4 = "Adklsaj dsa dasdsads asd \"qu o-td s-d\" section with a small-break test testing.";
+            int maxSize4 = 15;
+            List<String> result4 = DiscordUtil.wrap(input4, maxSize4, 0);
+            for (String line : result4) {
+                System.out.println("Line {" + line + "}");
+                assertTrue(line.length() <= maxSize4,
+                        () -> "Line in quote test exceeds " + maxSize4);
+            }
+        }
+
+        // Ensure it splits mid quote when quoted text exceeds size
+        {
+            System.out.println("\n\n------ quote small break ------\n\n");
+            String input5 = "A dsa das asd asd asd \"quo dsa sad sa ted\" section with a small-break test.";
+            int maxSize5 = 12;
+            List<String> result5 = DiscordUtil.wrap(input5, maxSize5, 0);
+            for (String line : result5) {
+                System.out.println("Line {" + line + "}");
+                assertTrue(line.length() <= maxSize5,
+                        () -> "Line in quote test exceeds " + maxSize5);
+            }
+        }
+
+        {// Bracket test
+            System.out.println("\n\n------ split bracketed text ------\n\n");
+            String input6 = "aaaaaaa[bracket] [bracket] [bracket] [bracket][bracket]s[bracket]dd[bracket]ddd[bracket]dddd[bracket]ddddd[bracket] section with a small-break test.";
+            int maxSize6 = 10;
+            List<String> result6 = DiscordUtil.wrap(input6, maxSize6, 0);
+            for (String line : result6) {
+                System.out.println("Line {" + line + "}");
+                assertTrue(line.length() <= maxSize6,
+                        () -> "Line in bracket test exceeds " + maxSize6);
+            }
+        }
+
+    }
+
+    public static List<String> wrap(String input, int maxSize, int minSize) {
+        if (input.length() <= maxSize) {
+            return List.of(input);
+        }
+        List<String> lines = new ArrayList<>();
+        if (input == null || input.isEmpty()) {
+            return lines;
+        }
+
+        int i = 0;
+        int startCodeBlock = -1;
+        int endCodeBlock = -1;
+        int quoteI = -1;
+        int bracketOpenI = -1;
+
+        int lastI = 0;
+
+        int foundSplitI = -1;
+        int foundSplitPriority = -1;
+
+        while (i < input.length()) {
+            char c = input.charAt(i);
+            boolean forceSplit = false;
+            int size = i - lastI;
+
+            // Should determine priority based on the above
+            if (i - lastI > maxSize || forceSplit) {
+                boolean prependCodeBlock = false;
+                if (startCodeBlock != -1 && startCodeBlock < lastI) {
+                    prependCodeBlock = true;
+                }
+
+                int splitAt = foundSplitI > 0 ? foundSplitI : i - 1;
+                int splitAtFinal = splitAt;
+                char c1 = input.length() > lastI ? input.charAt(lastI + 1) : '_';
+                char c2 = splitAt > 0 ? input.charAt(splitAt - 1) : '_';
+                if (c1 == ' ' || c1 == '\n') {
+                    lastI++;
+                }
+                if (c2 == ' ' || c2 == '\n') {
+                    splitAtFinal--;
+                }
+
+                StringBuilder sequence = new StringBuilder();
+                if (prependCodeBlock) {
+                    sequence.append("```");
+                }
+                sequence.append(input, lastI, splitAtFinal);
+                if (startCodeBlock != -1) {
+                    sequence.append("```");
+                }
+                if (!sequence.isEmpty()) {
+                    lines.add(sequence.toString());
+                }
+                System.out.println("Add sequence " + sequence);
+                lastI = splitAt;
+                foundSplitI = -1;
+                foundSplitPriority = -1;
+                if (input.length() > lastI && (input.charAt(lastI) == ' ' || input.charAt(lastI) == '\n')) {
+                    lastI++;
+                    i++;
+                }
+            } else {
+                switch (c) {
+                    case '`':
+                        if (i + 2 < input.length()
+                                && input.charAt(i + 1) == '`'
+                                && input.charAt(i + 2) == '`') {
+                            if (startCodeBlock == -1) {
+                                startCodeBlock = i;
+                                endCodeBlock = input.indexOf("```", i + 3);
+                                if (endCodeBlock != -1) {
+                                    int codeBlockSize = endCodeBlock - i + (startCodeBlock < lastI ? 6 : 3);
+                                    if (codeBlockSize <= maxSize) {
+                                        foundSplitPriority = 16;
+                                        if (codeBlockSize + size > maxSize) {
+                                            forceSplit = true;
+                                            foundSplitI = i;
+                                        } else {
+                                            i = endCodeBlock;
+                                            foundSplitI = endCodeBlock;
+                                            continue;
+                                        }
+                                    } else {
+                                        if (size + 3 > maxSize) {
+                                            forceSplit = true;
+                                        } else {
+                                            i += 3;
+                                            continue;
+                                        }
+                                    }
+                                } else {
+                                    startCodeBlock = -1;
+                                }
+                            } else {
+                                startCodeBlock = -1;
+                                endCodeBlock = -1;
+                                if (size + (startCodeBlock < lastI ? 6 : 3) > maxSize) {
+                                    forceSplit = true;
+                                } else {
+                                    i += 3;
+                                    continue;
+                                }
+                            }
+                        }
+                        break;
+                    case '\n': {
+                        bracketOpenI = -1;
+                        quoteI = -1;
+                        int priority = 15;
+                        if (size >= minSize && priority >= foundSplitPriority) {
+                            foundSplitI = i;
+                            foundSplitPriority = priority;
+                        }
+                        break;
+                    }
+                    case ' ': {
+                        if (size >= minSize) {
+                            int priority = 3;
+                            if (quoteI != -1) priority += 3;
+                            if (bracketOpenI != -1) priority += 6;
+                            if (priority >= foundSplitPriority) {
+                                foundSplitI = i;
+                                foundSplitPriority = priority;
+                            }
+                        }
+                        break;
+                    }
+                    case ';':
+                    case ':': {
+                        if (size >= minSize) {
+                            int priority = 2;
+                            if (quoteI != -1) priority += 3;
+                            if (bracketOpenI != -1) priority += 6;
+                            if (priority >= foundSplitPriority) {
+                                foundSplitI = i;
+                                foundSplitPriority = priority;
+                            }
+                        }
+                        break;
+                    }
+                    case ',':
+                        if (size >= minSize) {
+                            int priority = 1;
+                            if (quoteI != -1) priority += 3;
+                            if (bracketOpenI != -1) priority += 6;
+                            if (priority >= foundSplitPriority) {
+                                foundSplitI = i;
+                                foundSplitPriority = priority;
+                            }
+                        }
+                        break;
+                    default:
+                        if (StringMan.isQuote(c)) {
+                            if (quoteI == -1) {
+                                quoteI = i;
+                                foundSplitI = i;
+                                foundSplitPriority = 13;
+                            } else {
+                                quoteI = -1;
+                                if (size < maxSize && size >= minSize) {
+                                    foundSplitI = i + 1;
+                                    foundSplitPriority = 13;
+                                }
+                            }
+                        } else if (bracketOpenI == -1 && StringMan.isBracketForwards(c)) {
+                            bracketOpenI = i;
+                            foundSplitI = i;
+                            foundSplitPriority = 14;
+                        } else if (bracketOpenI != -1 && StringMan.isBracketEnding(c)) {
+                            bracketOpenI = -1;
+                            if (size < maxSize && size >= minSize) {
+                                foundSplitI = i + 1;
+                                foundSplitPriority = 14;
+                            }
+                        }
+                }
+            }
+            i++;
+        }
+        if (lastI < input.length()) {
+            String remaining = input.substring(lastI).trim();
+            if (remaining.length() > 0) {
+                if (startCodeBlock != -1 && startCodeBlock < lastI) {
+                    remaining = "```" + remaining;
+                }
+                lines.add(remaining);
+            }
+        }
+        return lines;
+    }
+
+    // This method tries to break at a space, comma, or hyphen
+    private static int findSafeBreak(CharSequence seq) {
+        // First try newline
+        for (int i = seq.length() - 1; i >= 0; i--) {
+            if (seq.charAt(i) == '\n') {
+                return i;
+            }
+        }
+        // Then space
+        for (int i = seq.length() - 1; i >= 0; i--) {
+            if (seq.charAt(i) == ' ') {
+                return i;
+            }
+        }
+        // Then comma or hyphen (keep punctuation)
+        for (int i = seq.length() - 1; i >= 0; i--) {
+            char c = seq.charAt(i);
+            if (c == ',' || c == '-') {
+                return i + 1;
+            }
+        }
+        return -1;
+    }
+
     public static CompletableFuture<Message> sendMessage(InteractionHook hook, String message) {
         if (message.length() > 20000) {
             if (message.length() < 2000000) {
@@ -1014,28 +1357,16 @@ public class DiscordUtil {
         if (message.contains("@here")) {
             message = message.replace("@here", "");
         }
-        message = WordUtils.wrap(message, 2000, "\n", true, ",");
-        if (message.length() > 2000) {
-            String[] lines = message.split("\\r?\\n");
-            StringBuilder buffer = new StringBuilder();
-            for (String line : lines) {
-                if (buffer.length() + 1 + line.length() > 2000) {
-                    String str = buffer.toString().trim();
-                    if (!str.isEmpty()) {
-                        RateLimitUtil.complete(hook.sendMessage(str));
-                    }
-                    buffer.setLength(0);
-                }
-                buffer.append('\n').append(line);
+        List<String> lines = DiscordUtil.wrap(message, Message.MAX_CONTENT_LENGTH, 500);
+        CompletableFuture<Message> last = null;
+        for (String line : lines) {
+            if (last == null) {
+                last = RateLimitUtil.queue(hook.sendMessage(line));
+            } else {
+                last = last.thenCompose(previousMessage -> RateLimitUtil.queue(hook.sendMessage(line)));
             }
-            String finalMsg = buffer.toString().trim();
-            if (finalMsg.length() != 0) {
-                return RateLimitUtil.queue(hook.sendMessage(finalMsg));
-            }
-        } else if (!message.isEmpty()) {
-            return RateLimitUtil.queue(hook.sendMessage(message));
         }
-        return null;
+        return last;
     }
 
     public static CompletableFuture<List<Message>> sendMessage(MessageChannel channel, String message) {
@@ -1052,44 +1383,25 @@ public class DiscordUtil {
         if (message.contains("@here")) {
             message = message.replace("@here", "");
         }
-        if (message.length() > 2000) {
-            message = WordUtils.wrap(message, 2000, "\n", true, "[,\n ]");
-            String[] lines = message.split("\\r?\\n");
-            List<CompletableFuture<Message>> futures = new ArrayList<>();
-            StringBuilder buffer = new StringBuilder();
-            for (String line : lines) {
-                if (buffer.length() + 1 + line.length() > 2000) {
-                    String str = buffer.toString().trim();
-                    if (!str.isEmpty()) {
-                        futures.add(RateLimitUtil.queue(channel.sendMessage(str)));
-                    }
-                    buffer.setLength(0);
-                }
-                buffer.append('\n').append(line);
-            }
-            if (buffer.length() != 0) {
-                String str = buffer.toString().trim();
-                if (!str.isEmpty()) {
-                    futures.add(RateLimitUtil.queue(channel.sendMessage(str)));
-                }
-            }
-            return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-                    .thenApply(v -> futures.stream()
-                            .map(CompletableFuture::join)
-                            .collect(Collectors.toList()));
-        } else if (!message.isEmpty()) {
+        List<String> lines = DiscordUtil.wrap(message, Message.MAX_CONTENT_LENGTH, 500);
+        // If the message fits into one message, send it directly.
+        if (lines.size() == 1) {
             return RateLimitUtil.queue(channel.sendMessage(message)).thenApply(List::of);
         }
-        return null;
-    }
 
-//    public static Set<DBNation> parseNations(Guild guild, String query) {
-//        return parseNations(guild, query, false, false);
-//    }
-//
-//    public static Set<DBNation> parseNations(Guild guild, String aa, boolean noApplicants, boolean starIsSelf) {
-//        return parseNations(guild, aa, noApplicants, starIsSelf, false);
-//    }
+        // Otherwise, send each line sequentially and collect the results.
+        List<Message> sentMessages = new ArrayList<>();
+        CompletableFuture<Void> chain = CompletableFuture.completedFuture(null);
+
+        for (String line : lines) {
+            chain = chain.thenCompose(ignored ->
+                    RateLimitUtil.queue(channel.sendMessage(line))
+                            .thenAccept(sentMessages::add)
+            );
+        }
+
+        return chain.thenApply(ignored -> sentMessages);
+    }
 
     public static void withWebhook(String name, String url, WebhookEmbed embed) {
         WebhookClientBuilder builder = new WebhookClientBuilder(url); // or id, token

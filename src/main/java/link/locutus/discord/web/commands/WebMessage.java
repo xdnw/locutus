@@ -4,10 +4,7 @@ import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.manager.v2.command.AMessageBuilder;
-import link.locutus.discord.commands.manager.v2.command.CommandRef;
-import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
-import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.commands.manager.v2.table.imp.EntityGroup;
 import link.locutus.discord.config.Settings;
@@ -48,26 +45,19 @@ public class WebMessage extends AMessageBuilder {
 
     @Override
     public IMessageBuilder embed(String title, String body, String footer) {
-        embeds.add(new EmbedBuilder().setTitle(title).appendDescription(formatDiscordMarkdown(body, getParent().getGuildOrNull())).setFooter(footer).build());
-        return this;
-    }
-
-    @Override
-    public IMessageBuilder embed(MessageEmbed embed) {
-        MessageEmbed newEmbed = new EmbedBuilder(embed).setDescription(formatDiscordMarkdown(embed.getDescription(), getParent().getGuildOrNull())).build();
-        this.embeds.add(newEmbed);
+        embeds.add(new ShrinkableEmbed().setTitle(title).appendDescription(formatDiscordMarkdown(body, getParent().getGuildOrNull())).setFooter(footer));
         return this;
     }
 
     @Override
     public IMessageBuilder commandInline(CommandRef ref) {
-        content.append(ref.toSlashCommand());
+        contentShrink.add(ref.toSlashCommand());
         return this;
     }
 
     @Override
     public IMessageBuilder commandLinkInline(CommandRef ref) {
-        content.append(ref.toSlashMention());
+        contentShrink.add(ref.toSlashMention());
         return this;
     }
 
@@ -126,7 +116,7 @@ public class WebMessage extends AMessageBuilder {
 
     public Map<String, Object> build() {
         Map<String, Object> root = new LinkedHashMap<>();
-        addJson(root, false, true, true);
+        addJson(root, false, true, true, false);
         if (!files.isEmpty()) {
             Map<String, String> dataByName = new LinkedHashMap<>();
             files.entrySet().forEach(entry -> dataByName.put(entry.getKey(), new String(entry.getValue())));

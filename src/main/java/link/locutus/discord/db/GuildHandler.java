@@ -1879,7 +1879,7 @@ public class GuildHandler {
                         RateLimitUtil.queueMessage(new DiscordChannelIO(channel), new Function<IMessageBuilder, Boolean>() {
                             @Override
                             public Boolean apply(IMessageBuilder msg) {
-                                if (title.length() + 10 + body.length() < 2000) {
+                                if (body.length() <= MessageEmbed.DESCRIPTION_MAX_LENGTH) {
                                     msg.embed(title, body.toString());
 
                                     Set<String> allMentions = new HashSet<>();

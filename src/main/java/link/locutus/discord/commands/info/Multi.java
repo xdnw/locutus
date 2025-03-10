@@ -12,6 +12,7 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.nation.MultiReport;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
@@ -56,16 +57,20 @@ public class Multi extends Command {
 
         String title = PW.getName(nationId, false) + " multi report";
         IMessageBuilder msg = channel.create();
-        boolean sendCondensed = false;
-        if (result.length() + title.length() >= 2000) {
+        boolean attachFile = true;
+        if (result.length() + title.length() > MessageEmbed.EMBED_MAX_LENGTH_BOT || result.length() > MessageEmbed.DESCRIPTION_MAX_LENGTH) {
             String condensed = report.toString(true);
-            if (condensed.length() + title.length() < 2000) {
+            if (condensed.length() + title.length() <= MessageEmbed.EMBED_MAX_LENGTH_BOT && condensed.length() <= MessageEmbed.DESCRIPTION_MAX_LENGTH) {
                 msg.embed( PW.getName(nationId, false), condensed);
-                sendCondensed = true;
             }
+        } else {
+            msg.embed( PW.getName(nationId, false), result);
+            attachFile = false;
         }
 
-        msg.file(title + ".txt", result);
+        if (!attachFile) {
+            msg.file(title + ".txt", result);
+        }
 
         msg.append("""
             ```Disclaimer:

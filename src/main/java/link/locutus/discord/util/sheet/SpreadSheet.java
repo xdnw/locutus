@@ -30,6 +30,7 @@ import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.sheets.v4.SheetsScopes;
 import com.opencsv.CSVWriter;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import net.dv8tion.jda.api.entities.Message;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 
 import java.io.*;
@@ -542,7 +543,7 @@ public class SpreadSheet {
         if (service == null) {
             Map<String, String> csvs = toCsv();
             int length = csvs.values().stream().mapToInt(String::length).sum();
-            boolean willInline = length + currentLength + (9 * csvs.size()) < 2000 && allowInline;
+            boolean willInline = length + currentLength + (9 * csvs.size()) < Message.MAX_CONTENT_LENGTH && allowInline;
             for (Map.Entry<String, String> entry : csvs.entrySet()) {
                 String title;
                 if (name == null || name.isEmpty()) {

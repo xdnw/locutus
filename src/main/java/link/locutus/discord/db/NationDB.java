@@ -818,7 +818,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         for (com.politicsandwar.graphql.model.Treaty treaty : treatiesV3) {
             Treaty dbTreaty = new Treaty(treaty);
             toDelete.remove(dbTreaty);
-
             if (dbTreaty.isPending()) continue;
             if (dbTreaty.getTurnEnds() <= turn) continue;
             if (!allTreaties.contains(dbTreaty)) {

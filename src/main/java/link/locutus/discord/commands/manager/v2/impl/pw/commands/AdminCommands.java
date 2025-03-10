@@ -1585,10 +1585,11 @@ public class AdminCommands {
         }
         if (!force) {
             String changeStr = info.toString();
-            if (body.length() + changeStr.length() >= 2000) {
+            String separator = "\n\n------------\n\n";
+            if (body.length() + changeStr.length() + separator.length() > MessageEmbed.DESCRIPTION_MAX_LENGTH) {
                 msg = msg.file("role_changes.txt", changeStr);
             } else {
-                body.append("\n\n------------\n\n" + changeStr);
+                body.append(separator + changeStr);
             }
             msg.confirmation("Confirm bulk role change", body.toString(), command).send();
             return null;
