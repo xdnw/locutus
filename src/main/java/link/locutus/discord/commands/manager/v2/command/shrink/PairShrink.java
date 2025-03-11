@@ -24,11 +24,12 @@ public class PairShrink implements IShrink {
 
     @Override
     public IShrink append(String s) {
-        for (CharSequence c : options) {
+        for (int i = 0; i < options.length; i++) {
+            CharSequence c = options[i];
             if (c instanceof StringBuilder b) {
                 b.append(s);
             } else {
-                options[index] = new StringBuilder(c).append(s);
+                options[i] = new StringBuilder(c).append(s);
             }
         }
         return this;
@@ -36,11 +37,12 @@ public class PairShrink implements IShrink {
 
     @Override
     public IShrink prepend(String s) {
-        for (CharSequence c : options) {
+        for (int i = 0; i < options.length; i++) {
+            CharSequence c = options[i];
             if (c instanceof StringBuilder b) {
                 b.insert(0, s);
             } else {
-                options[index] = new StringBuilder(s).append(c);
+                options[i] = new StringBuilder(s).append(c);
             }
         }
         return this;
@@ -74,7 +76,7 @@ public class PairShrink implements IShrink {
     public boolean smaller() {
         if (index > 0) {
             index--;
-            return true;
+            return index > 0;
         }
         return false;
     }

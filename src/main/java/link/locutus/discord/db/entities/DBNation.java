@@ -25,6 +25,7 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCach
 import link.locutus.discord.commands.manager.v2.binding.bindings.ScopedPlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.command.*;
+import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -3868,6 +3869,11 @@ public abstract class DBNation implements NationOrAlliance {
     @Command(desc = "Markdown url to the bot's web page for the nation (instead of ingame page)")
     public String getWebUrl() {
         return MarkupUtil.markdownUrl(getName(), "<" + Settings.INSTANCE.WEB.FRONTEND_DOMAIN + "/nation/" + getId() + ">");
+    }
+
+    @Override
+    public IShrink toShrink(int priority) {
+        return IShrink.of(priority, getNation(), getMarkdownUrl(), getMarkdownUrl() + " | " + getAllianceUrlMarkup());
     }
 
     @Command(desc = "Google sheet named url")
