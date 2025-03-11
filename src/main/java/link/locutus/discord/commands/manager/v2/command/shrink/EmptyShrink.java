@@ -21,6 +21,11 @@ public class EmptyShrink implements IShrink {
     }
 
     @Override
+    public String toString() {
+        return get();
+    }
+
+    @Override
     public IShrink append(IShrink s) {
         return s;
     }

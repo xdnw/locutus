@@ -17,7 +17,6 @@ public interface IShrink {
     public int shrink(int totalSize);
     public int shrink();
     public boolean isIdentical();
-
     default int getKeepFactor() {
         return 0;
     }

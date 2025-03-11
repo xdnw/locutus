@@ -108,6 +108,11 @@ public class EmbedShrink implements IShrink {
         return builder;
     }
 
+    @Override
+    public String toString() {
+        return get();
+    }
+
     public MessageEmbed build() {
         return builder().build();
     }
@@ -251,7 +256,20 @@ public class EmbedShrink implements IShrink {
 
     @Override
     public String get() {
-        return "";
+        StringBuilder contentShrink = new StringBuilder();
+        shrinkDefault();
+        contentShrink.append("## ").append(getTitle()).append("\n")
+                .append(">>> ").append(getDescription()).append("\n");
+        IShrink footer = getFooter();
+        if (footer != null && !footer.isEmpty()) {
+            contentShrink.append("_").append(footer).append("_\n");
+        }
+        if (getFields() != null) {
+            for (ShrinkableField field : getFields()) {
+                contentShrink.append("> **").append(field.name).append("**: ").append(field.value).append("\n");
+            }
+        }
+        return contentShrink.toString();
     }
 
     @Override

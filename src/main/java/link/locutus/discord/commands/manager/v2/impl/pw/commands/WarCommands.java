@@ -350,8 +350,14 @@ public class WarCommands {
         if (beigeTurns == null) beigeTurns = -1;
         if (targets == null) targets = Locutus.imp().getNationDB().getAllNations();
 
-        String result = cmd.onCommand2(channel, user, db, me, targets, weakground, dms, vmTurns, defensiveSlots, beigeTurns != null && beigeTurns > 0, !ignoreDNR, ignoreAlliances, includeAlliances, active, minutesInactive, score, minLoot, beigeTurns, ignoreBankLoot, ignoreCityRevenue, numResults);
-        return result;
+        try {
+            String result = cmd.onCommand2(channel, user, db, me, targets, weakground, dms, vmTurns, defensiveSlots, beigeTurns != null && beigeTurns > 0, !ignoreDNR, ignoreAlliances, includeAlliances, active, minutesInactive, score, minLoot, beigeTurns, ignoreBankLoot, ignoreCityRevenue, numResults);
+            System.out.println("RESULT " + result);
+            return result;
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
     }
     @Command(desc = "List your wars you are allowed to beige\n" +
             "As set by this guild's configured beige policy: `ALLOWED_BEIGE_REASONS`", viewable = true)

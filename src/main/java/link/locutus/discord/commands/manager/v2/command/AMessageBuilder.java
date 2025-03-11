@@ -44,17 +44,7 @@ public abstract class AMessageBuilder implements IMessageBuilder {
     public void flatten() {
         for (EmbedShrink embed : embeds) {
             embed.shrinkDefault();
-            contentShrink.append("## ").append(embed.getTitle()).append("\n")
-                    .append(">>> ").append(embed.getDescription()).append("\n");
-            IShrink footer = embed.getFooter();
-            if (footer != null && !footer.isEmpty()) {
-                contentShrink.append("_").append(footer).append("_\n");
-            }
-            if (embed.getFields() != null) {
-                for (ShrinkableField field : embed.getFields()) {
-                    contentShrink.append("> **").append(field.name).append("**: ").append(field.value).append("\n");
-                }
-            }
+            contentShrink.append(embed.get());
         }
         embeds.clear();
         buttons.clear();

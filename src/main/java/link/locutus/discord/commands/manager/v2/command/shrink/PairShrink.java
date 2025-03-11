@@ -32,6 +32,11 @@ public class PairShrink implements IShrink {
     }
 
     @Override
+    public String toString() {
+        return get();
+    }
+
+    @Override
     public IShrink append(String s) {
         if (small instanceof StringBuilder b) {
             b.insert(0, s);

@@ -21,6 +21,11 @@ public class ListShrink implements IShrink {
     }
 
     @Override
+    public String toString() {
+        return get();
+    }
+
+    @Override
     public IShrink append(String s) {
         if (s.isEmpty()) return this;
         if (!items.isEmpty()) {

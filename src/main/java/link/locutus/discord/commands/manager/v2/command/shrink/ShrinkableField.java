@@ -75,6 +75,11 @@ public class ShrinkableField implements IShrink {
     }
 
     @Override
+    public String toString() {
+        return get();
+    }
+
+    @Override
     public String get() {
         return name.get() + ": " + value.get();
     }

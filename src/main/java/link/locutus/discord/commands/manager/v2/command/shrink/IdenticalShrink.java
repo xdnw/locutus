@@ -52,6 +52,11 @@ public class IdenticalShrink implements IShrink {
     }
 
     @Override
+    public String toString() {
+        return get();
+    }
+
+    @Override
     public IShrink clone() {
         return new IdenticalShrink(item);
     }
