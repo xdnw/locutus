@@ -1,13 +1,11 @@
 package link.locutus.discord.commands.manager.v2.command.shrink;
 
-import link.locutus.discord.commands.manager.v2.command.IShrinkable;
-import link.locutus.discord.commands.manager.v2.command.Shrinkable;
 
-public class IdenticalShrink implements IShrinkable {
+public class IdenticalShrink implements IShrink {
     private CharSequence item;
 
-    public static IShrinkable of(CharSequence s) {
-        if (s == null || s.isEmpty()) return new EmptyShrink();
+    public static IShrink of(CharSequence s) {
+        if (s == null || s.isEmpty()) return EmptyShrink.EMPTY;
         return new IdenticalShrink(s);
     }
 
@@ -16,7 +14,7 @@ public class IdenticalShrink implements IShrinkable {
     }
 
     @Override
-    public IShrinkable append(String s) {
+    public IShrink append(String s) {
         if (s.isEmpty()) return this;
         if (item instanceof StringBuilder b) {
             b.append(s);
@@ -27,7 +25,7 @@ public class IdenticalShrink implements IShrinkable {
     }
 
     @Override
-    public IShrinkable prepend(String s) {
+    public IShrink prepend(String s) {
         if (s.isEmpty()) return this;
         if (item instanceof StringBuilder b) {
             b.insert(0, s);
@@ -38,7 +36,7 @@ public class IdenticalShrink implements IShrinkable {
     }
 
     @Override
-    public IShrinkable append(Shrinkable s) {
+    public IShrink append(IShrink s) {
         if (s.isIdentical()) {
             return append(s.get());
         }
@@ -46,7 +44,7 @@ public class IdenticalShrink implements IShrinkable {
     }
 
     @Override
-    public IShrinkable prepend(Shrinkable s) {
+    public IShrink prepend(IShrink s) {
         if (s.isIdentical()) {
             return prepend(s.get());
         }
@@ -54,7 +52,7 @@ public class IdenticalShrink implements IShrinkable {
     }
 
     @Override
-    public IShrinkable clone() {
+    public IShrink clone() {
         return new IdenticalShrink(item);
     }
 
@@ -69,8 +67,8 @@ public class IdenticalShrink implements IShrinkable {
     }
 
     @Override
-    public IShrinkable shrink() {
-        return this;
+    public int shrink() {
+        return 0;
     }
 
     @Override
@@ -81,5 +79,10 @@ public class IdenticalShrink implements IShrinkable {
     @Override
     public String get() {
         return item.toString();
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return this.item.isEmpty();
     }
 }

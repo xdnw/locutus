@@ -1,10 +1,19 @@
 package link.locutus.discord.commands.manager.v2.command.shrink;
 
-import link.locutus.discord.commands.manager.v2.command.IShrinkable;
-import link.locutus.discord.commands.manager.v2.command.ShrinkList;
-import link.locutus.discord.commands.manager.v2.command.Shrinkable;
+public class PairShrink implements IShrink {
+    public static IShrink of(String small, String large) {
+        return of(small, large, 1);
+    }
 
-public class PairShrink implements IShrinkable {
+    public static IShrink of(CharSequence small, CharSequence large, int priority) {
+        if (small == large || small.equals(large)) {
+            return IdenticalShrink.of(small);
+        }
+        return new PairShrink(small, large, priority);
+    }
+
+    ///
+
     private CharSequence small;
     private CharSequence large;
     private final int keepFactor;
@@ -17,15 +26,13 @@ public class PairShrink implements IShrinkable {
         this.isSmall = false;
     }
 
-    public static IShrinkable PairShrink(CharSequence small, CharSequence large, int priority) {
-        if (small == large || small.equals(large)) {
-            return IdenticalShrink.of(small);
-        }
-        return new PairShrink(small, large, priority);
+    @Override
+    public int getKeepFactor() {
+        return keepFactor;
     }
 
     @Override
-    public IShrinkable append(String s) {
+    public IShrink append(String s) {
         if (small instanceof StringBuilder b) {
             b.insert(0, s);
         } else {
@@ -40,7 +47,7 @@ public class PairShrink implements IShrinkable {
     }
 
     @Override
-    public IShrinkable prepend(String s) {
+    public IShrink prepend(String s) {
         if (small instanceof StringBuilder b) {
             b.insert(0, s);
         } else {
@@ -55,21 +62,21 @@ public class PairShrink implements IShrinkable {
     }
 
     @Override
-    public IShrinkable append(Shrinkable s) {
+    public IShrink append(IShrink s) {
         if (s.isEmpty()) return this;
         if (s.isIdentical()) return append(s.get());
         return new ListShrink(this, s);
     }
 
     @Override
-    public IShrinkable prepend(Shrinkable s) {
+    public IShrink prepend(IShrink s) {
         if (s.isEmpty()) return this;
         if (s.isIdentical()) return prepend(s.get());
         return new ListShrink(s, this);
     }
 
     @Override
-    public IShrinkable clone() {
+    public IShrink clone() {
         return new PairShrink(small.toString(), large.toString(), keepFactor);
     }
 
@@ -88,9 +95,12 @@ public class PairShrink implements IShrinkable {
     }
 
     @Override
-    public IShrinkable shrink() {
-        isSmall = true;
-        return this;
+    public int shrink() {
+        if (!isSmall) {
+            isSmall = true;
+            return large.length() - small.length();
+        }
+        return 0;
     }
 
     @Override

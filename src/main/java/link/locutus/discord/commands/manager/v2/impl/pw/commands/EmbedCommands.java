@@ -3,7 +3,6 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
-import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -13,6 +12,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.bindings.MathOperation;
 import link.locutus.discord.commands.manager.v2.command.*;
+import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
@@ -20,7 +20,6 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAllian
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
-import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
@@ -39,7 +38,6 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.GoogleDoc;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
@@ -86,11 +84,11 @@ public class EmbedCommands {
     public String title(@Me User user, @Me IMessageIO io, @Me Guild guild, Message discMessage, String title) {
         checkMessagePerms(user, guild, discMessage);
         DiscordMessageBuilder message = new DiscordMessageBuilder(discMessage.getChannel(), discMessage);
-        List<ShrinkableEmbed> embeds = message.getEmbeds();
+        List<EmbedShrink> embeds = message.getEmbeds();
         if (embeds.size() != 1) return "No embeds found";
-        ShrinkableEmbed embed = embeds.get(0);
+        EmbedShrink embed = embeds.get(0);
 
-        ShrinkableEmbed builder = new ShrinkableEmbed(embed);
+        EmbedShrink builder = new EmbedShrink(embed);
         builder.setTitle(title);
 
         message.clearEmbeds();
@@ -106,11 +104,11 @@ public class EmbedCommands {
     public String description(@Me User user, @Me IMessageIO io, @Me Guild guild, Message discMessage, String description) {
         checkMessagePerms(user, guild, discMessage);
         DiscordMessageBuilder message = new DiscordMessageBuilder(discMessage.getChannel(), discMessage);
-        List<ShrinkableEmbed> embeds = message.getEmbeds();
+        List<EmbedShrink> embeds = message.getEmbeds();
         if (embeds.size() != 1) return "No embeds found";
-        ShrinkableEmbed embed = embeds.get(0);
+        EmbedShrink embed = embeds.get(0);
 
-        ShrinkableEmbed builder = new ShrinkableEmbed(embed);
+        EmbedShrink builder = new EmbedShrink(embed);
         description = description.replace("\\n", "\n");
         String existing = embed.getDescription().get();
         if (existing != null && description.contains("{description}")) {

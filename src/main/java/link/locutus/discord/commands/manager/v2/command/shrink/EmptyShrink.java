@@ -1,33 +1,37 @@
 package link.locutus.discord.commands.manager.v2.command.shrink;
 
-import link.locutus.discord.commands.manager.v2.command.IShrinkable;
-import link.locutus.discord.commands.manager.v2.command.Shrinkable;
+public class EmptyShrink implements IShrink {
+    public static final EmptyShrink EMPTY = new EmptyShrink();
 
-public class EmptyShrink implements IShrinkable {
+    private EmptyShrink() {
+
+    }
+
+
     @Override
-    public IShrinkable append(String s) {
+    public IShrink append(String s) {
         if (s.isEmpty()) return this;
         return IdenticalShrink.of(s);
     }
 
     @Override
-    public IShrinkable prepend(String s) {
+    public IShrink prepend(String s) {
         if (s.isEmpty()) return this;
         return IdenticalShrink.of(s);
     }
 
     @Override
-    public IShrinkable append(Shrinkable s) {
+    public IShrink append(IShrink s) {
         return s;
     }
 
     @Override
-    public IShrinkable prepend(Shrinkable s) {
+    public IShrink prepend(IShrink s) {
         return s;
     }
 
     @Override
-    public IShrinkable clone() {
+    public IShrink clone() {
         return this;
     }
 
@@ -42,8 +46,8 @@ public class EmptyShrink implements IShrinkable {
     }
 
     @Override
-    public IShrinkable shrink() {
-        return this;
+    public int shrink() {
+        return 0;
     }
 
     @Override

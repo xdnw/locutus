@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.command.ShrinkableEmbed;
+import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -13,10 +13,8 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -70,7 +68,7 @@ public class GlobalTradeVolume extends Command {
             weekly.add("```diff\n" + weekPrefix + MathMan.format(weeklyChangePct) + "%```");
         }
 
-        channel.create().embed(new ShrinkableEmbed()
+        channel.create().embed(new EmbedShrink()
                 .setTitle("Global Trade Volume")
                 .addField("Resource", "\u200B\n" + StringMan.join(resourceNames, "\n"), true)
                 .addField("Daily", StringMan.join(daily, " "), true)

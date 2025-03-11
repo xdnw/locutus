@@ -3,8 +3,9 @@ package link.locutus.discord.commands.manager.v2.builder;
 import com.google.common.base.Function;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.command.Shrinkable;
-import link.locutus.discord.commands.manager.v2.command.ShrinkableEmbed;
+import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
+import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
+import link.locutus.discord.commands.manager.v2.command.shrink.IdenticalShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -114,14 +115,14 @@ public class RankBuilder<T> {
     }
 
     public void build(User author, IMessageIO channel, String command, String title, boolean upload) {
-        List<String> items = toItems(limit);
+        List<IShrink> items = toItems(limit);
         String emoji = "Refresh";
-        StringBuilder itemsStr = new StringBuilder();
+        EmbedShrink embed = new EmbedShrink().title(title);
         for (int i = 0; i < items.size(); i++) {
-            itemsStr.append(items.get(i)).append("\n");
+            embed.append(items.get(i)).append("\n");
         }
-        if (author != null) itemsStr.append("\n" + author.getAsMention());
-        IMessageBuilder msg = channel.create().embed(title, itemsStr.toString());
+        if (author != null) embed.append("\n" + author.getAsMention());
+        IMessageBuilder msg = channel.create().embed(embed);
         if (command != null) msg = msg.commandButton(command.toString(), emoji);
 
         if (upload && values.size() > limit) {
@@ -132,20 +133,18 @@ public class RankBuilder<T> {
     }
 
     public void build(User author, MessageChannel channel, String cmd, String title, boolean upload) {
-        List<Shrinkable> items = toItems(limit);
+        List<IShrink> items = toItems(limit);
         String emoji = "Refresh";
-        ShrinkableEmbed embed = new ShrinkableEmbed().title(title);
-        embed.append()
+        EmbedShrink embed = new EmbedShrink().title(title);
+        embed.append("```\n");
         for (int i = 0; i < items.size(); i++) {
             embed.append(items.get(i)).append("\n");
         }
-        itemsStr.append("```");
-        if (author != null) itemsStr.append("\n" + author.getAsMention());
+        embed.append("```");
+        if (author != null) embed.append("\n" + author.getAsMention());
 
         DiscordChannelIO io = new DiscordChannelIO(channel);
-
-
-        IMessageBuilder msg = io.create().embed(title, itemsStr.toString());
+        IMessageBuilder msg = io.create().embed(embed);
         if (cmd != null && !cmd.isBlank()) msg = msg.commandButton(cmd, emoji);
 
         if (upload && values.size() > 25) {
@@ -155,14 +154,14 @@ public class RankBuilder<T> {
         msg.send();
     }
 
-    public List<Shrinkable> toItems(int limit) {
-        List<Shrinkable> items = new ArrayList<>();
+    public List<IShrink> toItems(int limit) {
+        List<IShrink> items = new ArrayList<>();
         for (int i = 0; i < Math.min(limit, values.size()); i++) {
             T elem = values.get(i);
-            if (elem instanceof Shrinkable s && !s.isIdentical()) {
+            if (elem instanceof IShrink s && !s.isIdentical()) {
                 items.add(s.prepend(i + 1 + ". "));
             } else {
-                items.add(Shrinkable.of((i + 1) + ". " + elem.toString()));
+                items.add(IdenticalShrink.of((i + 1) + ". " + elem.toString()));
             }
         }
         return items;

@@ -1,45 +1,44 @@
 package link.locutus.discord.commands.manager.v2.command.shrink;
 
-import link.locutus.discord.commands.manager.v2.command.IShrinkable;
-import link.locutus.discord.commands.manager.v2.command.Shrinkable;
+import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 
-public class ShrinkHolder implements IShrinkable {
-    private IShrinkable holder;
+public class ShrinkHolder implements IShrink {
+    private IShrink holder;
 
-    public ShrinkHolder(IShrinkable clone) {
+    public ShrinkHolder(IShrink clone) {
         this.holder = clone;
     }
 
     public ShrinkHolder() {
-       holder = new EmptyShrink();
+       holder = EmptyShrink.EMPTY;
     }
 
     @Override
-    public IShrinkable append(String s) {
+    public IShrink append(String s) {
         this.holder = holder.append(s);
         return this;
     }
 
     @Override
-    public IShrinkable prepend(String s) {
+    public IShrink prepend(String s) {
         this.holder = holder.prepend(s);
         return this;
     }
 
     @Override
-    public IShrinkable append(Shrinkable s) {
+    public IShrink append(IShrink s) {
         this.holder = holder.append(s);
         return this;
     }
 
     @Override
-    public IShrinkable prepend(Shrinkable s) {
+    public IShrink prepend(IShrink s) {
         this.holder = holder.prepend(s);
         return this;
     }
 
     @Override
-    public IShrinkable clone() {
+    public IShrink clone() {
         return new ShrinkHolder(holder.clone());
     }
 
@@ -54,9 +53,8 @@ public class ShrinkHolder implements IShrinkable {
     }
 
     @Override
-    public IShrinkable shrink() {
-        holder.shrink();
-        return this;
+    public int shrink() {
+        return holder.shrink();
     }
 
     @Override
@@ -72,5 +70,13 @@ public class ShrinkHolder implements IShrinkable {
     @Override
     public boolean isEmpty() {
         return holder.isEmpty();
+    }
+
+    public IShrink getChild() {
+        return holder;
+    }
+
+    public void clear() {
+        this.holder = EmptyShrink.EMPTY;
     }
 }

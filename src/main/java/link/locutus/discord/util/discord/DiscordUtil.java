@@ -9,7 +9,7 @@ import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.command.ShrinkableEmbed;
+import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationModifier;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
@@ -28,7 +28,6 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import com.google.common.base.Charsets;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
@@ -46,7 +45,6 @@ import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.internal.entities.UserImpl;
-import org.apache.commons.lang3.text.WordUtils;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.json.JSONObject;
@@ -70,13 +68,10 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import static graphql.Assert.assertTrue;
 
@@ -408,7 +403,7 @@ public class DiscordUtil {
             message = io.create();
         }
 
-        ShrinkableEmbed builder = new ShrinkableEmbed();
+        EmbedShrink builder = new EmbedShrink();
         builder.setTitle(title);
         builder.setDescription(body.toString());
         if (footer != null) builder.setFooter(footer);
@@ -440,9 +435,9 @@ public class DiscordUtil {
             return;
         }
         String finalTitle = title;
-        createEmbedCommand(channel, new Consumer<ShrinkableEmbed>() {
+        createEmbedCommand(channel, new Consumer<EmbedShrink>() {
             @Override
-            public void accept(ShrinkableEmbed builder) {
+            public void accept(EmbedShrink builder) {
                 String titleFinal = finalTitle;
                 if (titleFinal.length() > MessageEmbed.TITLE_MAX_LENGTH) {
                     titleFinal = titleFinal.substring(0, MessageEmbed.TITLE_MAX_LENGTH - 3) + "..";
@@ -455,7 +450,7 @@ public class DiscordUtil {
         }, reactionArguments);
     }
 
-    public static void createEmbedCommand(MessageChannel channel, Consumer<ShrinkableEmbed> builder, String... reactionArguments) {
+    public static void createEmbedCommand(MessageChannel channel, Consumer<EmbedShrink> builder, String... reactionArguments) {
         if (reactionArguments.length % 2 != 0) {
             throw new IllegalArgumentException("invalid pairs: " + StringMan.getString(reactionArguments));
         }
@@ -487,8 +482,8 @@ public class DiscordUtil {
     }
 
 
-    public static void createEmbedCommand(MessageChannel channel, Consumer<ShrinkableEmbed> consumer, Map<String, String> reactionArguments) {
-        ShrinkableEmbed builder = new ShrinkableEmbed();
+    public static void createEmbedCommand(MessageChannel channel, Consumer<EmbedShrink> consumer, Map<String, String> reactionArguments) {
+        EmbedShrink builder = new EmbedShrink();
         consumer.accept(builder);
 
         new DiscordChannelIO(channel, null).create().embed(builder).addCommands(reactionArguments).send();

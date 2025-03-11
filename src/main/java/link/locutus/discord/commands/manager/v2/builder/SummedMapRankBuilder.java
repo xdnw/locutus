@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.manager.v2.builder;
 
-import link.locutus.discord.commands.manager.v2.command.Shrinkable;
+import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.util.MathMan;
 
 import java.util.*;
@@ -121,12 +121,12 @@ public class SummedMapRankBuilder<T, G extends Number> {
         return name(e -> nameKeys.apply(e.getKey()) + ": " + nameValues.apply(e.getValue()));
     }
 
-    public RankBuilder<Shrinkable> nameKeysShrink(Function<T, Shrinkable> nameFunc) {
+    public RankBuilder<IShrink> nameKeysShrink(Function<T, IShrink> nameFunc) {
         return nameShrink(entry -> nameFunc.apply(entry.getKey()).append(": " + MathMan.format(entry.getValue())));
     }
 
-    public RankBuilder<Shrinkable> nameShrink(Function<Map.Entry<T, G>, Shrinkable> nameFunc) {
-        List<Shrinkable> names = new ArrayList<>(map.size());
+    public RankBuilder<IShrink> nameShrink(Function<Map.Entry<T, G>, IShrink> nameFunc) {
+        List<IShrink> names = new ArrayList<>(map.size());
         for (Map.Entry<T, G> entry : map.entrySet()) {
             names.add(nameFunc.apply(entry));
         }

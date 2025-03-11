@@ -5,22 +5,12 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.command.*;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
-import link.locutus.discord.commands.manager.v2.table.imp.EntityGroup;
+import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.web.commands.binding.value_types.DiscordRole;
-import link.locutus.discord.web.commands.binding.value_types.GraphType;
-import link.locutus.discord.web.commands.binding.value_types.WebGraph;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.utils.ImageProxy;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
@@ -45,19 +35,19 @@ public class WebMessage extends AMessageBuilder {
 
     @Override
     public IMessageBuilder embed(String title, String body, String footer) {
-        embeds.add(new ShrinkableEmbed().setTitle(title).description(formatDiscordMarkdown(body, getParent().getGuildOrNull())).setFooter(footer));
+        embeds.add(new EmbedShrink().setTitle(title).description(formatDiscordMarkdown(body, getParent().getGuildOrNull())).setFooter(footer));
         return this;
     }
 
     @Override
     public IMessageBuilder commandInline(CommandRef ref) {
-        contentShrink.add(ref.toSlashCommand());
+        contentShrink.append(ref.toSlashCommand());
         return this;
     }
 
     @Override
     public IMessageBuilder commandLinkInline(CommandRef ref) {
-        contentShrink.add(ref.toSlashMention());
+        contentShrink.append(ref.toSlashMention());
         return this;
     }
 
