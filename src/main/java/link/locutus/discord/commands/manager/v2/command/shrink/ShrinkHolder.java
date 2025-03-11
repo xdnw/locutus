@@ -14,6 +14,11 @@ public class ShrinkHolder implements IShrink {
     }
 
     @Override
+    public boolean smaller() {
+        return this.holder.smaller();
+    }
+
+    @Override
     public String toString() {
         return get();
     }

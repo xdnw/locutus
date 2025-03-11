@@ -178,21 +178,21 @@ public interface IMessageBuilder {
         return this;
     }
 
-    default IMessageBuilder paginate(String title, CommandRef ref, Integer page, int perPage, List<String> results) {
+    default IMessageBuilder paginate(String title, CommandRef ref, Integer page, int perPage, List<IShrink> results) {
         return paginate(title, ref, page, perPage, results, null, false);
     }
 
-    default IMessageBuilder paginate(String title, CommandRef ref, Integer page, int perPage, List<String> results, String footer, boolean inline) {
+    default IMessageBuilder paginate(String title, CommandRef ref, Integer page, int perPage, List<IShrink> results, String footer, boolean inline) {
         return paginate(title, new JSONObject(ref.toCommandArgs()), page, perPage, results, footer, inline);
     }
 
     @CheckReturnValue
-    default IMessageBuilder paginate(String title, JSONObject command, Integer page, int perPage, List<String> results) {
+    default IMessageBuilder paginate(String title, JSONObject command, Integer page, int perPage, List<IShrink> results) {
         return paginate(title, command, page, perPage, results, null, false);
     }
 
     @CheckReturnValue
-    default IMessageBuilder paginate(String title, JSONObject command, Integer page, int perPage, List<String> results, String footer, boolean inline) {
+    default IMessageBuilder paginate(String title, JSONObject command, Integer page, int perPage, List<IShrink> results, String footer, boolean inline) {
         return paginate(title, command.toString(), page, perPage, results, footer, inline);
     }
 
@@ -238,7 +238,7 @@ public interface IMessageBuilder {
 
     @CheckReturnValue
     @Deprecated
-    default IMessageBuilder paginate(String title, String command, Integer page, int perPage, List<String> results, String footer, boolean inline) {
+    default IMessageBuilder paginate(String title, String command, Integer page, int perPage, List<IShrink> results, String footer, boolean inline) {
         if (results.isEmpty()) {
             System.out.println("Results are empty.");
             return this;
@@ -251,9 +251,10 @@ public interface IMessageBuilder {
         int start = page * perPage;
         int end = Math.min(numResults, start + perPage);
 
-        StringBuilder body = new StringBuilder();
+        EmbedShrink builder = new EmbedShrink();
+        builder.setTitle(title);
         for (int i = start; i < end; i++) {
-            body.append(results.get(i)).append('\n');
+            builder.append(results.get(i)).append("\n");
         }
 
         Map<String, String> reactions = new LinkedHashMap<>();
@@ -289,11 +290,8 @@ public interface IMessageBuilder {
         if (hasNext) {
             reactions.put("Next \u27A1\uFE0F", prefix + nextPageCmd);
         }
-
-        EmbedShrink builder = new EmbedShrink();
-        builder.setTitle(title);
-        builder.setDescription(body.toString());
         if (footer != null) builder.setFooter(footer);
+        builder.shrinkDefault();
 
         clearEmbeds();
         embed(builder);

@@ -7,17 +7,21 @@ public class EmptyShrink implements IShrink {
 
     }
 
+    @Override
+    public boolean smaller() {
+        return false;
+    }
 
     @Override
     public IShrink append(String s) {
         if (s.isEmpty()) return this;
-        return IdenticalShrink.of(s);
+        return IShrink.of(s);
     }
 
     @Override
     public IShrink prepend(String s) {
         if (s.isEmpty()) return this;
-        return IdenticalShrink.of(s);
+        return IShrink.of(s);
     }
 
     @Override

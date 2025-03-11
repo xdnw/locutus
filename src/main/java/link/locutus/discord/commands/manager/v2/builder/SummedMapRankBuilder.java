@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.manager.v2.builder;
 
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.util.MathMan;
 
@@ -11,6 +13,7 @@ import java.util.function.Predicate;
 
 public class SummedMapRankBuilder<T, G extends Number> {
     private Map<T, G> map;
+    private Set<T> highlight;
 
     public SummedMapRankBuilder() {
         this.map = new LinkedHashMap<>();
@@ -109,19 +112,19 @@ public class SummedMapRankBuilder<T, G extends Number> {
         return this.sort((o1, o2) -> comparator.compare(o1.getKey(), o2.getKey()));
     }
 
-    public RankBuilder<String> name() {
-        return name(entry -> entry.getKey() + ": " + MathMan.format(entry.getValue()));
+//    public RankBuilder<String> name() {
+//        return name(entry -> entry.getKey() + ": " + MathMan.format(entry.getValue()));
+//    }
+
+//    public RankBuilder<String> nameKeys(Function<T, IShrink> nameFunc) {
+//        return name(entry -> nameFunc.apply(entry.getKey()) + ": " + MathMan.format(entry.getValue()));
+//    }
+
+    public RankBuilder<IShrink> name(Function<T, IShrink> nameKeys, Function<G, String> nameValues) {
+        return name(e -> nameKeys.apply(e.getKey()).append(": " + nameValues.apply(e.getValue())));
     }
 
-    public RankBuilder<String> nameKeys(Function<T, String> nameFunc) {
-        return name(entry -> nameFunc.apply(entry.getKey()) + ": " + MathMan.format(entry.getValue()));
-    }
-
-    public RankBuilder<String> name(Function<T, String> nameKeys, Function<G, String> nameValues) {
-        return name(e -> nameKeys.apply(e.getKey()) + ": " + nameValues.apply(e.getValue()));
-    }
-
-    public RankBuilder<IShrink> nameKeysShrink(Function<T, IShrink> nameFunc) {
+    public RankBuilder<IShrink> nameKeys(Function<T, IShrink> nameFunc) {
         return nameShrink(entry -> nameFunc.apply(entry.getKey()).append(": " + MathMan.format(entry.getValue())));
     }
 
@@ -130,14 +133,33 @@ public class SummedMapRankBuilder<T, G extends Number> {
         for (Map.Entry<T, G> entry : map.entrySet()) {
             names.add(nameFunc.apply(entry));
         }
-        return new RankBuilder<>(names);
+        return new RankBuilder<>(names, getHighlightIndex());
     }
 
-    public RankBuilder<String> name(Function<Map.Entry<T, G>, String> nameFunc) {
-        List<String> names = new ArrayList<>(map.size());
+    public RankBuilder<IShrink> name(Function<Map.Entry<T, G>, IShrink> nameFunc) {
+        List<IShrink> names = new ArrayList<>(map.size());
         for (Map.Entry<T, G> entry : map.entrySet()) {
             names.add(nameFunc.apply(entry));
         }
-        return new RankBuilder<>(names);
+        return new RankBuilder<>(names, getHighlightIndex());
+    }
+
+    public SummedMapRankBuilder<T, G> highlight(Set<T> highlight) {
+        this.highlight = highlight;
+        return this;
+    }
+
+    private Set<Integer> getHighlightIndex() {
+        if (highlight == null || highlight.isEmpty()) return Collections.emptySet();
+        Set<Integer> indexes = new IntLinkedOpenHashSet();
+        int i = 0;
+        for (Map.Entry<T, G> entry : map.entrySet()) {
+            if (highlight.contains(entry.getKey())) {
+                indexes.add(i);
+            }
+            i++;
+        }
+        return indexes;
+
     }
 }

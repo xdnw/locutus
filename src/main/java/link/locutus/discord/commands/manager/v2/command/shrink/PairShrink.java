@@ -1,29 +1,15 @@
 package link.locutus.discord.commands.manager.v2.command.shrink;
 
 public class PairShrink implements IShrink {
-    public static IShrink of(String small, String large) {
-        return of(small, large, 1);
-    }
 
-    public static IShrink of(CharSequence small, CharSequence large, int priority) {
-        if (small == large || small.equals(large)) {
-            return IdenticalShrink.of(small);
-        }
-        return new PairShrink(small, large, priority);
-    }
-
-    ///
-
-    private CharSequence small;
-    private CharSequence large;
+    private CharSequence[] options;
+    private int index;
     private final int keepFactor;
-    private boolean isSmall;
 
-    private PairShrink(CharSequence small, CharSequence large, int keepFactor) {
-        this.small = small;
-        this.large = large;
+    protected PairShrink(int keepFactor, CharSequence... options) {
+        this.options = options;
+        this.index = options.length - 1;
         this.keepFactor = keepFactor;
-        this.isSmall = false;
     }
 
     @Override
@@ -38,30 +24,24 @@ public class PairShrink implements IShrink {
 
     @Override
     public IShrink append(String s) {
-        if (small instanceof StringBuilder b) {
-            b.insert(0, s);
-        } else {
-            this.small = new StringBuilder(s).append(small);
-        }
-        if (large instanceof StringBuilder b) {
-            b.append(s);
-        } else {
-            this.large = new StringBuilder(large).append(s);
+        for (CharSequence c : options) {
+            if (c instanceof StringBuilder b) {
+                b.append(s);
+            } else {
+                options[index] = new StringBuilder(c).append(s);
+            }
         }
         return this;
     }
 
     @Override
     public IShrink prepend(String s) {
-        if (small instanceof StringBuilder b) {
-            b.insert(0, s);
-        } else {
-            this.small = new StringBuilder(s).append(small);
-        }
-        if (large instanceof StringBuilder b) {
-            b.insert(0, s);
-        } else {
-            this.large = new StringBuilder(s).append(large);
+        for (CharSequence c : options) {
+            if (c instanceof StringBuilder b) {
+                b.insert(0, s);
+            } else {
+                options[index] = new StringBuilder(s).append(c);
+            }
         }
         return this;
     }
@@ -82,30 +62,40 @@ public class PairShrink implements IShrink {
 
     @Override
     public IShrink clone() {
-        return new PairShrink(small.toString(), large.toString(), keepFactor);
+        return new PairShrink(keepFactor, options);
     }
 
     @Override
     public int getSize() {
-        return isSmall ? small.length() : large.length();
+        return options[index].length();
     }
 
     @Override
-    public int shrink(int totalSize) {
-        if (!isSmall && large.length() > totalSize) {
-            isSmall = true;
-            return large.length() - small.length();
+    public boolean smaller() {
+        if (index > 0) {
+            index--;
+            return true;
         }
-        return 0;
+        return false;
+    }
+
+    @Override
+    public int shrink(int maxSize) {
+        int originalIndex = index;
+        for (int i = index; i >= 0; i--) {
+            index = i;
+            if (options[i].length() <= maxSize) {
+                break;
+            }
+        }
+        return options[originalIndex].length() - options[index].length();
     }
 
     @Override
     public int shrink() {
-        if (!isSmall) {
-            isSmall = true;
-            return large.length() - small.length();
-        }
-        return 0;
+        int originalIndex = index;
+        index = 0;
+        return options[originalIndex].length() - options[index].length();
     }
 
     @Override
@@ -115,11 +105,14 @@ public class PairShrink implements IShrink {
 
     @Override
     public String get() {
-        return (isSmall ? small : large).toString();
+        return options[index].toString();
     }
 
     @Override
     public boolean isEmpty() {
-        return (isSmall ? small : large).length() == 0;
+        for (CharSequence c : options) {
+            if (c.length() > 0) return false;
+        }
+        return true;
     }
 }

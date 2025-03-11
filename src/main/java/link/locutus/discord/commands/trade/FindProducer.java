@@ -3,6 +3,7 @@ package link.locutus.discord.commands.trade;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.commands.manager.Command;
@@ -131,7 +132,7 @@ public class FindProducer extends Command {
         boolean average = flags.contains('s');
 
         SummedMapRankBuilder<Integer, Number> byNation = new SummedMapRankBuilder<>(profitByNation).adaptKeys((n, v) -> n.getNation_id());
-        RankBuilder<String> ranks;
+        RankBuilder<IShrink> ranks;
         if (listAlliances) {
             NumericGroupRankBuilder<Integer, Number> byAAMap = byNation.group((entry, builder) -> {
                 DBNation nation = Locutus.imp().getNationDB().getNationById(entry.getKey());
@@ -144,11 +145,11 @@ public class FindProducer extends Command {
             // Sort descending
             ranks = byAA.sort()
                     // Change key to alliance name
-                    .nameKeys(id -> PW.getName(id, true));
+                    .nameKeys(id -> DBAlliance.getOrCreate(id).toShrink());
         } else {
             ranks = byNation.sort()
                     // Change key to alliance name
-                    .nameKeys(allianceId -> PW.getName(allianceId, false));
+                    .nameKeys(id -> DBNation.getOrCreate(id).toShrink());
         }
 
         String title = "Daily " + args.get(0) + " production";

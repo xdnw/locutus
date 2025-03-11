@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -154,7 +155,8 @@ public class TradeRanking extends Command {
 
 
         String title = (isAA ? "Alliance" : "") + "trade profit (" + profitByGroup.size() + ")";
-        new SummedMapRankBuilder<>(profitByGroup).sort().nameKeys(id -> PW.getName(id, isAA)).build(author, channel, fullCommandRaw, title);
+        new SummedMapRankBuilder<>(profitByGroup).sort().nameKeys(id -> (isAA ? DBAlliance.getOrCreate(id) : DBNation.getOrCreate(id)).toShrink())
+                .build(author, channel, fullCommandRaw, title);
         return null;
     }
 }

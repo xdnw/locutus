@@ -35,13 +35,13 @@ public class EmbedShrink implements IShrink {
     }
 
     public EmbedShrink(MessageEmbed embed) {
-        this.title = IdenticalShrink.of(embed.getTitle() == null ? "" : embed.getTitle());
-        this.description = IdenticalShrink.of(embed.getDescription() == null ? "" : embed.getDescription());
+        this.title = IShrink.of(embed.getTitle() == null ? "" : embed.getTitle());
+        this.description = IShrink.of(embed.getDescription() == null ? "" : embed.getDescription());
         MessageEmbed.Footer footerObj = embed.getFooter();
         if (footerObj != null) {
             String footerStr = footerObj.getText();
             if (footerStr != null && !footerStr.isEmpty()) {
-                this.footer = IdenticalShrink.of(footerStr);
+                this.footer = IShrink.of(footerStr);
             }
         }
         this.color = embed.getColor();
@@ -138,17 +138,17 @@ public class EmbedShrink implements IShrink {
     }
 
     public EmbedShrink setTitle(String title) {
-        this.title = IdenticalShrink.of(title);
+        this.title = IShrink.of(title);
         return this;
     }
 
     public EmbedShrink setDescription(String description) {
-        this.description = IdenticalShrink.of(description);
+        this.description = IShrink.of(description);
         return this;
     }
 
     public EmbedShrink setFooter(String footer) {
-        this.footer = footer == null ? null : IdenticalShrink.of(footer);
+        this.footer = footer == null ? null : IShrink.of(footer);
         return this;
     }
 
@@ -158,7 +158,6 @@ public class EmbedShrink implements IShrink {
     }
 
     public Map<String, Object> toData() {
-        shrinkDefault();
         Map<String, Object> data = new Object2ObjectLinkedOpenHashMap<>();
         data.put("title", title.get());
         if (description != null && !description.isEmpty()) data.put("description", description.get());
@@ -185,7 +184,7 @@ public class EmbedShrink implements IShrink {
 
     public EmbedShrink append(String s) {
         if (this.description == null) {
-            this.description = IdenticalShrink.of(s);
+            this.description = IShrink.of(s);
         } else {
             this.description = this.description.append(s);
         }
@@ -231,6 +230,10 @@ public class EmbedShrink implements IShrink {
             size -= footer.shrink();
             if (size <= totalSize) return originalSize - size;
         }
+        System.out.println("SHRINK START");
+        new Exception().printStackTrace();
+        System.out.println("SHRINK END");
+
         size -= description.shrink();
         if (size <= totalSize) return originalSize - size;
         for (ShrinkableField field : fields) {
@@ -242,11 +245,37 @@ public class EmbedShrink implements IShrink {
 
     @Override
     public int shrink() {
+        System.out.println("SHRINK START 2");
+        new Exception().printStackTrace();
+        System.out.println("SHRINK END 2");
         int diff = title.shrink() + description.shrink() + (footer == null ? 0 : footer.shrink());
         for (ShrinkableField field : fields) {
             diff += field.shrink();
         }
         return diff;
+    }
+
+    @Override
+    public boolean smaller() {
+        int size = title.getSize();
+        title.smaller();
+        if (title.getSize() < size) return true;
+        if (description != null) {
+            size = description.getSize();
+            description.smaller();
+            if (description.getSize() < size) return true;
+        }
+        if (footer != null) {
+            size = footer.getSize();
+            footer.smaller();
+            if (footer.getSize() < size) return true;
+        }
+        for (ShrinkableField field : fields) {
+            size = field.getSize();
+            field.smaller();
+            if (field.getSize() < size) return true;
+        }
+        return false;
     }
 
     @Override
@@ -278,17 +307,17 @@ public class EmbedShrink implements IShrink {
     }
 
     public EmbedShrink description(String s) {
-        this.description = IdenticalShrink.of(s);
+        this.description = IShrink.of(s);
         return this;
     }
 
     public EmbedShrink title(String title) {
-        this.title = IdenticalShrink.of(title);
+        this.title = IShrink.of(title);
         return this;
     }
 
     public EmbedShrink footer(String footer) {
-        this.footer = footer == null ? null : IdenticalShrink.of(footer);
+        this.footer = footer == null ? null : IShrink.of(footer);
         return this;
     }
 }

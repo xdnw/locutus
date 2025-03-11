@@ -11,6 +11,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.builder.*;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -318,7 +319,7 @@ public class WarCostRanking extends Command {
             byNation = byNationMap.sum();
         }
 
-        RankBuilder<String> ranks;
+        RankBuilder<IShrink> ranks;
         if (isAA) {
             // Group it by alliance
             NumericGroupRankBuilder<Integer, Number> byAAMap = byNation.group((entry, builder) -> {
@@ -339,14 +340,14 @@ public class WarCostRanking extends Command {
             }
             ranks = byAA.sort()
                     // Change key to alliance name
-                    .nameKeys(allianceId -> PW.getName(allianceId, true));
+                    .nameKeys(allianceId -> DBAlliance.getOrCreate(allianceId).toShrink());
         } else {
             // Sort descending
             ranks = byNation
                     .removeIfKey(nationId -> !nationMap.containsKey(nationId))
                     .sort()
                     // Change key to alliance name
-                    .nameKeys(nationId -> nationMap.get(nationId).getNation());
+                    .nameKeys(nationId -> nationMap.get(nationId).toShrink());
         }
 
         // Embed the rank list

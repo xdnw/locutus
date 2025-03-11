@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.builder;
 
 import com.google.common.base.Function;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
@@ -19,15 +20,16 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class RankBuilder<T> {
+    private final Set<Integer> highlight;
     private List<T> values;
     private int limit = 25;
 
-    public RankBuilder(List<T> values) {
-        this.values = values;
+    public RankBuilder(Collection<T> values, Set<Integer> highlight) {
+        this.values = values instanceof List l ? l : new ObjectArrayList<>(values);
+        this.highlight = highlight;
     }
-
     public RankBuilder(Collection<T> values) {
-        this(new ArrayList<>(values));
+        this(new ArrayList<>(values), Collections.emptySet());
     }
 
     public RankBuilder<T> removeIf(Predicate<T> removeIf) {
@@ -37,7 +39,7 @@ public class RankBuilder<T> {
 
     public <G> RankBuilder<G> adapt(java.util.function.Function<T, G> adapter) {
         List<G> transform = values.stream().map(adapter).collect(Collectors.toList());
-        return new RankBuilder<>(transform);
+        return new RankBuilder<>(transform, highlight);
     }
 
     public <K> GroupedRankBuilder<K, T> group(Function<T, K> groupBy) {
@@ -158,10 +160,30 @@ public class RankBuilder<T> {
         List<IShrink> items = new ArrayList<>();
         for (int i = 0; i < Math.min(limit, values.size()); i++) {
             T elem = values.get(i);
+            IShrink item;
             if (elem instanceof IShrink s && !s.isIdentical()) {
-                items.add(s.prepend(i + 1 + ". "));
+                item = s;
             } else {
-                items.add(IdenticalShrink.of((i + 1) + ". " + elem.toString()));
+                item = (IShrink.of(elem.toString()));
+            }
+            if (highlight.remove(i)) {
+                item = item.prepend("**").append("**");
+            }
+            item = item.prepend((i + 1) + ". ");
+            items.add(item);
+        }
+        if (!highlight.isEmpty()) {
+            boolean addedElipses = false;
+            for (int i : highlight) {
+                if (i < limit) continue;
+                if (!addedElipses) {
+                    items.add(IShrink.of("..."));
+                    addedElipses = true;
+                }
+                T elem = values.get(i);
+                IShrink item = elem instanceof IShrink s && !s.isIdentical() ? s : IShrink.of(elem.toString());
+                item = item.prepend((i + 1) + ". ").prepend("**").append("**");
+                items.add(item);
             }
         }
         return items;

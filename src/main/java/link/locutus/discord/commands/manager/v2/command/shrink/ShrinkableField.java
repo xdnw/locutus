@@ -12,13 +12,21 @@ public class ShrinkableField implements IShrink {
     }
 
     public ShrinkableField(String name, String value, boolean inline) {
-        this(IdenticalShrink.of(name), IdenticalShrink.of(value), inline);
+        this(IShrink.of(name), IShrink.of(value), inline);
     }
 
     public ShrinkableField(ShrinkableField field) {
         this.name = field.name.clone();
         this.value = field.value.clone();
         this.inline = field.inline;
+    }
+
+    @Override
+    public boolean smaller() {
+        int size = name.getSize();
+        name.smaller();
+        if (name.getSize() < size) return true;
+        return value.smaller();
     }
 
     @Override

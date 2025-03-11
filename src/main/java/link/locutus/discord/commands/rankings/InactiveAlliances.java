@@ -5,9 +5,11 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
@@ -76,7 +78,10 @@ public class InactiveAlliances extends Command {
                     double size2 = allianceSize.get(o2.getKey()) / (double) (1 + o2.getValue());
                     return Double.compare(size2, size1);
                 })
-                .name(e -> PW.getName(e.getKey(), true) + ": " + e.getValue() + "/" + allianceSize.get(e.getKey())).build(author, channel, fullCommandRaw, "Active in " + group + " (" + days + " days)");
+                .name(e -> {
+                    IShrink name = DBAlliance.getOrCreate(e.getKey()).toShrink();
+                    return name.append(": " + e.getValue() + "/" + allianceSize.get(e.getKey()));
+                }).build(author, channel, fullCommandRaw, "Active in " + group + " (" + days + " days)");
 
         return null;
     }

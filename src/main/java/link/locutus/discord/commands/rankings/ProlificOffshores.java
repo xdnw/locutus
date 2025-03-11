@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.util.MathMan;
@@ -79,7 +80,7 @@ public class ProlificOffshores extends Command {
 
         new SummedMapRankBuilder<>(aaCount)
                 .sort()
-                .nameKeys(f -> PW.getName(f, true))
+                .nameKeys(f -> DBAlliance.getOrCreate(f).toShrink())
                 .limit(10)
                 .build(author, channel, fullCommandRaw, "Prolific Offshores (" + days + " days)");
 

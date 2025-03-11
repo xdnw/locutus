@@ -4,13 +4,13 @@ package link.locutus.discord.commands.manager.v2.command.shrink;
 public class IdenticalShrink implements IShrink {
     private CharSequence item;
 
-    public static IShrink of(CharSequence s) {
-        if (s == null || s.isEmpty()) return EmptyShrink.EMPTY;
-        return new IdenticalShrink(s);
+    protected IdenticalShrink(CharSequence s) {
+        this.item = s;
     }
 
-    private IdenticalShrink(CharSequence s) {
-        this.item = s;
+    @Override
+    public boolean smaller() {
+        return false;
     }
 
     @Override

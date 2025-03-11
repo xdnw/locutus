@@ -10,9 +10,11 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
 import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
@@ -78,7 +80,7 @@ public class AllianceLootLosses extends Command {
         totals.entrySet().removeIf(e -> !allianceScores.containsKey(e.getKey()) || e.getValue() <= 0);
 
 
-        RankBuilder<String> ranks = new SummedMapRankBuilder<>(totals).sort().nameKeys(i -> PW.getName(i, true));
+        RankBuilder<IShrink> ranks = new SummedMapRankBuilder<>(totals).sort().nameKeys(i -> DBAlliance.getOrCreate(i).toShrink());
 
 
         String title = "Alliance bank loot losses (" + args.get(0) + ")";

@@ -276,9 +276,9 @@ public class StatCommands {
         SummedMapRankBuilder<Integer, Number> byGroupSum;
         byGroupSum = byGroupMap.sum();
 
-        RankBuilder<String> ranks = byGroupSum
+        RankBuilder<IShrink> ranks = byGroupSum
                 .sort()
-                .nameKeys(id -> PW.getName(id, groupByAlliance));
+                .nameKeys(id -> (groupByAlliance ? DBAlliance.getOrCreate(id) : DBNation.getOrCreate(id)).toShrink());
         ranks.build(io, command, title, uploadFile);
         return null;
     }
@@ -544,8 +544,8 @@ public class StatCommands {
             builder = builder.sort();
         }
         String title = "Top " + metricName + " by alliance";
-
-        RankBuilder<IShrink> named = builder.nameKeysShrink(f -> PairShrink.of(f.getName(), f.getMarkdownUrl()));
+        if (highlight != null) builder.highlight(highlight);
+        RankBuilder<IShrink> named = builder.nameKeys(DBAlliance::toShrink);
         if (numResults != null) named = named.limit(numResults);
         named.build(channel, command, title, uploadFile);
     }
@@ -595,7 +595,7 @@ public class StatCommands {
 
         SummedMapRankBuilder<DBNation, Double> builder = new SummedMapRankBuilder<>(attributeByNation);
 
-        RankBuilder<String> named;
+        RankBuilder<IShrink> named;
         if (groupByAlliance) {
             NumericGroupRankBuilder<Integer, Double> grouped = builder.group((entry, builder1) -> builder1.put(entry.getKey().getAlliance_id(), entry.getValue()));
             SummedMapRankBuilder<Integer, ? extends Number> summed;
@@ -605,10 +605,10 @@ public class StatCommands {
                 summed = grouped.average();
             }
             summed = reverseOrder ? summed.sortAsc() : summed.sort();
-            named = summed.nameKeys(f -> PW.getName(f, true));
+            named = summed.nameKeys(f -> DBAlliance.getOrCreate(f).toShrink());
         } else {
             builder = reverseOrder ? builder.sortAsc() : builder.sort();
-            named = builder.nameKeys(DBNation::getName);
+            named = builder.nameKeys(DBNation::toShrink);
         }
         named.build(channel, command, title, true);
     }
@@ -1018,7 +1018,7 @@ public class StatCommands {
         }
 
         String title = "# BB Games (" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - date) + ")";
-        RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostGames).sort().nameKeys(f -> PW.getName(f, byAlliance));
+        RankBuilder<IShrink> ranks = new SummedMapRankBuilder<>(mostGames).sort().nameKeys(f -> (byAlliance ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink());
         ranks.build(channel, command, title, uploadFile);
     }
 
@@ -1042,7 +1042,7 @@ public class StatCommands {
         }
 
         String title = "# Challenge BB Games";
-        RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostGames).sort().nameKeys(f -> PW.getName(f, byAlliance));
+        RankBuilder<IShrink> ranks = new SummedMapRankBuilder<>(mostGames).sort().nameKeys(f -> (byAlliance ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink());
         ranks.build(channel, command, title, uploadFile);
     }
 
@@ -1062,7 +1062,7 @@ public class StatCommands {
                 mostWageredGames.merge(game.getHome_nation_id(), 1, Integer::sum);
                 mostWageredGames.merge(game.getAway_nation_id(), 1, Integer::sum);
             }
-            RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredGames).sort().nameKeys(f -> PW.getName(f, false));
+            RankBuilder<IShrink> ranks = new SummedMapRankBuilder<>(mostWageredGames).sort().nameKeys(f -> DBNation.getOrCreate(f).toShrink());
             ranks.build(channel, command, title, uploadFile);
         }
         {
@@ -1072,7 +1072,7 @@ public class StatCommands {
                 int otherId = game.getAway_nation_id() == nationId ? game.getHome_nation_id() : game.getAway_nation_id();
                 mostWageredWinnings.merge(otherId, game.getWager().longValue(), Long::sum);
             }
-            RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> PW.getName(f, false));
+            RankBuilder<IShrink> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> DBNation.getOrCreate(f).toShrink());
             ranks.build(channel, command, title, uploadFile);
         }
         return null;
@@ -1104,7 +1104,7 @@ public class StatCommands {
         }
 
         String title = "BB Earnings $ (" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - date) + ")";
-        RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> PW.getName(f, byAlliance));
+        RankBuilder<IShrink> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> (byAlliance ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink());
         ranks.build(channel, command, title, uploadFile);
     }
 
@@ -1132,7 +1132,7 @@ public class StatCommands {
         }
 
         String title = "BB Challenge Earnings $";
-        RankBuilder<String> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> PW.getName(f, byAlliance));
+        RankBuilder<IShrink> ranks = new SummedMapRankBuilder<>(mostWageredWinnings).sort().nameKeys(f -> (byAlliance ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink());
         ranks.build(channel, command, title, uploadFile);
     }
 
@@ -1175,9 +1175,11 @@ public class StatCommands {
         }
 
         if (!victoryByEntity.isEmpty())
-            new SummedMapRankBuilder<>(victoryByEntity).sort().nameKeys(f -> PW.getName(f, isAA)).build(channel, command, "Victories");
+            new SummedMapRankBuilder<>(victoryByEntity).sort().nameKeys(f -> (isAA ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink())
+                    .build(channel, command, "Victories");
         if (!expireByEntity.isEmpty())
-            new SummedMapRankBuilder<>(expireByEntity).sort().nameKeys(f -> PW.getName(f, isAA)).build(channel, command, "Expiries");
+            new SummedMapRankBuilder<>(expireByEntity).sort().nameKeys(f -> (isAA ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink())
+                    .build(channel, command, "Expiries");
     }
 
     @Command(desc = "Generate a graph of nation military levels by city count between two coalitions", viewable = true)
@@ -2653,7 +2655,7 @@ public class StatCommands {
         }
 
         SummedMapRankBuilder<Integer, ? extends Number> sorted = new SummedMapRankBuilder<>(lootPerScore).sort();
-        sorted.nameKeys(i -> PW.getName(i, true)).build(author, channel, command, title, attach_file);
+        sorted.nameKeys(i -> DBAlliance.getOrCreate(i).toShrink()).build(author, channel, command, title, attach_file);
 
 
         return null;
@@ -2713,7 +2715,7 @@ public class StatCommands {
         String timeStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - time);
         String title = " attacks of type: " + type.getName() + " (" + timeStr + ")";
         title = (percent ? "Percent" : "Total") + title;
-        builder.sort().name(DBAlliance::getName, MathMan::format).build(io, command, title);
+        builder.sort().name(DBAlliance::toShrink, MathMan::format).build(io, command, title);
         return null;
     }
 

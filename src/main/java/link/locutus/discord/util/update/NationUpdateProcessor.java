@@ -899,7 +899,7 @@ public class NationUpdateProcessor {
                 map = outflows;
                 otherId = (int) transfer.getReceiver();
             }
-            String name = PW.getBBUrl(otherId, true);
+            String name = PW.getMarkdownUrl(otherId, true);
 
             double value = transfer.convertedTotal();
             map.put(name, map.getOrDefault(name, 0d) + value);
@@ -921,7 +921,7 @@ public class NationUpdateProcessor {
                 map = outflows;
             }
             int otherId = seller.equals(current.getNation_id()) ? buyer : seller;
-            String name = PW.getBBUrl(otherId, false);
+            String name = PW.getMarkdownUrl(otherId, false);
 
             double value = offer.getPpu() > 1 ? offer.getQuantity() * offer.getPpu() : Locutus.imp().getTradeManager().getHighAvg(offer.getResource()) * offer.getQuantity();
             map.put(name, map.getOrDefault(name, 0d) + value);
@@ -930,7 +930,7 @@ public class NationUpdateProcessor {
         }
         if (total > 10000000) {
             StringBuilder body = new StringBuilder();
-            body.append(PW.getBBUrl(current.getNation_id(), false) + " | " + PW.getBBUrl(current.getAlliance_id(), true) + " | " + current.getNation_id());
+            body.append(PW.getMarkdownUrl(current.getNation_id(), false) + " | " + PW.getMarkdownUrl(current.getAlliance_id(), true) + " | " + current.getNation_id());
             if (current.getDate() != 0) {
                 long ageDays = TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis()) - current.getDate() / 65536;
                 body.append("\nDays old: " + ageDays);

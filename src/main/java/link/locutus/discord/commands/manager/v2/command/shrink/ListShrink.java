@@ -9,11 +9,34 @@ import java.util.*;
 
 public class ListShrink implements IShrink {
     public final List<IShrink> items;
+    private int unshrunk = -1;
 
     public ListShrink(IShrink a, IShrink b) {
         items = new ObjectArrayList<>(2);
         items.add(a);
         items.add(b);
+    }
+
+    @Override
+    public boolean smaller() {
+        if (items.isEmpty()) return false;
+        if (unshrunk == 0) {
+            return items.get(0).smaller();
+        }
+        if (unshrunk == -1 || unshrunk >= items.size()) {
+            unshrunk = items.size() - 1;
+        }
+        for (int i = unshrunk; i >= 0; i--) {
+            IShrink item = items.get(i);
+            int size = item.getSize();
+            boolean smaller = item.smaller();
+            if (item.getSize() < size) {
+                unshrunk = smaller ? i : (i == 0 ? 0 : i - 1);
+                return true;
+            }
+        }
+        unshrunk = 0;
+        return false;
     }
 
     public ListShrink() {
@@ -32,7 +55,7 @@ public class ListShrink implements IShrink {
             IShrink last = items.get(items.size() - 1).append(s);
             items.set(items.size() - 1, last);
         } else {
-            items.add(IdenticalShrink.of(s));
+            items.add(IShrink.of(s));
         }
         return this;
     }
@@ -44,7 +67,7 @@ public class ListShrink implements IShrink {
             IShrink first = items.get(0).prepend(s);
             items.set(0, first);
         } else {
-            items.add(IdenticalShrink.of(s));
+            items.add(IShrink.of(s));
         }
         return this;
     }
@@ -52,7 +75,7 @@ public class ListShrink implements IShrink {
     @Override
     public IShrink append(IShrink s) {
         if (s.isEmpty()) return this;
-        if (s.isIdentical() && !items.isEmpty()) return append(s);
+        if (s.isIdentical() && !items.isEmpty()) return append(s.toString());
         items.add(s);
         return this;
     }
@@ -60,7 +83,7 @@ public class ListShrink implements IShrink {
     @Override
     public IShrink prepend(IShrink s) {
         if (s.isEmpty()) return this;
-        if (s.isIdentical() && !items.isEmpty()) return prepend(s);
+        if (s.isIdentical() && !items.isEmpty()) return prepend(s.toString());
         items.add(0, s);
         return this;
     }

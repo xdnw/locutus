@@ -782,7 +782,8 @@ public class TradeCommands {
 
 
         String title = (groupByAlliance ? "Alliance" : "") + "trade profit (" + profitByGroup.size() + ")";
-        new SummedMapRankBuilder<>(profitByGroup).sort().nameKeys(id -> PW.getName(id, groupByAlliance)).build(channel, command, title, uploadFile);
+        new SummedMapRankBuilder<>(profitByGroup).sort().nameKeys(id -> (groupByAlliance ? DBAlliance.getOrCreate(id) : DBNation.getOrCreate(id)).toShrink())
+                .build(channel, command, title, uploadFile);
         return null;
     }
 

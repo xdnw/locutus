@@ -5,6 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.builder.GroupedRankBuilder;
 import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
@@ -101,7 +102,7 @@ public class WarRanking extends Command {
             });
         }
 
-        RankBuilder<String> ranks = ranksUnsorted.sort().nameKeys(i -> PW.getName(i, byAA));
+        RankBuilder<IShrink> ranks = ranksUnsorted.sort().nameKeys(i -> (byAA ? DBAlliance.getOrCreate(i) : DBNation.getOrCreate(i)).toShrink());
         String offOrDef = "";
         if (offensive != defensive) {
             if (offensive) offOrDef = "offensive ";

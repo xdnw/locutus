@@ -309,8 +309,8 @@ public class Spyops extends Command {
             Runnable task = new Runnable() {
                 @Override
                 public void run() {
-                    String nationUrl = PW.getBBUrl(nation.getNation_id(), false);
-                    String allianceUrl = PW.getBBUrl(nation.getAlliance_id(), true);
+                    String nationUrl = PW.getMarkdownUrl(nation.getNation_id(), false);
+                    String allianceUrl = PW.getMarkdownUrl(nation.getAlliance_id(), true);
                     body.append(nationUrl).append(" | ")
                             .append(allianceUrl).append("\n");
 

@@ -9,6 +9,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -75,7 +76,7 @@ public class UnitRanking extends Command {
                 .group(DBNation::getAlliance_id)
                 .sumValues(n -> n.getUnits(finalUnit))
                 .sort()
-                .nameKeys(f -> PW.getName(f, true)).build(author, channel, fullCommandRaw, "Total " + unit.getName() + " in " + group);
+                .nameKeys(f -> DBAlliance.getOrCreate(f).toShrink()).build(author, channel, fullCommandRaw, "Total " + unit.getName() + " in " + group);
 
         return null;
     }
