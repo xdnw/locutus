@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.command;
 
+import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.config.Settings;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
@@ -40,7 +41,7 @@ public interface IMessageIO {
     IMessageIO delete(long id);
 
     @CheckReturnValue
-    default IMessageBuilder paginate(String title, JSONObject command, Integer page, int perPage, List<String> results, String footer, boolean inline) {
+    default IMessageBuilder paginate(String title, JSONObject command, Integer page, int perPage, List<IShrink> results, String footer, boolean inline) {
         IMessageBuilder message = getMessage();
         TextChannel t = null;
         if (message == null || message.getAuthor() == null || message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {

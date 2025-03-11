@@ -162,17 +162,17 @@ public class BankUpdateProcessor {
         String toName = (transfer.isReceiverAA() ? "AA:" : "") + PW.getName(transfer.getReceiver(), transfer.isReceiverAA());
         String title = "#" + transfer.tx_id + " worth $" + MathMan.format(transfer.convertedTotal()) + " | " + fromName + " > " + toName;
         StringBuilder body = new StringBuilder();
-        body.append(PW.getBBUrl((int) transfer.getSender(), transfer.isSenderAA()) + " > " + PW.getBBUrl((int) transfer.getReceiver(), transfer.isReceiverAA()));
+        body.append(PW.getMarkdownUrl((int) transfer.getSender(), transfer.isSenderAA()) + " > " + PW.getMarkdownUrl((int) transfer.getReceiver(), transfer.isReceiverAA()));
 
         String note = transfer.note == null ? "~~NO NOTE~~" : transfer.note;
-        String url = PW.getBBUrl(nationid, false) + "&display=bank";
+        String url = PW.getMarkdownUrl(nationid, false) + "&display=bank";
 
         if (transfer.note != null) {
             body.append(transfer.note);
         }
-        body.append("\n").append("From: " + PW.getBBUrl((int) transfer.sender_id, transfer.isSenderAA()));
-        body.append("\n").append("To: " + PW.getBBUrl((int) transfer.receiver_id, transfer.isReceiverAA()));
-        body.append("\n").append("Banker: " + PW.getBBUrl(transfer.banker_nation, false));
+        body.append("\n").append("From: " + PW.getMarkdownUrl((int) transfer.sender_id, transfer.isSenderAA()));
+        body.append("\n").append("To: " + PW.getMarkdownUrl((int) transfer.receiver_id, transfer.isReceiverAA()));
+        body.append("\n").append("Banker: " + PW.getMarkdownUrl(transfer.banker_nation, false));
         body.append("\n").append("Date: " + TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(transfer.tx_datetime)));
         body.append("\n").append(ResourceType.toString(transfer.resources));
 

@@ -18,6 +18,7 @@ import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.StringMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
@@ -1273,7 +1274,7 @@ public class IACommands {
             String title = entry.getKey();
             new SummedMapRankBuilder<>(entry.getValue())
                     .sort()
-                    .nameKeys(f -> f.getNation())
+                    .nameKeys(f -> f.toShrink())
                     .build(io, command, title, true);
         }
         return null;
@@ -1896,7 +1897,7 @@ public class IACommands {
         int perPage = 5;
 
         String title = "Inactive nations";
-        List<String> results = nationList.stream().map(f -> f.toMarkdown()).collect(Collectors.toList());
+        List<IShrink> results = nationList.stream().map(f -> f.toShrink()).collect(Collectors.toList());
         channel.create().paginate(title, command, page, perPage, results).send();
 
     }

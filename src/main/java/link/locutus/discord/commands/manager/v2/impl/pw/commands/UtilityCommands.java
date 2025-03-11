@@ -18,6 +18,7 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCach
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
@@ -261,9 +262,11 @@ public class UtilityCommands {
         return null;
     }
 
-    @Command(desc = "Find potential offshores used by an alliance", viewable = true)
+    @Command(desc = "Find potential offshores used by an alliance\n" +
+            "Returns a ranking list of possible offshores by their transfer value with an alliance", viewable = true)
     @RolePermission(Roles.ECON)
-    public String findOffshore(@Me IMessageIO channel, @Me JSONObject command, DBAlliance alliance, @Default @Timestamp Long cutoffMs) {
+    public static String findOffshore(@Me IMessageIO channel, @Me JSONObject command, @AllowDeleted DBAlliance alliance, @Default @Timestamp Long cutoffMs,
+                               @Switch("c") @Arg("Display the transfer count instead of value") boolean transfer_count) {
         if (cutoffMs == null) cutoffMs = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(200);
 
         List<Transaction2> transactions = Locutus.imp().getBankDB().getToNationTransactions(cutoffMs);
@@ -285,10 +288,13 @@ public class UtilityCommands {
 
 
 
-        new SummedMapRankBuilder<>(numTransactions).sort().name(new Function<Map.Entry<Integer, Integer>, String>() {
+        new SummedMapRankBuilder<>(numTransactions).sort().name(new Function<Map.Entry<Integer, Integer>, IShrink>() {
             @Override
-            public String apply(Map.Entry<Integer, Integer> e) {
-                return PW.getName(e.getKey(), true) + ": " + e.getValue() + " | $" + MathMan.format(valueTransferred.get(e.getKey()));
+            public IShrink apply(Map.Entry<Integer, Integer> e) {
+                Number value = transfer_count ? e.getValue() : valueTransferred.getOrDefault(e.getKey(), 0d);
+                IShrink key = DBAlliance.getOrCreate(e.getKey()).toShrink();
+                key.append(": $" + MathMan.format(value));
+                return key;
             }
         }).build(channel, command, "Potential offshores", true);
 
@@ -805,7 +811,7 @@ public class UtilityCommands {
             });
         }
 
-        RankBuilder<String> ranks = ranksUnsorted.sort().nameKeys(i -> PW.getName(i, !rankByNation));
+        RankBuilder<IShrink> ranks = ranksUnsorted.sort().nameKeys(i -> (rankByNation ? DBNation.getOrCreate(i) : DBAlliance.getOrCreate(i)).toShrink());
         String offOrDef ="";
         if (onlyOffensives != onlyDefensives) {
             if (!onlyDefensives) offOrDef = "offensive ";
@@ -1933,7 +1939,7 @@ public class UtilityCommands {
         if (list || listMentions || listRawUserIds || listChannels || listAlliances) {
 //            if (perpage == null) perpage = 15;
             if (page == null) page = 0;
-            List<String> nationList = new ArrayList<>();
+            List<IShrink> nationList = new ArrayList<>();
 
             if (listAlliances) {
                 // alliances
@@ -1946,7 +1952,7 @@ public class UtilityCommands {
                         return Double.compare(v2, v1);
                     });
                 }
-                alliancesSorted.forEach(f -> nationList.add(f.getMarkdownUrl()));
+                alliancesSorted.forEach(f -> nationList.add(f.toShrink()));
             } else {
                 IACategory iaCat = listChannels && db != null ? db.getIACategory() : null;
                 List<DBNation> nationsSorted = new ArrayList<>(nations);
@@ -1982,7 +1988,7 @@ public class UtilityCommands {
                             }
                         }
                     }
-                    nationList.add(nationStr);
+                    nationList.add(IShrink.of(nationStr));
                 }
             }
             int pages = (nations.size() + perpage - 1) / perpage;
@@ -1999,13 +2005,12 @@ public class UtilityCommands {
                 Collections.sort(sorted, (o1, o2) -> Double.compare(((Number)sortBy.apply(o2)).doubleValue(), ((Number) sortBy.apply(o1)).doubleValue()));
             }
 
-            List<String> results = new ArrayList<>();
+            List<IShrink> results = new ArrayList<>();
 
             for (DBNation nation : sorted) {
                 StringBuilder entry = new StringBuilder();
-                entry.append("<" + Settings.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">")
-                        .append(" | " + String.format("%16s", nation.getNation()))
-                        .append(" | " + String.format("%16s", nation.getAllianceName()))
+                entry.append(String.format("%16s", nation.getMarkdownUrl()))
+                        .append(" | " + String.format("%16s", nation.getMarkdownUrl()))
                         .append("\n```")
 //                            .append(String.format("%5s", (int) nation.getScore())).append(" ns").append(" | ")
                         .append(String.format("%2s", nation.getCities())).append(" \uD83C\uDFD9").append(" | ")
@@ -2023,7 +2028,7 @@ public class UtilityCommands {
 //                response.append("login=" + loginPct + "%").append(" | ");
                 entry.append("```");
 
-                results.add(entry.toString());
+                results.add(IShrink.of(entry.toString()));
             }
             channel.create().paginate("Nations", command, page, perpage, results).send();
         }
@@ -2231,7 +2236,7 @@ public class UtilityCommands {
         if (rankings.isEmpty()) {
             return "No new members found over the specified timeframe. Check your arguments are valid";
         }
-        new SummedMapRankBuilder<>(rankings).sort().nameKeys(DBAlliance::getName).build(author, channel, command, "Most new members", uploadFile);
+        new SummedMapRankBuilder<>(rankings).sort().nameKeys(DBAlliance::toShrink).build(author, channel, command, "Most new members", uploadFile);
         return null;
     }
 

@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.TimeUtil;
@@ -76,7 +77,7 @@ public class UnitHistory extends Command {
 
         boolean purchasedToday = false;
 
-        List<String> results = new ArrayList<>();
+        List<IShrink> results = new ArrayList<>();
         Map.Entry<Long, Integer> previous = null;
         for (Map.Entry<Long, Integer> entry : history) {
             if (previous != null) {
@@ -86,8 +87,10 @@ public class UnitHistory extends Command {
                 int from = entry.getValue();
                 int to = previous.getValue();
 
-                results.add(dateStr + ": " + from + " -> " + to);
+//                results.add(dateStr + ": " + from + " -> " + to);
 
+                results.add(IShrink.of(dateStr + ": " + from + " -> " + to,
+                DiscordUtil.timestamp(timestamp, "d") + DiscordUtil.timestamp(timestamp, "t") + ": " + from + " -> " + to));
                 if (to >= from && entry.getKey() >= day) purchasedToday = true;
             } else if (entry.getKey() >= day) purchasedToday = true;
             previous = new AbstractMap.SimpleEntry<>(entry);
@@ -103,7 +106,8 @@ public class UnitHistory extends Command {
                 from = "" + (to - 1);
             }
 
-            results.add(dateStr + ": " + from + " -> " + to);
+            results.add(IShrink.of(dateStr + ": " + from + " -> " + to,
+                    DiscordUtil.timestamp(timestamp, "d") + DiscordUtil.timestamp(timestamp, "t") + ": " + from + " -> " + to));
         }
 
         if (results.isEmpty()) return "No unit history.";

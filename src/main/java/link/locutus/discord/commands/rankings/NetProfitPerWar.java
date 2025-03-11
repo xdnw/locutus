@@ -8,10 +8,12 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.builder.GroupedRankBuilder;
 import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
 import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.MathMan;
@@ -101,7 +103,7 @@ public class NetProfitPerWar extends Command {
                 // Average it per war
                 .average();
 
-        RankBuilder<String> ranks;
+        RankBuilder<IShrink> ranks;
         if (AAs == null) {
             // Group it by alliance
             ranks = byNation.<Integer>group((entry, builder) -> {
@@ -115,7 +117,7 @@ public class NetProfitPerWar extends Command {
                     // Sort descending
                     .sort()
                     // Change key to alliance name
-                    .nameKeys(allianceId -> PW.getName(allianceId, true))
+                    .nameKeys(allianceId -> DBAlliance.getOrCreate(allianceId).toShrink())
                     .limit(25);
         } else {
             // Sort descending
@@ -123,7 +125,7 @@ public class NetProfitPerWar extends Command {
                     .removeIfKey(nationId -> !nations.containsKey(nationId) || (!finalAAs.isEmpty() && !finalAAs.contains(nations.get(nationId).getAlliance_id())))
                     .sort()
                     // Change key to alliance name
-                    .nameKeys(nationId -> nations.get(nationId).getNation())
+                    .nameKeys(nationId -> nations.get(nationId).toShrink())
                     .limit(25);
         }
 

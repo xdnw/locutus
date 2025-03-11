@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.*;
+import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
@@ -19,16 +20,12 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.gpt.GPTUtil;
-import link.locutus.discord.gpt.GptHandler;
-import link.locutus.discord.gpt.ModerationResult;
-import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.test.IAChannel;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
@@ -372,11 +369,11 @@ public class DiscordCommands {
             return "Missing: " + Roles.INTERNAL_AFFAIRS.toDiscordRoleNameElseInstructions(guild);
         }
 
-        List<ShrinkableEmbed> embeds = message.getEmbeds();
+        List<EmbedShrink> embeds = message.getEmbeds();
         if (embeds.size() != 1) return "No embeds found";
-        ShrinkableEmbed embed = embeds.get(0);
+        EmbedShrink embed = embeds.get(0);
 
-        ShrinkableEmbed builder = new ShrinkableEmbed(embed);
+        EmbedShrink builder = new EmbedShrink(embed);
 
         if (color != null) {
             builder.setColor(color);
@@ -397,7 +394,7 @@ public class DiscordCommands {
         return null;
     }
 
-    public static String parse(String arg, ShrinkableEmbed embed, IMessageBuilder message) {
+    public static String parse(String arg, EmbedShrink embed, IMessageBuilder message) {
         long timestamp = message.getTimeCreated();
         long diff = System.currentTimeMillis() - timestamp;
         arg = arg.replace("{timediff}", TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff));

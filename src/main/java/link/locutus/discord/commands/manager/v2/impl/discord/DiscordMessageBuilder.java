@@ -5,7 +5,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.commands.manager.v2.command.AMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.command.ShrinkableEmbed;
+import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.EmbedBuilder;
@@ -62,7 +62,7 @@ public class DiscordMessageBuilder extends AMessageBuilder {
     }
 
     public DiscordMessageBuilder appendMessage(Message message) {
-        contentShrink.add(message.getContentRaw());
+        contentShrink.append(message.getContentRaw());
         message.getButtons().forEach(b -> {
             String url = b.getUrl();
             if (url != null && !url.isEmpty()) {
@@ -128,7 +128,7 @@ public class DiscordMessageBuilder extends AMessageBuilder {
             }
         }
         if (!embeds.isEmpty()) {
-            List<MessageEmbed> discEmbeds = new ArrayList<>(embeds.stream().map(ShrinkableEmbed::build).toList());
+            List<MessageEmbed> discEmbeds = new ArrayList<>(embeds.stream().map(EmbedShrink::build).toList());
 
             if (!remapLongCommands.isEmpty()) {
                 MessageEmbed embed = discEmbeds.get(0);
@@ -147,7 +147,10 @@ public class DiscordMessageBuilder extends AMessageBuilder {
             throw new IllegalStateException("Cannot remap long commands without embeds: " + StringMan.getString(remapLongCommands));
         }
 
-        if (includeContent && !contentShrink.isEmpty()) discBuilder.setContent(contentShrink.shrinkDefault().toString().trim());
+        if (includeContent && !contentShrink.isEmpty()) {
+            contentShrink.shrink(Message.MAX_CONTENT_LENGTH);
+            discBuilder.setContent(contentShrink.toString().trim());
+        }
 
         return discBuilder.build();
     }
@@ -183,8 +186,8 @@ public class DiscordMessageBuilder extends AMessageBuilder {
         if (!embeds.isEmpty()) {
             List<EmbedBuilder> toAdd = new ObjectArrayList<>();
             if (embeds.size() == 1 && ((images.size() == 1 && tables.size() == 0) || (images.size() == 0 && tables.size() == 1))) {
-                ShrinkableEmbed embed = embeds.get(0);
-                EmbedBuilder builder = new ShrinkableEmbed(embed).builder();
+                EmbedShrink embed = embeds.get(0);
+                EmbedBuilder builder = new EmbedShrink(embed).builder();
                 String imgName;
                 if (images.size() == 1) {
                     Map.Entry<String, byte[]> entry = images.entrySet().iterator().next();
@@ -196,8 +199,8 @@ public class DiscordMessageBuilder extends AMessageBuilder {
                 builder.setImage(name);
                 toAdd.add(builder);
             } else {
-                for (ShrinkableEmbed embed : embeds) {
-                    EmbedBuilder builder = new ShrinkableEmbed(embed).builder();
+                for (EmbedShrink embed : embeds) {
+                    EmbedBuilder builder = new EmbedShrink(embed).builder();
                     toAdd.add(builder);
                 }
             }

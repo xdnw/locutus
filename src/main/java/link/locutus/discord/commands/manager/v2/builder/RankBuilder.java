@@ -1,8 +1,12 @@
 package link.locutus.discord.commands.manager.v2.builder;
 
 import com.google.common.base.Function;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
+import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
+import link.locutus.discord.commands.manager.v2.command.shrink.IdenticalShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -16,15 +20,16 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class RankBuilder<T> {
+    private final Set<Integer> highlight;
     private List<T> values;
     private int limit = 25;
 
-    public RankBuilder(List<T> values) {
-        this.values = values;
+    public RankBuilder(Collection<T> values, Set<Integer> highlight) {
+        this.values = values instanceof List l ? l : new ObjectArrayList<>(values);
+        this.highlight = highlight;
     }
-
     public RankBuilder(Collection<T> values) {
-        this(new ArrayList<>(values));
+        this(new ArrayList<>(values), Collections.emptySet());
     }
 
     public RankBuilder<T> removeIf(Predicate<T> removeIf) {
@@ -34,7 +39,7 @@ public class RankBuilder<T> {
 
     public <G> RankBuilder<G> adapt(java.util.function.Function<T, G> adapter) {
         List<G> transform = values.stream().map(adapter).collect(Collectors.toList());
-        return new RankBuilder<>(transform);
+        return new RankBuilder<>(transform, highlight);
     }
 
     public <K> GroupedRankBuilder<K, T> group(Function<T, K> groupBy) {
@@ -87,25 +92,6 @@ public class RankBuilder<T> {
         return this;
     }
 
-    public void build(User author, IMessageIO channel, String command, String title, boolean upload) {
-        List<String> items = toItems(limit);
-        String emoji = "Refresh";
-        StringBuilder itemsStr = new StringBuilder();
-        for (int i = 0; i < items.size(); i++) {
-            itemsStr.append(items.get(i)).append("\n");
-        }
-        System.out.println("ITEMS " + itemsStr);
-        if (author != null) itemsStr.append("\n" + author.getAsMention());
-        IMessageBuilder msg = channel.create().embed(title, itemsStr.toString());
-        if (command != null) msg = msg.commandButton(command.toString(), emoji);
-
-        if (upload && values.size() > limit) {
-            msg.file(title + ".txt", toString());
-        }
-
-        msg.send();
-    }
-
     public void build(User author, IMessageIO channel, String fullCommandRaw, String title) {
         build(author, channel, DiscordUtil.trimContent(fullCommandRaw), title, false);
     }
@@ -130,18 +116,37 @@ public class RankBuilder<T> {
         build(author, channel, cmd, title, false);
     }
 
-    public void build(User author, MessageChannel channel, String cmd, String title, boolean upload) {
-        List<String> items = toItems(limit);
+    public void build(User author, IMessageIO channel, String command, String title, boolean upload) {
+        List<IShrink> items = toItems(limit);
         String emoji = "Refresh";
-        StringBuilder itemsStr = new StringBuilder("```\n");
+        EmbedShrink embed = new EmbedShrink().title(title);
         for (int i = 0; i < items.size(); i++) {
-            itemsStr.append(items.get(i)).append("\n");
+            embed.append(items.get(i)).append("\n");
         }
-        itemsStr.append("```");
-        if (author != null) itemsStr.append("\n" + author.getAsMention());
+        if (author != null) embed.append("\n" + author.getAsMention());
+        IMessageBuilder msg = channel.create().embed(embed);
+        if (command != null) msg = msg.commandButton(command.toString(), emoji);
+
+        if (upload && values.size() > limit) {
+            msg.file(title + ".txt", toString());
+        }
+
+        msg.send();
+    }
+
+    public void build(User author, MessageChannel channel, String cmd, String title, boolean upload) {
+        List<IShrink> items = toItems(limit);
+        String emoji = "Refresh";
+        EmbedShrink embed = new EmbedShrink().title(title);
+        embed.append("```\n");
+        for (int i = 0; i < items.size(); i++) {
+            embed.append(items.get(i)).append("\n");
+        }
+        embed.append("```");
+        if (author != null) embed.append("\n" + author.getAsMention());
 
         DiscordChannelIO io = new DiscordChannelIO(channel);
-        IMessageBuilder msg = io.create().embed(title, itemsStr.toString());
+        IMessageBuilder msg = io.create().embed(embed);
         if (cmd != null && !cmd.isBlank()) msg = msg.commandButton(cmd, emoji);
 
         if (upload && values.size() > 25) {
@@ -151,10 +156,35 @@ public class RankBuilder<T> {
         msg.send();
     }
 
-    public List<String> toItems(int limit) {
-        List<String> items = new ArrayList<>();
+    public List<IShrink> toItems(int limit) {
+        List<IShrink> items = new ArrayList<>();
         for (int i = 0; i < Math.min(limit, values.size()); i++) {
-            items.add((i + 1) + ". " + values.get(i).toString());
+            T elem = values.get(i);
+            IShrink item;
+            if (elem instanceof IShrink s && !s.isIdentical()) {
+                item = s;
+            } else {
+                item = (IShrink.of(elem.toString()));
+            }
+            if (highlight.remove(i)) {
+                item = item.prepend("**").append("**");
+            }
+            item = item.prepend((i + 1) + ". ");
+            items.add(item);
+        }
+        if (!highlight.isEmpty()) {
+            boolean addedElipses = false;
+            for (int i : highlight) {
+                if (i < limit) continue;
+                if (!addedElipses) {
+                    items.add(IShrink.of("..."));
+                    addedElipses = true;
+                }
+                T elem = values.get(i);
+                IShrink item = elem instanceof IShrink s && !s.isIdentical() ? s : IShrink.of(elem.toString());
+                item = item.prepend((i + 1) + ". ").prepend("**").append("**");
+                items.add(item);
+            }
         }
         return items;
     }

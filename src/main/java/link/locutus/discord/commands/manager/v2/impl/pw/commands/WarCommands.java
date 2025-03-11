@@ -12,6 +12,7 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
+import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.war.*;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -350,8 +351,14 @@ public class WarCommands {
         if (beigeTurns == null) beigeTurns = -1;
         if (targets == null) targets = Locutus.imp().getNationDB().getAllNations();
 
-        String result = cmd.onCommand2(channel, user, db, me, targets, weakground, dms, vmTurns, defensiveSlots, beigeTurns != null && beigeTurns > 0, !ignoreDNR, ignoreAlliances, includeAlliances, active, minutesInactive, score, minLoot, beigeTurns, ignoreBankLoot, ignoreCityRevenue, numResults);
-        return result;
+        try {
+            String result = cmd.onCommand2(channel, user, db, me, targets, weakground, dms, vmTurns, defensiveSlots, beigeTurns != null && beigeTurns > 0, !ignoreDNR, ignoreAlliances, includeAlliances, active, minutesInactive, score, minLoot, beigeTurns, ignoreBankLoot, ignoreCityRevenue, numResults);
+            System.out.println("RESULT " + result);
+            return result;
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
     }
     @Command(desc = "List your wars you are allowed to beige\n" +
             "As set by this guild's configured beige policy: `ALLOWED_BEIGE_REASONS`", viewable = true)
@@ -1638,8 +1645,8 @@ public class WarCommands {
 
             double kills = SpyCount.getKills(spiesUsed, enemy, op, nation.hasProject(Projects.SPY_SATELLITE));
 
-            String nationUrl = PW.getBBUrl(nation.getNation_id(), false);
-            String allianceUrl = PW.getBBUrl(nation.getAlliance_id(), true);
+            String nationUrl = PW.getMarkdownUrl(nation.getNation_id(), false);
+            String allianceUrl = PW.getMarkdownUrl(nation.getAlliance_id(), true);
             body.append(nationUrl).append(" | ")
                     .append(allianceUrl).append("\n");
 
@@ -1656,9 +1663,9 @@ public class WarCommands {
         }
 
         body.append("**Enemy:** ")
-                .append(PW.getBBUrl(enemy.getNation_id(), false))
+                .append(PW.getMarkdownUrl(enemy.getNation_id(), false))
                 .append(" | ")
-                .append(PW.getBBUrl(enemy.getAlliance_id(), true))
+                .append(PW.getMarkdownUrl(enemy.getAlliance_id(), true))
                 .append("\n**Spies: **").append(enemySpies).append("\n")
                 .append(enemy.toMarkdown(true, true, false, true, false, false))
                 .append(enemy.toMarkdown(true, true, false, false, true, true))
@@ -1832,8 +1839,8 @@ public class WarCommands {
             Runnable task = new Runnable() {
                 @Override
                 public void run() {
-                    String nationUrl = PW.getBBUrl(nation.getNation_id(), false);
-                    String allianceUrl = PW.getBBUrl(nation.getAlliance_id(), true);
+                    String nationUrl = PW.getMarkdownUrl(nation.getNation_id(), false);
+                    String allianceUrl = PW.getMarkdownUrl(nation.getAlliance_id(), true);
                     body.append(nationUrl).append(" | ")
                             .append(allianceUrl).append("\n");
 
@@ -4839,7 +4846,7 @@ public class WarCommands {
         int perPage = 10;
         String title = "Blitz targets";
 
-        channel.create().paginate(title, command, page, perPage, results).send();
+        channel.create().paginate(title, command, page, perPage, IShrink.toList(results)).send();
 
         return null;
     }

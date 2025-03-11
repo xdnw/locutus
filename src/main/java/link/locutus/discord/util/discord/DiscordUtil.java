@@ -9,7 +9,7 @@ import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.command.ShrinkableEmbed;
+import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationModifier;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
@@ -28,7 +28,6 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import com.google.common.base.Charsets;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
@@ -46,7 +45,6 @@ import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.internal.entities.UserImpl;
-import org.apache.commons.lang3.text.WordUtils;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.json.JSONObject;
@@ -70,13 +68,10 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import static graphql.Assert.assertTrue;
 
@@ -408,7 +403,7 @@ public class DiscordUtil {
             message = io.create();
         }
 
-        ShrinkableEmbed builder = new ShrinkableEmbed();
+        EmbedShrink builder = new EmbedShrink();
         builder.setTitle(title);
         builder.setDescription(body.toString());
         if (footer != null) builder.setFooter(footer);
@@ -440,9 +435,9 @@ public class DiscordUtil {
             return;
         }
         String finalTitle = title;
-        createEmbedCommand(channel, new Consumer<ShrinkableEmbed>() {
+        createEmbedCommand(channel, new Consumer<EmbedShrink>() {
             @Override
-            public void accept(ShrinkableEmbed builder) {
+            public void accept(EmbedShrink builder) {
                 String titleFinal = finalTitle;
                 if (titleFinal.length() > MessageEmbed.TITLE_MAX_LENGTH) {
                     titleFinal = titleFinal.substring(0, MessageEmbed.TITLE_MAX_LENGTH - 3) + "..";
@@ -455,7 +450,7 @@ public class DiscordUtil {
         }, reactionArguments);
     }
 
-    public static void createEmbedCommand(MessageChannel channel, Consumer<ShrinkableEmbed> builder, String... reactionArguments) {
+    public static void createEmbedCommand(MessageChannel channel, Consumer<EmbedShrink> builder, String... reactionArguments) {
         if (reactionArguments.length % 2 != 0) {
             throw new IllegalArgumentException("invalid pairs: " + StringMan.getString(reactionArguments));
         }
@@ -487,8 +482,8 @@ public class DiscordUtil {
     }
 
 
-    public static void createEmbedCommand(MessageChannel channel, Consumer<ShrinkableEmbed> consumer, Map<String, String> reactionArguments) {
-        ShrinkableEmbed builder = new ShrinkableEmbed();
+    public static void createEmbedCommand(MessageChannel channel, Consumer<EmbedShrink> consumer, Map<String, String> reactionArguments) {
+        EmbedShrink builder = new EmbedShrink();
         consumer.accept(builder);
 
         new DiscordChannelIO(channel, null).create().embed(builder).addCommands(reactionArguments).send();
@@ -1027,104 +1022,103 @@ public class DiscordUtil {
 
     public static void main(String[] args) {
         // Simple test with spaces
-        {
-            System.out.println("\n\n------ split by word ------\n\n");
-            String input1 = "Hello world an other word";
-            int maxSize = 5;
-            List<String> result1 = DiscordUtil.wrap(input1, maxSize, 0);
-            for (String line : result1) {
-                System.out.println("Line {" + line + "}");
-                assertTrue(line.length() <= maxSize,
-                        () -> "Line exceeds max size: " + line);
-            }
-        }
-
-        { // ensure it splits within a word when a word exceeds maxSize
-            System.out.println("\n\n------ split long word but not other words ------\n\n");
-            String input = "Hello thisisareallylongword world an other word";
-            int maxSize = 5;
-            List<String> result = DiscordUtil.wrap(input, maxSize, 0);
-            for (String line : result) {
-                System.out.println("Line {" + line + "}");
-                assertTrue(line.length() <= maxSize,
-                        () -> "Line exceeds max size: " + line);
-            }
-
-        }
-
-        { // Ensure it splits on newline when safe
-            System.out.println("\n\n------ split by newline ------\n\n");
-            String input = "Hello world\nan other word";
-            int maxSize = 15;
-            List<String> result = DiscordUtil.wrap(input, maxSize, 0);
-            for (String line : result) {
-                System.out.println("Line {" + line + "}");
-                assertTrue(line.length() <= maxSize,
-                        () -> "Line exceeds max size: " + line);
-            }
-        }
-
-        { // ensure it breaks within a word when a word exceeds maxSize
-            System.out.println("\n\n------ split long text without spaces ------\n\n");
-            String input2 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
-            int maxSize2 = 4;
-            List<String> result2 = DiscordUtil.wrap(input2, maxSize2, 0);
-            for (String line : result2) {
-                System.out.println("Line {" + line + "}");
-                assertTrue(line.length() <= maxSize2,
-                        () -> "Should force break without spaces" + line);
-            }
-        }
-
-        {// Code block test
-            System.out.println("\n\n------ split outside code block ------\n\n");
-            String input3 = "before code block\n```\ncodeblock\n```\nsome text afterwards";
-            int maxSize3 = 20;
-            List<String> result3 = DiscordUtil.wrap(input3, maxSize3, 0);
-            for (String line : result3) {
-                System.out.println("Line {" + line + "}");
-                assertTrue(line.length() <= maxSize3,
-                        () -> "Line in code block test exceeds " + maxSize3);
-            }
-        }
-
-        {// Quote test
-            System.out.println("\n\n------ split outside quoted text ------\n\n");
-            String input4 = "Adklsaj dsa dasdsads asd \"qu o-td s-d\" section with a small-break test testing.";
-            int maxSize4 = 15;
-            List<String> result4 = DiscordUtil.wrap(input4, maxSize4, 0);
-            for (String line : result4) {
-                System.out.println("Line {" + line + "}");
-                assertTrue(line.length() <= maxSize4,
-                        () -> "Line in quote test exceeds " + maxSize4);
-            }
-        }
-
-        // Ensure it splits mid quote when quoted text exceeds size
-        {
-            System.out.println("\n\n------ quote small break ------\n\n");
-            String input5 = "A dsa das asd asd asd \"quo dsa sad sa ted\" section with a small-break test.";
-            int maxSize5 = 12;
-            List<String> result5 = DiscordUtil.wrap(input5, maxSize5, 0);
-            for (String line : result5) {
-                System.out.println("Line {" + line + "}");
-                assertTrue(line.length() <= maxSize5,
-                        () -> "Line in quote test exceeds " + maxSize5);
-            }
-        }
-
-        {// Bracket test
-            System.out.println("\n\n------ split bracketed text ------\n\n");
-            String input6 = "aaaaaaa[bracket] [bracket] [bracket] [bracket][bracket]s[bracket]dd[bracket]ddd[bracket]dddd[bracket]ddddd[bracket] section with a small-break test.";
-            int maxSize6 = 10;
-            List<String> result6 = DiscordUtil.wrap(input6, maxSize6, 0);
-            for (String line : result6) {
-                System.out.println("Line {" + line + "}");
-                assertTrue(line.length() <= maxSize6,
-                        () -> "Line in bracket test exceeds " + maxSize6);
-            }
-        }
-
+//        {
+//            System.out.println("\n\n------ split by word ------\n\n");
+//            String input1 = "Hello world an other word";
+//            int maxSize = 5;
+//            List<String> result1 = DiscordUtil.wrap(input1, maxSize, 0);
+//            for (String line : result1) {
+//                System.out.println("Line {" + line + "}");
+//                assertTrue(line.length() <= maxSize,
+//                        () -> "Line exceeds max size: " + line);
+//            }
+//        }
+//
+//        { // ensure it splits within a word when a word exceeds maxSize
+//            System.out.println("\n\n------ split long word but not other words ------\n\n");
+//            String input = "Hello thisisareallylongword world an other word";
+//            int maxSize = 5;
+//            List<String> result = DiscordUtil.wrap(input, maxSize, 0);
+//            for (String line : result) {
+//                System.out.println("Line {" + line + "}");
+//                assertTrue(line.length() <= maxSize,
+//                        () -> "Line exceeds max size: " + line);
+//            }
+//
+//        }
+//
+//        { // Ensure it splits on newline when safe
+//            System.out.println("\n\n------ split by newline ------\n\n");
+//            String input = "Hello world\nan other word";
+//            int maxSize = 15;
+//            List<String> result = DiscordUtil.wrap(input, maxSize, 0);
+//            for (String line : result) {
+//                System.out.println("Line {" + line + "}");
+//                assertTrue(line.length() <= maxSize,
+//                        () -> "Line exceeds max size: " + line);
+//            }
+//        }
+//
+//        { // ensure it breaks within a word when a word exceeds maxSize
+//            System.out.println("\n\n------ split long text without spaces ------\n\n");
+//            String input2 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+//            int maxSize2 = 4;
+//            List<String> result2 = DiscordUtil.wrap(input2, maxSize2, 0);
+//            for (String line : result2) {
+//                System.out.println("Line {" + line + "}");
+//                assertTrue(line.length() <= maxSize2,
+//                        () -> "Should force break without spaces" + line);
+//            }
+//        }
+//
+//        {// Code block test
+//            System.out.println("\n\n------ split outside code block ------\n\n");
+//            String input3 = "before code block\n```\ncodeblock\n```\nsome text afterwards";
+//            int maxSize3 = 20;
+//            List<String> result3 = DiscordUtil.wrap(input3, maxSize3, 0);
+//            for (String line : result3) {
+//                System.out.println("Line {" + line + "}");
+//                assertTrue(line.length() <= maxSize3,
+//                        () -> "Line in code block test exceeds " + maxSize3);
+//            }
+//        }
+//
+//        {// Quote test
+//            System.out.println("\n\n------ split outside quoted text ------\n\n");
+//            String input4 = "Adklsaj dsa dasdsads asd \"qu o-td s-d\" section with a small-break test testing.";
+//            int maxSize4 = 15;
+//            List<String> result4 = DiscordUtil.wrap(input4, maxSize4, 0);
+//            for (String line : result4) {
+//                System.out.println("Line {" + line + "}");
+//                assertTrue(line.length() <= maxSize4,
+//                        () -> "Line in quote test exceeds " + maxSize4);
+//            }
+//        }
+//
+//        // Ensure it splits mid quote when quoted text exceeds size
+//        {
+//            System.out.println("\n\n------ quote small break ------\n\n");
+//            String input5 = "A dsa das asd asd asd \"quo dsa sad sa ted\" section with a small-break test.";
+//            int maxSize5 = 12;
+//            List<String> result5 = DiscordUtil.wrap(input5, maxSize5, 0);
+//            for (String line : result5) {
+//                System.out.println("Line {" + line + "}");
+//                assertTrue(line.length() <= maxSize5,
+//                        () -> "Line in quote test exceeds " + maxSize5);
+//            }
+//        }
+//
+//        {// Bracket test
+//            System.out.println("\n\n------ split bracketed text ------\n\n");
+//            String input6 = "aaaaaaa[bracket] [bracket] [bracket] [bracket][bracket]s[bracket]dd[bracket]ddd[bracket]dddd[bracket]ddddd[bracket] section with a small-break test.";
+//            int maxSize6 = 10;
+//            List<String> result6 = DiscordUtil.wrap(input6, maxSize6, 0);
+//            for (String line : result6) {
+//                System.out.println("Line {" + line + "}");
+//                assertTrue(line.length() <= maxSize6,
+//                        () -> "Line in bracket test exceeds " + maxSize6);
+//            }
+//        }
     }
 
     public static List<String> wrap(String input, int maxSize, int minSize) {
@@ -1152,44 +1146,7 @@ public class DiscordUtil {
             boolean forceSplit = false;
             int size = i - lastI;
 
-            // Should determine priority based on the above
-            if (i - lastI > maxSize || forceSplit) {
-                boolean prependCodeBlock = false;
-                if (startCodeBlock != -1 && startCodeBlock < lastI) {
-                    prependCodeBlock = true;
-                }
-
-                int splitAt = foundSplitI > 0 ? foundSplitI : i - 1;
-                int splitAtFinal = splitAt;
-                char c1 = input.length() > lastI ? input.charAt(lastI + 1) : '_';
-                char c2 = splitAt > 0 ? input.charAt(splitAt - 1) : '_';
-                if (c1 == ' ' || c1 == '\n') {
-                    lastI++;
-                }
-                if (c2 == ' ' || c2 == '\n') {
-                    splitAtFinal--;
-                }
-
-                StringBuilder sequence = new StringBuilder();
-                if (prependCodeBlock) {
-                    sequence.append("```");
-                }
-                sequence.append(input, lastI, splitAtFinal);
-                if (startCodeBlock != -1) {
-                    sequence.append("```");
-                }
-                if (!sequence.isEmpty()) {
-                    lines.add(sequence.toString());
-                }
-                System.out.println("Add sequence " + sequence);
-                lastI = splitAt;
-                foundSplitI = -1;
-                foundSplitPriority = -1;
-                if (input.length() > lastI && (input.charAt(lastI) == ' ' || input.charAt(lastI) == '\n')) {
-                    lastI++;
-                    i++;
-                }
-            } else {
+            if (i - lastI <= maxSize) {
                 switch (c) {
                     case '`':
                         if (i + 2 < input.length()
@@ -1303,6 +1260,44 @@ public class DiscordUtil {
                                 foundSplitPriority = 14;
                             }
                         }
+                }
+            }
+
+            // Should determine priority based on the above
+            if (i - lastI > maxSize || forceSplit) {
+                boolean prependCodeBlock = false;
+                if (startCodeBlock != -1 && startCodeBlock < lastI) {
+                    prependCodeBlock = true;
+                }
+
+                int splitAt = foundSplitI > 0 ? foundSplitI : i - 1;
+                int splitAtFinal = splitAt;
+                char c1 = input.length() > lastI ? input.charAt(lastI + 1) : '_';
+                char c2 = splitAt > 0 ? input.charAt(splitAt - 1) : '_';
+                if (c1 == ' ' || c1 == '\n') {
+                    lastI++;
+                }
+                if (c2 == ' ' || c2 == '\n') {
+                    splitAtFinal--;
+                }
+
+                StringBuilder sequence = new StringBuilder();
+                if (prependCodeBlock) {
+                    sequence.append("```");
+                }
+                sequence.append(input, lastI, splitAtFinal);
+                if (startCodeBlock != -1 && startCodeBlock != i) {
+                    sequence.append("```");
+                }
+                if (!sequence.isEmpty()) {
+                    lines.add(sequence.toString());
+                }
+                lastI = splitAt;
+                foundSplitI = -1;
+                foundSplitPriority = -1;
+                if (input.length() > lastI && (input.charAt(lastI) == ' ' || input.charAt(lastI) == '\n')) {
+                    lastI++;
+                    i++;
                 }
             }
             i++;

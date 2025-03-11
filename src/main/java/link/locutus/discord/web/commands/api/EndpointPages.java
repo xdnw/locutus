@@ -1,5 +1,6 @@
 package link.locutus.discord.web.commands.api;
 
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.javalin.http.Context;
@@ -122,6 +123,7 @@ public class EndpointPages extends PageHelper {
                     io.send(formatted);
                 }
             }
+            System.out.println("DATA " + new GsonBuilder().setPrettyPrinting().create().toJson(queue.getQueue()));
             return new WebViewCommand(commandUid.incrementAndGet(), queue.getQueue());
         } else {
             throw new IllegalArgumentException("Invalid command: " + cmdStr);

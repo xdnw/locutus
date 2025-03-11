@@ -21,6 +21,7 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCach
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.*;
@@ -1291,7 +1292,7 @@ public class UnsortedCommands {
 
         boolean purchasedToday = false;
 
-        List<String> results = new ArrayList<>();
+        List<IShrink> results = new ArrayList<>();
         Map.Entry<Long, Integer> previous = null;
         for (Map.Entry<Long, Integer> entry : history) {
             if (previous != null) {
@@ -1300,9 +1301,8 @@ public class UnsortedCommands {
 
                 int from = entry.getValue();
                 int to = previous.getValue();
-
-                results.add(dateStr + ": " + from + " -> " + to);
-
+                results.add(IShrink.of(dateStr + ": " + from + " -> " + to,
+                        DiscordUtil.timestamp(timestamp, "d") + DiscordUtil.timestamp(timestamp, "t") + ": " + from + "->" + to));
                 if (to >= from && entry.getKey() >= day) purchasedToday = true;
             } else if (entry.getKey() >= day) purchasedToday = true;
             previous = new AbstractMap.SimpleEntry<>(entry);
@@ -1318,7 +1318,8 @@ public class UnsortedCommands {
                 from = "" + (to - 1);
             }
 
-            results.add(dateStr + ": " + from + " -> " + to);
+            results.add(IShrink.of(dateStr + ": " + from + " -> " + to,
+                    DiscordUtil.timestamp(timestamp, "d") + DiscordUtil.timestamp(timestamp, "t") + ": " + from + "->" + to));
         }
 
         if (results.isEmpty()) return "No unit history";
@@ -1408,7 +1409,7 @@ public class UnsortedCommands {
         }
 
         SummedMapRankBuilder<Integer, Number> byNation = new SummedMapRankBuilder<>(profitByNation).adaptKeys((n, v) -> n.getNation_id());
-        RankBuilder<String> ranks;
+        RankBuilder<IShrink> ranks;
         if (!listByNation) {
             NumericGroupRankBuilder<Integer, Number> byAAMap = byNation.group((entry, builder) -> {
                 DBNation nation = Locutus.imp().getNationDB().getNationById(entry.getKey());
@@ -1421,11 +1422,11 @@ public class UnsortedCommands {
             // Sort descending
             ranks = byAA.sort()
                     // Change key to alliance name
-                    .nameKeys(id -> PW.getName(id, true));
+                    .nameKeys(id -> DBAlliance.getOrCreate(id).toShrink());
         } else {
             ranks = byNation.sort()
-                    // Change key to alliance name
-                    .nameKeys(allianceId -> PW.getName(allianceId, false));
+                    // Change key to nation name
+                    .nameKeys(id -> DBNation.getOrCreate(id).toShrink());
         }
 
         String rssNames = resources.size() >= ResourceType.values.length - 1 ? "market" : StringMan.join(resources, ",");
@@ -2471,7 +2472,7 @@ public class UnsortedCommands {
 
         new SummedMapRankBuilder<>(aaCount)
                 .sort()
-                .nameKeys(f -> PW.getName(f, true))
+                .nameKeys(f -> DBAlliance.getOrCreate(f).toShrink())
                 .limit(10)
                 .build(author, io, command, "Prolific Offshores (" + days + " days)", upload_file);
 

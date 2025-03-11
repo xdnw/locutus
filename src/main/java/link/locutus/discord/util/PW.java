@@ -1316,6 +1316,7 @@ public final class PW {
         }
         throw new IllegalArgumentException("Not a valid tax url: `" + url + "`");
     }
+    
     public static String getName(long nationOrAllianceId, boolean isAA) {
         if (isAA) {
             String name = Locutus.imp().getNationDB().getAllianceName((int) nationOrAllianceId);
@@ -1329,35 +1330,8 @@ public final class PW {
         }
     }
 
-    public static String getBBUrl(int nationOrAllianceId, boolean isAA) {
-        String type;
-        String name;
-        if (isAA) {
-            type = "alliance";
-            name = Locutus.imp().getNationDB().getAllianceName(nationOrAllianceId);
-            name = name != null ? name : nationOrAllianceId + "";
-        } else {
-            type = "nation";
-            DBNation nation = Locutus.imp().getNationDB().getNationById(nationOrAllianceId);
-            name = nation != null ? nation.getNation() : nationOrAllianceId + "";
-        }
-        String url = "" + Settings.PNW_URL() + "/" + type + "/id=" + nationOrAllianceId;
-        return String.format("[%s](%s)", name, url);
-    }
-
     public static String getUrl(int nationOrAllianceId, boolean isAA) {
-        String type;
-        String name;
-        if (isAA) {
-            type = "alliance";
-            name = Locutus.imp().getNationDB().getAllianceName(nationOrAllianceId);
-            name = name != null ? name : nationOrAllianceId + "";
-        } else {
-            type = "nation";
-            DBNation nation = Locutus.imp().getNationDB().getNationById(nationOrAllianceId);
-            name = nation != null ? nation.getNation() : nationOrAllianceId + "";
-        }
-        return "" + Settings.PNW_URL() + "/" + type + "/id=" + nationOrAllianceId;
+        return isAA ? getAllianceUrl(nationOrAllianceId) : getNationUrl(nationOrAllianceId);
     }
 
     public static String getNationUrl(int nationId) {

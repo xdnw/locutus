@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.command.ShrinkableEmbed;
+import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
 import link.locutus.discord.db.entities.DBTrade;
@@ -17,7 +17,6 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
@@ -114,7 +113,7 @@ public class FindTrader extends Command {
             ppuList.add("$" + MathMan.format(myPpu));
         }
 
-        channel.create().embed(new ShrinkableEmbed()
+        channel.create().embed(new EmbedShrink()
                 .setTitle("Trade Price")
                 .addField("Nation", StringMan.join(nationName, "\n"), true)
                 .addField("Amt", StringMan.join(amtList, "\n"), true)

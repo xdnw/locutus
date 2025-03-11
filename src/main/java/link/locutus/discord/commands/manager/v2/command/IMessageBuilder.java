@@ -1,11 +1,13 @@
 package link.locutus.discord.commands.manager.v2.command;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import de.vandermeer.asciitable.AT_Context;
 import de.vandermeer.asciitable.AsciiTable;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
+import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
+import link.locutus.discord.commands.manager.v2.command.shrink.IdenticalShrink;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
@@ -15,7 +17,6 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.binding.value_types.GraphType;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
@@ -82,7 +83,7 @@ public interface IMessageBuilder {
     IMessageBuilder append(String content);
 
     @CheckReturnValue
-    IMessageBuilder append(Shrinkable msg);
+    IMessageBuilder append(IShrink msg);
 
     @CheckReturnValue
     IMessageBuilder embed(MessageEmbed embed);
@@ -94,8 +95,8 @@ public interface IMessageBuilder {
 
     @CheckReturnValue
     default IMessageBuilder embed(String title, String body, String footer) {
-        ShrinkableEmbed embed = new ShrinkableEmbed().title(Shrinkable.of(title)).description(Shrinkable.of(body));
-        if (footer != null) embed.footer(Shrinkable.of(footer));
+        EmbedShrink embed = new EmbedShrink().title(title).description(body);
+        if (footer != null) embed.footer(footer);
         return embed(embed);
     }
 
@@ -177,21 +178,21 @@ public interface IMessageBuilder {
         return this;
     }
 
-    default IMessageBuilder paginate(String title, CommandRef ref, Integer page, int perPage, List<String> results) {
+    default IMessageBuilder paginate(String title, CommandRef ref, Integer page, int perPage, List<IShrink> results) {
         return paginate(title, ref, page, perPage, results, null, false);
     }
 
-    default IMessageBuilder paginate(String title, CommandRef ref, Integer page, int perPage, List<String> results, String footer, boolean inline) {
+    default IMessageBuilder paginate(String title, CommandRef ref, Integer page, int perPage, List<IShrink> results, String footer, boolean inline) {
         return paginate(title, new JSONObject(ref.toCommandArgs()), page, perPage, results, footer, inline);
     }
 
     @CheckReturnValue
-    default IMessageBuilder paginate(String title, JSONObject command, Integer page, int perPage, List<String> results) {
+    default IMessageBuilder paginate(String title, JSONObject command, Integer page, int perPage, List<IShrink> results) {
         return paginate(title, command, page, perPage, results, null, false);
     }
 
     @CheckReturnValue
-    default IMessageBuilder paginate(String title, JSONObject command, Integer page, int perPage, List<String> results, String footer, boolean inline) {
+    default IMessageBuilder paginate(String title, JSONObject command, Integer page, int perPage, List<IShrink> results, String footer, boolean inline) {
         return paginate(title, command.toString(), page, perPage, results, footer, inline);
     }
 
@@ -237,7 +238,7 @@ public interface IMessageBuilder {
 
     @CheckReturnValue
     @Deprecated
-    default IMessageBuilder paginate(String title, String command, Integer page, int perPage, List<String> results, String footer, boolean inline) {
+    default IMessageBuilder paginate(String title, String command, Integer page, int perPage, List<IShrink> results, String footer, boolean inline) {
         if (results.isEmpty()) {
             System.out.println("Results are empty.");
             return this;
@@ -250,9 +251,10 @@ public interface IMessageBuilder {
         int start = page * perPage;
         int end = Math.min(numResults, start + perPage);
 
-        StringBuilder body = new StringBuilder();
+        EmbedShrink builder = new EmbedShrink();
+        builder.setTitle(title);
         for (int i = start; i < end; i++) {
-            body.append(results.get(i)).append('\n');
+            builder.append(results.get(i)).append("\n");
         }
 
         Map<String, String> reactions = new LinkedHashMap<>();
@@ -288,11 +290,8 @@ public interface IMessageBuilder {
         if (hasNext) {
             reactions.put("Next \u27A1\uFE0F", prefix + nextPageCmd);
         }
-
-        ShrinkableEmbed builder = new ShrinkableEmbed();
-        builder.setTitle(title);
-        builder.setDescription(body.toString());
         if (footer != null) builder.setFooter(footer);
+        builder.shrinkDefault();
 
         clearEmbeds();
         embed(builder);
@@ -383,14 +382,14 @@ public interface IMessageBuilder {
 
     User getAuthor();
 
-    List<ShrinkableEmbed> getEmbeds();
+    List<EmbedShrink> getEmbeds();
 
     long getTimeCreated();
 
     IMessageBuilder clearEmbeds();
 
     @CheckReturnValue
-    IMessageBuilder embed(ShrinkableEmbed embed);
+    IMessageBuilder embed(EmbedShrink embed);
 
     /**
      * Key pair (name, command)

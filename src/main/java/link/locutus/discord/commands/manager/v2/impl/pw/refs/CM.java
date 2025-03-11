@@ -7682,6 +7682,9 @@ public class CM {
                     return set("cutoffMs", value);
                 }
 
+                public CommandRef transfer_count(String value) {
+                    return set("transfer_count", value);
+                }
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="findOffshores")
                 public static class for_enemies extends CommandRef {

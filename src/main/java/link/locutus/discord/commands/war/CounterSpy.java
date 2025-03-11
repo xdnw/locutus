@@ -187,8 +187,8 @@ public class CounterSpy extends Command {
 
                 double kills = SpyCount.getKills(spiesUsed, enemy, op, nation.hasProject(Projects.SPY_SATELLITE));
 
-                String nationUrl = PW.getBBUrl(nation.getNation_id(), false);
-                String allianceUrl = PW.getBBUrl(nation.getAlliance_id(), true);
+                String nationUrl = PW.getMarkdownUrl(nation.getNation_id(), false);
+                String allianceUrl = PW.getMarkdownUrl(nation.getAlliance_id(), true);
                 body.append(nationUrl).append(" | ")
                         .append(allianceUrl).append("\n");
 
@@ -205,9 +205,9 @@ public class CounterSpy extends Command {
             }
 
             body.append("**Enemy:** ")
-                    .append(PW.getBBUrl(enemy.getNation_id(), false))
+                    .append(PW.getMarkdownUrl(enemy.getNation_id(), false))
                     .append(" | ")
-                    .append(PW.getBBUrl(enemy.getAlliance_id(), true))
+                    .append(PW.getMarkdownUrl(enemy.getAlliance_id(), true))
                     .append("\n**Spies: **").append(enemySpies).append("\n")
                     .append(enemy.toMarkdown(true, true, false, true, false, false))
                     .append(enemy.toMarkdown(true, true, false, false, true, true))

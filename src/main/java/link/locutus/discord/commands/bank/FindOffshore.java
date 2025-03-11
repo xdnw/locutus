@@ -6,15 +6,19 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.TimeUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
+import org.json.JSONObject;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -22,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 public class FindOffshore extends Command {
     public FindOffshore() {
@@ -39,7 +44,8 @@ public class FindOffshore extends Command {
 
     @Override
     public String desc() {
-        return "Find potential offshores used by an alliance.";
+        return "Find potential offshores used by an alliance.\n" +
+                "Use `-c` to display transfer count instead of value";
     }
 
     @Override
@@ -58,28 +64,9 @@ public class FindOffshore extends Command {
         }
 
         long cutoffMs = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
-
-        List<Transaction2> transactions = Locutus.imp().getBankDB().getToNationTransactions(cutoffMs);
-        long now = System.currentTimeMillis();
-        transactions.removeIf(t -> {
-            DBNation nation = DBNation.getById((int) t.getReceiver());
-            return nation == null || t.getDate() > now || t.getSender() == alliance || nation.getAlliance_id() != alliance || (t.note != null && t.note.contains("defeated"));
-        });
-        Map<Integer, Integer> numTransactions = new HashMap<>();
-        Map<Integer, Double> valueTransferred = new HashMap<>();
-
-        for (Transaction2 t : transactions) {
-            numTransactions.put((int) t.getSender(), numTransactions.getOrDefault((int) t.getSender(), 0) + 1);
-
-            double value = ResourceType.convertedTotal(t.resources);
-
-            valueTransferred.put((int) t.getSender(), valueTransferred.getOrDefault((int) t.getSender(), 0d) + value);
-        }
-
-        new SummedMapRankBuilder<>(numTransactions).sort()
-        .name(e -> PW.getName(e.getKey(), true) + ": " + e.getValue() + " | $" + MathMan.format(valueTransferred.get(e.getKey())))
-        .build(author, channel, fullCommandRaw, "Potential offshores");
-
-        return null;
+        JSONObject command = CM.offshore.find.for_coalition.cmd
+                .alliance(alliance + "").cutoffMs(days + "d").transfer_count(flags.contains('c') ? "true" : null)
+                .toJson();
+        return UtilityCommands.findOffshore(channel, command, DBAlliance.getOrCreate(alliance), cutoffMs, flags.contains('c'));
     }
 }

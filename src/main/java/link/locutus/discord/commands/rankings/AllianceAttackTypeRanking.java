@@ -103,7 +103,7 @@ public class AllianceAttackTypeRanking extends Command {
 
         String title = " attacks of type: " + type.getName() + " (" + args.get(0) + ")";
         title = (flags.contains('t') ? "total" : "percent") + title;
-        builder.sort().name(DBAlliance::getName, MathMan::format).build(author, channel, fullCommandRaw, title);
+        builder.sort().name(DBAlliance::toShrink, MathMan::format).build(author, channel, fullCommandRaw, title);
         return null;
     }
 }

@@ -5,9 +5,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.command.ShrinkableEmbed;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.DiscordCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
@@ -15,17 +13,13 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.*;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.awt.*;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 public class UpdateEmbed extends Command {
     public UpdateEmbed() {
@@ -79,10 +73,10 @@ public class UpdateEmbed extends Command {
             return "This command can only be run when bound to a Locutus embed.";
         }
 
-        List<ShrinkableEmbed> embeds = message.getEmbeds();
+        List<EmbedShrink> embeds = message.getEmbeds();
         if (embeds.size() != 1) return "No embeds found";
-        ShrinkableEmbed embed = embeds.get(0);
-        ShrinkableEmbed builder = new ShrinkableEmbed(embed);
+        EmbedShrink embed = embeds.get(0);
+        EmbedShrink builder = new EmbedShrink(embed);
 
         String setColor = DiscordUtil.parseArg(args, "color");
         if (setColor != null) {

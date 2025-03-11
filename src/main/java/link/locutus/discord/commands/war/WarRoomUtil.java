@@ -5,7 +5,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
-import link.locutus.discord.commands.manager.v2.command.ShrinkableEmbed;
+import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -23,18 +23,15 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.mail.MailApiResponse;
 import link.locutus.discord.util.task.mail.MailApiSuccess;
 import link.locutus.discord.util.task.war.WarCard;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
-import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.StandardGuildMessageChannel;
 import net.dv8tion.jda.api.requests.restaction.PermissionOverrideAction;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -168,7 +165,7 @@ public class WarRoomUtil {
         if (update) {
             StringBuilder body = new StringBuilder();
 
-            body.append("**Enemy:** ").append(target.getNationUrlMarkup())
+            body.append(target.getNationUrlMarkup())
                     .append(" | ").append(target.getAllianceUrlMarkup());
             body.append(target.toMarkdown(true, true, false, false, true, false));
             body.append("\n");
@@ -196,8 +193,9 @@ public class WarRoomUtil {
             body.append("\n");
             body.append("Note: These figures are only updated every 5m");
 
-            ShrinkableEmbed builder = new ShrinkableEmbed();
+            EmbedShrink builder = new EmbedShrink();
 
+            builder.title("**Enemy:** ");
             builder.setDescription(body.toString().replaceAll(" \\| ", "|"));
 
 

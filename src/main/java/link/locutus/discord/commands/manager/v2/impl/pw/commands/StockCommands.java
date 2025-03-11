@@ -9,7 +9,8 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.command.ShrinkableEmbed;
+import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
+import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
 import link.locutus.discord.commands.stock.Exchange;
@@ -23,8 +24,6 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.entities.MessageEmbed;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -314,7 +313,7 @@ public class StockCommands {
             highList.add(o2 == null ? "" : MathMan.format(o2));
         }
 
-        ShrinkableEmbed embed = new ShrinkableEmbed()
+        EmbedShrink embed = new EmbedShrink()
                 .setTitle("Trade price")
                 .addField("Exchange", StringMan.join(exchangeNames, "\n"), true)
                 .addField("Buying", StringMan.join(lowList, "\n"), true)
@@ -373,7 +372,7 @@ public class StockCommands {
         String refreshEmoji = "Refresh";
 
         channel.create().embed(
-                        new ShrinkableEmbed().setTitle("Trade margin")
+                        new EmbedShrink().setTitle("Trade margin")
                                 .addField("Exchange", StringMan.join(exchangeNames, "\n"), true)
                                 .addField("Margin", StringMan.join(margin, "\n"), true)
                 )
@@ -481,7 +480,7 @@ public class StockCommands {
             highList.add(o2 == null ? "" : MathMan.format(o2));
         }
 
-        channel.create().embed(new ShrinkableEmbed()
+        channel.create().embed(new EmbedShrink()
                         .setTitle("Trade average")
                         .addField("Exchange", StringMan.join(exchangeNames, "\n"), true)
                         .addField("Buying", StringMan.join(lowList, "\n"), true)
@@ -506,10 +505,10 @@ public class StockCommands {
             else {
                 buy.sort((o1, o2) -> Long.compare(o2.price, o1.price));
                 String title = "Top Buy Offers";
-                List<String> results = new ArrayList<>();
+                List<IShrink> results = new ArrayList<>();
 
                 for (StockTrade trade : sell) {
-                    results.add(trade.amount + "x " + exchange.symbol + " @ $" + MathMan.format(trade.price / 100d));
+                    results.add(IShrink.of(trade.amount + "x " + exchange.symbol + " @ $" + MathMan.format(trade.price / 100d)));
                 }
 
                 JSONObject cmdCopy = new JSONObject(command);
@@ -522,10 +521,10 @@ public class StockCommands {
             else {
                 sell.sort(Comparator.comparingLong(o -> o.price));
                 String title = "Top Sell Offers";
-                List<String> results = new ArrayList<>();
+                List<IShrink> results = new ArrayList<>();
 
                 for (StockTrade trade : sell) {
-                    results.add(trade.amount + "x " + exchange.symbol + " @ $" + MathMan.format(trade.price / 100d));
+                    results.add(IShrink.of(trade.amount + "x " + exchange.symbol + " @ $" + MathMan.format(trade.price / 100d)));
                 }
 
                 JSONObject cmdCopy = new JSONObject(command);
@@ -558,10 +557,10 @@ public class StockCommands {
             else {
                 buy.sort((o1, o2) -> Long.compare(o2.price, o1.price));
                 String title = "Top Buy Offers";
-                List<String> results = new ArrayList<>();
+                List<IShrink> results = new ArrayList<>();
 
                 for (StockTrade trade : sell) {
-                    results.add("#" + trade.tradeId + ": " + trade.amount + "x " + db.getName(trade.company) + " @ $" + MathMan.format(trade.price / 100d));
+                    results.add(IShrink.of("#" + trade.tradeId + ": " + trade.amount + "x " + db.getName(trade.company) + " @ $" + MathMan.format(trade.price / 100d)));
                 }
 
                 JSONObject cmdCopy = new JSONObject(command);
@@ -574,10 +573,10 @@ public class StockCommands {
             else {
                 sell.sort(Comparator.comparingLong(o -> o.price));
                 String title = "Top Sell Offers";
-                List<String> results = new ArrayList<>();
+                List<IShrink> results = new ArrayList<>();
 
                 for (StockTrade trade : sell) {
-                    results.add("#" + trade.tradeId + ": " + trade.amount + "x " + db.getName(trade.company) + " @ $" + MathMan.format(trade.price / 100d));
+                    results.add(IShrink.of("#" + trade.tradeId + ": " + trade.amount + "x " + db.getName(trade.company) + " @ $" + MathMan.format(trade.price / 100d)));
                 }
 
                 JSONObject cmdCopy = new JSONObject(command);
@@ -596,13 +595,13 @@ public class StockCommands {
         if (trades.isEmpty()) return "No trade history";
 
         trades.sort((o1, o2) -> Double.compare(o2.date_bought, o1.date_bought));
-        List<String> results = new ArrayList<>();
+        List<IShrink> results = new ArrayList<>();
 
         Map<Integer, Exchange> exchangeMap = new HashMap<>();
         for (StockTrade trade : trades) {
             Exchange exchange = exchangeMap.computeIfAbsent(trade.company, db::getExchange);
             if (exchange != null && !exchange.canView(me)) continue;
-            results.add(trade.toString());
+            results.add(IShrink.of(trade.toString()));
         }
 
         int perPage = 15;
@@ -621,7 +620,7 @@ public class StockCommands {
         Map<Integer, Long> shareholders = db.getShareholdersByCorp(exchange.id);
         if (shareholders.isEmpty()) return "No shareholders.";
 
-        List<String> results = new SummedMapRankBuilder<>(shareholders).sort().name(nationId -> PW.getName(nationId, false), f -> MathMan.format(f / 100d)).get();
+        List<IShrink> results = new SummedMapRankBuilder<>(shareholders).sort().name(nationId -> DBNation.getOrCreate(nationId).toShrink(), f -> MathMan.format(f / 100d)).get();
 
         int perPage = 15;
         int pages = (results.size() + perPage - 1) / perPage;
@@ -637,7 +636,7 @@ public class StockCommands {
         Map<Exchange, Long> shares = db.getSharesByNation(nation.getId());
         if (shares.isEmpty()) return "No shareholders.";
 
-        List<String> results = new SummedMapRankBuilder<>(shares).sort().name(exchange -> exchange.symbol, f -> MathMan.format(f / 100d)).get();
+        List<IShrink> results = new SummedMapRankBuilder<>(shares).sort().name(exchange -> IShrink.of(exchange.symbol), f -> MathMan.format(f / 100d)).get();
 
         int perPage = 15;
         int pages = (results.size() + perPage - 1) / perPage;

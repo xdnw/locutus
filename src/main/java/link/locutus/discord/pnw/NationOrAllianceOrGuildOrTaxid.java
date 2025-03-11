@@ -1,6 +1,7 @@
 package link.locutus.discord.pnw;
 
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -19,6 +20,13 @@ import java.util.Map;
 import java.util.Set;
 
 public interface NationOrAllianceOrGuildOrTaxid {
+
+    default IShrink toShrink() {
+        return toShrink(1);
+    }
+    default IShrink toShrink(int priority) {
+        return IShrink.of(getName(), getMarkdownUrl(), priority);
+    }
 
     default int getId() {
         return (int) getIdLong();
