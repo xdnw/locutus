@@ -3873,7 +3873,7 @@ public abstract class DBNation implements NationOrAlliance {
 
     @Override
     public IShrink toShrink(int priority) {
-        return IShrink.of(priority, getNation(), getMarkdownUrl(), getMarkdownUrl() + " | " + getAllianceUrlMarkup());
+        return IShrink.of(priority, getName() == null ? "nation:" + getId() : getName(), getMarkdownUrl(), getMarkdownUrl() + " | " + getAllianceUrlMarkup());
     }
 
     @Command(desc = "Google sheet named url")
