@@ -485,7 +485,7 @@ public class OffshoreInstance {
         Supplier<Map<Long, AccessType>> allowedIdsGet = ArrayUtil.memorize(new Supplier<Map<Long, AccessType>>() {
             @Override
             public Map<Long, AccessType> get() {
-               return senderDB.getAllowedBankAccountsOrThrow(bankerNation, banker, receiver, senderChannel, senderChannel == null);
+               return senderDB.getAllowedBankAccountsOrThrow(bankerNation, banker, receiver, senderChannel, senderChannel == null || Roles.ECON.has(banker, senderDB.getGuild()));
             }
         });
         return transferFromNationAccountWithRoleChecks(allowedIdsGet, banker, nationAccount, allianceAccount, taxAccount, senderDB, senderChannel, receiver, amount, depositType, expire, decay, grantToken, convertCash, escrowMode, requireConfirmation, bypassChecks);

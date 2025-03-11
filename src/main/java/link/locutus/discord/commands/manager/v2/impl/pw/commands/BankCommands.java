@@ -2233,9 +2233,8 @@ public class BankCommands {
             return "Transfer too large. Please specify a smaller amount";
         }
 
-        Map<Long, AccessType> allowedIds = guildDb.getAllowedBankAccountsOrThrow(me, author, receiver, channel.getIdLong(), false);
-
-        // Filter allowed ids by access type
+        boolean hasAdmin = Roles.ECON.has(author, guildDb.getGuild());
+        Map<Long, AccessType> allowedIds = guildDb.getAllowedBankAccountsOrThrow(me, author, receiver, channel.getIdLong(), hasAdmin);
 
         if (onlyMissingFunds) {
             int aaId = receiver.getAlliance_id();
