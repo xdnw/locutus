@@ -309,14 +309,14 @@ public class StatCommands {
     }
 
     @Command(desc = "War costs of a single war\n(use warsCost for multiple wars)", viewable = true)
-    public static String warCost(@Me @Default User author, @Me Guild guild, @Me IMessageIO channel, DBWar war,
+    public static String warCost(@Me @Default User author, @Me @Default Guild guild, @Me IMessageIO channel, DBWar war,
                           @Switch("u") boolean ignoreUnits,
                           @Switch("i") boolean ignoreInfra,
                           @Switch("c") boolean ignoreConsumption,
                           @Switch("l") boolean ignoreLoot,
                           @Switch("b") boolean ignoreBuildings) {
         AttackCost cost = war.toCost();
-        if (Roles.ECON.has(author, guild)) {
+        if (guild != null && Roles.ECON.has(author, guild)) {
             WarCostAB.reimburse(cost, war, guild, channel);
         }
         return cost.toString(!ignoreUnits, !ignoreInfra, !ignoreConsumption, !ignoreLoot, !ignoreBuildings);
@@ -1711,7 +1711,7 @@ public class StatCommands {
                     "- damage inflicted (unit, infrastructure, consumption, total)\n" +
                     "- net resources (money, gasoline, munitions, aluminum, steel)", viewable = true)
     @RolePermission(Roles.MILCOM)
-    public static String WarCostByAllianceSheet(@Me IMessageIO channel, @Me Guild guild,
+    public static String WarCostByAllianceSheet(@Me IMessageIO channel, @Me @Default GuildDB guildDb,
                                          Set<DBNation> nations,
                                          @Timestamp long time,
                                          @Switch("i") boolean includeInactives,
@@ -1723,8 +1723,6 @@ public class StatCommands {
                 nationIds.add(nation.getNation_id());
             }
         }
-
-        GuildDB guildDb = Locutus.imp().getGuildDB(guild);
 
         SpreadSheet sheet = SpreadSheet.create(guildDb, SheetKey.WAR_COST_BY_ALLIANCE_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
@@ -2050,7 +2048,7 @@ public class StatCommands {
                 Get the militirization levels of top 80 alliances.
                 Each bar is segmented into four sections, from bottom to top: (soldiers, tanks, planes, ships)
                 Each alliance is grouped by sphere and color coded.""", viewable = true)
-    public static String militaryRanking(@Me GuildDB db, @Me IMessageIO channel,
+    public static String militaryRanking(@Me @Default GuildDB db, @Me IMessageIO channel,
                                          @Default NationList nations,
                                          @Switch("n") Integer top_n_alliances,
                                          @Switch("s") SpreadSheet sheet,
@@ -2068,7 +2066,7 @@ public class StatCommands {
         } else {
             Set<DBNation> tmp;
             if (snapshotDate != null) {
-                tmp = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild());
+                tmp = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db == null ? null : db.getGuild());
             } else {
                 tmp = nations.getNations();
             }
@@ -2283,7 +2281,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Create a google sheet of nations and the number of bad attacks they did over a timeframe", viewable = true)
-    public void attackBreakdownSheet(@Me IMessageIO io, @Me GuildDB db,
+    public void attackBreakdownSheet(@Me IMessageIO io, @Me @Default GuildDB db,
                                      Set<NationOrAlliance> attackers,
                                      Set<NationOrAlliance> defenders,
                                      @Timestamp Long start,
@@ -2421,7 +2419,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Generate a graph for a global game statistic by day", viewable = true)
-    public void orbisStatByDay(@Me IMessageIO channel, @Me GuildDB db, @Me JSONObject command,
+    public void orbisStatByDay(@Me IMessageIO channel, @Me @Default GuildDB db, @Me JSONObject command,
                                  Set<OrbisMetric> metrics,
                                  @Default @Timestamp Long start,
                                  @Default @Timestamp Long end, @Switch("j") boolean attachJson, @Switch("c") boolean attachCsv, @Switch("ss") boolean attach_sheet) throws IOException {
@@ -2434,7 +2432,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Get nth loot beige graph by score range", viewable = true)
-    public String NthBeigeLootByScoreRange(@Me IMessageIO io, @Me GuildDB db, @Me JSONObject command,
+    public String NthBeigeLootByScoreRange(@Me IMessageIO io, @Me @Default GuildDB db, @Me JSONObject command,
                                            @Default NationList nations, @Default("5") int n, @Default @Timestamp Long snapshotDate,
                                            @Switch("c") boolean attachCsv, @Switch("j") boolean attachJson, @Switch("ss") boolean attach_sheet) throws IOException {
         if (n <= 0) throw new IllegalArgumentException("N must be greater than 0");
@@ -2446,7 +2444,7 @@ public class StatCommands {
             nations = new SimpleNationList(Locutus.imp().getNationDB().getNationsMatching(f ->
                     f.active_m() > 7200 && f.getVm_turns() == 0 && f.getPositionEnum().id <= Rank.APPLICANT.id));
         }
-        Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), filter, snapshotDate, db.getGuild());
+        Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), filter, snapshotDate, db == null ? null : db.getGuild());
         IMessageBuilder msg = new NthBeigeLoot(nationsSet, n).writeMsg(io.create(), attachCsv, attachJson, attach_sheet ? db : null, SheetKey.NTH_LOOT_SCORE_RANGE);
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.NthBeigeLootByScoreRange.cmd.getName(), command));
@@ -2502,7 +2500,7 @@ public class StatCommands {
             "Determined by finding alliances where a large percent of members leave to join another alliance", viewable = true)
     @RolePermission(Roles.ADMIN)
     public void listMerges(
-            @Me GuildDB db,
+            @Me @Default GuildDB db,
             @Me IMessageIO io,
                            @Switch("s") SpreadSheet sheet,
                            @Arg("Required percent of departures percent(between 0 and 1)\n" +
@@ -2807,7 +2805,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Get a line graph by day of the war stats between two coalitions", viewable = true)
-    public String warCostsByDay(@Me GuildDB db, @Me IMessageIO io, @Me JSONObject command,
+    public String warCostsByDay(@Me @Default GuildDB db, @Me IMessageIO io, @Me JSONObject command,
             Set<NationOrAlliance> coalition1, Set<NationOrAlliance> coalition2,
             WarCostByDayMode type,
             @Timestamp long time_start,
@@ -2864,7 +2862,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Graph of cost by day of each coalitions wars vs everyone", viewable = true)
-    public String warsCostRankingByDay(@Me GuildDB db, @Me IMessageIO io, @Me JSONObject command,
+    public String warsCostRankingByDay(@Me @Default GuildDB db, @Me IMessageIO io, @Me JSONObject command,
             WarCostByDayMode type,
             WarCostMode mode,
             @Timestamp long time_start,
@@ -2923,7 +2921,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Compare a stat of up to 10 alliances/coalitions on a single time graph", viewable = true)
-    public void compareStats(@Me IMessageIO io, @Me GuildDB db, @Me JSONObject command,
+    public void compareStats(@Me IMessageIO io, @Me @Default GuildDB db, @Me JSONObject command,
             AllianceMetric metric,  @Timestamp long start, @Timestamp long end,
                                  Set<DBAlliance> coalition1,
                                  Set<DBAlliance> coalition2,
@@ -2978,7 +2976,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Graph multiple metrics for a coalition of alliances over a period of time", viewable = true)
-    public void allianceStats(@Me IMessageIO io, @Me GuildDB db, @Me JSONObject command,
+    public void allianceStats(@Me IMessageIO io, @Me @Default GuildDB db, @Me JSONObject command,
                               Set<AllianceMetric> metrics, @Timestamp long start, @Timestamp long end, Set<DBAlliance> coalition,
                               @Switch("j") boolean attach_json,
                               @Switch("c") boolean attach_csv, @Switch("ss") boolean attach_sheet) throws IOException {

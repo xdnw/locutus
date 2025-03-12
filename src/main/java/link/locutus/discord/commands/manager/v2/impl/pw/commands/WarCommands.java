@@ -2180,7 +2180,7 @@ public class WarCommands {
 
     @Command(desc = "Convert dtc's spy sheet format to the bot's format", viewable = true)
     @RolePermission(Roles.MILCOM)
-    public String convertDtCSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me @Default User author, SpreadSheet input, @Switch("s") SpreadSheet output,
+    public String convertDtCSpySheet(@Me IMessageIO io, @Me @Default GuildDB db, @Me @Default User author, SpreadSheet input, @Switch("s") SpreadSheet output,
                                         @Arg("If results (left column) are grouped by the attacker instead of the defender")
                                         @Switch("a") boolean groupByAttacker, @Switch("f") boolean forceUpdate) throws GeneralSecurityException, IOException {
         List<String> warnings = new ArrayList<>();
@@ -2202,7 +2202,7 @@ public class WarCommands {
 
     @Command(desc = "Convert hidude's spy sheet format to the bot's format", viewable = true)
     @RolePermission(Roles.MILCOM)
-    public String convertHidudeSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me @Default User author, SpreadSheet input, @Switch("s") SpreadSheet output,
+    public String convertHidudeSpySheet(@Me IMessageIO io, @Me @Default GuildDB db, @Me @Default User author, SpreadSheet input, @Switch("s") SpreadSheet output,
                                         @Arg("If results (left column) are grouped by the attacker instead of the defender")
                                         @Switch("a") boolean groupByAttacker, @Switch("f") boolean forceUpdate) throws GeneralSecurityException, IOException {
         Map<DBNation, List<Spyop>> spyOpsFiltered = SpyBlitzGenerator.getTargetsHidude(input, groupByAttacker, forceUpdate);
@@ -2222,7 +2222,7 @@ public class WarCommands {
 
     @Command(desc = "Convert TKR's spy sheet format to the bot's format", viewable = true)
     @RolePermission(Roles.MILCOM)
-    public String convertTKRSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me @Default User author, SpreadSheet input, @Switch("s") SpreadSheet output,
+    public String convertTKRSpySheet(@Me IMessageIO io, @Me @Default GuildDB db, @Me @Default User author, SpreadSheet input, @Switch("s") SpreadSheet output,
                                      @Arg("If results (left column) are grouped by the attacker instead of the defender")
                                      @Switch("a") boolean groupByAttacker, @Switch("f") boolean force) throws GeneralSecurityException, IOException {
         List<String> warnings = new ArrayList<>();
@@ -2244,7 +2244,7 @@ public class WarCommands {
 
     @Command(desc = "Generate a subset of a spy sheet for only certain attackers or defenders", viewable = true)
     @RolePermission(Roles.MILCOM)
-    public String listSpyTargets(@Me IMessageIO io, @Me @Default User author, @Me GuildDB db,
+    public String listSpyTargets(@Me IMessageIO io, @Me @Default User author, @Me @Default GuildDB db,
                                  @Arg("The current spy sheet")
                                  SpreadSheet spySheet,
                                  @Arg("Which attackers to include")
@@ -2297,7 +2297,7 @@ public class WarCommands {
 
     @Command(desc = "Generate a spy blitz sheet with the defender on the left and attackers on the right", viewable = true)
     @RolePermission(Roles.MILCOM)
-    public String SpySheet(@Me IMessageIO io, @Me @Default User author, @Me GuildDB db,
+    public String SpySheet(@Me IMessageIO io, @Me @Default User author, @Me @Default GuildDB db,
                            Set<DBNation> attackers,
                            Set<DBNation> defenders,
                            @Arg("Allowed spy operations")
@@ -2462,7 +2462,7 @@ public class WarCommands {
             The columns represent the time unit (either turns or days) when bank transfers occur for each nation
             A positive value represents a deposit, a negative value represents a withdrawal
             When both are specified, the net deposit/withdrawal is shown""", viewable = true)
-    public String DepositSheetDate(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations,
+    public String DepositSheetDate(@Me IMessageIO io, @Me @Default GuildDB db, Set<DBNation> nations,
                                   boolean deposit,
                                   boolean withdraw,
                                   @Arg("Date to start from")
@@ -2566,7 +2566,7 @@ public class WarCommands {
             "Note: use the other activity sheet need info of a deleted nation\n" +
             "Days represent the % of that day a nation logs in (UTC)\n" +
             "Numbers represent the % of that turn a nation logs in", viewable = true)
-    public String ActivitySheetFromId(@Me IMessageIO io, @Me GuildDB db, int nationId,
+    public String ActivitySheetFromId(@Me IMessageIO io, @Me @Default GuildDB db, int nationId,
                                       @Arg("Date to start from")
                                       @Default("2w") @Timestamp long startTime,
                                       @Switch("e") @Timestamp Long endTime,
@@ -2579,7 +2579,7 @@ public class WarCommands {
     @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
     @Command(desc = "Generate a sheet of per nation war declare activity over a timeframe\n" +
             "The columns represent the time unit (either turns or days) when wars are declared for each nation", viewable = true)
-    public String WarDecSheetDate(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations,
+    public String WarDecSheetDate(@Me IMessageIO io, @Me @Default GuildDB db, Set<DBNation> nations,
                                     boolean off,
                                     boolean def,
                                     @Arg("Date to start from")
@@ -2681,7 +2681,7 @@ public class WarCommands {
     @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
     @Command(desc = "Generate a sheet of nation login activity from a nation id over a timeframe\n" +
             "The sheet columns are the dates with the values being either 1 or 0 for logging in or not", viewable = true)
-    public String ActivitySheetDate(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations,
+    public String ActivitySheetDate(@Me IMessageIO io, @Me @Default GuildDB db, Set<DBNation> nations,
                                     @Arg("Date to start from")
                                     @Timestamp long start_time,
                                     @Timestamp long end_time,
@@ -2755,7 +2755,7 @@ public class WarCommands {
             "The columns are the 7 days of the week and then turns of the day (12)\n" +
             "Days represent the % of that day a nation logs in (UTC)\n" +
             "Numbers represent the % of that turn a nation logs in", viewable = true)
-    public String ActivitySheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations,
+    public String ActivitySheet(@Me IMessageIO io, @Me @Default GuildDB db, Set<DBNation> nations,
                                 @Arg("Date to start from")
                                 @Default("2w") @Timestamp long startTime,
                                 @Switch("e") @Timestamp Long endTime,
@@ -2822,12 +2822,12 @@ public class WarCommands {
 
     @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
     @Command(desc = "Generate a sheet of alliance/nation/city military unit and building counts (MMR)", viewable = true)
-    public String MMRSheet(@Me IMessageIO io, @Me GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet,
+    public String MMRSheet(@Me IMessageIO io, @Me @Default GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet,
                            @Switch("f") boolean forceUpdate,
                            @Arg("List the military building count of each city instead of each nation")
                            @Switch("c") boolean showCities,
                            @Switch("t") @Timestamp Long snapshotTime) throws GeneralSecurityException, IOException {
-        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db.getGuild());
+        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db == null ? null : db.getGuild());
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.MMR_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "city",
@@ -3025,7 +3025,7 @@ public class WarCommands {
 
     @RolePermission(Roles.MILCOM)
     @Command(desc = "Generate a sheet of nations who have left the provided alliances over a timeframe", viewable = true)
-    public static String DeserterSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBAlliance> alliances,
+    public static String DeserterSheet(@Me IMessageIO io, @Me @Default GuildDB db, Set<DBAlliance> alliances,
                                 @Arg("Date to start from")
                                 @Timestamp long cuttOff,
                                 @Arg("Only check these nations")
@@ -3130,7 +3130,7 @@ public class WarCommands {
 
     @RolePermission(Roles.MILCOM)
     @Command(desc = "Generate a sheet of nations and their military units relative to the nations they are fighting", viewable = true)
-    public String combatantSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations,
+    public String combatantSheet(@Me IMessageIO io, @Me @Default GuildDB db, Set<DBNation> nations,
                                  @Arg("Include inactive nations (2 days)")
                                  @Switch("i") boolean includeInactive,
                                  @Switch("a") boolean includeApplicants) {
@@ -3319,13 +3319,16 @@ public class WarCommands {
     @Command(desc = "Run checks on a spy blitz sheet.\n" +
             "Checks that all nations are in range of their spy blitz targets and that they have no more than the provided number of offensive operations.\n" +
             "Add `true` for the day-change argument to double the offensive op limit", viewable = true)
-    public String validateSpyBlitzSheet(@Me GuildDB db, @Default SpreadSheet sheet,
+    public String validateSpyBlitzSheet(@Me @Default GuildDB db, @Default SpreadSheet sheet,
                                         @Arg("If the sheet is for attacks at day change")
                                         @Default("false") boolean dayChange,
                                         @Arg("Only allow attacking these nations")
                                         @Default("*") Set<DBNation> filter,
                                         @Arg("Parse nation leader instead of nation name") @Switch("l") boolean useLeader) throws GeneralSecurityException, IOException {
         if (sheet == null) {
+            if (db == null) {
+                throw new IllegalArgumentException("Please provide a value for `sheet`");
+            }
             db.getOrThrow(SheetKey.SPYOP_SHEET);
             sheet = SpreadSheet.create(db, SheetKey.SPYOP_SHEET);
         }
@@ -3856,7 +3859,7 @@ public class WarCommands {
             "- Example defNations: `~enemies,#position>1,#active_m<4880,#dayssincelastoffensive>200,#dayssince3consecutivelogins>120,#aircraftpct<0.8,#tankpct<=0.6`" +
             "Note: To avoid updeclares enable `onlyEasyTargets`", viewable = true)
     @RolePermission(Roles.MILCOM)
-    public String blitzSheet(@Me IMessageIO io, @Me @Default User author, @Me GuildDB db,
+    public String blitzSheet(@Me IMessageIO io, @Me @Default User author, @Me @Default GuildDB db,
                              @Arg("Nations that should be used for the attackers\n" +
                                      "It is recommended to use a google sheet of the attackers available")
                              NationList attNations,
@@ -3929,7 +3932,7 @@ public class WarCommands {
             "Additional War Options"
     }, viewable = true)
     @RolePermission(Roles.MILCOM)
-    public String warSheet(@Me IMessageIO io, @Me GuildDB db,
+    public String warSheet(@Me IMessageIO io, @Me @Default GuildDB db,
                            Set<DBNation> allies,
                            Set<DBNation> enemies,
                            @Arg(value = "Cutoff date for wars (default 5 days ago)", group = 0)

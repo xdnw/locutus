@@ -111,8 +111,7 @@ public class UnsortedCommands {
     @IsAlliance
     @HasApi
     public void unitBuySheet(
-            @Me GuildDB db,
-            ValueStore store, @Me IMessageIO channel,
+            @Me GuildDB db, @Me IMessageIO channel,
             @Arg("Nations to list in the sheet\n" +
                     "Defaults to the guild alliance")
             @Default NationList nations,
@@ -1085,7 +1084,7 @@ public class UnsortedCommands {
 
     @Command(desc = "Get the revenue of nations or alliances\n" +
             "Equilibrium taxrate is where the value of raws consumed matches the value taxed", viewable = true)
-    public String revenue(@Me GuildDB db, @Me IMessageIO channel, @Me DBNation me,
+    public String revenue(@Me @Default GuildDB db, @Me IMessageIO channel,
                           NationList nations,
                           @Arg("Include the revenue of nations unable to be taxed")
                           @Switch("t") boolean includeUntaxable,
@@ -1100,7 +1099,7 @@ public class UnsortedCommands {
                           @Timediff Long includeWarCosts,
                           @Switch("s") @Timestamp Long snapshotDate
                           ) throws Exception {
-        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild());
+        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db == null ? null : db.getGuild());
         if (forceAtWar && forceAtPeace) {
             throw new IllegalArgumentException("Cannot set both `forceAtWar` and `forceAtPeace` (pick one)");
         }
@@ -1140,7 +1139,7 @@ public class UnsortedCommands {
 
             ResourceType.add(cityProfit, nation.getRevenue(12, true, false, false, !excludeNationBonus, false, false, treasureBonus, rads, forceWarFlag, false));
             ResourceType.add(milUp, nation.getRevenue(12, false, true, false, false, false, false, treasureBonus, rads, forceAtWar, false));
-            long nationColorBonus = Math.round(nation.getColor().getTurnBonus() * 12 * me.getGrossModifier());
+            long nationColorBonus = Math.round(nation.getColor().getTurnBonus() * 12 * nation.getGrossModifier());
             tradeBonusTotal += nationColorBonus;
         }
 
@@ -1345,7 +1344,7 @@ public class UnsortedCommands {
     }
 
     @Command(desc = "Get a ranking of alliances or nations by their resource production", viewable = true)
-    public String findProducer(@Me IMessageIO channel, @Me JSONObject command, @Me Guild guild,
+    public String findProducer(@Me IMessageIO channel, @Me JSONObject command, @Me @Default Guild guild,
                                @Arg("The resources to rank production of")
                                Set<ResourceType> resources,
                                @Arg("Nations to include in the ranking")
@@ -1467,7 +1466,7 @@ public class UnsortedCommands {
     }
 
     @Command(desc = "List the alliance rank changes of a nation or alliance members", viewable = true)
-    public static String leftAA(@Me IMessageIO io, @Me GuildDB db,
+    public static String leftAA(@Me IMessageIO io, @Me @Default GuildDB db,
                          @AllowDeleted NationOrAlliance nationOrAlliance,
                          @Arg("Date to start from")
                          @Default @Timestamp Long time,
@@ -1947,7 +1946,7 @@ public class UnsortedCommands {
             "Optional: Nation Setting (Continent, Projects, Tax Rate)",
             "Display Options"
     }, viewable = true)
-    public String optimalBuild(@Me IMessageIO io, @Me Guild guild, @Me @Default User author, @Me DBNation me,
+    public String optimalBuild(@Me IMessageIO io, @Me @Default Guild guild, @Me @Default User author, @Me @Default DBNation me,
                                @Arg("A city url or build json to optimize")
                                CityBuild build,
 

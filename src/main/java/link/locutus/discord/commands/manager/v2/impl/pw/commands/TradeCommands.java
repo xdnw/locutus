@@ -1180,7 +1180,7 @@ public class TradeCommands {
     }
 
     @Command(desc = "Generate a graph comparing market values of two resource amounts by day", viewable = true)
-    public String compareStockpileValueByDay(@Me GuildDB db, @Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Me JSONObject command,
+    public String compareStockpileValueByDay(@Me @Default GuildDB db, @Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Me JSONObject command,
                                              Map<ResourceType, Double> stockpile1,
                                              Map<ResourceType, Double> stockpile2,
                                              @Range(min=1, max=3000) int numDays,
@@ -1195,7 +1195,7 @@ public class TradeCommands {
     }
 
     @Command(desc = "Generate a graph of average buy and sell trade price by day")
-    public String tradepricebyday(@Me GuildDB db, @Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Me JSONObject command,
+    public String tradepricebyday(@Me @Default GuildDB db, @Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Me JSONObject command,
                                   Set<ResourceType> resources,
                                   int numDays,
                                   @Switch("j") boolean attachJson,
@@ -1210,7 +1210,7 @@ public class TradeCommands {
     }
 
     @Command(desc = "Generate a graph of average trade buy and sell margin by day", viewable = true)
-    public String trademarginbyday(@Me GuildDB db, @Me IMessageIO channel, TradeManager manager,
+    public String trademarginbyday(@Me @Default GuildDB db, @Me IMessageIO channel, TradeManager manager,
                                    @Timestamp long start, @Default @Timestamp Long end, @Me JSONObject command,
                                    @Arg("Use the margin percent instead of absolute difference")
                                    @Default("true") boolean percent,
@@ -1259,7 +1259,7 @@ public class TradeCommands {
     }
 
     @Command(desc = "Generate a graph of average trade buy and sell volume by day", viewable = true)
-    public String tradevolumebyday(@Me GuildDB db, @Me IMessageIO channel, TradeManager manager, @Me JSONObject command,
+    public String tradevolumebyday(@Me @Default GuildDB db, @Me IMessageIO channel, TradeManager manager, @Me JSONObject command,
                                    @Timestamp long start, @Default @Timestamp Long end,
                                    @Switch("j") boolean attachJson,
                                    @Switch("c") boolean attachCsv, @Switch("ss") boolean attach_sheet,
@@ -1271,7 +1271,7 @@ public class TradeCommands {
     }
 
     @Command(desc = "Generate a graph of average trade buy and sell total by day", viewable = true)
-    public String tradetotalbyday(@Me GuildDB db, @Me IMessageIO channel, TradeManager manager, @Me JSONObject command,
+    public String tradetotalbyday(@Me @Default GuildDB db, @Me IMessageIO channel, TradeManager manager, @Me JSONObject command,
                                   @Timestamp long start, @Default @Timestamp Long end,
                                   @Switch("j") boolean attachJson,
                                   @Switch("c") boolean attachCsv, @Switch("ss") boolean attach_sheet,

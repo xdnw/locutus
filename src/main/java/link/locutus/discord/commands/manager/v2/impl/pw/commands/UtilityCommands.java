@@ -1022,7 +1022,7 @@ public class UtilityCommands {
 
     @Command(desc = "Get nation or bank loot history\n" +
             "Shows how much you will receive if you defeat a nation", viewable = true)
-    public static String loot(@Me IMessageIO output, @Me DBNation me, NationOrAlliance nationOrAlliance,
+    public static String loot(@Me IMessageIO output, @Me @Default DBNation me, NationOrAlliance nationOrAlliance,
                               @Arg("Score of the defeated nation\n" +
                                       "i.e. For determining bank loot percent")
                               @Default Double nationScore,
@@ -1037,7 +1037,7 @@ public class UtilityCommands {
         double revenueFactor = 0;
         double[] total = ResourceType.getBuffer();
 
-        if (nationScore == null) nationScore = nationOrAlliance.isNation() ? nationOrAlliance.asNation().getScore() : me.getScore();
+        if (nationScore == null) nationScore = nationOrAlliance.isNation() ? nationOrAlliance.asNation().getScore() : me == null ? 1 : me.getScore();
         DBAlliance alliance = nationOrAlliance.isAlliance() ? nationOrAlliance.asAlliance() : nationOrAlliance.asNation().getAlliance(false);
 
         List<String> extraInfo = new ArrayList<>();
@@ -1057,7 +1057,7 @@ public class UtilityCommands {
             }
         }
         if (nationOrAlliance.isNation()) {
-            revenueFactor = me.getWarPolicy() == WarPolicy.PIRATE || pirate ? 0.14 : 0.1;
+            revenueFactor = me != null && me.getWarPolicy() == WarPolicy.PIRATE || pirate ? 0.14 : 0.1;
             DBNation nation = nationOrAlliance.asNation();
             revenueFactor *= nation.lootModifier();
 
@@ -1108,7 +1108,7 @@ public class UtilityCommands {
             }
         }
 
-        me.setMeta(NationMeta.INTERVIEW_LOOT, (byte) 1);
+        if (me != null) me.setMeta(NationMeta.INTERVIEW_LOOT, (byte) 1);
 
         if (nationLoot == null && allianceLoot == null) {
             return "No loot history";
@@ -1129,7 +1129,8 @@ public class UtilityCommands {
             response.append("Revenue (" + revenueTurns + " turns @" + MathMan.format(revenueFactor) + "x, worth: $" + MathMan.format(ResourceType.convertedTotal(revenue)) + ") ```" + ResourceType.toString(revenue) + "``` ");
             ResourceType.add(total, revenue);
         }
-        response.append("Total Loot (worth: $" + MathMan.format(ResourceType.convertedTotal(total)) + "): ```" + ResourceType.toString(total) + "``` ");
+        boolean perScore = nationScore == 1 ? true : false;
+        response.append("Total Loot " + (perScore ? "Per Score" : "") + " (worth: $" + MathMan.format(ResourceType.convertedTotal(total)) + "): ```" + ResourceType.toString(total) + "``` ");
         if (!extraInfo.isEmpty()) response.append("\n`notes:`\n`- " + StringMan.join(extraInfo, "`\n`- ") +"`");
 
         CompletableFuture<IMessageBuilder> msgFuture = output.send(response.toString());
@@ -1156,7 +1157,7 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Shows the cost of a project", viewable = true)
-    public String ProjectCost(@Me GuildDB db, @Me IMessageIO channel,
+    public String ProjectCost(@Me @Default GuildDB db, @Me IMessageIO channel,
                               Set<Project> projects,
                               @Default("false") boolean technologicalAdvancement,
                               @Default("false") boolean governmentSupportAgency,
@@ -1360,7 +1361,9 @@ public class UtilityCommands {
     @Command(desc = "Create a sheet of alliances with customized columns\n" +
             "See <https://github.com/xdnw/locutus/wiki/nation_placeholders> for a list of placeholders", viewable = true)
     @NoFormat
-    public static String AllianceSheet(AlliancePlaceholders aaPlaceholders, @Me @Default Guild guild, @Me IMessageIO channel, @Me @Default DBNation me, @Me @Default User author, @Me GuildDB db,
+    public static String AllianceSheet(AlliancePlaceholders aaPlaceholders, @Me @Default Guild guild, @Me IMessageIO channel,
+                                       @Me @Default DBNation me,
+                                       @Me @Default User author, @Me @Default GuildDB db,
                                 @Arg("The nations to include in each alliance")
                                 Set<DBNation> nations,
                                 @Arg("The columns to use in the sheet")
@@ -1724,7 +1727,7 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Get info about your own nation", viewable = true)
-    public String me(@Me JSONObject command, @Me Guild guild, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildDB db, @Switch("s") @Timestamp Long snapshotDate) throws IOException {
+    public String me(@Me JSONObject command, @Me @Default Guild guild, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me @Default GuildDB db, @Switch("s") @Timestamp Long snapshotDate) throws IOException {
         return who(command, guild, channel, author, db, me, Collections.singleton(me), null, false, false, false, false, false, false, snapshotDate, null);
     }
 
@@ -1733,7 +1736,7 @@ public class UtilityCommands {
                     "Nation argument can be nation name, id, link, or discord tag\n" +
                     "e.g. `{prefix}who @borg`", viewable = true)
     @UserCommand
-    public static String who(@Me JSONObject command, @Me Guild guild, @Me IMessageIO channel, @Me @Default User author, @Me GuildDB db, @Me @Default DBNation me,
+    public static String who(@Me JSONObject command, @Me @Default Guild guild, @Me IMessageIO channel, @Me @Default User author, @Me @Default GuildDB db, @Me @Default DBNation me,
                       @Arg("The nations to get info about")
                       Set<NationOrAlliance> nationOrAlliances,
                       @Arg("Sort any listed nations by this attribute")
@@ -1757,7 +1760,7 @@ public class UtilityCommands {
         StringBuilder response = new StringBuilder();
         String filter = command.has("nationoralliances") ? command.getString("nationoralliances") : null;
         if (filter == null && me != null) filter = me.getQualifiedId();
-        final Set<DBNation> nations = PW.getNationsSnapshot(SimpleNationList.from(nationOrAlliances).getNations(), filter, snapshotDate, db.getGuild());
+        final Set<DBNation> nations = PW.getNationsSnapshot(SimpleNationList.from(nationOrAlliances).getNations(), filter, snapshotDate, db == null ? null : db.getGuild());
 
         String arg0;
         String title;
@@ -1770,7 +1773,7 @@ public class UtilityCommands {
                 IMessageBuilder msg = channel.create().embed(title, markdown.toString());
 
                 //Run audit (if ia/econ, or self)
-                if ((myNation != null && myNation.getId() == nation.getId()) || Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild)) {
+                if ((myNation != null && myNation.getId() == nation.getId()) || (guild != null && Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild))) {
                     CM.audit.run audit = CM.audit.run.cmd.nationList(nation.getQualifiedId());
                     msg = msg.commandButton(CommandBehavior.EPHEMERAL, audit, "Audit");
                 }
@@ -1808,9 +1811,11 @@ public class UtilityCommands {
                 CM.war.info warInfo = CM.war.info.cmd.nation(nation.getUrl());
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, warInfo, "War Info");
                 //Counter
-                String aaIdStr = db.getAllianceIds().stream().map(f -> "AA:" + f).collect(Collectors.joining(","));
-                CM.war.counter.nation counter = CM.war.counter.nation.cmd.target(nation.getUrl()).counterWith(aaIdStr).ping("");
-                msg = msg.modal(CommandBehavior.EPHEMERAL, counter, "Counter");
+                if (db != null) {
+                    String aaIdStr = db.getAllianceIds().stream().map(f -> "AA:" + f).collect(Collectors.joining(","));
+                    CM.war.counter.nation counter = CM.war.counter.nation.cmd.target(nation.getUrl()).counterWith(aaIdStr).ping("");
+                    msg = msg.modal(CommandBehavior.EPHEMERAL, counter, "Counter");
+                }
                 //Loot
                 CM.nation.loot loot = CM.nation.loot.cmd.nationOrAlliance(nation.getUrl());
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, loot, "Loot");
@@ -1829,7 +1834,7 @@ public class UtilityCommands {
                 DBAlliance alliance = nationOrAA.asAlliance();
                 title = alliance.getName();
                 StringBuilder markdown = new StringBuilder(alliance.toMarkdown() + "\n");
-                if (Roles.ADMIN.has(author, db.getGuild()) && myNation != null && myNation.getAlliance_id() == alliance.getId() && db.getAllianceIds().isEmpty()) {
+                if (guild != null && Roles.ADMIN.has(author, guild) && myNation != null && myNation.getAlliance_id() == alliance.getId() && db.getAllianceIds().isEmpty()) {
                     markdown.append("\nSet as this guild's alliance: " + CM.settings_default.registerAlliance.cmd.toSlashMention() + "\n");
                 }
 
@@ -2241,7 +2246,7 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Get the cost of military units and their upkeep", viewable = true)
-    public String unitCost(@Me DBNation me,
+    public String unitCost(@Me @Default DBNation me,
                             Map<MilitaryUnit, Long> units,
                            @Arg("Show the upkeep during war time")
                            @Default Boolean wartime,
@@ -2253,8 +2258,8 @@ public class UtilityCommands {
         double[] cost = ResourceType.getBuffer();
         double[] upkeep = ResourceType.getBuffer();
 
-        Function<Research, Integer> research = (nation == null ? me : nation)::getResearch;
-        double upkeepFactor = nation == null ? me.getMilitaryUpkeepFactor() : nation.getMilitaryUpkeepFactor();
+        Function<Research, Integer> research = (nation == null ? me == null ? f -> 0 : me::getResearch : nation::getResearch);
+        double upkeepFactor = nation == null ? me == null ? 1 : me.getMilitaryUpkeepFactor() : nation.getMilitaryUpkeepFactor();
         for (Map.Entry<MilitaryUnit, Long> entry : units.entrySet()) {
             MilitaryUnit unit = entry.getKey();
             Long amt = entry.getValue();
@@ -2293,7 +2298,7 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Get the inactivity streak of a set of nations over a specified timeframe", viewable = true)
-    public String grayStreak(@Me GuildDB db, @Me IMessageIO io,
+    public String grayStreak(@Me @Default GuildDB db, @Me IMessageIO io,
                                     Set<DBNation> nations,
                                     int daysInactive,
                                     @Timestamp long timeframe,
@@ -2365,7 +2370,7 @@ public class UtilityCommands {
 
 
     @Command(desc = "Get the VM history of a set of nations", viewable = true)
-    public static String vmHistory(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws IOException, ParseException, ExecutionException, InterruptedException, GeneralSecurityException {
+    public static String vmHistory(@Me IMessageIO io, @Me @Default GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws IOException, ParseException, ExecutionException, InterruptedException, GeneralSecurityException {
         CompletableFuture<IMessageBuilder> msgFuture = io.send("Mounting nation snapshots...");
         Map<Integer, List<Map.Entry<Integer, Integer>>> vmRanges = Locutus.imp().getDataDumper(true).load().getUtil().getCachedVmRanged(Long.MAX_VALUE, true);
 
@@ -2565,11 +2570,11 @@ public class UtilityCommands {
     }
 
     @Command(aliases = {"alliancecost", "aacost"}, desc = "Get the value of nations including their cities, projects and units", viewable = true)
-    public String allianceCost(@Me IMessageIO channel, @Me GuildDB db,
+    public String allianceCost(@Me IMessageIO channel, @Me @Default GuildDB db,
                                NationList nations, @Switch("u") boolean update,
                                @Switch("p") @Arg("Only include the cost of specific projects") Set<Project> includeProjects,
                                @Switch("s") @Timestamp Long snapshotDate) {
-        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild());
+        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db == null ? null : db.getGuild());
         double infraCost = 0;
         double landCost = 0;
         double cityCost = 0;
