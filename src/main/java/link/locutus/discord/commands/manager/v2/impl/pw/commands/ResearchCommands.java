@@ -80,7 +80,7 @@ public class ResearchCommands {
     @Command(desc = "Get the research sheet")
     @RolePermission(value = {Roles.ECON, Roles.MILCOM, Roles.INTERNAL_AFFAIRS}, any = true)
     public String researchSheet(
-            @Me IMessageIO io, @Me GuildDB db,
+            @Me IMessageIO io, @Me @Default GuildDB db,
             Set<DBNation> nations, @Switch("u") boolean update, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.RESEARCH_SHEET);
 

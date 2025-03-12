@@ -3340,7 +3340,7 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     @Command
-    public double[] getLootRevenueTotal() {
+    public Map<ResourceType, Double> getLootRevenueTotal() {
         LootEntry loot = getBeigeLoot();
         int turnsInactive = getTurnsInactive(loot);
         double lootFactor = 0.14 * lootModifier();
@@ -3408,7 +3408,12 @@ public abstract class DBNation implements NationOrAlliance {
                 lootRevenue[i] += revenue[i] * lootFactor;
             }
         }
-        return lootRevenue;
+        return ResourceType.resourcesToMap(lootRevenue);
+    }
+
+    @Command
+    public double getLootRevenueConverted() {
+        return ResourceType.convertedTotal(getLootRevenueTotal());
     }
 
     public double estimateRssLootValue(double[] knownResources, LootEntry lootHistory, double[] buffer, boolean fetchStats) {
@@ -3920,8 +3925,8 @@ public abstract class DBNation implements NationOrAlliance {
     @Command
     public int getRemainingUnitBuy(MilitaryUnit unit, @Default Long timeSince) {
         if (timeSince == null) {
-            long dcTime = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - (TimeUtil.getTurn() % 12));
-            timeSince = dcTime;
+            long dcTurn = this.getTurnsFromDC();
+            timeSince = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - dcTurn);
         }
         if (unit == MilitaryUnit.INFRASTRUCTURE || unit == MilitaryUnit.MONEY) return -1;
 
@@ -4290,7 +4295,8 @@ public abstract class DBNation implements NationOrAlliance {
         return responses;
     }
 
-    public int getUnitCap(MilitaryUnit unit, boolean checkBuildingsAndPop) {
+    @Command
+    public int getUnitCap(MilitaryUnit unit, @Switch("c") boolean checkBuildingsAndPop) {
         int result = checkBuildingsAndPop ? unit.getCap(this, false) : unit.getMaxMMRCap(data()._cities(), this::hasProject);
         return result;
     }
@@ -4963,12 +4969,21 @@ public abstract class DBNation implements NationOrAlliance {
      * MMR (units)
      * @return
      */
-    @Command(desc = "Average military unit building capacity (unit mmr) in all cities as a whole number\n" +
+    @Command(desc = "Average military building capacity used (unit mmr) in all cities as a whole number\n" +
             "soldiers tanks aircraft ships\n" +
             "Maximum is: 5553")
     public String getMMR() {
         double[] arr = getMMRUnitArr();
         return Math.round(arr[0]) + "" + Math.round(arr[1]) + "" + Math.round(arr[2]) + "" + Math.round(arr[3]);
+    }
+
+    // decimal version of the above
+    @Command(desc = "Average military building capacity used (unit mmr) in all cities as a decimal\n" +
+            "soldiers/tanks/aircraft/ships\n" +
+            "e.g. 4.9/4.8/4.3/2.5")
+    public String getMMRUnitDecimal() {
+        double[] arr = getMMRUnitArr();
+        return Arrays.stream(arr).mapToObj(MathMan::format).collect(Collectors.joining("/"));
     }
 
     public double[] getMMRUnitArr() {

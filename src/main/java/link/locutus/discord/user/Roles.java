@@ -358,6 +358,7 @@ public enum Roles {
     }
 
     public boolean hasOnRoot(User user) {
+        if (user == null) return false;
         if (user.getIdLong() == Locutus.loader().getAdminUserId()) return true;
         if (Locutus.imp().getServer() == null) {
             return false;
@@ -370,6 +371,7 @@ public enum Roles {
     }
 
     public boolean has(User user, Guild server, int alliance) {
+        if (user == null) return false;
         Member member = server.getMember(user);
         return member != null && has(member, alliance);
     }

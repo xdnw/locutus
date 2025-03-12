@@ -1360,7 +1360,7 @@ public class UtilityCommands {
     @Command(desc = "Create a sheet of alliances with customized columns\n" +
             "See <https://github.com/xdnw/locutus/wiki/nation_placeholders> for a list of placeholders", viewable = true)
     @NoFormat
-    public static String AllianceSheet(AlliancePlaceholders aaPlaceholders, @Me Guild guild, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildDB db,
+    public static String AllianceSheet(AlliancePlaceholders aaPlaceholders, @Me @Default Guild guild, @Me IMessageIO channel, @Me @Default DBNation me, @Me @Default User author, @Me GuildDB db,
                                 @Arg("The nations to include in each alliance")
                                 Set<DBNation> nations,
                                 @Arg("The columns to use in the sheet")
@@ -1419,7 +1419,7 @@ public class UtilityCommands {
     @Command(desc = "A sheet of nations stats with customizable columns\n" +
             "See <https://github.com/xdnw/locutus/wiki/nation_placeholders> for a list of placeholders", viewable = true)
     @NoFormat
-    public static void NationSheet(NationPlaceholders placeholders, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildDB db,
+    public static void NationSheet(NationPlaceholders placeholders, @Me IMessageIO channel, @Me @Default DBNation me, @Me @Default User author, @Me @Default GuildDB db,
                                    NationList nations,
                                    @Arg("A space separated list of columns to use in the sheet\n" +
                                            "Can include NationAttribute as placeholders in columns\n" +
@@ -1427,7 +1427,7 @@ public class UtilityCommands {
                                    @TextArea List<String> columns,
                                    @Switch("t") @Timestamp Long snapshotTime,
                                    @Switch("e") boolean updateSpies, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException, URISyntaxException {
-        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db.getGuild());
+        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db == null ? null : db.getGuild());
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.NATION_SHEET);
         }
@@ -1443,7 +1443,7 @@ public class UtilityCommands {
         PlaceholderCache<DBNation> cache = new PlaceholderCache<>(nationSet);
         List<Function<DBNation, String>> formatFunction = new ArrayList<>();
         for (String arg : columns) {
-            formatFunction.add(placeholders.getFormatFunction(db.getGuild(), me, author, arg, cache, true));
+            formatFunction.add(placeholders.getFormatFunction(db == null ? null : db.getGuild(), me, author, arg, cache, true));
         }
         for (DBNation nation : nationSet) {
             if (updateSpies) {
@@ -1733,7 +1733,7 @@ public class UtilityCommands {
                     "Nation argument can be nation name, id, link, or discord tag\n" +
                     "e.g. `{prefix}who @borg`", viewable = true)
     @UserCommand
-    public static String who(@Me JSONObject command, @Me Guild guild, @Me IMessageIO channel, @Me User author, @Me GuildDB db, @Me @Default DBNation me,
+    public static String who(@Me JSONObject command, @Me Guild guild, @Me IMessageIO channel, @Me @Default User author, @Me GuildDB db, @Me @Default DBNation me,
                       @Arg("The nations to get info about")
                       Set<NationOrAlliance> nationOrAlliances,
                       @Arg("Sort any listed nations by this attribute")
@@ -1752,7 +1752,7 @@ public class UtilityCommands {
                       @Switch("c") boolean listChannels,
                       @Switch("s") @Timestamp Long snapshotDate,
                       @Switch("p") Integer page) throws IOException {
-        DBNation myNation = DiscordUtil.getNation(author.getIdLong());
+        DBNation myNation = me;
         int perpage = 15;
         StringBuilder response = new StringBuilder();
         String filter = command.has("nationoralliances") ? command.getString("nationoralliances") : null;
@@ -2189,7 +2189,7 @@ public class UtilityCommands {
 
     @Command(desc = "Rank alliances by their new members over a timeframe\n" +
             "A recruitment is when a NONE which was not a former member within the timeframe gets set to member", viewable = true)
-    public String recruitmentRankings(@Me User author, @Me IMessageIO channel, @Me JSONObject command,
+    public String recruitmentRankings(@Me @Default User author, @Me IMessageIO channel, @Me JSONObject command,
                                       @Arg("Date to start from")
                                       @Timestamp long cutoff,
                                       @Arg("Top X alliances to show in the ranking")

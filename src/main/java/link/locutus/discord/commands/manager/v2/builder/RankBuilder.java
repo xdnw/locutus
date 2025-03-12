@@ -75,8 +75,8 @@ public class RankBuilder<T> {
         return this;
     }
 
-    public RankBuilder<T> limit(int amount) {
-        limit = amount;
+    public RankBuilder<T> limit(Integer amount) {
+        if (amount != null) limit = amount;
         return this;
     }
 

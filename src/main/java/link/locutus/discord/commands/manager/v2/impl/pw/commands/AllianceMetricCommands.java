@@ -337,7 +337,7 @@ public class AllianceMetricCommands {
     }
 
     @Command(desc = "Graph a set of nation metrics for the specified nations over a period of time based on daily nation and city snapshots")
-    public void metricByGroup(@Me IMessageIO io, @Me GuildDB db, @Me JSONObject command,
+    public void metricByGroup(@Me IMessageIO io, @Me @Default GuildDB db, @Me JSONObject command,
                                 Set<NationAttributeDouble> metrics,
                                 NationList nations,
                                 @Default("getCities") NationAttributeDouble groupBy,
@@ -347,7 +347,7 @@ public class AllianceMetricCommands {
                                 @Switch("s") @Timestamp Long snapshotDate,
                                 @Switch("j") boolean attachJson,
                                 @Switch("c") boolean attachCsv, @Switch("ss") boolean attach_sheet) throws IOException {
-        Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild());
+        Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db == null ? null : db.getGuild());
         IMessageBuilder msg = new MetricByGroup(metrics, nationsSet, groupBy, includeInactives, includeApplicants, total)
                 .writeMsg(io.create(), attachJson, attachCsv, attach_sheet ? db : null, SheetKey.METRIC_BY_GROUP);
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
@@ -372,7 +372,7 @@ public class AllianceMetricCommands {
             "If your metric does not relate to cities, set `skipCityData` to true to speed up the process.", viewable = true)
     @RolePermission(value = Roles.ADMIN, root = true)
     @NoFormat
-    public String AlliancesDataByDay(@Me GuildDB db, @Me IMessageIO io, @Me JSONObject command,
+    public String AlliancesDataByDay(@Me @Default GuildDB db, @Me IMessageIO io, @Me JSONObject command,
                                      TypedFunction<DBNation, Double> metric,
                                      @Timestamp long start,
                                      @Timestamp long end,

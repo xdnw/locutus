@@ -963,7 +963,7 @@ public class AdminCommands {
 
     @Command(desc = "Generate a sheet of recorded login times for a set of nations within a time range", viewable = true,
     keywords = {LOGIN, TIMES, USER, ACTIVITY, SESSION, HISTORY, TRACK, RECORD, TIMESTAMP, SPREADSHEET})
-    public String loginTimes(@Me GuildDB db, @Me IMessageIO io, Set<DBNation> nations, @Timestamp long cutoff, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
+    public String loginTimes(@Me @Default GuildDB db, @Me IMessageIO io, Set<DBNation> nations, @Timestamp long cutoff, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.NATION_SHEET);
         }
@@ -2549,7 +2549,7 @@ public class AdminCommands {
 
     @Command(desc = "List players currently sharing a network or an active ban", viewable = true)
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public synchronized String hasSameNetworkAsBan(@Me IMessageIO io, @Me User author, Set<DBNation> nations, @Switch("e") boolean listExpired,
+    public synchronized String hasSameNetworkAsBan(@Me IMessageIO io, @Me @Default User author, Set<DBNation> nations, @Switch("e") boolean listExpired,
                                                    @Switch("a") boolean onlySameAlliance,
                                                    @Switch("t") @Timediff Long onlySimilarTime,
                                                    @Switch("d") boolean sortByAgeDays,

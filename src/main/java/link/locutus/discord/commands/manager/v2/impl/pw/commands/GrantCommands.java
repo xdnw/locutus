@@ -3212,7 +3212,7 @@ public class GrantCommands {
 //    }
 
     @Command(desc = "Generate a sheet and summary of the cost of purchasing cities, infra, land, and projects for a set of nations", viewable = true)
-    public String costBulk(@Me GuildDB db, @Me IMessageIO io,
+    public String costBulk(@Me @Default GuildDB db, @Me IMessageIO io,
                             Set<DBNation> receivers,
                            @Switch("c") @Range(min=1, max=100) Integer cities,
                            @Switch("u") boolean cities_up_to,

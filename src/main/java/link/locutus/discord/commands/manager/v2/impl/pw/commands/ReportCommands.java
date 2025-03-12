@@ -63,7 +63,7 @@ import static link.locutus.discord.util.discord.DiscordUtil.userUrl;
 public class ReportCommands {
     @Command(desc=  "Generate a sheet of all the community reports for players", viewable = true)
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
-    public String reportSheet(@Me IMessageIO io, @Me GuildDB db, ReportManager manager, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException, NoSuchFieldException, IllegalAccessException {
+    public String reportSheet(@Me IMessageIO io, @Me @Default GuildDB db, ReportManager manager, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException, NoSuchFieldException, IllegalAccessException {
         List<ReportManager.Report> reports = manager.loadReports(null);
 
         if (sheet == null) {

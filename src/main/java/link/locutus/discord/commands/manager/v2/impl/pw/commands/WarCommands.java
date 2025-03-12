@@ -319,7 +319,7 @@ public class WarCommands {
             "Sorted by best nation loot\n" +
             "Defaults to 7d inactive", viewable = true)
     @RolePermission(value = {Roles.MEMBER, Roles.APPLICANT}, any=true)
-    public String raid(@Me DBNation me, @Me GuildDB db, @Me Guild guild, @Me User user, @Me IMessageIO channel,
+    public String raid(@Me DBNation me, @Me @Default GuildDB db, @Me @Default User user, @Me IMessageIO channel,
                        @Default Set<DBNation> targets,
                        @Switch("r") @Default("5") Integer numResults,
                        @Switch("a") @Timediff Long activeTimeCutoff,
@@ -331,8 +331,7 @@ public class WarCommands {
                        @Switch("d") boolean ignoreDNR,
                        @Switch("l") boolean ignoreBankLoot,
                        @Switch("c") boolean ignoreCityRevenue) throws ExecutionException, InterruptedException {
-
-        DBNation nation = DiscordUtil.getNation(user);
+        DBNation nation = me;
         if (nation == null) return null;
 
         boolean dms = false;
@@ -1120,7 +1119,7 @@ public class WarCommands {
     @Command(desc="Find a war target that you can hit\n" +
             "Defaults to `enemies` coalition", viewable = true)
     @RolePermission(Roles.MEMBER)
-    public void war(@Me User author, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Default("~enemies") Set<DBNation> targets, @Default("8") int numResults,
+    public void war(@Me @Default User author, @Me IMessageIO channel, @Me DBNation me, @Default("~enemies") Set<DBNation> targets, @Default("8") int numResults,
                       @Arg("Score to search for targets within war range of\n" +
                               "Defaults to your score")
                       @Switch("r") Double attackerScore,
@@ -1143,7 +1142,7 @@ public class WarCommands {
                       @Arg("Include nations much stronger than you in the search\n" +
                               "Defaults to false")
                       @Switch("s") boolean includeStrong) throws IOException, ExecutionException, InterruptedException {
-        if (resultsInDm) {
+        if (resultsInDm && author != null) {
             channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel()), null);
         }
         if (attackerScore == null) attackerScore = me.getScore();
@@ -1406,7 +1405,7 @@ public class WarCommands {
             "To see a list of coalitions, use `{prefix}coalition list`.\n\t" +
             "Damage estimate is based on attacks you can perform (i.e. if you are stronger or have the project for missiles/nukes), and chance of success", viewable = true)
     @RolePermission(Roles.MEMBER)
-    public String damage(@Me IMessageIO channel, @Me DBNation me, @Me User author, Set<DBNation> nations,
+    public String damage(@Me IMessageIO channel, @Me DBNation me, @Me @Default User author, Set<DBNation> nations,
                          @Arg("Include targets which are applicants")
                          @Switch("a") boolean includeApps,
                          @Arg("Include targets which are inactive")
@@ -1443,7 +1442,6 @@ public class WarCommands {
 
         nations.removeIf(f -> f.getScore() <= minScore || f.getScore() >= maxScore);
 
-        me = DiscordUtil.getNation(author);
         if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
         double str = me.getGroundStrength(false, true);
         str = Math.max(str, me.getCities() * 15000);
@@ -1485,7 +1483,7 @@ public class WarCommands {
         else if (targetCityMax) valueFunction = maxInfraByNation;
         else valueFunction = damageEstByNation;
 
-        if (resultsInDm) {
+        if (resultsInDm && author != null) {
             channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel()), null);
         }
 
@@ -1682,7 +1680,7 @@ public class WarCommands {
             "Use e.g. `80` as the `requiredSuccess` to only list operations above 80% success\n\n" +
             "e.g. `{prefix}spy find target targets:enemies operations:spies`", viewable = true)
     @RolePermission(Roles.MEMBER)
-    public String Spyops(@Me User author, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me,
+    public String Spyops(@Me @Default User author, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me,
                          @Arg("The allowed targets")
                          Set<DBNation> targets,
                          @Arg("The allowed operations")
@@ -1703,7 +1701,7 @@ public class WarCommands {
         String title = "Recommended ops";
         String body = runSpyOps(finalNation, db, targets, operations, requiredSuccess, prioritizeKills);
 
-        if (directMesssage) {
+        if (directMesssage && author != null) {
             channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel()), null);
         }
 
@@ -1867,7 +1865,7 @@ public class WarCommands {
 
     @Command(desc = "Generate a sheet of raid targets", viewable = true)
     @RolePermission(Roles.MILCOM)
-    public String raidSheet(@Me IMessageIO io, @Me GuildDB db, @Me User author,
+    public String raidSheet(@Me IMessageIO io, @Me GuildDB db, @Me @Default User author,
                             Set<DBNation> attackers,
                             Set<DBNation> targets,
                             @Switch("i") boolean includeInactiveAttackers,
@@ -1940,8 +1938,8 @@ public class WarCommands {
         // sort targets by loot
         List<DBNation> targetsSorted = new ArrayList<>(targets);
         targetsSorted.sort((o1, o2) -> {
-            double[] loot1 = o1.getLootRevenueTotal();
-            double[] loot2 = o2.getLootRevenueTotal();
+            Map<ResourceType, Double> loot1 = o1.getLootRevenueTotal();
+            Map<ResourceType, Double> loot2 = o2.getLootRevenueTotal();
             double lootValue1 = ResourceType.convertedTotal(loot1);
             double lootValue2 = ResourceType.convertedTotal(loot2);
             return Double.compare(lootValue2, lootValue1);
@@ -2018,7 +2016,7 @@ public class WarCommands {
 
                 if (defender.getGroundStrength(true, false) > attacker.getGroundStrength(true, false) && defender.getAircraft() > attacker.getAircraft() * 0.33 && defender.getShips() > attacker.getShips() * 0.33) return 0d;
 
-                double[] loot = loots.computeIfAbsent(defender, DBNation::getLootRevenueTotal);
+                double[] loot = loots.computeIfAbsent(defender, f -> ResourceType.resourcesToArray(f.getLootRevenueTotal()));
                 double lootValue = ResourceType.convertedTotal(loot);
 
                 double groundFactor = easyGroundLoot ? 1.1 : canGroundLoot ? 0.8 : 0;
@@ -2069,7 +2067,7 @@ public class WarCommands {
             }
         }
 
-        sheet.send(io, header.isEmpty() ? null : header.toString(), author.getAsMention()).send();
+        sheet.send(io, header.isEmpty() ? null : header.toString(), author == null ? null : author.getAsMention()).send();
 
         return null;
 
@@ -2182,7 +2180,7 @@ public class WarCommands {
 
     @Command(desc = "Convert dtc's spy sheet format to the bot's format", viewable = true)
     @RolePermission(Roles.MILCOM)
-    public String convertDtCSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output,
+    public String convertDtCSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me @Default User author, SpreadSheet input, @Switch("s") SpreadSheet output,
                                         @Arg("If results (left column) are grouped by the attacker instead of the defender")
                                         @Switch("a") boolean groupByAttacker, @Switch("f") boolean forceUpdate) throws GeneralSecurityException, IOException {
         List<String> warnings = new ArrayList<>();
@@ -2198,13 +2196,13 @@ public class WarCommands {
         output.updateWrite();
 
         String warningStr = warnings.isEmpty() ? "" : String.join("\n", warnings) + "\n";
-        output.send(io, null, warningStr + author.getAsMention()).send();
+        output.send(io, null, warningStr + (author != null ? author.getAsMention() : null)).send();
         return null;
     }
 
     @Command(desc = "Convert hidude's spy sheet format to the bot's format", viewable = true)
     @RolePermission(Roles.MILCOM)
-    public String convertHidudeSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output,
+    public String convertHidudeSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me @Default User author, SpreadSheet input, @Switch("s") SpreadSheet output,
                                         @Arg("If results (left column) are grouped by the attacker instead of the defender")
                                         @Switch("a") boolean groupByAttacker, @Switch("f") boolean forceUpdate) throws GeneralSecurityException, IOException {
         Map<DBNation, List<Spyop>> spyOpsFiltered = SpyBlitzGenerator.getTargetsHidude(input, groupByAttacker, forceUpdate);
@@ -2218,13 +2216,13 @@ public class WarCommands {
         output.updateClearCurrentTab();
         output.updateWrite();
 
-        output.send(io, null, author.getAsMention()).send();
+        output.send(io, null, author == null ? null : author.getAsMention()).send();
         return null;
     }
 
     @Command(desc = "Convert TKR's spy sheet format to the bot's format", viewable = true)
     @RolePermission(Roles.MILCOM)
-    public String convertTKRSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me User author, SpreadSheet input, @Switch("s") SpreadSheet output,
+    public String convertTKRSpySheet(@Me IMessageIO io, @Me GuildDB db, @Me @Default User author, SpreadSheet input, @Switch("s") SpreadSheet output,
                                      @Arg("If results (left column) are grouped by the attacker instead of the defender")
                                      @Switch("a") boolean groupByAttacker, @Switch("f") boolean force) throws GeneralSecurityException, IOException {
         List<String> warnings = new ArrayList<>();
@@ -2240,13 +2238,13 @@ public class WarCommands {
         output.updateWrite();
 
         String warningStr = warnings.isEmpty() ? "" : String.join("\n", warnings) + "\n";
-        output.send(io, null, warningStr + author.getAsMention()).send();
+        output.send(io, null, warningStr + (author == null ? null : author.getAsMention())).send();
         return null;
     }
 
     @Command(desc = "Generate a subset of a spy sheet for only certain attackers or defenders", viewable = true)
     @RolePermission(Roles.MILCOM)
-    public String listSpyTargets(@Me IMessageIO io, @Me User author, @Me GuildDB db,
+    public String listSpyTargets(@Me IMessageIO io, @Me @Default User author, @Me GuildDB db,
                                  @Arg("The current spy sheet")
                                  SpreadSheet spySheet,
                                  @Arg("Which attackers to include")
@@ -2291,7 +2289,7 @@ public class WarCommands {
         output.updateClearCurrentTab();
         output.updateWrite();
 
-        output.send(io, null, author.getAsMention()).send();
+        output.send(io, null, author == null ? null : author.getAsMention()).send();
         return null;
 
 
@@ -2299,7 +2297,7 @@ public class WarCommands {
 
     @Command(desc = "Generate a spy blitz sheet with the defender on the left and attackers on the right", viewable = true)
     @RolePermission(Roles.MILCOM)
-    public String SpySheet(@Me IMessageIO io, @Me User author, @Me GuildDB db,
+    public String SpySheet(@Me IMessageIO io, @Me @Default User author, @Me GuildDB db,
                            Set<DBNation> attackers,
                            Set<DBNation> defenders,
                            @Arg("Allowed spy operations")
@@ -2372,7 +2370,7 @@ public class WarCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.send(io, null, author.getAsMention()).send();
+        sheet.send(io, null, author == null ? null : author.getAsMention()).send();
         return null;
     }
 
@@ -3489,7 +3487,7 @@ public class WarCommands {
     @RolePermission(Roles.MILCOM)
     @Command(desc = "Send spy or war blitz sheets to individual nations\n" +
             "Blitz Sheet Columns: `nation`, `attacker 1`, `attacker 2`, `attacker 3`")
-    public String mailTargets(@Me GuildDB db, @Me Guild guild, @Me JSONObject command, @Me User author, @Me IMessageIO channel, @Me DBNation me,
+    public String mailTargets(@Me GuildDB db, @Me Guild guild, @Me JSONObject command, @Me @Default User author, @Me IMessageIO channel, @Me DBNation me,
                               @Arg("Url of the war blitz sheet to send")
                               @Default SpreadSheet blitzSheet,
                               @Arg("Url of the spy sheet to send")
@@ -3725,7 +3723,7 @@ public class WarCommands {
             }
 
             channel.create().confirmation(embedTitle, body.toString(), command)
-                            .append(author.getAsMention())
+                            .append(author == null ? "" : author.getAsMention())
                                     .send();
             return null;
         }
@@ -3858,7 +3856,7 @@ public class WarCommands {
             "- Example defNations: `~enemies,#position>1,#active_m<4880,#dayssincelastoffensive>200,#dayssince3consecutivelogins>120,#aircraftpct<0.8,#tankpct<=0.6`" +
             "Note: To avoid updeclares enable `onlyEasyTargets`", viewable = true)
     @RolePermission(Roles.MILCOM)
-    public String blitzSheet(@Me IMessageIO io, @Me User author, @Me GuildDB db,
+    public String blitzSheet(@Me IMessageIO io, @Me @Default User author, @Me GuildDB db,
                              @Arg("Nations that should be used for the attackers\n" +
                                      "It is recommended to use a google sheet of the attackers available")
                              NationList attNations,
@@ -3921,7 +3919,7 @@ public class WarCommands {
 
         SheetUtil.writeTargets(sheet, targets, turn);
 
-        sheet.send(io, null, author.getAsMention()).send();
+        sheet.send(io, null, author == null ? null : author.getAsMention()).send();
         return null;
     }
 

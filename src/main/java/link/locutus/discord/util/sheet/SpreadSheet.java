@@ -260,6 +260,7 @@ public class SpreadSheet {
     }
 
     public static SpreadSheet create(GuildDB db, SheetKey key) throws GeneralSecurityException, IOException {
+        if (db == null) throw new IllegalArgumentException("This command must be run in a guild, or a sheet must be specified for: " + key.name());
         String sheetId = db.getInfo(key, true);
 
         Sheets api = null;

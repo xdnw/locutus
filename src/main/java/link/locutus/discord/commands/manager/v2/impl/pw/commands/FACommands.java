@@ -261,7 +261,7 @@ public class FACommands {
     // Write a long description
     @Command(desc = "List the treaties of the provided alliances\n" +
             "Note: If you have the FORIEGN_AFFAIRS role you can view the pending treaties of your own alliance from its guild", viewable = true)
-    public String treaties(@Me IMessageIO channel, @Me User user, Set<DBAlliance> alliances, @Default Predicate<Treaty> treatyFilter) {
+    public String treaties(@Me IMessageIO channel, @Me @Default User user, Set<DBAlliance> alliances, @Default Predicate<Treaty> treatyFilter) {
         StringBuilder response = new StringBuilder();
         Set<Treaty> allTreaties = new LinkedHashSet<>();
 
@@ -270,7 +270,7 @@ public class FACommands {
             boolean update = false;
             GuildDB aaDb = alliance.getGuildDB();
             if (aaDb != null) {
-                update = (Roles.FOREIGN_AFFAIRS.getAllowedAccounts(user, aaDb).contains(alliance.getIdLong()));
+                update = user != null && (Roles.FOREIGN_AFFAIRS.getAllowedAccounts(user, aaDb).contains(alliance.getIdLong()));
             }
             allTreaties.addAll(alliance.getTreaties(update).values());
         } else {

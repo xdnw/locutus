@@ -309,7 +309,7 @@ public class StatCommands {
     }
 
     @Command(desc = "War costs of a single war\n(use warsCost for multiple wars)", viewable = true)
-    public static String warCost(@Me User author, @Me Guild guild, @Me IMessageIO channel, DBWar war,
+    public static String warCost(@Me @Default User author, @Me Guild guild, @Me IMessageIO channel, DBWar war,
                           @Switch("u") boolean ignoreUnits,
                           @Switch("i") boolean ignoreInfra,
                           @Switch("c") boolean ignoreConsumption,
@@ -575,7 +575,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Rank nations by an attribute", viewable = true)
-    public void nationRanking(@Me IMessageIO channel, @Me GuildDB db,
+    public void nationRanking(@Me IMessageIO channel, @Me @Default GuildDB db,
                               @Me JSONObject command,
                               NationList nations,
                               NationAttributeDouble attribute,
@@ -583,7 +583,7 @@ public class StatCommands {
                               @Switch("r") boolean reverseOrder,
                               @Switch("s") @Timestamp Long snapshotDate,
                               @Arg("Total value instead of average per nation") @Switch("t") boolean total) {
-        Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db.getGuild());
+        Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db == null ? null : db.getGuild());
         Map<DBNation, Double> attributeByNation = new HashMap<>();
         for (DBNation nation : nationsSet) {
             Double value = attribute.apply(nation);
@@ -683,7 +683,7 @@ public class StatCommands {
 
     @Command(desc = "Graph the attributes of the nations of two coalitions by city count\n" +
             "e.g. How many nations, soldiers etc. are at each city", viewable = true)
-    public String attributeTierGraph(@Me IMessageIO channel, @Me GuildDB db,
+    public String attributeTierGraph(@Me IMessageIO channel, @Me @Default GuildDB db,
                                      NationAttributeDouble metric,
                                      NationList coalition1,
                                      NationList coalition2,
@@ -695,8 +695,8 @@ public class StatCommands {
                                      @Switch("v") boolean attachCsv,
                                      @Switch("s") @Timestamp Long snapshotDate,
                                      @Switch("g") NationAttributeDouble groupBy) throws IOException {
-        Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild());
-        Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild());
+        Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db == null ? null : db.getGuild());
+        Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db == null ? null : db.getGuild());
         int num1 = coalition1Nations.size();
         int num2 = coalition2Nations.size();
         coalition1Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
@@ -906,7 +906,7 @@ public class StatCommands {
     @Command(desc = "Generate a graph of nation military strength by score between two coalitions\n" +
             "1 tank = 1/32 aircraft for strength calculations\n" +
             "Effective score range is limited to 1.75x with a linear reduction of strength up to 40% to account for up-declares", aliases = {"strengthTierGraph"}, viewable = true)
-    public String strengthTierGraph(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
+    public String strengthTierGraph(@Me @Default GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
                                     NationList coalition1,
                                     NationList coalition2,
                                     @Switch("i") boolean includeInactives,
@@ -918,8 +918,8 @@ public class StatCommands {
                                     @Switch("s") @Timestamp Long snapshotDate,
                                     @Switch("j") boolean attachJson,
                                     @Switch("v") boolean attachCsv, @Switch("ss") boolean attach_sheet) throws IOException {
-        Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild());
-        Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild());
+        Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db == null ? null : db.getGuild());
+        Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db == null ? null : db.getGuild());
         IMessageBuilder msg = new StrengthTierGraph(
                 coalition1.getFilter(),
                 coalition2.getFilter(),
@@ -941,7 +941,7 @@ public class StatCommands {
 
     @Command(desc = "Generate a graph of spy counts by city count between two coalitions\n" +
             "Nations which are applicants, in vacation mode or inactive (2 days) are excluded", viewable = true)
-    public String spyTierGraph(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
+    public String spyTierGraph(@Me @Default GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
                                NationList coalition1,
                                NationList coalition2,
                                @Switch("i") boolean includeInactives,
@@ -972,7 +972,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Generate a graph of nation counts by score between two coalitions", aliases = {"scoreTierGraph", "scoreTierSheet"}, viewable = true)
-    public String scoreTierGraph(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
+    public String scoreTierGraph(@Me @Default GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
                                  NationList coalition1,
                                  NationList coalition2,
                                  @Switch("i") boolean includeInactives,
@@ -980,8 +980,8 @@ public class StatCommands {
                                  @Switch("s") @Timestamp Long snapshotDate,
                                  @Switch("j") boolean attachJson,
                                  @Switch("c") boolean attachCsv, @Switch("ss") boolean attach_sheet) throws IOException {
-        Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild());
-        Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild());
+        Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db == null ? null : db.getGuild());
+        Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db == null ? null : db.getGuild());
 
         IMessageBuilder msg = new ScoreTierGraph(
                 coalition1.getFilter(),
@@ -1137,14 +1137,14 @@ public class StatCommands {
     }
 
     @Command(desc = "Generate ranking of war status by Alliance", viewable = true)
-    public void warStatusRankingByAA(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command, Set<DBNation> attackers, Set<DBNation> defenders,
+    public void warStatusRankingByAA(@Me IMessageIO channel, @Me JSONObject command, Set<DBNation> attackers, Set<DBNation> defenders,
                                       @Arg("Date to start from")
                                      @Timestamp long time) {
         warStatusRankingBy(true, channel, command, attackers, defenders, time);
     }
 
     @Command(desc = "Generate ranking of war status by Nation", viewable = true)
-    public void warStatusRankingByNation(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command, Set<DBNation> attackers, Set<DBNation> defenders,
+    public void warStatusRankingByNation(@Me IMessageIO channel, @Me JSONObject command, Set<DBNation> attackers, Set<DBNation> defenders,
                                          @Arg("Date to start from")
                                          @Timestamp long time) {
         warStatusRankingBy(false, channel, command, attackers, defenders, time);
@@ -1183,14 +1183,14 @@ public class StatCommands {
     }
 
     @Command(desc = "Generate a graph of nation military levels by city count between two coalitions", viewable = true)
-    public String mmrTierGraph(@Me GuildDB db, @Me IMessageIO channel,
+    public String mmrTierGraph(@Me @Default GuildDB db, @Me IMessageIO channel,
                                NationList coalition1,
                                NationList coalition2, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants, @Switch("s") SpreadSheet sheet,
                                 @Arg("Graph the average military buildings instead of units")
                                @Switch("b") boolean buildings,
                                @Switch("t") @Timestamp Long snapshotDate) throws IOException {
-        Set<DBNation> nations1 = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild());
-        Set<DBNation> nations2 = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild());
+        Set<DBNation> nations1 = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db == null ? null : db.getGuild());
+        Set<DBNation> nations2 = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db == null ? null : db.getGuild());
 
         nations1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
         nations2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
@@ -1342,7 +1342,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Generate a bar char comparing the nation at each city count (tiering) between two coalitions", viewable = true)
-    public String cityTierGraph(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
+    public String cityTierGraph(@Me @Default GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
                                 NationList coalition1, NationList coalition2,
                                 @Switch("i") boolean includeInactives,
                                 @Switch("b") boolean barGraph,
@@ -1350,8 +1350,8 @@ public class StatCommands {
                                 @Switch("j") boolean attachJson,
                                 @Switch("c") boolean attachCsv, @Switch("ss") boolean attach_sheet,
                                 @Switch("s") @Timestamp Long snapshotDate) throws IOException {
-        Set<DBNation> nations1 = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db.getGuild());
-        Set<DBNation> nations2 = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db.getGuild());
+        Set<DBNation> nations1 = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db == null ? null : db.getGuild());
+        Set<DBNation> nations2 = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db == null ? null : db.getGuild());
         nations1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
         nations2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
 
@@ -1371,7 +1371,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Compare the metric over time between multiple alliances", viewable = true)
-    public void metric_compare_by_turn(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
+    public void metric_compare_by_turn(@Me @Default GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
                                                AllianceMetric metric, Set<DBAlliance> alliances,
                                                @Arg("Date to start from")
                                                @Timestamp long start,
@@ -1392,7 +1392,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Graph militarization (soldier, tank, aircraft, ship) over time of an alliance", viewable = true)
-    public String militarizationTime(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
+    public String militarizationTime(@Me @Default GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
                                      DBAlliance alliance, @Default("7d") @Timestamp long start_time,
                                      @Switch("e") @Timestamp Long end_time,
                                      @Switch("j") boolean attach_json,
@@ -1413,7 +1413,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Graph an alliance metric over time for two coalitions", viewable = true)
-    public void allianceMetricAB(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
+    public void allianceMetricAB(@Me @Default GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
                                     AllianceMetric metric, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2,
                                     @Arg("Date to start from")
                                     @Timestamp long start,
@@ -1435,7 +1435,10 @@ public class StatCommands {
             "Prefix a column with `avg:` to force an average\n" +
             "Prefix a column with `total:` to force a total", viewable = true)
     @NoFormat
-    public String allianceNationsSheet(NationPlaceholders placeholders, AlliancePlaceholders aaPlaceholders, ValueStore store, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me Guild guild, @Me GuildDB db,
+    public String allianceNationsSheet(NationPlaceholders placeholders, AlliancePlaceholders aaPlaceholders, ValueStore store, @Me IMessageIO channel,
+                                       @Me @Default DBNation me,
+                                       @Me @Default User author,
+                                       @Me @Default Guild guild, @Me @Default GuildDB db,
                                        Set<DBNation> nations,
                                        @Arg("The columns to have. See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>") @TextArea List<String> columns,
                                        @Switch("s") SpreadSheet sheet,
@@ -1509,7 +1512,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Graph global and per continent radiation by turn over a specified time period", viewable = true)
-    public String radiationByTurn(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
+    public String radiationByTurn(@Me @Default GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
                                   Set<Continent> continents,
                                   @Arg("Date to start from")
                                     @Timestamp long start, @Default @Timestamp Long end,
@@ -1525,7 +1528,8 @@ public class StatCommands {
     }
 
     @Command(desc = "Graph the metric over time for a coalition", viewable = true)
-    public void allianceMetricByTurn(@Me GuildDB db, @Me IMessageIO channel, @Me User user, @Me JSONObject command,
+    public void allianceMetricByTurn(@Me @Default GuildDB db, @Me IMessageIO channel,
+                                     @Me @Default User user, @Me JSONObject command,
                                       AllianceMetric metric, Set<DBAlliance> coalition,
                                         @Arg("Date to start from")
                                         @Timestamp long start,
@@ -1540,7 +1544,7 @@ public class StatCommands {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.allianceMetricByTurn.cmd.getName(), command));
         }
-        msg.append("Done! " + user.getAsMention()).send();
+        msg.append("Done!" + (user != null ? " " + user.getAsMention() : "")).send();
     }
 
     @Command(
@@ -1548,7 +1552,7 @@ public class StatCommands {
                     "Useful to see costs incurred by fighting for each nation, to plan for future wars, or to help with reimbursement",
             viewable = true)
     @RolePermission(Roles.MILCOM)
-    public static String WarCostByResourceSheet(@Me IMessageIO channel, @Me JSONObject command, @Me GuildDB db,
+    public static String WarCostByResourceSheet(@Me IMessageIO channel, @Me JSONObject command, @Me @Default GuildDB db,
                                                 Set<NationOrAlliance> attackers,
                                                 Set<NationOrAlliance> defenders,
                                                 @Timestamp long time,
@@ -1838,7 +1842,7 @@ public class StatCommands {
             "- Offenses: Attacking a nation which fights back\n" +
             "- Wars: Combination of defensive and offensive wars (not raids)", viewable = true)
     @RolePermission(Roles.MILCOM)
-    public String WarCostSheet(@Me IMessageIO channel, @Me GuildDB db, Set<NationOrAlliance> attackers, Set<NationOrAlliance> defenders, @Timestamp long time, @Default @Timestamp Long endTime,
+    public String WarCostSheet(@Me IMessageIO channel, @Me @Default GuildDB db, Set<NationOrAlliance> attackers, Set<NationOrAlliance> defenders, @Timestamp long time, @Default @Timestamp Long endTime,
                                @Switch("c") boolean excludeConsumption,
                                @Switch("i") boolean excludeInfra,
                                @Switch("l") boolean excludeLoot,
@@ -2626,12 +2630,14 @@ public class StatCommands {
     }
 
     @Command(desc = "Get the largest alliance bank loot per score", viewable = true)
-    public String allianceByLoot(@Me User author, @Me IMessageIO channel, @Me JSONObject command,
+    public String allianceByLoot(@Me @Default User author, @Me IMessageIO channel, @Me JSONObject command,
         @Timestamp long time,
         @Arg("Display the estimated bank size instead of per score") @Switch("t") boolean show_total,
         @Switch("f") boolean attach_file,
          @Arg("Ignore alliances without nations above a certain score") @Switch("min") Double min_score,
-         @Arg("Ignore alliances without nations below a certain score") @Switch("max") Double max_score
+         @Arg("Ignore alliances without nations below a certain score") @Switch("max") Double max_score,
+                                 @Switch("h") Set<DBAlliance> highlight,
+                                 @Switch("n") Integer num_results
             ) {
         String title = "AA loot/score";
         if (show_total) title = "AA bank total";
@@ -2655,8 +2661,8 @@ public class StatCommands {
         }
 
         SummedMapRankBuilder<Integer, ? extends Number> sorted = new SummedMapRankBuilder<>(lootPerScore).sort();
-        sorted.nameKeys(i -> DBAlliance.getOrCreate(i).toShrink()).build(author, channel, command, title, attach_file);
-
+        sorted.highlight(highlight.stream().map(DBAlliance::getId).collect(Collectors.toSet()));
+        sorted.nameKeys(i -> DBAlliance.getOrCreate(i).toShrink()).limit(num_results).build(author, channel, command, title, attach_file);
 
         return null;
     }

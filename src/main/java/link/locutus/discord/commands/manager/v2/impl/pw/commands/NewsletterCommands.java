@@ -132,7 +132,7 @@ public class NewsletterCommands {
 
     @Command(desc = "View information about a newsletter", viewable = true)
     @IsGuild(value = {672217848311054346L, 672217848311054346L})
-    public String info(@Me User user, NewsletterManager manager, @Me IMessageIO io, @Me GuildDB db, @Me Guild guild, Newsletter newsletter, @Switch("u") boolean listNations) {
+    public String info(@Me @Default User user, NewsletterManager manager, @Me IMessageIO io, @Me Guild guild, Newsletter newsletter, @Switch("u") boolean listNations) {
         if (listNations && !Roles.INTERNAL_AFFAIRS.has(user, guild)) {
             throw new IllegalArgumentException("You do not have permission to list nations");
         }
@@ -316,9 +316,9 @@ public class NewsletterCommands {
 
     @Command(desc = "List all newsletters", viewable = true)
     @IsGuild(value = {672217848311054346L, 672217848311054346L})
-    public String list(NewsletterManager manager, @Me User user, @Me DBNation nation) {
+    public String list(NewsletterManager manager, @Me @Default DBNation nation) {
         Map<Integer, Newsletter> newsletters = manager.getNewsletters();
-        Set<Newsletter> subs = manager.getSubscriptions(nation.getId());
+        Set<Newsletter> subs = nation == null ? Collections.emptySet() : manager.getSubscriptions(nation.getId());
 
         StringBuilder body = new StringBuilder("Newsletters:\n");
         for (Map.Entry<Integer, Newsletter> entry : newsletters.entrySet()) {

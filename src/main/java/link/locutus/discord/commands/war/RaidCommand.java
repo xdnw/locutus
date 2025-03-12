@@ -239,7 +239,7 @@ public class RaidCommand extends Command {
                              boolean dms, int vm, int slots, boolean beige,
                              boolean useDnr, Set<Integer> ignoreAlliances, boolean includeAlliances, boolean active,
                              long minutesInactive, double score, double minLoot, int beigeTurns, boolean ignoreBank, boolean ignoreCity, int numResults) throws ExecutionException, InterruptedException {
-        if (dms) {
+        if (dms && user != null) {
             channel = new DiscordChannelIO(RateLimitUtil.complete(user.openPrivateChannel()));
         }
         CompletableFuture<IMessageBuilder> msgFuture = (channel.sendMessage("Please wait..."));
@@ -275,7 +275,7 @@ public class RaidCommand extends Command {
             }
         });
 
-        if (db.isAllyOfRoot()) {
+        if (true) {
             StringBuilder warnings = new StringBuilder();
             if (me.getAvg_infra() > 1000 && me.getCities() > 7) {
                 warnings.append("- You have high infra (>1000) which will likely be lost to counters.\n");

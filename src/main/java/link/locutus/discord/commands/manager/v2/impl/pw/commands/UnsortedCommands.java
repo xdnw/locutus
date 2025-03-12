@@ -1947,7 +1947,7 @@ public class UnsortedCommands {
             "Optional: Nation Setting (Continent, Projects, Tax Rate)",
             "Display Options"
     }, viewable = true)
-    public String optimalBuild(@Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
+    public String optimalBuild(@Me IMessageIO io, @Me Guild guild, @Me @Default User author, @Me DBNation me,
                                @Arg("A city url or build json to optimize")
                                CityBuild build,
 
@@ -2439,7 +2439,7 @@ public class UnsortedCommands {
     }
 
     @Command(desc = "List potential offshore alliances by the value of their bank transfers to nations over a period of time", viewable = true)
-    public String prolificOffshores(@Me IMessageIO io, @Me User author, @Me JSONObject command,
+    public String prolificOffshores(@Me IMessageIO io, @Me @Default User author, @Me JSONObject command,
             @Range(min=1, max=365) int days,
                                     @Switch("f") boolean upload_file
                                     ) {

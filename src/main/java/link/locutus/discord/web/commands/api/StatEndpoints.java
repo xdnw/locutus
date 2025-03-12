@@ -94,6 +94,7 @@ public class StatEndpoints {
                 formatters.add(result);
                 if (rsType instanceof Class clazz) {
                     renderers.add(switch (clazz.getSimpleName()) {
+                        case "Map" -> "numeric_map";
                         case "WebGraph" -> "graph";
                         case "double", "Double", "int", "Integer", "float", "Float" -> "comma";
                         case "NationColor" -> "color";

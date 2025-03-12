@@ -580,7 +580,7 @@ public class OptimalBuild extends Command {
         if (role != null) {
             result.append("\nPing ").append(role.getAsMention()).append(" to transfer you the funds");
         }
-        result.append("\n").append(author.getAsMention());
+        result.append("\n").append(author != null ? author.getAsMention() : "");
 
         me.setMeta(NationMeta.INTERVIEW_OPTIMALBUILD, (byte) 1);
 
