@@ -13,7 +13,6 @@ import java.util.Collections;
 import java.util.Map;
 
 public abstract class ProjectileCursor extends DamageCursor {
-
     @Override
     public double[] addAttConsumption(double[] buffer) {
         return buffer;

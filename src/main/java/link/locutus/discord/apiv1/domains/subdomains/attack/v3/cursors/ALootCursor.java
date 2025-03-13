@@ -39,12 +39,12 @@ public class ALootCursor extends FailedCursor {
 
     @Override
     public double getAttLootValue() {
-        return -ResourceType.convertedTotal(looted);
+        return hasLoot ? -ResourceType.convertedTotal(looted) : 0;
     }
 
     @Override
     public double getDefLootValue() {
-        return ResourceType.convertedTotal(looted);
+        return hasLoot ? ResourceType.convertedTotal(looted) : 0;
     }
 
     public double[] addDefLosses(double[] buffer, DBWar war) {
@@ -55,10 +55,10 @@ public class ALootCursor extends FailedCursor {
         return buffer;
     }
     public double getAttLossValue(DBWar war) {
-        return -ResourceType.convertedTotal(looted);
+        return hasLoot ? -ResourceType.convertedTotal(looted) : 0;
     }
     public double getDefLossValue(DBWar war) {
-        return ResourceType.convertedTotal(looted);
+        return hasLoot ? ResourceType.convertedTotal(looted) : 0;
     }
 
     @Override

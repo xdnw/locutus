@@ -102,8 +102,7 @@ public abstract class UnitCursor extends DamageCursor {
     @Override
     public double getDefLossValue(DBWar war) {
         double value = super.getDefLossValue(war);
-        value += ResourceType.convertedTotal(ResourceType.MUNITIONS, def_mun_used_cents * 0.01);
-        value += ResourceType.convertedTotal(ResourceType.GASOLINE, def_gas_used_cents * 0.01);
+        value += getDefConsumptionValue();
         return value;
     }
 
@@ -128,8 +127,7 @@ public abstract class UnitCursor extends DamageCursor {
     @Override
     public double getAttLossValue(DBWar war) {
         double value = super.getAttLossValue(war);
-        value += ResourceType.convertedTotal(ResourceType.MUNITIONS, att_mun_used_cents * 0.01);
-        value += ResourceType.convertedTotal(ResourceType.GASOLINE, att_gas_used_cents * 0.01);
+        value += getAttConsumptionValue();
         return value;
     }
 
