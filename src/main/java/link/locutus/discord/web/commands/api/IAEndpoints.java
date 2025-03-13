@@ -342,7 +342,7 @@ public class IAEndpoints extends PageHelper {
         else if (nation.getId() != me.getId() && user == null || !Roles.ECON_STAFF.has(user, db.getGuild())) {
             throw new IllegalArgumentException("You can only view your own bank records.");
         }
-        List<Transaction2> transactions = BankCommands.getRecords(db, null, true, true, 0, nation, false);
+        List<Transaction2> transactions = BankCommands.getRecords(db, null, true, true, true, 0, nation, false);
         List<List<Object>> cells = SpreadSheet.generateTransactionsListCells(transactions, true, false);
         return new WebTable(cells, null, null);
     }
