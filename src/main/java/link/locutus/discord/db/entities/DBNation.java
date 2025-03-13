@@ -6381,6 +6381,17 @@ public abstract class DBNation implements NationOrAlliance {
         return value;
     }
 
+    @Command(desc = "Value of the military units this nation has\n" +
+            "Cost reduction policies are not included")
+    public double unitValue() {
+        double total = 0;
+        for (MilitaryUnit unit : MilitaryUnit.values) {
+            int amt = getUnits(unit);
+            if (amt > 0) total += unit.getBaseMonetaryValue(amt);
+        }
+        return total;
+    }
+
     @Command(desc = "Value of the land this nation has\n" +
             "Cost reduction policies are not included")
     public double landValue() {
@@ -6604,5 +6615,19 @@ public abstract class DBNation implements NationOrAlliance {
     @Command(desc = "Market value of all the research this nation has")
     public double  getResearchValue() {
         return ResourceType.convertedTotal(getResearchCost());
+    }
+    @Command(desc = "The total value of all the assets this nation has\n" +
+            "Includes projects, infra, land, cities, buildings, units, and research\n" +
+            "Does not factor in cost reduction policies or projects")
+    public double costConverted() {
+        int total = 0;
+        total += projectValue();
+        total += infraValue();
+        total += landValue();
+        total += cityValue();
+        total += buildingValue();
+        total += unitValue();
+        total += getResearchValue();
+        return total;
     }
 }
