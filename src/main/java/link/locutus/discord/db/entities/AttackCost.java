@@ -63,6 +63,11 @@ public class AttackCost {
     private final Set<Integer> ids1;// = new IntOpenHashSet();
     private final Set<Integer> ids2;// = new IntOpenHashSet();
 
+    private final double[] total1 = ResourceType.getBuffer();
+    private final double[] total2 = ResourceType.getBuffer();
+    private double totalConverted1 = 0;
+    private double totalConverted2 = 0;
+
     private final Set<Integer> victories1;// = new IntOpenHashSet();
     private final Set<Integer> victories2;// = new IntOpenHashSet();
     private final Set<Integer> wars;// = new IntOpenHashSet();
@@ -366,6 +371,10 @@ TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCo
                 attack.addAttConsumption(consumption1);
                 attack.addDefConsumption(consumption2);
                 attack.addBuildingCosts(buildingsCost2);
+                attack.addAttLosses(total1, war);
+                attack.addDefLosses(total2, war);
+                totalConverted1 += attack.getAttLossValue(war);
+                totalConverted2 += attack.getDefLossValue(war);
                 infrn1 += attInfra;
                 infrn2 += defInfra;
                 if (buildings2 != null) attack.addBuildingsDestroyed(buildings2);
@@ -383,6 +392,10 @@ TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCo
                 attack.addAttConsumption(consumption2);
                 attack.addDefConsumption(consumption1);
                 attack.addBuildingCosts(buildingsCost1);
+                attack.addAttLosses(total2, war);
+                attack.addDefLosses(total1, war);
+                totalConverted2 += attack.getAttLossValue(war);
+                totalConverted1 += attack.getDefLossValue(war);
                 infrn1 += defInfra;
                 infrn2 += attInfra;
                 if (buildings1 != null) attack.addBuildingsDestroyed(buildings1);

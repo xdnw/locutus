@@ -39,7 +39,7 @@ public class GroundCursor extends UnitCursor {
     @Override
     public double getAttLossValue(DBWar war) {
         double value = super.getAttLossValue(war);
-        value += money_looted_cents * 0.01;
+        value -= money_looted_cents * 0.01;
         return value;
     }
 

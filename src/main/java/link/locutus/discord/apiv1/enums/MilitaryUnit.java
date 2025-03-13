@@ -434,6 +434,18 @@ public enum MilitaryUnit {
         return buffer;
     }
 
+    public double[] addCostSalvage(double[] buffer, int amt, int researchBits) {
+        int level = costReducer == null ? 0 : costReducer.getLevel(researchBits);
+        for (ResourceType type : costRss) {
+            double costPer = this.cost[type.ordinal()] - (level == 0 ? 0 : costReduction[type.ordinal()] * level);
+            if (type == ALUMINUM || type == STEEL) {
+                costPer *= 0.95;
+            }
+            buffer[type.ordinal()] += costPer * amt;
+        }
+        return buffer;
+    }
+
     public double[] addCost(double[] buffer, int amt, int researchBits) {
         int level = costReducer == null ? 0 : costReducer.getLevel(researchBits);
         if (amt < 0) {

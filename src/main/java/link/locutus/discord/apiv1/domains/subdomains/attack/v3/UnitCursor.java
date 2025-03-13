@@ -77,12 +77,17 @@ public abstract class UnitCursor extends DamageCursor {
 
     @Override
     public double[] addAttUnitCosts(double[] buffer, DBWar war) {
-        double[] value = super.addAttUnitCosts(buffer, war);
         if (has_salvage) {
-            value[ResourceType.ALUMINUM.ordinal()] *= 0.95;
-            value[ResourceType.STEEL.ordinal()] *= 0.95;
+            MilitaryUnit[] units = getUnits();
+            int research = war == null ? 0 : war.getAttResearchBits();
+            for (MilitaryUnit unit : units) {
+                int amt = getAttUnitLosses(unit);
+                if (amt > 0) unit.addCostSalvage(buffer, amt, research);
+            }
+            return buffer;
+        } else {
+            return super.addAttUnitCosts(buffer, war);
         }
-        return value;
     }
 
     @Override
@@ -121,6 +126,23 @@ public abstract class UnitCursor extends DamageCursor {
             return value;
         } else {
             return super.getAttUnitLossValue(war);
+        }
+    }
+
+    @Override
+    public double[] addAttUnitLossValueByUnit(double[] valueByUnit, DBWar war) {
+        if (has_salvage) {
+            MilitaryUnit[] units = getUnits();
+            int research = war == null ? 0 : war.getAttResearchBits();
+            for (MilitaryUnit unit : units) {
+                int amt = getAttUnitLosses(unit);
+                if (amt > 0) {
+                    valueByUnit[unit.ordinal()] += unit.getConvertedCostPlusSalvage(research) * amt;
+                }
+            }
+            return valueByUnit;
+        } else {
+            return super.addAttUnitLossValueByUnit(valueByUnit, war);
         }
     }
 
