@@ -1430,7 +1430,6 @@ public class StatCommands {
         msg.send();
     }
 
-    @RolePermission(value = {Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS, Roles.INTERNAL_AFFAIRS}, any = true)
     @Command(desc = "Create a google sheet of nations, grouped by alliance, with the specified columns\n" +
             "Prefix a column with `avg:` to force an average\n" +
             "Prefix a column with `total:` to force a total", viewable = true)
@@ -1551,7 +1550,6 @@ public class StatCommands {
             desc = "Transfer sheet of war cost (for each nation) broken down by resource type\n" +
                     "Useful to see costs incurred by fighting for each nation, to plan for future wars, or to help with reimbursement",
             viewable = true)
-    @RolePermission(Roles.MILCOM)
     public static String WarCostByResourceSheet(@Me IMessageIO channel, @Me JSONObject command, @Me @Default GuildDB db,
                                                 Set<NationOrAlliance> attackers,
                                                 Set<NationOrAlliance> defenders,
@@ -1710,7 +1708,6 @@ public class StatCommands {
                     "- losses (unit, infrastructure, consumption, total)\n" +
                     "- damage inflicted (unit, infrastructure, consumption, total)\n" +
                     "- net resources (money, gasoline, munitions, aluminum, steel)", viewable = true)
-    @RolePermission(Roles.MILCOM)
     public static String WarCostByAllianceSheet(@Me IMessageIO channel, @Me @Default GuildDB guildDb,
                                          Set<DBNation> nations,
                                          @Timestamp long time,
@@ -1839,7 +1836,6 @@ public class StatCommands {
             "- Defenses: Attacked by a nation and fighting back\n" +
             "- Offenses: Attacking a nation which fights back\n" +
             "- Wars: Combination of defensive and offensive wars (not raids)", viewable = true)
-    @RolePermission(Roles.MILCOM)
     public String WarCostSheet(@Me IMessageIO channel, @Me @Default GuildDB db, Set<NationOrAlliance> attackers, Set<NationOrAlliance> defenders, @Timestamp long time, @Default @Timestamp Long endTime,
                                @Switch("c") boolean excludeConsumption,
                                @Switch("i") boolean excludeInfra,
@@ -2498,7 +2494,6 @@ public class StatCommands {
 
     @Command(desc = "List the potential alliance merges over a period of time\n" +
             "Determined by finding alliances where a large percent of members leave to join another alliance", viewable = true)
-    @RolePermission(Roles.ADMIN)
     public void listMerges(
             @Me @Default GuildDB db,
             @Me IMessageIO io,

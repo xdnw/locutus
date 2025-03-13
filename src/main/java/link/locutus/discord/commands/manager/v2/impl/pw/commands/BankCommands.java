@@ -852,7 +852,6 @@ public class BankCommands {
 
     @Command(desc = "Generate csv of war cost by nation between alliances (for reimbursement)\n" +
             "Filters out wars where nations did not perform actions", viewable = true)
-    @RolePermission(Roles.ADMIN)
     public String warReimburseByNationCsv(@Arg("The alliances with nations you want to reimburse") Set<DBAlliance> allies,
                                           @Arg("The enemies during the conflict") Set<DBAlliance> enemies,
                                           @Arg("Starting time of the conflict") @Timestamp long cutoff, @Arg("If wars with no actions by the defender should NOT be reimbursed") boolean removeWarsWithNoDefenderActions) {
@@ -1529,25 +1528,25 @@ public class BankCommands {
         }
     }
 
-    @Command(desc = "Get a sheet of members and their revenue (compared to optimal city builds)", viewable = true)
-    @RolePermission(value = {Roles.ECON_STAFF, Roles.ECON})
-    @IsAlliance
-    public String revenueSheet(@Me IMessageIO io, @Me GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet, @Switch("i") boolean include_untaxable,
+    @Command(desc = "Get a sheet of nations and their revenue (compared to optimal city builds)", viewable = true)
+    public String revenueSheet(@Me IMessageIO io, @Me @Default GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet, @Switch("i") boolean include_untaxable,
                                @Switch("t") @Timestamp Long snapshotTime) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
-        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db.getGuild());
+        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db == null ? null : db.getGuild());
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.REVENUE_SHEET);
         }
 
-        Set<Integer> ids = db.getAllianceIds(false);
         int sizeOriginal = nationSet.size();
-        nationSet.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id || !ids.contains(f.getAlliance_id()));
-        int numRemovedNotAA = sizeOriginal - (sizeOriginal = nationSet.size());
+        int numRemovedNotAA = 0;
+        if (db != null) {
+            Set<Integer> ids = db.getAllianceIds(false);
+            nationSet.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id || (!ids.isEmpty() && !ids.contains(f.getAlliance_id())));
+            numRemovedNotAA = sizeOriginal - (sizeOriginal = nationSet.size());
+        }
         nationSet.removeIf(f -> f.getVm_turns() > 0);
         int numRemovedVM = sizeOriginal - (sizeOriginal = nationSet.size());
         if (!include_untaxable) nationSet.removeIf(f -> !f.isTaxable());
         int numRemovedUntaxable = sizeOriginal - (sizeOriginal = nationSet.size());
-
         List<String> footer = new ArrayList<>();
         if (numRemovedNotAA > 0) footer.add(numRemovedNotAA + " nations were removed for not being members of the guild's alliances");
         if (numRemovedVM > 0) footer.add(numRemovedVM + " nations were removed for being in vacation mode");
@@ -1555,6 +1554,10 @@ public class BankCommands {
 
         if (nationSet.isEmpty()) {
             return "No nations to process." + StringMan.join(footer, "\n");
+        }
+
+        if (nations.getNations().size() > 100 && db.isValidAlliance()) {
+            throw new IllegalArgumentException("Too many nations: " + nations.getNations().size() + " (max: 100 outside of an alliance guild)");
         }
 
         List<String> header = new ArrayList<>(Arrays.asList(
@@ -2316,9 +2319,8 @@ public class BankCommands {
     }
 
     @Command(desc = "Sheet of projects each nation has", viewable = true)
-    @RolePermission(value = {Roles.ECON, Roles.INTERNAL_AFFAIRS}, any=true)
-    public String ProjectSheet(@Me IMessageIO io, @Me GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet, @Switch("t") @Timestamp Long snapshotTime) throws GeneralSecurityException, IOException {
-        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db.getGuild());
+    public String ProjectSheet(@Me IMessageIO io, @Me @Default GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet, @Switch("t") @Timestamp Long snapshotTime) throws GeneralSecurityException, IOException {
+        Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db == null ? null : db.getGuild());
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.PROJECT_SHEET);
         }

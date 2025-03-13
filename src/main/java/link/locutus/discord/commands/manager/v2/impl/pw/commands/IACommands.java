@@ -594,14 +594,14 @@ public class IACommands {
 
     @Command(desc = "Generate a sheet of nations and their day change\n" +
             "Nations not in an alliance registered to this guild can only show the public day change estimate based on unit purchases", viewable = true)
-    @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
-    @IsAlliance
-    public void dayChangeSheet(@Me IMessageIO io, @Me GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public void dayChangeSheet(@Me IMessageIO io, @Me @Default GuildDB db, @Me @Default User author,
+                               NationList nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.NATION_SHEET);
         }
+        boolean hasPerm = db != null && author != null && Roles.INTERNAL_AFFAIRS_STAFF.has(author, db.getGuild());
         Set<Integer> aaIdsProvided = nations.getAllianceIds();
-        AllianceList subList = db.getAllianceList().subList(aaIdsProvided);
+        AllianceList subList = hasPerm ? db.getAllianceList().subList(aaIdsProvided) : new AllianceList();
         Map<Integer, Double> timezones = new HashMap<>();
 
         for (DBAlliance alliance : subList.getAlliances()) {
@@ -668,7 +668,6 @@ public class IACommands {
         return "Added " + amt + " roles to members (note: it may take a few minutes to update)";
     }
     @Command(desc = "View a list of reactions on a message sent by or mentioning the bot", viewable = true)
-    @RolePermission(Roles.ADMIN)
     @MessageCommand
     public String msgInfo(@Me IMessageIO channel, Message message, @Arg("List the ids of users who reacted")@Switch("i") boolean useIds) {
         StringBuilder response = new StringBuilder();

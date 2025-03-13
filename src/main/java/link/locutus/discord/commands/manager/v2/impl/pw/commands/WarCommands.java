@@ -2456,7 +2456,6 @@ public class WarCommands {
         }
     }
 
-    @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
     @Command(desc = """
             Generate a sheet of per nation bank deposit/withdraw activity over a timeframe
             The columns represent the time unit (either turns or days) when bank transfers occur for each nation
@@ -2560,7 +2559,6 @@ public class WarCommands {
         return null;
     }
 
-    @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
     @Command(desc = "Generate a sheet of nation login activity from a nation id over a timeframe\n" +
             "The columns are the 7 days of the week and then turns of the day (12)\n" +
             "Note: use the other activity sheet need info of a deleted nation\n" +
@@ -2576,7 +2574,6 @@ public class WarCommands {
         return ActivitySheet(io, db, Collections.singleton(nation), startTime, endTime, sheet);
     }
 
-    @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
     @Command(desc = "Generate a sheet of per nation war declare activity over a timeframe\n" +
             "The columns represent the time unit (either turns or days) when wars are declared for each nation", viewable = true)
     public String WarDecSheetDate(@Me IMessageIO io, @Me @Default GuildDB db, Set<DBNation> nations,
@@ -2678,7 +2675,6 @@ public class WarCommands {
         return null;
     }
 
-    @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
     @Command(desc = "Generate a sheet of nation login activity from a nation id over a timeframe\n" +
             "The sheet columns are the dates with the values being either 1 or 0 for logging in or not", viewable = true)
     public String ActivitySheetDate(@Me IMessageIO io, @Me @Default GuildDB db, Set<DBNation> nations,
@@ -2750,7 +2746,6 @@ public class WarCommands {
         return null;
     }
 
-    @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
     @Command(desc = "Generate a sheet of nation login activity from a nation id over a timeframe\n" +
             "The columns are the 7 days of the week and then turns of the day (12)\n" +
             "Days represent the % of that day a nation logs in (UTC)\n" +
@@ -2820,7 +2815,6 @@ public class WarCommands {
         return null;
     }
 
-    @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON}, any=true)
     @Command(desc = "Generate a sheet of alliance/nation/city military unit and building counts (MMR)", viewable = true)
     public String MMRSheet(@Me IMessageIO io, @Me @Default GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet,
                            @Switch("f") boolean forceUpdate,
@@ -3023,7 +3017,6 @@ public class WarCommands {
         row.set(22, navyBuy);
     }
 
-    @RolePermission(Roles.MILCOM)
     @Command(desc = "Generate a sheet of nations who have left the provided alliances over a timeframe", viewable = true)
     public static String DeserterSheet(@Me IMessageIO io, @Me @Default GuildDB db, Set<DBAlliance> alliances,
                                 @Arg("Date to start from")
@@ -3128,7 +3121,6 @@ public class WarCommands {
         return null;
     }
 
-    @RolePermission(Roles.MILCOM)
     @Command(desc = "Generate a sheet of nations and their military units relative to the nations they are fighting", viewable = true)
     public String combatantSheet(@Me IMessageIO io, @Me @Default GuildDB db, Set<DBNation> nations,
                                  @Arg("Include inactive nations (2 days)")
@@ -3931,7 +3923,6 @@ public class WarCommands {
     groups = {
             "Additional War Options"
     }, viewable = true)
-    @RolePermission(Roles.MILCOM)
     public String warSheet(@Me IMessageIO io, @Me @Default GuildDB db,
                            Set<DBNation> allies,
                            Set<DBNation> enemies,

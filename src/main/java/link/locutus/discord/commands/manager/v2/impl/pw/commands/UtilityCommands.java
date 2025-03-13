@@ -264,7 +264,6 @@ public class UtilityCommands {
 
     @Command(desc = "Find potential offshores used by an alliance\n" +
             "Returns a ranking list of possible offshores by their transfer value with an alliance", viewable = true)
-    @RolePermission(Roles.ECON)
     public static String findOffshore(@Me IMessageIO channel, @Me JSONObject command, @AllowDeleted DBAlliance alliance, @Default @Timestamp Long cutoffMs,
                                @Switch("c") @Arg("Display the transfer count instead of value") boolean transfer_count) {
         if (cutoffMs == null) cutoffMs = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(200);
@@ -404,7 +403,6 @@ public class UtilityCommands {
 //    }
 
     @Command(desc = "List all possible offshore alliances in the game", viewable = true)
-    @RolePermission(value = {Roles.ADMIN}, root = true)
     public String listOffshores() {
         StringBuilder response = new StringBuilder();
 
@@ -542,7 +540,6 @@ public class UtilityCommands {
 
     @Command(desc = "Return potential offshores for a list of enemy alliances\n" +
             "If allies are specified, only offshores that are not allied with any of the allies will be returned", viewable = true)
-    @RolePermission(value = {Roles.ECON, Roles.MILCOM}, any = true)
     public String findOffshores(@Timestamp long cutoff, Set<DBAlliance> enemiesList, @Default() Set<DBAlliance> alliesList) {
         if (alliesList == null) alliesList = Collections.emptySet();
         Set<Integer> enemies = enemiesList.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
@@ -1357,7 +1354,6 @@ public class UtilityCommands {
         return null;
     }
 
-    @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON,Roles.FOREIGN_AFFAIRS}, any=true)
     @Command(desc = "Create a sheet of alliances with customized columns\n" +
             "See <https://github.com/xdnw/locutus/wiki/nation_placeholders> for a list of placeholders", viewable = true)
     @NoFormat
@@ -1418,7 +1414,6 @@ public class UtilityCommands {
         return null;
     }
 
-    @RolePermission(value = {Roles.MILCOM, Roles.ECON, Roles.INTERNAL_AFFAIRS}, any=true)
     @Command(desc = "A sheet of nations stats with customizable columns\n" +
             "See <https://github.com/xdnw/locutus/wiki/nation_placeholders> for a list of placeholders", viewable = true)
     @NoFormat

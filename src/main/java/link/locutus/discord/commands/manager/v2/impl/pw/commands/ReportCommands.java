@@ -62,7 +62,6 @@ import static link.locutus.discord.util.discord.DiscordUtil.userUrl;
 
 public class ReportCommands {
     @Command(desc=  "Generate a sheet of all the community reports for players", viewable = true)
-    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
     public String reportSheet(@Me IMessageIO io, @Me @Default GuildDB db, ReportManager manager, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException, NoSuchFieldException, IllegalAccessException {
         List<ReportManager.Report> reports = manager.loadReports(null);
 
@@ -221,7 +220,6 @@ public class ReportCommands {
     @Command(desc = "Generate a google sheet of all loan information banks and alliances have submitted\n" +
             "If no nations are provided, only the loans for this server are returned\n" +
             "If no loan status is provided, all loans are returned", viewable = true)
-    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
     public String getLoanSheet(@Me IMessageIO io, @Me GuildDB db, LoanManager manager, @Default Set<DBNation> nations, @Switch("s") SpreadSheet sheet, @Switch("l") Set<DBLoan.Status> loanStatus) throws GeneralSecurityException, IOException {
         List<DBLoan> loans;
         if (nations == null) {

@@ -310,8 +310,6 @@ public class DiscordCommands {
     }
 
     @Command(desc = "Show the title, description and commands for a bot embed", viewable = true)
-    @RolePermission(value = Roles.ADMIN)
-    @MessageCommand
     public String embedInfo(Message embedMessage, @Arg("Show commands to update`copyToMessage` with the info from the `embedMessage`") @Default Message copyToMessage) {
         List<MessageEmbed> embeds = embedMessage.getEmbeds();
         if (embeds.size() != 1) return "No embed found.";
