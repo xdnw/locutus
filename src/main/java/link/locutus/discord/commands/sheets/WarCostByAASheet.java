@@ -61,7 +61,7 @@ public class WarCostByAASheet extends Command {
 
         return StatCommands.WarCostByAllianceSheet(
                 channel,
-                guild,
+                guildDb,
                 nationSet,
                 cutoff,
                 flags.contains('i'),
