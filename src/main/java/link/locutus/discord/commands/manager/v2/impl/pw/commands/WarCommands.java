@@ -2179,7 +2179,7 @@ public class WarCommands {
     }
 
     @Command(desc = "Convert dtc's spy sheet format to the bot's format", viewable = true)
-    @RolePermission(Roles.MILCOM)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String convertDtCSpySheet(@Me IMessageIO io, @Me @Default GuildDB db, @Me @Default User author, SpreadSheet input, @Switch("s") SpreadSheet output,
                                         @Arg("If results (left column) are grouped by the attacker instead of the defender")
                                         @Switch("a") boolean groupByAttacker, @Switch("f") boolean forceUpdate) throws GeneralSecurityException, IOException {
@@ -2201,7 +2201,7 @@ public class WarCommands {
     }
 
     @Command(desc = "Convert hidude's spy sheet format to the bot's format", viewable = true)
-    @RolePermission(Roles.MILCOM)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String convertHidudeSpySheet(@Me IMessageIO io, @Me @Default GuildDB db, @Me @Default User author, SpreadSheet input, @Switch("s") SpreadSheet output,
                                         @Arg("If results (left column) are grouped by the attacker instead of the defender")
                                         @Switch("a") boolean groupByAttacker, @Switch("f") boolean forceUpdate) throws GeneralSecurityException, IOException {
@@ -2221,7 +2221,7 @@ public class WarCommands {
     }
 
     @Command(desc = "Convert TKR's spy sheet format to the bot's format", viewable = true)
-    @RolePermission(Roles.MILCOM)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String convertTKRSpySheet(@Me IMessageIO io, @Me @Default GuildDB db, @Me @Default User author, SpreadSheet input, @Switch("s") SpreadSheet output,
                                      @Arg("If results (left column) are grouped by the attacker instead of the defender")
                                      @Switch("a") boolean groupByAttacker, @Switch("f") boolean force) throws GeneralSecurityException, IOException {
@@ -2243,7 +2243,7 @@ public class WarCommands {
     }
 
     @Command(desc = "Generate a subset of a spy sheet for only certain attackers or defenders", viewable = true)
-    @RolePermission(Roles.MILCOM)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String listSpyTargets(@Me IMessageIO io, @Me @Default User author, @Me @Default GuildDB db,
                                  @Arg("The current spy sheet")
                                  SpreadSheet spySheet,
@@ -2296,7 +2296,7 @@ public class WarCommands {
     }
 
     @Command(desc = "Generate a spy blitz sheet with the defender on the left and attackers on the right", viewable = true)
-    @RolePermission(Roles.MILCOM)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String SpySheet(@Me IMessageIO io, @Me @Default User author, @Me @Default GuildDB db,
                            Set<DBNation> attackers,
                            Set<DBNation> defenders,
@@ -2461,6 +2461,7 @@ public class WarCommands {
             The columns represent the time unit (either turns or days) when bank transfers occur for each nation
             A positive value represents a deposit, a negative value represents a withdrawal
             When both are specified, the net deposit/withdrawal is shown""", viewable = true)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String DepositSheetDate(@Me IMessageIO io, @Me @Default GuildDB db, Set<DBNation> nations,
                                   boolean deposit,
                                   boolean withdraw,
@@ -2564,6 +2565,7 @@ public class WarCommands {
             "Note: use the other activity sheet need info of a deleted nation\n" +
             "Days represent the % of that day a nation logs in (UTC)\n" +
             "Numbers represent the % of that turn a nation logs in", viewable = true)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String ActivitySheetFromId(@Me IMessageIO io, @Me @Default GuildDB db, int nationId,
                                       @Arg("Date to start from")
                                       @Default("2w") @Timestamp long startTime,
@@ -2576,6 +2578,7 @@ public class WarCommands {
 
     @Command(desc = "Generate a sheet of per nation war declare activity over a timeframe\n" +
             "The columns represent the time unit (either turns or days) when wars are declared for each nation", viewable = true)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String WarDecSheetDate(@Me IMessageIO io, @Me @Default GuildDB db, Set<DBNation> nations,
                                     boolean off,
                                     boolean def,
@@ -2677,6 +2680,7 @@ public class WarCommands {
 
     @Command(desc = "Generate a sheet of nation login activity from a nation id over a timeframe\n" +
             "The sheet columns are the dates with the values being either 1 or 0 for logging in or not", viewable = true)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String ActivitySheetDate(@Me IMessageIO io, @Me @Default GuildDB db, Set<DBNation> nations,
                                     @Arg("Date to start from")
                                     @Timestamp long start_time,
@@ -2750,6 +2754,7 @@ public class WarCommands {
             "The columns are the 7 days of the week and then turns of the day (12)\n" +
             "Days represent the % of that day a nation logs in (UTC)\n" +
             "Numbers represent the % of that turn a nation logs in", viewable = true)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String ActivitySheet(@Me IMessageIO io, @Me @Default GuildDB db, Set<DBNation> nations,
                                 @Arg("Date to start from")
                                 @Default("2w") @Timestamp long startTime,
@@ -2816,6 +2821,7 @@ public class WarCommands {
     }
 
     @Command(desc = "Generate a sheet of alliance/nation/city military unit and building counts (MMR)", viewable = true)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String MMRSheet(@Me IMessageIO io, @Me @Default GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet,
                            @Switch("f") boolean forceUpdate,
                            @Arg("List the military building count of each city instead of each nation")
@@ -3850,7 +3856,7 @@ public class WarCommands {
             "- Low priority could be enemies without a recent offensive war, inactive, low military, or poor activity\n" +
             "- Example defNations: `~enemies,#position>1,#active_m<4880,#dayssincelastoffensive>200,#dayssince3consecutivelogins>120,#aircraftpct<0.8,#tankpct<=0.6`" +
             "Note: To avoid updeclares enable `onlyEasyTargets`", viewable = true)
-    @RolePermission(Roles.MILCOM)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String blitzSheet(@Me IMessageIO io, @Me @Default User author, @Me @Default GuildDB db,
                              @Arg("Nations that should be used for the attackers\n" +
                                      "It is recommended to use a google sheet of the attackers available")
@@ -3923,6 +3929,7 @@ public class WarCommands {
     groups = {
             "Additional War Options"
     }, viewable = true)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String warSheet(@Me IMessageIO io, @Me @Default GuildDB db,
                            Set<DBNation> allies,
                            Set<DBNation> enemies,

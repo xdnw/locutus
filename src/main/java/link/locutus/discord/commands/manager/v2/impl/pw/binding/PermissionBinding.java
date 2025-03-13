@@ -200,7 +200,7 @@ public class PermissionBinding extends BindingHelper {
             "`alliance` = has role on alliance's guild."
             )
     @RolePermission
-    public static boolean checkRole(@Me Guild guild, RolePermission perm, @Me User user) {
+    public static boolean checkRole(@Me @Default Guild guild, RolePermission perm, @Me @Default User user) {
         return checkRole(guild, perm, user, null);
     }
 
@@ -225,8 +225,14 @@ public class PermissionBinding extends BindingHelper {
             guild = Locutus.imp().getServer();
         } else if (perm.guild() > 0) {
             guild = Locutus.imp().getDiscordApi().getGuildById(perm.guild());
-            if (guild == null) throw new IllegalCallerException("Guild " + perm.guild() + " does not exist" + " " + user.getAsMention() + " (are you sure Locutus is invited?)");
+            if (guild == null) throw new IllegalCallerException("Guild " + perm.guild() + " does not exist" + " " + (user == null ? "<no user>" : user.getAsMention()) + " (are you sure Locutus is invited?)");
+        } else if (perm.onlyInGuildAlliance() && guild == null) {
+            return true;
         }
+        if (perm.onlyInGuildAlliance() && guild != null && !Locutus.imp().getGuildDB(guild).hasAlliance()) {
+            return true;
+        }
+        if (user == null) return false;
         boolean hasAny = false;
         for (Roles requiredRole : perm.value()) {
             if (allianceId != null && !requiredRole.has(user, guild, allianceId) ||
@@ -240,7 +246,7 @@ public class PermissionBinding extends BindingHelper {
         if (!hasAny) {
             // join .name()
             String rolesName = Arrays.asList(perm.value()).stream().map(Roles::name).collect(Collectors.joining(", "));
-            throw new IllegalCallerException("You do not have any of `" + rolesName + "` on `" + guild + "` `" + user.getAsMention() + "` see: " + CM.role.setAlias.cmd.toSlashMention());
+            throw new IllegalCallerException("You do not have any of `" + rolesName + "` on `" + guild + "` `" + (user == null ? "<no user>" : user.getAsMention()) + "` see: " + CM.role.setAlias.cmd.toSlashMention());
         }
         return hasAny;
     }

@@ -3,7 +3,6 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -65,7 +64,6 @@ import net.dv8tion.jda.api.entities.channel.concrete.VoiceChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
-import org.apache.http.client.utils.URIBuilder;
 import org.json.JSONObject;
 
 import java.awt.*;
@@ -1154,6 +1152,7 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Shows the cost of a project", viewable = true)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String ProjectCost(@Me @Default GuildDB db, @Me IMessageIO channel,
                               Set<Project> projects,
                               @Default("false") boolean technologicalAdvancement,
@@ -1357,6 +1356,7 @@ public class UtilityCommands {
     @Command(desc = "Create a sheet of alliances with customized columns\n" +
             "See <https://github.com/xdnw/locutus/wiki/nation_placeholders> for a list of placeholders", viewable = true)
     @NoFormat
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public static String AllianceSheet(AlliancePlaceholders aaPlaceholders, @Me @Default Guild guild, @Me IMessageIO channel,
                                        @Me @Default DBNation me,
                                        @Me @Default User author, @Me @Default GuildDB db,
@@ -1417,6 +1417,7 @@ public class UtilityCommands {
     @Command(desc = "A sheet of nations stats with customizable columns\n" +
             "See <https://github.com/xdnw/locutus/wiki/nation_placeholders> for a list of placeholders", viewable = true)
     @NoFormat
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public static void NationSheet(NationPlaceholders placeholders, @Me IMessageIO channel, @Me @Default DBNation me, @Me @Default User author, @Me @Default GuildDB db,
                                    NationList nations,
                                    @Arg("A space separated list of columns to use in the sheet\n" +
@@ -2293,6 +2294,7 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Get the inactivity streak of a set of nations over a specified timeframe", viewable = true)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String grayStreak(@Me @Default GuildDB db, @Me IMessageIO io,
                                     Set<DBNation> nations,
                                     int daysInactive,
@@ -2365,6 +2367,7 @@ public class UtilityCommands {
 
 
     @Command(desc = "Get the VM history of a set of nations", viewable = true)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public static String vmHistory(@Me IMessageIO io, @Me @Default GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws IOException, ParseException, ExecutionException, InterruptedException, GeneralSecurityException {
         CompletableFuture<IMessageBuilder> msgFuture = io.send("Mounting nation snapshots...");
         Map<Integer, List<Map.Entry<Integer, Integer>>> vmRanges = Locutus.imp().getDataDumper(true).load().getUtil().getCachedVmRanged(Long.MAX_VALUE, true);

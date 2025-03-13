@@ -9,12 +9,10 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.account.question.questions.InterviewQuestion;
-import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
-import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.StringMessageBuilder;
@@ -56,7 +54,6 @@ import link.locutus.discord.util.task.MailRespondTask;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.util.task.mail.*;
 import link.locutus.discord.web.jooby.handler.CommandResult;
-import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.enums.Rank;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
@@ -69,8 +66,6 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.HierarchyException;
 import net.dv8tion.jda.api.exceptions.PermissionException;
-import net.dv8tion.jda.api.interactions.commands.build.CommandData;
-import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.json.JSONObject;
 
@@ -594,6 +589,7 @@ public class IACommands {
 
     @Command(desc = "Generate a sheet of nations and their day change\n" +
             "Nations not in an alliance registered to this guild can only show the public day change estimate based on unit purchases", viewable = true)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public void dayChangeSheet(@Me IMessageIO io, @Me @Default GuildDB db, @Me @Default User author,
                                NationList nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
@@ -1437,6 +1433,7 @@ public class IACommands {
 
     @Command(desc = "Generate a list of nations and their expected raid loot\n" +
             "e.g. `{prefix}sheets_milcom lootvaluesheet #cities<10,#position>1,#active_m<2880,someAlliance`", viewable = true)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String lootValueSheet(@Me IMessageIO io, @Me @Default GuildDB db, Set<DBNation> attackers, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         attackers.removeIf(f -> f.active_m() > 10000);
         attackers.removeIf(f -> f.getVm_turns() > 0);

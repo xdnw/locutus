@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -1529,6 +1530,7 @@ public class BankCommands {
     }
 
     @Command(desc = "Get a sheet of nations and their revenue (compared to optimal city builds)", viewable = true)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String revenueSheet(@Me IMessageIO io, @Me @Default GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet, @Switch("i") boolean include_untaxable,
                                @Switch("t") @Timestamp Long snapshotTime) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
         Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db == null ? null : db.getGuild());
@@ -2319,6 +2321,7 @@ public class BankCommands {
     }
 
     @Command(desc = "Sheet of projects each nation has", viewable = true)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String ProjectSheet(@Me IMessageIO io, @Me @Default GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet, @Switch("t") @Timestamp Long snapshotTime) throws GeneralSecurityException, IOException {
         Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotTime, db == null ? null : db.getGuild());
         if (sheet == null) {
@@ -2765,19 +2768,27 @@ public class BankCommands {
     }
 
     @Command(desc = "Get a sheet of in-game transfers for nations", viewable = true)
-    @RolePermission(value = Roles.ECON)
-    public String getIngameNationTransfers(@Me IMessageIO channel, @Me GuildDB db, @AllowDeleted Set<NationOrAlliance> senders, @AllowDeleted Set<NationOrAlliance> receivers,
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
+    public String getIngameNationTransfers(@Me IMessageIO channel, @Me @Default User author, @Me @Default GuildDB db, @AllowDeleted Set<NationOrAlliance> senders, @AllowDeleted Set<NationOrAlliance> receivers,
                                            @Arg("Only transfers after timeframe") @Default("%epoch%") @Timestamp long start_time,
                                            @Switch("e") @Timestamp Long end_time,
                                            @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (end_time == null) end_time = Long.MAX_VALUE;
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
+        Set<Integer> hasAdmin = new IntOpenHashSet();
+        if (author != null && db != null) {
+            hasAdmin.addAll(Roles.ECON_STAFF.getAllianceList(author, db).getIds());
+        }
+
         Set<Long> senderIds = senders.stream().map(NationOrAllianceOrGuild::getIdLong).collect(Collectors.toSet());
         Set<Long> receiverIds = receivers.stream().map(NationOrAllianceOrGuild::getIdLong).collect(Collectors.toSet());
         List<Transaction2> transactions = Locutus.imp().getBankDB().getTransactionsByBySenderOrReceiver(senderIds, receiverIds, start_time, end_time);
-        transactions.removeIf(transaction2 -> {
-            NationOrAllianceOrGuild sender = transaction2.getSenderObj();
-            NationOrAllianceOrGuild receiver = transaction2.getReceiverObj();
+        transactions.removeIf(tx -> {
+            NationOrAllianceOrGuild sender = tx.getSenderObj();
+            NationOrAllianceOrGuild receiver = tx.getReceiverObj();
+            if (sender.isAlliance() && receiver.isAlliance() && !hasAdmin.contains(sender.getId()) && !hasAdmin.contains(receiver.getId())) {
+                return true;
+            }
             return !senders.contains(sender) || !receivers.contains(receiver);
         });
         sheet.addTransactionsList(channel, transactions, true);
@@ -2785,12 +2796,26 @@ public class BankCommands {
     }
 
     @Command(desc = "Get a sheet of ingame transfers for nations, filtered by the sender", viewable = true)
-    @RolePermission(value = Roles.ECON)
-    public String IngameNationTransfersBySender(@Me IMessageIO channel, @Me GuildDB db, Set<NationOrAlliance> senders, @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
+    public String IngameNationTransfersBySender(@Me IMessageIO channel, @Me @Default GuildDB db, @Me @Default User author,
+    Set<NationOrAlliance> senders, @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
         Set<Long> senderIds = senders.stream().map(NationOrAllianceOrGuild::getIdLong).collect(Collectors.toSet());
+        Set<Integer> hasAdmin = new IntOpenHashSet();
+        if (author != null && db != null) {
+            hasAdmin.addAll(Roles.ECON_STAFF.getAllianceList(author, db).getIds());
+        }
+
         List<Transaction2> transactions = Locutus.imp().getBankDB().getTransactionsByBySender(senderIds, timeframe);
-        transactions.removeIf(tx -> !senders.contains(tx.getSenderObj()));
+        transactions.removeIf(tx -> {
+            NationOrAllianceOrGuild sender = tx.getSenderObj();
+            if (!senders.contains(sender)) return true;
+            NationOrAllianceOrGuild receiver = tx.getReceiverObj();
+            if (sender.isAlliance() && receiver.isAlliance() && !hasAdmin.contains(sender.getId()) && !hasAdmin.contains(receiver.getId())) {
+                return true;
+            }
+            return false;
+        });
         sheet.addTransactionsList(channel, transactions, true);
         return null;
     }
@@ -2798,18 +2823,31 @@ public class BankCommands {
     @Command(desc = "Get a sheet of ingame transfers for nations, filtered by the receiver", groups = {
             "Optional: Specify timeframe"
     }, viewable = true)
-    @RolePermission(value = Roles.ECON)
-    public String IngameNationTransfersByReceiver(@Me IMessageIO channel, @Me GuildDB db,
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
+    public String IngameNationTransfersByReceiver(@Me IMessageIO channel, @Me @Default GuildDB db, @Me @Default User author,
                                                   Set<NationOrAlliance> receivers, @Arg(value = "Only list transfers after this time", group = 0)
                                                       @Timestamp @Default Long startTime,
                                                   @Arg(value = "Only list transfers before this time", group = 0)
                                                       @Timestamp @Default Long endTime, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
+        Set<Integer> hasAdmin = new IntOpenHashSet();
+        if (author != null && db != null) {
+            hasAdmin.addAll(Roles.ECON_STAFF.getAllianceList(author, db).getIds());
+        }
+
         Set<Long> receiverIds = receivers.stream().map(NationOrAllianceOrGuild::getIdLong).collect(Collectors.toSet());
         if (startTime == null) startTime = 0L;
         if (endTime == null) endTime = Long.MAX_VALUE;
         List<Transaction2> transactions = Locutus.imp().getBankDB().getTransactionsByByReceiver(receiverIds, startTime, endTime);
-        transactions.removeIf(tx -> !receivers.contains(tx.getReceiverObj()));
+        transactions.removeIf(tx -> {
+            NationOrAllianceOrGuild receiver = tx.getReceiverObj();
+            if (!receivers.contains(receiver)) return true;
+            NationOrAllianceOrGuild sender = tx.getSenderObj();
+            if (sender.isAlliance() && receiver.isAlliance() && !hasAdmin.contains(sender.getId()) && !hasAdmin.contains(receiver.getId())) {
+                return true;
+            }
+            return false;
+        });
         sheet.addTransactionsList(channel, transactions, true);
         return null;
     }
@@ -2940,31 +2978,43 @@ public class BankCommands {
     }
 
     @Command(desc = "Get a sheet of transfers", viewable = true)
-    @RolePermission(value = Roles.ECON, root = true)
-    public String getIngameTransactions(@Me IMessageIO channel, @Me GuildDB db,
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
+    public String getIngameTransactions(@Me IMessageIO channel, @Me @Default GuildDB db, @Me @Default User author,
                                         @AllowDeleted @Default NationOrAlliance sender,
                                         @AllowDeleted @Default NationOrAlliance receiver,
                                         @AllowDeleted @Default NationOrAlliance banker,
                                         @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
         List<Transaction2> transactions = Locutus.imp().getBankDB().getAllTransactions(sender, receiver, banker, timeframe, null);
+        Set<Integer> hasAdmin = new IntOpenHashSet();
+        if (author != null && db != null) {
+            hasAdmin.addAll(Roles.ECON_STAFF.getAllianceList(author, db).getIds());
+        }
+        transactions.removeIf(f -> {
+            NationOrAllianceOrGuild txSender = f.getSenderObj();
+            NationOrAllianceOrGuild txReceiver = f.getReceiverObj();
+            if (txSender.isAlliance() && txReceiver.isAlliance() && !hasAdmin.contains(txSender.getId()) && !hasAdmin.contains(txReceiver.getId())) {
+                return true;
+            }
+            return false;
+        });
+
         if (transactions.size() > 10000) return "Timeframe is too large, please use a shorter period";
 
         sheet.addTransactionsList(channel, transactions, true);
         return null;
     }
 
-    public static List<Transaction2> getRecords(GuildDB db, User user, boolean useTaxBase, boolean useOffset, long timeframe, NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild, boolean onlyOffshoreTransfers) {
+    public static List<Transaction2> getRecords(GuildDB db, User user, boolean includeTaxes, boolean useTaxBase, boolean useOffset, long timeframe, NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild, boolean onlyOffshoreTransfers) {
         List<Transaction2> transactions = new ArrayList<>();
         if (nationOrAllianceOrGuild.isNation()) {
             DBNation nation = nationOrAllianceOrGuild.asNation();
-            List<Map.Entry<Integer, Transaction2>> natTrans = nation.getTransactions(db, null, useTaxBase, useOffset, 0, timeframe, false);
+            List<Map.Entry<Integer, Transaction2>> natTrans = nation.getTransactions(db, null, includeTaxes, useTaxBase, useOffset, 0, timeframe, false);
             for (Map.Entry<Integer, Transaction2> entry : natTrans) {
                 transactions.add(entry.getValue());
             }
         } else if (nationOrAllianceOrGuild.isAlliance()) {
             DBAlliance alliance = nationOrAllianceOrGuild.asAlliance();
-
             // if this alliance - get the transactions in the offshore
             Set<Integer> aaIds = db.getAllianceIds();
             OffshoreInstance offshore = db.getOffshore();
@@ -2974,9 +3024,19 @@ public class BankCommands {
                 transactions.addAll(offshore.getTransactionsAA(alliance.getAlliance_id(), true));
             } else {
                 List<Transaction2> txToAdd = (db.getTransactionsById(alliance.getAlliance_id(), 2));
-                boolean hasAdmin = Roles.ECON.hasOnRoot(user); // TODO or has admin in alliance server ?
-                if (!aaIds.contains(alliance.getAlliance_id()) && !hasAdmin) {
-                    txToAdd.removeIf(f -> f.receiver_type != 1 && f.sender_type != 1);
+                Set<Integer> hasAdmin = new IntOpenHashSet();
+                if (user != null && db != null) {
+                    hasAdmin.addAll(Roles.ECON_STAFF.getAllianceList(user, db).getIds());
+                }
+                if (!aaIds.contains(alliance.getAlliance_id()) && !hasAdmin.contains(alliance.getAlliance_id())) {
+                    txToAdd.removeIf(f -> {
+                        NationOrAllianceOrGuild sender = f.getSenderObj();
+                        NationOrAllianceOrGuild receiver = f.getReceiverObj();
+                        if (sender.isAlliance() && receiver.isAlliance() && !hasAdmin.contains(sender.getId()) && !hasAdmin.contains(receiver.getId())) {
+                            return true;
+                        }
+                        return false;
+                    });
                 }
                 transactions.addAll(txToAdd);
             }
@@ -3010,8 +3070,8 @@ public class BankCommands {
         "Optional: Specify timeframe",
         "Display Options",
     }, viewable = true)
-    @RolePermission(value = Roles.ECON)
-    public String transactions(@Me IMessageIO channel, @Me GuildDB db, @Me User user,
+    @RolePermission(value = Roles.MEMBER)
+    public String transactions(@Me IMessageIO channel, @Me GuildDB db, @Me @Default User user, @Me DBNation me,
                                @AllowDeleted NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild,
                                @Arg(value = "Only show transactions after this time", group = 0)
                                @Default("%epoch%") @Timestamp long timeframe,
@@ -3023,9 +3083,13 @@ public class BankCommands {
                                @Default("true") boolean useOffset,
                                @Switch("s") SpreadSheet sheet,
                                @Switch("o") boolean onlyOffshoreTransfers) throws GeneralSecurityException, IOException {
+        if ((!nationOrAllianceOrGuild.isNation() || nationOrAllianceOrGuild.getId() != me.getId()) && !Roles.ECON_STAFF.has(user, db.getGuild())) {
+            throw new IllegalArgumentException("You can only view your own transactions. Missing: " + Roles.ECON_STAFF.toDiscordRoleNameElseInstructions(db.getGuild()));
+        }
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
         if (onlyOffshoreTransfers && nationOrAllianceOrGuild.isNation()) return "Only Alliance/Guilds can have an offshore account";
-        List<Transaction2> transactions = getRecords(db, user, useTaxBase, useOffset, timeframe, nationOrAllianceOrGuild, onlyOffshoreTransfers);
+
+        List<Transaction2> transactions = getRecords(db, user, true, useTaxBase, useOffset, timeframe, nationOrAllianceOrGuild, onlyOffshoreTransfers);
         sheet.addTransactionsList(channel, transactions, true);
         return null;
     }

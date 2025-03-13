@@ -1,10 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import it.unimi.dsi.fastutil.ints.Int2BooleanOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -110,6 +107,7 @@ public class UnsortedCommands {
     @Command(desc = "Generate a sheet of guild member nations and their unit buys today", viewable = true)
     @IsAlliance
     @HasApi
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF,Roles.ECON_STAFF,Roles.MILCOM}, any = true)
     public void unitBuySheet(
             @Me GuildDB db, @Me IMessageIO channel,
             @Arg("Nations to list in the sheet\n" +
@@ -215,6 +213,7 @@ public class UnsortedCommands {
             "Useful for finding who can participate in a spy blitz", viewable = true)
     @IsAlliance
     @HasApi
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF,Roles.ECON_STAFF,Roles.MILCOM}, any = true)
     public void freeSpyOpsSheet(
             @Me GuildDB db,
             ValueStore store, @Me IMessageIO channel,
@@ -1466,6 +1465,7 @@ public class UnsortedCommands {
     }
 
     @Command(desc = "List the alliance rank changes of a nation or alliance members", viewable = true)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public static String leftAA(@Me IMessageIO io, @Me @Default GuildDB db,
                          @AllowDeleted NationOrAlliance nationOrAlliance,
                          @Arg("Date to start from")

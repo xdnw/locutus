@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import com.google.gson.JsonObject;
 import com.politicsandwar.graphql.model.BBGame;
 import com.ptsmods.mysqlw.query.QueryCondition;
 import de.erichseifert.gral.data.DataTable;
@@ -15,7 +14,6 @@ import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
@@ -34,10 +32,7 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
-import link.locutus.discord.commands.manager.v2.command.shrink.IdenticalShrink;
-import link.locutus.discord.commands.manager.v2.command.shrink.PairShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.Attribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
@@ -48,13 +43,11 @@ import link.locutus.discord.commands.rankings.WarCostAB;
 import link.locutus.discord.commands.rankings.WarCostRanking;
 import link.locutus.discord.commands.manager.v2.builder.*;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
-import link.locutus.discord.commands.manager.v2.table.TimeDualNumericTable;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BaseballDB;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.metric.OrbisMetric;
@@ -74,7 +67,6 @@ import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.web.WebUtil;
-import link.locutus.discord.web.commands.ReturnType;
 import link.locutus.discord.web.commands.WM;
 import link.locutus.discord.web.commands.binding.value_types.GraphType;
 import link.locutus.discord.web.commands.binding.value_types.WebGraph;
@@ -86,7 +78,6 @@ import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Type;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
@@ -1183,6 +1174,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Generate a graph of nation military levels by city count between two coalitions", viewable = true)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String mmrTierGraph(@Me @Default GuildDB db, @Me IMessageIO channel,
                                NationList coalition1,
                                NationList coalition2, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants, @Switch("s") SpreadSheet sheet,
@@ -1434,6 +1426,7 @@ public class StatCommands {
             "Prefix a column with `avg:` to force an average\n" +
             "Prefix a column with `total:` to force a total", viewable = true)
     @NoFormat
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String allianceNationsSheet(NationPlaceholders placeholders, AlliancePlaceholders aaPlaceholders, ValueStore store, @Me IMessageIO channel,
                                        @Me @Default DBNation me,
                                        @Me @Default User author,
@@ -1550,6 +1543,7 @@ public class StatCommands {
             desc = "Transfer sheet of war cost (for each nation) broken down by resource type\n" +
                     "Useful to see costs incurred by fighting for each nation, to plan for future wars, or to help with reimbursement",
             viewable = true)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public static String WarCostByResourceSheet(@Me IMessageIO channel, @Me JSONObject command, @Me @Default GuildDB db,
                                                 Set<NationOrAlliance> attackers,
                                                 Set<NationOrAlliance> defenders,
@@ -1836,6 +1830,7 @@ public class StatCommands {
             "- Defenses: Attacked by a nation and fighting back\n" +
             "- Offenses: Attacking a nation which fights back\n" +
             "- Wars: Combination of defensive and offensive wars (not raids)", viewable = true)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String WarCostSheet(@Me IMessageIO channel, @Me @Default GuildDB db, Set<NationOrAlliance> attackers, Set<NationOrAlliance> defenders, @Timestamp long time, @Default @Timestamp Long endTime,
                                @Switch("c") boolean excludeConsumption,
                                @Switch("i") boolean excludeInfra,
@@ -2044,6 +2039,7 @@ public class StatCommands {
                 Get the militirization levels of top 80 alliances.
                 Each bar is segmented into four sections, from bottom to top: (soldiers, tanks, planes, ships)
                 Each alliance is grouped by sphere and color coded.""", viewable = true)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public static String militaryRanking(@Me @Default GuildDB db, @Me IMessageIO channel,
                                          @Default NationList nations,
                                          @Switch("n") Integer top_n_alliances,
@@ -2277,6 +2273,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Create a google sheet of nations and the number of bad attacks they did over a timeframe", viewable = true)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public void attackBreakdownSheet(@Me IMessageIO io, @Me @Default GuildDB db,
                                      Set<NationOrAlliance> attackers,
                                      Set<NationOrAlliance> defenders,
@@ -2494,6 +2491,7 @@ public class StatCommands {
 
     @Command(desc = "List the potential alliance merges over a period of time\n" +
             "Determined by finding alliances where a large percent of members leave to join another alliance", viewable = true)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public void listMerges(
             @Me @Default GuildDB db,
             @Me IMessageIO io,

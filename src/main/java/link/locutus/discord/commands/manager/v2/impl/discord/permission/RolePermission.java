@@ -48,4 +48,7 @@ public @interface RolePermission {
      */
     @Command(desc = "Whether to allow any alliance specific roles\nOtherwise only the guild global roles are allowed")
     boolean alliance() default false;
+
+    @Command(desc = "Only if this role is required if running in a guild that has a registered alliance")
+    boolean onlyInGuildAlliance() default false;
 }

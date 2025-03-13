@@ -34,7 +34,6 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -3212,6 +3211,7 @@ public class GrantCommands {
 //    }
 
     @Command(desc = "Generate a sheet and summary of the cost of purchasing cities, infra, land, and projects for a set of nations", viewable = true)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String costBulk(@Me @Default GuildDB db, @Me IMessageIO io,
                             Set<DBNation> receivers,
                            @Switch("c") @Range(min=1, max=100) Integer cities,

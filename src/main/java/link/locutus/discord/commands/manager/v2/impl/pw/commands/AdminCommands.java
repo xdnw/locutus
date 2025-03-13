@@ -963,6 +963,7 @@ public class AdminCommands {
 
     @Command(desc = "Generate a sheet of recorded login times for a set of nations within a time range", viewable = true,
     keywords = {LOGIN, TIMES, USER, ACTIVITY, SESSION, HISTORY, TRACK, RECORD, TIMESTAMP, SPREADSHEET})
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String loginTimes(@Me @Default GuildDB db, @Me IMessageIO io, Set<DBNation> nations, @Timestamp long cutoff, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.NATION_SHEET);
@@ -2397,6 +2398,7 @@ public class AdminCommands {
     }
 
     @Command(desc = "Generate a sheet of nation customization (or lack thereof), and mark specific nation ids in the sheet with the ids provided", viewable = true)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String multiInfoSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet, @Switch("m") Set<DBNation> mark) throws IOException, ParseException, GeneralSecurityException {
         Set<Integer> nationIds = new IntOpenHashSet(nations.stream().map(DBNation::getId).collect(Collectors.toSet()));
         Map<Integer, String> discords = new Int2ObjectOpenHashMap<>();

@@ -16,7 +16,6 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.sheet.SpreadSheet;
 
 import java.io.IOException;
@@ -78,11 +77,14 @@ public class ResearchCommands {
 
     // research sheet
     @Command(desc = "Get the research sheet")
-    @RolePermission(value = {Roles.ECON, Roles.MILCOM, Roles.INTERNAL_AFFAIRS}, any = true)
+    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String researchSheet(
             @Me IMessageIO io, @Me @Default GuildDB db,
             Set<DBNation> nations, @Switch("u") boolean update, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.RESEARCH_SHEET);
+        if (update && nations.size() > 300) {
+            throw new IllegalArgumentException("Too many nations to update");
+        }
 
         List<String> header = new ArrayList<>(Arrays.asList(
                 "nation",
