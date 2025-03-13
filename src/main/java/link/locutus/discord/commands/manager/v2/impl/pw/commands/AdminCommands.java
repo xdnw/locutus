@@ -732,7 +732,7 @@ public class AdminCommands {
         return null;
     }
 
-    @Command(desc = "Generate a google spreadsheet for a guild setting value for a set of discord servers", viewable = true)
+    @Command(desc = "Generate a google spreadsheet for a guild setting value for a set of discord servers")
     @RolePermission(value = Roles.ADMIN, root = true)
     @Ephemeral
     public String infoBulk(@Me GuildDB db, @Me IMessageIO io, GuildSetting setting, Set<GuildDB> guilds, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
@@ -3085,7 +3085,6 @@ public class AdminCommands {
     }
 
     @Command(desc = "View info about trades with a given id", viewable = true)
-    @RolePermission(value = Roles.ADMIN, root = true)
     public String tradeId(Set<Integer> ids) {
         List<DBTrade> offers = new ArrayList<>();
         for (int id : ids) {

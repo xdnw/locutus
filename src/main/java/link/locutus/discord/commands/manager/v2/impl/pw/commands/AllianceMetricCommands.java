@@ -55,6 +55,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.*;
 
 public class AllianceMetricCommands {
@@ -368,9 +369,10 @@ public class AllianceMetricCommands {
         return "Done. " + changesDays.getKey() + " changes made for " + changesDays.getValue() + " days.";
     }
 
+    private static final ReentrantLock ALLIANCE_DATA_LOCK = new ReentrantLock();
+
     @Command(desc = "Get alliance attributes by day\n" +
             "If your metric does not relate to cities, set `skipCityData` to true to speed up the process.", viewable = true)
-    @RolePermission(value = Roles.ADMIN, root = true)
     @NoFormat
     public String AlliancesDataByDay(@Me @Default GuildDB db, @Me IMessageIO io, @Me JSONObject command,
                                      TypedFunction<DBNation, Double> metric,
@@ -379,6 +381,10 @@ public class AllianceMetricCommands {
                                      AllianceMetricMode mode,
                                      @Arg ("The alliances to include. Defaults to top 15") @Default Set<DBAlliance> alliances,
                                      @Default Predicate<DBNation> filter, @Switch("g") boolean graph, @Switch("a") boolean includeApps, @Switch("s") boolean attach_sheet) throws IOException, ParseException {
+        if (!ALLIANCE_DATA_LOCK.tryLock()) {
+            throw new IllegalArgumentException("Another instance of this command is running either by you or another user. Please wait and try again.");
+        }
+        try {
         CompletableFuture<IMessageBuilder> msg = io.send("Please wait...");
         Map<Long, double[]> valuesByDay = AlliancesNationMetricByDay.generateData(new Consumer<Long>() {
             @Override
@@ -423,6 +429,9 @@ public class AllianceMetricCommands {
             msg2.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.AlliancesDataByDay.cmd.getName(), command));
         }
         msg2.send();
+        } finally {
+            ALLIANCE_DATA_LOCK.unlock();
+        }
         return null;
     }
 
