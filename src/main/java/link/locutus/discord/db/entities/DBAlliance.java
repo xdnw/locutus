@@ -229,6 +229,15 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         return loot == null ? 0 : loot.convertedTotal();
     }
 
+    @Command
+    public double getCostConverted() {
+        double total = 0;
+        for (DBNation nation : getMemberDBNations()) {
+            total += nation.costConverted();
+        }
+        return total;
+    }
+
     public String setAAPage(String file) throws Exception{
         String input = FileUtil.readFile(file);
 
