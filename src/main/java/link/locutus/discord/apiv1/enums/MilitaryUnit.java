@@ -104,6 +104,7 @@ public enum MilitaryUnit {
     private final Map<ResourceType, Double> costMap;
 
     private final Supplier<Double> costConverted;
+    private final Supplier<Double> costSalvageConverted;
     private final ResourceType[] costRss;
     private final ResourceType[] consumeRss;
 
@@ -122,6 +123,7 @@ public enum MilitaryUnit {
     private double[] costReduction;
     private ResourceType[] costReductionRss;
     private Supplier<Double> costReductionConverted;
+    private Supplier<Double> costReductionSalvageConverted;
 
     private double[] upkeepPeaceReduction;
     private double[] upkeepWarReduction;
@@ -135,6 +137,11 @@ public enum MilitaryUnit {
         this.emoji = emoji;
         this.cost = cost;
         this.costConverted = ResourceType.convertedCostLazy(cost);
+        double[] costSalvage = ResourceType.getBuffer();
+        costSalvage[ALUMINUM.ordinal()] = cost[ALUMINUM.ordinal()] * 0.05;
+        costSalvage[STEEL.ordinal()] = cost[STEEL.ordinal()] * 0.05;
+        this.costSalvageConverted = ResourceType.convertedCostLazy(costSalvage);
+
         this.costMap = new EnumMap<>(ResourceType.class);
         costMap.putAll(resourcesToMap(cost));
         this.upkeepPeace = peacetimeUpkeep;
@@ -158,6 +165,10 @@ public enum MilitaryUnit {
         this.costReduction = costReduction;
         this.costReductionRss = ResourceType.getTypes(costReduction);
         this.costReductionConverted = ResourceType.convertedCostLazy(costReduction);
+        double[] costReductionSalvage = ResourceType.getBuffer();
+        costReductionSalvage[ALUMINUM.ordinal()] = costReduction[ALUMINUM.ordinal()] * 0.05;
+        costReductionSalvage[STEEL.ordinal()] = costReduction[STEEL.ordinal()] * 0.05;
+        this.costReductionSalvageConverted = ResourceType.convertedCostLazy(costReductionSalvage);
 
         this.upkeepPeaceReduction = upkeepPeaceReduction;
         this.upkeepWarReduction = upkeepWarReduction;
@@ -368,6 +379,16 @@ public enum MilitaryUnit {
         if (costReducer == null) return value;
         int level = costReducer.getLevel(researchBits);
         value -= costReductionConverted.get() * level;
+        return value;
+    }
+
+    public double getConvertedCostPlusSalvage(int researchBits) {
+        double value = costConverted.get();
+        if (costReducer == null) return value;
+        int level = costReducer.getLevel(researchBits);
+        value -= costReductionConverted.get() * level;
+        value += costReductionSalvageConverted.get() * level;
+        value -= costSalvageConverted.get();
         return value;
     }
 
