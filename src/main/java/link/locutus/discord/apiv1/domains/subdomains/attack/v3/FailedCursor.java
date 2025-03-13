@@ -53,6 +53,7 @@ public abstract class FailedCursor extends AbstractCursor {
     @Override public double getDefLossValue(DBWar war) {
         return 0;
     }
+
     @Override public double[] addAttLosses(double[] buffer, DBWar war) {
         return buffer;
     }

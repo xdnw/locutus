@@ -76,12 +76,18 @@ public abstract class UnitCursor extends DamageCursor {
     }
 
     @Override
-    public double[] addAttLosses(double[] buffer, DBWar war) {
-        double[] value = super.addAttLosses(buffer, war);
+    public double[] addAttUnitCosts(double[] buffer, DBWar war) {
+        double[] value = super.addAttUnitCosts(buffer, war);
         if (has_salvage) {
             value[ResourceType.ALUMINUM.ordinal()] *= 0.95;
             value[ResourceType.STEEL.ordinal()] *= 0.95;
         }
+        return value;
+    }
+
+    @Override
+    public double[] addAttLosses(double[] buffer, DBWar war) {
+        double[] value = super.addAttLosses(buffer, war);
         value = addAttConsumption(value);
         return value;
     }
@@ -102,9 +108,26 @@ public abstract class UnitCursor extends DamageCursor {
     }
 
     @Override
+    public double getAttUnitLossValue(DBWar war) {
+        if (has_salvage) {
+            double value = 0;
+            MilitaryUnit[] units = getUnits();
+            int research = war == null ? 0 : war.getAttResearchBits();
+            for (MilitaryUnit unit : units) {
+                int amt = getAttUnitLosses(unit);
+                if (amt > 0) {
+                    value += unit.getConvertedCostPlusSalvage(research) * amt;
+                }
+            }
+            return value;
+        } else {
+            return super.getAttUnitLossValue(war);
+        }
+    }
+
+    @Override
     public double getAttLossValue(DBWar war) {
         double value = super.getAttLossValue(war);
-        if (has_salvage) value *= 0.95;
         value += ResourceType.convertedTotal(ResourceType.MUNITIONS, att_mun_used_cents * 0.01);
         value += ResourceType.convertedTotal(ResourceType.GASOLINE, att_gas_used_cents * 0.01);
         return value;
@@ -167,7 +190,7 @@ public abstract class UnitCursor extends DamageCursor {
         att_gas_used_cents = (int) (attack.getAtt_gas_used() * 100);
         def_gas_used_cents = (int) (attack.getDef_gas_used() * 100);
 
-        has_salvage = (success != SuccessType.UTTER_FAILURE && attack.getMilitary_salvage_aluminum() > 0 && attack.getMilitary_salvage_steel() > 0);
+        has_salvage = (success != SuccessType.UTTER_FAILURE && (attack.getMilitary_salvage_aluminum() > 0 || attack.getMilitary_salvage_steel() > 0));
     }
 
 

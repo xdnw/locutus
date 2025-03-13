@@ -51,7 +51,7 @@ public class ALootCursor extends FailedCursor {
         return addDefLoot(buffer);
     }
     public double[] addAttLosses(double[] buffer, DBWar war) {
-        ResourceType.subtract(buffer, looted);
+        addAttLoot(buffer);
         return buffer;
     }
     public double getAttLossValue(DBWar war) {

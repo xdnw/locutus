@@ -2652,7 +2652,7 @@ public class StatCommands {
         }
 
         SummedMapRankBuilder<Integer, ? extends Number> sorted = new SummedMapRankBuilder<>(lootPerScore).sort();
-        sorted.highlight(highlight.stream().map(DBAlliance::getId).collect(Collectors.toSet()));
+        sorted.highlight(highlight == null ? null : highlight.stream().map(DBAlliance::getId).collect(Collectors.toSet()));
         sorted.nameKeys(i -> DBAlliance.getOrCreate(i).toShrink()).limit(num_results).build(author, channel, command, title, attach_file);
 
         return null;

@@ -365,6 +365,7 @@ TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCo
                 attack.addDefLoot(loot2);
                 attack.addAttConsumption(consumption1);
                 attack.addDefConsumption(consumption2);
+                attack.addBuildingCosts(buildingsCost2);
                 infrn1 += attInfra;
                 infrn2 += defInfra;
                 if (buildings2 != null) attack.addBuildingsDestroyed(buildings2);
@@ -381,6 +382,7 @@ TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCo
                 attack.addDefLoot(loot1);
                 attack.addAttConsumption(consumption2);
                 attack.addDefConsumption(consumption1);
+                attack.addBuildingCosts(buildingsCost1);
                 infrn1 += defInfra;
                 infrn2 += attInfra;
                 if (buildings1 != null) attack.addBuildingsDestroyed(buildings1);
@@ -416,6 +418,7 @@ TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCo
         }
         if (buildings) {
             response.append("Buildings: ```" + StringMan.getString(getBuildingsDestroyed(true))).append("```");
+            totalA = ResourceType.add(totalA, ResourceType.resourcesToMap(buildingsCost1));
         }
         response.append("Total: ```" + ResourceType.toString(totalA)).append("```");
         response.append("Converted Total: `$" + MathMan.format(ResourceType.convertedTotal(totalA))).append("`\n\n");
@@ -441,6 +444,7 @@ TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCo
         }
         if (buildings) {
             response.append("Buildings: ```" + StringMan.getString(getBuildingsDestroyed(false))).append("```");
+            totalB = ResourceType.add(totalB, ResourceType.resourcesToMap(buildingsCost2));
         }
         response.append("Total: ```" + ResourceType.toString(totalB)).append("```");
         response.append("Converted Total: `$" + MathMan.format(ResourceType.convertedTotal(totalB))).append("`\n");

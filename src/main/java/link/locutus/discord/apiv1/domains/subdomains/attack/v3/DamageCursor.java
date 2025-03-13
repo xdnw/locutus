@@ -173,7 +173,10 @@ public abstract class DamageCursor extends AbstractCursor {
         MilitaryUnit[] units = getUnits();
         int research = war.getDefResearchBits();
         for (MilitaryUnit unit : units) {
-            value += unit.getConvertedCost(research) * getDefUnitLosses(unit);
+            int amt = getDefUnitLosses(unit);
+            if (amt > 0) {
+                value += unit.getConvertedCost(research) * amt;
+            }
         }
         return value;
     }
@@ -184,7 +187,10 @@ public abstract class DamageCursor extends AbstractCursor {
         MilitaryUnit[] units = getUnits();
         int research = war == null ? 0 : war.getAttResearchBits();
         for (MilitaryUnit unit : units) {
-            value += unit.getConvertedCost(research) * getAttUnitLosses(unit);
+            int amt = getAttUnitLosses(unit);
+            if (amt > 0) {
+                value += unit.getConvertedCost(research) * amt;
+            }
         }
         return value;
     }
@@ -205,7 +211,10 @@ public abstract class DamageCursor extends AbstractCursor {
         MilitaryUnit[] units = getUnits();
         int research = war == null ? 0 : war.getAttResearchBits();
         for (MilitaryUnit unit : units) {
-            valueByUnit[unit.ordinal()] += unit.getConvertedCost(research) * getAttUnitLosses(unit);
+            int amt = getAttUnitLosses(unit);
+            if (amt > 0) {
+                valueByUnit[unit.ordinal()] += unit.getConvertedCost(research) * amt;
+            }
         }
         return valueByUnit;
     }
@@ -215,7 +224,10 @@ public abstract class DamageCursor extends AbstractCursor {
         MilitaryUnit[] units = getUnits();
         int research = war.getDefResearchBits();
         for (MilitaryUnit unit : units) {
-            valueByUnit[unit.ordinal()] += unit.getConvertedCost(research) * getDefUnitLosses(unit);
+            int amt = getDefUnitLosses(unit);
+            if (amt > 0) {
+                valueByUnit[unit.ordinal()] += unit.getConvertedCost(research) * amt;
+            }
         }
         return valueByUnit;
     }

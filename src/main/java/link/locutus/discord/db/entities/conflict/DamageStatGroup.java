@@ -163,12 +163,12 @@ public class DamageStatGroup {
             attack.addAttUnitLossValueByUnit(costByUnit, war);
             attack.addAttLosses(totalCost, war);
             attack.addAttConsumption(consumption);
+            attack.addAttLoot(loot);
         } else {
             attack.addDefUnitLosses(units);
             attack.addDefUnitLossValueByUnit(costByUnit, war);
             attack.addDefLosses(totalCost, war);
             attack.addDefConsumption(consumption);
-
             attack.addDefLoot(loot);
             infraCents += Math.round(attack.getInfra_destroyed_value() * 100);
             attack.addBuildingsDestroyed(buildings);

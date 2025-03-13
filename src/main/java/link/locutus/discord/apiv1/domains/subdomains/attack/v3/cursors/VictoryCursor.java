@@ -71,6 +71,7 @@ public class VictoryCursor extends FailedCursor {
         if (looted != null) ResourceType.subtract(buffer, looted);
         return buffer;
     }
+
     public double getAttLossValue(DBWar war) {
         return looted != null ? -ResourceType.convertedTotal(looted) : 0;
     }
