@@ -87,13 +87,6 @@ public class CommandManager2 {
                 }
             }
         }
-        Map<Key, Parser> p2 = htmlOptionsStore.getParsers();
-        for (Map.Entry<Key, Parser> entry2 : p2.entrySet()) {
-            System.out.println("wEEB options for " + entry2.getKey().toSimpleString());
-
-        }
-
-
         for (Parser parser : parsers) {
             Key key = parser.getKey();
             Map<String, Object> typeJson = parser.toJson();

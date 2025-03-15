@@ -667,7 +667,6 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
                 BigInteger uuidBigInteger = new BigInteger(uuidBytes);
                 latestUuidsMap.put(nationId, uuidBigInteger);
             }
-            System.out.println("Found " + i + " latest uuids");
         } catch (SQLException e) {
             e.printStackTrace();
             return null;
@@ -1004,10 +1003,6 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         List<PNWUser> secondary = null;
         for (Map.Entry<Long, PNWUser> entry : cached.entrySet()) {
             PNWUser user = entry.getValue();
-            if (user.getNationId() == 662750 || user.getDiscordId() == 1222954792033452098L) {
-                System.out.println("IS VALID ? USER " + user.getDiscordId() + " | " + user.getNationId() + " | " + user.getDiscordName() + " | " + name + " | " + nameWithDesc);
-            }
-
             if (nameWithDesc != null && nameWithDesc.equalsIgnoreCase(user.getDiscordName())) {
                 user.setDiscordId(user.getDiscordId());
                 return user;

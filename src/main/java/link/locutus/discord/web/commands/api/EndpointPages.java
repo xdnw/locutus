@@ -56,10 +56,8 @@ public class EndpointPages extends PageHelper {
             try {
                 Map.Entry<String, Map<String, Object>> entry = queries.get(i);
                 String key = entry.getKey();
-                System.out.println("KEY IS " + key);
                 if (key.equals("command")) {
                     Object cmdResult = command(context, ws, entry.getValue());
-                    System.out.println("CMD RESULT IS " + cmdResult);
                     result.set(i, cmdResult);
                     continue;
                 }
@@ -123,7 +121,6 @@ public class EndpointPages extends PageHelper {
                     io.send(formatted);
                 }
             }
-            System.out.println("DATA " + new GsonBuilder().setPrettyPrinting().create().toJson(queue.getQueue()));
             return new WebViewCommand(commandUid.incrementAndGet(), queue.getQueue());
         } else {
             throw new IllegalArgumentException("Invalid command: " + cmdStr);

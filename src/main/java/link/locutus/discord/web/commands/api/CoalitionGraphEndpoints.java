@@ -104,10 +104,6 @@ public class CoalitionGraphEndpoints {
                         groupBy, total, removeVM, removeActiveM, removeApps
                 );
                 WebGraph graph = table.toHtmlJson();
-                if (alliance.getId() == 10279) {
-                    System.out.println("ORIGIN   " + table.getOrigin() + " | " + graph.origin);
-                }
-
                 byAlliance.put(alliance.getId(), graph);
             }
 

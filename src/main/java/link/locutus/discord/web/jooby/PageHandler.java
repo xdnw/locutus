@@ -188,8 +188,7 @@ public class PageHandler implements Handler {
 
         this.serializer = new ObjectMapper(new MessagePackFactory());
 
-        System.out.println(":||REMOVE Is debug " + isDebug + " | ");
-        if (isDebug || true ) {
+        if (isDebug || Settings.INSTANCE.TEST ) {
             writeTsFiles();
         }
     }
@@ -504,7 +503,6 @@ public class PageHandler implements Handler {
         WebStore ws = null;
         try {
             ArgumentStack stack = createStack(ctx);
-            System.out.println(":||remove Path " + ctx.path());
             ws = stack.getStore().getProvided(WebStore.class);
             ctx.header("Content-Type", "text/html;charset=UTF-8");
             String path = stack.getCurrent();
@@ -559,25 +557,16 @@ public class PageHandler implements Handler {
                         } else {
                             Map<String, List<String>> queryParams = ctx.queryParamMap();
                             if (queryParams.isEmpty()) {
-                                System.out.println(":||remove Query params are empty");
-                                for (Map.Entry<String, List<String>> entry : ctx.formParamMap().entrySet()) {
-                                    System.out.println(":||remove Query params form " + entry.getKey() + " | " + entry.getValue() + " | " + entry.getValue().size());
-                                }
                                 queryMap = parseQueryMap(ctx.formParamMap(), allowList);
                             } else {
-                                System.out.println(":||remove Query params are not empty " + queryParams);
                                 queryMap = parseQueryMap(queryParams, allowList);
                                 queryMap.remove("code");
                             }
                         }
-                        System.out.println(":||remove Query map " + queryMap);
                         long start = System.currentTimeMillis();
                         Object[] parsed = parametric.parseArgumentMap2(queryMap, stack.getStore(), validators, permisser, true);
-                        System.out.println(":||remove Parse time " + (-start + (start = System.currentTimeMillis())));
                         Object cmdResult = parametric.call(null, stack.getStore(), parsed);
-                        System.out.println(":||remove Call time " + ( - start + (start = System.currentTimeMillis())));
                         result = wrap(ws, cmdResult, ctx, isApi);
-                        System.out.println(":||remove Wrap time " + ( - start + (start = System.currentTimeMillis())));
                     } else if (!isApi) {
                         result = cmd.toHtml(ws, stack.getPermissionHandler(), false);
                     } else if (cmd instanceof ParametricCallable parametric) {

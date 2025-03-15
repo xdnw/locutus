@@ -175,9 +175,6 @@ public class MultiResult {
                 Element sameNetworkTradesTable = tables.get(size - 3);
                 parseTrades(sameNetworkTradesTable, getTrade());
 
-                System.out.println(html);
-                System.out.println("\n\n---\n\n" + trade.size() + " | " + netRows.size() + " | " + getNetwork().size() + " | " + getTrade().size());
-
                 return null;
             }
         }, auth);

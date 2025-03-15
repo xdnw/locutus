@@ -131,15 +131,23 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
                 set(header, f -> f.surveillance_network_np);
                 set(header, f -> f.guiding_satellite_np);
                 set(header, f -> f.nuclear_launch_facility_np);
+                for (int i = 0; i < byProject.length; i++) {
+                    if (byProject[i] == null) {
+                        byProject[i] = f -> null;
+                    }
+                }
                 hasProject = (a, b) -> byProject[a.ordinal()].apply(b);
             }
-            return byProject[project.ordinal()].apply(header);
+            Function<NationHeader, ProjectColumn> f = byProject[project.ordinal()];
+            return f.apply(header);
         }
     };
 
     @Override
     public boolean hasProject(Project project) {
-        return wrapper.get(hasProject.apply(project, wrapper.header), offset);
+        ProjectColumn col = hasProject.apply(project, wrapper.header);
+        if (col == null) return false;
+        return wrapper.get(col, offset);
     }
 
     @Override

@@ -360,6 +360,7 @@ public class PreLoader implements ILoader {
                 .setBulkDeleteSplittingEnabled(false)
                 .setCompression(Compression.ZLIB)
                 .setLargeThreshold(250)
+                .setAutoReconnect(true)
                 .setMemberCachePolicy(MemberCachePolicy.ALL);
         if (Settings.INSTANCE.DISCORD.INTENTS.GUILD_MEMBERS) {
             builder.enableIntents(GatewayIntent.GUILD_MEMBERS);

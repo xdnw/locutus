@@ -230,10 +230,6 @@ public class EmbedShrink implements IShrink {
             size -= footer.shrink();
             if (size <= totalSize) return originalSize - size;
         }
-        System.out.println("SHRINK START");
-        new Exception().printStackTrace();
-        System.out.println("SHRINK END");
-
         size -= description.shrink();
         if (size <= totalSize) return originalSize - size;
         for (ShrinkableField field : fields) {
@@ -245,9 +241,6 @@ public class EmbedShrink implements IShrink {
 
     @Override
     public int shrink() {
-        System.out.println("SHRINK START 2");
-        new Exception().printStackTrace();
-        System.out.println("SHRINK END 2");
         int diff = title.shrink() + description.shrink() + (footer == null ? 0 : footer.shrink());
         for (ShrinkableField field : fields) {
             diff += field.shrink();

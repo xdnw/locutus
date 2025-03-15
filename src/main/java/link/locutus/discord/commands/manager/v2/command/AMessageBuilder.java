@@ -100,7 +100,6 @@ public abstract class AMessageBuilder implements IMessageBuilder {
         if (!embeds.isEmpty()) {
             List<Map<String, Object>> embedArray = (List<Map<String, Object>>) root.computeIfAbsent("embeds", k -> new ArrayList<>());
             for (EmbedShrink embed : embeds) {
-                System.out.println("SHRINKL EMBED " + shrinkEmbeds);
                 if (shrinkEmbeds) embed.shrinkDefault();
                 embedArray.add(embed.toData());
             }

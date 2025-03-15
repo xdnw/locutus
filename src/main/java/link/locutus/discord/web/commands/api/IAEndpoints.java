@@ -103,7 +103,6 @@ public class IAEndpoints extends PageHelper {
         if (!db.isAllianceId(nation.getAlliance_id()) || nation.getPositionEnum().id < Rank.MEMBER.id) {
             return error("You are not a member of the guild's alliance.");
         }
-        System.out.println("Viewing announcement " + ann_id);
         Announcement.PlayerAnnouncement announcement = db.getPlayerAnnouncement(ann_id, nation.getNation_id());
         if (announcement == null) {
             return error("Announcement not found.");

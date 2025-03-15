@@ -63,7 +63,6 @@ public class StatEndpoints {
     public <T> WebTable table(ValueStore store, @Me @Default User user, @PlaceholderType Class type,
                               String selection_str,
                               @TextArea List<String> columns) {
-        System.out.println("Columns " + columns.size() + " | " + columns + " | " + selection_str);
         Class<T> typeCasted = (Class<T>) type;
         Map<Integer, List<WebTableError>> errors = new LinkedHashMap<>();
         int maxPerCol = 3;

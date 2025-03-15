@@ -348,11 +348,7 @@ public class MultiUpdater {
     }
 
     private void printMultiInfo() throws IOException, ParseException {
-        System.out.println("STARTED LOCUTUS!!!");
-        System.out.println("STARTED MULTI UPDATER!!!");
         updateQueue();
-        System.out.println("MULTI QUEUE CALCULATED!!!");
-
         Set<DBNation> nations = getQueue().stream().map(Map.Entry::getKey).collect(Collectors.toSet());
 
         double updatesPerDay = 0;

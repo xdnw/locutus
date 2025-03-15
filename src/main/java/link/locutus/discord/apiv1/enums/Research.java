@@ -70,18 +70,6 @@ public enum Research {
         }
     }
 
-    public static void main(String[] args) {
-        Map<Research, Integer> start = new HashMap<>();
-        Map<Research, Integer> end = new HashMap<>();
-        start.put(AIR_CAPACITY, 10);
-        start.put(GROUND_CAPACITY, 5);
-
-        end.put(AIR_CAPACITY, 10);
-        end.put(GROUND_CAPACITY, 6);
-        Map<ResourceType, Double> cost = cost(start, end, 0.95);
-        System.out.println(ResourceType.toString(cost));
-    }
-
     public static double costFactor(boolean militaryDoctrine) {
          return militaryDoctrine ? 0.95 : 1;
     }
@@ -164,11 +152,6 @@ public enum Research {
                         .filter(s -> !s.isEmpty())
                         .toList();
 
-                System.out.println("HTML");
-                System.out.println(Arrays.asList(td.get(0).select("i").html()));
-                System.out.println(Arrays.asList(td.get(1).select("i").html()));
-                System.out.println("HTML END");
-
                 for (int i = 0; i < elems.size(); i++) {
                     Research research = Research.parse(names.get(i));
                     int value = Integer.parseInt(elems.get(i));
@@ -201,7 +184,6 @@ public enum Research {
 
             int treeUpgrades = byGroup.getOrDefault(r.getGroup(), 0);
 
-            System.out.println("Tree " + treeUpgrades + " | total: " + totalUpgrades + " | start: " + startValue + " | end: " + endValue);
             Map<ResourceType, Double> addCost = r.getCost(treeUpgrades, totalUpgrades, startValue, endValue, factor);
             cost = ResourceType.add(cost, addCost);
 

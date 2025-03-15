@@ -205,7 +205,6 @@ public class AdminCommands {
             real.edit().setCostReduction(reduction);
             toSave.add(real);
         }
-        System.out.println("Saving " + toSave.size());
         Locutus.imp().getNationDB().saveNations(toSave);
         return "Updated and saved " + toSave.size() + " nations";
     }
@@ -2561,7 +2560,6 @@ public class AdminCommands {
             throw new IllegalArgumentException("Too many nations to update");
         }
         Map<Integer, BigInteger> latestUids = Locutus.imp().getDiscordDB().getLatestUidByNation();
-        System.out.println("Same network uids " + latestUids.size());
         Map<BigInteger, Set<Integer>> uidsByNation = new HashMap<>();
         Map<BigInteger, Set<DBNation>> uidsByNationExisting = new HashMap<>();
         for (Map.Entry<Integer, BigInteger> entry : latestUids.entrySet()) {

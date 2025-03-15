@@ -352,7 +352,6 @@ public class WarCommands {
 
         try {
             String result = cmd.onCommand2(channel, user, db, me, targets, weakground, dms, vmTurns, defensiveSlots, beigeTurns != null && beigeTurns > 0, !ignoreDNR, ignoreAlliances, includeAlliances, active, minutesInactive, score, minLoot, beigeTurns, ignoreBankLoot, ignoreCityRevenue, numResults);
-            System.out.println("RESULT " + result);
             return result;
         } catch (Exception e) {
             e.printStackTrace();

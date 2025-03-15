@@ -134,14 +134,12 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         NationDB db = Locutus.imp().getNationDB();
         String method = "metric" + (turn - TimeUtil.getTurn(TimeUtil.getOrigin())) + metric;
         ScopedPlaceholderCache<DBAlliance> scoped = PlaceholderCache.getScoped(store, DBAlliance.class, method);
-        System.out.println("Get metric at " + turn);
         Double value = scoped.getMap(this,
         (ThrowingFunction<List<DBAlliance>, Map<DBAlliance, Double>>)
         f -> {
             Set<Integer> aaIds = new IntOpenHashSet(f.size());
             for (DBAlliance alliance : f) aaIds.add(alliance.allianceId);
             Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metrics = db.getAllianceMetrics(aaIds, metric, turn);
-            System.out.println("Metrics " + metrics.size() + " | " + f.size());
             Map<DBAlliance, Double> result = new Object2ObjectOpenHashMap<>();
             for (Map.Entry<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> entry : metrics.entrySet()) {
                 DBAlliance aa = entry.getKey();
@@ -1903,8 +1901,6 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         if (end == null) end = System.currentTimeMillis();
         int startVal = (int) getMetricAt(store, asset.count, start);
         int endVal = (int) getMetricAt(store, asset.count, end);
-        System.out.println("startVal = " + startVal);
-        System.out.println("endVal = " + endVal);
         return endVal - startVal;
     }
 

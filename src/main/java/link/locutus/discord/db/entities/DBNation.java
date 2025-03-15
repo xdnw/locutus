@@ -5191,28 +5191,6 @@ public abstract class DBNation implements NationOrAlliance {
         return PW.City.Land.calculateLand(from, to) * (to > from ? factor : 1);
     }
 
-    public double printScore() {
-        double base = 10;
-        System.out.println("base " + base);
-        base += getNumProjects() * Projects.getScore();
-        System.out.println("projects " + base);
-        base += (data()._cities() - 1) * 100;
-        System.out.println("cities " + base);
-        base += getInfra() / 40d;
-        System.out.println("infra " + base);
-        for (MilitaryUnit unit : MilitaryUnit.values) {
-            int amt = getUnits(unit);
-            if (amt > 0) {
-                base += unit.getScore(amt);
-                System.out.println("- unt " + amt + " | " + unit + " | " + unit.getScore(amt));
-            } else if (unit == MilitaryUnit.NUKE) {
-                System.out.println("Unit " + amt + " | " + getNukes());
-            }
-        }
-        System.out.println("unit " + base);
-        return base;
-    }
-
     public double estimateScore(double infra) {
         return estimateScore(null, infra, null, null);
     }

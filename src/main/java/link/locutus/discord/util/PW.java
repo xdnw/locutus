@@ -1099,7 +1099,6 @@ public final class PW {
             ValueStore store = ph.createLocals(guild, null, null);
             NationsFileSnapshot snapshot = dumper.getSnapshotDelegate(day, true, false);
             Set<DBNation> result = ph.parseSet(store, filterStr, snapshot, true);
-            System.out.println("Result " + result.size());
             return result;
         } catch (IOException | ParseException e) {
             throw new RuntimeException(e);

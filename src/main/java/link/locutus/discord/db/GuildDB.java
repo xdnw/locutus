@@ -1766,7 +1766,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                                     if (defaultChannel == null) {
                                         throw new IllegalArgumentException("Please set a default resource channel with " + CM.settings_bank_access.addResourceChannel.cmd.toSlashMention() + footer);
                                     } else if (messageChannelIdOrNull != null && messageChannelIdOrNull != defaultChannel.getIdLong()) {
-                                        throw new IllegalArgumentException("Please use the resource channel (1): " + defaultChannel.getAsMention() + footer);
+                                        throw new IllegalArgumentException("Please use the resource channel (1): " + defaultChannel.getAsMention() + footer + " " + banker.getAsMention());
                                     }
                                 }
                                 if (getResourceChannel(aaId) == null) {
