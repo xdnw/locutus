@@ -65,9 +65,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Matcher;
@@ -1020,9 +1018,8 @@ public class DiscordUtil {
 //        // - StringMan.findMatchingBracket(CharSequence sequence, int index): int (the index)
 //    }
 
-    public static void main(String[] args) {
-        // Simple test with spaces
-//        {
+//    public static void main(String[] args) {
+//        {//         Simple test with spaces
 //            System.out.println("\n\n------ split by word ------\n\n");
 //            String input1 = "Hello world an other word";
 //            int maxSize = 5;
@@ -1119,7 +1116,51 @@ public class DiscordUtil {
 //                        () -> "Line in bracket test exceeds " + maxSize6);
 //            }
 //        }
-    }
+//        {// All spaces
+//            System.out.println("\n\n------ split by space ------\n\n");
+//            String input1 = "                                                                                                                                                                                ";
+//            int maxSize = 5;
+//            List<String> result1 = DiscordUtil.wrap(input1, maxSize, 0);
+//            for (String line : result1) {
+//                System.out.println("Line {" + line + "}");
+//                assertTrue(line.length() <= maxSize,
+//                        () -> "Line exceeds max size: " + line);
+//            }
+//        }
+//        {// All newline
+//            System.out.println("\n\n------ split by space ------\n\n");
+//            String input1 = "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n";
+//            int maxSize = 5;
+//            List<String> result1 = DiscordUtil.wrap(input1, maxSize, 0);
+//            for (String line : result1) {
+//                System.out.println("Line {" + line + "}");
+//                assertTrue(line.length() <= maxSize,
+//                        () -> "Line exceeds max size: " + line);
+//            }
+//        }
+//        {// All tick
+//            System.out.println("\n\n------ split by tick ------\n\n");
+//            String input1 = "````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````";
+//            int maxSize = 15;
+//            List<String> result1 = DiscordUtil.wrap(input1, maxSize, 0);
+//            for (String line : result1) {
+//                System.out.println("Line {" + line + "}");
+//                assertTrue(line.length() <= maxSize,
+//                        () -> "Line exceeds max size: " + line);
+//            }
+//        }
+//        {// All tick
+//            System.out.println("\n\n------ tick newline ------\n\n");
+//            String input1 = "```\n```\n```\n``````\n``````\n```\n\n```\n```\n\n```\n`````````````\n```\n\n\n```\n``````\n```\n```\n`````````\n`````````\n```\n\n```\n\n``````\n``````\n\n``````";
+//            int maxSize = 15;
+//            List<String> result1 = DiscordUtil.wrap(input1, maxSize, 0);
+//            for (String line : result1) {
+//                System.out.println("Line {" + line + "}");
+//                assertTrue(line.length() <= maxSize,
+//                        () -> "Line exceeds max size: " + line);
+//            }
+//        }
+//    }
 
     public static List<String> wrap(String input, int maxSize, int minSize) {
         if (input.length() <= maxSize) {
@@ -1611,5 +1652,15 @@ public class DiscordUtil {
         if (index == -1) return 0;
         String[] split = url.substring(index + 9).split("/");
         return Long.parseLong(split[0]);
+    }
+
+    public static void threadDump() {
+        ThreadPoolExecutor executor = Locutus.imp().getExecutor();
+        Set<Thread> threadSet = Thread.getAllStackTraces().keySet();
+        for (Thread thread : threadSet) {
+            System.err.println(Arrays.toString(thread.getStackTrace()));
+        }
+        System.err.print("\n\nQueue: " + executor.getQueue().size() + " | Active: " + executor.getActiveCount() + " | task count: " + executor.getTaskCount());
+        executor.submit(() -> System.err.println("- COMMAND EXECUTOR RAN SUCCESSFULLY!!!"));
     }
 }

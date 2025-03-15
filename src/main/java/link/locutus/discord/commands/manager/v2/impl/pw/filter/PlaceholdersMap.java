@@ -3105,11 +3105,31 @@ public class PlaceholdersMap {
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("treasure"), true, (type, str) -> PWBindings.treasure(str));
                     }
-                    return Set.of(PWBindings.treasure(input));
+                    try {
+                        return Set.of(PWBindings.treasure(input));
+                    } catch (IllegalArgumentException e) {
+                        Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
+                        User author = (User) store.getProvided(Key.of(User.class, Me.class), false);
+                        DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
+                        Set<DBNation> nations = PWBindings.nations(null, guild, input, author, me);
+                        Set<DBTreasure> result = new ObjectOpenHashSet<>();
+                        for (DBNation nation : nations) {
+                            result.addAll(nation.getTreasures());
+                        }
+                        return result;
+                    }
                 }) {
             @Override
             public Set<String> getSheetColumns() {
                 return Set.of("treasure");
+            }
+
+            @Override
+            public Set<SelectorInfo> getSelectorInfo() {
+                Set<SelectorInfo> selectors = new LinkedHashSet<>(super.getSelectorInfo());
+                selectors.addAll(NATIONS.getSelectorInfo());
+                selectors.addAll(ALLIANCES.getSelectorInfo());
+                return selectors;
             }
 
             @NoFormat

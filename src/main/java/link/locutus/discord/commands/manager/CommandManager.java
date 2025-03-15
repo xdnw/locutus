@@ -141,6 +141,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
+import static link.locutus.discord.util.discord.DiscordUtil.threadDump;
+
 public class CommandManager {
     private final char prefix1;
     private final Map<String, Command> commandMap;
@@ -527,15 +529,6 @@ public class CommandManager {
                 }
             }
         });
-    }
-
-    private void threadDump() {
-        Set<Thread> threadSet = Thread.getAllStackTraces().keySet();
-        for (Thread thread : threadSet) {
-            System.err.println(Arrays.toString(thread.getStackTrace()));
-        }
-        System.err.print("\n\nQueue: " + executor.getQueue().size() + " | Active: " + executor.getActiveCount() + " | task count: " + executor.getTaskCount());
-        executor.submit(() -> System.err.println("- COMMAND EXECUTOR RAN SUCCESSFULLY!!!"));
     }
 
     public void registerCommands(DiscordDB db) {

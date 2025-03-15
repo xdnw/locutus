@@ -277,8 +277,8 @@ public class RaidCommand extends Command {
 
         if (true) {
             StringBuilder warnings = new StringBuilder();
-            if (me.getAvg_infra() > 1000 && me.getCities() > 7) {
-                warnings.append("- You have high infra (>1000) which will likely be lost to counters.\n");
+            if (me.getAvg_infra() > 1500 && me.getCities() > 7) {
+                warnings.append("- You have high infra (>1500) which will likely be lost to counters.\n");
             }
             if (me.getSoldiers() == 0) {
                 warnings.append("- You do not have any soldiers, which should be used for raiding as other units aren't cost effective.\n");
@@ -287,7 +287,7 @@ public class RaidCommand extends Command {
                 warnings.append("- We don't recommend raiding with tanks because they are unable to loot nations with any cost efficiency.\n");
             }
             if (beige) {
-                warnings.append("- Set a reminder for yourself to hit nations on beige. You can declare during turn change\n");
+                warnings.append("- Set a reminder for yourself to hit nations on beige.\n");
             }
             if (me.getWarPolicy() != WarPolicy.PIRATE) {
                 warnings.append("- Using the pirate policy will increase loot by 40%\n");

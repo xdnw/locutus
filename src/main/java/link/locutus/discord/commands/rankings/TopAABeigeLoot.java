@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
@@ -65,9 +66,13 @@ public class TopAABeigeLoot extends Command {
             if (score <= 0) continue;
             LootEntry loot = alliance.getLoot();
             if (loot != null && loot.getDate() >= cutOff) {
-                double perScore = loot.convertedTotal();
-                if (!total) perScore /= score;
-                lootPerScore.put(alliance.getAlliance_id(), perScore);
+                double value;
+                if (total) {
+                    value = loot.convertedTotal();
+                } else {
+                    value = ResourceType.convertedTotal(loot.getAllianceLootValue(1));
+                }
+                lootPerScore.put(alliance.getAlliance_id(), value);
             }
         }
 
