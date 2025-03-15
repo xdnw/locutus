@@ -1357,7 +1357,7 @@ public final class Locutus extends ListenerAdapter {
         return loader.getBankDB();
     }
 
-    public ExecutorService getExecutor() {
+    public ThreadPoolExecutor getExecutor() {
         return executor;
     }
 

@@ -7,9 +7,13 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarCostMode;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
+import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
@@ -84,25 +88,9 @@ public class AllianceLootRanking extends Command {
                 .toList();
 
         String title = "Loot (" + days + " days):";
-        StringBuilder response = new StringBuilder();
-
-        for (int i = 0; i < Math.min(25, sorted.size()); i++) {
-            Map.Entry<Integer, Map<ResourceType, Double>> entry = sorted.get(i);
-            int allianceId = entry.getKey();
-            Double value = entry.getValue().getOrDefault(ResourceType.MONEY, 0d);
-
-            String name = PW.getName(allianceId, true);
-            name = name.substring(0, Math.min(32, name.length()));
-
-            response.append('\n').append(String.format("%4s", i + 1)).append(". ").append(String.format("%32s", name)).append(": $").append(format(value));
-        }
-
-        String emoji = "Refresh";
-        String cmd = DiscordUtil.trimContent(fullCommandRaw);
-        response.append("\n\nPress `").append(emoji).append("` to refresh");
-        channel.create().embed(title, response.toString())
-                        .commandButton(cmd, emoji).send();
-
+        Map<Integer, Double> totals = sorted.stream().collect(HashMap::new, (m, e) -> m.put(e.getKey(), e.getValue().getOrDefault(ResourceType.MONEY, 0d)), HashMap::putAll);
+        RankBuilder<IShrink> ranks = new SummedMapRankBuilder<>(totals).sort().nameKeys(i -> DBAlliance.getOrCreate(i).toShrink());
+        ranks.build(author, channel, fullCommandRaw, title, true);
         return null;
     }
 }

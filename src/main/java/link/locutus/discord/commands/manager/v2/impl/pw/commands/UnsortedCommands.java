@@ -1362,7 +1362,9 @@ public class UnsortedCommands {
                                @Switch("u") boolean uploadFile,
                                @Arg("Include inactive nations (2 days)")
                                @Switch("i") boolean includeInactive,
-                               @Switch("d") @Timestamp Long snapshotDate) {
+                               @Switch("d") @Timestamp Long snapshotDate,
+                               @Switch("r") Integer num_results,
+                               @Switch("h") @AllowDeleted Set<NationOrAlliance> highlight) {
         if (nationList == null) nationList = new SimpleNationList(Locutus.imp().getNationDB().getAllNations()).setFilter("*");
         Set<DBNation> nations = PW.getNationsSnapshot(nationList.getNations(), nationList.getFilter(), snapshotDate, guild);
         if (!includeInactive) nations.removeIf(f -> !f.isTaxable());
@@ -1406,6 +1408,7 @@ public class UnsortedCommands {
             }
         }
 
+        Set<Integer> highlightIds = highlight == null ? null : highlight.stream().map(f -> f.getId()).collect(Collectors.toSet());
         SummedMapRankBuilder<Integer, Number> byNation = new SummedMapRankBuilder<>(profitByNation).adaptKeys((n, v) -> n.getNation_id());
         RankBuilder<IShrink> ranks;
         if (!listByNation) {
@@ -1416,12 +1419,14 @@ public class UnsortedCommands {
                 }
             });
             SummedMapRankBuilder<Integer, Number> byAA = listAverage ? byAAMap.average() : byAAMap.sum();
+            byAA.highlight(highlightIds);
 
             // Sort descending
             ranks = byAA.sort()
                     // Change key to alliance name
                     .nameKeys(id -> DBAlliance.getOrCreate(id).toShrink());
         } else {
+            byNation.highlight(highlightIds);
             ranks = byNation.sort()
                     // Change key to nation name
                     .nameKeys(id -> DBNation.getOrCreate(id).toShrink());
@@ -1431,7 +1436,7 @@ public class UnsortedCommands {
         String title = "Daily " + (includeNegative ? "net" : "gross") + " " + rssNames + " " + "production";
         if (!listByNation && listAverage) title += " per member";
         if (resources.size() > 1) title += " (market value)";
-        ranks.build(channel, command, title, uploadFile);
+        ranks.limit(num_results).build(channel, command, title, uploadFile);
         return null;
     }
 

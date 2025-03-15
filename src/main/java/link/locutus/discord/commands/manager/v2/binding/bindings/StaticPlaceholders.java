@@ -29,7 +29,7 @@ public abstract class StaticPlaceholders<T> extends SimpleVoidPlaceholders<T> {
     }
 
     @Override
-    public final Set<SelectorInfo> getSelectorInfo() {
+    public Set<SelectorInfo> getSelectorInfo() {
         T[] values = enumValues.get();
         String joined = Arrays.stream(values).map(StringMan::getString).collect(Collectors.joining("`, `", "`", "`"));
         return Set.of(

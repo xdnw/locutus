@@ -32,7 +32,7 @@ public class AllianceLootLosses extends Command {
 
     @Override
     public List<CommandRef> getSlashReference() {
-        return List.of(CM.stats_war.warCostRanking.cmd.type(WarCostMode.LOSSES.name()).allowedAttacks(AttackType.A_LOOT.name()).groupByAlliance("true"));
+        return List.of(CM.stats_war.warCostRanking.cmd.type(WarCostMode.ATTACKER_LOSSES.name()).allowedAttacks(AttackType.A_LOOT.name()).groupByAlliance("true"));
     }
 
     @Override

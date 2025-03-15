@@ -201,7 +201,6 @@ public enum Research {
 
             int treeUpgrades = byGroup.getOrDefault(r.getGroup(), 0);
 
-            System.out.println("Tree " + treeUpgrades + " | total: " + totalUpgrades + " | start: " + startValue + " | end: " + endValue);
             Map<ResourceType, Double> addCost = r.getCost(treeUpgrades, totalUpgrades, startValue, endValue, factor);
             cost = ResourceType.add(cost, addCost);
 

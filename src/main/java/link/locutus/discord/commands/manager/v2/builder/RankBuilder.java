@@ -157,36 +157,36 @@ public class RankBuilder<T> {
     }
 
     public List<IShrink> toItems(int limit) {
-        List<IShrink> items = new ArrayList<>();
-        for (int i = 0; i < Math.min(limit, values.size()); i++) {
+        List<IShrink> sublist = new ObjectArrayList<>();
+        for (int i = 0; i < Math.min(values.size(), limit); i++) {
             T elem = values.get(i);
             IShrink item;
             if (elem instanceof IShrink s && !s.isIdentical()) {
-                item = s;
+                item = s.clone();
             } else {
                 item = (IShrink.of(elem.toString()));
             }
-            if (highlight.remove(i)) {
+            if (highlight.contains(i)) {
                 item = item.prepend("**").append("**");
             }
             item = item.prepend((i + 1) + ". ");
-            items.add(item);
+            sublist.add(item);
         }
         if (!highlight.isEmpty()) {
             boolean addedElipses = false;
             for (int i : highlight) {
                 if (i < limit) continue;
                 if (!addedElipses) {
-                    items.add(IShrink.of("..."));
+                    sublist.add(IShrink.of("..."));
                     addedElipses = true;
                 }
                 T elem = values.get(i);
-                IShrink item = elem instanceof IShrink s && !s.isIdentical() ? s : IShrink.of(elem.toString());
+                IShrink item = elem instanceof IShrink s && !s.isIdentical() ? s.clone() : IShrink.of(elem.toString());
                 item = item.prepend((i + 1) + ". ").prepend("**").append("**");
-                items.add(item);
+                sublist.add(item);
             }
         }
-        return items;
+        return sublist;
     }
 
     @Override

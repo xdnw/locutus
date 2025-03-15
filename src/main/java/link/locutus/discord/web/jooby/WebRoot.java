@@ -32,6 +32,7 @@ import java.sql.SQLException;
 import java.util.*;
 import java.util.function.Consumer;
 
+import static link.locutus.discord.util.discord.DiscordUtil.threadDump;
 import static link.locutus.discord.web.WebUtil.getPortOrSchemeDefault;
 
 public class WebRoot {
@@ -181,6 +182,14 @@ public class WebRoot {
                 pageHandler.sse(sse);
             }
         }));
+
+        this.app.get("/threads", new Handler() {
+            @Override
+            public void handle(@NotNull Context context) throws Exception {
+                threadDump();
+                context.result("See console...");
+            }
+        });
 
         this.app.get("/discordids", new Handler() {
             @Override

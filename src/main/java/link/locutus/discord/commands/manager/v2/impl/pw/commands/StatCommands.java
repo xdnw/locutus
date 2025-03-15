@@ -166,7 +166,9 @@ public class StatCommands {
                                  @Switch("attacks") Set<AttackType> allowedAttacks,
                                  @Switch("off") @Arg(value = "Only include wars declared by coalition1", group = 5) boolean onlyOffensiveWars,
                                  @Switch("def") @Arg(value = "Only include wars declared by coalition2", group = 5) boolean onlyDefensiveWars,
-                                 @Switch("f") boolean uploadFile
+                                 @Switch("f") boolean uploadFile,
+                                 @Switch("n") Integer num_results,
+                                 @Switch("h") @AllowDeleted Set<DBAlliance> highlight
     ) {
         if (timeEnd == null) timeEnd = Long.MAX_VALUE;
         if (stat == null) stat = WarCostStat.WAR_VALUE;
@@ -204,7 +206,7 @@ public class StatCommands {
 
         Map<Integer, DBWar> wars = parser.getWars();
 
-        BiFunction<Boolean, AbstractCursor, Double> valueFunc = stat.getFunction(excludeUnits, excludeInfra, excludeConsumption, excludeLoot, excludeBuildings);
+        BiFunction<Boolean, AbstractCursor, Double> valueFunc = stat.getFunction(excludeUnits, excludeInfra, excludeConsumption, excludeLoot, excludeBuildings, type);
 
         GroupedRankBuilder<Integer, AbstractCursor> nationAllianceGroup = new RankBuilder<>(parser.getAttacks())
                 .group((attack, map) -> {
@@ -269,8 +271,9 @@ public class StatCommands {
 
         RankBuilder<IShrink> ranks = byGroupSum
                 .sort()
+                .highlight(highlight == null ? null : highlight.stream().map(DBAlliance::getId).collect(Collectors.toSet()))
                 .nameKeys(id -> (groupByAlliance ? DBAlliance.getOrCreate(id) : DBNation.getOrCreate(id)).toShrink());
-        ranks.build(io, command, title, uploadFile);
+        ranks.limit(num_results).build(io, command, title, uploadFile);
         return null;
     }
 
@@ -486,7 +489,7 @@ public class StatCommands {
     public void allianceRanking(@Me IMessageIO channel, @Me JSONObject command,
                                 AllianceMetric metric, @Default Set<DBAlliance> alliances, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile,
                                 @Switch("n") Integer num_results,
-                                @Switch("h") Set<DBAlliance> highlight) {
+                                @Switch("h") @AllowDeleted Set<DBAlliance> highlight) {
         if (alliances == null) alliances = Locutus.imp().getNationDB().getAlliances();
         long turn = TimeUtil.getTurn();
         Set<Integer> aaIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
@@ -510,7 +513,7 @@ public class StatCommands {
                                          @Switch("n") Integer num_results,
                                          @Switch("r") boolean reverseOrder,
                                          @Switch("f") boolean uploadFile,
-                                         @Switch("h") Set<DBAlliance> highlight) {
+                                         @Switch("h") @AllowDeleted Set<DBAlliance> highlight) {
         if (alliances == null) alliances = Locutus.imp().getNationDB().getAlliances();
         long turn = TimeUtil.getTurn();
         Set<Integer> aaIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
@@ -545,7 +548,7 @@ public class StatCommands {
     public void allianceRankingTime(@Me IMessageIO channel, @Me JSONObject command,
                                     Set<DBAlliance> alliances, AllianceMetric metric, @Timestamp long timeStart, @Timestamp long timeEnd, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile,
                                     @Switch("n") Integer num_results,
-                                    @Switch("h") Set<DBAlliance> highlight) {
+                                    @Switch("h") @AllowDeleted Set<DBAlliance> highlight) {
         if (alliances == null) alliances = Locutus.imp().getNationDB().getAlliances();
         long turnStart = TimeUtil.getTurn(timeStart);
         long turnEnd = TimeUtil.getTurn(timeEnd);
@@ -2627,7 +2630,7 @@ public class StatCommands {
         @Switch("f") boolean attach_file,
          @Arg("Ignore alliances without nations above a certain score") @Switch("min") Double min_score,
          @Arg("Ignore alliances without nations below a certain score") @Switch("max") Double max_score,
-                                 @Switch("h") Set<DBAlliance> highlight,
+                                 @Switch("h") @AllowDeleted Set<DBAlliance> highlight,
                                  @Switch("n") Integer num_results
             ) {
         String title = "AA loot/score";
@@ -2645,9 +2648,13 @@ public class StatCommands {
             }
             LootEntry loot = alliance.getLoot();
             if (loot != null && loot.getDate() >= time) {
-                double perScore = loot.convertedTotal();
-                if (!show_total) perScore /= score;
-                lootPerScore.put(alliance.getAlliance_id(), perScore);
+                double value;
+                if (show_total) {
+                    value = loot.convertedTotal();
+                } else {
+                    value = ResourceType.convertedTotal(loot.getAllianceLootValue(1));
+                }
+                lootPerScore.put(alliance.getAlliance_id(), value);
             }
         }
 
