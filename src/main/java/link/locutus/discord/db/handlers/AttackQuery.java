@@ -16,10 +16,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiPredicate;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.function.*;
 import java.util.stream.Collectors;
 
 public class AttackQuery {
@@ -163,11 +160,11 @@ public class AttackQuery {
         return this.withWars(getDb().getActiveWars());
     }
 
-    public List<AbstractCursor> getList() {
+    public void iterateAttacks(BiConsumer<DBWar, AbstractCursor> forEachAttack) {
         if (wars == null) {
             withAllWars();
         }
-        return getDb().getAttacks(wars, attackTypeFilter, preliminaryFilter, attackFilter);
+        getDb().iterateAttacks(wars, attackTypeFilter, preliminaryFilter, attackFilter, forEachAttack);
     }
 
     public Map<DBWar, List<AbstractCursor>> getMap() {

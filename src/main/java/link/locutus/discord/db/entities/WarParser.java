@@ -169,7 +169,7 @@ public class WarParser {
         return wars;
     }
 
-    public List<AbstractCursor> getAttacks() {
+    public List<AbstractCursor> getAttacksDeprecated() {
         if (this.attacks == null) {
             this.attacks = Locutus.imp().getWarDb().getAttacksByWars(getWars().values(), start, end);
         }

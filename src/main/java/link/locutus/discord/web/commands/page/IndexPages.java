@@ -396,21 +396,21 @@ public class IndexPages extends PageHelper {
 
         Collections.sort(myWars, Comparator.comparingLong(o -> o.getDate()));
         Collections.reverse(myWars);
-        List<AbstractCursor> attacks = myWars.isEmpty() ? Collections.emptyList() : Locutus.imp().getWarDb().getAttacksByWars(myWars);
-        boolean isFightingActives = false;
+//        List<AbstractCursor> attacks = myWars.isEmpty() ? Collections.emptyList() : Locutus.imp().getWarDb().getAttacksByWars(myWars);
+        boolean[] isFightingActives = {false};
 
         Collection<JavaCity> cities = myWars.isEmpty() ? null : nation.getCityMap(false, false,false).values();
 
-        for (DBWar war : myWars) {
-            List<AbstractCursor> warAttacks = attacks.stream().filter(f -> f.getWar_id() == war.warId).collect(Collectors.toList());
-            WarCard warcard = new WarCard(war, warAttacks, false, false, false);
+        DBNation finalNation = nation;
+        Locutus.imp().getWarDb().iterateAttackList(myWars, (war, attacks) -> {
+            WarCard warcard = new WarCard(war, attacks, false, false, false);
             warCards.put(war, warcard);
 
-            boolean isAttacker = war.isAttacker(nation);
+            boolean isAttacker = war.isAttacker(finalNation);
             DBNation other = war.getNation(!isAttacker);
 
             if (other.active_m() < 1440) {
-                isFightingActives = true;
+                isFightingActives[0] = true;
             }
 
             if (isAttacker) {
@@ -418,7 +418,7 @@ public class IndexPages extends PageHelper {
             } else {
                 defensiveWars.put(war, other);
             }
-        }
+        });
         Map<IACheckup.AuditType, Map.Entry<Object, String>> checkupResult = new HashMap<>();
         if (db.isWhitelisted() && db.hasAlliance()) {
             try {
@@ -433,10 +433,8 @@ public class IndexPages extends PageHelper {
 
         List<Announcement.PlayerAnnouncement> announcements = db.getPlayerAnnouncementsByNation(nation.getNation_id(), true);
 
-        DBNation finalNation = nation;
         Map<IACheckup.AuditType, Map.Entry<Object, String>> finalCheckupResult = checkupResult;
-        boolean finalIsFightingActives = isFightingActives;
-        return WebStore.render(f -> JtememberindexGenerated.render(f, null, ws, db.getGuild(), db, finalNation, author, deposits, finalCheckupResult, cities, finalIsFightingActives, offensiveWars, defensiveWars, warCards, recommendedAttack, announcements));
+        return WebStore.render(f -> JtememberindexGenerated.render(f, null, ws, db.getGuild(), db, finalNation, author, deposits, finalCheckupResult, cities, isFightingActives[0], offensiveWars, defensiveWars, warCards, recommendedAttack, announcements));
     }
 //
 //    @Command()

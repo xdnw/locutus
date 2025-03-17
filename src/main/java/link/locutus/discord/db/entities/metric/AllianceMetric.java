@@ -28,6 +28,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.db.handlers.AttackQuery;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
@@ -159,8 +160,9 @@ public enum AllianceMetric implements IAllianceMetric {
 
             AttackCost cost = new AttackCost("", "", false, false, false, false, false);
             long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1);
-            List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksEither(nationIds, cutoff);
-            cost.addCost(attacks, a -> nationIds.contains(a.getAttacker_id()), b -> nationIds.contains(b.getDefender_id()));
+            Locutus.imp().getWarDb().iterateAttacksEither(nationIds, cutoff, (war, attack) -> {
+                cost.addCost(attack, war, a -> nationIds.contains(a.getAttacker_id()), b -> nationIds.contains(b.getDefender_id()));
+            });
             return cost.convertedTotal(true);
         }
     },
@@ -190,8 +192,8 @@ public enum AllianceMetric implements IAllianceMetric {
         public void setupReaders(DataDumpImporter importer) {
             long minDate = importer.getParser().getMinDate();
             Map<Integer, DBWar> wars = Locutus.imp().getWarDb().getWarsSince(minDate - TimeUnit.DAYS.toMillis(5));
-            Collection<AbstractCursor> attacks = Locutus.imp().getWarDb().queryAttacks().withWars(wars).withTypes(AttackType.PEACE, AttackType.VICTORY).getList();
-            warEndDates = importer.getParser().getUtil().getWarEndDates(wars, attacks);
+            AttackQuery query = Locutus.imp().getWarDb().queryAttacks().withWars(wars).withTypes(AttackType.PEACE, AttackType.VICTORY);
+            warEndDates = importer.getParser().getUtil().getWarEndDates(wars, query);
 
             importer.setNationReader(this, (day, r) -> {
                 Rank position = r.header.alliance_position.get();

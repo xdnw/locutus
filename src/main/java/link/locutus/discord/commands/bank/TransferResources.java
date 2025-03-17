@@ -48,8 +48,12 @@ public class TransferResources extends Command {
         if (args.isEmpty()) return usage();
 
         if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
-        if (me.isGray()) {
-            return "Please set your color off gray: <" + Settings.PNW_URL() + "/nation/edit/>";
+        if (me.isGray() && !flags.contains('f')) {
+            String title = "Please set your color off gray";
+            String body = "<" + Settings.PNW_URL() + "/nation/edit/>\n" +
+                    "Press `confirm` once you have done so.";
+            channel.create().embed(title, body).commandButton(fullCommandRaw + " -f", "Confirm").send();
+            return null;
         }
         String mention = author.getAsMention();
         args = new ArrayList<>(args);

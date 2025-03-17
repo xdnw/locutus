@@ -226,7 +226,9 @@ public class WarCostRanking extends Command {
         String title = (damage && net ? "Net " : "Total ") + (typeName == null ? "" : typeName + " ") + (profit ? damage ? "damage" : "profit" : (unitKill != null ? "kills" : unitLoss != null ? "deaths" : (attType != null) ? "attacks" : "losses")) + " " + (average ? "per" : "of") + " war (%s)";
         title = String.format(title, diffStr);
 
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksEither(nationMap.keySet(), start, end);
+        Locutus.imp().getWarDb().iterateAttacksEither(nationMap.keySet(), start, end, (war, attack) -> {
+
+        });
 
         GroupedRankBuilder<Integer, AbstractCursor> attackGroup = new RankBuilder<>(attacks)
                 .group((attack, map) -> {

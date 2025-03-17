@@ -3,10 +3,12 @@ package link.locutus.discord.apiv3.csv;
 import com.politicsandwar.graphql.model.WarAttack;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.io.FastBufferedInputStream;
 import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
@@ -24,6 +26,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
+import link.locutus.discord.db.handlers.AttackQuery;
 import link.locutus.discord.util.IOUtil;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
@@ -44,6 +47,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -254,18 +258,20 @@ public class DataUtil {
         return nationsAtWar;
     }
 
-    public Map<DBWar, Long> getWarEndDates(Map<Integer, DBWar> wars, Collection<AbstractCursor> attacks) {
+    public Map<DBWar, Long> getWarEndDates(Map<Integer, DBWar> wars, AttackQuery query) {
         Map<DBWar, Long> warEndDates = new Object2LongOpenHashMap<>();
-        for (AbstractCursor attack : attacks) {
-            switch (attack.getAttack_type()) {
-                case VICTORY, A_LOOT, PEACE -> {
-                    DBWar war = wars.get(attack.getWar_id());
-                    if (war != null) {
-                        warEndDates.put(war, attack.getDate());
+        query.iterateAttacks(new BiConsumer<DBWar, AbstractCursor>() {
+            @Override
+            public void accept(DBWar war, AbstractCursor attack) {
+                switch (attack.getAttack_type()) {
+                    case VICTORY, A_LOOT, PEACE -> {
+                        if (war != null) {
+                            warEndDates.put(war, attack.getDate());
+                        }
                     }
                 }
             }
-        }
+        });
         for (DBWar war : wars.values()) {
             long expireDate = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(war.getDate()) + 60);
             warEndDates.putIfAbsent(war, expireDate);
@@ -276,29 +282,31 @@ public class DataUtil {
     public void backCalculateBeigeDamage() throws IOException, ParseException {
         parser.load();
         long min = parser.getMinDate();
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().queryAttacks().withWars(f -> f.possibleEndDate() >= min && (f.getStatus() == WarStatus.ATTACKER_VICTORY || f.getStatus() == WarStatus.DEFENDER_VICTORY))
-                .withTypes(AttackType.VICTORY).appendAttackFilter(f -> f.getInfra_destroyed_value() <= 0).getList();
-        Map<Long, Set<Integer>> nationsByDay = new HashMap<>();
-        for (AbstractCursor attack : attacks) {
+        Map<Long, Set<Integer>> nationsByDay = new Long2ObjectOpenHashMap<>();
+        Map<Integer, AbstractCursor> attacksById = new Int2ObjectOpenHashMap<>();
+
+        Locutus.imp().getWarDb().queryAttacks()
+        .withWars(f -> f.possibleEndDate() >= min && (f.getStatus() == WarStatus.ATTACKER_VICTORY || f.getStatus() == WarStatus.DEFENDER_VICTORY))
+        .withTypes(AttackType.VICTORY).appendAttackFilter(f -> f.getInfra_destroyed_value() <= 0)
+        .appendPreliminaryFilter(attack -> {
             long day = TimeUtil.getDay(attack.getDate());
-            nationsByDay.computeIfAbsent(day, k -> new HashSet<>()).add(attack.getDefender_id());
-        }
+            nationsByDay.computeIfAbsent(day, k -> new IntOpenHashSet()).add(attack.getDefender_id());
+            return true;
+        }).iterateAttacks((war, attack) -> {
+            attacksById.put(attack.getWar_attack_id(), attack);
+        });
 
         Map<Long, Map<Integer, Map<Integer, Double>>> infraMap = cityInfraByDay((day, nation) -> nationsByDay.getOrDefault(day, Collections.emptySet()).contains(nation));
 
-        attacks.removeIf(AbstractCursor -> {
-            long day = TimeUtil.getDay(AbstractCursor.getDate());
+        attacksById.entrySet().removeIf(e -> {
+            long day = TimeUtil.getDay(e.getValue().getDate());
             Map<Integer, Map<Integer, Double>> infraDay = infraMap.get(day);
             if (infraDay == null) return true;
-            return infraDay.containsKey(AbstractCursor.getDefender_id());
+            return infraDay.containsKey(e.getValue().getDefender_id());
         });
 
-        Map<Integer, AbstractCursor> attacksById = new HashMap<>();
-        for (AbstractCursor attack : attacks) {
-            attacksById.put(attack.getWar_attack_id(), attack);
-        }
-
-        List<Integer> attacksToFetch = attacks.stream().map(f -> f.getWar_attack_id()).collect(Collectors.toList());
+        List<Integer> attacksToFetch = new IntArrayList(attacksById.keySet());
+        attacksToFetch.sort(Integer::compareTo);
         int amtPer = 999;
         for (int i = 0; i < attacksToFetch.size(); i += amtPer) {
             List<Integer> subList = attacksToFetch.subList(i, i + amtPer);

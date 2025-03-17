@@ -1,6 +1,7 @@
 package link.locutus.discord.db.entities;
 
 import com.politicsandwar.graphql.model.War;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.*;
@@ -13,15 +14,12 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.scheduler.ValueException;
 import link.locutus.discord.util.task.war.WarCard;
 import link.locutus.discord.apiv1.domains.subdomains.SWarContainer;
 
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -277,16 +275,21 @@ public class DBWar {
         return body.toString();
     }
 
-    public List<AbstractCursor> getAttacks2() {
-        return getAttacks2(true);
+    public List<AbstractCursor> getAttacks3() {
+        return getAttacks3(true);
     }
 
-    public List<AbstractCursor> getAttacks2(boolean loadInactive) {
-        return Locutus.imp().getWarDb().getAttacksByWarId2(this, loadInactive);
+    public List<AbstractCursor> getAttacks3(boolean loadInactive) {
+        List<AbstractCursor>[] attacksFinal = new List[]{null};
+        Locutus.imp().getWarDb().iterateAttackList(Collections.singleton(this), null, null, (war, attacks) -> {
+            attacksFinal[0] = attacks;
+        }, loadInactive);
+        List<AbstractCursor> result = attacksFinal[0];
+        return result == null ? Collections.emptyList() : result;
     }
 
-    public List<AbstractCursor> getAttacks(Collection<AbstractCursor> attacks) {
-        List<AbstractCursor> result = new ArrayList<>();
+    public List<AbstractCursor> getAttacks3(Collection<AbstractCursor> attacks) {
+        List<AbstractCursor> result = new ObjectArrayList<>();
         for (AbstractCursor attack : attacks) {
             if (attack.getWar_id() == warId) result.add(attack);
         }
@@ -477,16 +480,26 @@ public class DBWar {
     }
 
     public AttackCost toCost() {
-        return toCost(getAttacks2(), true, true, true, true, true);
+        return toCost(true, true, true, true, true);
+    }
+
+    public AttackCost toCost(boolean buildings, boolean ids, boolean victories, boolean wars, boolean inclAttacks) {
+        AttackCost cost = new AttackCost(this, buildings, ids, victories, wars, inclAttacks);
+        BiFunction<DBWar, AbstractCursor, Boolean> isPrimary = (w, a) -> a.getAttacker_id() == getAttacker_id();
+        BiFunction<DBWar, AbstractCursor, Boolean> isSecondary = (w, b) -> b.getAttacker_id() == getDefender_id();
+        Locutus.imp().getWarDb().iterateAttacksByWarId(this, true, (war, attack) -> {
+            cost.addCost(attack, this, isPrimary, isSecondary);
+        });
+        return cost;
     }
 
     public AttackCost toCost(List<AbstractCursor> attacks, boolean buildings, boolean ids, boolean victories, boolean wars, boolean inclAttacks) {
-        String nameA = PW.getName(getAttacker_id(), false);
-        String nameB = PW.getName(getDefender_id(), false);
-        Function<AbstractCursor, Boolean> isPrimary = a -> a.getAttacker_id() == getAttacker_id();
-        Function<AbstractCursor, Boolean> isSecondary = b -> b.getAttacker_id() == getDefender_id();
-        AttackCost cost = new AttackCost(nameA, nameB, buildings, ids, victories, wars, inclAttacks);
-        cost.addCost(attacks, this, isPrimary, isSecondary);
+        AttackCost cost = new AttackCost(this, buildings, ids, victories, wars, inclAttacks);
+        BiFunction<DBWar, AbstractCursor, Boolean> isPrimary = (w, a) -> a.getAttacker_id() == getAttacker_id();
+        BiFunction<DBWar, AbstractCursor, Boolean> isSecondary = (w, b) -> b.getAttacker_id() == getDefender_id();
+        for (AbstractCursor attack : attacks) {
+            cost.addCost(attack, this, isPrimary, isSecondary);
+        }
         return cost;
     }
 
@@ -518,36 +531,39 @@ public class DBWar {
     }
 
     public int getControl(Predicate<AttackType> attackType, MilitaryUnit... units) {
-        long acDate = 0;
-        int acNation = 0;
-        for (AbstractCursor attack : getAttacks2(false)) {
+        long[] acDate = {0};
+        int[] acNation = {0};
+        Locutus.imp().getWarDb().iterateAttacksByWarId(this, false, (war, attack) -> {
             if (attackType.test(attack.getAttack_type())) {
                 switch (attack.getSuccess()) {
                     case PYRRHIC_VICTORY, MODERATE_SUCCESS -> {
-                        if (acNation != attack.getAttacker_id()) {
-                            acNation = 0;
-                            acDate = 0;
+                        if (acNation[0] != attack.getAttacker_id()) {
+                            acNation[0] = 0;
+                            acDate[0] = 0;
                         }
                     }
                     case IMMENSE_TRIUMPH -> {
-                        acNation = attack.getAttacker_id();
-                        acDate = attack.getDate();
+                        acNation[0] = attack.getAttacker_id();
+                        acDate[0] = attack.getDate();
                     }
                 }
             }
-        }
-        if (acNation != 0) {
-            for (AbstractCursor attack : Locutus.imp().getWarDb().getAttacks(acNation, acDate)) {
-                if (attackType.test(attack.getAttack_type()) &&
-                        attack.getSuccess() == SuccessType.IMMENSE_TRIUMPH &&
-                        attack.getDefender_id() == acNation &&
-                        attack.getDate() > acDate) {
-                    return 0;
-                }
-
+        });
+        if (acNation[0] != 0) {
+            try {
+                Locutus.imp().getWarDb().iterateAttacks(acNation[0], acDate[0], (war, attack) -> {
+                    if (attackType.test(attack.getAttack_type()) &&
+                            attack.getSuccess() == SuccessType.IMMENSE_TRIUMPH &&
+                            attack.getDefender_id() == acNation[0] &&
+                            attack.getDate() > acDate[0]) {
+                        throw new ValueException(0);
+                    }
+                });
+            } catch (ValueException e) {
+                return (int) e.getValue();
             }
         }
-        DBNation nation = DBNation.getById(acNation);
+        DBNation nation = DBNation.getById(acNation[0]);
         if (nation != null) {
             boolean hasUnits = false;
             for (MilitaryUnit unit : units) {
@@ -558,7 +574,7 @@ public class DBWar {
             }
             if (!hasUnits) return 0;
         }
-        return acNation;
+        return acNation[0];
     }
 
     public int getGroundControl() {
