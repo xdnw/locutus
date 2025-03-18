@@ -624,7 +624,6 @@ public class DiscordUtil {
     public static Map<String, String> getReactions(MessageEmbed embed) {
         MessageEmbed.ImageInfo img = embed.getImage();
         MessageEmbed.Thumbnail thumb = embed.getThumbnail();
-
         if (thumb == null && img == null) {
             return null;
         }
