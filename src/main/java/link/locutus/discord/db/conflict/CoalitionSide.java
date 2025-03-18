@@ -29,6 +29,7 @@ import link.locutus.discord.db.entities.conflict.DayTierGraphData;
 import link.locutus.discord.db.entities.conflict.TurnTierGraphData;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.web.jooby.JteUtil;
 
 import java.util.ArrayList;
@@ -231,14 +232,14 @@ public class CoalitionSide {
     public DamageStatGroup getDamageStats(boolean isLosses, Integer id, boolean isAlliance) {
         if (id == null) return isLosses ? lossesAndDefensiveStats : inflictedAndOffensiveStats;
         Map<Integer, Map.Entry<DamageStatGroup, DamageStatGroup>> map = isAlliance ? damageByAlliance : damageByNation;
-        Map.Entry<DamageStatGroup, DamageStatGroup> pair = map.computeIfAbsent(id, k -> Map.entry(new DamageStatGroup(), new DamageStatGroup()));
+        Map.Entry<DamageStatGroup, DamageStatGroup> pair = map.computeIfAbsent(id, k -> KeyValue.of(new DamageStatGroup(), new DamageStatGroup()));
         return isLosses ? pair.getKey() : pair.getValue();
     }
 
     private Map.Entry<DamageStatGroup, DamageStatGroup> getAllianceDamageStatsByDayPair(int id, int cities, long day) {
         return damageByDayByAllianceByCity.computeIfAbsent(day, k -> new Int2ObjectOpenHashMap<>())
                 .computeIfAbsent(id, k -> new Byte2ObjectOpenHashMap<>())
-                .computeIfAbsent((byte) cities, k -> Map.entry(new DamageStatGroup(), new DamageStatGroup()));
+                .computeIfAbsent((byte) cities, k -> KeyValue.of(new DamageStatGroup(), new DamageStatGroup()));
     }
 
     private DamageStatGroup getAllianceDamageStatsByDay(boolean isLosses, int id, int cities, long day) {
@@ -323,9 +324,9 @@ public class CoalitionSide {
 
     public void updateAttack(DBWar war, AbstractCursor attack, int attackerAA, int nationId, int cities, long day, boolean isAttacker, AttackTypeSubCategory subCategory) {
         Map.Entry<DamageStatGroup, DamageStatGroup> aaDamage = damageByAlliance.computeIfAbsent(attackerAA,
-                k -> Map.entry(new DamageStatGroup(), new DamageStatGroup()));
+                k -> KeyValue.of(new DamageStatGroup(), new DamageStatGroup()));
         Map.Entry<DamageStatGroup, DamageStatGroup> nationDamage = damageByNation.computeIfAbsent(nationId,
-                k -> Map.entry(new DamageStatGroup(), new DamageStatGroup()));
+                k -> KeyValue.of(new DamageStatGroup(), new DamageStatGroup()));
 
         Map.Entry<DamageStatGroup, DamageStatGroup> tierDamage = getAllianceDamageStatsByDayPair(attackerAA, cities, day);
 

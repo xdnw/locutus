@@ -11,7 +11,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.web.WebUtil;
 
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -111,7 +111,7 @@ public interface ICity {
         }
         double destroyedMin = Math.min(infra, Math.min(1700, infra * 0.8 + 150)) * factor;
         double destroyedMax = Math.min(infra, Math.max(Math.max(2000, density * 13.5), infra * 0.8 + 150)) * factor;
-        return new AbstractMap.SimpleEntry<>((int) Math.round(destroyedMin), (int) Math.round(destroyedMax));
+        return new KeyValue<>((int) Math.round(destroyedMin), (int) Math.round(destroyedMax));
     }
 
     default Map.Entry<Integer, Integer> getNukeDamage(Predicate<Project> hasProject) {
@@ -123,7 +123,7 @@ public interface ICity {
         }
         double destroyedMin = Math.min(infra, Math.min(300, infra * 0.3 + 100)) * factor;
         double destroyedMax = Math.min(infra, Math.max(Math.max(350, density * 3), infra * 0.8 + 150)) * factor;
-        return new AbstractMap.SimpleEntry<>((int) Math.round(destroyedMin), (int) Math.round(destroyedMax));
+        return new KeyValue<>((int) Math.round(destroyedMin), (int) Math.round(destroyedMax));
     }
 
     @Command(desc = "Get the MMR of the city\n" +

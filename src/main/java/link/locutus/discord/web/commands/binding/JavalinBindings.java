@@ -9,6 +9,7 @@ import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import io.javalin.http.Context;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -61,7 +62,7 @@ public class JavalinBindings extends BindingHelper {
             if (!(entry.get(1) instanceof Map)) {
                 throw new IllegalArgumentException("Invalid value: " + entry.get(1));
             }
-            cast.add(Map.entry((String) entry.get(0), (Map<String, Object>) entry.get(1)));
+            cast.add(KeyValue.of((String) entry.get(0), (Map<String, Object>) entry.get(1)));
         }
         return cast;
     }

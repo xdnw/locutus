@@ -21,6 +21,7 @@ import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.util.scheduler.KeyValue;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -57,11 +58,11 @@ public class JavaCity implements ICity {
             }
             DBNation nation = DBNation.getById(cityEntry.getNationId());
             if (nation != null) {
-                return Map.entry(nation, cityEntry.toJavaCity(nation));
+                return KeyValue.of(nation, cityEntry.toJavaCity(nation));
             }
             DBNation dummy = new SimpleDBNation(new DBNationData());
             dummy.setNation_id(cityEntry.getNationId());
-            return Map.entry(dummy, cityEntry.toJavaCity(f -> false));
+            return KeyValue.of(dummy, cityEntry.toJavaCity(f -> false));
         }
         return null;
     }

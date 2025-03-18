@@ -49,6 +49,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.offshore.test.IAChannel;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.MailRespondTask;
 import link.locutus.discord.util.task.ia.IACheckup;
@@ -2002,7 +2003,7 @@ public class IACommands {
                 } else if (messages.isEmpty()) {
                     respType = CommandResult.EMPTY_RESPONSE;
                 }
-                errors.put(nation, new AbstractMap.SimpleEntry<>(respType, IMessageBuilder.toJson("", messages, false, false, false, true).toString()));
+                errors.put(nation, new KeyValue<>(respType, IMessageBuilder.toJson("", messages, false, false, false, true).toString()));
             }
         }
 
@@ -2081,7 +2082,7 @@ public class IACommands {
             if (messageObj == null) {
                 return "No body found for: `" + nation.getNation() + "`";
             }
-            Map.Entry<String, String> msgEntry = new AbstractMap.SimpleEntry<>(
+            Map.Entry<String, String> msgEntry = new KeyValue<>(
                     subjectObj.toString(), messageObj.toString());
 
             messageMap.put(nation, msgEntry);
@@ -2520,8 +2521,8 @@ public class IACommands {
 
                     if (last == 0 || diffMsg > diffActive + time) {
                         long activityValue = diffMsg - diffActive;
-                        channelsByActivity.add(new AbstractMap.SimpleEntry<>(iaChan, activityValue));
-                        latestMsgs.put(iaChan, new AbstractMap.SimpleEntry<>(latestMessageUs, latestMessageThem));
+                        channelsByActivity.add(new KeyValue<>(iaChan, activityValue));
+                        latestMsgs.put(iaChan, new KeyValue<>(latestMessageUs, latestMessageThem));
                     }
                 }
 

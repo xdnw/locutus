@@ -79,7 +79,7 @@ import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.text.SimpleDateFormat;
 import java.time.ZonedDateTime;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -485,7 +485,7 @@ public class WarCommands {
             Map.Entry<Double, Boolean> opValue = enemy.getIntelOpValue();
             if (opValue != null) {
                 List<Map.Entry<DBNation, Double>> list = opValue.getValue() ? outDated : noData;
-                list.add(new AbstractMap.SimpleEntry<>(enemy, opValue.getKey()));
+                list.add(new KeyValue<>(enemy, opValue.getKey()));
             }
         }
 
@@ -697,7 +697,7 @@ public class WarCommands {
                 value = 16;
             } else if (escrowed != null) {
                 value = 15;
-                request = new AbstractMap.SimpleEntry<>(0L, "Funds wanted: " + ResourceType.toString(escrowed));
+                request = new KeyValue<>(0L, "Funds wanted: " + ResourceType.toString(escrowed));
             } else if (request != null) {
                 value = 10;
             } else {
@@ -1003,7 +1003,7 @@ public class WarCommands {
                  counterStrength = counterStrength * Math.pow(logistics, 0.95);
              }
              counterStrength += strength.get(nation) * (Math.pow(0.85, Math.min(3, nationsToBlitzWith.size())) / 0.85);
-             counterChance.add(new AbstractMap.SimpleEntry<>(nation, counterStrength));
+             counterChance.add(new KeyValue<>(nation, counterStrength));
          }
 
         // nationsToBlitzWith foreach nation.getStrength();
@@ -1213,7 +1213,7 @@ public class WarCommands {
                 if (nation.getOff() > 0) value /= nation.getRelativeStrength();
             }
 
-            nationNetValues.add(new AbstractMap.SimpleEntry<>(nation, value));
+            nationNetValues.add(new KeyValue<>(nation, value));
         }
 
         Map<DBNation, Integer> beigeTurns = new HashMap<>();
@@ -1222,7 +1222,7 @@ public class WarCommands {
             for (DBNation nation : targetsStorted) {
                 if (nation.isBeige()) {
                     int turns = beigeTurns.computeIfAbsent(nation, f -> f.getBeigeTurns());
-                    nationNetValues.add(new AbstractMap.SimpleEntry<>(nation, (double) turns));
+                    nationNetValues.add(new KeyValue<>(nation, (double) turns));
                 }
             }
             if (nationNetValues.isEmpty()) {
@@ -1494,7 +1494,7 @@ public class WarCommands {
         for (Map.Entry<Integer, Double> entry : valueFunction.entrySet()) {
             DBNation nation = DBNation.getById(entry.getKey());
             double amt = entry.getValue();
-            maxInfraSorted.add(new AbstractMap.SimpleEntry<>(nation, amt));
+            maxInfraSorted.add(new KeyValue<>(nation, amt));
         }
         maxInfraSorted.sort((o1, o2) -> Double.compare(o2.getValue(), o1.getValue()));
 
@@ -1605,7 +1605,7 @@ public class WarCommands {
 
             Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(mySpies, enemy, nation.hasProject(Projects.SPY_SATELLITE), opTypes);
             if (best != null) {
-                netDamage.add(new AbstractMap.SimpleEntry<>(nation, best));
+                netDamage.add(new KeyValue<>(nation, best));
             }
         }
 
@@ -1794,7 +1794,7 @@ public class WarCommands {
                     netDamageCost *= 2;
                 }
                 best.getValue().setValue(netDamageCost);
-                netDamage.add(new AbstractMap.SimpleEntry<>(nation, best));
+                netDamage.add(new KeyValue<>(nation, best));
             }
         }
 
@@ -1851,7 +1851,7 @@ public class WarCommands {
                     ;
                 }
             };
-            targets.add(new AbstractMap.SimpleEntry<>(nation, task));
+            targets.add(new KeyValue<>(nation, task));
         }
 
         targets.removeIf(f -> f.getKey().isEspionageFull());
@@ -3046,7 +3046,7 @@ public class WarCommands {
                     DBNation nation = DBNation.getById(change.getNationId());
                     if (nation == null || nation.getAlliance_id() == aaId) continue;
                     if (filter != null && !filter.contains(nation)) continue;
-                    nations.put(nation, new AbstractMap.SimpleEntry<>(change.getDate(), change.getFromRank()));
+                    nations.put(nation, new KeyValue<>(change.getDate(), change.getFromRank()));
                     nationPreviousAA.put(nation.getId(), aaId);
                 }
             }
@@ -3277,7 +3277,7 @@ public class WarCommands {
 
             performAttacks(losses, kills, defender, attacker, n2, n1);
         }
-        return new AbstractMap.SimpleEntry<>(kills, losses);
+        return new KeyValue<>(kills, losses);
     }
 
     private void performAttacks(Map<DBNation, DBNation> losses, Map<DBNation, DBNation> kills, WarNation attacker, WarNation defender, DBNation attackerOrigin, DBNation defenderOrigin) {
@@ -3702,7 +3702,7 @@ public class WarCommands {
 
             String body = mail.toString().replace("\n","<br>");
 
-            mailTargets.put(attacker, new AbstractMap.SimpleEntry<>(subject, body));
+            mailTargets.put(attacker, new KeyValue<>(subject, body));
         }
 
         if (!force) {

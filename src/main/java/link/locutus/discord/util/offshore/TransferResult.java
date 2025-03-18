@@ -10,6 +10,7 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 
 import java.util.*;
 import java.util.function.Function;
@@ -55,7 +56,7 @@ public class TransferResult {
             }
             body = results.stream().map(TransferResult::toLineString).collect(Collectors.joining("\n"));
         }
-        return Map.entry(title, body);
+        return KeyValue.of(title, body);
     }
 
     public TransferResult(OffshoreInstance.TransferStatus status, NationOrAllianceOrGuild receiver, Map<ResourceType, Double> amount, String note) {

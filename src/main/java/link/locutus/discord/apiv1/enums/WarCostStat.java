@@ -1,6 +1,8 @@
 package link.locutus.discord.apiv1.enums;
 
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
+import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.util.scheduler.TriFunction;
 
 import java.util.Arrays;
 import java.util.function.BiFunction;
@@ -79,53 +81,53 @@ public enum WarCostStat {
         return this.attack;
     }
 
-    public final BiFunction<Boolean, AbstractCursor, Double> getFunction(boolean excludeUnits, boolean excludeInfra, boolean excludeConsumption, boolean excludeLoot, boolean excludeBuildings, WarCostMode mode) {
+    public final TriFunction<Boolean, DBWar, AbstractCursor, Double> getFunction(boolean excludeUnits, boolean excludeInfra, boolean excludeConsumption, boolean excludeLoot, boolean excludeBuildings, WarCostMode mode) {
         if (unit != null) {
             if (!mode.includeOffAttacks()) {
-                return (attacker, attack) -> (double) (attacker ? attack.getAttUnitLosses(unit()) : 0);
+                return (attacker, war, attack) -> (double) (attacker ? attack.getAttUnitLosses(unit()) : 0);
             } else if (!mode.includeDefAttacks()) {
-                return (attacker, attack) -> (double) (attacker ? 0 : attack.getDefUnitLosses(unit()));
+                return (attacker, war, attack) -> (double) (attacker ? 0 : attack.getDefUnitLosses(unit()));
             }
-            return (attacker, attack) -> (double) (attacker ? attack.getAttUnitLosses(unit()) : attack.getDefUnitLosses(unit()));
+            return (attacker, war, attack) -> (double) (attacker ? attack.getAttUnitLosses(unit()) : attack.getDefUnitLosses(unit()));
         } else if (resource != null) {
             double[] rssBuffer = ResourceType.getBuffer();
             Arrays.fill(rssBuffer, 0);
             if (!mode.includeOffAttacks()) {
-                return (attacker, attack) -> {
+                return (attacker, war, attack) -> {
                     rssBuffer[resource.ordinal()] = 0;
-                    return !attacker ? 0 : attack.addLosses(rssBuffer, attack.getWar(), attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings)[resource.ordinal()];
+                    return !attacker ? 0 : attack.addLosses(rssBuffer, war, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings)[resource.ordinal()];
                 };
             } else if (!mode.includeDefAttacks()) {
-                return (attacker, attack) -> {
+                return (attacker, war, attack) -> {
                     rssBuffer[resource.ordinal()] = 0;
-                    return attacker ? 0 : attack.addLosses(rssBuffer, attack.getWar(), attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings)[resource.ordinal()];
+                    return attacker ? 0 : attack.addLosses(rssBuffer, war, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings)[resource.ordinal()];
                 };
             }
-            return (attacker, attack) -> {
+            return (attacker, war, attack) -> {
                 rssBuffer[resource.ordinal()] = 0;
-                return attack.addLosses(rssBuffer, attack.getWar(), attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings)[resource.ordinal()];
+                return attack.addLosses(rssBuffer, war, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings)[resource.ordinal()];
             };
         } else if (attack != null) {
             if (!mode.includeDefAttacks()) {
                 throw new IllegalArgumentException("Cannot count defender attacks for attack type: " + attack() + " (as defenders are not attacking)");
             }
-            return (attacker, attack) -> attack.getAttack_type() == attack() ? 1d : 0d;
+            return (attacker, war, attack) -> attack.getAttack_type() == attack() ? 1d : 0d;
         } else {
             double[] rssBuffer = ResourceType.getBuffer();
             if (!mode.includeOffAttacks()) {
-                return (attacker, attack) -> {
+                return (attacker, war, attack) -> {
                     Arrays.fill(rssBuffer, 0);
-                    return !attacker ? 0 : attack.getLossesConverted(attack.getWar(), attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings);
+                    return !attacker ? 0 : attack.getLossesConverted(war, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings);
                 };
             } else if (!mode.includeDefAttacks()) {
-                return (attacker, attack) -> {
+                return (attacker, war, attack) -> {
                     Arrays.fill(rssBuffer, 0);
-                    return attacker ? 0 : attack.getLossesConverted(attack.getWar(), attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings);
+                    return attacker ? 0 : attack.getLossesConverted(war, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings);
                 };
             }
-            return (attacker, attack) -> {
+            return (attacker, war, attack) -> {
                 Arrays.fill(rssBuffer, 0);
-                return attack.getLossesConverted(attack.getWar(), attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings);
+                return attack.getLossesConverted(war, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings);
             };
         }
     }

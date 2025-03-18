@@ -21,7 +21,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -281,7 +281,7 @@ public class ArrayUtil {
             }
         }
 
-        return new AbstractMap.SimpleEntry<>(res_index, res_index + k - 1);
+        return new KeyValue<>(res_index, res_index + k - 1);
     }
 
     public static byte[] longToBytes(long x) {

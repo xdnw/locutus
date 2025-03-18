@@ -20,6 +20,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ReflectionUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.web.commands.HtmlInput;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.json.JSONObject;
@@ -519,7 +520,7 @@ public class ParametricCallable implements ICommand {
                 String msg = "For `" + parameter.getName() + "`: " + e.getMessage();
                 throw new CommandUsageException(this, msg);
             }
-            argumentMap.put(parameter, new AbstractMap.SimpleEntry<>(unparsed, value));
+            argumentMap.put(parameter, new KeyValue<>(unparsed, value));
         }
         if (commandIndex != null) {
             Map<String, String> commandArgs = new LinkedHashMap<>();
@@ -530,7 +531,7 @@ public class ParametricCallable implements ICommand {
                     commandArgs.put(param.getName(), inputData.getKey());
                 }
             }
-            argumentMap.put(commandIndex, new AbstractMap.SimpleEntry<>(null, new JSONObject(commandArgs)));
+            argumentMap.put(commandIndex, new KeyValue<>(null, new JSONObject(commandArgs)));
         }
         return argumentMap;
     }

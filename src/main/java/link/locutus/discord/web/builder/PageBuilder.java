@@ -7,7 +7,7 @@ import gg.jte.generated.precompiled.data.JtespoilerGenerated;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +32,7 @@ public class PageBuilder {
 
     public PageBuilder addNavbar(String name, String url) {
         if (true) throw new UnsupportedOperationException("TODO not implemented");
-        this.navbar.add(new AbstractMap.SimpleEntry<>(name, url));
+        this.navbar.add(new KeyValue<>(name, url));
         return this;
     }
 

@@ -536,14 +536,13 @@ public abstract class AGrantTemplate<T> {
         outer:
         for (int offensiveI = requireNOffensives; offensiveI < wars.size(); offensiveI++) {
             DBWar war = wars.get(offensiveI);
-            long latest = 0;
-            List<AbstractCursor> attacks = new ArrayList<>(war.getAttacks2());
-            for (AbstractCursor attack : attacks) {
+            long[] latest = {0};
+            Locutus.imp().getWarDb().iterateAttacksByWarId(war, true, (w, attack) -> {
                 if (attack.getAttacker_id() != receiver.getId()) {
-                    latest = Math.max(latest, attack.getDate());
+                    latest[0] = Math.max(latest[0], attack.getDate());
                 }
-            }
-            if (latest != 0) return latest;
+            });
+            if (latest[0] != 0) return latest[0];
         }
         return 0;
     }

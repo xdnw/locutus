@@ -30,6 +30,7 @@ import link.locutus.discord.db.handlers.AttackQuery;
 import link.locutus.discord.util.IOUtil;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.TriConsumer;
 import net.jpountz.lz4.LZ4BlockInputStream;
 import net.jpountz.lz4.LZ4BlockOutputStream;
@@ -120,7 +121,7 @@ public class DataUtil {
                     for (int j = 0; j < size; j++) {
                         int rangeKey = IOUtil.readVarInt(dis);
                         int rangeValue = IOUtil.readVarInt(dis);
-                        list.add(Map.entry(rangeKey, rangeValue));
+                        list.add(KeyValue.of(rangeKey, rangeValue));
                     }
                     ranges.put(nationId, list);
                 }
@@ -134,7 +135,7 @@ public class DataUtil {
                     if (!existing.isEmpty() && existing.get(existing.size() - 1).getValue() == Integer.MAX_VALUE) {
                         continue;
                     }
-                    existing.add(Map.entry((int) currentDay, Integer.MAX_VALUE));
+                    existing.add(KeyValue.of((int) currentDay, Integer.MAX_VALUE));
                 }
             }
         }
@@ -217,7 +218,7 @@ public class DataUtil {
             for (int id : newPresentIds) {
                 Long missingDay = missing.remove(id);
                 if (missingDay != null) {
-                    Map.Entry<Integer, Integer> range = Map.entry((int) day, (int) Math.min(Integer.MAX_VALUE, missingDay));
+                    Map.Entry<Integer, Integer> range = KeyValue.of((int) day, (int) Math.min(Integer.MAX_VALUE, missingDay));
                     vmRanges.computeIfAbsent(id, k -> new ObjectArrayList<>()).add(range);
                 }
             }

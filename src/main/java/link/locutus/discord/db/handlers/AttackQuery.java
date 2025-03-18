@@ -167,13 +167,6 @@ public class AttackQuery {
         getDb().iterateAttacks(wars, attackTypeFilter, preliminaryFilter, attackFilter, forEachAttack);
     }
 
-    public Map<DBWar, List<AbstractCursor>> getMap() {
-        if (wars == null) {
-            withAllWars();
-        }
-        return getDb().getAttacksByWar(wars, attackTypeFilter, preliminaryFilter, attackFilter);
-    }
-
     public AttackQuery withTypes(AttackType... types) {
         Set<AttackType> typeSet = new LinkedHashSet<>();
         Collections.addAll(typeSet, types);
@@ -194,15 +187,11 @@ public class AttackQuery {
         }
         Predicate<AbstractCursor> attackFilterFinal = attackFilter == null ? f -> true : attackFilter;
         AttackCost cost = new AttackCost(nameA, nameB, buildings, ids, victories, logWars, attacks);
-        getDb().iterateAttacks(wars, attackTypeFilter, preliminaryFilter, new Consumer<AbstractCursor>() {
-            @Override
-            public void accept(AbstractCursor attack) {
-                if (!attackFilterFinal.test(attack)) {
-                    return;
-                }
-                DBWar war = wars.get(new DBWar.DBWarKey(attack.getWar_id()));
-                cost.addCost(attack, war, isPrimary.test(war, attack));
+        getDb().iterateAttacks(wars, attackTypeFilter, preliminaryFilter, (war, attack) -> {
+            if (!attackFilterFinal.test(attack)) {
+                return;
             }
+            cost.addCost(attack, war, isPrimary.test(war, attack));
         });
         return cost;
     }

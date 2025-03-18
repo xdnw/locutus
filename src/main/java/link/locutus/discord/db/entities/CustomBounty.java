@@ -266,129 +266,129 @@ public class CustomBounty {
         if (allowedAttackRolls == null) allowedAttackRolls = new HashSet<>();
     }
 
-    public Map<DBWar, Set<AbstractCursor>> getWarAttacks(Set<Integer> attackerNations, Set<Integer> attackerAlliances) {
-        if (claimedBy != 0) {
-            throw new IllegalStateException("Cannot get wars for a completed bounty");
-        }
-        Set<DBWar> wars = new HashSet<>(Locutus.imp().getWarDb().getWars(alliances, nations, attackerNations, attackerAlliances, date, Long.MAX_VALUE).values());
-        if (onlyOffensives) {
-            wars.removeIf(f -> !nations.contains(f.getAttacker_id()) && !alliances.contains(f.getAttacker_aa()));
-        }
-        if (!allowedWarTypes.isEmpty()) {
-            wars.removeIf(f -> !allowedWarTypes.contains(f.getWarType()));
-        }
-        if (!allowedWarStatus.isEmpty()) {
-            wars.removeIf(f -> !allowedWarStatus.contains(f.getStatus()));
-        }
-        // get validating attacks
-        List<AbstractCursor> attacks = getAttacks(wars, attackerNations, attackerAlliances);
+//    public Map<DBWar, Set<AbstractCursor>> getWarAttacks(Set<Integer> attackerNations, Set<Integer> attackerAlliances) {
+//        if (claimedBy != 0) {
+//            throw new IllegalStateException("Cannot get wars for a completed bounty");
+//        }
+//        Set<DBWar> wars = new HashSet<>(Locutus.imp().getWarDb().getWars(alliances, nations, attackerNations, attackerAlliances, date, Long.MAX_VALUE).values());
+//        if (onlyOffensives) {
+//            wars.removeIf(f -> !nations.contains(f.getAttacker_id()) && !alliances.contains(f.getAttacker_aa()));
+//        }
+//        if (!allowedWarTypes.isEmpty()) {
+//            wars.removeIf(f -> !allowedWarTypes.contains(f.getWarType()));
+//        }
+//        if (!allowedWarStatus.isEmpty()) {
+//            wars.removeIf(f -> !allowedWarStatus.contains(f.getStatus()));
+//        }
+//        // get validating attacks
+//        List<AbstractCursor> attacks = getAttacks(wars, attackerNations, attackerAlliances);
+//
+//        // remove wars that dont have attacks
+//        Set<Integer> warsWithAttacks = new HashSet<>();
+//        for (AbstractCursor attack : attacks) {
+//            warsWithAttacks.add(attack.getWar_id());
+//        }
+//        wars.removeIf(f -> !warsWithAttacks.contains(f.warId));
+//
+//        if (filter2 != null && !filter2.getFilter().isEmpty() && wars.size() > 0) {
+//            // get war snapshots
+//            Set<Integer> warsToRemove = new HashSet<>();
+//
+//            Set<Integer> warIds = wars.stream().map(f -> f.warId).collect(Collectors.toSet());
+//            Map<Integer, Set<DBNation>> warSnapshots = Locutus.imp().getNationDB().getWarSnapshots(warIds);
+//
+//            for (DBWar war : wars) {
+//                boolean isAttacker = nations.contains(war.getAttacker_id()) || alliances.contains(war.getAttacker_aa());
+//                int targetId = isAttacker ? war.getDefender_id() : war.getAttacker_id();
+//
+//                Set<DBNation> snapshots = warSnapshots.get(war.warId);
+//                DBNation snapshotNation = DBNation.getById(targetId);
+//                for (DBNation snapshot : snapshots) {
+//                    if (snapshot.getNation_id() == targetId) {
+//                        snapshotNation = snapshot;
+//                        break;
+//                    }
+//                }
+//                if (!filter2.test(snapshotNation)) {
+//                    warsToRemove.add(war.warId);
+//                }
+//            }
+//
+//            if (!warsToRemove.isEmpty()) {
+//                wars.removeIf(f -> warsToRemove.contains(f.warId));
+//                attacks.removeIf(f -> warsToRemove.contains(f.getWar_id()));
+//
+//            }
+//
+//            // TODO remake filter to use the actual provided nation, not the cached nations
+//
+//
+//            // filter on the snaspshort
+//            // add cache to a set of nations
+//
+//
+//            // remove wars that dont match snapshoty
+//
+//        }
+//        Map<DBWar, Set<AbstractCursor>> warAttacks = new HashMap<>();
+//        Map<Integer, DBWar> warsById = new HashMap<>();
+//        for (DBWar war : wars) {
+//            warAttacks.put(war, new HashSet<>());
+//            warsById.put(war.warId, war);
+//        }
+//        for (AbstractCursor attack : attacks) {
+//            warAttacks.get(warsById.get(attack.getWar_id())).add(attack);
+//        }
+//        return warAttacks;
+//    }
 
-        // remove wars that dont have attacks
-        Set<Integer> warsWithAttacks = new HashSet<>();
-        for (AbstractCursor attack : attacks) {
-            warsWithAttacks.add(attack.getWar_id());
-        }
-        wars.removeIf(f -> !warsWithAttacks.contains(f.warId));
-
-        if (filter2 != null && !filter2.getFilter().isEmpty() && wars.size() > 0) {
-            // get war snapshots
-            Set<Integer> warsToRemove = new HashSet<>();
-
-            Set<Integer> warIds = wars.stream().map(f -> f.warId).collect(Collectors.toSet());
-            Map<Integer, Set<DBNation>> warSnapshots = Locutus.imp().getNationDB().getWarSnapshots(warIds);
-
-            for (DBWar war : wars) {
-                boolean isAttacker = nations.contains(war.getAttacker_id()) || alliances.contains(war.getAttacker_aa());
-                int targetId = isAttacker ? war.getDefender_id() : war.getAttacker_id();
-
-                Set<DBNation> snapshots = warSnapshots.get(war.warId);
-                DBNation snapshotNation = DBNation.getById(targetId);
-                for (DBNation snapshot : snapshots) {
-                    if (snapshot.getNation_id() == targetId) {
-                        snapshotNation = snapshot;
-                        break;
-                    }
-                }
-                if (!filter2.test(snapshotNation)) {
-                    warsToRemove.add(war.warId);
-                }
-            }
-
-            if (!warsToRemove.isEmpty()) {
-                wars.removeIf(f -> warsToRemove.contains(f.warId));
-                attacks.removeIf(f -> warsToRemove.contains(f.getWar_id()));
-
-            }
-
-            // TODO remake filter to use the actual provided nation, not the cached nations
-
-
-            // filter on the snaspshort
-            // add cache to a set of nations
-
-
-            // remove wars that dont match snapshoty
-
-        }
-        Map<DBWar, Set<AbstractCursor>> warAttacks = new HashMap<>();
-        Map<Integer, DBWar> warsById = new HashMap<>();
-        for (DBWar war : wars) {
-            warAttacks.put(war, new HashSet<>());
-            warsById.put(war.warId, war);
-        }
-        for (AbstractCursor attack : attacks) {
-            warAttacks.get(warsById.get(attack.getWar_id())).add(attack);
-        }
-        return warAttacks;
-    }
-
-    private List<AbstractCursor> getAttacks(Set<DBWar> wars, Set<Integer> attackerNations, Set<Integer> attackerAlliances) {
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksByWars(wars);
-        Set<Integer> offensiveWarIds = new HashSet<>();
-        for (DBWar war : wars) {
-            if (nations.contains(war.getAttacker_id()) || alliances.contains(war.getAttacker_aa())) {
-                offensiveWarIds.add(war.warId);
-            }
-        }
-        if (!allowedAttackTypes.isEmpty() || !allowedAttackRolls.isEmpty() || !unitAttacks.isEmpty()) {
-            attacks.removeIf(f -> !offensiveWarIds.contains(f.getWar_id()));
-        }
-
-        if (!allowedAttackTypes.isEmpty()) {
-            attacks.removeIf(f -> !allowedAttackTypes.contains(f.getAttack_type()));
-        }
-        // rolls
-        if (!allowedAttackRolls.isEmpty()) {
-            attacks.removeIf(f -> !allowedAttackRolls.contains(f.getSuccess()) && f.getAttack_type() != AttackType.VICTORY && f.getAttack_type() != AttackType.A_LOOT);
-        }
-
-        if (!unitAttacks.isEmpty()) {
-            attacks.removeIf(f -> {
-                switch (f.getAttack_type()) {
-                    case GROUND -> {
-                        int amt1 = unitAttacks.getOrDefault(MilitaryUnit.SOLDIER, 0);
-                        int amt2 = unitAttacks.getOrDefault(MilitaryUnit.TANK, 0);
-                        return amt1 > f.getAttcas1() || amt2 > f.getAttcas2();
-                    }
-                    case AIRSTRIKE_INFRA,AIRSTRIKE_SOLDIER,AIRSTRIKE_TANK,AIRSTRIKE_MONEY,AIRSTRIKE_SHIP,AIRSTRIKE_AIRCRAFT -> {
-                        Integer amt = unitAttacks.get(MilitaryUnit.AIRCRAFT);
-                        return amt == null || amt > f.getAttcas1();
-                    }
-                    case NAVAL -> {
-                        Integer amt = unitAttacks.get(MilitaryUnit.SHIP);
-                        return amt == null || amt > f.getAttcas1();
-                    }
-                    case MISSILE,NUKE -> {
-                        Integer amt = unitAttacks.get(MilitaryUnit.MISSILE);
-                        return amt == null || amt != 1;
-                    }
-                }
-                return false;
-            });
-        }
-
-        return attacks;
-    }
+//    private List<AbstractCursor> getAttacks(Set<DBWar> wars, Set<Integer> attackerNations, Set<Integer> attackerAlliances) {
+//        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksByWars(wars);
+//        Set<Integer> offensiveWarIds = new HashSet<>();
+//        for (DBWar war : wars) {
+//            if (nations.contains(war.getAttacker_id()) || alliances.contains(war.getAttacker_aa())) {
+//                offensiveWarIds.add(war.warId);
+//            }
+//        }
+//        if (!allowedAttackTypes.isEmpty() || !allowedAttackRolls.isEmpty() || !unitAttacks.isEmpty()) {
+//            attacks.removeIf(f -> !offensiveWarIds.contains(f.getWar_id()));
+//        }
+//
+//        if (!allowedAttackTypes.isEmpty()) {
+//            attacks.removeIf(f -> !allowedAttackTypes.contains(f.getAttack_type()));
+//        }
+//        // rolls
+//        if (!allowedAttackRolls.isEmpty()) {
+//            attacks.removeIf(f -> !allowedAttackRolls.contains(f.getSuccess()) && f.getAttack_type() != AttackType.VICTORY && f.getAttack_type() != AttackType.A_LOOT);
+//        }
+//
+//        if (!unitAttacks.isEmpty()) {
+//            attacks.removeIf(f -> {
+//                switch (f.getAttack_type()) {
+//                    case GROUND -> {
+//                        int amt1 = unitAttacks.getOrDefault(MilitaryUnit.SOLDIER, 0);
+//                        int amt2 = unitAttacks.getOrDefault(MilitaryUnit.TANK, 0);
+//                        return amt1 > f.getAttcas1() || amt2 > f.getAttcas2();
+//                    }
+//                    case AIRSTRIKE_INFRA,AIRSTRIKE_SOLDIER,AIRSTRIKE_TANK,AIRSTRIKE_MONEY,AIRSTRIKE_SHIP,AIRSTRIKE_AIRCRAFT -> {
+//                        Integer amt = unitAttacks.get(MilitaryUnit.AIRCRAFT);
+//                        return amt == null || amt > f.getAttcas1();
+//                    }
+//                    case NAVAL -> {
+//                        Integer amt = unitAttacks.get(MilitaryUnit.SHIP);
+//                        return amt == null || amt > f.getAttcas1();
+//                    }
+//                    case MISSILE,NUKE -> {
+//                        Integer amt = unitAttacks.get(MilitaryUnit.MISSILE);
+//                        return amt == null || amt != 1;
+//                    }
+//                }
+//                return false;
+//            });
+//        }
+//
+//        return attacks;
+//    }
 
     public void setUnitKills(Map<MilitaryUnit, Long> unitKills) {
         if (unitKills != null) {

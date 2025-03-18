@@ -32,6 +32,10 @@ public class RankBuilder<T> {
         this.highlight = highlight;
     }
 
+    public RankBuilder(Consumer<Consumer<T>> iterate) {
+        this(iterate, Collections.emptySet());
+    }
+
     public RankBuilder(Consumer<Consumer<T>> iterate, Set<Integer> highlight) {
         this.iterate = iterate;
         this.highlight = highlight;
@@ -71,6 +75,12 @@ public class RankBuilder<T> {
         return result;
     }
 
+    public <K, V extends Number> NumericGroupRankBuilder<K, V> groupNumber(BiConsumer<T, NumericGroupRankBuilder<K, V>> consumer) {
+        NumericGroupRankBuilder<K, V> result = new NumericGroupRankBuilder<K, V>();
+        iterate.accept(t -> consumer.accept(t, result));
+        return result;
+    }
+
     public <K, V, I extends Number> NumericMappedRankBuilder<K, V, I> map(BiConsumer<T, NumericMappedRankBuilder<K, V, I>> consumer) {
         NumericMappedRankBuilder<K, V, I> result = new NumericMappedRankBuilder<>();
         iterate.accept(t -> consumer.accept(t, result));
@@ -91,7 +101,7 @@ public class RankBuilder<T> {
         return this;
     }
 
-    private List<T> get() {
+    public List<T> get() {
         List<T> values;
         if (valuesRaw == null) {
             values = valuesRaw = new ObjectArrayList<>();

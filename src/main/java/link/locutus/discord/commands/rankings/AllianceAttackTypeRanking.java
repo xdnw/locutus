@@ -62,20 +62,20 @@ public class AllianceAttackTypeRanking extends Command {
         AttackType type = AttackType.get(args.get(1).toUpperCase());
 
         Set<Integer> allowedNations = Locutus.imp().getNationDB().getNationsMatching(f -> f.getAlliance_id() > 0 && f.getPosition() > 1).stream().map(DBNation::getId).collect(Collectors.toSet());
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().queryAttacks().withActiveWars(f -> allowedNations.contains(f), f -> true).afterDate(cutoffMs).withTypes(type).getList();
 //            Map<Integer, DBWar> wars = Locutus.imp().getWarDb().getWars();
         Map<Integer, Integer> totalAttacks = new HashMap<>();
         Map<Integer, Integer> attackOfType = new HashMap<>();
 
-        for (AbstractCursor attack : attacks) {
+        Locutus.imp().getWarDb().queryAttacks().withActiveWars(f -> allowedNations.contains(f), f -> true).afterDate(cutoffMs).withTypes(type)
+        .iterateAttacks((war, attack) -> {
             DBNation nat = Locutus.imp().getNationDB().getNationById(attack.getAttacker_id());
-            if (nat == null || nat.getAlliance_id() == 0 || nat.getPosition() <= 1) continue;
+            if (nat == null || nat.getAlliance_id() == 0 || nat.getPosition() <= 1) return;
             totalAttacks.put(nat.getAlliance_id(), totalAttacks.getOrDefault(nat.getAlliance_id(), 0) + 1);
 
             if (attack.getAttack_type() == type) {
                 attackOfType.put(nat.getAlliance_id(), attackOfType.getOrDefault(nat.getAlliance_id(), 0) + 1);
             }
-        }
+        });
 
         Set<DBAlliance> topAlliances = Locutus.imp().getNationDB().getAlliances(true, true, true, Integer.parseInt(args.get(3)));
         Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, args.get(2));

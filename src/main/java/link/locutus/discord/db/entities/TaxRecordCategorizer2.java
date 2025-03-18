@@ -17,7 +17,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -348,7 +348,7 @@ public class TaxRecordCategorizer2 {
             } else {
                 type = TransactionType.WITHDRAWAL;
             }
-            transactionsByBracketByType.computeIfAbsent(taxId, f -> new ArrayList<>()).add(new AbstractMap.SimpleEntry<>(transfer, type));
+            transactionsByBracketByType.computeIfAbsent(taxId, f -> new ArrayList<>()).add(new KeyValue<>(transfer, type));
             getTransactionsByNation().computeIfAbsent(nationId, f -> new ArrayList<>()).add(transfer);
             getTransactionsByNationByBracket().computeIfAbsent(taxId, f -> new Int2ObjectOpenHashMap<>()).computeIfAbsent(nationId, f -> new ArrayList<>()).add(transfer);
         }

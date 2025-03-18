@@ -11,6 +11,7 @@ import info.debatty.java.stringsimilarity.WeightedLevenshtein;
 import info.debatty.java.stringsimilarity.experimental.Sift4;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import org.apache.commons.lang3.StringUtils;
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
@@ -331,7 +332,7 @@ public class StringMan {
     public static Map.Entry<String, String> stacktraceToString(Throwable e, int maxLines, Predicate<String> allowLine) {
         String title = e.getMessage();
         String body = stacktraceToString(e.getStackTrace(), maxLines, allowLine);
-        return new AbstractMap.SimpleEntry<>(title, body);
+        return new KeyValue<>(title, body);
     }
 
     public static String escapeUnicode(String input) {
@@ -969,7 +970,7 @@ public class StringMan {
         for (T option : options) {
             String key = keyFunc.apply(option);
             String value = valueFunc.apply(option);
-            result.add(new AbstractMap.SimpleEntry<>(key, value));
+            result.add(new KeyValue<>(key, value));
         }
         return result;
     }
@@ -1026,7 +1027,7 @@ public class StringMan {
         for (T option : options) {
             String key = prefixKey + keyFunc.apply(option);
             String value = prefixKey + valueFunc.apply(option);
-            results.add(new AbstractMap.SimpleEntry<>(key, value));
+            results.add(new KeyValue<>(key, value));
         }
         return results;
     }
@@ -1114,7 +1115,7 @@ public class StringMan {
 
             double distance = StringUtils.getJaroWinklerDistance(input, optionName);
             if (distance < Integer.MAX_VALUE) {
-                distances.add(new AbstractMap.SimpleEntry<>(option, distance));
+                distances.add(new KeyValue<>(option, distance));
             }
         }
 

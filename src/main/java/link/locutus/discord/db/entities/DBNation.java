@@ -55,6 +55,7 @@ import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.TransferResult;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingFunction;
 import link.locutus.discord.util.scheduler.ThrowingSupplier;
 import link.locutus.discord.util.sheet.SheetUtil;
@@ -554,7 +555,7 @@ public abstract class DBNation implements NationOrAlliance {
         double tankPct = (double) getTanks() / (Buildings.FACTORY.getUnitCap() * Buildings.FACTORY.cap(this::hasProject) * getCities());
         value = value + value * (2 - soldierPct - tankPct);
 
-        return new AbstractMap.SimpleEntry<>(value, loot != null);
+        return new KeyValue<>(value, loot != null);
     }
 
     public @Nullable Long getSnapshot() {
@@ -2142,7 +2143,7 @@ public abstract class DBNation implements NationOrAlliance {
 
         String subject = getNation() + ": tips for getting started";
         String content = body.toString().replaceAll("\n", "");
-        return new AbstractMap.SimpleEntry<>(subject, content);
+        return new KeyValue<>(subject, content);
     }
 
     public Map<ResourceType, Double> getResourcesNeeded(Map<ResourceType, Double> stockpile, double days, boolean force) {
@@ -2400,7 +2401,7 @@ public abstract class DBNation implements NationOrAlliance {
                 sign = -1;
             }
 
-            result.add(new AbstractMap.SimpleEntry<>(sign, record));
+            result.add(new KeyValue<>(sign, record));
         }
 
         return result;
@@ -3714,7 +3715,7 @@ public abstract class DBNation implements NationOrAlliance {
         byte[] noteBytes = new byte[request.remaining()];
         request.get(noteBytes);
         String note = new String(noteBytes);
-        return new AbstractMap.SimpleEntry<>(cutoff, note);
+        return new KeyValue<>(cutoff, note);
     }
 
     @Command(desc = "If blockaded by navy ships in-game")
@@ -3938,10 +3939,10 @@ public abstract class DBNation implements NationOrAlliance {
                 throw new IllegalArgumentException("Receiver is not member");
             }
             if (!this.hasPermission(AlliancePermission.WITHDRAW_BANK)) {
-                return Map.entry(ResourceType.getBuffer(), "The nation specifies has no `" + AlliancePermission.WITHDRAW_BANK + "` permission");
+                return KeyValue.of(ResourceType.getBuffer(), "The nation specifies has no `" + AlliancePermission.WITHDRAW_BANK + "` permission");
             }
             if (!this.hasPermission(AlliancePermission.VIEW_BANK)) {
-                return Map.entry(ResourceType.getBuffer(), "The nation specifies has no `" + AlliancePermission.VIEW_BANK + "` permission");
+                return KeyValue.of(ResourceType.getBuffer(), "The nation specifies has no `" + AlliancePermission.VIEW_BANK + "` permission");
             }
 
             if (senderNation == null) throw new IllegalArgumentException("Sender is null");
@@ -4008,7 +4009,7 @@ public abstract class DBNation implements NationOrAlliance {
 
             if (ResourceType.isZero(toDeposit)) {
                 response.append("\n- No trades to deposit " + ResourceType.toString(toDeposit));
-                return Map.entry(ResourceType.getBuffer(), response.toString());
+                return KeyValue.of(ResourceType.getBuffer(), response.toString());
             }
             double[] depositPositive = ResourceType.max(toDeposit.clone(), ResourceType.getBuffer());
             int receiverId;
@@ -4018,13 +4019,13 @@ public abstract class DBNation implements NationOrAlliance {
                 response.append("\nDeposited: `" + ResourceType.toString(amt) + "`");
                 if (!ResourceType.equals(depositPositive, amt)) {
                     response.append("\n- Error Depositing: " + ResourceType.toString(depositPositive) + " != " + ResourceType.toString(amt));
-                    return Map.entry(ResourceType.getBuffer(), response.toString());
+                    return KeyValue.of(ResourceType.getBuffer(), response.toString());
                 }
                 receiverId = deposit.getReceiver_id();
             } catch (Throwable e) {
                 e.printStackTrace();
                 response.append("\n- Error Depositing: " + StringMan.stripApiKey(e.getMessage()));
-                return Map.entry(ResourceType.getBuffer(), response.toString());
+                return KeyValue.of(ResourceType.getBuffer(), response.toString());
             }
 
             DBAlliance receiverAA = DBAlliance.getOrCreate(receiverId);
@@ -4037,7 +4038,7 @@ public abstract class DBNation implements NationOrAlliance {
                 response.append("Offshore " + transferResult.toLineString());
                 if (transferResult.getStatus() != OffshoreInstance.TransferStatus.SUCCESS) {
                     response.append("\n- Depositing failed");
-                    return Map.entry(ResourceType.getBuffer(), response.toString());
+                    return KeyValue.of(ResourceType.getBuffer(), response.toString());
                 }
             }
 
@@ -4058,7 +4059,7 @@ public abstract class DBNation implements NationOrAlliance {
                 RateLimitUtil.queue(logChannel.sendMessage(response));
             }
 
-            return new AbstractMap.SimpleEntry<>(toDeposit, response.toString());
+            return new KeyValue<>(toDeposit, response.toString());
         }
     }
 
@@ -4158,51 +4159,51 @@ public abstract class DBNation implements NationOrAlliance {
             ResourceType resource = ResourceType.parse(f.getOffer_resource());
             if (f.getBuy_or_sell().equalsIgnoreCase(foodBuyOrSell)) {
                 if (resource != ResourceType.FOOD) {
-                    errors.put(f, Map.entry(foodBuyOrSell + " offers can only be food trades", Auth.TradeResultType.NOT_A_FOOD_TRADE));
+                    errors.put(f, KeyValue.of(foodBuyOrSell + " offers can only be food trades", Auth.TradeResultType.NOT_A_FOOD_TRADE));
                     return true;
                 }
                 if (f.getPrice() < 100000) {
-                    errors.put(f, Map.entry(foodBuyOrSell + " offers must be at least $100,000 to deposit", Auth.TradeResultType.INCORRECT_PPU));
+                    errors.put(f, KeyValue.of(foodBuyOrSell + " offers must be at least $100,000 to deposit", Auth.TradeResultType.INCORRECT_PPU));
                     return true;
                 }
                 if (f.getSender_id() == null) {
-                    errors.put(f, Map.entry("Sender id is null", Auth.TradeResultType.NOT_A_BUY_OFFER));
+                    errors.put(f, KeyValue.of("Sender id is null", Auth.TradeResultType.NOT_A_BUY_OFFER));
                     return true;
                 }
                 if (f.getSender_id() != expectedNationId) {
-                    errors.put(f, Map.entry("Sender id is not expected nation id (" + f.getSender_id() + " != " + expectedNationId + ")", Auth.TradeResultType.NOT_A_BUY_OFFER));
+                    errors.put(f, KeyValue.of("Sender id is not expected nation id (" + f.getSender_id() + " != " + expectedNationId + ")", Auth.TradeResultType.NOT_A_BUY_OFFER));
                     return true;
                 }
                 double cost = f.getOffer_amount() * f.getPrice();
                 if (amountArr != null && amountArr[0] + 100000 <= cost) {
-                    errors.put(f, Map.entry("Found trade for $" + MathMan.format(cost) + " but user only specified amount of $" + MathMan.format(amountArr[0]), Auth.TradeResultType.INSUFFICIENT_RESOURCES));
+                    errors.put(f, KeyValue.of("Found trade for $" + MathMan.format(cost) + " but user only specified amount of $" + MathMan.format(amountArr[0]), Auth.TradeResultType.INSUFFICIENT_RESOURCES));
                     return true;
                 }
                 return false;
             } else if (f.getBuy_or_sell().equalsIgnoreCase(rssBuyOrSell)) {
                 if (resource == ResourceType.CREDITS) {
-                    errors.put(f, Map.entry("Cannot " + rssBuyOrSell + " credits", Auth.TradeResultType.CANNOT_DEPOSIT_CREDITS));
+                    errors.put(f, KeyValue.of("Cannot " + rssBuyOrSell + " credits", Auth.TradeResultType.CANNOT_DEPOSIT_CREDITS));
                     return true;
                 }
                 if (f.getPrice() != 0) {
-                    errors.put(f, Map.entry(rssBuyOrSell + " offers must be $0 to deposit", Auth.TradeResultType.INCORRECT_PPU));
+                    errors.put(f, KeyValue.of(rssBuyOrSell + " offers must be $0 to deposit", Auth.TradeResultType.INCORRECT_PPU));
                     return true;
                 }
                 if (f.getSender_id() == null) {
-                    errors.put(f, Map.entry("Sender id is null", Auth.TradeResultType.NOT_A_SELL_OFFER));
+                    errors.put(f, KeyValue.of("Sender id is null", Auth.TradeResultType.NOT_A_SELL_OFFER));
                     return true;
                 }
                 if (f.getSender_id() != expectedNationId) {
-                    errors.put(f, Map.entry("Sender id is not expected nation id (" + f.getSender_id() + " != " + expectedNationId + ")", Auth.TradeResultType.NOT_A_SELL_OFFER));
+                    errors.put(f, KeyValue.of("Sender id is not expected nation id (" + f.getSender_id() + " != " + expectedNationId + ")", Auth.TradeResultType.NOT_A_SELL_OFFER));
                     return true;
                 }
                 if (amountArr != null && amountArr[resource.ordinal()] < f.getOffer_amount()) {
-                    errors.put(f, Map.entry("Found trade for " + MathMan.format(f.getOffer_amount()) + " " + resource + " but user only specified amount of " + MathMan.format(amountArr[resource.ordinal()]), Auth.TradeResultType.INSUFFICIENT_RESOURCES));
+                    errors.put(f, KeyValue.of("Found trade for " + MathMan.format(f.getOffer_amount()) + " " + resource + " but user only specified amount of " + MathMan.format(amountArr[resource.ordinal()]), Auth.TradeResultType.INSUFFICIENT_RESOURCES));
                     return true;
                 }
                 return false;
             } else {
-                errors.put(f, Map.entry("Unknown buy or sell type: " + f.getBuy_or_sell(), Auth.TradeResultType.UNKNOWN_ERROR));
+                errors.put(f, KeyValue.of("Unknown buy or sell type: " + f.getBuy_or_sell(), Auth.TradeResultType.UNKNOWN_ERROR));
                 return true;
             }
         });
@@ -4238,7 +4239,7 @@ public abstract class DBNation implements NationOrAlliance {
                     response.setMessage("Accepted " + tradeToString.apply(trade));
 
                 } catch (Throwable e) {
-                    errors.put(trade, Map.entry(StringMan.stripApiKey(e.getMessage()), Auth.TradeResultType.UNKNOWN_ERROR));
+                    errors.put(trade, KeyValue.of(StringMan.stripApiKey(e.getMessage()), Auth.TradeResultType.UNKNOWN_ERROR));
                 }
             }
         }
@@ -4635,7 +4636,7 @@ public abstract class DBNation implements NationOrAlliance {
 
             if (war.getAttacker_id() == data()._nationId()) {
                 int turnsAgo = (int) (currentTurn - warTurns);
-                beigeList.add(new AbstractMap.SimpleEntry<>(war.getDate(), - (days * 120)));
+                beigeList.add(new KeyValue<>(war.getDate(), - (days * 120)));
 //                beige[turnsAgo] -= days * 120;
             }
         }
@@ -4647,7 +4648,7 @@ public abstract class DBNation implements NationOrAlliance {
 
             if (warTurns < currentTurn - days * 12) return;
             int turnsAgo = (int) (currentTurn - warTurns);
-            beigeList.add(new AbstractMap.SimpleEntry<>(attack.getDate(), 24));
+            beigeList.add(new KeyValue<>(attack.getDate(), 24));
 //            beige[turnsAgo] += 24;
         });
 
@@ -4998,7 +4999,7 @@ public abstract class DBNation implements NationOrAlliance {
         Document dom = Jsoup.parse(FileUtil.readStringFromURL(PagePriority.COMMEND, getUrl()));
         int commend = Integer.parseInt(dom.select("#commendment_count").text());
         int denounce = Integer.parseInt(dom.select("#denouncement_count").text());
-        return new AbstractMap.SimpleEntry<>(commend, denounce);
+        return new KeyValue<>(commend, denounce);
     }
 
     public void setProjectsRaw(long projBitmask) {
@@ -5247,7 +5248,7 @@ public abstract class DBNation implements NationOrAlliance {
                 return wars;
             }
             Set<DBWar>[] finalCopy = new Set[1];
-            Locutus.imp().getWarDb().getAttacksByWar(wars, f -> f == AttackType.VICTORY || f == AttackType.PEACE, f -> {
+            Locutus.imp().getWarDb().iterateAttackList(wars, f -> f == AttackType.VICTORY || f == AttackType.PEACE, f -> {
                 if (f.getDate() <= end) {
                     Set<DBWar> value = finalCopy[0];
                     if (value == null) {
@@ -5257,7 +5258,7 @@ public abstract class DBNation implements NationOrAlliance {
                     value.remove(new DBWar.DBWarKey(f.getWar_id()));
                 }
                 return false;
-            }, f -> false);
+            }, (war, attacks) -> {});
             Set<DBWar> value = finalCopy[0];
             return value == null ? wars : value;
         }
@@ -5466,7 +5467,7 @@ public abstract class DBNation implements NationOrAlliance {
                     }
                 }
                 {
-                    AbstractMap.SimpleEntry<Long, Integer> toAdd = new AbstractMap.SimpleEntry<>(attack.getDate(), getUnits(unit));
+                    Map.Entry<Long, Integer> toAdd = new KeyValue<>(attack.getDate(), getUnits(unit));
                     int i = 0;
                     for (; i < history.size(); i++) {
                         Map.Entry<Long, Integer> entry = history.get(i);
@@ -5502,7 +5503,7 @@ public abstract class DBNation implements NationOrAlliance {
                     purchases.put(turn, purchases.getOrDefault(turn, 0) + amt);
                 }
             }
-            previous = new AbstractMap.SimpleEntry<>(entry);
+            previous = new KeyValue<>(entry);
         }
         if (previous != null) {
             long timestamp = previous.getKey();
@@ -6166,7 +6167,7 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     public Map.Entry<CommandResult, List<StringMessageBuilder>> runCommandInternally(Guild guild, User user, String command) {
-        if (user == null) return new AbstractMap.SimpleEntry<>(CommandResult.ERROR, StringMessageBuilder.list(null, "No user for: " + getMarkdownUrl()));
+        if (user == null) return new KeyValue<>(CommandResult.ERROR, StringMessageBuilder.list(null, "No user for: " + getMarkdownUrl()));
 
         StringMessageIO output = new StringMessageIO(user, guild);
         CommandResult type;
@@ -6174,11 +6175,11 @@ public abstract class DBNation implements NationOrAlliance {
         try {
             Locutus.imp().getCommandManager().run(guild, output, user, command, false, true);
             type = CommandResult.SUCCESS;
-            return new AbstractMap.SimpleEntry<>(type, output.getMessages());
+            return new KeyValue<>(type, output.getMessages());
         } catch (Throwable e) {
             result = StringMan.stripApiKey(e.getMessage());
             type = CommandResult.ERROR;
-            return new AbstractMap.SimpleEntry<>(type, StringMessageBuilder.list(user, result));
+            return new KeyValue<>(type, StringMessageBuilder.list(user, result));
         }
     }
 

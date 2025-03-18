@@ -2,6 +2,7 @@ package link.locutus.discord.commands.rankings;
 
 import de.erichseifert.gral.data.DataTable;
 import de.erichseifert.gral.data.Row;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -32,6 +33,9 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static link.locutus.discord.commands.rankings.WarCostRankingByDay.processTotal;
@@ -93,9 +97,9 @@ public class WarCostByDay extends Command {
         boolean attachCsv = flags.contains('j');
         String arg0 = args.get(0);
 
-        List<AbstractCursor> attacks = new ArrayList<>();
-        Function<AbstractCursor, Boolean> isPrimary = null;
-        Function<AbstractCursor, Boolean> isSecondary = null;
+        Consumer<BiConsumer<DBWar, AbstractCursor>> attacks = null;
+        BiFunction<DBWar, AbstractCursor, Boolean> isPrimary = null;
+        BiFunction<DBWar, AbstractCursor, Boolean> isSecondary = null;
         String nameA = "Unknown";
         String nameB = "Unknown";
 
@@ -106,21 +110,19 @@ public class WarCostByDay extends Command {
                 DBWar war = Locutus.imp().getWarDb().getWar(warId);
                 if (war == null) return "War not found (out of sync?)";
 
-                attacks = Locutus.imp().getWarDb().getAttacksByWarId2(war, true);
+                attacks = f -> Locutus.imp().getWarDb().iterateAttacksByWarId(war, true, f);
 
                 nameA = PW.getName(war.getAttacker_id(), false);
                 nameB = PW.getName(war.getDefender_id(), false);
-                isPrimary = a -> a.getAttacker_id() == war.getAttacker_id();
-                isSecondary = b -> b.getAttacker_id() == war.getDefender_id();
+                isPrimary = (w, a) -> a.getAttacker_id() == w.getAttacker_id();
+                isSecondary = (w, b) -> b.getAttacker_id() == w.getDefender_id();
             }
         } else if (args.size() == 2) {
             args = new ArrayList<>(args);
             args.add("*");
         }
-
-        Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsById();
-
         if (args.size() == 3) {
+            Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsById();
             if (!MathMan.isInteger(args.get(2))) {
                 return usage("Not a valid whole number: `" + args.get(2) + "`" , channel);
             }
@@ -138,15 +140,13 @@ public class WarCostByDay extends Command {
                 Set<DBWar> wars = Locutus.imp().getWarDb().getWars(alliances, warCutoff);
                 Map<Integer, DBWar> warMap = new HashMap<>();
                 for (DBWar war : wars) warMap.put(war.warId, war);
-                attacks = Locutus.imp().getWarDb().getAttacksByWars(wars, cutoffMs);
-                isPrimary = a -> {
-                    DBWar war = warMap.get(a.getWar_id());
+                attacks = f -> Locutus.imp().getWarDb().iterateAttacksByWars(wars, cutoffMs, f);
+                isPrimary = (war, a) -> {
                     int aa1 = war.getAttacker_id() == a.getAttacker_id() ? war.getAttacker_aa() : war.getDefender_aa();
                     int aa2 = war.getAttacker_id() == a.getAttacker_id() ? war.getDefender_aa() : war.getAttacker_aa();
                     return aaIdss1.contains(aa1) && aaIdss2.contains(aa2);
                 };
-                isSecondary = a -> {
-                    DBWar war = warMap.get(a.getWar_id());
+                isSecondary = (war, a) -> {
                     int aa1 = war.getAttacker_id() == a.getAttacker_id() ? war.getAttacker_aa() : war.getDefender_aa();
                     int aa2 = war.getAttacker_id() == a.getAttacker_id() ? war.getDefender_aa() : war.getAttacker_aa();
                     return aaIdss2.contains(aa1) && aaIdss1.contains(aa2);
@@ -173,41 +173,44 @@ public class WarCostByDay extends Command {
 
 
                 if (alliances1.size() == 1) {
-                    attacks = Locutus.imp().getWarDb().getAttacks(alliances1.iterator().next().getNation_id(), cutoffMs);
+                    attacks = f -> Locutus.imp().getWarDb().iterateAttacks(alliances1.iterator().next().getNation_id(), cutoffMs, f);
                 } else if (alliances2.size() == 1) {
-                    attacks = Locutus.imp().getWarDb().getAttacks(alliances2.iterator().next().getNation_id(), cutoffMs);
+                    attacks = f -> Locutus.imp().getWarDb().iterateAttacks(alliances2.iterator().next().getNation_id(), cutoffMs, f);
                 } else {
-                    attacks = Locutus.imp().getWarDb().getAttacks(allIds, cutoffMs);
+                    attacks = f -> Locutus.imp().getWarDb().iterateAttacks(allIds, cutoffMs, f);
                 }
 
-                isPrimary = a -> {
+                isPrimary = (w, a) -> {
                     DBNation n1 = nations.get(a.getAttacker_id());
                     DBNation n2 = nations.get(a.getDefender_id());
                     return n1 != null && n2 != null && alliances1.contains(n1) && alliances2.contains(n2);
                 };
-                isSecondary = a -> {
+                isSecondary = (w, a) -> {
                     DBNation n1 = nations.get(a.getAttacker_id());
                     DBNation n2 = nations.get(a.getDefender_id());
                     return n1 != null && n2 != null && alliances1.contains(n2) && alliances2.contains(n1);
                 };
             }
         }
+        if (args.isEmpty() || args.size() > 3) {
+            return usage(args.size(), 1, 3, channel);
+        }
 
-        Map<Long, AttackCost> warCostByDay = new LinkedHashMap<>();
-
-        attacks.sort(Comparator.comparingLong(o -> o.getDate()));
+        Map<Long, AttackCost> warCostByDay = new Long2ObjectOpenHashMap<>();
 
         String finalNameA = nameA;
         String finalNameB = nameB;
 
         long now = System.currentTimeMillis();
-        for (AbstractCursor attack : attacks) {
-            if (attack.getDate() > now) continue;
+        BiFunction<DBWar, AbstractCursor, Boolean> finalIsPrimary = Objects.requireNonNull(isPrimary);
+        BiFunction<DBWar, AbstractCursor, Boolean> finalIsSecondary = Objects.requireNonNull(isSecondary);
+        attacks.accept((war, attack) -> {
+            if (attack.getDate() > now) return;
             long turn = TimeUtil.getTurn(attack.getDate());
             long day = turn / 12;
             AttackCost cost = warCostByDay.computeIfAbsent(day, f -> new AttackCost(finalNameA, finalNameB, flags.contains('r'), false, false, false, flags.contains('b')));
-            cost.addCost(attack, attack.getWar(), Objects.requireNonNull(isPrimary), Objects.requireNonNull(isSecondary));
-        }
+            cost.addCost(attack, war, finalIsPrimary, finalIsSecondary);
+        });
 
         long min = Collections.min(warCostByDay.keySet());
         long max = Collections.max(warCostByDay.keySet());

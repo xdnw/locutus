@@ -32,6 +32,7 @@ import link.locutus.discord.db.handlers.AttackQuery;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.TriConsumer;
 
@@ -161,7 +162,7 @@ public enum AllianceMetric implements IAllianceMetric {
             AttackCost cost = new AttackCost("", "", false, false, false, false, false);
             long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1);
             Locutus.imp().getWarDb().iterateAttacksEither(nationIds, cutoff, (war, attack) -> {
-                cost.addCost(attack, war, a -> nationIds.contains(a.getAttacker_id()), b -> nationIds.contains(b.getDefender_id()));
+                cost.addCost(attack, war, (w, a) -> nationIds.contains(a.getAttacker_id()), (w, b) -> nationIds.contains(b.getDefender_id()));
             });
             return cost.convertedTotal(true);
         }
@@ -178,7 +179,7 @@ public enum AllianceMetric implements IAllianceMetric {
                 ResourceType.add(totalRss, revenue);
             }
 
-            aaRevenueCache = new AbstractMap.SimpleEntry<>(alliance.getAlliance_id(), totalRss);
+            aaRevenueCache = new KeyValue<>(alliance.getAlliance_id(), totalRss);
 
             return ResourceType.convertedTotal(totalRss);
         }
@@ -1308,7 +1309,7 @@ public enum AllianceMetric implements IAllianceMetric {
         });
         count[0] += values.size();
         save.run();
-        return Map.entry(count[0], count[1]);
+        return KeyValue.of(count[0], count[1]);
     }
 
     public static synchronized void runDataDump(DataDumpParser parser, List<IAllianceMetric> metrics, Predicate<Long> acceptDay, TriConsumer<IAllianceMetric, Long, Map<Integer, Double>> metricDayData) throws IOException, ParseException {

@@ -36,6 +36,7 @@ import link.locutus.discord.event.bounty.BountyCreateEvent;
 import link.locutus.discord.event.bounty.BountyRemoveEvent;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.io.PagePriority;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.AlertUtil;
@@ -675,11 +676,14 @@ public class WarDB extends DBMainV2 {
     public void iterateAttackList(Iterable<DBWar> wars, Predicate<AttackType> attackTypeFilter, Predicate<AbstractCursor> preliminaryFilter, BiConsumer<DBWar, List<AbstractCursor>> onEachWar, boolean load) {
         BiFunction<DBWar, byte[], AbstractCursor> loader = createLoader(attackTypeFilter, preliminaryFilter);
         BiConsumer<DBWar, List<byte[]>> onEachWarAdapter = (war, bytes) -> {
-            List<AbstractCursor> adapted = Lists.transform(bytes, input -> attackCursorFactory.load(war, input, true));
+            List<AbstractCursor> adapted = Lists.transform(bytes, input -> loader.apply(war, input));
             onEachWar.accept(war, adapted);
         };
-        List<Integer> warIdsFetch = null;
+        iterateAttackList(wars, onEachWarAdapter, load);
+    }
 
+    public void iterateAttackList(Iterable<DBWar> wars, BiConsumer<DBWar, List<byte[]>> onEachWar, boolean load) {
+        List<Integer> warIdsFetch = null;
         boolean fetchFromDB = !Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS;
 
         synchronized (attacksByWarId2) {
@@ -696,7 +700,7 @@ public class WarDB extends DBMainV2 {
                     continue;
                 }
                 if (attacks.isEmpty()) continue;
-                onEachWarAdapter.accept(war, attacks);
+                onEachWar.accept(war, attacks);
             }
         }
         if (!load) return;
@@ -706,7 +710,7 @@ public class WarDB extends DBMainV2 {
             DBWar[] lastWar = {null};
             Runnable runAndClear = () -> {
                 if (!attackList.isEmpty() && lastWar[0] != null) {
-                    onEachWarAdapter.accept(lastWar[0], attackList);
+                    onEachWar.accept(lastWar[0], attackList);
                     attackList.clear();
                 }
             };
@@ -867,31 +871,10 @@ public class WarDB extends DBMainV2 {
         return attacks;
     }
 
-    public Map<DBWar, List<AbstractCursor>> getAttacksByWar(Collection<DBWar> wars, Predicate<AttackType> attackTypeFilter,  Predicate<AbstractCursor> preliminaryFilter, Predicate<AbstractCursor> attackFilter) {
-        Map<DBWar, List<AbstractCursor>> result = new Object2ObjectOpenHashMap<>();
-        final BiFunction<DBWar, byte[], AbstractCursor> loader;
-        if (attackTypeFilter != null) {
-            if (preliminaryFilter != null) {
-                loader = (war, data) -> attackCursorFactory.loadWithTypePretest(war, data, true, attackTypeFilter, preliminaryFilter);
-            } else {
-                loader = (war, data) -> attackCursorFactory.loadWithType(war, data, true, attackTypeFilter);
-            }
-        } else if (preliminaryFilter != null) {
-            loader = (war, data) -> attackCursorFactory.loadWithPretest(war, data, true, preliminaryFilter);
-        } else {
-            loader = (war, data) -> attackCursorFactory.load(war, data, true);
-        }
-        final BiConsumer<DBWar, AbstractCursor> attackAdder = attackFilter == null ? (war, cursor) -> {
-            List<AbstractCursor> list = result.computeIfAbsent(war, f -> new ObjectArrayList<>());
-            list.add(cursor);
-        } : (war, cursor) -> {
-            if (attackFilter.test(cursor)) {
-                List<AbstractCursor> list = result.computeIfAbsent(war, f -> new ObjectArrayList<>());
-                list.add(cursor);
-            }
-        };
-        iterateAttacks(wars, loader, attackAdder);
-        return result;
+    public void iterateAttackList(Collection<DBWar> wars, Predicate<AttackType> attackTypeFilter,  Predicate<AbstractCursor> preliminaryFilter, BiConsumer<DBWar, List<AbstractCursor>> onEachWar) {
+        iterateAttackList(wars, attackTypeFilter, preliminaryFilter, (war, list) -> {
+            onEachWar.accept(war, list);
+        }, true);
     }
 
     public void iterateAttacksByWarId(DBWar war, boolean loadInactive, BiConsumer<DBWar, AbstractCursor> forEachAttack) {
@@ -1082,7 +1065,7 @@ public class WarDB extends DBMainV2 {
         long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(12);
 
         List<Integer> attackIds = new ArrayList<>();
-        iterateAttacks(cutoff, Long.MAX_VALUE, f -> true, attack -> {
+        iterateAttacks(cutoff, Long.MAX_VALUE, f -> true, (war, attack) -> {
             if (attack.getAttack_type() == AttackType.NUKE && attack.getSuccess() != SuccessType.UTTER_FAILURE) {
                 attackIds.add(attack.getWar_attack_id());
             }
@@ -1489,7 +1472,7 @@ public class WarDB extends DBMainV2 {
         if (!Double.isFinite(chanceActive)) chanceActive = 0.5;
         if (!Double.isFinite(chanceInactive)) chanceInactive = 0.5;
 
-        return new AbstractMap.SimpleEntry<>(chanceActive, chanceInactive);
+        return new KeyValue<>(chanceActive, chanceInactive);
     }
 
     public List<Map.Entry<DBWar, CounterStat>> getCounters(Collection<Integer> alliances) {
@@ -1504,7 +1487,7 @@ public class WarDB extends DBMainV2 {
                     stat.isActive = rs.getBoolean("active");
                     stat.type = CounterType.values[rs.getInt("type")];
                     DBWar war = getWar(id);
-                    AbstractMap.SimpleEntry<DBWar, CounterStat> entry = new AbstractMap.SimpleEntry<>(war, stat);
+                    Map.Entry<DBWar, CounterStat> entry = new KeyValue<>(war, stat);
                     result.add(entry);
                 }
                 return result;
@@ -2058,7 +2041,7 @@ public class WarDB extends DBMainV2 {
                 }
             }
 
-            warUpdatePreviousNow.add(new AbstractMap.SimpleEntry<>(previous, newWar));
+            warUpdatePreviousNow.add(new KeyValue<>(previous, newWar));
         }
 
         saveWars(newWars, false);
@@ -2086,10 +2069,10 @@ public class WarDB extends DBMainV2 {
 //            DBNation attacker = war.getNation(true);
 //            DBNation defender = war.getNation(false);
 //            if (attacker != null) {
-//                nationSnapshots.add(Map.entry(war.getWarId(), attacker));
+//                nationSnapshots.add(KeyValue.of(war.getWarId(), attacker));
 //            }
 //            if (defender != null) {
-//                nationSnapshots.add(Map.entry(war.getWarId(), defender));
+//                nationSnapshots.add(KeyValue.of(war.getWarId(), defender));
 //            }
 //        }
 
@@ -2559,7 +2542,7 @@ public class WarDB extends DBMainV2 {
                 }
                 return false;
             }
-        }, f -> false, f -> {});
+        }, f -> false, (w, a) -> {});
         return latest[0];
     }
     public boolean updateAttacks(boolean runAlerts, Consumer<Event> eventConsumer) {
@@ -2599,7 +2582,7 @@ public class WarDB extends DBMainV2 {
             saveAttacks(attackList, eventConsumer);
             return true;
         }
-        List<AbstractCursor> dbAttacks = new ArrayList<>();
+        List<AbstractCursor> dbAttacks = new ObjectArrayList<>();
         List<AbstractCursor> newAttacks;
         Set<DBWar> warsToSave = new LinkedHashSet<>();
         List<Map.Entry<DBWar, DBWar>> warsToProcess = new ArrayList<>();
@@ -2679,7 +2662,7 @@ public class WarDB extends DBMainV2 {
                                 war.setStatus(newStatus);
                                 warsToSave.add(war);
                                 if (eventConsumer != null) {
-                                    warsToProcess.add(new AbstractMap.SimpleEntry<>(oldWar, war));
+                                    warsToProcess.add(new KeyValue<>(oldWar, war));
                                 }
                                 if (!war.isActive()) {
                                     activeWars.makeWarInactive(war);
@@ -2728,7 +2711,7 @@ public class WarDB extends DBMainV2 {
             }
 
             for (AbstractCursor attack : dbAttacks) {
-                eventConsumer.accept(new AttackEvent(attack));
+                eventConsumer.accept(new AttackEvent(null, attack));
             }
         }
         return true;
@@ -3068,7 +3051,7 @@ public class WarDB extends DBMainV2 {
                 for (int j = 0; j < lootCopy.length; j++) {
                     lootCopy[j] = lootCopy[j] * factor - lootCopy[j];
                 }
-                nationLoot.put(looted, new AbstractMap.SimpleEntry<>(attack.getDate(), lootCopy));
+                nationLoot.put(looted, new KeyValue<>(attack.getDate(), lootCopy));
             }
         });
         return nationLoot;

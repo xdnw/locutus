@@ -80,7 +80,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -425,7 +425,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                         if (aaIds.contains(nation.getAlliance_id())) {
                             return ApiKeyPool.builder().addKey(nationId, key).build();
                         } else if (mailKeysBackup == null) {
-                            mailKeysBackup = (Map.entry(nationId, key));
+                            mailKeysBackup = (KeyValue.of(nationId, key));
                         }
                     }
                 }
@@ -603,7 +603,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             deleteMeta(nation.getNation_id(), NationMeta.ESCROWED);
             return null;
         }
-        return Map.entry(toSend, expire);
+        return KeyValue.of(toSend, expire);
     }
 
     public void setMeta(long userId, NationMeta key, byte[] value) {
@@ -2059,7 +2059,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         for (Transaction2 record : records) {
             if (record.sender_id != tax_id && record.receiver_id != tax_id) continue;
             int sign = record.sender_id == tax_id ? 1 : -1;
-            result.add(new AbstractMap.SimpleEntry<>(sign, record));
+            result.add(new KeyValue<>(sign, record));
         }
         return result;
     }
@@ -2422,12 +2422,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
 
             if (aaIds.isEmpty()) {
                 if (offshoring.contains(getIdLong())) {
-                    return new AbstractMap.SimpleEntry<>(otherDb, offshoreId);
+                    return new KeyValue<>(otherDb, offshoreId);
                 }
             } else {
                 for (int aaId : aaIds) {
                     if (offshoring.contains((long) aaId)) {
-                        return new AbstractMap.SimpleEntry<>(otherDb, offshoreId);
+                        return new KeyValue<>(otherDb, offshoreId);
                     }
                 }
             }

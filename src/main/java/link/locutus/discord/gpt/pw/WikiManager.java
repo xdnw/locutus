@@ -8,7 +8,7 @@ import link.locutus.discord.gpt.IEmbeddingDatabase;
 import org.jooq.DSLContext;
 
 import java.io.IOException;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -74,7 +74,7 @@ public class WikiManager {
             if (lastModified == null) continue;
             if (lastModified < updateOlderThan) {
                 long ageDiff = Math.max(0, now - lastModified);
-                pages.add(Map.entry(page, ageDiff));
+                pages.add(KeyValue.of(page, ageDiff));
             }
         }
         List<WikiPagePW> list = new ArrayList<>(pages.stream().sorted(Map.Entry.comparingByValue()).map(Map.Entry::getKey).toList());
@@ -172,7 +172,7 @@ public class WikiManager {
                     System.out.println("Found Summary for " + page.getName() + ": " + summary);
 
                     // entry source , null
-                    Stream<Map.Entry<String, String>> stream = summary.stream().map(f -> new AbstractMap.SimpleEntry<>(f, null));
+                    Stream<Map.Entry<String, String>> stream = summary.stream().map(f -> new KeyValue<>(f, null));
                     handler.registerEmbeddings(source, stream, false, true);
                 } else {
                     System.out.println("No summary for " + page.getSlug());

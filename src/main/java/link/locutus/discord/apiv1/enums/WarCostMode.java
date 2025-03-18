@@ -1,6 +1,8 @@
 package link.locutus.discord.apiv1.enums;
 
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
+import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.util.scheduler.TriFunction;
 
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -69,39 +71,39 @@ public enum WarCostMode {
         return includeOffAttacks;
     }
 
-    public BiFunction<Boolean, AbstractCursor, Double> getAttackFunc(BiFunction<Boolean, AbstractCursor, Double> valueFunc) {
-        BiFunction<Boolean, AbstractCursor, Double> applyDealt;
-        BiFunction<Boolean, AbstractCursor, Double> applyReceived;
+    public TriFunction<Boolean, DBWar, AbstractCursor, Double> getAttackFunc(TriFunction<Boolean, DBWar, AbstractCursor, Double> valueFunc) {
+        TriFunction<Boolean, DBWar, AbstractCursor, Double> applyDealt;
+        TriFunction<Boolean, DBWar, AbstractCursor, Double> applyReceived;
         if (includeDealt()) {
             if (addDealt()) {
-                applyDealt = (isAttacker, attack) -> valueFunc.apply(!isAttacker, attack);
+                applyDealt = (isAttacker, war, attack) -> valueFunc.apply(!isAttacker, war, attack);
             } else {
-                applyDealt = (isAttacker, attack) -> -valueFunc.apply(!isAttacker, attack);
+                applyDealt = (isAttacker, war, attack) -> -valueFunc.apply(!isAttacker, war, attack);
             }
         } else {
             applyDealt = null;
         }
         if (includeReceived()) {
             if (addReceived()) {
-                applyReceived = (isAttacker, attack) -> valueFunc.apply(isAttacker, attack);
+                applyReceived = (isAttacker, war, attack) -> valueFunc.apply(isAttacker, war, attack);
             } else {
-                applyReceived = (isAttacker, attack) -> -valueFunc.apply(isAttacker, attack);
+                applyReceived = (isAttacker, war, attack) -> -valueFunc.apply(isAttacker, war, attack);
             }
         } else {
             applyReceived = null;
         }
 
-        BiFunction<Boolean, AbstractCursor, Double> applyBoth;
+        TriFunction<Boolean, DBWar, AbstractCursor, Double> applyBoth;
         if (applyDealt != null) {
             if (applyReceived != null) {
-                applyBoth = (isAttacker, attack) -> applyDealt.apply(isAttacker, attack) + applyReceived.apply(isAttacker, attack);
+                applyBoth = (isAttacker, war, attack) -> applyDealt.apply(isAttacker, war, attack) + applyReceived.apply(isAttacker, war, attack);
             } else {
                 applyBoth = applyDealt;
             }
         } else if (applyReceived != null) {
             applyBoth = applyReceived;
         } else {
-            applyBoth = (isAttacker, attack) -> 0d;
+            applyBoth = (isAttacker, war, attack) -> 0d;
         }
         return applyBoth;
     }

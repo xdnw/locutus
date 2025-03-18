@@ -35,7 +35,7 @@ import static net.dv8tion.jda.api.interactions.components.buttons.Button.ID_MAX_
 
 public class DiscordMessageBuilder extends AMessageBuilder {
 
-    public final Map<String, String> remapLongCommands = new HashMap<>();
+    public final Map<String, String> remapLongCommands = new LinkedHashMap<>();
 
     public DiscordMessageBuilder(MessageChannel channel, Message message) {
         this(new DiscordChannelIO(channel, () -> message), message);
@@ -287,7 +287,7 @@ public class DiscordMessageBuilder extends AMessageBuilder {
             try {
                 byte[] imgData = gmi.table().write(gmi.timeFormat(), gmi.numberFormat(), gmi.type(), gmi.origin());
                 String fileName = gmi.table().getName().replaceAll("[^a-zA-Z0-9.-]", "") + ".png";
-                tables.add(new AbstractMap.SimpleEntry<>(fileName, imgData));
+                tables.add(new KeyValue<>(fileName, imgData));
             } catch (IOException e) {
                 e.printStackTrace();
             }

@@ -6,6 +6,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarCostMode;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.builder.NumericGroupRankBuilder;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
@@ -19,6 +20,7 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
@@ -30,6 +32,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 public class NetProfitPerWar extends Command {
@@ -82,25 +86,23 @@ public class NetProfitPerWar extends Command {
         Set<Integer> finalAAs = AAs;
 
         Predicate<DBWar> finalWarFilter = warFilter;
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs, Long.MAX_VALUE, f -> f.possibleEndDate() >= cutoffMs && finalWarFilter.test(f), f -> true);
+//        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs, Long.MAX_VALUE, f -> f.possibleEndDate() >= cutoffMs && finalWarFilter.test(f), f -> true);
 
-        double[] buffer = ResourceType.getBuffer();
-        SummedMapRankBuilder<Integer, Number> byNation = new RankBuilder<>(attacks)
-                .group((BiConsumer<AbstractCursor, GroupedRankBuilder<Integer, AbstractCursor>>) (attack, map) -> {
-                    // Group attacks into attacker and defender
-                    map.put(attack.getAttacker_id(), attack);
-                    map.put(attack.getDefender_id(), attack);
-                }).map((i, a) -> a.getWar_id(),
-                        // Convert attack to profit value
-                        (nationdId, attack) -> {
-                            DBNation nation = nations.get(nationdId);
-                            if (nation != null) {
-                                Arrays.fill(buffer, 0);
-                                return sign * (attack.getAttacker_id() == nationdId ? attack.getAttLossValue(attack.getWar()) : attack.getDefLossValue(attack.getWar()));
-                            }
-                            return 0;
-                        })
-                // Average it per war
+        SummedMapRankBuilder<Integer, Number> byNation = new RankBuilder<>((Consumer<Consumer<Map.Entry<DBWar, AbstractCursor>>>) f -> Locutus.imp().getWarDb()
+            .iterateAttacks(cutoffMs, Long.MAX_VALUE, w -> w.possibleEndDate() >= cutoffMs && finalWarFilter.test(w), null,
+            (war, a) -> f.accept(KeyValue.of(war, a))))
+                .groupNumber((BiConsumer<Map.Entry<DBWar, AbstractCursor>, NumericGroupRankBuilder<Integer, Double>>) (entry, map) -> {
+                    DBWar war = entry.getKey();
+                    AbstractCursor attack = entry.getValue();
+                    if (DBNation.getById(attack.getAttacker_id()) != null) {
+                        double val1 = sign * attack.getAttLossValue(war);
+                        map.put(attack.getAttacker_id(), val1);
+                    }
+                    if (DBNation.getById(attack.getDefender_id()) != null) {
+                        double val2 = sign * attack.getDefLossValue(war);
+                        map.put(attack.getDefender_id(), val2);
+                    }
+                })
                 .average();
 
         RankBuilder<IShrink> ranks;

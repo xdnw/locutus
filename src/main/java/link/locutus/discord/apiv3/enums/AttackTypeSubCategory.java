@@ -1,5 +1,7 @@
 package link.locutus.discord.apiv3.enums;
 
+import link.locutus.discord.util.scheduler.KeyValue;
+
 import java.util.Map;
 
 public enum AttackTypeSubCategory {
@@ -59,6 +61,6 @@ public enum AttackTypeSubCategory {
     }
 
     public Map.Entry<AttackTypeSubCategory, String> toPair() {
-        return Map.entry(this, this.message);
+        return KeyValue.of(this, this.message);
     }
 }

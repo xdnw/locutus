@@ -48,6 +48,7 @@ import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.offshore.test.IAChannel;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.nation.MultiReport;
 import link.locutus.discord.util.task.roles.AutoRoleInfo;
@@ -177,7 +178,7 @@ public class UtilityCommands {
                     double oldRevTotalExact = ((double) oldColorRev) * oldNations.size() * oldNations.size();
 
                     scalingFactor = (1d / oldRevTotalEstimate) * oldRevTotalExact;
-                    scalingCounts.add(new AbstractMap.SimpleEntry<>(scalingFactor, nations.size()));
+                    scalingCounts.add(new KeyValue<>(scalingFactor, nations.size()));
                 }
                 if (isChanged) {
                     double newColorRev = newRevenueTotal.get();
@@ -379,7 +380,7 @@ public class UtilityCommands {
 //            message.append(" | " + diff_m + "m");
 //            if (foundOp) message.append("**");
 //
-//            allOdds.put(attacker, new AbstractMap.SimpleEntry<>(ratio, message.toString()));
+//            allOdds.put(attacker, new KeyValue<>(ratio, message.toString()));
 //        }
 //
 //        List<Map.Entry<DBNation, Map.Entry<Double, String>>> sorted = new ArrayList<>(allOdds.entrySet());
@@ -605,8 +606,8 @@ public class UtilityCommands {
                         int num = transferEntry.getValue();
                         double val = valueTransfers.get(enemyAAId);
 
-                        Map.Entry<Integer, Double> numValPair = new AbstractMap.SimpleEntry<>(num, val);
-                        offshoresTransfers.put(aaId, new AbstractMap.SimpleEntry<>(enemyAAId, numValPair));
+                        Map.Entry<Integer, Double> numValPair = new KeyValue<>(num, val);
+                        offshoresTransfers.put(aaId, new KeyValue<>(enemyAAId, numValPair));
                     }
 
                 }

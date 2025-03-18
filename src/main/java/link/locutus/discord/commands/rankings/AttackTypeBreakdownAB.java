@@ -49,7 +49,9 @@ public class AttackTypeBreakdownAB extends Command {
         WarAttackParser parser = new WarAttackParser(Locutus.imp().getGuildDB(guild), author, me, args, flags);
 
         AttackTypeBreakdown breakdown = new AttackTypeBreakdown(parser.getNameA(), parser.getNameB());
-        breakdown.addAttacks(parser.getAttacks(), parser.getIsPrimary(), parser.getIsSecondary());
+        parser.iterateAttacks((war, attack) -> {
+            breakdown.addAttack(war, attack, parser.getIsPrimary(), parser.getIsSecondary());
+        });
 
         channel.create().writeTable("Attack Breakdown", breakdown.toTableList(), true, null).send();
 

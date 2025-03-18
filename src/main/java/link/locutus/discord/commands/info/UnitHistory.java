@@ -13,6 +13,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
@@ -51,27 +52,27 @@ public class UnitHistory extends Command {
         long day = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1);
 
         if (unit == MilitaryUnit.NUKE || unit == MilitaryUnit.MISSILE) {
-            List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(nation.getNation_id(), day);
             AttackType attType = unit == MilitaryUnit.NUKE ? AttackType.NUKE : AttackType.MISSILE;
-            attacks.removeIf(f -> f.getAttack_type() != attType);
+//            List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(nation.getNation_id(), day);
+//            attacks.removeIf(f -> f.getAttack_type() != attType);
 
-            outer:
-            for (AbstractCursor attack : attacks) {
-                AbstractMap.SimpleEntry<Long, Integer> toAdd = new AbstractMap.SimpleEntry<>(attack.getDate(), nation.getUnits(unit));
+            Locutus.imp().getWarDb().iterateAttacks(nation.getNation_id(), day, (war, attack) -> {
+                if (attack.getAttack_type() != attType) return;
+                Map.Entry<Long, Integer> toAdd = new KeyValue<>(attack.getDate(), nation.getUnits(unit));
                 int i = 0;
                 for (; i < history.size(); i++) {
                     Map.Entry<Long, Integer> entry = history.get(i);
                     long diff = Math.abs(entry.getKey() - attack.getDate());
-                    if (diff < 5 * 60 * 1000) continue outer;
+                    if (diff < 5 * 60 * 1000) return;
 
                     toAdd.setValue(entry.getValue());
                     if (entry.getKey() < toAdd.getKey()) {
                         history.add(i, toAdd);
-                        continue outer;
+                        return;
                     }
                 }
                 history.add(i, toAdd);
-            }
+            });
         }
 
 
@@ -93,7 +94,7 @@ public class UnitHistory extends Command {
                 DiscordUtil.timestamp(timestamp, "d") + DiscordUtil.timestamp(timestamp, "t") + ": " + from + " -> " + to));
                 if (to >= from && entry.getKey() >= day) purchasedToday = true;
             } else if (entry.getKey() >= day) purchasedToday = true;
-            previous = new AbstractMap.SimpleEntry<>(entry);
+            previous = new KeyValue<>(entry);
         }
         if (previous != null) {
             long timestamp = previous.getKey();

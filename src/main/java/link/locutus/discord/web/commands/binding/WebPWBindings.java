@@ -70,6 +70,7 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.sheet.GoogleDoc;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
@@ -112,40 +113,40 @@ public class WebPWBindings extends WebBindingHelper {
     @HtmlInput
     @Binding(types = {Set.class, NationColor.class}, multiple = true)
     public String NationColorSet(@Default ParameterData param) {
-        return multipleSelect(param, Arrays.asList(NationColor.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()), true);
+        return multipleSelect(param, Arrays.asList(NationColor.values()), s -> new KeyValue<>(s.name(), s.name()), true);
     }
 
     @HtmlInput
     @Binding(types = {Set.class, ResourceType.class}, multiple = true)
     public String ResourceTypeSet(@Default ParameterData param) {
-        return multipleSelect(param, Arrays.asList(ResourceType.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()), true);
+        return multipleSelect(param, Arrays.asList(ResourceType.values()), s -> new KeyValue<>(s.name(), s.name()), true);
     }
 
     @HtmlInput
     @Binding(types = {Set.class, Research.class}, multiple = true)
     public String ResearchSet(@Default ParameterData param) {
-        return multipleSelect(param, Arrays.asList(Research.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()), true);
+        return multipleSelect(param, Arrays.asList(Research.values()), s -> new KeyValue<>(s.name(), s.name()), true);
     }
 
     @HtmlInput
     @Binding(types = {Set.class, SuccessType.class}, multiple = true)
     public String SuccessTypeSet(@Default ParameterData param) {
-        return multipleSelect(param, Arrays.asList(SuccessType.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()), true);
+        return multipleSelect(param, Arrays.asList(SuccessType.values()), s -> new KeyValue<>(s.name(), s.name()), true);
     }
     @HtmlInput
     @Binding(types = {Set.class, TreatyType.class}, multiple = true)
     public String TreatyTypeSet(@Default ParameterData param) {
-        return multipleSelect(param, Arrays.asList(TreatyType.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()), true);
+        return multipleSelect(param, Arrays.asList(TreatyType.values()), s -> new KeyValue<>(s.name(), s.name()), true);
     }
     @HtmlInput
     @Binding(types = {Set.class, GuildSetting.class}, multiple = true)
     public String GuildSettingSet(@Default ParameterData param) {
-        return multipleSelect(param, Arrays.asList(GuildKey.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()), true);
+        return multipleSelect(param, Arrays.asList(GuildKey.values()), s -> new KeyValue<>(s.name(), s.name()), true);
     }
     @HtmlInput
     @Binding(types = {Set.class, AutoAuditType.class}, multiple = true)
     public String AutoAuditTypeSet(@Default ParameterData param) {
-        return multipleSelect(param, Arrays.asList(AutoAuditType.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()), true);
+        return multipleSelect(param, Arrays.asList(AutoAuditType.values()), s -> new KeyValue<>(s.name(), s.name()), true);
     }
 
 
@@ -153,7 +154,7 @@ public class WebPWBindings extends WebBindingHelper {
     @Binding(types = CustomSheet.class)
     public String CustomSheet(@Me GuildDB db, CustomSheetManager manager, @Default ParameterData param) {
         Set<String> keys = manager.getCustomSheets().keySet();
-        return multipleSelect(param, keys, s -> new AbstractMap.SimpleEntry<>(s, s));
+        return multipleSelect(param, keys, s -> new KeyValue<>(s, s));
     }
 
     @HtmlInput
@@ -161,61 +162,61 @@ public class WebPWBindings extends WebBindingHelper {
     public String Conflict(ConflictManager manager, @Default ParameterData param) {
         Map<Integer, Conflict> conflicts = manager.getConflictMap();
         Set<Map.Entry<Integer, Conflict>> options = conflicts.entrySet();
-        return multipleSelect(param, options, s -> new AbstractMap.SimpleEntry<>(s.getValue().getName(), s.getKey() + ""));
+        return multipleSelect(param, options, s -> new KeyValue<>(s.getValue().getName(), s.getKey() + ""));
     }
 
     @HtmlInput
     @Binding(types = DBLoan.class)
     public String DBLoan(@Me GuildDB db, LoanManager manager, @Default ParameterData param) {
         List<DBLoan> keys = manager.getLoansByGuildDB(db);
-        return multipleSelect(param, keys, s -> new AbstractMap.SimpleEntry<>(s.toString(), s.loanId + ""));
+        return multipleSelect(param, keys, s -> new KeyValue<>(s.toString(), s.loanId + ""));
     }
 
     @HtmlInput
     @Binding(types = MessageTrigger.class)
     public String MessageTrigger(@Default ParameterData param) {
         MessageTrigger[] options = MessageTrigger.values();
-        return multipleSelect(param, Arrays.asList(options), s -> new AbstractMap.SimpleEntry<>(s.toString(), s.toString()));
+        return multipleSelect(param, Arrays.asList(options), s -> new KeyValue<>(s.toString(), s.toString()));
     }
 
     @HtmlInput
     @Binding(types = ConflictCategory.class)
     public String ConflictCategory(@Default ParameterData param) {
         ConflictCategory[] options = ConflictCategory.values();
-        return multipleSelect(param, Arrays.asList(options), s -> new AbstractMap.SimpleEntry<>(s.toString(), s.toString()));
+        return multipleSelect(param, Arrays.asList(options), s -> new KeyValue<>(s.toString(), s.toString()));
     }
 
     @HtmlInput
     @Binding(types = SelectionAlias.class)
     public String SelectionAlias(@Me GuildDB db, CustomSheetManager manager, @Default ParameterData param) {
         Set<String> keys = manager.getSelectionAliasNames();
-        return multipleSelect(param, keys, s -> new AbstractMap.SimpleEntry<>(s, s));
+        return multipleSelect(param, keys, s -> new KeyValue<>(s, s));
     }
 
     @HtmlInput
     @Binding(types = WarCostMode.class)
     public String WarCostMode(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(WarCostMode.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()));
+        return multipleSelect(param, Arrays.asList(WarCostMode.values()), s -> new KeyValue<>(s.name(), s.name()));
     }
 
     @HtmlInput
     @Binding(types = WarCostStat.class)
     public String WarCostStat(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(WarCostStat.values()), s -> new AbstractMap.SimpleEntry<>(s.name(), s.name()));
+        return multipleSelect(param, Arrays.asList(WarCostStat.values()), s -> new KeyValue<>(s.name(), s.name()));
     }
 
     @HtmlInput
     @Binding(types = SheetTemplate.class)
     public String SheetTemplate(@Me GuildDB db, CustomSheetManager manager, @Default ParameterData param) {
         Set<String> options = manager.getSheetTemplates(new ArrayList<>()).keySet();
-        return multipleSelect(param, options, s -> new AbstractMap.SimpleEntry<>(s, s));
+        return multipleSelect(param, options, s -> new KeyValue<>(s, s));
     }
 
     @HtmlInput
     @Binding(types = TemplateTypes.class)
     public String TemplateTypes(@Default ParameterData param) {
         TemplateTypes[] options = TemplateTypes.values();
-        return multipleSelect(param, Arrays.asList(options), s -> new AbstractMap.SimpleEntry<>(s.toString(), s.toString()));
+        return multipleSelect(param, Arrays.asList(options), s -> new KeyValue<>(s.toString(), s.toString()));
     }
 
     @HtmlInput
@@ -224,28 +225,28 @@ public class WebPWBindings extends WebBindingHelper {
     public String clazz(ParameterData param) {
         Set<Class<?>> types = Locutus.cmd().getV2().getPlaceholders().getTypes();
         List<String> options = types.stream().map(PlaceholdersMap::getClassName).collect(Collectors.toList());
-        return multipleSelect(param, options, f -> Map.entry(f, f));
+        return multipleSelect(param, options, f -> KeyValue.of(f, f));
     }
 
     @HtmlInput
     @Binding(types = DBLoan.class)
     public String loan(ParameterData param, LoanManager manager, @Me DBNation me, @Me User author, @Me GuildDB db) {
         List<DBLoan> options = manager.getLoansByGuildDB(db);
-        return multipleSelect(param, options, f -> Map.entry(f.getLineString(true, false), f.loanId + ""));
+        return multipleSelect(param, options, f -> KeyValue.of(f.getLineString(true, false), f.loanId + ""));
     }
 
     @HtmlInput
     @Binding(types = AGrantTemplate.class)
     public String AGrantTemplate(ParameterData param, GrantTemplateManager manager, @Me DBNation me, @Me User author, @Me GuildDB db) {
         Set<AGrantTemplate> options = manager.getTemplates();
-        return multipleSelect(param, options, f -> Map.entry(f.getType() + "/" + f.getName(), f.getName()));
+        return multipleSelect(param, options, f -> KeyValue.of(f.getType() + "/" + f.getName(), f.getName()));
     }
 
     @HtmlInput
     @Binding(types = GPTProvider.class)
     public String GPTProvider(ParameterData param, PWGPTHandler handler, @Me DBNation me, @Me User author, @Me GuildDB db) {
         Set<GPTProvider> options = handler.getProviderManager().getProviders(db);
-        return multipleSelect(param, options, f -> Map.entry(f.getId(), f.getId()));
+        return multipleSelect(param, options, f -> KeyValue.of(f.getId(), f.getId()));
     }
 
     @HtmlInput
@@ -262,7 +263,7 @@ public class WebPWBindings extends WebBindingHelper {
 
     public String EmbeddingSources(ParameterData param, PWGPTHandler handler, @Me Guild guild, boolean multiple) {
         Set<EmbeddingSource> sources = handler.getSources(guild, true);
-        return multipleSelect(param, sources, f -> Map.entry(f.getQualifiedName(), f.source_id + ""), multiple);
+        return multipleSelect(param, sources, f -> KeyValue.of(f.getQualifiedName(), f.source_id + ""), multiple);
     }
 
     @HtmlInput
@@ -279,13 +280,13 @@ public class WebPWBindings extends WebBindingHelper {
 
     public String Buildings(ParameterData param, @Me DBNation me, @Me User author, @Me GuildDB db, boolean multiple) {
         List<Building> options = Arrays.asList(Buildings.values());
-        return multipleSelect(param, options, f -> Map.entry(f.name(), f.name()), multiple);
+        return multipleSelect(param, options, f -> KeyValue.of(f.name(), f.name()), multiple);
     }
 
     @HtmlInput
     @Binding(types = EnemyAlertChannelMode.class)
     public String EnemyAlertChannelMode(ParameterData param, @Me DBNation me, @Me User author, @Me GuildDB db) {
-        return multipleSelect(param, Arrays.asList(EnemyAlertChannelMode.values()), f -> Map.entry(f.name(), f.name()));
+        return multipleSelect(param, Arrays.asList(EnemyAlertChannelMode.values()), f -> KeyValue.of(f.name(), f.name()));
     }
 
     @HtmlInput
@@ -306,14 +307,14 @@ public class WebPWBindings extends WebBindingHelper {
         if (checkPerms) {
             options.removeIf(f -> !f.hasPermission(me, author, db));
         }
-        return multipleSelect(param, options, f -> Map.entry("#" + f.reportId + " " + f.getTitle(), f.reportId + ""));
+        return multipleSelect(param, options, f -> KeyValue.of("#" + f.reportId + " " + f.getTitle(), f.reportId + ""));
     }
 
     @HtmlInput
     @Binding(types = Newsletter.class)
     public String newsletters(ParameterData param, NewsletterManager manager) {
         List<Newsletter> options = new ArrayList<>(manager.getNewsletters().values());
-        return multipleSelect(param, options, f -> Map.entry(f.getName(), f.getId() + ""));
+        return multipleSelect(param, options, f -> KeyValue.of(f.getName(), f.getId() + ""));
     }
 
     @HtmlInput
@@ -409,10 +410,10 @@ public class WebPWBindings extends WebBindingHelper {
 
         List<Map.Entry<String, String>> options = new ArrayList<>(alliances.size() + nations.size());
         for (DBNation nation : nations) {
-            options.add(new AbstractMap.SimpleEntry<>(nation.getName(), nation.getNation_id() + ""));
+            options.add(new KeyValue<>(nation.getName(), nation.getNation_id() + ""));
         }
         for (DBAlliance alliance : alliances) {
-            options.add(new AbstractMap.SimpleEntry<>("AA:" + alliance.getName(), "AA:" + alliance.getId()));
+            options.add(new KeyValue<>("AA:" + alliance.getName(), "AA:" + alliance.getId()));
         }
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             names.add(obj.getKey());
@@ -586,7 +587,7 @@ public class WebPWBindings extends WebBindingHelper {
                     ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
                     List<Member> options = new ArrayList<>(guild.getMembers());
 
-                    return multipleSelect(param, options, t -> new AbstractMap.SimpleEntry<>(t.getEffectiveName(), t.getAsMention()), true);
+                    return multipleSelect(param, options, t -> new KeyValue<>(t.getEffectiveName(), t.getAsMention()), true);
                 }));
             });
         }
@@ -635,7 +636,7 @@ public class WebPWBindings extends WebBindingHelper {
                 store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
                     ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
                     List<WarStatus> options = Arrays.asList(WarStatus.values());
-                    return multipleSelect(param, options, t -> new AbstractMap.SimpleEntry<>(t.name(), t.name()), true);
+                    return multipleSelect(param, options, t -> new KeyValue<>(t.name(), t.name()), true);
                 }));
             });
         }
@@ -703,7 +704,7 @@ public class WebPWBindings extends WebBindingHelper {
                     ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
                     List<AllianceMetric> options = Arrays.asList(AllianceMetric.values());
 
-                    return multipleSelect(param, options, t -> new AbstractMap.SimpleEntry<>(t.name(), t.name()), true);
+                    return multipleSelect(param, options, t -> new KeyValue<>(t.name(), t.name()), true);
                 }));
             });
         }
@@ -714,7 +715,7 @@ public class WebPWBindings extends WebBindingHelper {
                     ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
                     List<Project> options = Arrays.asList(Projects.values);
 
-                    return multipleSelect(param, options, t -> new AbstractMap.SimpleEntry<>(t.name(), t.name()), true);
+                    return multipleSelect(param, options, t -> new KeyValue<>(t.name(), t.name()), true);
                 }));
             });
         }
@@ -751,7 +752,7 @@ public class WebPWBindings extends WebBindingHelper {
                 rootStore.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) store -> {
                     ParameterData param = (ParameterData) store.getProvided(ParameterData.class);
                     Set<ResourceType> options = Set.of(ResourceType.values());
-                    return multipleSelect(param, options, rss -> new AbstractMap.SimpleEntry<>(rss.getName(), rss.getName()), true);
+                    return multipleSelect(param, options, rss -> new KeyValue<>(rss.getName(), rss.getName()), true);
                 }));
             });
         }
@@ -762,7 +763,7 @@ public class WebPWBindings extends WebBindingHelper {
                     ParameterData param = (ParameterData) store.getProvided(ParameterData.class);
                     List<SpyCount.Operation> options = Arrays.asList(SpyCount.Operation.values());
 
-                    return multipleSelect(param, options, op -> new AbstractMap.SimpleEntry<>(op.name(), op.name()), true);
+                    return multipleSelect(param, options, op -> new KeyValue<>(op.name(), op.name()), true);
                 }));
             });
         }
@@ -887,19 +888,19 @@ public class WebPWBindings extends WebBindingHelper {
     @HtmlInput
     @Binding(types=ResourceType.class)
     public String resource(ParameterData param) {
-        return multipleSelect(param, ResourceType.valuesList, rss -> new AbstractMap.SimpleEntry<>(rss.getName(), rss.getName()));
+        return multipleSelect(param, ResourceType.valuesList, rss -> new KeyValue<>(rss.getName(), rss.getName()));
     }
 
     @HtmlInput
     @Binding(types=Research.class)
     public String Research(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(Research.values), rss -> new AbstractMap.SimpleEntry<>(rss.getName(), rss.getName()));
+        return multipleSelect(param, Arrays.asList(Research.values), rss -> new KeyValue<>(rss.getName(), rss.getName()));
     }
 
     @HtmlInput
     @Binding(types= DepositType.class)
     public String DepositType(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(DepositType.values()), type -> new AbstractMap.SimpleEntry<>(type.name(), type.name()));
+        return multipleSelect(param, Arrays.asList(DepositType.values()), type -> new KeyValue<>(type.name(), type.name()));
     }
 
     @HtmlInput
@@ -911,25 +912,25 @@ public class WebPWBindings extends WebBindingHelper {
     @HtmlInput
     @Binding(types= WarStatus.class)
     public String WarStatus(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(WarStatus.values()), type -> new AbstractMap.SimpleEntry<>(type.name(), type.name()));
+        return multipleSelect(param, Arrays.asList(WarStatus.values()), type -> new KeyValue<>(type.name(), type.name()));
     }
 
     @HtmlInput
     @Binding(types= WarType.class)
     public String WarType(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(WarType.values()), type -> new AbstractMap.SimpleEntry<>(type.name(), type.name()));
+        return multipleSelect(param, Arrays.asList(WarType.values()), type -> new KeyValue<>(type.name(), type.name()));
     }
 
     @HtmlInput
     @Binding(types= EscrowMode.class)
     public String EscrowMode(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(EscrowMode.values()), type -> new AbstractMap.SimpleEntry<>(type.name(), type.name()));
+        return multipleSelect(param, Arrays.asList(EscrowMode.values()), type -> new KeyValue<>(type.name(), type.name()));
     }
 
     @HtmlInput
     @Binding(types= WarPolicy.class)
     public String WarPolicy(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(WarPolicy.values()), type -> new AbstractMap.SimpleEntry<>(type.name(), type.name()));
+        return multipleSelect(param, Arrays.asList(WarPolicy.values()), type -> new KeyValue<>(type.name(), type.name()));
     }
 
     @HtmlInput
@@ -944,7 +945,7 @@ public class WebPWBindings extends WebBindingHelper {
         return BeigeReasons(param, true);
     }
     public String BeigeReasons(ParameterData param, boolean multiple) {
-        return multipleSelect(param, Arrays.asList(BeigeReason.values()), type -> new AbstractMap.SimpleEntry<>(type.name() + " - " + type.getDescription(), type.name()), multiple);
+        return multipleSelect(param, Arrays.asList(BeigeReason.values()), type -> new KeyValue<>(type.name() + " - " + type.getDescription(), type.name()), multiple);
     }
 
     @HtmlInput
@@ -959,7 +960,7 @@ public class WebPWBindings extends WebBindingHelper {
         return OrbisMetrics(param, true);
     }
     public String OrbisMetrics(ParameterData param, boolean multiple) {
-        return multipleSelect(param, Arrays.asList(OrbisMetric.values()), type -> new AbstractMap.SimpleEntry<>(type.name(), type.name()), multiple);
+        return multipleSelect(param, Arrays.asList(OrbisMetric.values()), type -> new KeyValue<>(type.name(), type.name()), multiple);
     }
 
     @HtmlInput
@@ -974,7 +975,7 @@ public class WebPWBindings extends WebBindingHelper {
         return AutoRoleOptions(param, true);
     }
     public String AutoRoleOptions(ParameterData param, boolean multiple) {
-        return multipleSelect(param, Arrays.asList(GuildDB.AutoRoleOption.values()), type -> new AbstractMap.SimpleEntry<>(type.name() + " - " + type.getDescription(), type.name()), multiple);
+        return multipleSelect(param, Arrays.asList(GuildDB.AutoRoleOption.values()), type -> new KeyValue<>(type.name() + " - " + type.getDescription(), type.name()), multiple);
     }
 
     @HtmlInput
@@ -989,31 +990,31 @@ public class WebPWBindings extends WebBindingHelper {
         return LoanStatuses(param, true);
     }
     public String LoanStatuses(ParameterData param, boolean multiple) {
-        return multipleSelect(param, Arrays.asList(DBLoan.Status.values()), type -> new AbstractMap.SimpleEntry<>(type.name(), type.name()), multiple);
+        return multipleSelect(param, Arrays.asList(DBLoan.Status.values()), type -> new KeyValue<>(type.name(), type.name()), multiple);
     }
 
     @HtmlInput
     @Binding(types= IACheckup.AuditType.class)
     public String AuditType(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(IACheckup.AuditType.values()), type -> new AbstractMap.SimpleEntry<>(type.name() + " | " + type.emoji + " | " + type.severity.name(), type.name()));
+        return multipleSelect(param, Arrays.asList(IACheckup.AuditType.values()), type -> new KeyValue<>(type.name() + " | " + type.emoji + " | " + type.severity.name(), type.name()));
     }
 
     @HtmlInput
     @Binding(types= AttackType.class)
     public String AttackType(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(AttackType.values()), type -> new AbstractMap.SimpleEntry<>(type.name(), type.name()));
+        return multipleSelect(param, Arrays.asList(AttackType.values()), type -> new KeyValue<>(type.name(), type.name()));
     }
 
     @HtmlInput
     @Binding(types=Rank.class)
     public String rank(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(Rank.values()), rank -> new AbstractMap.SimpleEntry<>(rank.name(), rank.name()));
+        return multipleSelect(param, Arrays.asList(Rank.values()), rank -> new KeyValue<>(rank.name(), rank.name()));
     }
 
     @HtmlInput
     @Binding(types= NationLootType.class)
     public String lootType(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(NationLootType.values()), rank -> new AbstractMap.SimpleEntry<>(rank.name(), rank.name()));
+        return multipleSelect(param, Arrays.asList(NationLootType.values()), rank -> new KeyValue<>(rank.name(), rank.name()));
     }
 
     @HtmlInput
@@ -1029,7 +1030,7 @@ public class WebPWBindings extends WebBindingHelper {
     }
 
     public String AlliancePermissions(ParameterData param, boolean multiple) {
-        return multipleSelect(param, Arrays.asList(AlliancePermission.values()), f -> new AbstractMap.SimpleEntry<>(f.name(), f.name()), multiple);
+        return multipleSelect(param, Arrays.asList(AlliancePermission.values()), f -> new KeyValue<>(f.name(), f.name()), multiple);
     }
 
     @HtmlInput
@@ -1045,7 +1046,7 @@ public class WebPWBindings extends WebBindingHelper {
     }
 
     public String ProviderTypes(ParameterData param, boolean multiple) {
-        return multipleSelect(param, Arrays.asList(ProviderType.values()), f -> new AbstractMap.SimpleEntry<>(f.name(), f.name()), multiple);
+        return multipleSelect(param, Arrays.asList(ProviderType.values()), f -> new KeyValue<>(f.name(), f.name()), multiple);
     }
 
 
@@ -1056,32 +1057,32 @@ public class WebPWBindings extends WebBindingHelper {
         Set<DBAlliancePosition> positions = new HashSet<>(alliances.getPositions());
         positions.add(DBAlliancePosition.REMOVE);
         positions.add(DBAlliancePosition.APPLICANT);
-        return multipleSelect(param, positions, rank -> new AbstractMap.SimpleEntry<>(alliances.size() > 1 ? rank.getQualifiedName() : rank.getName(), rank.getInputName()));
+        return multipleSelect(param, positions, rank -> new KeyValue<>(alliances.size() > 1 ? rank.getQualifiedName() : rank.getName(), rank.getInputName()));
     }
 
     @HtmlInput
     @Binding(types= Permission.class)
     public String permission(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(Permission.values()), f -> new AbstractMap.SimpleEntry<>(f.name(), f.name()));
+        return multipleSelect(param, Arrays.asList(Permission.values()), f -> new KeyValue<>(f.name(), f.name()));
     }
 
     @HtmlInput
     @Binding(types= ModelType.class)
     public String ModelType(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(ModelType.values()), f -> new AbstractMap.SimpleEntry<>(f.name(), f.name()));
+        return multipleSelect(param, Arrays.asList(ModelType.values()), f -> new KeyValue<>(f.name(), f.name()));
     }
 
 
     @HtmlInput
     @Binding(types= UnsortedCommands.ClearRolesEnum.class)
     public String ClearRolesEnum(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(UnsortedCommands.ClearRolesEnum.values()), rank -> new AbstractMap.SimpleEntry<>(rank.name(), rank.name()));
+        return multipleSelect(param, Arrays.asList(UnsortedCommands.ClearRolesEnum.values()), rank -> new KeyValue<>(rank.name(), rank.name()));
     }
 
     @HtmlInput
     @Binding(types= FlowType.class)
     public String FlowType(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(FlowType.values()), rank -> new AbstractMap.SimpleEntry<>(rank.name(), rank.name()));
+        return multipleSelect(param, Arrays.asList(FlowType.values()), rank -> new KeyValue<>(rank.name(), rank.name()));
     }
 
     @HtmlInput
@@ -1093,31 +1094,31 @@ public class WebPWBindings extends WebBindingHelper {
             if (!key.hasPermission(db, author, null)) return true;
             return false;
         });
-        return multipleSelect(param, options, f -> new AbstractMap.SimpleEntry<>(f.name(), f.name()));
+        return multipleSelect(param, options, f -> new KeyValue<>(f.name(), f.name()));
     }
 
     @HtmlInput
     @Binding(types= OnlineStatus.class)
     public String onlineStatus(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(OnlineStatus.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()));
+        return multipleSelect(param, Arrays.asList(OnlineStatus.values()), arg -> new KeyValue<>(arg.name(), arg.name()));
     }
 
     @HtmlInput
     @Binding(types= Continent.class)
     public String Continent(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(Continent.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()));
+        return multipleSelect(param, Arrays.asList(Continent.values()), arg -> new KeyValue<>(arg.name(), arg.name()));
     }
 
     @HtmlInput
     @Binding(types= NationMeta.BeigeAlertMode.class)
     public String BeigeAlertMode(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(NationMeta.BeigeAlertMode.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()));
+        return multipleSelect(param, Arrays.asList(NationMeta.BeigeAlertMode.values()), arg -> new KeyValue<>(arg.name(), arg.name()));
     }
 
     @HtmlInput
     @Binding(types= NationMeta.BeigeAlertRequiredStatus.class)
     public String BeigeAlertRequiredStatus(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(NationMeta.BeigeAlertRequiredStatus.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()));
+        return multipleSelect(param, Arrays.asList(NationMeta.BeigeAlertRequiredStatus.values()), arg -> new KeyValue<>(arg.name(), arg.name()));
     }
 
     @HtmlInput
@@ -1132,43 +1133,43 @@ public class WebPWBindings extends WebBindingHelper {
         return units(param, true);
     }
     public String units(ParameterData param, boolean multiple) {
-        return multipleSelect(param, Arrays.asList(MilitaryUnit.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()), multiple);
+        return multipleSelect(param, Arrays.asList(MilitaryUnit.values()), arg -> new KeyValue<>(arg.name(), arg.name()), multiple);
     }
 
     @HtmlInput
     @Binding(types= MathOperation.class)
     public String operation(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(MathOperation.values()), op -> new AbstractMap.SimpleEntry<>(op.name(), op.name()));
+        return multipleSelect(param, Arrays.asList(MathOperation.values()), op -> new KeyValue<>(op.name(), op.name()));
     }
 
     @HtmlInput
     @Binding(types= GuildDB.AutoNickOption.class)
     public String AutoNickOption(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(GuildDB.AutoNickOption.values()), op -> new AbstractMap.SimpleEntry<>(op.name(), op.name()));
+        return multipleSelect(param, Arrays.asList(GuildDB.AutoNickOption.values()), op -> new KeyValue<>(op.name(), op.name()));
     }
 
     @HtmlInput
     @Binding(types= SpyCount.Safety.class)
     public String spySafety(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(SpyCount.Safety.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()));
+        return multipleSelect(param, Arrays.asList(SpyCount.Safety.values()), arg -> new KeyValue<>(arg.name(), arg.name()));
     }
 
     @HtmlInput
     @Binding(types= TreatyType.class)
     public String TreatyType(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(TreatyType.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()));
+        return multipleSelect(param, Arrays.asList(TreatyType.values()), arg -> new KeyValue<>(arg.name(), arg.name()));
     }
 
     @HtmlInput
     @Binding(types= ReportManager.ReportType.class)
     public String ReportType(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(ReportManager.ReportType.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()));
+        return multipleSelect(param, Arrays.asList(ReportManager.ReportType.values()), arg -> new KeyValue<>(arg.name(), arg.name()));
     }
 
     @HtmlInput
     @Binding(types= AllianceMetric.class)
     public String AllianceMetric(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(AllianceMetric.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()));
+        return multipleSelect(param, Arrays.asList(AllianceMetric.values()), arg -> new KeyValue<>(arg.name(), arg.name()));
     }
 
     @HtmlInput
@@ -1283,7 +1284,7 @@ public class WebPWBindings extends WebBindingHelper {
     @HtmlInput
     @Binding(types= WarCostByDayMode.class)
     public String warCostByDayMode(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(WarCostByDayMode.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()));
+        return multipleSelect(param, Arrays.asList(WarCostByDayMode.values()), arg -> new KeyValue<>(arg.name(), arg.name()));
     }
     //Missing: Key{type=class link.locutus.discord.db.entities.MMRDouble, annotationTypes=[interface link.locutus.discord.web.commands.HtmlInput]}
     // pattern = 4 decimal numbers (or whole numbers) separated by /
@@ -1308,7 +1309,7 @@ public class WebPWBindings extends WebBindingHelper {
     @HtmlInput
     @Binding(types= SheetKey.class)
     public String sheetKey(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(SheetKey.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()));
+        return multipleSelect(param, Arrays.asList(SheetKey.values()), arg -> new KeyValue<>(arg.name(), arg.name()));
     }
 
     //Missing: Key{type=class link.locutus.discord.util.sheet.GoogleDoc, annotationTypes=[interface link.locutus.discord.web.commands.HtmlInput]}
@@ -1373,7 +1374,7 @@ public class WebPWBindings extends WebBindingHelper {
     @HtmlInput
     @Binding(types = {Set.class, DomesticPolicy.class}, multiple = true)
     public String domesticPolicy(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(DomesticPolicy.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()), true);
+        return multipleSelect(param, Arrays.asList(DomesticPolicy.values()), arg -> new KeyValue<>(arg.name(), arg.name()), true);
     }
     @HtmlInput
     @Binding(types = {Set.class, GuildDB.class}, multiple = true)
@@ -1429,7 +1430,7 @@ public class WebPWBindings extends WebBindingHelper {
     @HtmlInput
     @Binding(types = {Set.class, EmbeddingType.class}, multiple = true)
     public String embeddingType(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(EmbeddingType.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()), true);
+        return multipleSelect(param, Arrays.asList(EmbeddingType.values()), arg -> new KeyValue<>(arg.name(), arg.name()), true);
     }
 
 }

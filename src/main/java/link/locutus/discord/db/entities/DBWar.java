@@ -14,6 +14,7 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ValueException;
 import link.locutus.discord.util.task.war.WarCard;
 import link.locutus.discord.apiv1.domains.subdomains.SWarContainer;
@@ -308,7 +309,7 @@ public class DBWar {
             int damage = attack.getResistance();
             result[resI] = Math.max(0, result[resI] - damage);
         }
-        return new AbstractMap.SimpleEntry<>(result[0], result[1]);
+        return new KeyValue<>(result[0], result[1]);
     }
 
     public Map.Entry<Boolean, Boolean> getFortified(List<AbstractCursor> attacks) {
@@ -320,7 +321,7 @@ public class DBWar {
                 result[attack.getAttacker_id() == getAttacker_id() ? 0 : 1] = false;
             }
         }
-        return Map.entry(result[0], result[1]);
+        return KeyValue.of(result[0], result[1]);
     }
 
     public Map.Entry<Integer, Integer> getMap(List<AbstractCursor> attacks) {
@@ -328,7 +329,7 @@ public class DBWar {
         DBNation defender = Locutus.imp().getNationDB().getNationById(getDefender_id());
 
         if (attacker == null || defender == null) {
-            return new AbstractMap.SimpleEntry<>(0, 0);
+            return new KeyValue<>(0, 0);
         }
 
         long turnStart = TimeUtil.getTurn(getDate());
@@ -397,7 +398,7 @@ public class DBWar {
         }
         attTurnMap[1] = Math.min(12, attTurnMap[1] + turnEnd - attTurnMap[0]);
         defTurnMap[1] = Math.min(12, defTurnMap[1] + turnEnd - defTurnMap[0]);
-        return new AbstractMap.SimpleEntry<>((int) attTurnMap[1], (int) defTurnMap[1]);
+        return new KeyValue<>((int) attTurnMap[1], (int) defTurnMap[1]);
     }
 
     public boolean isActive() {

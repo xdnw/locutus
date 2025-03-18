@@ -1734,11 +1734,14 @@ public class PlaceholdersMap {
     }
 
     private Set<IAttack> getAttacks(Set<Integer> attackIds, Set<Integer> warIds, Set<Integer> nationIds, Set<Integer> alliances) {
+        // TODO FIXME optimize this
         Set<IAttack> attacks = new ObjectOpenHashSet<>();
         if (warIds != null && !warIds.isEmpty()) {
             Set<DBWar> wars = Locutus.imp().getWarDb().getWarsById(warIds);
             if (!wars.isEmpty()) {
-                attacks.addAll(Locutus.imp().getWarDb().getAttacksByWars(wars));
+                Locutus.imp().getWarDb().iterateAttacksByWars(wars, (war, attack) -> {
+                    attacks.add(attack);
+                });
             }
         }
         if (attackIds != null && !attackIds.isEmpty()) {
@@ -1746,14 +1749,18 @@ public class PlaceholdersMap {
         }
         if ((attackIds == null || attackIds.isEmpty()) && (warIds == null || warIds.isEmpty())) {
             if (nationIds != null && !nationIds.isEmpty()) {
-                attacks.addAll(Locutus.imp().getWarDb().getAttacks(nationIds, 0));
+                Locutus.imp().getWarDb().iterateAttacks(nationIds, 0, (war, attack) -> {
+                    attacks.add(attack);
+                });
             }
             if (alliances != null && !alliances.isEmpty()) {
                 Set<DBWar> allWars = new ObjectOpenHashSet<>();
                 for (Integer aaId : alliances) {
                     allWars.addAll(Locutus.imp().getWarDb().getWarsByAlliance(aaId));
                 }
-                attacks.addAll(Locutus.imp().getWarDb().getAttacksByWars(allWars));
+                Locutus.imp().getWarDb().iterateAttacksByWars(allWars, (war, attack) -> {
+                    attacks.add(attack);
+                });
             }
         }
         return attacks;

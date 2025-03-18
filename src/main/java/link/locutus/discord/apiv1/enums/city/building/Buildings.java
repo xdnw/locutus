@@ -7,6 +7,7 @@ import link.locutus.discord.apiv1.enums.city.building.imp.*;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.scheduler.KeyValue;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -161,39 +162,39 @@ public class Buildings {
     }
     public final static int[] HASHCODES;
     private static final Map<String, Building> V3_MAP = Map.ofEntries(
-            Map.entry("oil power plant", OIL_POWER),
-            Map.entry("oil power", OIL_POWER),
-            Map.entry("wind power plant", WIND_POWER),
-            Map.entry("wind power", WIND_POWER),
-            Map.entry("coal power plant", COAL_POWER),
-            Map.entry("coal power", COAL_POWER),
-            Map.entry("nuclear power plant", NUCLEAR_POWER),
-            Map.entry("nuclear power", NUCLEAR_POWER),
-            Map.entry("coal mine", COAL_MINE),
-            Map.entry("lead mine", LEAD_MINE),
-            Map.entry("iron mine", IRON_MINE),
-            Map.entry("bauxite mine", BAUXITE_MINE),
-            Map.entry("oil well", OIL_WELL),
-            Map.entry("uranium mine", URANIUM_MINE),
-            Map.entry("farm", FARM),
-            Map.entry("police station", POLICE_STATION),
-            Map.entry("hospital", HOSPITAL),
-            Map.entry("recycling center", RECYCLING_CENTER),
-            Map.entry("subway", SUBWAY),
-            Map.entry("supermarket", SUPERMARKET),
-            Map.entry("bank", BANK),
-            Map.entry("shopping mall", MALL),
-            Map.entry("stadium", STADIUM),
-            Map.entry("gas refinery", GAS_REFINERY),
-            Map.entry("aluminumrefinery", ALUMINUM_REFINERY),
-            Map.entry("aluminum refinery", ALUMINUM_REFINERY),
-            Map.entry("oil refinery", GAS_REFINERY),
-            Map.entry("steel mill", STEEL_MILL),
-            Map.entry("munitions factory", MUNITIONS_FACTORY),
-            Map.entry("barracks", BARRACKS),
-            Map.entry("factory", FACTORY),
-            Map.entry("hangar", HANGAR),
-            Map.entry("drydock", DRYDOCK)
+            KeyValue.of("oil power plant", OIL_POWER),
+            KeyValue.of("oil power", OIL_POWER),
+            KeyValue.of("wind power plant", WIND_POWER),
+            KeyValue.of("wind power", WIND_POWER),
+            KeyValue.of("coal power plant", COAL_POWER),
+            KeyValue.of("coal power", COAL_POWER),
+            KeyValue.of("nuclear power plant", NUCLEAR_POWER),
+            KeyValue.of("nuclear power", NUCLEAR_POWER),
+            KeyValue.of("coal mine", COAL_MINE),
+            KeyValue.of("lead mine", LEAD_MINE),
+            KeyValue.of("iron mine", IRON_MINE),
+            KeyValue.of("bauxite mine", BAUXITE_MINE),
+            KeyValue.of("oil well", OIL_WELL),
+            KeyValue.of("uranium mine", URANIUM_MINE),
+            KeyValue.of("farm", FARM),
+            KeyValue.of("police station", POLICE_STATION),
+            KeyValue.of("hospital", HOSPITAL),
+            KeyValue.of("recycling center", RECYCLING_CENTER),
+            KeyValue.of("subway", SUBWAY),
+            KeyValue.of("supermarket", SUPERMARKET),
+            KeyValue.of("bank", BANK),
+            KeyValue.of("shopping mall", MALL),
+            KeyValue.of("stadium", STADIUM),
+            KeyValue.of("gas refinery", GAS_REFINERY),
+            KeyValue.of("aluminumrefinery", ALUMINUM_REFINERY),
+            KeyValue.of("aluminum refinery", ALUMINUM_REFINERY),
+            KeyValue.of("oil refinery", GAS_REFINERY),
+            KeyValue.of("steel mill", STEEL_MILL),
+            KeyValue.of("munitions factory", MUNITIONS_FACTORY),
+            KeyValue.of("barracks", BARRACKS),
+            KeyValue.of("factory", FACTORY),
+            KeyValue.of("hangar", HANGAR),
+            KeyValue.of("drydock", DRYDOCK)
     );
     private final static Map<String, Building> BUILDINGS_MAP = new HashMap<>();
 

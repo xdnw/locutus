@@ -17,7 +17,7 @@ import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -144,7 +144,7 @@ public class PWWikiPage {
                 if (endDate == null && !dates[1].toLowerCase().contains("present") && !dates[1].toLowerCase().contains("ongoing")) {
                     System.out.println("No end date for: " + dates[1] + " | https://politicsandwar.fandom.com/wiki/" + urlStub);
                 }
-                return new AbstractMap.SimpleEntry<>(startDate.toEpochDay(), endDate == null ? null : endDate.toEpochDay());
+                return new KeyValue<>(startDate.toEpochDay(), endDate == null ? null : endDate.toEpochDay());
             }
         } catch (DateTimeException e) {
             e.printStackTrace();
@@ -186,7 +186,7 @@ public class PWWikiPage {
             }
             return id;
         }).filter(Objects::nonNull).collect(Collectors.toSet());
-        return Map.entry(col1Ids, col2Ids);
+        return KeyValue.of(col1Ids, col2Ids);
     }
 
     private List<String> getCombatants(Element elem) {

@@ -23,8 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.function.*;
 import java.util.stream.Collectors;
 
 public class WarParser {
@@ -39,7 +38,8 @@ public class WarParser {
     private final Collection<Integer> coal2Nations;
 
     private Map<Integer, DBWar> wars;
-    private List<AbstractCursor> attacks;
+    private Consumer<BiConsumer<DBWar, AbstractCursor>> attacks;
+    private BiPredicate<DBWar, AbstractCursor> filter;
 
     public static WarParser ofAANatobj(Collection<DBAlliance> coal1Alliances, Collection<DBNation> coal1Nations, Collection<DBAlliance> coal2Alliances, Collection<DBNation> coal2Nations, long start, long end) {
         return ofNatObj(coal1Alliances == null ? null : coal1Alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet()), coal1Nations, coal2Alliances == null ? null : coal2Alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet()), coal2Nations, start, end);
@@ -152,13 +152,21 @@ public class WarParser {
         return this;
     }
 
+    public void addFilter(BiPredicate<DBWar, AbstractCursor> filter) {
+        this.filter = this.filter == null ? filter : this.filter.and(filter);
+    }
+
     public WarParser allowedAttackTypes(Set<AttackType> attackTypes) {
-        if (attackTypes != null) getAttacks().removeIf(f -> !attackTypes.contains(f.getAttack_type()));
+        if (attackTypes != null) {
+            addFilter((war, attack) -> attackTypes.contains(attack.getAttack_type()));
+        }
         return this;
     }
 
     public WarParser allowedSuccessTypes(Set<SuccessType> successTypes) {
-        if (successTypes != null) getAttacks().removeIf(f -> !successTypes.contains(f.getSuccess()));
+        if (successTypes != null) {
+            addFilter((war, attack) -> successTypes.contains(attack.getSuccess()));
+        }
         return this;
     }
 
@@ -169,12 +177,21 @@ public class WarParser {
         return wars;
     }
 
-    public List<AbstractCursor> getAttacksDeprecated() {
-        if (this.attacks == null) {
-            this.attacks = Locutus.imp().getWarDb().getAttacksByWars(getWars().values(), start, end);
+    public Consumer<BiConsumer<DBWar, AbstractCursor>> getAttacks() {
+        if (attacks == null) {
+            attacks = f -> Locutus.imp().getWarDb().iterateAttacksByWars(getWars().values(), start, end, f);
         }
-        return this.attacks;
+        if (filter != null) {
+            Consumer<BiConsumer<DBWar, AbstractCursor>> parent = attacks;
+            this.attacks = consumer -> {
+                parent.accept((war, attack) -> {
+                    if (filter.test(war, attack)) consumer.accept(war, attack);
+                });
+            };
+        }
+        return attacks;
     }
+
 
     public Function<DBWar, Boolean> getIsPrimary() {
         return isPrimary;
@@ -184,18 +201,16 @@ public class WarParser {
         return isSecondary;
     }
 
-    public Function<AbstractCursor, Boolean> getAttackPrimary() {
-        return attack -> {
-            DBWar war = getWars().get(attack.getWar_id());
+    public BiFunction<DBWar, AbstractCursor, Boolean> getAttackPrimary() {
+        return (war, attack) -> {
             if (war == null) return false;
             boolean isWarPrimary = isPrimary.apply(war);
             return (isWarPrimary ? war.getAttacker_id() : war.getDefender_id()) == attack.getAttacker_id();
         };
     }
 
-    public Function<AbstractCursor, Boolean> getAttackSecondary() {
-        return attack -> {
-            DBWar war = getWars().get(attack.getWar_id());
+    public BiFunction<DBWar, AbstractCursor, Boolean> getAttackSecondary() {
+        return (war, attack) -> {
             if (war == null) return false;
             boolean isWarSecondary = isSecondary.apply(war);
             return (isWarSecondary ? war.getAttacker_id() : war.getDefender_id()) == attack.getAttacker_id();
@@ -204,135 +219,137 @@ public class WarParser {
 
     public AttackTypeBreakdown toBreakdown() {
         AttackTypeBreakdown breakdown = new AttackTypeBreakdown(nameA, nameB);
-        breakdown.addAttacks(getAttacks(), getAttackPrimary(), getAttackSecondary());
+        getAttacks().accept((war, attack) -> {
+            breakdown.addAttack(war, attack, getAttackPrimary(), getAttackSecondary());
+        });
         return breakdown;
     }
 
     public AttackCost toWarCost(boolean buildings, boolean ids, boolean victories, boolean wars, boolean attacks) {
         AttackCost cost = new AttackCost(nameA, nameB, buildings, ids, victories, wars, attacks);
-        cost.addCost(getAttacks(), getAttackPrimary(), getAttackSecondary());
+        getAttacks().accept((war, attack) -> {
+            cost.addCost(attack, war, getAttackPrimary(), getAttackSecondary());
+        });
         return cost;
     }
 
     public <T> Map<T, AttackTypeBreakdown> groupBreakdownByAttack(Function<AbstractCursor, T> groupFunc) {
-        Function<AbstractCursor, Boolean> attPrimary = getAttackPrimary();
-        Function<AbstractCursor, Boolean> attSecondary = getAttackSecondary();
+        BiFunction<DBWar, AbstractCursor, Boolean> attPrimary = getAttackPrimary();
+        BiFunction<DBWar, AbstractCursor, Boolean> attSecondary = getAttackSecondary();
         Map<T, AttackTypeBreakdown> grouped = new LinkedHashMap<>();
-        for (AbstractCursor attack : getAttacks()) {
+        getAttacks().accept((war, attack) -> {
             T key = groupFunc.apply(attack);
             AttackTypeBreakdown obj = grouped.computeIfAbsent(key, f -> new AttackTypeBreakdown(nameA, nameB));
-            obj.addAttack(attack, attPrimary, attSecondary);
-        }
+            obj.addAttack(war, attack, attPrimary, attSecondary);
+        });
         return grouped;
     }
 
     public <T> Map<T, AttackCost> groupWarCostByAttack(Function<AbstractCursor, T> groupFunc, boolean buildings, boolean ids, boolean victories, boolean wars, boolean attacks) {
-        Function<AbstractCursor, Boolean> attPrimary = getAttackPrimary();
-        Function<AbstractCursor, Boolean> attSecondary = getAttackSecondary();
+        BiFunction<DBWar, AbstractCursor, Boolean> attPrimary = getAttackPrimary();
+        BiFunction<DBWar, AbstractCursor, Boolean> attSecondary = getAttackSecondary();
         Map<T, AttackCost> grouped = new LinkedHashMap<>();
-        for (AbstractCursor attack : getAttacks()) {
+        getAttacks().accept((war, attack) -> {
             T key = groupFunc.apply(attack);
             AttackCost cost = grouped.computeIfAbsent(key, f -> new AttackCost(nameA, nameB, buildings, ids, victories, wars, attacks));
-            cost.addCost(attack, attack.getWar(), attPrimary, attSecondary);
-        }
+            cost.addCost(attack, war, attPrimary, attSecondary);
+        });
         return grouped;
     }
 
     public Map<Long, AttackCost> toWarCostByDay(boolean buildings, boolean ids, boolean victories, boolean wars, boolean attacks) {
-        Function<AbstractCursor, Boolean> attPrimary = getAttackPrimary();
-        Function<AbstractCursor, Boolean> attSecondary = getAttackSecondary();
+        BiFunction<DBWar, AbstractCursor, Boolean> attPrimary = getAttackPrimary();
+        BiFunction<DBWar, AbstractCursor, Boolean> attSecondary = getAttackSecondary();
         Map<Long, AttackCost> warCostByDay = new LinkedHashMap<>();
-        for (AbstractCursor attack : getAttacks()) {
+        getAttacks().accept((war, attack) -> {
             if (attack.getDate() > System.currentTimeMillis()) {
                 System.out.println("attack id:" + attack.getWar_attack_id() + " is in future");
             }
             long turn = TimeUtil.getTurn(attack.getDate());
             long day = turn / 12;
             AttackCost cost = warCostByDay.computeIfAbsent(day, f -> new AttackCost(nameA, nameB, buildings, ids, victories, wars, attacks));
-            cost.addCost(attack, attack.getWar(), attPrimary, attSecondary);
-        }
+            cost.addCost(attack, war, attPrimary, attSecondary);
+        });
         return warCostByDay;
     }
 
     public Map<Integer, AttackCost> toWarCostByNation(boolean buildings, boolean ids, boolean victories, boolean wars, boolean attacks) {
         Map<Integer, AttackCost> warCostByNation = new HashMap<>();
-        Function<AbstractCursor, Boolean> attPrimary = getAttackPrimary();
-        Function<AbstractCursor, Boolean> attSecondary = getAttackSecondary();
-        for (AbstractCursor attack : getAttacks()) {
-            if (!attPrimary.apply(attack) && !attSecondary.apply(attack)) continue;
+        BiFunction<DBWar, AbstractCursor, Boolean> attPrimary = getAttackPrimary();
+        BiFunction<DBWar, AbstractCursor, Boolean> attSecondary = getAttackSecondary();
+        getAttacks().accept((war, attack) -> {
+            if (!attPrimary.apply(war, attack) && !attSecondary.apply(war, attack)) return;
             {
-                String other = attPrimary.apply(attack) ? nameB : nameA;
+                String other = attPrimary.apply(war, attack) ? nameB : nameA;
                 AttackCost cost = warCostByNation.computeIfAbsent(attack.getAttacker_id(), f -> new AttackCost(PW.getName(attack.getAttacker_id(), false), other, buildings, ids, victories, wars, attacks));
-                cost.addCost(attack, attack.getWar(), true);
+                cost.addCost(attack, war, true);
             }
             {
-                String other = attSecondary.apply(attack) ? nameA : nameB;
+                String other = attSecondary.apply(war, attack) ? nameA : nameB;
                 AttackCost cost = warCostByNation.computeIfAbsent(attack.getDefender_id(), f -> new AttackCost(PW.getName(attack.getDefender_id(), false), other, buildings, ids, victories, wars, attacks));
-                cost.addCost(attack, attack.getWar(), false);
+                cost.addCost(attack, war, false);
             }
-        }
+        });
         return warCostByNation;
     }
 
     public Map<Integer, AttackCost> toWarCostByAlliance(boolean buildings, boolean ids, boolean victories, boolean wars, boolean attacks) {
         Map<Integer, AttackCost> warCostByAA = new HashMap<>();
-        Function<AbstractCursor, Boolean> attPrimary = getAttackPrimary();
-        Function<AbstractCursor, Boolean> attSecondary = getAttackSecondary();
-        for (AbstractCursor attack : getAttacks()) {
-            DBWar war = getWars().get(attack.getWar_id());
+        BiFunction<DBWar, AbstractCursor, Boolean> attPrimary = getAttackPrimary();
+        BiFunction<DBWar, AbstractCursor, Boolean> attSecondary = getAttackSecondary();
+        getAttacks().accept((war, attack) -> {
             {
-                String other = attPrimary.apply(attack) ? nameB : nameA;
+                String other = attPrimary.apply(war, attack) ? nameB : nameA;
                 AttackCost cost = warCostByAA.computeIfAbsent(war.getAttacker_aa(), f -> new AttackCost(PW.getName(war.getAttacker_aa(), true), other, buildings, ids, victories, wars, attacks));
                 cost.addCost(attack, war, true);
             }
 
             {
-                String other = attSecondary.apply(attack) ? nameA : nameB;
+                String other = attSecondary.apply(war, attack) ? nameA : nameB;
                 AttackCost cost = warCostByAA.computeIfAbsent(war.getDefender_aa(), f -> new AttackCost(PW.getName(war.getDefender_aa(), true), other, buildings, ids, victories, wars, attacks));
                 cost.addCost(attack, war, false);
             }
-        }
+        });
         return warCostByAA;
     }
 
     public Map<Integer, AttackTypeBreakdown> toAttackTypeByNation() {
         Map<Integer, AttackTypeBreakdown> warCostByNation = new HashMap<>();
-        Function<AbstractCursor, Boolean> attPrimary = getAttackPrimary();
-        Function<AbstractCursor, Boolean> attSecondary = getAttackSecondary();
-        for (AbstractCursor attack : getAttacks()) {
-            if (!attPrimary.apply(attack) && !attSecondary.apply(attack)) continue;
+        BiFunction<DBWar, AbstractCursor, Boolean> attPrimary = getAttackPrimary();
+        BiFunction<DBWar, AbstractCursor, Boolean> attSecondary = getAttackSecondary();
+        getAttacks().accept((war, attack) -> {
+            if (!attPrimary.apply(war, attack) && !attSecondary.apply(war, attack)) return;
             {
-                String other = attPrimary.apply(attack) ? nameB : nameA;
+                String other = attPrimary.apply(war, attack) ? nameB : nameA;
                 AttackTypeBreakdown cost = warCostByNation.computeIfAbsent(attack.getAttacker_id(), f -> new AttackTypeBreakdown(PW.getName(attack.getAttacker_id(), false), other));
-                cost.addAttack(attack, true);
+                cost.addAttack(war, attack, true);
             }
             {
-                String other = attSecondary.apply(attack) ? nameA : nameB;
+                String other = attSecondary.apply(war, attack) ? nameA : nameB;
                 AttackTypeBreakdown cost = warCostByNation.computeIfAbsent(attack.getDefender_id(), f -> new AttackTypeBreakdown(PW.getName(attack.getDefender_id(), false), other));
-                cost.addAttack(attack, false);
+                cost.addAttack(war, attack, false);
             }
-        }
+        });
         return warCostByNation;
     }
 
     public Map<Integer, AttackTypeBreakdown> toAttackTypeByAlliance() {
         Map<Integer, AttackTypeBreakdown> warCostByAA = new HashMap<>();
-        Function<AbstractCursor, Boolean> attPrimary = getAttackPrimary();
-        Function<AbstractCursor, Boolean> attSecondary = getAttackSecondary();
-        for (AbstractCursor attack : getAttacks()) {
-            DBWar war = getWars().get(attack.getWar_id());
+        BiFunction<DBWar, AbstractCursor, Boolean> attPrimary = getAttackPrimary();
+        BiFunction<DBWar, AbstractCursor, Boolean> attSecondary = getAttackSecondary();
+        getAttacks().accept((war, attack) -> {
             {
-                String other = attPrimary.apply(attack) ? nameB : nameA;
+                String other = attPrimary.apply(war, attack) ? nameB : nameA;
                 AttackTypeBreakdown cost = warCostByAA.computeIfAbsent(war.getAttacker_aa(), f -> new AttackTypeBreakdown(PW.getName(war.getAttacker_aa(), true), other));
-                cost.addAttack(attack, true);
+                cost.addAttack(war, attack, true);
             }
 
             {
-                String other = attSecondary.apply(attack) ? nameA : nameB;
+                String other = attSecondary.apply(war, attack) ? nameA : nameB;
                 AttackTypeBreakdown cost = warCostByAA.computeIfAbsent(war.getDefender_aa(), f -> new AttackTypeBreakdown(PW.getName(war.getDefender_aa(), true), other));
-                cost.addAttack(attack, false);
+                cost.addAttack(war, attack, false);
             }
-        }
+        });
         return warCostByAA;
     }
 

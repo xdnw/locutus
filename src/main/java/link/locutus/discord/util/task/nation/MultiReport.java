@@ -19,7 +19,7 @@ import com.google.api.client.util.Lists;
 import link.locutus.discord.apiv1.enums.ResourceType;
 
 import java.math.BigInteger;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -323,8 +323,8 @@ public class MultiReport {
                             continue;
                         }
 
-                        illegalWarsByMulti.computeIfAbsent(multiId1, f -> new LinkedHashSet<>()).add(new AbstractMap.SimpleEntry<>(a, b));
-                        illegalWarsByMulti.computeIfAbsent(multiId2, f -> new LinkedHashSet<>()).add(new AbstractMap.SimpleEntry<>(b, a));
+                        illegalWarsByMulti.computeIfAbsent(multiId1, f -> new LinkedHashSet<>()).add(new KeyValue<>(a, b));
+                        illegalWarsByMulti.computeIfAbsent(multiId2, f -> new LinkedHashSet<>()).add(new KeyValue<>(b, a));
                     }
                 }
             }
@@ -393,7 +393,7 @@ public class MultiReport {
 
                         if (nationA == nationB) continue;
 
-                        AbstractMap.SimpleEntry<Transaction2, Transaction2> entry = new AbstractMap.SimpleEntry<>(a, b);
+                        Map.Entry<Transaction2, Transaction2> entry = new KeyValue<>(a, b);
                         illegalIndirectTransfers.computeIfAbsent(nationA, f -> new LinkedHashSet<>()).add(entry);
                         illegalIndirectTransfers.computeIfAbsent(nationB, f -> new LinkedHashSet<>()).add(entry);
                     }
@@ -466,7 +466,7 @@ public class MultiReport {
                     continue;
                 }
                 int otherId = nation1.getNation_id() == nationId ? nation2.getNation_id() : nation1.getNation_id();
-                warTransfers.computeIfAbsent(otherId, i -> Lists.newArrayList()).add(new AbstractMap.SimpleEntry<>(nationId, transfer));
+                warTransfers.computeIfAbsent(otherId, i -> Lists.newArrayList()).add(new KeyValue<>(nationId, transfer));
             } catch (Throwable e) {
                 e.printStackTrace();
             }

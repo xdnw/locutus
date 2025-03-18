@@ -15,7 +15,7 @@ import link.locutus.discord.util.io.PagePriority;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -42,7 +42,7 @@ public class SpyCount {
                 for (Map.Entry<Double, Map.Entry<Operation, Integer>> entry : BY_SUCCESS) {
                     if (entry.getKey() == success) continue outer;
                 }
-                BY_SUCCESS.add(new AbstractMap.SimpleEntry<>(success, new AbstractMap.SimpleEntry<>(opType, safety)));
+                BY_SUCCESS.add(new KeyValue<>(success, new KeyValue<>(opType, safety)));
             }
         }
 
@@ -137,7 +137,7 @@ public class SpyCount {
         double factor = spySat ? 1.5 : 1;
         long min = Math.round(spiesKilled / (1.05 * 0.335 * factor) + (defSpies * 0.4));
         long max = Math.round(spiesKilled / (0.85 * 0.335 * factor) + (defSpies * 0.4));
-        return new AbstractMap.SimpleEntry<>((int) min, (int) max);
+        return new KeyValue<>((int) min, (int) max);
     }
 
     public static Map.Entry<Integer, Integer> getUnitKillRange(int attSpies, int defSpies, MilitaryUnit unit, int defUnits, boolean spySat, boolean defSN) {
@@ -168,7 +168,7 @@ public class SpyCount {
                     throw new IllegalArgumentException("Unknown unit type: " + unit);
             }
         }
-        return new AbstractMap.SimpleEntry<>((int) Math.round(min), (int) Math.round(max));
+        return new KeyValue<>((int) Math.round(min), (int) Math.round(max));
     }
 
     public static int guessSpyCount(PagePriority priority, DBNation nation) throws IOException {
@@ -225,7 +225,7 @@ public class SpyCount {
                     double diff = Math.abs(cost - changeAbs);
                     if (diff < 2) {
                         int uncertainty = spies > maxSpies ? 3 : 0;
-                        return new AbstractMap.SimpleEntry<>(new SpyCount.SpyOp(null, spies, safety), uncertainty);
+                        return new KeyValue<>(new SpyCount.SpyOp(null, spies, safety), uncertainty);
                     }
                 }
             }
@@ -234,7 +234,7 @@ public class SpyCount {
                     double cost = SpyCount.opCost(spies, safety);
                     double diff = Math.abs(cost - changeAbs);
                     if (diff < 2) {
-                        return new AbstractMap.SimpleEntry<>(new SpyCount.SpyOp(null, spies, safety), 2);
+                        return new KeyValue<>(new SpyCount.SpyOp(null, spies, safety), 2);
                     }
                 }
             }
@@ -244,7 +244,7 @@ public class SpyCount {
                     double cost = SpyCount.opCost(spies, safety);
                     double diff = Math.abs(cost - changeAbs);
                     if (diff - 50000 < 2 || diff - 150000 < 2 || diff - 200000 < 2) {
-                        return new AbstractMap.SimpleEntry<>(new SpyCount.SpyOp(null, spies, safety), 4);
+                        return new KeyValue<>(new SpyCount.SpyOp(null, spies, safety), 4);
                     }
                 }
             }
@@ -628,7 +628,7 @@ public class SpyCount {
             }
         }
         if (maxOp == null) return null;
-        return new AbstractMap.SimpleEntry<>(maxOp, new AbstractMap.SimpleEntry<>(bestSafety, max));
+        return new KeyValue<>(maxOp, new KeyValue<>(bestSafety, max));
     }
 
     public static double getNetDamage(int attacking, DBNation defender, Operation operation, int safety, boolean countOpCost, boolean attackerHasSpySat) {

@@ -66,16 +66,15 @@ public class AllianceLootLosses extends Command {
         }
 
         Map<Integer, Double> totals = new HashMap<>();
-        List<AbstractCursor> aaLoot = Locutus.imp().getWarDb().getAttacks(cutOff, AttackType.A_LOOT);
-        for (AbstractCursor attack : aaLoot) {
+        Locutus.imp().getWarDb().iterateAttacks(cutOff, AttackType.A_LOOT, (war, attack) -> {
             double[] loot = attack.getLoot();
-            if (loot == null) continue;
+            if (loot == null) return;
             int allianceId = attack.getAllianceIdLooted();
-            if (allianceId == 0) continue;
+            if (allianceId == 0) return;
 
             Double existing = totals.getOrDefault(allianceId, 0d);
             totals.put(allianceId, existing + ResourceType.convertedTotal(loot));
-        }
+        });
 
         totals.entrySet().removeIf(e -> !allianceScores.containsKey(e.getKey()) || e.getValue() <= 0);
 

@@ -27,7 +27,7 @@ import java.text.ParseException;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -230,9 +230,9 @@ public class Transaction2 {
             } else {
                 type = 0;
             }
-            return new AbstractMap.SimpleEntry<>(id, type);
+            return new KeyValue<>(id, type);
         } catch (IndexOutOfBoundsException ignore) {
-            return new AbstractMap.SimpleEntry<>(0L, 0);
+            return new KeyValue<>(0L, 0);
         }
     }
 

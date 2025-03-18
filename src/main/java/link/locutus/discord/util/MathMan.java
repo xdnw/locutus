@@ -7,7 +7,7 @@ import java.math.BigInteger;
 import java.text.DecimalFormat;
 import java.text.FieldPosition;
 import java.text.ParsePosition;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
@@ -235,7 +235,7 @@ public class MathMan {
                         Double b = PrimitiveBindings.Double(split[1]);
                         if (b != null) {
                             BiFunction<Double, Double, Boolean> comparator = splitComparators[i];
-                            return new AbstractMap.SimpleEntry<>(split[0], a -> comparator.apply(a, b));
+                            return new KeyValue<>(split[0], a -> comparator.apply(a, b));
                         }
                     } catch (IllegalArgumentException ignore) {}
                 }
@@ -252,7 +252,7 @@ public class MathMan {
                 String[] split = arg.split(splitBy, 2);
                 if (split.length == 2) {
                     BiFunction<String, String, Boolean> comparator = splitStrComparators[i];
-                    return new AbstractMap.SimpleEntry<>(split[0], a -> comparator.apply(a, split[1]));
+                    return new KeyValue<>(split[0], a -> comparator.apply(a, split[1]));
                 }
                 return null;
             }

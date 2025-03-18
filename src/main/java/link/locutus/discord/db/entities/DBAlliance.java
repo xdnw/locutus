@@ -53,6 +53,7 @@ import link.locutus.discord.apiv1.domains.AllianceMembers;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingFunction;
 import link.locutus.discord.util.task.deprecated.GetTaxesTask;
 import link.locutus.discord.util.task.EditAllianceTask;
@@ -1582,14 +1583,14 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         for (DBNation nation : nations) {
             Map<ResourceType, Double> stockpile = existing.get(nation);
             if (stockpile == null) {
-                result.put(nation, Map.entry(OffshoreInstance.TransferStatus.ALLIANCE_ACCESS, ResourceType.getBuffer()));
+                result.put(nation, KeyValue.of(OffshoreInstance.TransferStatus.ALLIANCE_ACCESS, ResourceType.getBuffer()));
                 continue;
             }
             Map<ResourceType, Double> needed = nation.getResourcesNeeded(stockpile, daysDefault, false);
             if (!needed.isEmpty()) {
-                result.put(nation, Map.entry(OffshoreInstance.TransferStatus.SUCCESS, ResourceType.resourcesToArray(needed)));
+                result.put(nation, KeyValue.of(OffshoreInstance.TransferStatus.SUCCESS, ResourceType.resourcesToArray(needed)));
             } else {
-                result.put(nation, Map.entry(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, ResourceType.getBuffer()));
+                result.put(nation, KeyValue.of(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, ResourceType.getBuffer()));
             }
         }
 
@@ -1667,27 +1668,27 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
             if (noCash) resources[ResourceType.MONEY.ordinal()] = 0;
 
             if (nation.getPositionEnum() == Rank.APPLICANT) {
-                toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.APPLICANT, ResourceType.getBuffer()));
+                toSend.put(nation, KeyValue.of(OffshoreInstance.TransferStatus.APPLICANT, ResourceType.getBuffer()));
                 continue;
             }
             if (nation.getAlliance_id() != allianceId) {
-                toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.NOT_MEMBER, ResourceType.getBuffer()));
+                toSend.put(nation, KeyValue.of(OffshoreInstance.TransferStatus.NOT_MEMBER, ResourceType.getBuffer()));
                 continue;
             }
             if (nation.getVm_turns() > 0) {
-                toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.VACATION_MODE, ResourceType.getBuffer()));
+                toSend.put(nation, KeyValue.of(OffshoreInstance.TransferStatus.VACATION_MODE, ResourceType.getBuffer()));
                 continue;
             }
             if (nation.isGray() && !ignoreInactives && !bypassChecks) {
-                toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.GRAY, ResourceType.getBuffer()));
+                toSend.put(nation, KeyValue.of(OffshoreInstance.TransferStatus.GRAY, ResourceType.getBuffer()));
                 continue;
             }
             if (nation.active_m() > TimeUnit.DAYS.toMinutes(4) && !ignoreInactives && !bypassChecks) {
-                toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.INACTIVE, ResourceType.getBuffer()));
+                toSend.put(nation, KeyValue.of(OffshoreInstance.TransferStatus.INACTIVE, ResourceType.getBuffer()));
                 continue;
             }
             if (nation.isBeige() && !allowBeige && !bypassChecks) {
-                toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.BEIGE, ResourceType.getBuffer()));
+                toSend.put(nation, KeyValue.of(OffshoreInstance.TransferStatus.BEIGE, ResourceType.getBuffer()));
                 continue;
             }
             if (value.getKey() != OffshoreInstance.TransferStatus.SUCCESS) {
@@ -1695,11 +1696,11 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
                 continue;
             }
             if (resources[ResourceType.CREDITS.ordinal()] != 0) {
-                toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.ALLIANCE_ACCESS, ResourceType.getBuffer()));
+                toSend.put(nation, KeyValue.of(OffshoreInstance.TransferStatus.ALLIANCE_ACCESS, ResourceType.getBuffer()));
                 continue;
             }
             if (ResourceType.isZero(resources)) {
-                toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, ResourceType.getBuffer()));
+                toSend.put(nation, KeyValue.of(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, ResourceType.getBuffer()));
                 continue;
             }
 

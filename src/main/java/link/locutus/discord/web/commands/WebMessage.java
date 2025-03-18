@@ -86,7 +86,7 @@ public class WebMessage extends AMessageBuilder {
 //                    File file = new File(WebRoot.getInstance().getFileRoot(), fileId);
 //                    file.getParentFile().mkdirs();
 //                    Files.write(file.toPath(), bytes);
-//                    diskFiles.add(new AbstractMap.SimpleEntry<>(filename, file));
+//                    diskFiles.add(new KeyValue<>(filename, file));
 //                    file.deleteOnExit();
 //                } catch (IOException e) {
 //                    e.printStackTrace();

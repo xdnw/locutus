@@ -48,6 +48,7 @@ import link.locutus.discord.util.AutoAuditType;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.task.ia.IACheckup;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.ISnowflake;
@@ -212,7 +213,7 @@ public class PWCompleter extends BindingHelper {
         return options.stream().map(new Function<AGrantTemplate, Map.Entry<String, String>>() {
             @Override
             public Map.Entry<String, String> apply(AGrantTemplate f) {
-                return Map.entry(f.getType() + "/" + f.getName(), f.getName());
+                return KeyValue.of(f.getType() + "/" + f.getName(), f.getName());
             }
         }).collect(Collectors.toList());
     }
@@ -230,7 +231,7 @@ public class PWCompleter extends BindingHelper {
         return options.stream().map(new Function<DBAlliancePosition, Map.Entry<String, String>>() {
             @Override
             public Map.Entry<String, String> apply(DBAlliancePosition f) {
-                return Map.entry(f.getQualifiedName(), f.getInputName());
+                return KeyValue.of(f.getQualifiedName(), f.getInputName());
             }
         }).collect(Collectors.toList());
     }
@@ -263,7 +264,7 @@ public class PWCompleter extends BindingHelper {
     public List<Map.Entry<String, String>> newsletters(NewsletterManager manager, String input) {
         List<Newsletter> options = new ArrayList<>(manager.getNewsletters().values());
         options = StringMan.getClosest(input, options, Newsletter::getName, OptionData.MAX_CHOICES, true, false);
-        return options.stream().map(f -> Map.entry(f.getName(), f.getId() + "")).collect(Collectors.toList());
+        return options.stream().map(f -> KeyValue.of(f.getName(), f.getId() + "")).collect(Collectors.toList());
     }
 
     @Autocomplete
@@ -280,7 +281,7 @@ public class PWCompleter extends BindingHelper {
 
         options = StringMan.getClosest(input, options, f -> "#" + f.reportId + " " + f.getTitle(), maxChoices, true, false);
 
-        return options.stream().map(f -> Map.entry("#" + f.reportId + " " + f.getTitle(), f.reportId + "")).collect(Collectors.toList());
+        return options.stream().map(f -> KeyValue.of("#" + f.reportId + " " + f.getTitle(), f.reportId + "")).collect(Collectors.toList());
     }
 
     @Autocomplete
@@ -289,7 +290,7 @@ public class PWCompleter extends BindingHelper {
     public List<Map.Entry<String, String>> loan(LoanManager manager, @Me DBNation me, @Me User author, @Me GuildDB db, String input) {
         List<DBLoan> options = manager.getLoansByGuildDB(db);
         options = StringMan.getClosest(input, options, f -> f.getLineString(true, false), OptionData.MAX_CHOICES, true, false);
-        return options.stream().map(f -> Map.entry(f.getLineString(true, false), f.loanId + "")).collect(Collectors.toList());
+        return options.stream().map(f -> KeyValue.of(f.getLineString(true, false), f.loanId + "")).collect(Collectors.toList());
     }
 
     @Autocomplete
@@ -303,7 +304,7 @@ public class PWCompleter extends BindingHelper {
         List<DBNation> options = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
         options = StringMan.getClosest(input, options, DBNation::getName, OptionData.MAX_CHOICES, true, true);
 
-        return options.stream().map(f -> Map.entry(f.getName(), f.getQualifiedId())).collect(Collectors.toList());
+        return options.stream().map(f -> KeyValue.of(f.getName(), f.getQualifiedId())).collect(Collectors.toList());
     }
 
     @Autocomplete
@@ -314,7 +315,7 @@ public class PWCompleter extends BindingHelper {
         List<DBAlliance> options = new ArrayList<>(Locutus.imp().getNationDB().getAlliances());
         options = StringMan.getClosest(input, options, DBAlliance::getName, OptionData.MAX_CHOICES, true, true);
 
-        return options.stream().map(f -> Map.entry(f.getName(), f.getTypePrefix() + ":" + f.getId())).collect(Collectors.toList());
+        return options.stream().map(f -> KeyValue.of(f.getName(), f.getTypePrefix() + ":" + f.getId())).collect(Collectors.toList());
     }
 
     @Autocomplete
@@ -329,7 +330,7 @@ public class PWCompleter extends BindingHelper {
 
         options = StringMan.getClosest(input, options, NationOrAlliance::getName, OptionData.MAX_CHOICES, true, true);
 
-        return options.stream().map(f -> Map.entry(f.getName(), f.getTypePrefix() + ":" + f.getId())).collect(Collectors.toList());
+        return options.stream().map(f -> KeyValue.of(f.getName(), f.getTypePrefix() + ":" + f.getId())).collect(Collectors.toList());
     }
 
     @Autocomplete
@@ -347,7 +348,7 @@ public class PWCompleter extends BindingHelper {
             }
         }
         options = StringMan.getClosest(input, options, GuildOrAlliance::getName, OptionData.MAX_CHOICES, true, true);
-        return options.stream().map(f -> Map.entry((f.isGuild() ? "guild:" : "") + f.getName(), f.getTypePrefix() + ":" + f.getIdLong())).collect(Collectors.toList());
+        return options.stream().map(f -> KeyValue.of((f.isGuild() ? "guild:" : "") + f.getName(), f.getTypePrefix() + ":" + f.getIdLong())).collect(Collectors.toList());
     }
 
     @Autocomplete
@@ -368,7 +369,7 @@ public class PWCompleter extends BindingHelper {
             }
         }
         options = StringMan.getClosest(input, options, NationOrAllianceOrGuild::getName, OptionData.MAX_CHOICES, true, true);
-        return options.stream().map(f -> Map.entry((f.isGuild() ? "guild:" : "") + f.getName(), f.getTypePrefix() + ":" + f.getIdLong())).collect(Collectors.toList());
+        return options.stream().map(f -> KeyValue.of((f.isGuild() ? "guild:" : "") + f.getName(), f.getTypePrefix() + ":" + f.getIdLong())).collect(Collectors.toList());
     }
 
     private List<Map.Entry<String, String>> completeUser(@Me Guild guild, String input, boolean removeTag) {
@@ -386,7 +387,7 @@ public class PWCompleter extends BindingHelper {
             }
         };
         options = StringMan.getClosest(input, options, getName, OptionData.MAX_CHOICES, true, false);
-        return options.stream().map(f -> Map.entry(f.getEffectiveName(), f.getAsMention())).collect(Collectors.toList());
+        return options.stream().map(f -> KeyValue.of(f.getEffectiveName(), f.getAsMention())).collect(Collectors.toList());
     }
 
     @Autocomplete
@@ -419,7 +420,7 @@ public class PWCompleter extends BindingHelper {
         }
 
         options = StringMan.getClosest(input, options, NationOrAllianceOrGuildOrTaxid::getName, OptionData.MAX_CHOICES, true, true);
-        return options.stream().map(f -> Map.entry((f.isGuild() ? "guild:" : "") + f.getName(), f.getTypePrefix() + ":" + f.getIdLong())).collect(Collectors.toList());
+        return options.stream().map(f -> KeyValue.of((f.isGuild() ? "guild:" : "") + f.getName(), f.getTypePrefix() + ":" + f.getIdLong())).collect(Collectors.toList());
     }
 
     private final static List<String> MMR_MATCHER_CHAR_5 = new ArrayList<>();

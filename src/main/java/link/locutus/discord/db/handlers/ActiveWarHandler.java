@@ -12,6 +12,7 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.nation.NationBlockadedEvent;
 import link.locutus.discord.event.nation.NationUnblockadedEvent;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 
 import java.util.*;
@@ -281,16 +282,14 @@ public class ActiveWarHandler {
 
     public void syncBlockades() {
         long now = System.currentTimeMillis();
-        Map<Integer, DBWar> wars = warDB.getWarsSince(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(10));
-        List<AbstractCursor> attacks = warDB.queryAttacks().withWars(wars).withType(AttackType.NAVAL).afterDate(now - TimeUnit.DAYS.toMillis(10)).getList();
-        attacks.sort(Comparator.comparingLong(AbstractCursor::getDate));
+        Map<Integer, DBWar> wars = warDB.getWarsSince(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 120));
         ObjectOpenHashSet<DBWar> activeWars2 = getActiveWarsById();
+        AttackQuery builder = warDB.queryAttacks().withWars(wars).withType(AttackType.NAVAL).afterDate(now - TimeUnit.DAYS.toMillis(10));
         synchronized (blockadeLock) {
             defenderToBlockader.clear();
             blockaderToDefender.clear();
-
-            for (AbstractCursor attack : attacks) {
-                if (attack.getAttack_type() != AttackType.NAVAL) continue;
+            builder.iterateAttacks((war, attack) -> {
+                if (attack.getAttack_type() != AttackType.NAVAL) return;
                 boolean isWarActive = activeWars2.contains(new DBWar.DBWarKey(attack.getWar_id()));
 
                 if (attack.getSuccess() == SuccessType.IMMENSE_TRIUMPH) {
@@ -302,7 +301,7 @@ public class ActiveWarHandler {
                 } else if (attack.getSuccess() != SuccessType.UTTER_FAILURE) {
                     removeBlockade(attack.getAttacker_id(), attack.getDefender_id(), attack.getDate(), null);
                 }
-            }
+            });
         }
     }
 }
