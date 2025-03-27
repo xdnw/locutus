@@ -49,7 +49,7 @@ import java.util.stream.Collectors;
 
 public class GraphEndpoints {
     @Command(desc = "Get alliance attributes by day\n" +
-            "If your metric does not relate to cities, set `skipCityData` to true to speed up the process.")
+            "If your metric does not relate to cities, set `skipCityData` to true to speed up the process.", viewable = true)
     @RolePermission(value = Roles.ADMIN, root = true)
     @NoFormat
     @ReturnType(WebGraph.class)
@@ -63,7 +63,7 @@ public class GraphEndpoints {
         return AlliancesNationMetricByDay.create(metric, start, end, mode, alliances, filter, includeApps).toHtmlJson();
     }
 
-    @Command(desc = "Graph militarization (soldier, tank, aircraft, ship) over time of an alliance")
+    @Command(desc = "Graph militarization (soldier, tank, aircraft, ship) over time of an alliance", viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph militarizationTime(DBAlliance alliance, @Default("7d") @Timestamp long start_time,
                                        @Switch("e") @Timestamp Long end_time) throws IOException {
@@ -77,7 +77,7 @@ public class GraphEndpoints {
     }
 
     @Command(desc = "Generate a graph of spy counts by city count between two coalitions\n" +
-            "Nations which are applicants, in vacation mode or inactive (2 days) are excluded")
+            "Nations which are applicants, in vacation mode or inactive (2 days) are excluded", viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph spyTierGraph(NationList coalition1,
                                  NationList coalition2,
@@ -100,7 +100,7 @@ public class GraphEndpoints {
         return graph.setGraphType(barGraph ? GraphType.SIDE_BY_SIDE_BAR : GraphType.LINE).toHtmlJson();
     }
 
-    @Command(desc = "Generate a bar char comparing the nation at each city count (tiering) between two coalitions")
+    @Command(desc = "Generate a bar char comparing the nation at each city count (tiering) between two coalitions", viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph cityTierGraph(@Me @Default GuildDB db, NationList coalition1, NationList coalition2,
                                   @Switch("i") boolean includeInactives,
@@ -121,7 +121,7 @@ public class GraphEndpoints {
         return graph.setGraphType(barGraph ? GraphType.SIDE_BY_SIDE_BAR : GraphType.LINE).toHtmlJson();
     }
 
-    @Command(desc = "Graph a set of nation metrics for the specified nations over a period of time based on daily nation and city snapshots")
+    @Command(desc = "Graph a set of nation metrics for the specified nations over a period of time based on daily nation and city snapshots", viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph metricByGroup(@Me @Default GuildDB db,
                                   Set<NationAttributeDouble> metrics,
@@ -135,7 +135,7 @@ public class GraphEndpoints {
         return new MetricByGroup(metrics, nationsSet, groupBy, includeInactives, includeApplicants, total).toHtmlJson();
     }
 
-    @Command(desc = "Compare the metric over time between multiple alliances")
+    @Command(desc = "Compare the metric over time between multiple alliances", viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph metric_compare_by_turn(AllianceMetric metric, Set<DBAlliance> alliances,
                                                  @Arg("Date to start from")
@@ -149,7 +149,7 @@ public class GraphEndpoints {
         return table.toHtmlJson();
     }
 
-    @Command(desc = "Graph an alliance metric over time for two coalitions")
+    @Command(desc = "Graph an alliance metric over time for two coalitions", viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph allianceMetricAB(AllianceMetric metric, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2,
                                       @Arg("Date to start from")
@@ -161,7 +161,7 @@ public class GraphEndpoints {
         return table.toHtmlJson();
     }
 
-    @Command(desc = "Graph the metric over time for a coalition")
+    @Command(desc = "Graph the metric over time for a coalition", viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph allianceMetricByTurn(AllianceMetric metric, Set<DBAlliance> coalition,
                                           @Arg("Date to start from")
@@ -174,7 +174,7 @@ public class GraphEndpoints {
         return table.toHtmlJson();
     }
 
-    @Command(desc = "Get nth loot beige graph by score range")
+    @Command(desc = "Get nth loot beige graph by score range", viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph NthBeigeLootByScoreRange(@Me @Default GuildDB db, @Default NationList nations, @Default("5") int n,
                                              @Default @Timestamp Long snapshotDate) throws IOException {
@@ -191,14 +191,14 @@ public class GraphEndpoints {
         return new NthBeigeLoot(nationsSet, n).toHtmlJson();
     }
 
-    @Command(desc = "Get a game graph by day")
+    @Command(desc = "Get a game graph by day", viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph orbisStatByDay(Set<OrbisMetric> metrics, @Default @Timestamp Long start, @Default @Timestamp Long end) throws IOException {
         OrbisMetricGraph graph = new OrbisMetricGraph(metrics, start, end);
         return graph.toHtmlJson();
     }
 
-    @Command(desc = "Generate a graph of average trade buy and sell volume by day")
+    @Command(desc = "Generate a graph of average trade buy and sell volume by day", viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph tradeVolumeByDay(TradeManager manager,
                                      ResourceType resource,
@@ -218,7 +218,7 @@ public class GraphEndpoints {
         return graph.toHtmlJson();
     }
 
-    @Command(desc = "Generate a graph of average trade buy and sell total by day")
+    @Command(desc = "Generate a graph of average trade buy and sell total by day", viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph tradeTotalByDay(TradeManager manager,
                                     ResourceType resource,
@@ -227,7 +227,7 @@ public class GraphEndpoints {
         return rssTradeByDay(title, start, end, offers -> manager.totalByResource(offers), resource);
     }
 
-    @Command(desc = "Generate a graph of nation counts by score between two coalitions", aliases = {"scoreTierGraph", "scoreTierSheet"})
+    @Command(desc = "Generate a graph of nation counts by score between two coalitions", aliases = {"scoreTierGraph", "scoreTierSheet"}, viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph scoreTierGraph(@Me @Default GuildDB db,
                                    NationList coalition1,
@@ -248,7 +248,7 @@ public class GraphEndpoints {
         ).toHtmlJson();
     }
 
-    @Command(desc = "Generate a graph comparing market values of two resource amounts by day")
+    @Command(desc = "Generate a graph comparing market values of two resource amounts by day", viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph compareStockpileValueByDay(Map<ResourceType, Double> stockpile1,
                                                Map<ResourceType, Double> stockpile2,
@@ -258,7 +258,7 @@ public class GraphEndpoints {
 
     @Command(desc = "Generate a graph of nation military strength by score between two coalitions\n" +
             "1 tank = 1/32 aircraft for strength calculations\n" +
-            "Effective score range is limited to 1.75x with a linear reduction of strength up to 40% to account for up-declares", aliases = {"strengthTierGraph"})
+            "Effective score range is limited to 1.75x with a linear reduction of strength up to 40% to account for up-declares", aliases = {"strengthTierGraph"}, viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph strengthTierGraph(@Me @Default GuildDB db,
                                       NationList coalition1,
@@ -286,7 +286,7 @@ public class GraphEndpoints {
         ).toHtmlJson();
     }
 
-    @Command(desc = "Generate a graph of average trade buy and sell margin by day")
+    @Command(desc = "Generate a graph of average trade buy and sell margin by day", viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph tradeMarginByDay(Set<ResourceType> resources, @Timestamp long start, @Default @Timestamp Long end,
                                      @Arg("Use the margin percent instead of absolute difference")
@@ -307,7 +307,7 @@ public class GraphEndpoints {
     }
 
     /// TODO FIXME update or remove the trade price endpoint in other class
-    @Command(desc = "Generate a graph of average buy and sell trade price by day")
+    @Command(desc = "Generate a graph of average buy and sell trade price by day", viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph tradePriceByDay(
             Set<ResourceType> resources,
@@ -316,7 +316,7 @@ public class GraphEndpoints {
         return graph.toHtmlJson();
     }
 
-    @Command(desc = "Display a graph of the number of attacks by the specified nations per day over a time period")
+    @Command(desc = "Display a graph of the number of attacks by the specified nations per day over a time period", viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph warAttacksByDay(@Default Set<DBNation> nations,
                                     @Arg("Period of time to graph") @Default @Timestamp Long cutoff,
@@ -325,7 +325,7 @@ public class GraphEndpoints {
         return table.toHtmlJson();
     }
 
-    @Command(desc = "Get a line graph by day of the war stats between two coalitions")
+    @Command(desc = "Get a line graph by day of the war stats between two coalitions", viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph warCostsByDay(@Me JSONObject command,
                                   Set<NationOrAlliance> coalition1, Set<NationOrAlliance> coalition2,
@@ -355,7 +355,7 @@ public class GraphEndpoints {
         ).toHtmlJson();
     }
 
-    @Command(desc = "Graph of cost by day of each coalitions wars vs everyone")
+    @Command(desc = "Graph of cost by day of each coalitions wars vs everyone", viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph warsCostRankingByDay(@Me JSONObject command,
                                          WarCostByDayMode type,
@@ -409,7 +409,7 @@ public class GraphEndpoints {
         ).toHtmlJson();
     }
 
-    @Command(desc = "Graph global and per continent radiation by turn over a specified time period")
+    @Command(desc = "Graph global and per continent radiation by turn over a specified time period", viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph radiationByTurn(Set<Continent> continents, @Timestamp long start, @Default @Timestamp Long end) {
         RadiationByTurn table = new RadiationByTurn(continents, start, end == null ? Long.MAX_VALUE : end);
@@ -419,7 +419,7 @@ public class GraphEndpoints {
 
     // global stats?
 
-    @Command(desc = "Compare the tier stats of up to 10 alliances/nations on a single graph")
+    @Command(desc = "Compare the tier stats of up to 10 alliances/nations on a single graph", viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph compareTierStats(@Me @Default GuildDB db, @Me JSONObject command,
                                      NationAttributeDouble metric, NationAttributeDouble groupBy,
@@ -472,7 +472,7 @@ public class GraphEndpoints {
         return graph;
     }
 
-    @Command(desc = "Compare the stats of up to 10 alliances/coalitions on a single time graph")
+    @Command(desc = "Compare the stats of up to 10 alliances/coalitions on a single time graph", viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph compareStats(AllianceMetric metric,  @Timestamp long start, @Timestamp long end,
                                  Set<DBAlliance> coalition1,
@@ -522,7 +522,7 @@ public class GraphEndpoints {
         return graph;
     }
 
-    @Command()
+    @Command(viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph allianceStats(Set<AllianceMetric> metrics, @Timestamp long start, @Timestamp long end, Set<DBAlliance> coalition) {
         String title = "aaStats";

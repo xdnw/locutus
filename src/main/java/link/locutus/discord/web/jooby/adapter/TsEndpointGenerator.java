@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.JsonObject;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.CommandGroup;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
@@ -37,12 +38,10 @@ public class TsEndpointGenerator {
         }
         CommandGroup api = (CommandGroup) handler.getCommands().get("api");
         {
-            File endpointFile = new File(outputDir, "components/api/endpoints.tsx");
+            File endpointFile = new File(outputDir, "lib/endpoints.ts");
             String header = """
-                    import {CacheType} from "@/components/cmd/DataContext.tsx";
-                    import React, {ReactNode} from "react";
-                    import type * as ApiTypes from "@/components/api/apitypes.d.ts";
-                    import {useForm, useDisplay, ApiEndpoint, combine, CommonEndpoint} from "@/components/api/endpoint.tsx";
+                    import { ApiEndpoint, CommonEndpoint } from "./BulkQuery";
+                    import type * as ApiTypes from "@/lib/apitypes.d.ts";
                     """;
             String constants = generateEndpointConstants(api);
             Files.write(endpointFile.toPath(), (header + constants).getBytes());
@@ -201,7 +200,9 @@ public class TsEndpointGenerator {
 
     public static TsEndpoint generateTsEndpoint(ParametricCallable cmd) {
         Method method = cmd.getMethod();
+        Command cmdAnn = method.getAnnotation(Command.class);
         ReturnType returnType = method.getAnnotation(ReturnType.class);
+        boolean isPost = !cmdAnn.viewable();
         if (returnType == null) throw new IllegalArgumentException("No return type for " + method.getName() + " in " + method.getDeclaringClass().getSimpleName());
         String typeName = adaptType(returnType.value().getSimpleName());
         String path = cmd.getFullPath("/").replace("api/", "");
@@ -213,8 +214,10 @@ public class TsEndpointGenerator {
         }
 
         List<String> cachePolicy = new ArrayList<>();
+        Long cacheDuration = returnType != null ? returnType.duration() : 5000;
+        CacheType cacheType = returnType != null ? returnType.cache() : CacheType.Memory;
         if (returnType.cache() != CacheType.None) {
-            cachePolicy.add("type: CacheType." + returnType.cache().name());
+            cachePolicy.add("type: '" + returnType.cache().name() + "'");
             cachePolicy.add("duration: " + returnType.duration());
         }
         String paramsJson = WebUtil.GSON.toJson(paramMap);
@@ -255,26 +258,12 @@ public class TsEndpointGenerator {
                         "{path}",
                         {paramsJson},
                         (data: unknown) => data as ApiTypes.{typeName},
-                        {cachePolicy},
+                        {cacheDuration},
+                        {cacheType},
                         "{typeName}",
-                        `{desc}`
-                    ),
-                    useDisplay: ({args, render, renderLoading, renderError}: 
-                    {args: {argValues}, render: (data: ApiTypes.{typeName}) => React.ReactNode, renderLoading?: () => React.ReactNode, renderError?: (error: string) => React.ReactNode}): React.ReactNode => {
-                        return useDisplay({constName}.endpoint.name, {cacheArg}, args, render, renderLoading, renderError);
-                    },
-                    useForm: ({default_values, showArguments = [], label, message, handle_response, handle_submit, handle_loading, handle_error, classes}: {
-                        default_values?: {argValuesAllOptional},
-                        showArguments?: string[],
-                        label?: ReactNode,
-                        message?: ReactNode,
-                        handle_response?: (data: ApiTypes.{typeName}) => void,
-                        handle_submit?: (args: {argValues}) => boolean,
-                        handle_loading?: () => void,
-                        handle_error?: (error: string) => void,
-                        classes?: string}): React.ReactNode => {
-                        return useForm({constName}.endpoint.url, {constName}.endpoint.args, message, default_values, showArguments, label, handle_response, handle_submit, handle_loading, handle_error, classes);
-                    }
+                        `{desc}`,
+                        {isPost}
+                    )
                 };"""
                 .replace("{path}", path)
                 .replace("{constName}", constName)
@@ -282,10 +271,12 @@ public class TsEndpointGenerator {
                 .replace("{typeName}", typeName)
                 .replace("{paramsJson}", paramsJson)
                 .replace("{argValues}", argValues)
-                .replace("{cachePolicy}", "{" + StringMan.join(cachePolicy, ", ") + "}")
+                .replace("{cacheDuration}", cacheDuration.toString())
+                .replace("{cacheType}", "'" + cacheType.name() + "'")
                 .replace("{argValuesAllOptional}", argValuesAllOptional)
                 .replace("{cacheArg}", cacheArg)
                 .replace("{desc}", cmd.simpleDesc().replace("`", "\\`"))
+                .replace("{isPost}", String.valueOf(isPost))
                 ;
         return new TsEndpoint(constName, tsDef);
     }

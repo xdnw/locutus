@@ -2777,6 +2777,7 @@ public class BankCommands {
         if (end_time == null) end_time = Long.MAX_VALUE;
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
         Set<Integer> hasAdmin = new IntOpenHashSet();
+        boolean globalAdmin = Roles.ECON_STAFF.hasOnRoot(author);
         if (author != null && db != null) {
             hasAdmin.addAll(Roles.ECON_STAFF.getAllianceList(author, db).getIds());
         }
@@ -2787,7 +2788,7 @@ public class BankCommands {
         transactions.removeIf(tx -> {
             NationOrAllianceOrGuild sender = tx.getSenderObj();
             NationOrAllianceOrGuild receiver = tx.getReceiverObj();
-            if (sender.isAlliance() && receiver.isAlliance() && !hasAdmin.contains(sender.getId()) && !hasAdmin.contains(receiver.getId())) {
+            if (sender.isAlliance() && receiver.isAlliance() && !globalAdmin && !hasAdmin.contains(sender.getId()) && !hasAdmin.contains(receiver.getId())) {
                 return true;
             }
             return !senders.contains(sender) || !receivers.contains(receiver);
@@ -2803,6 +2804,7 @@ public class BankCommands {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
         Set<Long> senderIds = senders.stream().map(NationOrAllianceOrGuild::getIdLong).collect(Collectors.toSet());
         Set<Integer> hasAdmin = new IntOpenHashSet();
+        boolean globalAdmin = Roles.ECON_STAFF.hasOnRoot(author);
         if (author != null && db != null) {
             hasAdmin.addAll(Roles.ECON_STAFF.getAllianceList(author, db).getIds());
         }
@@ -2812,7 +2814,7 @@ public class BankCommands {
             NationOrAllianceOrGuild sender = tx.getSenderObj();
             if (!senders.contains(sender)) return true;
             NationOrAllianceOrGuild receiver = tx.getReceiverObj();
-            if (sender.isAlliance() && receiver.isAlliance() && !hasAdmin.contains(sender.getId()) && !hasAdmin.contains(receiver.getId())) {
+            if (sender.isAlliance() && receiver.isAlliance() && !globalAdmin && !hasAdmin.contains(sender.getId()) && !hasAdmin.contains(receiver.getId())) {
                 return true;
             }
             return false;
@@ -2832,6 +2834,7 @@ public class BankCommands {
                                                       @Timestamp @Default Long endTime, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
         Set<Integer> hasAdmin = new IntOpenHashSet();
+        boolean globalAdmin = Roles.ECON_STAFF.hasOnRoot(author);
         if (author != null && db != null) {
             hasAdmin.addAll(Roles.ECON_STAFF.getAllianceList(author, db).getIds());
         }
@@ -2844,7 +2847,7 @@ public class BankCommands {
             NationOrAllianceOrGuild receiver = tx.getReceiverObj();
             if (!receivers.contains(receiver)) return true;
             NationOrAllianceOrGuild sender = tx.getSenderObj();
-            if (sender.isAlliance() && receiver.isAlliance() && !hasAdmin.contains(sender.getId()) && !hasAdmin.contains(receiver.getId())) {
+            if (sender.isAlliance() && receiver.isAlliance() && !globalAdmin && !hasAdmin.contains(sender.getId()) && !hasAdmin.contains(receiver.getId())) {
                 return true;
             }
             return false;
@@ -2988,13 +2991,14 @@ public class BankCommands {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
         List<Transaction2> transactions = Locutus.imp().getBankDB().getAllTransactions(sender, receiver, banker, timeframe, null);
         Set<Integer> hasAdmin = new IntOpenHashSet();
+        boolean globalAdmin = Roles.ECON_STAFF.hasOnRoot(author);
         if (author != null && db != null) {
             hasAdmin.addAll(Roles.ECON_STAFF.getAllianceList(author, db).getIds());
         }
         transactions.removeIf(f -> {
             NationOrAllianceOrGuild txSender = f.getSenderObj();
             NationOrAllianceOrGuild txReceiver = f.getReceiverObj();
-            if (txSender.isAlliance() && txReceiver.isAlliance() && !hasAdmin.contains(txSender.getId()) && !hasAdmin.contains(txReceiver.getId())) {
+            if (txSender.isAlliance() && txReceiver.isAlliance() && !globalAdmin && !hasAdmin.contains(txSender.getId()) && !hasAdmin.contains(txReceiver.getId())) {
                 return true;
             }
             return false;
@@ -3026,6 +3030,7 @@ public class BankCommands {
             } else {
                 List<Transaction2> txToAdd = (db.getTransactionsById(alliance.getAlliance_id(), 2));
                 Set<Integer> hasAdmin = new IntOpenHashSet();
+                boolean globalAdmin = Roles.ECON_STAFF.hasOnRoot(user);
                 if (user != null && db != null) {
                     hasAdmin.addAll(Roles.ECON_STAFF.getAllianceList(user, db).getIds());
                 }
@@ -3033,7 +3038,7 @@ public class BankCommands {
                     txToAdd.removeIf(f -> {
                         NationOrAllianceOrGuild sender = f.getSenderObj();
                         NationOrAllianceOrGuild receiver = f.getReceiverObj();
-                        if (sender.isAlliance() && receiver.isAlliance() && !hasAdmin.contains(sender.getId()) && !hasAdmin.contains(receiver.getId())) {
+                        if (sender.isAlliance() && receiver.isAlliance() && !globalAdmin && !hasAdmin.contains(sender.getId()) && !hasAdmin.contains(receiver.getId())) {
                             return true;
                         }
                         return false;
