@@ -1024,21 +1024,25 @@ public class CommandManager2 {
         if (guild == null || user == null) return false;
         AppMenu menu = AppMenuCommands.USER_MENU_STATE.get(user.getIdLong());
         if (menu == null || menu.state != MenuState.ADD_BUTTON) return false;
-        long channelId = io.getIdLong();
-        if (channelId == 0 || channelId != menu.lastUsedChannel) {
-            io.send("Aborted command. You had a menu open in a different channel. The menu is no longer in ADD BUTTON mode. Please enter BUTTON ADD mode and try again.");
-            return true;
+        try {
+            long channelId = io.getIdLong();
+            if (channelId == 0 || channelId != menu.lastUsedChannel) {
+                io.send("Aborted command. You had a menu open in a different channel. The menu is no longer in ADD BUTTON mode. Please enter BUTTON ADD mode and try again.");
+                return true;
+            }
+            if (!Roles.ADMIN.has(user, guild)) {
+                io.create().append("Aborted command. You do not have permission to add buttons to menus.").send();
+                return true;
+            }
+            handleCall(io, () -> {
+                GuildDB db = Locutus.imp().getGuildDB(guild);
+                String cmd = WebUtil.GSON.toJson(argsAndCmd);
+                AppMenuCommands.addMenuButton(io, null, db, user, menu, menu.lastPressedButton, cmd, true);
+                return null;
+            });
+        } finally {
+            AppMenuCommands.USER_MENU_STATE.remove(user.getIdLong());
         }
-        if (!Roles.ADMIN.has(user, guild)) {
-            io.create().append("Aborted command. You do not have permission to add buttons to menus.").send();
-            return true;
-        }
-        handleCall(io, () -> {
-            GuildDB db = Locutus.imp().getGuildDB(guild);
-            String cmd = WebUtil.GSON.toJson(argsAndCmd);
-            AppMenuCommands.addMenuButton(io, null, db, user, menu, menu.lastPressedButton, cmd, true);
-            return null;
-        });
         return true;
     }
 
