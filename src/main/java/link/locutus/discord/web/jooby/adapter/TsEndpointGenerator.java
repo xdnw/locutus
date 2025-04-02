@@ -70,7 +70,6 @@ public class TsEndpointGenerator {
 //            }
 //            Files.write(jsonFile.toPath(), jsonString.getBytes());
             String header = """
-                    import {ICommandMap} from "@/utils/Command.ts";
                     export const COMMANDS = """;
             File output = new File(outputDir, "lib/commands.ts");
 

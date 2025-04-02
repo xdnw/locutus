@@ -228,7 +228,13 @@ public class RankBuilder<T> {
     }
 
     public List<IShrink> toItems(int limit, boolean all) {
-        List<T> values = all ? get() : page(0, limit).get();
+        List<T> values;
+        if (all) {
+            values = get();
+        } else {
+            int max = Math.max(limit, highlight.isEmpty() ? 0 : Collections.max(highlight) + 1);
+            values = page(0, max).get();
+        }
         List<IShrink> sublist = new ObjectArrayList<>();
         for (int i = 0; i < Math.min(values.size(), limit); i++) {
             T elem = values.get(i);
