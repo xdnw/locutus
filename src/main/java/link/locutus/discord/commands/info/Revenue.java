@@ -175,7 +175,7 @@ public class Revenue extends Command {
                 for (MilitaryUnit unit : MilitaryUnit.values) {
                     int amt = nation.getUnits(unit);
                     if (amt == 0) continue;
-                    milUp = unit.addUpkeep(milUp, amt, atWar, researchBits, factor);
+                    milUp = unit.addUpkeep(milUp, amt, atWar, researchBits, -factor);
                 }
             }
         }
