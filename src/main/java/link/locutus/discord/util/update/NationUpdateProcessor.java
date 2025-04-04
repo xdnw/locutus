@@ -39,6 +39,7 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import link.locutus.discord.web.commands.binding.value_types.GraphType;
 import net.dv8tion.jda.api.OnlineStatus;
@@ -530,7 +531,7 @@ public class NationUpdateProcessor {
                             double attStr = BlitzGenerator.getAirStrength(attacker, true, true);
                             double defStr = BlitzGenerator.getAirStrength(current, false, true);
 
-                            AbstractMap.SimpleEntry<DBNation, Member> entry = new AbstractMap.SimpleEntry<>(attacker, member);
+                            Map.Entry<DBNation, Member> entry = new KeyValue<>(attacker, member);
 
                             if (attacker.getCities() < current.getCities() * 0.66 && (current.active_m() < 3000))
                                 continue;

@@ -7,7 +7,7 @@ import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.util.scheduler.QuadConsumer;
 import link.locutus.discord.web.WebUtil;
 
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -23,7 +23,7 @@ public class WebBindingHelper extends BindingHelper {
     public <T> String multipleSelectEmum(Class<T> emum, ValueStore valueStore) {
         ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
         List<T> options = Arrays.asList(emum.getEnumConstants());
-        return multipleSelect(param, options, t -> new AbstractMap.SimpleEntry<>(t.toString(), t.toString()), true);
+        return multipleSelect(param, options, t -> new KeyValue<>(t.toString(), t.toString()), true);
     }
 
     public static <T> String multipleSelect(ParameterData param, Collection<T> objects, Function<T, Map.Entry<String, String>> toNameValue, boolean multiple) {

@@ -22,7 +22,7 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -197,7 +197,7 @@ public class CombatantSheet extends Command {
 
             performAttacks(losses, kills, defender, attacker, n2, n1);
         }
-        return new AbstractMap.SimpleEntry<>(kills, losses);
+        return new KeyValue<>(kills, losses);
     }
 
     public void performAttacks(Map<DBNation, DBNation> losses, Map<DBNation, DBNation> kills, WarNation attacker, WarNation defender, DBNation attackerOrigin, DBNation defenderOrigin) {

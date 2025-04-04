@@ -36,7 +36,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -399,10 +399,10 @@ public class IACheckup {
 
                 if (!aaIds.contains(nation.getAlliance_id())) {
                     int id = aaIds.iterator().next();
-                    return new AbstractMap.SimpleEntry<>("NONE", "Please apply to the alliance ingame: " + Settings.PNW_URL() + "/alliance/join/id=" + id);
+                    return new KeyValue<>("NONE", "Please apply to the alliance ingame: " + Settings.PNW_URL() + "/alliance/join/id=" + id);
                 }
                 if (nation.getPosition() <= 1) {
-                    return new AbstractMap.SimpleEntry<>("APPLICANT", "Please discuss with your mentor about becoming a member");
+                    return new KeyValue<>("APPLICANT", "Please discuss with your mentor about becoming a member");
                 }
                 return null;
             }
@@ -443,7 +443,7 @@ public class IACheckup {
                 }
                 String desc = "Soldiers are the best unit for looting enemies and necessary for fighting wars, and are cheap. Get 5 barracks in each of your cities. <" + Settings.PNW_URL() + "/cities/>\n\n" +
                         "*Note: You can sell off buildings, or buy more infrastructure if you are lacking building slots*";
-                return new AbstractMap.SimpleEntry<>(nation.getMMRBuildingStr(), desc);
+                return new KeyValue<>(nation.getMMRBuildingStr(), desc);
             }
             case INCORRECT_MMR:
                 Map<NationFilter, MMRMatcher> requiredMmrMap = db.getOrNull(GuildKey.REQUIRED_MMR);
@@ -461,7 +461,7 @@ public class IACheckup {
 //                roi = roiMap.get(ROI.Investment.CITY_PROJECT);
 ////                if (roi != null && cities.size() < 25) {
 ////                    String message = Settings.commandPrefix(true) + "grant \"" + nation.getNation() + "\" " + roi.info + " 1";
-////                    return new AbstractMap.SimpleEntry<>(roi.roi, message);
+////                    return new KeyValue<>(roi.roi, message);
 ////                }
 //                if (roi == null) {
 //                    roi = roiMap.get(ROI.Investment.CITY);
@@ -469,7 +469,7 @@ public class IACheckup {
 //                if (roi != null && (pnwNation.getCities() >= 7) && (pnwNation.getCities() < 25)) {
 //                    int amt = Math.max(1, 10 - pnwNation.getCities());
 //                    String message = "To request a project on discord: !grant \"" + nation.getNation() + "\" city " + amt;
-//                    return new AbstractMap.SimpleEntry<>(roi.roi, message);
+//                    return new KeyValue<>(roi.roi, message);
 //                }
             case BUY_PROJECT:
                 return checkBuyProject(db, nation, cities);
@@ -477,7 +477,7 @@ public class IACheckup {
 //                if (roi != null && roi.roi > 5 && (pnwNation.getCities() >= 7)) {
 //                    if (nation.getAvg_infra() > 1500) {
 //                        String message = "To request a project on discord: !grant \"" + nation.getNation() + "\" " + roi.info + " 1";
-//                        return new AbstractMap.SimpleEntry<>(roi.roi, message);
+//                        return new KeyValue<>(roi.roi, message);
 //                    }
 //                }
 //                return null;
@@ -490,7 +490,7 @@ public class IACheckup {
 //                    double amt = (double) roi.info;
 //                    if (nation.getOff() > 0 && nation.getAvg_infra() < 800) amt = 800;
 //                    String message = Settings.commandPrefix(true) + "grant \"" + nation.getNation() + "\" infra " + amt;
-//                    return new AbstractMap.SimpleEntry<>(roi.roi, message);
+//                    return new KeyValue<>(roi.roi, message);
 //                }
 //                return null;
             case BUY_LAND:
@@ -498,7 +498,7 @@ public class IACheckup {
 //                roi = roiMap.get(ROI.Investment.LAND);
 //                if (roi != null && roi.roi > 5) {
 //                    String message = Settings.commandPrefix(true) + "grant \"" + nation.getNation() + "\" land " + roi.info;
-//                    return new AbstractMap.SimpleEntry<>(roi.roi, message);
+//                    return new KeyValue<>(roi.roi, message);
 //                }
 //                return null;
             case BLOCKADED:
@@ -534,7 +534,7 @@ public class IACheckup {
                     String longDesc = "At higher city counts, there are less nations available to raid. You will need to find and hit nations as the come off of the beige protection color.\n" +
                             "To list raid targets currently on beige, use e.g.:\n" +
                             "> " + cmd;
-                    return new AbstractMap.SimpleEntry<>(cmd, longDesc);
+                    return new KeyValue<>(cmd, longDesc);
                 }
                 return null;
             case RAID_TURN_CHANGE:
@@ -549,7 +549,7 @@ public class IACheckup {
 ////                }
 ////                String desc = "Get yourself rolled. e.g. Find an inactive raid target in an alliance, attack them and get some counters on yourself.\n" +
 ////                        "Remember to deposit your resources so nothing of value gets looted";
-////                return new AbstractMap.SimpleEntry<>(false, desc);
+////                return new KeyValue<>(false, desc);
 //                return null;
 //            }
             case DEPOSIT_RESOURCES: {
@@ -563,14 +563,14 @@ public class IACheckup {
                 String desc = "Having unnecessary resources or $$ on your nation will attract raiders. It is important to safekeep so it wont get stolen when you lose a war. Visit the alliance bank page and store funds for safekeeping:\n" +
                         Settings.PNW_URL() + "/alliance/id=" + nation.getAlliance_id() + "&display=bank\n\n" +
                         "*Note: deposit $1 if you don't need to safekeep so we know that you understand how to use the bank*";
-                return new AbstractMap.SimpleEntry<>(false, desc);
+                return new KeyValue<>(false, desc);
             }
             case CHECK_DEPOSITS: {
                 if (nation.getMeta(NationMeta.INTERVIEW_DEPOSITS) != null) return null;
                 String desc = "You can check your deposits using:\n" +
                         CM.deposits.check.cmd.toSlashMention() + "\n" +
                         "(Try checking your deposits now)";
-                return new AbstractMap.SimpleEntry<>(false, desc);
+                return new KeyValue<>(false, desc);
             }
             case WITHDRAW_DEPOSITS: {
                 MessageChannel channel = db.getResourceChannel(0);
@@ -580,7 +580,7 @@ public class IACheckup {
                 }
                 String desc = "You can request your funds by asking in <#" + channel.getIdLong() + ">\n\n" +
                         "Please request e.g. $1.";
-                return new AbstractMap.SimpleEntry<>(false, desc);
+                return new KeyValue<>(false, desc);
             }
             case GATHER_INTEL: {
                 if (nation.getMeta(NationMeta.INTERVIEW_SPYOP) != null) return null;
@@ -588,19 +588,19 @@ public class IACheckup {
                         "- go to their nation page, and click the espionage button\n" +
                         "- Copy the results and post them in any channel here (if you accidentally leave the page, the intel op still is in your notifications)\n\n" +
                         "Remember to purchase max spies every day";
-                return new AbstractMap.SimpleEntry<>(false, desc);
+                return new KeyValue<>(false, desc);
             }
             case SPY_COMMAND: {
                 if (nation.getMeta(NationMeta.INTERVIEW_SPIES) != null) return null;
                 String desc = "Try using the commands e.g.:\n" +
                         "" + CM.nation.spies.cmd.nation(Settings.PNW_URL() + "/nation/id=6") + "\n";
-                return new AbstractMap.SimpleEntry<>(false, desc);
+                return new KeyValue<>(false, desc);
             }
             case LOOT_COMMAND: {
                 if (nation.getMeta(NationMeta.INTERVIEW_LOOT) != null) return null;
                 String desc = "Try using the commands e.g.:\n" +
                         "" + CM.nation.loot.cmd.nationOrAlliance(Settings.PNW_URL() + "/nation/id=6").toSlashCommand() + "\n";
-                return new AbstractMap.SimpleEntry<>(false, desc);
+                return new KeyValue<>(false, desc);
             }
             case GENERATE_CITY_BUILDS: {
                 DBNation me = nation;
@@ -657,7 +657,7 @@ public class IACheckup {
                         "" + CM.city.optimalBuild.cmd.build(cityUrl).buildMMR(
                                 mmrStr).infra(
                                 MathMan.format(maxInfra)).toSlashCommand());
-                return new AbstractMap.SimpleEntry<>(false, response.toString());
+                return new KeyValue<>(false, response.toString());
             }
 //            case ROI: {
 //                if (nation.getMeta(NationMeta.INTERVIEW_ROI) != null) return null;
@@ -668,7 +668,7 @@ public class IACheckup {
 //                        "To see which projects the bot recommends (for a 120 day period), use:\n" +
 //                        "> " + Settings.commandPrefix(true) + "roi {usermention} 120\n\n" +
 //                        "We recommend getting two resource projects after your 10th city";
-//                return new AbstractMap.SimpleEntry<>(false, desc);
+//                return new KeyValue<>(false, desc);
 //            }
             case DAILY_SPYOPS: {
                 ByteBuffer day = nation.getMeta(NationMeta.SPY_OPS_DAY);
@@ -681,7 +681,7 @@ public class IACheckup {
                         "During wartime, you can find enemies to spy using:\n" +
                         "" + CM.spy.find.target.cmd.targets("enemies").operations("*") + "\n\n" +
                         "(You should conduct a spy op every day)";
-                return new AbstractMap.SimpleEntry<>(diff, desc);
+                return new KeyValue<>(diff, desc);
             }
 //            case PLAN_A_RAID_WITH_FRIENDS:
 //                return planRaid(nation);
@@ -705,7 +705,7 @@ public class IACheckup {
                     "Options: " + StringMan.join(allowedContinents, ", ") +"\n" +
                     "Edit: <" + Settings.PNW_URL() + "/nation/edit/>\n" +
                     "<https://politicsandwar.fandom.com/wiki/Resources#Natural_Resource_Availability_by_Continent>");
-            return new AbstractMap.SimpleEntry<>(nation.getContinent(), message.toString());
+            return new KeyValue<>(nation.getContinent(), message.toString());
         }
         return null;
     }
@@ -721,7 +721,7 @@ public class IACheckup {
 
         response.append(Messages.BLOCKADE_HELP);
 
-        return new AbstractMap.SimpleEntry<>(listStr, response.toString());
+        return new KeyValue<>(listStr, response.toString());
     }
 
     private Map.Entry<Object, String> checkWarchest(DBNation nation, Map<ResourceType, Double> stockpile, GuildDB db) {
@@ -746,7 +746,7 @@ public class IACheckup {
         String message = "It is important to be able to fight a war with your military\n" +
                 "The alliance recommends keeping the following on your nation: `" + ResourceType.toString(required) + "`\n" +
                 "You are lacking: `" + ResourceType.toString(lacking) + "`";
-        return new AbstractMap.SimpleEntry<>(lacking, message);
+        return new KeyValue<>(lacking, message);
     }
 
     private Map.Entry<Object, String> planRaid(DBNation nation) {
@@ -754,7 +754,7 @@ public class IACheckup {
             String desc = "Raiding/warring is always better with friends. Find a good target. Use the command\n" +
                     "" + CM.war.counter.nation.cmd.toSlashMention() + "\n" +
                     "And see who is online and in range to raid that person with you.";
-            return new AbstractMap.SimpleEntry<>(1, desc);
+            return new KeyValue<>(1, desc);
         }
         return null;
     }
@@ -763,7 +763,7 @@ public class IACheckup {
         if (nation.getMeta(NationMeta.INTERVIEW_WAR_ROOM) == null) {
             String desc = "War rooms are channels created to coordinate a war against an enemy target. They will be created automatically by the bot against active enemies.\n" +
                     "To manually create a war room, use: " + CM.war.room.create.cmd.toSlashMention() + "";
-            return new AbstractMap.SimpleEntry<>(1, desc);
+            return new KeyValue<>(1, desc);
         }
         return null;
     }
@@ -785,7 +785,7 @@ public class IACheckup {
         avgHangars /= cities.size();
         if (avgHangars <= 4) {
             String desc = "The following cities have < 5 hangars: ";
-            return new AbstractMap.SimpleEntry<>(nation.getMMRBuildingStr(), desc);
+            return new KeyValue<>(nation.getMMRBuildingStr(), desc);
         }
         return null;
     }
@@ -800,7 +800,7 @@ public class IACheckup {
             if (other == null || other.getShips() > 3 || other.getAircraft() > nation.getAircraft()) return null;
         }
         String desc = "Buy ships to prevent yourself from being 3 shipped in a conflict";
-        return new AbstractMap.SimpleEntry<>(0, desc);
+        return new KeyValue<>(0, desc);
     }
 
     private Map.Entry<Object, String> checkAircraft(DBNation nation, Map<Integer, JavaCity> cities, GuildDB db) {
@@ -825,7 +825,7 @@ public class IACheckup {
             if (previousAir == nation.getAircraft()) {
                 String desc = "Planes can attack ground, air, or sea and are the best unit for defending your infra and allies. " +
                         "You can buy aircraft from the military tab. <" + Settings.PNW_URL() + "/nation/military/aircraft/>";
-                return new AbstractMap.SimpleEntry<>(MathMan.format(nation.getAircraftPct() * 100) + "%", desc);
+                return new KeyValue<>(MathMan.format(nation.getAircraftPct() * 100) + "%", desc);
             }
         }
         return null;
@@ -839,7 +839,7 @@ public class IACheckup {
             if (war.getStatus() != WarStatus.ACTIVE) continue;
             DBNation defender = DBNation.getById(war.getDefender_id());
             if (defender == null || defender.active_m() < 2880) continue;
-            Map.Entry<Integer, Integer> map = war.getMap(war.getAttacks2(false));
+            Map.Entry<Integer, Integer> map = war.getMap(war.getAttacks3(false));
             if (map.getKey() >= 12) {
                 maxMapWars.add(war);
             }
@@ -853,7 +853,7 @@ public class IACheckup {
             body.append("\n").append(Settings.PNW_URL() + "/nation/war/groundbattle/war=" + war.getWarId());
         }
         body.append("\nYou can get some of their $ by doing ground attacks, and then a portion of all their $/resources when you defeat them (as well as a cut of their alliance bank if they are in an alliance)");
-        return new AbstractMap.SimpleEntry<>(warIds, body.toString());
+        return new KeyValue<>(warIds, body.toString());
     }
 
     private Map.Entry<Object, String> checkRaidTurnChange(DBNation me) {
@@ -877,7 +877,7 @@ public class IACheckup {
                 "- *If you don't get them on your first shot, try again later*\n" +
                 "- *If you can't be active enough, just hit any gray nation during turn change*";
 
-        return new AbstractMap.SimpleEntry<>(false, longDesc);
+        return new KeyValue<>(false, longDesc);
     }
 
     public static Map.Entry<Object, String> checkProductionBonus(DBNation nation, Map<Integer, JavaCity> cities) {
@@ -902,7 +902,7 @@ public class IACheckup {
 
         if (!violationCityIds.isEmpty()) {
             String message = "The following cities miss out on a production bonus by not having more of a single resource type " + StringMan.getString(violationCityIds);
-            return new AbstractMap.SimpleEntry<>(violationCityIds, message);
+            return new KeyValue<>(violationCityIds, message);
         }
         return null;
     }
@@ -910,12 +910,12 @@ public class IACheckup {
     private Map.Entry<Object, String> checkBuyRpc(GuildDB db, DBNation nation, Map<Integer, JavaCity> cities) {
         if (nation.getCities() > Projects.ACTIVITY_CENTER.maxCities()) {
             if (nation.hasProject(Projects.ACTIVITY_CENTER)) {
-                return Map.entry("SELL", "Go to the projects tab and sell activity center");
+                return KeyValue.of("SELL", "Go to the projects tab and sell activity center");
             }
             return null;
         }
         if (nation.getProjectTurns() > 0 || nation.getFreeProjectSlots() <= 0) return null;
-        return new AbstractMap.SimpleEntry<>("BUY", "Go to the projects tab and buy the Activity Center");
+        return new KeyValue<>("BUY", "Go to the projects tab and buy the Activity Center");
     }
 
     private Map.Entry<Object, String> checkBuyProject(GuildDB db, DBNation nation, Map<Integer, JavaCity> cities) {
@@ -924,7 +924,7 @@ public class IACheckup {
 
         if (nation.getProjectAbsoluteTurn() != null && nation.getProjectTurns() <= 0) {
             if (nation.isBlockaded()) return null;
-            return new AbstractMap.SimpleEntry<>(freeProjects, "Your project timer is up.");
+            return new KeyValue<>(freeProjects, "Your project timer is up.");
         }
         return null;
     }
@@ -934,7 +934,7 @@ public class IACheckup {
 
         double total = ResourceType.convertedTotal(revenue, false);
         if (total < 0) {
-            return new AbstractMap.SimpleEntry<>(total, "Your nation's city revenue is negative. Please fix your cities and/or ask a gov member for funds for a new build");
+            return new KeyValue<>(total, "Your nation's city revenue is negative. Please fix your cities and/or ask a gov member for funds for a new build");
         }
         return null;
     }
@@ -973,7 +973,7 @@ public class IACheckup {
         }
         response.append("\nnote: buildings continue working even if you lose infra");
         if (nation.isBlockaded() || nation.getRelativeStrength() < 1) return null;
-        return new AbstractMap.SimpleEntry<>(grants.keySet(), response.toString().trim());
+        return new KeyValue<>(grants.keySet(), response.toString().trim());
     }
 
     private Map.Entry<Object, String> checkBuyLand(DBNation nation, Map<Integer, JavaCity> cities) {
@@ -999,7 +999,7 @@ public class IACheckup {
             response.append(Messages.CITY_URL + entry.getKey() + " to @" + entry.getValue() + " land\n");
         }
         if (nation.isBlockaded()) return null;
-        return new AbstractMap.SimpleEntry<>(grants.keySet(), response.toString().trim());
+        return new KeyValue<>(grants.keySet(), response.toString().trim());
     }
 
     private Map.Entry<Object, String> checkBuyCity(DBNation nation) {
@@ -1019,7 +1019,7 @@ public class IACheckup {
 
             double cost = PW.City.cityCost(nation, nation.getCities(), nation.getCities() + 1);
             Map<ResourceType, Double> resources = Collections.singletonMap(ResourceType.MONEY, cost);
-            return new AbstractMap.SimpleEntry<>(nation.getCities(), "Your city timer is up");
+            return new KeyValue<>(nation.getCities(), "Your city timer is up");
         }
         return null;
     }
@@ -1049,7 +1049,7 @@ public class IACheckup {
             }
         }
         if (!toSend.isEmpty()) {
-            return new AbstractMap.SimpleEntry<>(toSend, "Requires: " + ResourceType.toString(toSend));
+            return new KeyValue<>(toSend, "Requires: " + ResourceType.toString(toSend));
         }
         return null;
     }
@@ -1089,7 +1089,7 @@ public class IACheckup {
             if (nation.isBlockaded()) return null;
             String url = nation.getAllianceUrl() + "&display=bank";
             String message = "Excess resources can be deposited so you don't lose it in a war or attract pirates: `" + ResourceType.toString(resources) + "` @ <" + url + ">";
-            return new AbstractMap.SimpleEntry<>(ResourceType.toString(resources), message);
+            return new KeyValue<>(ResourceType.toString(resources), message);
         }
         return null;
     }
@@ -1098,7 +1098,7 @@ public class IACheckup {
         long daysInactive = TimeUnit.MINUTES.toDays(nation.active_m());
         if (daysInactive > 1) {
             String message = "Hasn't logged in for " + daysInactive + " days.";
-            return new AbstractMap.SimpleEntry<>(daysInactive, message);
+            return new KeyValue<>(daysInactive, message);
         }
         return null;
     }
@@ -1106,7 +1106,7 @@ public class IACheckup {
     private Map.Entry<Object, String> checkObjectives(DBNation nation) {
         if (nation.getCities() == 1) {
             String message = "You can go to <" + Settings.PNW_URL() + "/nation/objectives/>" + " and complete the objectives for some easy cash.";
-            return new AbstractMap.SimpleEntry<>(false, message);
+            return new KeyValue<>(false, message);
         }
         return null;
     }
@@ -1126,7 +1126,7 @@ public class IACheckup {
                     msg = "`fortress` to reduce enemy MAP by 1";
                 }
                 msg = "You can go to <" + Settings.PNW_URL() + "/nation/edit/>" + " and change your war policy to " + msg;
-                return new AbstractMap.SimpleEntry<>(policy, msg);
+                return new KeyValue<>(policy, msg);
         }
         return null;
     }
@@ -1188,7 +1188,7 @@ public class IACheckup {
             resposnse.append(cmd);
         }
         resposnse.append("for some juicy targets");
-        return new AbstractMap.SimpleEntry<>(targets.size(), resposnse.toString());
+        return new KeyValue<>(targets.size(), resposnse.toString());
     }
 
     private Map.Entry<Object, String> checkSpies(ValueStore cacheStore, DBNation nation) {
@@ -1200,7 +1200,7 @@ public class IACheckup {
         boolean buySpies = nation.getSpies() == 0 || nation.daysSinceLastSpyBuy(cacheStore) > 1;
         if (!buySpies) return null;
         String message = "You have " + nation.getSpies() + " spies. Spies can perform various operations, (like destroying planes), and can do so daily, without using a war slot, or bringing you out of beige. You should always purchase max spies every day";
-        return new AbstractMap.SimpleEntry<>(nation.getSpies(), message);
+        return new KeyValue<>(nation.getSpies(), message);
     }
 
     private Map.Entry<Object, String> checkTanks(DBNation nation, Map<Integer, JavaCity> cities) {
@@ -1226,7 +1226,7 @@ public class IACheckup {
         }
         if (message.isEmpty()) message = null;
         else message += "Tanks are costly to build, maintain, easy to destroy with planes, and raise your score/soldiers ratio. For ground attacks you should be using soldiers, which can optionally attack without using munitions.";
-        return new AbstractMap.SimpleEntry<>(nation.getTanks(), message);
+        return new KeyValue<>(nation.getTanks(), message);
     }
 
     private Map.Entry<Object, String> checkShips(DBNation nation) {
@@ -1236,7 +1236,7 @@ public class IACheckup {
         if (nation.getShips() > max) {
             message = "You have " + nation.getShips() + " ships. Ships are costly to build, maintain, easy to destroy with planes, and raise your score/soldiers ratio. For maximum profit you should only need 1 drydock and 1 boat for raiding purposes.";
         }
-        return new AbstractMap.SimpleEntry<>(nation.getShips(), message);
+        return new KeyValue<>(nation.getShips(), message);
     }
 
     private Map.Entry<Object, String> checkTradeColor(DBNation nation) {
@@ -1252,7 +1252,7 @@ public class IACheckup {
                 message += "\nnote: You do not receive trade bloc income by being on a different color to the alliance";
             }
         }
-        return new AbstractMap.SimpleEntry<>(nation.getColor(), message);
+        return new KeyValue<>(nation.getColor(), message);
     }
 //
 //    private Map.Entry<Object, String> checkBarracks(Map.Entry<Integer, JavaCity> entry) {
@@ -1340,7 +1340,7 @@ public class IACheckup {
             result.append("\n\nNote: Contact a gov member if you are unsure which one is suitable");
         }
 
-        return new AbstractMap.SimpleEntry<>(nation.getMMRBuildingStr(), result.toString());
+        return new KeyValue<>(nation.getMMRBuildingStr(), result.toString());
     }
 
     public Map.Entry<Object, String> checkPlaneBuy(DBNation nation, Map<Integer, JavaCity> cities) {
@@ -1362,11 +1362,11 @@ public class IACheckup {
         }
 
         if (!citiesMissingHangars.isEmpty()) {
-            return new AbstractMap.SimpleEntry<>("BUY", "The following cities have less than 5 hangars: " + StringMan.getString(citiesMissingHangars));
+            return new KeyValue<>("BUY", "The following cities have less than 5 hangars: " + StringMan.getString(citiesMissingHangars));
         }
 
         if (!citiesHavingHangars.isEmpty()) {
-            return new AbstractMap.SimpleEntry<>("SELL", "The following cities have more than 0 hangars: " + StringMan.getString(citiesHavingHangars));
+            return new KeyValue<>("SELL", "The following cities have more than 0 hangars: " + StringMan.getString(citiesHavingHangars));
         }
 
         if (nation.getCities() <= 10 || nation.getOff() != 0 & nation.getDef() != 0) {
@@ -1387,7 +1387,7 @@ public class IACheckup {
                 double canBuy = Math.min(numHangars * 15, pop * 0.001);
                 message = "You can purchase up to " + (int) canBuy + " aircraft.";
             }
-            return new AbstractMap.SimpleEntry<>("BUY", message);
+            return new KeyValue<>("BUY", message);
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -1407,7 +1407,7 @@ public class IACheckup {
         }
 
         if (!citiesMissingBarracks.isEmpty()) {
-            return new AbstractMap.SimpleEntry<>(MathMan.format(nation.getSoldierPct() * 100) + "%", "The following cities have less than 5 barracks: " + StringMan.getString(citiesMissingBarracks) + " ");
+            return new KeyValue<>(MathMan.format(nation.getSoldierPct() * 100) + "%", "The following cities have less than 5 barracks: " + StringMan.getString(citiesMissingBarracks) + " ");
         }
 
         if (nation.getCities() >= 10 && nation.getNumWars() != 0 && nation.getAvg_infra() > 1000) {
@@ -1428,7 +1428,7 @@ public class IACheckup {
                 double canBuy = Math.min(pop * 0.15, 3000 * numBarracks);
                 message = "You can purchase up to " + (int) canBuy + " soldiers.";
             }
-            return new AbstractMap.SimpleEntry<>(MathMan.format(nation.getSoldierPct() * 100) + "%", message);
+            return new KeyValue<>(MathMan.format(nation.getSoldierPct() * 100) + "%", message);
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -1449,7 +1449,7 @@ public class IACheckup {
         }
         if (!violationCityIds.isEmpty()) {
             String message = "The following cities have more power buildings than necessary " + StringMan.getString(violationCityIds);
-            return new AbstractMap.SimpleEntry<>(violationCityIds, message);
+            return new KeyValue<>(violationCityIds, message);
         }
         return null;
     }
@@ -1475,7 +1475,7 @@ public class IACheckup {
         }
         if (!violationCityIds.isEmpty()) {
             String message = "The following cities have more " + building.name() + " than necessary " + StringMan.getString(violationCityIds);
-            return new AbstractMap.SimpleEntry<>(violationCityIds, message);
+            return new KeyValue<>(violationCityIds, message);
         }
         return null;
     }
@@ -1513,7 +1513,7 @@ public class IACheckup {
                     "\nPlease ensure you have the resources to power your city for several days. " +
                     "You currently consume the following each day:\n" + ResourceType.toString(revenue));
         }
-        return new AbstractMap.SimpleEntry<>(unpowered, response.toString());
+        return new KeyValue<>(unpowered, response.toString());
     }
 
     public static Map.Entry<Object, String> checkNuclearPower(Map<Integer, JavaCity> cities) {
@@ -1551,7 +1551,7 @@ public class IACheckup {
         combined.addAll(nonNuclear);
         if (!combined.isEmpty()) {
             String message = "The following cities should use nuclear power " + StringMan.getString(combined);
-            return new AbstractMap.SimpleEntry<>(combined, message);
+            return new KeyValue<>(combined, message);
         }
         return null;
     }
@@ -1583,7 +1583,7 @@ public class IACheckup {
         }
         if (!empty.isEmpty()) {
             String message = "The following cities have free slots " + StringMan.getString(empty);
-            return new AbstractMap.SimpleEntry<>(empty, message);
+            return new KeyValue<>(empty, message);
         }
         return null;
     }

@@ -6,7 +6,7 @@ import link.locutus.discord.util.TimeUtil;
 import java.time.DayOfWeek;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -48,7 +48,7 @@ public class Activity {
         int weekTurn = dayTurn + day.ordinal() * 12;
         double[] arr = week ? byWeekTurn : byDayTurn;
 
-        if (numTurns >= arr.length || numTurns <= 1) return new AbstractMap.SimpleEntry<>(0, new double[0]);
+        if (numTurns >= arr.length || numTurns <= 1) return new KeyValue<>(0, new double[0]);
 
         for (int i = 0; i < arr.length; i++) {
             arr[i] = Math.pow(arr[i], 2);
@@ -91,7 +91,7 @@ public class Activity {
         int optimalTurn = maxStart - (week ? weekTurn : dayTurn);
         if (optimalTurn < 0) maxStart += arr.length;
 
-        return new AbstractMap.SimpleEntry<>(optimalTurn, result);
+        return new KeyValue<>(optimalTurn, result);
     }
 
     public double loginChance(int numTurns, boolean week) {

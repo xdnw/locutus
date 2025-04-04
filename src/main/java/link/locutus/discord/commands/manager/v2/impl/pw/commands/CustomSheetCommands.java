@@ -39,7 +39,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -484,7 +484,7 @@ public class CustomSheetCommands {
             if (template == null) {
                 continue;
             }
-            customTabs.put(tabName, Map.entry(selection, template));
+            customTabs.put(tabName, KeyValue.of(selection, template));
         }
 
 

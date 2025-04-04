@@ -25,7 +25,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
 import java.time.ZonedDateTime;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -243,7 +243,7 @@ public class MailTargets extends Command {
 
             String body = mail.toString().replace("\n","<br>");
 
-            mailTargets.put(attacker, new AbstractMap.SimpleEntry<>(subject, body));
+            mailTargets.put(attacker, new KeyValue<>(subject, body));
         }
 
         if (!flags.contains('f')) {

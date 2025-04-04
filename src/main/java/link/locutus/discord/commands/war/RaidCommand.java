@@ -24,6 +24,7 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarType;
+import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
@@ -567,7 +568,7 @@ public class RaidCommand extends Command {
             value = value * winChance;
             value -= costIncurred;
 
-            nationNetValues.add(new AbstractMap.SimpleEntry<>(enemy, new AbstractMap.SimpleEntry<>(value, originalValue)));
+            nationNetValues.add(new KeyValue<>(enemy, new KeyValue<>(value, originalValue)));
         }
 
         nationNetValues.sort((o1, o2) -> Double.compare(o2.getValue().getKey(), o1.getValue().getKey()));

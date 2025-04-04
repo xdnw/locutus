@@ -26,7 +26,7 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -266,7 +266,7 @@ public class WarCommand extends Command {
 //
 //                        value += 0.25 * value * (3 - nation.getDef());
 
-                        nationNetValues.add(new AbstractMap.SimpleEntry<>(nation, value));
+                        nationNetValues.add(new KeyValue<>(nation, value));
                     }
 
                     Map<DBNation, Integer> beigeTurns = new HashMap<>();
@@ -275,7 +275,7 @@ public class WarCommand extends Command {
                         for (DBNation nation : nations) {
                             if (nation.isBeige()) {
                                 int turns = beigeTurns.computeIfAbsent(nation, f -> f.getBeigeTurns());
-                                nationNetValues.add(new AbstractMap.SimpleEntry<>(nation, (double) turns));
+                                nationNetValues.add(new KeyValue<>(nation, (double) turns));
                             }
                         }
                         if (nationNetValues.isEmpty()) {

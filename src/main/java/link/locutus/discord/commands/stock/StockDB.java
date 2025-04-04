@@ -14,7 +14,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -91,7 +91,7 @@ public class StockDB extends DBMain {
                 minPrice = Math.min(trade.price, minPrice);
             }
         }
-        return new AbstractMap.SimpleEntry<>(minPrice == Long.MAX_VALUE ? null : minPrice, maxPrice == 0 ? null : maxPrice);
+        return new KeyValue<>(minPrice == Long.MAX_VALUE ? null : minPrice, maxPrice == 0 ? null : maxPrice);
     }
 
     public synchronized double getCombinedAveragePrice(Exchange exchange, long cutoff) {
@@ -125,7 +125,7 @@ public class StockDB extends DBMain {
         }
         Double buy = amtBuy == 0 ? null : (buyValue / (double) amtBuy) / 100d;
         Double sell = amtSell == 0 ? null : (sellValue / (double) amtSell) / 100d;
-        return new AbstractMap.SimpleEntry<>(buy, sell);
+        return new KeyValue<>(buy, sell);
     }
 
     public synchronized  void addExchangeWithId(Exchange exchange) {
@@ -487,7 +487,7 @@ public class StockDB extends DBMain {
                 sell.add(trade);
             }
         }
-        return new AbstractMap.SimpleEntry<>(buy, sell);
+        return new KeyValue<>(buy, sell);
     }
 
     public synchronized  List<StockTrade> getOpenBuyTradesByCorp(int company) {
@@ -813,7 +813,7 @@ public class StockDB extends DBMain {
                     DBNation nation = DBNation.getById(nationId);
                     if (exchange != null && nation != null) {
                         result.computeIfAbsent(nation, f -> new ArrayList<>())
-                        .add(new AbstractMap.SimpleEntry<>(exchange, rank));
+                        .add(new KeyValue<>(exchange, rank));
                     }
                 }
             }
@@ -835,7 +835,7 @@ public class StockDB extends DBMain {
                     int exchangeId = rs.getInt("exchange");
                     Exchange exchange = getExchange(exchangeId);
                     if (exchange != null) {
-                        result.add(new AbstractMap.SimpleEntry<>(exchange, rank));
+                        result.add(new KeyValue<>(exchange, rank));
                     }
                 }
             }

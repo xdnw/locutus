@@ -12,6 +12,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.TriFunction;
 import net.dv8tion.jda.api.entities.User;
 
@@ -46,7 +47,7 @@ public class GPTSearchUtil {
 
                 int fullTextLength = 0;
                 if (full && (fullTextLength = provider.getSize(fullText)) <= remaining) {
-                    return Map.entry(fullText, fullTextLength);
+                    return KeyValue.of(fullText, fullTextLength);
                 } else {
                     StringBuilder shortText = new StringBuilder("# /");
                     {
@@ -65,7 +66,7 @@ public class GPTSearchUtil {
                     String shortTextStr = shortText.toString();
                     int shortTextLength = provider.getSize(shortTextStr);
                     if (shortTextLength <= remaining) {
-                        return Map.entry(shortTextStr, shortTextLength);
+                        return KeyValue.of(shortTextStr, shortTextLength);
                     } else {
                         return null;
                     }

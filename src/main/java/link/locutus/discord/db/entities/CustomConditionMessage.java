@@ -102,7 +102,7 @@ public class CustomConditionMessage {
                         message += "\n- Sent: " + result.status();
                     } else if (result.status() == MailApiSuccess.NON_MAIL_KEY) {
                         message += "\n- Failed: " + result.status() + " " + result.error() + ". Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name()
-                                + "`. Set a new key, then See: " + CM.settings.delete.cmd.key(GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + " <@" + db.getGuild().getOwnerId() + ">");
+                                + "`. Please set a new working API_KEY (" + CM.settings_default.registerApiKey.cmd.toSlashMention() + "), then See: " + CM.settings.delete.cmd.key(GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + " <@" + db.getGuild().getOwnerId() + ">");
                         db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
                     } else {
                         message += "\n" + result.status() + " " + result.error();

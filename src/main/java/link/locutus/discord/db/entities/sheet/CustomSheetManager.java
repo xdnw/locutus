@@ -12,7 +12,7 @@ import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Types;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -364,7 +364,7 @@ public class CustomSheetManager {
                 SelectionAlias selectionAlias = getSelectionAlias(selector, true);
                 SheetTemplate sheetTemplate = getSheetTemplate(template);
                 if (sheetTemplate != null && selectionAlias != null) sheetTemplate.resolve(selectionAlias.getType());
-                tabs.put(tabName, new AbstractMap.SimpleEntry<>(selectionAlias, sheetTemplate));
+                tabs.put(tabName, new KeyValue<>(selectionAlias, sheetTemplate));
             }
         });
         return new CustomSheet(name, url, tabs);

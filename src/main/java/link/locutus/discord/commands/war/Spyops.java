@@ -32,7 +32,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
 import java.io.IOException;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -268,7 +268,7 @@ public class Spyops extends Command {
                 netDamageCost *= valueModifier;
 
                 best.getValue().setValue(netDamageCost);
-                netDamage.add(new AbstractMap.SimpleEntry<>(nation, best));
+                netDamage.add(new KeyValue<>(nation, best));
             }
         }
 
@@ -324,7 +324,7 @@ public class Spyops extends Command {
                     ;
                 }
             };
-            targets.add(new AbstractMap.SimpleEntry<>(nation, task));
+            targets.add(new KeyValue<>(nation, task));
         }
 
         targets.removeIf(f -> f.getKey().isEspionageFull());

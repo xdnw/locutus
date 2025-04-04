@@ -115,8 +115,8 @@ public enum BeigeReason {
         }
 
         if (defender.active_m() < 2880 && defender.getVm_turns() == 0) {
-            List<AbstractCursor> attacks = war.getAttacks2(false);
-            Map.Entry<Integer, Integer> res = war.getResistance(war.getAttacks2(false));
+            List<AbstractCursor> attacks = war.getAttacks3(false);
+            Map.Entry<Integer, Integer> res = war.getResistance(attacks);
             int otherRes = war.isAttacker(attacker) ? res.getKey() : res.getValue();
             if (otherRes <= 42) {
                 if (war.isAttacker(attacker)) {
@@ -145,7 +145,7 @@ public enum BeigeReason {
                 if (otherAttacker.getGroundStrength(true, false) * 0.8 <= defender.getGroundStrength(true, true))
                     continue;
                 if (otherAttacker.getAircraft() * 0.8 <= defender.getAircraft()) continue;
-                Map.Entry<Integer, Integer> resistance = other.getResistance(other.getAttacks2());
+                Map.Entry<Integer, Integer> resistance = other.getResistance(other.getAttacks3());
                 Integer defRes = resistance.getValue();
                 Integer attRes = resistance.getKey();
                 if (defRes <= 12) continue;

@@ -1,6 +1,7 @@
 package link.locutus.discord.pnw;
 
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.scheduler.KeyValue;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -64,7 +65,7 @@ public class NationScoreMap<T> {
             if (scoreMin < minDble) minDble = scoreMin;
             if (scoreMax > maxDble) maxDble = scoreMax;
         }
-        return Map.entry(minDble, maxDble);
+        return KeyValue.of(minDble, maxDble);
     }
 
     public int getMaxScore() {

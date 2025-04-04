@@ -2787,9 +2787,8 @@ public class AdminCommands {
     public String syncLootFromAttacks() {
         int found = 0;
         int added = 0;
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(0, AttackType.A_LOOT);
         List<LootEntry> loots = new ObjectArrayList<>();
-        for (AbstractCursor attack : attacks) {
+        Locutus.imp().getWarDb().iterateAttacks(0, AttackType.A_LOOT, (war, attack) -> {
             if (attack.getAllianceIdLooted() > 0) {
                 LootEntry existing = Locutus.imp().getNationDB().getAllianceLoot(attack.getAllianceIdLooted());
                 if (existing != null && existing.getDate() < attack.getDate()) {
@@ -2806,7 +2805,7 @@ public class AdminCommands {
                     loots.add(LootEntry.forAlliance(attack.getAllianceIdLooted(), attack.getDate(), lootCopy, NationLootType.WAR_LOSS));
                 }
             }
-        }
+        });
         if (loots.isEmpty()) return "No new loot found";
         Locutus.imp().runEventsAsync(events -> Locutus.imp().getNationDB().saveLoot(loots, events));
         return "Done!";

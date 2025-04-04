@@ -240,6 +240,7 @@ public abstract class AMessageBuilder implements IMessageBuilder {
         }
     }
 
+    @Override
     public IMessageBuilder embed(MessageEmbed embed) {
         embeds.add(new EmbedShrink(embed));
         Map<String, String> reactions = DiscordUtil.getReactions(embed);

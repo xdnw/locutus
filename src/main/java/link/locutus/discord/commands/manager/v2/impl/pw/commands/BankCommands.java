@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
@@ -51,6 +53,7 @@ import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.TransferResult;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -859,8 +862,8 @@ public class BankCommands {
         Set<Integer> allyIds = allies.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
         Set<Integer> enemyIds = enemies.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
 
-        Map<Integer, Integer> offensivesByNation = new HashMap<>();
-        Map<Integer, Integer> defensivesByNation = new HashMap<>();
+        Map<Integer, Integer> offensivesByNation = new Int2IntOpenHashMap();
+        Map<Integer, Integer> defensivesByNation = new Int2IntOpenHashMap();
 
         Set<DBNation> nations = Locutus.imp().getNationDB().getNationsByAlliance(allyIds);
         nations.removeIf(f -> f.getVm_turns() > 0 || f.active_m() > 10000 || f.getPosition() <= 1);
@@ -868,12 +871,10 @@ public class BankCommands {
                 f -> (allyIds.contains(f) || enemyIds.contains(f)),
                 f -> (allyIds.contains(f.getAttacker_aa()) || allyIds.contains(f.getDefender_aa())) && (enemyIds.contains(f.getAttacker_aa()) || enemyIds.contains(f.getDefender_aa())) && f.getDate() > cutoff).values());
 
-        List<AbstractCursor> allattacks = Locutus.imp().getWarDb().getAttacksByWars(wars);
-        Map<Integer, List<AbstractCursor>> attacksByWar = new HashMap<>();
-        for (AbstractCursor attack : allattacks) {
+        Map<Integer, List<AbstractCursor>> attacksByWar = new Int2ObjectOpenHashMap<>();
+        Locutus.imp().getWarDb().iterateAttacksByWars(wars, (war, attack) -> {
             attacksByWar.computeIfAbsent(attack.getWar_id(), f -> new ArrayList<>()).add(attack);
-        }
-
+        });
         if (removeWarsWithNoDefenderActions) {
             wars.removeIf(f -> {
                 List<AbstractCursor> attacks = attacksByWar.get(f.warId);
@@ -897,7 +898,7 @@ public class BankCommands {
         }
 
 
-        Map<Integer, double[]> warcostByNation = new HashMap<>();
+        Map<Integer, double[]> warcostByNation = new Int2ObjectOpenHashMap<>();
 
         for (DBWar war : wars) {
             List<AbstractCursor> attacks = attacksByWar.get(war.warId);
@@ -2287,7 +2288,7 @@ public class BankCommands {
                     bypassChecks
             );
         } catch (IllegalArgumentException | IOException e) {
-//            result = new AbstractMap.SimpleEntry<>(OffshoreInstance.TransferStatus.OTHER, e.getMessage());
+//            result = new KeyValue<>(OffshoreInstance.TransferStatus.OTHER, e.getMessage());
             result = new TransferResult(OffshoreInstance.TransferStatus.OTHER, receiver, transfer, depositType.toString()).addMessage(e.getMessage());
         }
         if (result.getStatus() == OffshoreInstance.TransferStatus.CONFIRMATION) {
@@ -2462,7 +2463,7 @@ public class BankCommands {
             escrowSheet.addRow(escrowHeader);
         }
 
-        return Map.entry(escrowSheet, totalEscrowed);
+        return KeyValue.of(escrowSheet, totalEscrowed);
     }
 
     @Command(aliases = {"depositSheet", "depositsSheet"}, desc =
@@ -2776,6 +2777,7 @@ public class BankCommands {
         if (end_time == null) end_time = Long.MAX_VALUE;
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
         Set<Integer> hasAdmin = new IntOpenHashSet();
+        boolean globalAdmin = Roles.ECON_STAFF.hasOnRoot(author);
         if (author != null && db != null) {
             hasAdmin.addAll(Roles.ECON_STAFF.getAllianceList(author, db).getIds());
         }
@@ -2786,7 +2788,7 @@ public class BankCommands {
         transactions.removeIf(tx -> {
             NationOrAllianceOrGuild sender = tx.getSenderObj();
             NationOrAllianceOrGuild receiver = tx.getReceiverObj();
-            if (sender.isAlliance() && receiver.isAlliance() && !hasAdmin.contains(sender.getId()) && !hasAdmin.contains(receiver.getId())) {
+            if (sender.isAlliance() && receiver.isAlliance() && !globalAdmin && !hasAdmin.contains(sender.getId()) && !hasAdmin.contains(receiver.getId())) {
                 return true;
             }
             return !senders.contains(sender) || !receivers.contains(receiver);
@@ -2802,6 +2804,7 @@ public class BankCommands {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
         Set<Long> senderIds = senders.stream().map(NationOrAllianceOrGuild::getIdLong).collect(Collectors.toSet());
         Set<Integer> hasAdmin = new IntOpenHashSet();
+        boolean globalAdmin = Roles.ECON_STAFF.hasOnRoot(author);
         if (author != null && db != null) {
             hasAdmin.addAll(Roles.ECON_STAFF.getAllianceList(author, db).getIds());
         }
@@ -2811,7 +2814,7 @@ public class BankCommands {
             NationOrAllianceOrGuild sender = tx.getSenderObj();
             if (!senders.contains(sender)) return true;
             NationOrAllianceOrGuild receiver = tx.getReceiverObj();
-            if (sender.isAlliance() && receiver.isAlliance() && !hasAdmin.contains(sender.getId()) && !hasAdmin.contains(receiver.getId())) {
+            if (sender.isAlliance() && receiver.isAlliance() && !globalAdmin && !hasAdmin.contains(sender.getId()) && !hasAdmin.contains(receiver.getId())) {
                 return true;
             }
             return false;
@@ -2831,6 +2834,7 @@ public class BankCommands {
                                                       @Timestamp @Default Long endTime, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
         Set<Integer> hasAdmin = new IntOpenHashSet();
+        boolean globalAdmin = Roles.ECON_STAFF.hasOnRoot(author);
         if (author != null && db != null) {
             hasAdmin.addAll(Roles.ECON_STAFF.getAllianceList(author, db).getIds());
         }
@@ -2843,7 +2847,7 @@ public class BankCommands {
             NationOrAllianceOrGuild receiver = tx.getReceiverObj();
             if (!receivers.contains(receiver)) return true;
             NationOrAllianceOrGuild sender = tx.getSenderObj();
-            if (sender.isAlliance() && receiver.isAlliance() && !hasAdmin.contains(sender.getId()) && !hasAdmin.contains(receiver.getId())) {
+            if (sender.isAlliance() && receiver.isAlliance() && !globalAdmin && !hasAdmin.contains(sender.getId()) && !hasAdmin.contains(receiver.getId())) {
                 return true;
             }
             return false;
@@ -2987,13 +2991,14 @@ public class BankCommands {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
         List<Transaction2> transactions = Locutus.imp().getBankDB().getAllTransactions(sender, receiver, banker, timeframe, null);
         Set<Integer> hasAdmin = new IntOpenHashSet();
+        boolean globalAdmin = Roles.ECON_STAFF.hasOnRoot(author);
         if (author != null && db != null) {
             hasAdmin.addAll(Roles.ECON_STAFF.getAllianceList(author, db).getIds());
         }
         transactions.removeIf(f -> {
             NationOrAllianceOrGuild txSender = f.getSenderObj();
             NationOrAllianceOrGuild txReceiver = f.getReceiverObj();
-            if (txSender.isAlliance() && txReceiver.isAlliance() && !hasAdmin.contains(txSender.getId()) && !hasAdmin.contains(txReceiver.getId())) {
+            if (txSender.isAlliance() && txReceiver.isAlliance() && !globalAdmin && !hasAdmin.contains(txSender.getId()) && !hasAdmin.contains(txReceiver.getId())) {
                 return true;
             }
             return false;
@@ -3025,6 +3030,7 @@ public class BankCommands {
             } else {
                 List<Transaction2> txToAdd = (db.getTransactionsById(alliance.getAlliance_id(), 2));
                 Set<Integer> hasAdmin = new IntOpenHashSet();
+                boolean globalAdmin = Roles.ECON_STAFF.hasOnRoot(user);
                 if (user != null && db != null) {
                     hasAdmin.addAll(Roles.ECON_STAFF.getAllianceList(user, db).getIds());
                 }
@@ -3032,7 +3038,7 @@ public class BankCommands {
                     txToAdd.removeIf(f -> {
                         NationOrAllianceOrGuild sender = f.getSenderObj();
                         NationOrAllianceOrGuild receiver = f.getReceiverObj();
-                        if (sender.isAlliance() && receiver.isAlliance() && !hasAdmin.contains(sender.getId()) && !hasAdmin.contains(receiver.getId())) {
+                        if (sender.isAlliance() && receiver.isAlliance() && !globalAdmin && !hasAdmin.contains(sender.getId()) && !hasAdmin.contains(receiver.getId())) {
                             return true;
                         }
                         return false;
@@ -3975,12 +3981,12 @@ public class BankCommands {
                 // add button, add note
                 if (me != null && me.getId() == nationOrAllianceOrGuild.getId()) {
                     buttons.put("withdraw",
-                            Map.entry(
+                            KeyValue.of(
                                     CM.transfer.self.cmd.amount("").bank_note(DepositType.DEPOSIT.name()),
                                     true));
                 }
                 buttons.put("withdraw elsewhere",
-                        Map.entry(
+                        KeyValue.of(
                                 CM.transfer.resources.cmd.receiver("").transfer("").depositType(DepositType.DEPOSIT.name())
                                         .nationAccount(nationOrAllianceOrGuild.getQualifiedId()),
                                 true));
@@ -3989,7 +3995,7 @@ public class BankCommands {
             if (escrowed != null && !ResourceType.isZero(escrowed)) {
                 if (Roles.ECON_WITHDRAW_SELF.has(author, guild)) {
                     // add button, add note
-                    buttons.put("withdraw escrow", Map.entry(CM.escrow.withdraw.cmd.receiver(nationOrAllianceOrGuild.getQualifiedId()).amount(""), true));
+                    buttons.put("withdraw escrow", KeyValue.of(CM.escrow.withdraw.cmd.receiver(nationOrAllianceOrGuild.getQualifiedId()).amount(""), true));
                 } else if (!condensedFormat) {
                     footers.add("You do not have permission to withdraw escrowed funds");
                 }
@@ -3997,7 +4003,7 @@ public class BankCommands {
         } else if (nationOrAllianceOrGuild.isAlliance()) {
             if (econ) {
                 buttons.put("withdraw",
-                        Map.entry(
+                        KeyValue.of(
                                 CM.transfer.resources.cmd.receiver("").transfer("").depositType(DepositType.IGNORE.name())
                                         .allianceAccount(nationOrAllianceOrGuild.getQualifiedId()),
                                 true));
@@ -4005,7 +4011,7 @@ public class BankCommands {
             }
         } else if (nationOrAllianceOrGuild.isTaxid()) {
             buttons.put("withdraw",
-                    Map.entry(
+                    KeyValue.of(
                             CM.transfer.resources.cmd.receiver("").transfer("").depositType("").taxAccount(nationOrAllianceOrGuild.getQualifiedName()),
                             true));
             footers.add("To withdraw: " + CM.transfer.resources.cmd.toSlashMention() + " with `taxaccount: " + nationOrAllianceOrGuild.getQualifiedName() + "`");
@@ -4017,7 +4023,7 @@ public class BankCommands {
             // trade deposit
             if (econ) {
                 buttons.put("withdraw",
-                        Map.entry(
+                        KeyValue.of(
                                 CM.transfer.resources.cmd.receiver("").transfer("").depositType(DepositType.IGNORE.name()),
                                 true));
                 footers.add("To withdraw: " + CM.transfer.resources.cmd.toSlashMention() + " with `#ignore` as note");
@@ -4038,7 +4044,7 @@ public class BankCommands {
                 footers.add("Use `showCategories: True` " + itemziedSetting + "for a breakdown");
             }
             buttons.put("breakdown",
-                    Map.entry(
+                    KeyValue.of(
                             CM.deposits.check.cmd.nationOrAllianceOrGuild(
                                     nationOrAllianceOrGuild.getQualifiedId())
                                     .offshores(
@@ -4067,7 +4073,7 @@ public class BankCommands {
             Map.Entry<GuildDB, Integer> offshore = db.getOffshoreDB();
             if (offshore != null) {
                 buttons.put("offshore",
-                        Map.entry(
+                        KeyValue.of(
                                 CM.offshore.send.cmd,
                                 false));
                 if (!condensedFormat) {

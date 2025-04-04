@@ -11,6 +11,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
@@ -99,10 +100,10 @@ public class Inactive extends Command {
 
         List<Map.Entry<String, String>> labelCommandPairs = new ArrayList<>();
         if (page > 1) {
-            labelCommandPairs.add(Map.entry("\u2b05\ufe0f", prev));
+            labelCommandPairs.add(KeyValue.of("\u2b05\ufe0f", prev));
         }
         if (page < pages) {
-            labelCommandPairs.add(Map.entry("\u27a1\ufe0f", next));
+            labelCommandPairs.add(KeyValue.of("\u27a1\ufe0f", next));
         }
 
         IMessageBuilder msg = channel.create().embed(title, response.toString());

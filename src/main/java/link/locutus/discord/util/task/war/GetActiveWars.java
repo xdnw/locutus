@@ -9,7 +9,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -41,7 +41,7 @@ public class GetActiveWars implements Callable<Collection<Map.Entry<Integer, Int
                 String defenderStr = columns.get(2).getElementsByTag("a").get(0).attr("href");
                 Integer attacker = DiscordUtil.parseNationId(attackerStr);
                 Integer defender = DiscordUtil.parseNationId(defenderStr);
-                wars.add(new AbstractMap.SimpleEntry<>(attacker, defender));
+                wars.add(new KeyValue<>(attacker, defender));
             }
         }
         return wars;

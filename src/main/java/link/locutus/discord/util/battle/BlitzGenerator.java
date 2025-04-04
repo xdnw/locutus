@@ -15,7 +15,7 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -105,7 +105,7 @@ public class BlitzGenerator {
             return;
         }
         if (outMessages.add(response)) {
-            invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
+            invalidOut.accept(new KeyValue<>(defender, attacker), response);
         }
     }
 
@@ -193,7 +193,7 @@ public class BlitzGenerator {
             }
             for (Map.Entry<String, List<String>> entry : duplicates.entrySet()) {
                 String response = ("Duplicate columns found for: " + entry.getKey() + " at " + String.join(", ", entry.getValue()));
-                invalidOut.accept(new AbstractMap.SimpleEntry<>(null, null), response);
+                invalidOut.accept(new KeyValue<>(null, null), response);
             }
 
 
@@ -222,7 +222,7 @@ public class BlitzGenerator {
             if (nation == null) {
                 String response = ("`" + cell.toString() + "` is an invalid nation");
                 if (outMessages.add(response)) {
-                    invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
+                    invalidOut.accept(new KeyValue<>(defender, attacker), response);
                 }
                 continue;
             }
@@ -235,7 +235,7 @@ public class BlitzGenerator {
                     if (alliance != null && nation.getAlliance_id() != alliance.getAlliance_id()) {
                         String response = ("Nation: `" + nationStr + "` is no longer in alliance: `" + allianceStr + "`");
                         if (outMessages.add(response)) {
-                            invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
+                            invalidOut.accept(new KeyValue<>(defender, attacker), response);
                         }
                     }
                 }
@@ -265,7 +265,7 @@ public class BlitzGenerator {
                         if (other == null) {
                             String response = ("`" + cell.toString() + "` is an invalid nation");
                             if (outMessages.add(response)) {
-                                invalidOut.accept(new AbstractMap.SimpleEntry<>(defenderMutable, attackerMutable), response);
+                                invalidOut.accept(new KeyValue<>(defenderMutable, attackerMutable), response);
                             }
                             return;
                         }
@@ -302,7 +302,7 @@ public class BlitzGenerator {
                     if (other == null) {
                         String response = ("`" + cell.toString() + "` is an invalid nation");
                         if (outMessages.add(response)) {
-                            invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, attacker), response);
+                            invalidOut.accept(new KeyValue<>(defender, attacker), response);
                         }
                         continue;
                     }
@@ -328,7 +328,7 @@ public class BlitzGenerator {
             if (defenders.size() > maxWars.apply(attacker)) {
                 String response = ("`" + attacker.getNation() + "` has " + entry.getValue().size() + " targets");
                 if (outMessages.add(response)) {
-                    invalidOut.accept(new AbstractMap.SimpleEntry<>(null, attacker), response);
+                    invalidOut.accept(new KeyValue<>(null, attacker), response);
                 }
             }
         }
@@ -343,7 +343,7 @@ public class BlitzGenerator {
                 continue;
             }
             if (outMessages.add(response)) {
-                invalidOut.accept(new AbstractMap.SimpleEntry<>(null, attacker), response);
+                invalidOut.accept(new KeyValue<>(null, attacker), response);
             }
         }
 
@@ -361,7 +361,7 @@ public class BlitzGenerator {
                 continue;
             }
             if (outMessages.add(response)) {
-                invalidOut.accept(new AbstractMap.SimpleEntry<>(defender, null), response);
+                invalidOut.accept(new KeyValue<>(defender, null), response);
             }
         }
 
@@ -618,7 +618,7 @@ public class BlitzGenerator {
 
             double magicStrength = getValue(defender, false, attackers);
 
-            targetPriority.add(new AbstractMap.SimpleEntry<>(defender, magicStrength));
+            targetPriority.add(new KeyValue<>(defender, magicStrength));
         }
 
         targetPriority.sort((o1, o2) -> Double.compare(o2.getValue(), o1.getValue()));
@@ -802,7 +802,7 @@ public class BlitzGenerator {
                     defStr *= 20 * (1 + freeSlots - attackers.size());
                 }
 
-                targetPriority.add(new AbstractMap.SimpleEntry<>(defender, defStr));
+                targetPriority.add(new KeyValue<>(defender, defStr));
             }
 
             targetPriority.sort((o1, o2) -> Double.compare(o2.getValue(), o1.getValue()));

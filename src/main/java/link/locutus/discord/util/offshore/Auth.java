@@ -33,7 +33,7 @@ import java.io.IOException;
 import java.net.CookieManager;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1092,7 +1092,7 @@ public class Auth {
                 }
             }, Auth.this);
 
-            return new AbstractMap.SimpleEntry<>(amtDeposited, response.toString());
+            return new KeyValue<>(amtDeposited, response.toString());
         }
     }
 }

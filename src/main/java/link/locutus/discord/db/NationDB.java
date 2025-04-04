@@ -52,6 +52,7 @@ import link.locutus.discord.event.treaty.*;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.*;
@@ -375,7 +376,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                         }
                     }
                     if (allianceIds.add(nation.getAlliance_id())) {
-                        allianceIdActiveMs.add(Map.entry(nation.getAlliance_id(), nation.lastActiveMs()));
+                        allianceIdActiveMs.add(KeyValue.of(nation.getAlliance_id(), nation.lastActiveMs()));
                     }
                 }
             }
@@ -966,7 +967,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                     int nationId = iter.next();
                     iter.remove();
                     if (visited.add(nationId)) {
-                        nationIdActive.add(Map.entry(nationId, Long.MAX_VALUE)); // Always update dirty nations
+                        nationIdActive.add(KeyValue.of(nationId, Long.MAX_VALUE)); // Always update dirty nations
                     }
                 }
             } catch (NoSuchElementException ignore) {
@@ -983,7 +984,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                     long lastFetched = nation.getLastFetchedUnitsMs();
                     long active = nation.lastActiveMs();
                     long diff = Math.max(active - lastFetched, 0) + Math.max(now - lastFetched, 0);
-                    nationIdActive.add(Map.entry(nation.getNation_id(), diff));
+                    nationIdActive.add(KeyValue.of(nation.getNation_id(), diff));
                 }
             }
         }
@@ -1917,7 +1918,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 }
             }
         }
-        return maxId == 0 ? null : Map.entry(maxId, maxDate);
+        return maxId == 0 ? null : KeyValue.of(maxId, maxDate);
     }
 
     private Map.Entry<Integer, Long> getLatestNationIdDate() {
@@ -1930,7 +1931,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 maxDate = Math.max(nation.getDate(), maxDate);
             }
         }
-        return maxId == 0 ? null : Map.entry(maxId, maxDate);
+        return maxId == 0 ? null : KeyValue.of(maxId, maxDate);
     }
 
     private long lastNewNationDate = 0;
@@ -4223,7 +4224,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 while (rs.next()) {
                     int amt = rs.getInt("amount");
                     long date = rs.getLong("date");
-                    result.add(new AbstractMap.SimpleEntry<>(date, amt));
+                    result.add(new KeyValue<>(date, amt));
                 }
             }
 
@@ -4541,7 +4542,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 //                while (rs.next()) {
 //                    int spies = rs.getInt("spies");
 //                    long day = rs.getLong("day");
-//                    return new AbstractMap.SimpleEntry<>(spies, day);
+//                    return new KeyValue<>(spies, day);
 //                }
 //            }
 //            return null;
@@ -4795,7 +4796,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 //                    cities.put(cityId, city);
 //                }
 //            }
-//            return new AbstractMap.SimpleEntry<>(updateFlag, cities);
+//            return new KeyValue<>(updateFlag, cities);
 //        } catch (SQLException e) {
 //            e.printStackTrace();
 //            throw new RuntimeException(e);

@@ -22,7 +22,7 @@ import net.dv8tion.jda.api.entities.ISnowflake;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -544,7 +544,7 @@ public class AutoRoleTask implements IAutoRoleTask {
 
                 int moneyRate = Integer.parseInt(split[0]);
                 int rssRate = Integer.parseInt(split[1]);
-                taxRoles.put(new AbstractMap.SimpleEntry<>(moneyRate, rssRate), role);
+                taxRoles.put(new KeyValue<>(moneyRate, rssRate), role);
             }
         }
         return tmp;
@@ -563,7 +563,7 @@ public class AutoRoleTask implements IAutoRoleTask {
         Map<Map.Entry<Integer, Integer>, Role> tmpTaxRoles = fetchTaxRoles(false);
         Role expectedRole = null;
         if (bracket != null) {
-            Map.Entry<Integer, Integer> key = new AbstractMap.SimpleEntry<>(bracket.moneyRate, bracket.rssRate);
+            Map.Entry<Integer, Integer> key = new KeyValue<>(bracket.moneyRate, bracket.rssRate);
             expectedRole = tmpTaxRoles.get(key);
         }
 

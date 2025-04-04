@@ -72,7 +72,7 @@ import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -205,7 +205,7 @@ public class GuildHandler {
             if (required != null && (current == null || current.taxId != required.taxId)) {
                 boolean response = allianceList.setTaxBracket(required, nation);
                 responses.accept(nation.getNation() + ": " + response);
-                nationsMovedBracket.put(nation, new AbstractMap.SimpleEntry<>(required, reason));
+                nationsMovedBracket.put(nation, new KeyValue<>(required, reason));
                 Locutus.imp().getNationDB().markNationDirty(nation.getId());
             }
         }
@@ -239,7 +239,7 @@ public class GuildHandler {
             }
             if (required != null && (current == null || current.money != required.money || current.resources != required.resources)) {
                 getDb().setInternalTaxRate(nation, required);
-                nationsMovedRate.put(nation, new AbstractMap.SimpleEntry<>(required, reason));
+                nationsMovedRate.put(nation, new KeyValue<>(required, reason));
             }
         }
         return nationsMovedRate;
@@ -746,7 +746,7 @@ public class GuildHandler {
     public Map.Entry<String, String> getRecruitMessagePair(DBNation to) {
         String subject = getDb().getOrThrow(GuildKey.RECRUIT_MESSAGE_SUBJECT);
         String message = getDb().getOrThrow(GuildKey.RECRUIT_MESSAGE_CONTENT);
-        return new AbstractMap.SimpleEntry<>(subject, message);
+        return new KeyValue<>(subject, message);
     }
 
     public MailApiResponse sendRecruitMessage(DBNation to) throws IOException {
@@ -2239,7 +2239,7 @@ public class GuildHandler {
         body.append("\nEnemy: " + MarkupUtil.markdownUrl(defender.getNation(), defender.getUrl()) + " | " + MarkupUtil.markdownUrl(defender.getAllianceName(), defender.getAllianceUrl()));
         body.append("\n- Cities: " + defender.getCities());
 
-        Map.Entry<Integer, Integer> res = war.getResistance(war.getAttacks2());
+        Map.Entry<Integer, Integer> res = war.getResistance(war.getAttacks3());
         int otherRes = war.isAttacker(attacker) ? res.getKey() : res.getValue();
         body.append("\nMy Resistance: " + otherRes);
 
@@ -2348,7 +2348,7 @@ public class GuildHandler {
         ByteBuffer meta = db.getMeta(userId, NationMeta.REFERRER);
         if (meta == null) return null;
 
-        return new AbstractMap.SimpleEntry<>(meta.getInt(), meta.getLong());
+        return new KeyValue<>(meta.getInt(), meta.getLong());
     }
 
     public void reward(DBNation referred, NationMeta meta, boolean onlyOnce, double[] amt, String message, Supplier<DBNation> referrerSupplier) {

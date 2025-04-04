@@ -22,6 +22,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.TriFunction;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -34,11 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.function.IntFunction;
-import java.util.function.ToIntBiFunction;
-import java.util.function.ToIntFunction;
+import java.util.function.*;
 import java.util.stream.Collectors;
 
 public class WarCostRanking extends Command {
@@ -226,53 +223,53 @@ public class WarCostRanking extends Command {
         String title = (damage && net ? "Net " : "Total ") + (typeName == null ? "" : typeName + " ") + (profit ? damage ? "damage" : "profit" : (unitKill != null ? "kills" : unitLoss != null ? "deaths" : (attType != null) ? "attacks" : "losses")) + " " + (average ? "per" : "of") + " war (%s)";
         title = String.format(title, diffStr);
 
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksEither(nationMap.keySet(), start, end);
-
-        GroupedRankBuilder<Integer, AbstractCursor> attackGroup = new RankBuilder<>(attacks)
-                .group((attack, map) -> {
+        GroupedRankBuilder<Integer, Map.Entry<DBWar, AbstractCursor>> attackGroup = new RankBuilder<>((Consumer<Consumer<Map.Entry<DBWar, AbstractCursor>>>) f ->
+                Locutus.imp().getWarDb().iterateAttacksEither(nationMap.keySet(), start, end, (war, a) -> f.accept(KeyValue.of(war, a))))
+                .group((entry, map) -> {
+                    AbstractCursor attack = entry.getValue();
                     if (nationMap.containsKey(attack.getAttacker_id())) {
-                        map.put(attack.getAttacker_id(), attack);
+                        map.put(attack.getAttacker_id(), entry);
                     }
                     if (nationMap.containsKey(attack.getDefender_id())) {
-                        map.put(attack.getDefender_id(), attack);
+                        map.put(attack.getDefender_id(), entry);
                     }
                 });
 
-        BiFunction<Boolean, AbstractCursor, Double> valueFunc;
+        TriFunction<Boolean, DBWar, AbstractCursor, Double> valueFunc;
         {
             double[] rssBuffer = ResourceType.getBuffer();
-            BiFunction<Boolean, AbstractCursor, Double> getValue = null;
+            TriFunction<Boolean, DBWar, AbstractCursor, Double> getValue = null;
             if (unitKill != null) {
                 MilitaryUnit finalUnit = unitKill;
-                getValue = (attacker, attack) -> (double) (!attacker ? attack.getAttUnitLosses(finalUnit) : attack.getDefUnitLosses(finalUnit));
+                getValue = (attacker, war, attack) -> (double) (!attacker ? attack.getAttUnitLosses(finalUnit) : attack.getDefUnitLosses(finalUnit));
             }
             if (unitLoss != null) {
                 if (getValue != null) throw new IllegalArgumentException("Cannot combine multiple type rankings (1)");
                 MilitaryUnit finalUnit = unitLoss;
-                getValue = (attacker, attack) -> (double) (attacker ? attack.getAttUnitLosses(finalUnit) : attack.getDefUnitLosses(finalUnit));
+                getValue = (attacker, war, attack) -> (double) (attacker ? attack.getAttUnitLosses(finalUnit) : attack.getDefUnitLosses(finalUnit));
             }
             if (attType != null) {
                 if (getValue != null) throw new IllegalArgumentException("Cannot combine multiple type rankings (2)");
                 AttackType finalAttType = attType;
-                getValue = (attacker, attack) -> attack.getAttack_type() == finalAttType ? 1d : 0d;
+                getValue = (attacker, war, attack) -> attack.getAttack_type() == finalAttType ? 1d : 0d;
             }
             if (resourceType != null) {
                 if (getValue != null) throw new IllegalArgumentException("Cannot combine multiple type rankings (3)");
                 double min = damage ? 0 : Double.NEGATIVE_INFINITY;
                 ResourceType finalResourceType = resourceType;
-                getValue = (attacker, attack) -> {
+                getValue = (attacker, war, attack) -> {
                     rssBuffer[finalResourceType.ordinal()] = 0;
-                    return Math.max(min, attack.addLosses(rssBuffer, attack.getWar(), attacker, units, infra, consumption, loot, buildings)[finalResourceType.ordinal()]);
+                    return Math.max(min, attack.addLosses(rssBuffer,war, attacker, units, infra, consumption, loot, buildings)[finalResourceType.ordinal()]);
                 };
             }
             if (getValue == null) {
-                getValue = (attacker, attack) -> {
+                getValue = (attacker, war, attack) -> {
                     if (!damage) {
-                        return attack.getLossesConverted(attack.getWar(), attacker, units, infra, consumption, loot, buildings);
+                        return attack.getLossesConverted(war, attacker, units, infra, consumption, loot, buildings);
                     } else {
                         Arrays.fill(rssBuffer, 0);
                         double total = 0;
-                        double[] losses = attack.addLosses(rssBuffer, attack.getWar(), attacker, units, infra, consumption, loot, buildings);
+                        double[] losses = attack.addLosses(rssBuffer, war, attacker, units, infra, consumption, loot, buildings);
                         for (ResourceType type : ResourceType.values) {
                             double val = losses[type.ordinal()];
                             if (val > 0) total += ResourceType.convertedTotal(type, val);
@@ -286,22 +283,26 @@ public class WarCostRanking extends Command {
 
         NumericMappedRankBuilder<Integer, Integer, Double> byNationMap;
         if (!damage) {
-            byNationMap = attackGroup.map((i, a) -> a.getWar_id(),
+            byNationMap = attackGroup.map((i, entry) -> entry.getValue().getWar_id(),
                     // Convert attack to profit value
-                    (nationdId, attack) -> {
+                    (nationdId, entry) -> {
+                        AbstractCursor attack = entry.getValue();
+                        DBWar war = entry.getKey();
                         DBNation nation = nationMap.get(nationdId);
-                        return nation != null ? scale(nation, sign * valueFunc.apply(attack.getAttacker_id() == nationdId, attack), scale, isAA) : 0;
+                        return nation != null ? scale(nation, sign * valueFunc.apply(attack.getAttacker_id() == nationdId, war, attack), scale, isAA) : 0;
                     });
         } else {
-            byNationMap = attackGroup.map((i, a) -> a.getWar_id(),
+            byNationMap = attackGroup.map((i, e) -> e.getValue().getWar_id(),
                     // Convert attack to profit value
-                    (nationdId, attack) -> {
+                    (nationdId, entry) -> {
+                        AbstractCursor attack = entry.getValue();
+                        DBWar war = entry.getKey();
                         DBNation nation = nationMap.get(nationdId);
                         if (nation == null) return 0d;
                         boolean primary = (attack.getAttacker_id() != nationdId) == profit;
-                        double total = valueFunc.apply(primary, attack);
+                        double total = valueFunc.apply(primary, war, attack);
                         if (net) {
-                            total -= valueFunc.apply(!primary, attack);
+                            total -= valueFunc.apply(!primary, war, attack);
                         }
                         return scale(nation, total, scale, isAA);
                     });

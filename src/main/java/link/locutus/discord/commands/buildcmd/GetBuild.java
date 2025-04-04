@@ -17,6 +17,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
@@ -58,7 +59,7 @@ public class GetBuild extends Command {
                     .append("```")
                     .append(cityEntry.getKey().toString())
                     .append("```");
-            buildStr.add(Map.entry(title, response.toString()));
+            buildStr.add(KeyValue.of(title, response.toString()));
         }
         if (buildStr.size() <= 4) {
             for (Map.Entry<String, String> build : buildStr) {

@@ -20,6 +20,7 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.TimeUtil;
@@ -213,14 +214,14 @@ public class TradeDB extends DBMainV2 {
                 Map.Entry<Double, Double> cashRange = getPriceRange(null);
                 double min = 1 * rssMin / cashRange.getValue();
                 double max = 1 * rssMax / cashRange.getKey();
-                return new AbstractMap.SimpleEntry<>(min, max);
+                return new KeyValue<>(min, max);
             }
 
             double cashMin = minPPU > 0 ? minPPU : Locutus.imp().getTradeManager().getLowAvg(getResource());
             double cashMax = maxPPU > 0 ? maxPPU : Locutus.imp().getTradeManager().getHighAvg(getResource());
             if (cashMin > cashMax) cashMin = cashMax;
             if (cashMax < cashMin) cashMax = cashMin;
-            return new AbstractMap.SimpleEntry<>(cashMin, cashMax);
+            return new KeyValue<>(cashMin, cashMax);
         }
 
         public BulkTradeOffer(BulkTradeOffer copy) {
@@ -334,7 +335,7 @@ public class TradeDB extends DBMainV2 {
             }
             if (isBuy) {
                 Map.Entry<Double, Double> range = getPriceRange(traderBuying);
-                return Map.entry(1 / range.getValue(), 1 / range.getKey());
+                return KeyValue.of(1 / range.getValue(), 1 / range.getKey());
             } else {
                 Map.Entry<Double, Double> range = getPriceRange(traderSelling);
                 return range;

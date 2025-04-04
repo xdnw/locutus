@@ -39,7 +39,7 @@ import static link.locutus.discord.commands.manager.v2.impl.pw.binding.Permissio
 import static link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.getCounterChance;
 
 public class IAEndpoints extends PageHelper {
-    @Command
+    @Command(viewable = true)
     @IsMemberIngameOrDiscord
     @ReturnType(value = WebAudits.class, cache = CacheType.SessionStorage, duration = 30)
     public Object my_audits(@Me GuildDB db, @Me DBNation nation) throws IOException, ExecutionException, InterruptedException {
@@ -62,7 +62,7 @@ public class IAEndpoints extends PageHelper {
         return audits;
     }
 
-    @Command
+    @Command(viewable = true)
     @IsMemberIngameOrDiscord
     @ReturnType(value = WebAnnouncements.class, cache = CacheType.SessionStorage, duration = 30)
     public Object announcements(@Me GuildDB db, @Me DBNation nation) {
@@ -79,7 +79,7 @@ public class IAEndpoints extends PageHelper {
         return result;
     }
 
-    @Command
+    @Command(viewable = true)
     @IsMemberIngameOrDiscord
     @ReturnType(value = WebAnnouncements.class)
     public Object announcement_titles(@Me GuildDB db, @Me DBNation nation, @Switch("r") boolean read) {
@@ -96,7 +96,7 @@ public class IAEndpoints extends PageHelper {
         return result;
     }
 
-    @Command
+    @Command(viewable = true)
     @IsMemberIngameOrDiscord
     @ReturnType(value = WebAnnouncement.class, cache = CacheType.SessionStorage)
     public Object view_announcement(@Me GuildDB db, @Me DBNation nation, int ann_id) {
@@ -136,13 +136,13 @@ public class IAEndpoints extends PageHelper {
         return success();
     }
 
-    @Command
+    @Command(viewable = true)
     @IsMemberIngameOrDiscord
     @ReturnType(WebInt.class)
     public WebInt unread_count(@Me GuildDB db, @Me DBNation nation) {
         return new WebInt(db.getPlayerAnnouncementsByNation(nation.getNation_id(), true).size());
     }
-    @Command
+    @Command(viewable = true)
     @IsMemberIngameOrDiscord
     @ReturnType(WebBankAccess.class)
     public Object bank_access(@Me GuildDB db, @Me DBNation nation, @Me @Default User user) {
@@ -199,7 +199,7 @@ public class IAEndpoints extends PageHelper {
     }
 
 
-    @Command
+    @Command(viewable = true)
     @IsMemberIngameOrDiscord
     @ReturnType(WebBalance.class)
     public WebBalance balance(@Me GuildDB db, @Me DBNation me, @Me @Default User user, @Default DBNation nation) {
@@ -236,7 +236,7 @@ public class IAEndpoints extends PageHelper {
         return result;
     }
 //
-    @Command
+    @Command(viewable = true)
     @ReturnType(WebTargets.class)
     public WebTargets raid(@Me @Default GuildDB db, @Me @Default DBNation me, @Me @Default User user,
                                     @Default DBNation nation,
@@ -285,7 +285,7 @@ public class IAEndpoints extends PageHelper {
         return result;
     }
 
-    @Command
+    @Command(viewable = true)
     @ReturnType(WebTargets.class)
     public WebTargets unprotected(@Me @Default GuildDB db, @Me @Default DBNation me, @Default @Me User user,
                            @Default DBNation nation,
@@ -333,7 +333,7 @@ public class IAEndpoints extends PageHelper {
         return result;
     }
 
-    @Command
+    @Command(viewable = true)
     @IsMemberIngameOrDiscord
     @ReturnType(WebTable.class)
     public Object records(@Me GuildDB db, @Me @Default User user, @Me DBNation me, @Default DBNation nation) {
@@ -346,7 +346,7 @@ public class IAEndpoints extends PageHelper {
         return new WebTable(cells, null, null);
     }
 
-    @Command
+    @Command(viewable = true)
     @IsMemberIngameOrDiscord
     @ReturnType(WebMyWars.class)
     public WebMyWars my_wars(@Me GuildDB db, @Me DBNation nation) {

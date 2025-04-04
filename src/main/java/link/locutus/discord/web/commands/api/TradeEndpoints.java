@@ -20,7 +20,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class TradeEndpoints {
-    @Command
+    @Command(viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph tradePriceByDayJson(link.locutus.discord.db.TradeDB tradeDB, TradeManager manager, Set<ResourceType> resources, @Range(min = 1) int days) {
         resources.remove(ResourceType.MONEY);

@@ -28,7 +28,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
 import java.nio.ByteBuffer;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Map;
@@ -176,6 +176,6 @@ public class BankUpdateProcessor {
         body.append("\n").append("Date: " + TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(transfer.tx_datetime)));
         body.append("\n").append(ResourceType.toString(transfer.resources));
 
-        return new AbstractMap.SimpleEntry<>(title, body.toString());
+        return new KeyValue<>(title, body.toString());
     }
 }

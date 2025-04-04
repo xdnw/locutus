@@ -60,7 +60,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -621,7 +621,7 @@ public class GPTCommands {
                 String text = "# " + parser.getNameDescriptionAndExamples(true, false,true, false);
                 int length = provider.getSize(text);
                 if (remaining < length) return null;
-                return Map.entry(text, length);
+                return KeyValue.of(text, length);
             }
         };
 
@@ -806,7 +806,7 @@ public class GPTCommands {
                 }
 
                 for (TextChannel channel : toRename) {
-                    emojis.put(channel, new AbstractMap.SimpleEntry<>(emoji, desc));
+                    emojis.put(channel, new KeyValue<>(emoji, desc));
                 }
             }
 

@@ -19,6 +19,7 @@ import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.scheduler.TriFunction;
 import org.apache.commons.lang3.tuple.Triple;
 
@@ -104,8 +105,7 @@ public class AttackCost {
                                                  Predicate<AttackType> attackTypeFilter,
                                                  Predicate<AbstractCursor> preliminaryFilter,
                                                  Predicate<AbstractCursor> attackFilter,
-                                                 BiConsumer<AbstractCursor,
-                                                         BiConsumer<AbstractCursor, T>> groupBy,
+                                                 TriConsumer<DBWar, AbstractCursor, TriConsumer<DBWar, AbstractCursor, T>> groupBy,
 TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCost, Boolean>> addCost
                                                  ) {
         if (attackFilter == null) attackFilter = f -> true;
@@ -126,7 +126,7 @@ TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCo
             }
         };
 
-        BiConsumer<AbstractCursor, T> addAttack = (attack, group) -> {
+        TriConsumer<DBWar, AbstractCursor, T> addAttack = (war, attack, group) -> {
             Map.Entry<AttackCost, Boolean> costEntry = addCost.apply(
                     new Function<Boolean, AttackCost>() {
                         @Override
@@ -145,21 +145,21 @@ TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCo
             );
             if (costEntry != null) {
                 AttackCost cost = costEntry.getKey();
-                cost.addCost(attack, attack.getWar(), costEntry.getValue());
+                cost.addCost(attack, war, costEntry.getValue());
             }
         };
 
         Predicate<AbstractCursor> finalAttackFilter = attackFilter;
-        Locutus.imp().getWarDb().iterateAttacks(wars, attackTypeFilter, preliminaryFilter,
-        new Consumer<AbstractCursor>() {
-            @Override
-            public void accept(AbstractCursor attack) {
-                if (finalAttackFilter.test(attack)) {
-                    groupBy.accept(attack, addAttack);
-                }
+        Locutus.imp().getWarDb().iterateAttacks(wars, attackTypeFilter, preliminaryFilter, (war, attack) -> {
+            if (finalAttackFilter.test(attack)) {
+                groupBy.accept(war, attack, addAttack);
             }
         });
         return resultByGroup;
+    }
+
+    public AttackCost(DBWar war, boolean buildings, boolean ids, boolean victories, boolean wars, boolean inclAttacks) {
+        this(PW.getName(war.getAttacker_id(), false), PW.getName(war.getDefender_id(), false), buildings, ids, victories, wars, inclAttacks);
     }
 
     public AttackCost(String nameA, String nameB, boolean buildings, boolean ids, boolean victories, boolean wars, boolean attacks) {
@@ -320,25 +320,19 @@ TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCo
         return attacker ? victories1 : victories2;
     }
 
-    public void addCost(Collection<AbstractCursor> attacks, DBWar war, Function<AbstractCursor, Boolean> isPrimary, Function<AbstractCursor, Boolean> isSecondary) {
+    public void addCost(Collection<AbstractCursor> attacks, DBWar war, BiFunction<DBWar, AbstractCursor, Boolean> isPrimary, BiFunction<DBWar, AbstractCursor, Boolean> isSecondary) {
         for (AbstractCursor attack : attacks) {
             addCost(attack, war, isPrimary, isSecondary);
         }
     }
 
-    public void addCost(Collection<AbstractCursor> attacks, Function<AbstractCursor, Boolean> isPrimary, Function<AbstractCursor, Boolean> isSecondary) {
-        for (AbstractCursor attack : attacks) {
-            addCost(attack, attack.getWar(), isPrimary, isSecondary);
-        }
-    }
-
     public void addCost(AbstractCursor attack, DBWar war, boolean isAttacker) {
-        addCost(attack, war, p -> isAttacker, p -> !isAttacker);
+        addCost(attack, war, (w, p) -> isAttacker, (w, p) -> !isAttacker);
     }
 
-    public void addCost(AbstractCursor attack, DBWar war, Function<AbstractCursor, Boolean> isPrimary, Function<AbstractCursor, Boolean> isSecondary) {
-        boolean primary = isPrimary.apply(attack);
-        boolean secondary = isSecondary.apply(attack);
+    public void addCost(AbstractCursor attack, DBWar war, BiFunction<DBWar, AbstractCursor, Boolean> isPrimary, BiFunction<DBWar, AbstractCursor, Boolean> isSecondary) {
+        boolean primary = isPrimary.apply(war, attack);
+        boolean secondary = isSecondary.apply(war, attack);
 
         if (primary || secondary) {
             if (victories1 != null && attack.getAttack_type() == AttackType.VICTORY) {

@@ -25,7 +25,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class TaxEndpoints {
-    @Command(desc = "Show cumulative tax expenses over a period by nation/bracket")
+    @Command(desc = "Show cumulative tax expenses over a period by nation/bracket", viewable = true)
     @IsAlliance
     @RolePermission(Roles.ECON_STAFF)
     @ReturnType(TaxExpenses.class)

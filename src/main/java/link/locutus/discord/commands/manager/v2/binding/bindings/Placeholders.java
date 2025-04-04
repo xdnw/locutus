@@ -30,6 +30,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.math.LazyMathEntity;
 import link.locutus.discord.util.math.ReflectionUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -96,7 +97,7 @@ public abstract class Placeholders<T, M> extends BindingHelper {
             Object selection = args.remove("");
             Object[] parsed = createModifier.parseArgumentMap2(args, store, validators, permisser, true);
             M modifierVal = (M) createModifier.call(this, store, parsed);
-            return Map.entry((String) selection, modifierVal);
+            return KeyValue.of((String) selection, modifierVal);
         }
         return null;
     }
@@ -950,7 +951,7 @@ public abstract class Placeholders<T, M> extends BindingHelper {
 //                ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
 //                List<Member> options = new ArrayList<>(guild.getMembers());
 //
-//                return multipleSelect(param, options, t -> new AbstractMap.SimpleEntry<>(t.getEffectiveName(), t.getAsMention()), true);
+//                return multipleSelect(param, options, t -> new KeyValue<>(t.getEffectiveName(), t.getAsMention()), true);
 //            }));
 //        });
 //        List<Coalition> options = Arrays.asList(Coalition.values());
@@ -1065,7 +1066,7 @@ public abstract class Placeholders<T, M> extends BindingHelper {
 //        Function<T, Object> func;
 //        ParametricCallable finalCmdObj = cmdObj;
 //        func = obj -> finalCmdObj.call(obj, store, arguments);
-//        return new AbstractMap.SimpleEntry<>(cmdObj.getReturnType(), func);
+//        return new KeyValue<>(cmdObj.getReturnType(), func);
 //    }
 
     public CommandGroup getCommands() {

@@ -14,6 +14,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public class AttackTypeBreakdown {
@@ -36,20 +37,13 @@ public class AttackTypeBreakdown {
         return (primary ? mapA : mapB).getOrDefault(category, 0);
     }
 
-    public void addAttack(AbstractCursor attack, boolean isAttacker) {
-        addAttack(attack, p -> isAttacker, p -> !isAttacker);
+    public void addAttack(DBWar war, AbstractCursor attack, boolean isAttacker) {
+        addAttack(war, attack, (w, a) -> isAttacker, (w, a) -> !isAttacker);
     }
 
-    public AttackTypeBreakdown addAttacks(Collection<AbstractCursor> attacks, Function<AbstractCursor, Boolean> isPrimary, Function<AbstractCursor, Boolean> isSecondary) {
-        for (AbstractCursor attack : attacks) {
-            addAttack(attack, isPrimary, isSecondary);
-        }
-        return this;
-    }
-
-    public AttackTypeBreakdown addAttack(AbstractCursor attack, Function<AbstractCursor, Boolean> isPrimary, Function<AbstractCursor, Boolean> isSecondary) {
-        boolean primary = isPrimary.apply(attack);
-        boolean secondary = isSecondary.apply(attack);
+    public AttackTypeBreakdown addAttack(DBWar war, AbstractCursor attack, BiFunction<DBWar, AbstractCursor, Boolean> isPrimary, BiFunction<DBWar, AbstractCursor, Boolean> isSecondary) {
+        boolean primary = isPrimary.apply(war, attack);
+        boolean secondary = isSecondary.apply(war, attack);
         if (!primary && !secondary) return this;
 
         Map<AttackTypeSubCategory, Integer> map = primary ? mapA : mapB;

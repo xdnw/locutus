@@ -65,17 +65,16 @@ public class WarLossesPerCity extends Command {
         double[] buffer = ResourceType.getBuffer();
         Map<Integer, Double> totals = new HashMap<>();
         Map<Integer, Integer> counters = new HashMap<>();
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksEither(nationMap.keySet(), cutoffMs);
-        for (AbstractCursor attack : attacks) {
+        Locutus.imp().getWarDb().iterateAttacksEither(nationMap.keySet(), cutoffMs, (war, attack) -> {
             if (attack.getVictor() != 0) {
                 if (nationMap.containsKey(attack.getDefender_id())) {
                     Arrays.fill(buffer, 0d);
-                    double defLoss = attack.getDefLossValue(attack.getWar());
+                    double defLoss = attack.getDefLossValue(war);
                     totals.put(attack.getDefender_id(), totals.getOrDefault(attack.getDefender_id(), 0d) + defLoss);
                     counters.put(attack.getDefender_id(), counters.getOrDefault(attack.getDefender_id(), 0) + 1);
                 }
             }
-        }
+        });
 
         List<Map.Entry<Integer, Double>> sorted = new ArrayList<>(totals.entrySet())
                 .stream()

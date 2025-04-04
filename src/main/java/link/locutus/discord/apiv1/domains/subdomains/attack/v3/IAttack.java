@@ -105,7 +105,7 @@ public interface IAttack {
     default List<AbstractCursor> getWarAttacks(boolean load) {
         DBWar war = getWar();
         if (war == null) return Collections.emptyList();
-        return war.getAttacks2(load);
+        return war.getAttacks3(load);
     }
 
     default List<AbstractCursor> getPriorAttacks(boolean load) {

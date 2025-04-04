@@ -11,7 +11,7 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.requests.restaction.pagination.AuditLogPaginationAction;
 
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -57,7 +57,7 @@ public class PNWUser {
                             if (kick.getTargetType() != TargetType.MEMBER) continue;
 
                             if (kick.getTargetIdLong() == getDiscordId()) {
-                                guildResult.add(new AbstractMap.SimpleEntry<>(ActionType.KICK, kick.getReason()));
+                                guildResult.add(new KeyValue<>(ActionType.KICK, kick.getReason()));
                             }
                         }
 
@@ -66,7 +66,7 @@ public class PNWUser {
                             if (ban.getTargetType() != TargetType.MEMBER) continue;
 
                             if (ban.getTargetIdLong() == getDiscordId()) {
-                                guildResult.add(new AbstractMap.SimpleEntry<>(ActionType.BAN, ban.getReason()));
+                                guildResult.add(new KeyValue<>(ActionType.BAN, ban.getReason()));
                             }
                         }
                     }

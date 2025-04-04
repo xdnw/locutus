@@ -104,13 +104,6 @@ public class Disperse extends Command {
 
         String arg = args.get(0);
         List<DBNation> nations = new ArrayList<>(DiscordUtil.parseNations(guild, author, me, arg, false, false));
-        if (nations.size() != 1 || !flags.contains('b')) {
-            nations.removeIf(n -> n.getPosition() <= 1);
-            nations.removeIf(n -> n.getVm_turns() != 0);
-            nations.removeIf(n -> n.active_m() > 2880);
-            nations.removeIf(n -> n.isGray() && n.getOff() == 0);
-            nations.removeIf(n -> n.isBeige() && n.getCities() <= 4);
-        }
         if (nations.isEmpty()) {
             return "No nations found (add `-b` to force send)";
         }

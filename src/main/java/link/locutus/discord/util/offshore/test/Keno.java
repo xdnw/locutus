@@ -7,6 +7,7 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.Auth;
+import link.locutus.discord.util.scheduler.KeyValue;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -90,7 +91,7 @@ public class Keno {
                     response.append('\n').append(element.text());
                 }
 
-                return Map.entry(picks, response.toString());
+                return KeyValue.of(picks, response.toString());
             }
         }, auth);
     }

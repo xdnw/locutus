@@ -10,6 +10,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
@@ -104,7 +105,7 @@ public class QuestionCommand<T extends Question> extends Command {
         if (options.length == 0) {
             cmdBase += " Y";
             String emoji = "Next";
-            labelCommandList.add(Map.entry(emoji, cmdBase));
+            labelCommandList.add(KeyValue.of(emoji, cmdBase));
 
             body += "\n\nPress `" + emoji + "` to continue";
         } else {
@@ -113,7 +114,7 @@ public class QuestionCommand<T extends Question> extends Command {
                 if (option.length() == 1 && Character.isLetter(option.charAt(0))) {
                     emojo = "\uD83C" + ((char) ('\uDDE6' + (Character.toLowerCase(option.charAt(0)) - 'a')));
                 }
-                labelCommandList.add(Map.entry(emojo, cmdBase + " \"" + option + "\""));
+                labelCommandList.add(KeyValue.of(emojo, cmdBase + " \"" + option + "\""));
             }
         }
 

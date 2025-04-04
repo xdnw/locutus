@@ -11,7 +11,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -83,7 +83,7 @@ public interface NationOrAllianceOrGuild extends NationOrAllianceOrGuildOrTaxid 
             sender_id = getId();
             sender_type = 1;
         } else throw new IllegalArgumentException("Invalid receiver: " + this);
-        return new AbstractMap.SimpleEntry<>(sender_id, sender_type);
+        return new KeyValue<>(sender_id, sender_type);
     }
 
     default Set<DBNation> getMemberDBNations() {

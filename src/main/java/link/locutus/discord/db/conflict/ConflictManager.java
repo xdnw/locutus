@@ -31,6 +31,7 @@ import link.locutus.discord.event.war.WarCreateEvent;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.web.jooby.AwsManager;
@@ -339,7 +340,7 @@ public class ConflictManager {
     @Subscribe
     public void onAttack(AttackEvent event) {
         AbstractCursor attack = event.getAttack();
-        DBWar war = attack.getWar();
+        DBWar war = event.getWar();
         if (war != null) {
             updateAttack(war, attack, f -> true, f -> {
                 AttackTypeSubCategory cat = f.getSubCategory(DBNation::getActive_m);
@@ -1536,7 +1537,7 @@ public class ConflictManager {
                 similar = entry.getValue();
             }
         }
-        return distance == Integer.MAX_VALUE ? null : Map.entry(similar, distance);
+        return distance == Integer.MAX_VALUE ? null : KeyValue.of(similar, distance);
     }
 
     public void updateConflictCategory(int conflictId, ConflictCategory category) {

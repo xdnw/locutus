@@ -52,7 +52,7 @@ import org.jsoup.internal.StringUtil;
 
 import java.awt.Color;
 import java.nio.charset.StandardCharsets;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -624,7 +624,6 @@ public class DiscordUtil {
     public static Map<String, String> getReactions(MessageEmbed embed) {
         MessageEmbed.ImageInfo img = embed.getImage();
         MessageEmbed.Thumbnail thumb = embed.getThumbnail();
-
         if (thumb == null && img == null) {
             return null;
         }
@@ -677,7 +676,7 @@ public class DiscordUtil {
         }
         start = Math.max(1, start);
         end = Math.min(70, end);
-        return new AbstractMap.SimpleEntry<>(start, end);
+        return new KeyValue<>(start, end);
     }
 
     public static Map<Integer, Set<Role>> getCityRoles(Collection<Role> roles) {
