@@ -88,7 +88,7 @@ public class WarDB extends DBMainV2 {
 
     public WarDB(String name) throws SQLException {
         super(Settings.INSTANCE.DATABASE, name);
-//        reserializedVictoryAttacks();
+        reserializedVictoryAttacks();
     }
 
     public void resaveVictoryAttacks() {
@@ -98,8 +98,7 @@ public class WarDB extends DBMainV2 {
         long[] last = new long[]{System.currentTimeMillis()};
 
         int[] saved = {0};
-        String keyHex = _Custom.key_remove;
-        PoliticsAndWarV3 api = new PoliticsAndWarV3("https://api.politicsandwar.com", ApiKeyPool.builder().addKey(295328, keyHex).build());
+        PoliticsAndWarV3 api = new PoliticsAndWarV3("https://api.politicsandwar.com", ApiKeyPool.builder().addKey(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.API_KEY_PRIMARY).build());
         System.out.println("STARTING ATTACKS");
         api.fetchAttacks(ATTACKS_PER_PAGE, new Consumer<WarattacksQueryRequest>() {
             @Override
