@@ -2070,4 +2070,10 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     public double getCumulativeRevenueValue(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
         return ResourceType.convertedTotal(getCumulativeRevenue(store, start, end));
     }
+
+    @Command(desc = "Days since the alliance was created (decimal)")
+    public double getAgeDays() {
+        long now = System.currentTimeMillis();
+        return (now - getDateCreated()) / (double) TimeUnit.DAYS.toMillis(1);
+    }
 }

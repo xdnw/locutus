@@ -10,6 +10,8 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
+import link.locutus.discord._test._Custom;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.WarAttacksContainer;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AttackCursorFactory;
@@ -68,6 +70,8 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static link.locutus.discord.apiv3.PoliticsAndWarV3.ATTACKS_PER_PAGE;
+
 public class WarDB extends DBMainV2 {
 
 
@@ -84,6 +88,97 @@ public class WarDB extends DBMainV2 {
 
     public WarDB(String name) throws SQLException {
         super(Settings.INSTANCE.DATABASE, name);
+//        reserializedVictoryAttacks();
+    }
+
+    public void resaveVictoryAttacks() {
+        List<AttackEntry> entries = new ObjectArrayList<>();
+        AttackCursorFactory loader = new AttackCursorFactory(this);
+
+        long[] last = new long[]{System.currentTimeMillis()};
+
+        int[] saved = {0};
+        String keyHex = _Custom.key_remove;
+        PoliticsAndWarV3 api = new PoliticsAndWarV3("https://api.politicsandwar.com", ApiKeyPool.builder().addKey(295328, keyHex).build());
+        System.out.println("STARTING ATTACKS");
+        api.fetchAttacks(ATTACKS_PER_PAGE, new Consumer<WarattacksQueryRequest>() {
+            @Override
+            public void accept(WarattacksQueryRequest request) {
+
+            }
+        }, api.warAttackInfo(), f -> PoliticsAndWarV3.ErrorResponse.THROW, new Predicate<WarAttack>() {
+            @Override
+            public boolean test(WarAttack warAttack) {
+                if (warAttack.getType() != com.politicsandwar.graphql.model.AttackType.VICTORY) return false;
+                saved[0]++;
+                AbstractCursor cursor = loader.load(warAttack, true);
+
+                long now = System.currentTimeMillis();
+                if (now - last[0] > TimeUnit.SECONDS.toMillis(15)) {
+                    last[0] = now;
+                    Logg.text("Loading attacks " + new Date(cursor.getDate()) + " | " + cursor.getWar_id() + " | saved=" + saved[0] + " | " + entries.size());
+                    if (entries.size() > 0) {
+                        saveAttacksDb(entries);
+                        entries.clear();
+                    }
+                }
+
+                byte[] newData = loader.toBytes(cursor);
+                entries.add(new AttackEntry(cursor.getWar_attack_id(), cursor.getWar_id(), cursor.getAttacker_id(), cursor.getDefender_id(), cursor.getDate(), newData));
+
+                return false;
+            }
+        });
+
+        if (entries.size() > 0) {
+            saveAttacksDb(entries);
+            entries.clear();
+        }
+        Logg.text("Done loading attacks");
+    }
+
+    private void reserializedVictoryAttacks() {
+        AttackCursorFactory loader = new AttackCursorFactory(this);
+        DBWar dummy = new DBWar(0, 2, 1, 0, 0, WarType.RAID, WarStatus.ATTACKER_VICTORY, 0, 0, 0, 0);
+
+        System.out.println(":||Remove Loading attacks");
+        List<AttackEntry> toSave = new ArrayList<>();
+        String query = "SELECT * FROM `attacks3`";
+
+        double total = 0;
+        double total2 = 0;
+
+        try (PreparedStatement stmt = getConnection().prepareStatement(query)) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    byte[] data = rs.getBytes("data");
+                    int warId = rs.getInt("war_id");
+                    int attackerId = rs.getInt("attacker_nation_id");
+                    int defenderId = rs.getInt("defender_nation_id");
+                    AbstractCursor cursor = loader.loadWithTypeVictoryLegacy(dummy, data, true);
+                    if (cursor == null) {
+                         continue;
+                    }
+                    total += cursor.getInfra_destroyed_value();
+
+                    byte[] newData = loader.toBytes(cursor);
+                    AbstractCursor validate = loader.load(dummy, newData, true);
+                    if (Math.round(validate.getInfra_destroyed_value() * 100) != Math.round(cursor.getInfra_destroyed_value() * 100)) {
+                        System.out.println("Infra destroyed value mismatch " + validate.getInfra_destroyed_value() + " | " + cursor.getInfra_destroyed_value());
+                        System.exit(0);
+                    }
+                    toSave.add(new AttackEntry(cursor.getWar_attack_id(), warId, attackerId, defenderId, cursor.getDate(), newData));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        System.out.println("Total damage : " + MathMan.format(total));
+
+        System.out.println(":||Remove Saving attacks " + toSave.size());
+        saveAttacksDb(toSave);
+        System.out.println(":||Remove Done saving attacks");
+
     }
 
     public List<DBAttack> getLegacyVictory() {
@@ -2509,6 +2604,10 @@ public class WarDB extends DBMainV2 {
             }
         }
 
+        saveAttacksDb(toSave);
+    }
+
+    private void saveAttacksDb(Collection<AttackEntry> toSave) {
         // String query = "INSERT OR IGNORE INTO `ATTACKS3` (`war_id`, `attacker_nation_id`, `defender_nation_id`, `date`, `data`) VALUES (?, ?, ?, ?, ?)";
         String query = "INSERT OR REPLACE INTO `ATTACKS3` (`id`, `war_id`, `attacker_nation_id`, `defender_nation_id`, `date`, `data`) VALUES (?, ?, ?, ?, ?, ?)";
         executeBatch(toSave, query, new ThrowingBiConsumer<AttackEntry, PreparedStatement>() {

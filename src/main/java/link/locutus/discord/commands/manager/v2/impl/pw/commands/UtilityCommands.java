@@ -639,11 +639,21 @@ public class UtilityCommands {
         }
 
         {
+            Function<Integer, String> getName = f -> {
+                DBAlliance alliance = DBAlliance.getOrCreate(f);
+                if (alliance == null) return "AA:" + f;
+                String text = alliance.getMarkdownUrl();
+                if (alliance.isValid()) {
+                    text += " (" + alliance.getAgeDays() + "d)";
+                }
+                return text;
+            };
+
             StringBuilder response = new StringBuilder();
             if (!offshoresWar.isEmpty()) {
                 response.append("Attacking us:\n");
                 for (Map.Entry<Integer, Integer> entry : offshoresWar.entrySet()) {
-                    response.append(PW.getName(entry.getKey(), true) + " <" + PW.getAllianceUrl(entry.getKey()) + "> attacking " + PW.getName(entry.getValue(), true) + "\n");
+                    response.append(PW.getName(entry.getKey(), true) + " " + getName.apply(entry.getKey()) + " attacking " + PW.getName(entry.getValue(), true) + "\n");
                 }
                 response.append("\n");
             }
@@ -651,7 +661,7 @@ public class UtilityCommands {
             if (!offshoresTreaty.isEmpty()) {
                 response.append("Has treaty:\n");
                 for (Map.Entry<Integer, Integer> entry : offshoresTreaty.entrySet()) {
-                    response.append(PW.getName(entry.getKey(), true) + " <" + PW.getAllianceUrl(entry.getKey()) + "> treatied " + PW.getName(entry.getValue(), true) + "\n");
+                    response.append(PW.getName(entry.getKey(), true) + " <" + getName.apply(entry.getKey()) + "> treatied " + PW.getName(entry.getValue(), true) + "\n");
                 }
                 response.append("\n");
             }
@@ -659,7 +669,7 @@ public class UtilityCommands {
             if (!offshoresOfficer.isEmpty()) {
                 response.append("Former Officer:\n");
                 for (Map.Entry<Integer, Integer> entry : offshoresOfficer.entrySet()) {
-                    response.append(PW.getName(entry.getKey(), true) + " <" + PW.getAllianceUrl(entry.getKey()) + "> formerly officer in " + PW.getName(entry.getValue(), true) + "\n");
+                    response.append(PW.getName(entry.getKey(), true) + " <" + getName.apply(entry.getKey()) + "> formerly officer in " + PW.getName(entry.getValue(), true) + "\n");
                 }
                 response.append("\n");
             }
@@ -667,7 +677,7 @@ public class UtilityCommands {
             if (!offshoresMember.isEmpty()) {
                 response.append("Former Member:\n");
                 for (Map.Entry<Integer, Integer> entry : offshoresMember.entrySet()) {
-                    response.append(PW.getName(entry.getKey(), true) + " <" + PW.getAllianceUrl(entry.getKey()) + "> formerly member in " + PW.getName(entry.getValue(), true) + "\n");
+                    response.append(PW.getName(entry.getKey(), true) + " <" + getName.apply(entry.getKey()) + "> formerly member in " + PW.getName(entry.getValue(), true) + "\n");
                 }
                 response.append("\n");
             }
