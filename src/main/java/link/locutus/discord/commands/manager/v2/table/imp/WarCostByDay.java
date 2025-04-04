@@ -16,6 +16,7 @@ import link.locutus.discord.commands.manager.v2.table.TimeDualNumericTable;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
 import link.locutus.discord.db.entities.AttackCost;
+import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarParser;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.pnw.NationOrAlliance;
@@ -57,24 +58,20 @@ public class WarCostByDay extends SimpleTable<AttackCost> {
                 .allowedAttackTypes(allowedAttackTypes)
                 .allowedSuccessTypes(allowedVictoryTypes);
 
-        List<AbstractCursor> attacks = parser.getAttacks();
-
         this.warCostByDay = new Long2ObjectLinkedOpenHashMap<>();
 
-        attacks.sort(Comparator.comparingLong(o -> o.getDate()));
-
-        Function<AbstractCursor, Boolean> isPrimary = parser.getAttackPrimary();
-        Function<AbstractCursor, Boolean> isSecondary = parser.getAttackSecondary();
+        BiFunction<DBWar, AbstractCursor, Boolean> isPrimary = parser.getAttackPrimary();
+        BiFunction<DBWar, AbstractCursor, Boolean> isSecondary = parser.getAttackSecondary();
 
 
         long now = System.currentTimeMillis();
-        for (AbstractCursor attack : attacks) {
-            if (attack.getDate() > now) continue;
+        parser.getAttacks().accept((war, attack) -> {
+            if (attack.getDate() > now) return;
             long turn = TimeUtil.getTurn(attack.getDate());
             long day = turn / 12;
             AttackCost cost = warCostByDay.computeIfAbsent(day, f -> new AttackCost(col1Str, col2Str, type == WarCostByDayMode.BUILDING, false, false, false, type.isAttackType));
-            cost.addCost(attack, attack.getWar(), Objects.requireNonNull(isPrimary), Objects.requireNonNull(isSecondary));
-        }
+            cost.addCost(attack, war, Objects.requireNonNull(isPrimary), Objects.requireNonNull(isSecondary));
+        });
 
         this.min = Collections.min(warCostByDay.keySet());
         this.max = Collections.max(warCostByDay.keySet());

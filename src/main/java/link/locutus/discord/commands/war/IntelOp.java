@@ -16,7 +16,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -124,7 +124,7 @@ public class IntelOp extends Command {
             Map.Entry<Double, Boolean> opValue = enemy.getIntelOpValue();
             if (opValue != null) {
                 List<Map.Entry<DBNation, Double>> list = opValue.getValue() ? outDated : noData;
-                list.add(new AbstractMap.SimpleEntry<>(enemy, opValue.getKey()));
+                list.add(new KeyValue<>(enemy, opValue.getKey()));
             }
         }
 

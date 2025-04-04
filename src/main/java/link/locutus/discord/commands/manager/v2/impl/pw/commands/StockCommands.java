@@ -27,7 +27,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -274,7 +274,7 @@ public class StockCommands {
                 equals.add("**" + name + "**");
             } else if (entry.getKey().toLowerCase().contains(filter)) {
                 double distance = StringMan.distanceWeightedQwertSift4(filter, name.toLowerCase());
-                matches.add(new AbstractMap.SimpleEntry<>(nameBold, distance));
+                matches.add(new KeyValue<>(nameBold, distance));
             } else if (exchange.description.toLowerCase().matches(".*\b" + filter + "\b.*")) {
                 desc.add(exchange.symbol);
             }

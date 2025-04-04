@@ -39,7 +39,7 @@ import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 
 import java.awt.Font;
 import java.awt.GraphicsEnvironment;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -171,13 +171,13 @@ public class DiscordWebBindings extends WebBindingHelper {
     @HtmlInput
     @Binding(types = CommandBehavior.class)
     public String cmdBehavior(@Default ParameterData param) {
-        return multipleSelect(param, Arrays.asList(CommandBehavior.values()), rank -> new AbstractMap.SimpleEntry<>(rank.name(), rank.name()));
+        return multipleSelect(param, Arrays.asList(CommandBehavior.values()), rank -> new KeyValue<>(rank.name(), rank.name()));
     }
 
     @HtmlInput
     @Binding(types = ImageType.class)
     public String ImageType(@Default ParameterData param) {
-        return multipleSelect(param, Arrays.asList(ImageType.values()), rank -> new AbstractMap.SimpleEntry<>(rank.name(), rank.name()));
+        return multipleSelect(param, Arrays.asList(ImageType.values()), rank -> new KeyValue<>(rank.name(), rank.name()));
     }
 
     @HtmlInput
@@ -245,7 +245,7 @@ public class DiscordWebBindings extends WebBindingHelper {
     @Binding(types = Font.class)
     public String Font(@Default ParameterData param) {
         String[] fonts = GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
-        return multipleSelect(param, Arrays.asList(fonts), f -> new AbstractMap.SimpleEntry<>(f, f));
+        return multipleSelect(param, Arrays.asList(fonts), f -> new KeyValue<>(f, f));
     }
 
     @HtmlInput

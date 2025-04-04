@@ -202,7 +202,7 @@
 //                                continue;
 //                            }
 //                        }
-//                        AbstractMap.SimpleEntry<Double, DBNation> pair = new AbstractMap.SimpleEntry<>(factor, nation);
+//                        AbstractMap.SimpleEntry<Double, DBNation> pair = new KeyValue<>(factor, nation);
 //                        fetchSpiesList.add(pair);
 //                    }
 //                }

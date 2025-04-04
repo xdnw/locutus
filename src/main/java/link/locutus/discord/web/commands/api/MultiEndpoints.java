@@ -22,7 +22,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 public class MultiEndpoints {
-    @Command
+    @Command(viewable = true)
     @ReturnType(MultiResult.class)
     public MultiResult multi_buster(@AllowDeleted DBNation nation, @Default Boolean forceUpdate) throws InterruptedException {
         synchronized (MultiEndpoints.class) {
@@ -36,7 +36,7 @@ public class MultiEndpoints {
     private static WeakReference<SnapshotMultiData> snapshotData = new WeakReference<>(null);
     private static WeakReference<Map<Integer, BigInteger>> uids = new WeakReference<>(null);
 
-    @Command
+    @Command(viewable = true)
     @ReturnType(AdvMultiReport.class)
     public AdvMultiReport multi_v2(@AllowDeleted DBNation nation, @Default Boolean forceUpdate) throws IOException, ParseException {
         synchronized (MultiEndpoints.class) {

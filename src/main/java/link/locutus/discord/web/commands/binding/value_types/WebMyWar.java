@@ -58,7 +58,7 @@ public class WebMyWar {
         this.gc = gc == 0 ? 0 : gc == self.getNation_id() ? 1 : -1;
         this.ground_str = (int) enemy.getGroundStrength(true, ac == 1);
 
-        List<AbstractCursor> attacks = war.getAttacks2();
+        List<AbstractCursor> attacks = war.getAttacks3();
         Map.Entry<Integer, Integer> map = war.getMap(attacks);
         this.att_map = map.getKey();
         this.def_map = map.getValue();

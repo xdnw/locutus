@@ -97,7 +97,7 @@ generateTypeScript {
     nullableAnnotations = ['org.checkerframework.checker.nullness.qual.Nullable']
     nullabilityDefinition = 'undefinedInlineUnion'
     // set output file
-    outputFile = file('../lc_cmd_react/src/components/api/apitypes.d.ts')
+    outputFile = file('../lc_cmd_react/src/lib/apitypes.d.ts')
 }
 
 publishing {

@@ -1,7 +1,7 @@
 package link.locutus.discord.util.task.war;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.SuccessType;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -19,9 +19,6 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.battle.sim.WarNation;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.WarContainer;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.WarPolicy;
 
 import java.util.List;
 import java.util.Map;
@@ -231,7 +228,7 @@ public class WarCard {
 
     public void update(DBWar war, boolean checkCounters, boolean onlyCheckBlockade) {
         this.war = war;
-        List<AbstractCursor> attacks = war.getAttacks2();
+        List<AbstractCursor> attacks = war.getAttacks3();
         update(attacks, onlyCheckBlockade);
         if (checkCounters) updateCounterStats();
     }
@@ -359,28 +356,50 @@ public class WarCard {
         }
 
         if (isActive) {
-            if (checkGC && gcDate != Long.MAX_VALUE) {
-                attacks = Locutus.imp().getWarDb().getAttacks(groundControl, gcDate);
-                attacks.removeIf(a -> a.getDefender_id() != groundControl || a.getSuccess() != SuccessType.IMMENSE_TRIUMPH);
-                if (!attacks.isEmpty()
-                        || (Locutus.imp().getNationDB().getMinMilitary(groundControl, MilitaryUnit.SOLDIER, gcDate) == 0
-                        && Locutus.imp().getNationDB().getMinMilitary(groundControl, MilitaryUnit.TANK, gcDate) == 0
-                )) groundControl = 0;
+            boolean checkControl = (groundControl != 0 && checkGC && gcDate != Long.MAX_VALUE) ||
+                    (airSuperiority != 0 && checkAC && acDate != Long.MAX_VALUE) ||
+                    (blockaded != 0 && checkBlockade && blockadeDate != Long.MAX_VALUE);
+            if (groundControl != 0 && checkGC && gcDate != Long.MAX_VALUE) {
+//                attacks2.removeIf(a -> a.getDefender_id() != groundControl || a.getSuccess() != SuccessType.IMMENSE_TRIUMPH);
+//                if (!attacks.isEmpty()
+//                        || (Locutus.imp().getNationDB().getMinMilitary(groundControl, MilitaryUnit.SOLDIER, gcDate) == 0
+//                        && Locutus.imp().getNationDB().getMinMilitary(groundControl, MilitaryUnit.TANK, gcDate) == 0
+//                )) groundControl = 0;
+                Locutus.imp().getWarDb().iterateAttacks(groundControl, gcDate, (war, attack) -> {
+                    if (attack.getAttack_type() == AttackType.GROUND && attack.getDefender_id() == groundControl && attack.getSuccess() == SuccessType.IMMENSE_TRIUMPH) {
+                        groundControl = 0;
+                    }
+                });
+                if (groundControl != 0) {
+                    if (Locutus.imp().getNationDB().getMinMilitary(groundControl, MilitaryUnit.SOLDIER, gcDate) == 0
+                            && Locutus.imp().getNationDB().getMinMilitary(groundControl, MilitaryUnit.TANK, gcDate) == 0) {
+                        groundControl = 0;
+                    }
+                }
             }
             if (checkAC && acDate != Long.MAX_VALUE) {
-                attacks = Locutus.imp().getWarDb().getAttacks(airSuperiority, acDate);
-                attacks.removeIf(a -> a.getDefender_id() != airSuperiority || a.getSuccess() != SuccessType.IMMENSE_TRIUMPH);
-                if (!attacks.isEmpty()
-                        || Locutus.imp().getNationDB().getMinMilitary(airSuperiority, MilitaryUnit.AIRCRAFT, acDate) == 0)
-                    airSuperiority = 0;
+                Locutus.imp().getWarDb().iterateAttacks(airSuperiority, acDate, (war, attack) -> {
+                    if (attack.getDefender_id() == airSuperiority && attack.getAttack_type().isAir() && attack.getSuccess() == SuccessType.IMMENSE_TRIUMPH) {
+                        airSuperiority = 0;
+                    }
+                });
+                if (airSuperiority != 0) {
+                    if (Locutus.imp().getNationDB().getMinMilitary(airSuperiority, MilitaryUnit.AIRCRAFT, acDate) == 0) {
+                        airSuperiority = 0;
+                    }
+                }
             }
             if (checkBlockade && blockadeDate != Long.MAX_VALUE) {
                 int blockader = blockaded == war.getAttacker_id() ? war.getDefender_id() : war.getAttacker_id();
-                attacks = Locutus.imp().getWarDb().getAttacks(blockader, blockadeDate);
-                attacks.removeIf(a -> a.getDefender_id() != blockader || a.getSuccess() != SuccessType.IMMENSE_TRIUMPH);
-                if (!attacks.isEmpty() ||
-                        Locutus.imp().getNationDB().getMinMilitary(blockader, MilitaryUnit.SHIP, blockadeDate) == 0) {
-                    blockaded = 0;
+                Locutus.imp().getWarDb().iterateAttacks(blockader, blockadeDate, (war, attack) -> {
+                    if (attack.getDefender_id() == blockader && attack.getAttack_type().isNaval() && attack.getSuccess() == SuccessType.IMMENSE_TRIUMPH) {
+                        blockaded = 0;
+                    }
+                });
+                if (blockaded != 0) {
+                    if (Locutus.imp().getNationDB().getMinMilitary(blockader, MilitaryUnit.SHIP, blockadeDate) == 0) {
+                        blockaded = 0;
+                    }
                 }
             }
         } else {

@@ -2,6 +2,7 @@ package link.locutus.discord.util;
 
 import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.util.scheduler.KeyValue;
 
 import java.util.Map;
 
@@ -39,6 +40,6 @@ public enum AutoAuditType {
     }
 
     public Map.Entry<AutoAuditType, String> toPair() {
-        return Map.entry(this, this.msg());
+        return KeyValue.of(this, this.msg());
     }
 }

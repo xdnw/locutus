@@ -18,6 +18,7 @@ import link.locutus.discord.db.entities.menu.AppMenu;
 import link.locutus.discord.db.entities.menu.MenuState;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
@@ -115,7 +116,7 @@ public class DiscordCompleter extends BindingHelper {
     public List<Map.Entry<String, String>> Guild(@Me User user, String input) {
         List<Guild> options = user.getMutualGuilds();
         options = StringMan.getClosest(input, options, Guild::getName, OptionData.MAX_CHOICES, true, true);
-        return options.stream().map(f -> new AbstractMap.SimpleEntry<>(f.getName(), f.getIdLong() + "")).collect(Collectors.toList());
+        return options.stream().map(f -> new KeyValue<>(f.getName(), f.getIdLong() + "")).collect(Collectors.toList());
     }
 
     @Autocomplete

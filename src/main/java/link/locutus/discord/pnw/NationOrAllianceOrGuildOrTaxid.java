@@ -14,7 +14,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -91,7 +91,7 @@ public interface NationOrAllianceOrGuildOrTaxid {
             sender_id = getId();
             sender_type = 4;
         } else throw new IllegalArgumentException("Invalid receiver: " + this);
-        return new AbstractMap.SimpleEntry<>(sender_id, sender_type);
+        return new KeyValue<>(sender_id, sender_type);
     }
 
     default boolean isGuild() {

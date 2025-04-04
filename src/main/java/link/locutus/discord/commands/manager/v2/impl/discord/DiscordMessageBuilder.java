@@ -6,8 +6,11 @@ import link.locutus.discord.commands.manager.v2.command.AMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
@@ -35,7 +38,7 @@ import static net.dv8tion.jda.api.interactions.components.buttons.Button.ID_MAX_
 
 public class DiscordMessageBuilder extends AMessageBuilder {
 
-    public final Map<String, String> remapLongCommands = new HashMap<>();
+    public final Map<String, String> remapLongCommands = new LinkedHashMap<>();
 
     public DiscordMessageBuilder(MessageChannel channel, Message message) {
         this(new DiscordChannelIO(channel, () -> message), message);
@@ -96,6 +99,21 @@ public class DiscordMessageBuilder extends AMessageBuilder {
     }
 
     @Override
+    public IMessageBuilder embed(MessageEmbed embed) {
+        embeds.add(new EmbedShrink(embed));
+        Map<String, String> reactions = DiscordUtil.getReactions(embed);
+        if (reactions != null && !reactions.isEmpty()) {
+            for (Map.Entry<String, String> entry : reactions.entrySet()) {
+                String id = entry.getKey();
+                String command = entry.getValue();
+                remapLongCommands.put(id, command);
+            }
+
+        }
+        return this;
+    }
+
+    @Override
     public void appendJson(JsonObject json) {
         super.appendJson(json);
     }
@@ -129,7 +147,6 @@ public class DiscordMessageBuilder extends AMessageBuilder {
         }
         if (!embeds.isEmpty()) {
             List<MessageEmbed> discEmbeds = new ArrayList<>(embeds.stream().map(EmbedShrink::build).toList());
-
             if (!remapLongCommands.isEmpty()) {
                 MessageEmbed embed = discEmbeds.get(0);
                 EmbedBuilder builder = new EmbedBuilder(embed);
@@ -287,7 +304,7 @@ public class DiscordMessageBuilder extends AMessageBuilder {
             try {
                 byte[] imgData = gmi.table().write(gmi.timeFormat(), gmi.numberFormat(), gmi.type(), gmi.origin());
                 String fileName = gmi.table().getName().replaceAll("[^a-zA-Z0-9.-]", "") + ".png";
-                tables.add(new AbstractMap.SimpleEntry<>(fileName, imgData));
+                tables.add(new KeyValue<>(fileName, imgData));
             } catch (IOException e) {
                 e.printStackTrace();
             }

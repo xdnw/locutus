@@ -58,7 +58,7 @@ public class StatEndpoints {
 
 
     // TODO validate permissions
-    @Command
+    @Command(viewable = true)
     @ReturnType(WebTable.class)
     public <T> WebTable table(ValueStore store, @Me @Default User user, @PlaceholderType Class type,
                               String selection_str,

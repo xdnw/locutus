@@ -15,6 +15,7 @@ import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.User;
@@ -29,7 +30,7 @@ import java.security.GeneralSecurityException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -210,7 +211,7 @@ public class ReportManager {
         ByteArrayInputStream in = new ByteArrayInputStream(buf.array());
         DataInputStream dis = new DataInputStream(in);
         try {
-            return new AbstractMap.SimpleEntry<>(dis.readUTF(), dis.readLong());
+            return new KeyValue<>(dis.readUTF(), dis.readLong());
         } catch (IOException e) {
             e.printStackTrace();
             return null;
@@ -303,7 +304,7 @@ public class ReportManager {
                         endTime = currentTime;
                     }
                     allianceDurationMap.computeIfAbsent(currentAllianceId, k -> new ObjectArrayList<>())
-                            .add(Map.entry(currentStartTime, endTime));
+                            .add(KeyValue.of(currentStartTime, endTime));
                 }
                 currentAllianceId = change.getToId();
                 currentStartTime = timestamp;
@@ -314,7 +315,7 @@ public class ReportManager {
         if (currentAllianceId > 0) {
             long endTime = currentTime;
             allianceDurationMap.computeIfAbsent(currentAllianceId, k -> new ObjectArrayList<>())
-                    .add(Map.entry(currentStartTime, endTime));
+                    .add(KeyValue.of(currentStartTime, endTime));
         }
 
         return allianceDurationMap;

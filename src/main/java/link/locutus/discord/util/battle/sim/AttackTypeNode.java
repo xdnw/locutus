@@ -9,6 +9,7 @@ import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.scheduler.KeyValue;
 
 import java.util.*;
 import java.util.function.BiFunction;
@@ -222,7 +223,7 @@ public class AttackTypeNode {
 
         Map<Map.Entry<Integer, Integer>, List<AttackType>> typesByMapResistance = new HashMap<>();
         for (AttackType type : types) {
-            Map.Entry<Integer, Integer> mapRes = Map.entry(type.getMapUsed(), type.getResistanceIT());
+            Map.Entry<Integer, Integer> mapRes = KeyValue.of(type.getMapUsed(), type.getResistanceIT());
             typesByMapResistance.computeIfAbsent(mapRes, f -> new ArrayList<>()).add(type);
         }
 

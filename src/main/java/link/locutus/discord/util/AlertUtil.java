@@ -36,7 +36,7 @@ import java.awt.TrayIcon;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -117,7 +117,7 @@ public class AlertUtil {
                     if (member != null) {
                         MessageChannel channel = guildDb.getOrNull(channelKey, false);
                         if (channel != null) {
-                            AbstractMap.SimpleEntry<Guild, MessageChannel> entry = new AbstractMap.SimpleEntry<>(guild, channel);
+                            Map.Entry<Guild, MessageChannel> entry = new KeyValue<>(guild, channel);
                             channelConsumer.accept(entry, member);
                         }
                     }

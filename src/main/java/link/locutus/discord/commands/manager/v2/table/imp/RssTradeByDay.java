@@ -7,6 +7,7 @@ import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.web.commands.binding.value_types.GraphType;
 
@@ -65,7 +66,7 @@ public class RssTradeByDay extends SimpleTable<Map.Entry<Long, Long>> {
             for (ResourceType type : ResourceType.values) {
                 long low = volumesLow[type.ordinal()];
                 long high = volumesHigh[type.ordinal()];
-                Map.Entry<Long, Long> lowHigh = new AbstractMap.SimpleEntry<>(low, high);
+                Map.Entry<Long, Long> lowHigh = new KeyValue<>(low, high);
                 volumeMap.put(type, lowHigh);
             }
         }

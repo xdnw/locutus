@@ -21,7 +21,7 @@ import link.locutus.discord.util.io.PagePriority;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -150,7 +150,7 @@ public class CounterSpy extends Command {
                 }
                 Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(mySpies, enemy, counterWith.hasProject(Projects.SPY_SATELLITE), opTypes);
                 if (best != null) {
-                    netDamage.add(new AbstractMap.SimpleEntry<>(counterWith, best));
+                    netDamage.add(new KeyValue<>(counterWith, best));
                 }
             }
 

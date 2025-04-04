@@ -32,6 +32,7 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.TriConsumer;
 
 import java.io.File;
@@ -380,7 +381,7 @@ public class LootEstimateTracker {
         }
 
         public Map.Entry<double[], double[]> getLootEstimateRange() {
-            return Map.entry(ResourceType.ceil(min.clone(), 0), max.clone());
+            return KeyValue.of(ResourceType.ceil(min.clone(), 0), max.clone());
         }
 
 
@@ -610,7 +611,7 @@ public class LootEstimateTracker {
         }
     }
 
-    public void onAttack(AbstractCursor attack, boolean hasSalvage) {
+    public void onAttack(DBWar war, AbstractCursor attack, boolean hasSalvage) {
         // consumption
         double[] attLoss = (attack.addAttConsumption(ResourceType.getBuffer()));
         double[] defLoss = (attack.addDefConsumption(ResourceType.getBuffer()));
@@ -620,7 +621,7 @@ public class LootEstimateTracker {
             defLoss[ResourceType.MONEY.ordinal()] += attack.getDefcas1();
         }
         if (attack.getSuccess() != SuccessType.UTTER_FAILURE && hasSalvage) {
-            double[] unitLosses = attack.addAttUnitCosts(ResourceType.getBuffer(), attack.getWar());
+            double[] unitLosses = attack.addAttUnitCosts(ResourceType.getBuffer(), war);
             attLoss[ResourceType.STEEL.ordinal()] -= unitLosses[ResourceType.STEEL.ordinal()] * 0.05;
             attLoss[ResourceType.ALUMINUM.ordinal()] -= unitLosses[ResourceType.ALUMINUM.ordinal()] * 0.05;
         }

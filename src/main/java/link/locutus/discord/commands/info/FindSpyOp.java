@@ -14,6 +14,7 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
@@ -126,7 +127,7 @@ public class FindSpyOp extends Command {
             long diff_m = Math.abs(diff / TimeUnit.MINUTES.toMillis(1));
             message.append(" | ").append(diff_m).append("m");
 
-            allOdds.put(attacker, new AbstractMap.SimpleEntry<>(ratio, message.toString()));
+            allOdds.put(attacker, new KeyValue<>(ratio, message.toString()));
         }
 
         List<Map.Entry<DBNation, Map.Entry<Double, String>>> sorted = new ArrayList<>(allOdds.entrySet());

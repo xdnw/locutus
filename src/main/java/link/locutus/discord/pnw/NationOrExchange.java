@@ -11,7 +11,7 @@ import link.locutus.discord.util.PW;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 
 import java.io.IOException;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -56,24 +56,24 @@ public class NationOrExchange {
     }
 
     public Map.Entry<Boolean, String> give(DBNation banker, NationOrExchange receiver, Exchange share, double amount, boolean anonymous) {
-        if (receiver.getId() == getId()) return new AbstractMap.SimpleEntry<>(false, "You can't give to yourself");
+        if (receiver.getId() == getId()) return new KeyValue<>(false, "You can't give to yourself");
 
         StockDB db = Locutus.imp().getStockDB();
 
         if (receiver.isExchange()) {
             Exchange receiverExchange = receiver.getExchange();
-            if (receiverExchange.isResource() || receiverExchange.owner == 0) return new AbstractMap.SimpleEntry<>(false, "Receiver Exchange does not have an account holder");
-            if (receiver.isNation() && !share.canView(receiver.getNation())) return new AbstractMap.SimpleEntry<>(false, receiverExchange.name + " does not have permission to use " + share.name);
+            if (receiverExchange.isResource() || receiverExchange.owner == 0) return new KeyValue<>(false, "Receiver Exchange does not have an account holder");
+            if (receiver.isNation() && !share.canView(receiver.getNation())) return new KeyValue<>(false, receiverExchange.name + " does not have permission to use " + share.name);
         }
 
-        if (!exchange.canView(banker)) return new AbstractMap.SimpleEntry<>(false, exchange.name + " requires you to be " + exchange.requiredRank + " to transfer");
+        if (!exchange.canView(banker)) return new KeyValue<>(false, exchange.name + " requires you to be " + exchange.requiredRank + " to transfer");
 
         long amountLong = (long) (amount * 100);
         if (amountLong <= 0) throw new IllegalArgumentException("You cannot transfer negative amounts");
         Map<Exchange, Long> shares = db.getSharesByNation(this.getId());
         long existing = shares.getOrDefault(exchange, 0L);
         if (amountLong > existing) {
-            new AbstractMap.SimpleEntry<>(false, receiver.getName() + " does not have " + MathMan.format(amount) + "x" + exchange.symbol +"! You only have: " + MathMan.format(existing / 100d));
+            new KeyValue<>(false, receiver.getName() + " does not have " + MathMan.format(amount) + "x" + exchange.symbol +"! You only have: " + MathMan.format(existing / 100d));
         }
 
         if (db.transferShare(exchange.id, this.getId(), receiver.getId(), amountLong)) {
@@ -114,9 +114,9 @@ public class NationOrExchange {
                 Exchange company = receiver.getExchange();
                 company.alert(title, MarkupUtil.htmlToMarkdown(body.toString()));
             }
-            return new AbstractMap.SimpleEntry<>(true, response.toString());
+            return new KeyValue<>(true, response.toString());
         }
-        return new AbstractMap.SimpleEntry<>(false, "Failed to transfer (Are you sure you have sufficient funds?)");
+        return new KeyValue<>(false, "Failed to transfer (Are you sure you have sufficient funds?)");
     }
 
     private String getUrl() {

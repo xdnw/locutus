@@ -39,6 +39,7 @@ import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.OffshoreInstance;
+import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Invite;
@@ -1471,7 +1472,7 @@ public class GuildKey {
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
         public String DELEGATE_SERVER(@Me GuildDB db, @Me User user, Guild guild) {
-            return DELEGATE_SERVER.setAndValidate(db, user, Map.entry(0, guild.getIdLong()));
+            return DELEGATE_SERVER.setAndValidate(db, user, KeyValue.of(0, guild.getIdLong()));
         }
 
         @Override
@@ -1509,9 +1510,9 @@ public class GuildKey {
             String[] split2 = input.trim().split("[:|=]", 2);
             Map.Entry<Integer, Long> entry;
             if (split2.length == 2) {
-                return Map.entry(Integer.parseInt(split2[0]), Long.parseLong(split2[1]));
+                return KeyValue.of(Integer.parseInt(split2[0]), Long.parseLong(split2[1]));
             } else {
-                return Map.entry(0, Long.parseLong(input));
+                return KeyValue.of(0, Long.parseLong(input));
             }
         }
 

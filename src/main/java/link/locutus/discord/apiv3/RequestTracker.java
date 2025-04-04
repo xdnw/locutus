@@ -125,14 +125,20 @@ public class RequestTracker {
                     String resetStr = headers.getFirst("X-RateLimit-Reset-After");
                     if (MathMan.isInteger(resetStr)) {
                         long reset = Long.parseLong(resetStr) * 1000L;
-                        long diff = reset - now;
-                        if (diff > 60000) {
-                            diff = 60000;
-                        } else if (diff < 0) {
-                            System.out.println("Invalid diff " + diff + " for " + task.getUrl() + " | " + resetStr + " | " + now);
-                            diff = 4000;
+                        if (reset < 1000 && reset > 0) {
+                            retryAfter = (int) reset;
+                        } else if (reset < 60000) {
+                            retryAfter = (int) ((reset + 999L) / 1000L);
+                        } else {
+                            long diff = reset - now;
+                            if (diff > 60000) {
+                                diff = 60000;
+                            } else if (diff < 0) {
+                                System.out.println("Invalid diff " + diff + " | " + reset + " for " + task.getUrl() + " | " + resetStr + " | " + now);
+                                diff = 4000;
+                            }
+                            retryAfter = (int) ((diff + 999L) / 1000L);
                         }
-                        retryAfter = (int) ((diff + 999L) / 1000L);
                     }
                 }
             }

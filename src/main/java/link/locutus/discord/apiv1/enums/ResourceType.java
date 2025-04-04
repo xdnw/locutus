@@ -27,6 +27,7 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.CachedSupplier;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.web.WebUtil;
 
 import java.io.ByteArrayInputStream;
@@ -527,7 +528,7 @@ public enum ResourceType {
         Locutus lc = Locutus.imp();
         DBNation nation = lc == null ? null : lc.getNationDB().getNationByNameOrLeader(name);
 
-        return new AbstractMap.SimpleEntry<>(nation, resourceOutput);
+        return new KeyValue<>(nation, resourceOutput);
     }
 
     public static double convertedTotal(Map<ResourceType, ? extends Number> resources) {

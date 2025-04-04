@@ -16,6 +16,7 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
@@ -149,7 +150,7 @@ public class Damage extends Command {
         for (Map.Entry<Integer, Double> entry : valueFunction.entrySet()) {
             DBNation nation = DBNation.getById(entry.getKey());
             double amt = entry.getValue();
-            maxInfraSorted.add(new AbstractMap.SimpleEntry<>(nation, amt));
+            maxInfraSorted.add(new KeyValue<>(nation, amt));
         }
         maxInfraSorted.sort((o1, o2) -> Double.compare(o2.getValue(), o1.getValue()));
 

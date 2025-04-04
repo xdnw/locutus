@@ -20,6 +20,7 @@ import link.locutus.discord.event.nation.NationChangeAllianceEvent;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.nio.ByteBuffer;
@@ -200,7 +201,7 @@ public class GuildCustomMessageHandler implements Runnable {
             if (db == null) continue;
             for (CustomConditionMessage message : entry.getValue()) {
                 List<Map.Entry<GuildDB, CustomConditionMessage>> list = messages.computeIfAbsent(message.getTrigger(), k -> new ArrayList<>());
-                list.add(Map.entry(db, message));
+                list.add(KeyValue.of(db, message));
             }
         }
 

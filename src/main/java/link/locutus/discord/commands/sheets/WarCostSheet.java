@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -127,8 +128,6 @@ public class WarCostSheet extends Command {
             }
         }).get();
 
-        List<AbstractCursor> allAttacks = new ArrayList<>(parser1.getAttacks());
-
         for (Map.Entry<DBNation, List<DBWar>> entry : warsByNation.entrySet()) {
             DBNation nation = entry.getKey();
             if (-start + (start = System.currentTimeMillis()) > 5000) {
@@ -149,57 +148,55 @@ public class WarCostSheet extends Command {
 
             {
                 List<DBWar> wars = entry.getValue();
-                Set<Integer> warIds = wars.stream().map(f -> f.warId).collect(Collectors.toSet());
-                List<AbstractCursor> attacks = new ArrayList<>();
-                for (AbstractCursor attack : allAttacks) if (warIds.contains(attack.getWar_id())) attacks.add(attack);
-                Map<Integer, List<AbstractCursor>> attacksByWar = new RankBuilder<>(attacks).group(f -> f.getWar_id()).get();
+                Locutus.imp().getWarDb().iterateAttackList(wars, f -> f.canDamage(), null, new BiConsumer<DBWar, List<AbstractCursor>>() {
+                    @Override
+                    public void accept(DBWar war, List<AbstractCursor> attacks) {
+                        boolean selfAttack = false;
+                        boolean enemyAttack = false;
 
-                for (DBWar war : wars) {
-                    List<AbstractCursor> warAttacks = attacksByWar.getOrDefault(war.warId, Collections.emptyList());
+                        for (AbstractCursor attack : attacks) {
+                            if (attack.getAttacker_id() == nationId) {
+                                selfAttack = true;
+                            } else {
+                                enemyAttack = true;
+                            }
+                        }
 
-                    boolean selfAttack = false;
-                    boolean enemyAttack = false;
+                        BiFunction<DBWar, AbstractCursor, Boolean> isPrimary = (w, a) -> a.getAttacker_id() == nationId;
+                        BiFunction<DBWar, AbstractCursor, Boolean> isSecondary = (w, a) -> a.getAttacker_id() != nationId;
 
-                    for (AbstractCursor attack : warAttacks) {
-                        if (attack.getAttacker_id() == nationId) {
-                            selfAttack = true;
+                        AttackCost cost;
+                        if (war.getAttacker_id() == nationId) {
+                            if (selfAttack) {
+                                if (enemyAttack) {
+                                    cost = attActiveCost;
+                                } else {
+                                    cost = attInactiveCost;
+                                }
+                            } else if (enemyAttack) {
+                                cost = attSuicides;
+                            } else {
+                                return;
+                            }
                         } else {
-                            enemyAttack = true;
+                            if (selfAttack) {
+                                if (enemyAttack) {
+                                    cost = defActiveCost;
+                                } else {
+                                    cost = defSuicides;
+                                }
+                            } else if (enemyAttack) {
+                                cost = defInactiveCost;
+                            } else {
+                                return;
+                            }
+                        }
+
+                        for (AbstractCursor attack : attacks) {
+                            cost.addCost(attack, war, isPrimary, isSecondary);
                         }
                     }
-
-                    Function<AbstractCursor, Boolean> isPrimary = a -> a.getAttacker_id() == nationId;
-                    Function<AbstractCursor, Boolean> isSecondary = a -> a.getAttacker_id() != nationId;
-
-                    AttackCost cost;
-                    if (war.getAttacker_id() == nationId) {
-                        if (selfAttack) {
-                            if (enemyAttack) {
-                                cost = attActiveCost;
-                            } else {
-                                cost = attInactiveCost;
-                            }
-                        } else if (enemyAttack) {
-                            cost = attSuicides;
-                        } else {
-                            continue;
-                        }
-                    } else {
-                        if (selfAttack) {
-                            if (enemyAttack) {
-                                cost = defActiveCost;
-                            } else {
-                                cost = defSuicides;
-                            }
-                        } else if (enemyAttack) {
-                            cost = defInactiveCost;
-                        } else {
-                            continue;
-                        }
-                    }
-
-                    cost.addCost(warAttacks, war, isPrimary, isSecondary);
-                }
+                });
             }
 
             header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));

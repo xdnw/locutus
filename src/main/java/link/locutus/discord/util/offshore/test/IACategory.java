@@ -40,7 +40,7 @@ import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.OffsetDateTime;
-import java.util.AbstractMap;
+import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -347,7 +347,7 @@ public class IACategory {
     }
 
     public Map.Entry<DBNation, User> getNationUser(GuildMessageChannel channel) {
-        if (!(channel instanceof TextChannel)) return new AbstractMap.SimpleEntry<>(null, null);
+        if (!(channel instanceof TextChannel)) return new KeyValue<>(null, null);
         TextChannel tc = (TextChannel) channel;
         DBNation nation = null;
         User user = null;
@@ -368,7 +368,7 @@ public class IACategory {
                 nation = DiscordUtil.getNation(member.getIdLong());
             }
         }
-        return new AbstractMap.SimpleEntry<>(nation, user);
+        return new KeyValue<>(nation, user);
 
     }
 

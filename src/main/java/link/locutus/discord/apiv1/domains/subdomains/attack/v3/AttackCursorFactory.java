@@ -275,6 +275,21 @@ public class AttackCursorFactory {
         return cursor;
     }
 
+    public synchronized VictoryCursor loadWithTypeVictoryLegacy(DBWar war, byte[] data, boolean create) {
+        buffer.setBytes(data);
+        AttackType type = AttackType.values[(int) buffer.readBits(4)];
+        if (type != AttackType.VICTORY) {
+            return null;
+        }
+        VictoryCursor cursor = (VictoryCursor) (create ? create(type) : getCursor(type));
+        if (cursor == null) {
+            throw new UnsupportedOperationException("Attack type not supported: " + type);
+        }
+        cursor.initialize(war, buffer);
+        cursor.loadLegacy(war, buffer);
+        return cursor;
+    }
+
     public synchronized int getId(byte[] data) {
         buffer.setBytes(data);
         buffer.readBits(4);

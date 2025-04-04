@@ -4,6 +4,7 @@ import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.scheduler.KeyValue;
 
 import java.util.*;
 import java.util.function.Function;
@@ -114,26 +115,26 @@ public enum AttackType {
         minDef = Math.min(defUnits, minDef);
         maxDef = Math.min(defUnits, maxDef);
 
-        return Map.entry(
-                Map.entry((int) minAtt, (int) maxAtt),
-                Map.entry((int) minDef, (int) maxDef)
+        return KeyValue.of(
+                KeyValue.of((int) minAtt, (int) maxAtt),
+                KeyValue.of((int) minDef, (int) maxDef)
         );
     }
 
     public static Map.Entry<Double, Double> getAirInfraCasualties(int attAir, int defAir, boolean airVsInfra, SuccessType success, double infra) {
         int victoryType = success.ordinal();
-        if (victoryType == 0) return Map.entry(0d, 0d);
+        if (victoryType == 0) return KeyValue.of(0d, 0d);
         double min = Math.max(Math.min((attAir - (defAir * 0.5)) * 0.35353535 * 0.85 * (victoryType / 3d), infra * 0.5 + 100), 0);
         double max = Math.max(Math.min((attAir - (defAir * 0.5)) * 0.35353535 * 1.05 * (victoryType / 3d), infra * 0.5 + 100), 0);
         if (!airVsInfra) {
             min /= 3;
             max /= 3;
         }
-        return Map.entry(min, max);
+        return KeyValue.of(min, max);
     }
 
     private Map.Entry<Integer, Integer> getAirTargetCasualties(MilitaryUnit unit, double killRatio, int baseUnits, double baseFactor, int attAir, int defAir, Function<MilitaryUnit, Integer> defenderUnits, SuccessType victory, double defModifier) {
-        if (victory == SuccessType.UTTER_FAILURE) return Map.entry(0, 0);
+        if (victory == SuccessType.UTTER_FAILURE) return KeyValue.of(0, 0);
         double victoryFactor = victory.ordinal() == 0 ? 0 : victory.ordinal() == 1 ? 0.4 : victory.ordinal() == 2 ? 0.7 : 1;
         int enemyUnits = defenderUnits.apply(unit);
         double randMin = (attAir - defAir * 0.5) * killRatio * 0.85 * defModifier;
@@ -141,7 +142,7 @@ public enum AttackType {
         long upperBound = Math.round(Math.max(Math.min(enemyUnits, enemyUnits * baseFactor + baseUnits), 0));
         int min = (int) (Math.min(upperBound, randMin) * victoryFactor);
         int max = (int) (Math.min(upperBound, randMax) * victoryFactor);
-        return Map.entry(min, max);
+        return KeyValue.of(min, max);
     }
     private void inputAirCasualties(Map<MilitaryUnit, Map.Entry<Integer, Integer>> attackerCasualties, Map<MilitaryUnit, Map.Entry<Integer, Integer>> defenderCasualties, DBNation attacker, DBNation defender, SuccessType victory, double infraModifier, double attModifier, double defModifier) {
         boolean vsInfra = this == AIRSTRIKE_INFRA;
@@ -156,7 +157,7 @@ public enum AttackType {
         if (victory != SuccessType.UTTER_FAILURE) {
             int infra = defender.getUnits(MilitaryUnit.INFRASTRUCTURE);
             Map.Entry<Double, Double> infraCasualties = getAirInfraCasualties(attAir, defAir, vsInfra, victory, infra);
-            attackerCasualties.put(MilitaryUnit.INFRASTRUCTURE, Map.entry((int) Math.round(infraCasualties.getKey() * infraModifier), (int) Math.round(infraCasualties.getValue() * infraModifier)));
+            attackerCasualties.put(MilitaryUnit.INFRASTRUCTURE, KeyValue.of((int) Math.round(infraCasualties.getKey() * infraModifier), (int) Math.round(infraCasualties.getValue() * infraModifier)));
             double victoryFactor = victory.ordinal() == 0 ? 0 : victory.ordinal() == 1 ? 0.4 : victory.ordinal() == 2 ? 0.7 : 1;
 
             switch (this) {
@@ -175,7 +176,7 @@ public enum AttackType {
                     // money
                     int min = (int) (attAir * 0.85 * 3000 * victoryFactor);
                     int max = (int) (attAir * 1.05 * 3000 * victoryFactor);
-                    defenderCasualties.put(MilitaryUnit.MONEY, Map.entry(min, max));
+                    defenderCasualties.put(MilitaryUnit.MONEY, KeyValue.of(min, max));
                 }
                 case AIRSTRIKE_SHIP -> {
                     // ships
@@ -189,38 +190,38 @@ public enum AttackType {
     @Command(desc = "Get the minimum unit casualties for the attacker.")
     public int getAttackerMinCasualties(MilitaryUnit unit, DBNation attacker, DBNation defender, @Default("IMMENSE_TRIUMPH") SuccessType victory, @Default("raid") WarType warType, @Default("false") boolean defAirControl, @Default("false") boolean attAirControl, @Default("false") boolean defFortified, @Default("true") boolean equipAttackerSoldiers, @Default("true") boolean equipDefenderSoldiers, @Default("false") boolean attGroundControl) {
         return getCasualties(attacker, defender, victory, warType, defAirControl, attAirControl, defFortified, equipAttackerSoldiers, equipDefenderSoldiers, attGroundControl)
-                .getKey().getOrDefault(unit, Map.entry(0, 0)).getKey();
+                .getKey().getOrDefault(unit, KeyValue.of(0, 0)).getKey();
     }
 
     @Command(desc = "Get the maximum unit casualties for the attacker.")
     public int getAttackerMaxCasualties(MilitaryUnit unit, DBNation attacker, DBNation defender, @Default("IMMENSE_TRIUMPH") SuccessType victory, @Default("raid") WarType warType, @Default("false") boolean defAirControl, @Default("false") boolean attAirControl, @Default("false") boolean defFortified, @Default("true") boolean equipAttackerSoldiers, @Default("true") boolean equipDefenderSoldiers, @Default("false") boolean attGroundControl) {
         return getCasualties(attacker, defender, victory, warType, defAirControl, attAirControl, defFortified, equipAttackerSoldiers, equipDefenderSoldiers, attGroundControl)
-                .getKey().getOrDefault(unit, Map.entry(0, 0)).getValue();
+                .getKey().getOrDefault(unit, KeyValue.of(0, 0)).getValue();
     }
 
     @Command(desc = "Get the average unit casualties for the attacker.")
     public int getAttackerAvgCasualties(MilitaryUnit unit, DBNation attacker, DBNation defender, @Default("IMMENSE_TRIUMPH") SuccessType victory, @Default("raid") WarType warType, @Default("false") boolean defAirControl, @Default("false") boolean attAirControl, @Default("false") boolean defFortified, @Default("true") boolean equipAttackerSoldiers, @Default("true") boolean equipDefenderSoldiers, @Default("false") boolean attGroundControl) {
         Map.Entry<Integer, Integer> pair = getCasualties(attacker, defender, victory, warType, defAirControl, attAirControl, defFortified, equipAttackerSoldiers, equipDefenderSoldiers, attGroundControl)
-                .getKey().getOrDefault(unit, Map.entry(0, 0));
+                .getKey().getOrDefault(unit, KeyValue.of(0, 0));
         return (int) Math.round((pair.getKey() + pair.getValue()) / 2d);
     }
 
     @Command(desc = "Get the minimum unit casualties for the defender.")
     public int getDefenderMinCasualties(MilitaryUnit unit, DBNation attacker, DBNation defender, @Default("IMMENSE_TRIUMPH") SuccessType victory, @Default("raid") WarType warType, @Default("false") boolean defAirControl, @Default("false") boolean attAirControl, @Default("false") boolean defFortified, @Default("true") boolean equipAttackerSoldiers, @Default("true") boolean equipDefenderSoldiers, @Default("false") boolean attGroundControl) {
         return getCasualties(attacker, defender, victory, warType, defAirControl, attAirControl, defFortified, equipAttackerSoldiers, equipDefenderSoldiers, attGroundControl)
-                .getValue().getOrDefault(unit, Map.entry(0, 0)).getKey();
+                .getValue().getOrDefault(unit, KeyValue.of(0, 0)).getKey();
     }
 
     @Command(desc = "Get the maximum unit casualties for the defender.")
     public int getDefenderMaxCasualties(MilitaryUnit unit, DBNation attacker, DBNation defender, @Default("IMMENSE_TRIUMPH") SuccessType victory, @Default("raid") WarType warType, @Default("false") boolean defAirControl, @Default("false") boolean attAirControl, @Default("false") boolean defFortified, @Default("true") boolean equipAttackerSoldiers, @Default("true") boolean equipDefenderSoldiers, @Default("false") boolean attGroundControl) {
         return getCasualties(attacker, defender, victory, warType, defAirControl, attAirControl, defFortified, equipAttackerSoldiers, equipDefenderSoldiers, attGroundControl)
-                .getValue().getOrDefault(unit, Map.entry(0, 0)).getValue();
+                .getValue().getOrDefault(unit, KeyValue.of(0, 0)).getValue();
     }
 
     @Command(desc = "Get the average unit casualties for the defender.")
     public int getDefenderAvgCasualties(MilitaryUnit unit, DBNation attacker, DBNation defender, @Default("IMMENSE_TRIUMPH") SuccessType victory, @Default("raid") WarType warType, @Default("false") boolean defAirControl, @Default("false") boolean attAirControl, @Default("false") boolean defFortified, @Default("true") boolean equipAttackerSoldiers, @Default("true") boolean equipDefenderSoldiers, @Default("false") boolean attGroundControl) {
         Map.Entry<Integer, Integer> pair = getCasualties(attacker, defender, victory, warType, defAirControl, attAirControl, defFortified, equipAttackerSoldiers, equipDefenderSoldiers, attGroundControl)
-                .getValue().getOrDefault(unit, Map.entry(0, 0));
+                .getValue().getOrDefault(unit, KeyValue.of(0, 0));
         return (int) Math.round((pair.getKey() + pair.getValue()) / 2d);
     }
 
@@ -278,7 +279,7 @@ public enum AttackType {
                     double maxCityInfra = defender.maxCityInfra();
                     double infraMin = Math.max(Math.min((attShips - (defShips * 0.5)) * 2.625 * 0.85 * (victory.ordinal() / 3d), maxCityInfra * 0.5 + 25), 0);
                     double infraMax = Math.max(Math.min((attShips - (defShips * 0.5)) * 2.625 * 1.05 * (victory.ordinal() / 3d), maxCityInfra * 0.5 + 25), 0);
-                    defenderCasualties.put(MilitaryUnit.INFRASTRUCTURE, Map.entry((int) Math.round(infraMin * infraFactor), (int) Math.round(infraMax * infraFactor)));
+                    defenderCasualties.put(MilitaryUnit.INFRASTRUCTURE, KeyValue.of((int) Math.round(infraMin * infraFactor), (int) Math.round(infraMax * infraFactor)));
                 }
                 int failures = 3 - victory.ordinal();
                 int successes = victory.ordinal();
@@ -318,8 +319,8 @@ public enum AttackType {
                 defLossMin = Math.min(defLossMin, defShips);
                 defLossMax = Math.min(defLossMax, defShips);
 
-                attackerCasualties.put(MilitaryUnit.SHIP, Map.entry(attLossMin, attLossMax));
-                defenderCasualties.put(MilitaryUnit.SHIP, Map.entry(defLossMin, defLossMax));
+                attackerCasualties.put(MilitaryUnit.SHIP, KeyValue.of(attLossMin, attLossMax));
+                defenderCasualties.put(MilitaryUnit.SHIP, KeyValue.of(defLossMin, defLossMax));
                 break;
             }
             case GROUND -> {
@@ -329,12 +330,12 @@ public enum AttackType {
                     double tankStoleMoney = attacker.getTanks() * 25.15;
                     double minStolen = (soldiersStoleMoney + tankStoleMoney) * victory.ordinal() * 0.8 * lootFactor;
                     double maxStolen = (soldiersStoleMoney + tankStoleMoney) * victory.ordinal() * 1.1 * lootFactor;
-                    defenderCasualties.put(MilitaryUnit.MONEY, Map.entry((int) Math.round(minStolen), (int) Math.round(maxStolen)));
+                    defenderCasualties.put(MilitaryUnit.MONEY, KeyValue.of((int) Math.round(minStolen), (int) Math.round(maxStolen)));
 
                     double maxCityInfra = defender.maxCityInfra();
                     double infraMin = Math.max(Math.min(((attacker.getSoldiers() - (defender.getSoldiers() * 0.5)) * 0.000606061 + (attacker.getTanks() - (defender.getTanks() * 0.5)) * 0.01) * 0.85 * (victory.ordinal() / 3d), maxCityInfra * 0.2 + 25), 0);
                     double infraMax = Math.max(Math.min(((attacker.getSoldiers() - (defender.getSoldiers() * 0.5)) * 0.000606061 + (attacker.getTanks() - (defender.getTanks() * 0.5)) * 0.01) * 1.05 * (victory.ordinal() / 3d), maxCityInfra * 0.2 + 25), 0);
-                    defenderCasualties.put(MilitaryUnit.INFRASTRUCTURE, Map.entry((int) Math.round(infraMin * infraFactor), (int) Math.round(infraMax * infraFactor)));
+                    defenderCasualties.put(MilitaryUnit.INFRASTRUCTURE, KeyValue.of((int) Math.round(infraMin * infraFactor), (int) Math.round(infraMax * infraFactor)));
                 }
 
                 double attStrS = attacker.getSoldiers() * (equipAttackerSoldiers ? 1.7_5 : 1);
@@ -390,7 +391,7 @@ public enum AttackType {
                         };
                         int killed = Math.min(defender.getAircraft(), (int) Math.round(attacker.getTanks() * factor));
                         if (killed > 0) {
-                            defenderCasualties.put(MilitaryUnit.AIRCRAFT, Map.entry(killed, killed));
+                            defenderCasualties.put(MilitaryUnit.AIRCRAFT, KeyValue.of(killed, killed));
                         }
                     }
                     double attStrMin = Math.max(defStr * 0.4 + 1, attStr * 0.4);
@@ -428,15 +429,15 @@ public enum AttackType {
                 attTankLossMin = Math.min(attacker.getTanks(), attTankLossMin * attModifier);
                 attTankLossMax = Math.min(attacker.getTanks(), attTankLossMax * attModifier);
 
-                defenderCasualties.put(MilitaryUnit.SOLDIER, Map.entry((int) Math.round(defSoldierLossMin), (int) Math.round(defSoldierLossMax)));
-                defenderCasualties.put(MilitaryUnit.TANK, Map.entry((int) Math.round(defTankLossMin), (int) Math.round(defTankLossMax)));
-                attackerCasualties.put(MilitaryUnit.SOLDIER, Map.entry((int) Math.round(attSoldierLossMin), (int) Math.round(attSoldierLossMax)));
-                attackerCasualties.put(MilitaryUnit.TANK, Map.entry((int) Math.round(attTankLossMin), (int) Math.round(attTankLossMax)));
+                defenderCasualties.put(MilitaryUnit.SOLDIER, KeyValue.of((int) Math.round(defSoldierLossMin), (int) Math.round(defSoldierLossMax)));
+                defenderCasualties.put(MilitaryUnit.TANK, KeyValue.of((int) Math.round(defTankLossMin), (int) Math.round(defTankLossMax)));
+                attackerCasualties.put(MilitaryUnit.SOLDIER, KeyValue.of((int) Math.round(attSoldierLossMin), (int) Math.round(attSoldierLossMax)));
+                attackerCasualties.put(MilitaryUnit.TANK, KeyValue.of((int) Math.round(attTankLossMin), (int) Math.round(attTankLossMax)));
                 break;
             }
             case NUKE -> {
                 if (victory == SuccessType.UTTER_FAILURE)
-                attackerCasualties.put(MilitaryUnit.NUKE, Map.entry(1, 1));
+                attackerCasualties.put(MilitaryUnit.NUKE, KeyValue.of(1, 1));
                 double min = 0;
                 double max = 0;
                 for (JavaCity city : defender.getCityMap(false).values()) {
@@ -444,11 +445,11 @@ public enum AttackType {
                     min = Math.max(min, infraDamage.getKey());
                     max = Math.max(max, infraDamage.getValue());
                 }
-                defenderCasualties.put(MilitaryUnit.INFRASTRUCTURE, Map.entry((int) Math.round(min * infraFactor), (int) Math.round(max * infraFactor)));
+                defenderCasualties.put(MilitaryUnit.INFRASTRUCTURE, KeyValue.of((int) Math.round(min * infraFactor), (int) Math.round(max * infraFactor)));
                 break;
             }
             case MISSILE -> {
-                attackerCasualties.put(MilitaryUnit.MISSILE, Map.entry(1, 1));
+                attackerCasualties.put(MilitaryUnit.MISSILE, KeyValue.of(1, 1));
                 double min = 0;
                 double max = 0;
                 for (JavaCity city : defender.getCityMap(false).values()) {
@@ -456,7 +457,7 @@ public enum AttackType {
                     min = Math.max(min, infraDamage.getKey());
                     max = Math.max(max, infraDamage.getValue());
                 }
-                defenderCasualties.put(MilitaryUnit.INFRASTRUCTURE, Map.entry((int) Math.round(min * infraFactor), (int) Math.round(max * infraFactor)));
+                defenderCasualties.put(MilitaryUnit.INFRASTRUCTURE, KeyValue.of((int) Math.round(min * infraFactor), (int) Math.round(max * infraFactor)));
                 break;
             }
             case AIRSTRIKE_INFRA, AIRSTRIKE_SOLDIER, AIRSTRIKE_TANK, AIRSTRIKE_MONEY, AIRSTRIKE_SHIP, AIRSTRIKE_AIRCRAFT -> {
@@ -467,7 +468,7 @@ public enum AttackType {
                 throw new IllegalArgumentException("Cannot get casualties for " + this);
             }
         }
-        return Map.entry(
+        return KeyValue.of(
                 attackerCasualties,
                 defenderCasualties
         );
@@ -584,5 +585,19 @@ public enum AttackType {
             }
         }
         return builder.buildMap();
+    }
+
+    public boolean isAir() {
+        return switch (this) {
+            case AIRSTRIKE_INFRA, AIRSTRIKE_SOLDIER, AIRSTRIKE_TANK, AIRSTRIKE_MONEY, AIRSTRIKE_SHIP, AIRSTRIKE_AIRCRAFT -> true;
+            default -> false;
+        };
+    }
+
+    public boolean isNaval() {
+        return switch (this) {
+            case NAVAL, NAVAL_INFRA, NAVAL_AIR, NAVAL_GROUND -> true;
+            default -> false;
+        };
     }
 }

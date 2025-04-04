@@ -8,6 +8,7 @@ import link.locutus.discord.db.NationDB;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import net.dv8tion.jda.api.entities.ISnowflake;
 import net.dv8tion.jda.api.entities.User;
@@ -62,7 +63,7 @@ public class SyncManager {
                 long send = inputStream.readLong();
                 long receive = inputStream.readLong();
 
-                syncDates.put(Map.entry(type, id), Map.entry(send, receive));
+                syncDates.put(KeyValue.of(type, id), KeyValue.of(send, receive));
             }
         } catch (IOException e) {
             // Handle IOException, e.g., log an error or throw an exception.

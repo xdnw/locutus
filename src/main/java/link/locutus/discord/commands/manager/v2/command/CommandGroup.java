@@ -13,6 +13,7 @@ import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.yaml.file.YamlConfiguration;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import org.apache.commons.lang3.ArrayUtils;
 import org.checkerframework.checker.units.qual.C;
 import org.json.JSONObject;
@@ -60,7 +61,7 @@ public class CommandGroup implements ICommandGroup {
                 throw new IllegalArgumentException(msg);
             }
         }
-        return new AbstractMap.SimpleEntry<>(root, StringMan.join(path, " "));
+        return new KeyValue<>(root, StringMan.join(path, " "));
     }
 
     @Override

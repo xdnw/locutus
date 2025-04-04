@@ -4,6 +4,7 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.util.scheduler.KeyValue;
 import org.jsoup.nodes.Element;
 import org.jsoup.parser.Parser;
 import org.jsoup.select.Elements;
@@ -88,9 +89,9 @@ public class Transfer {
             String url = td.getElementsByTag("a").get(0).attr("href").toLowerCase();
             int id = Integer.parseInt(url.split("=")[1]);
             boolean isAA = url.contains("/alliance/");
-            return new AbstractMap.SimpleEntry<>(id, isAA);
+            return new KeyValue<>(id, isAA);
         } catch (IndexOutOfBoundsException ignore) {
-            return new AbstractMap.SimpleEntry<>(0, false);
+            return new KeyValue<>(0, false);
         }
     }
 

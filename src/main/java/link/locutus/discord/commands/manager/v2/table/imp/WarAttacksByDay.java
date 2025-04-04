@@ -48,12 +48,12 @@ public class WarAttacksByDay extends SimpleTable<Void> {
         }
 
         final List<AbstractCursor> attacks = new ArrayList<>();
-        Locutus.imp().getWarDb().getAttacks(wars.values(), allowedType, attack -> {
+        Locutus.imp().getWarDb().iterateAttacks(wars.values(), allowedType, attack -> {
             if (attack.getDate() > finalCutoff) {
                 attacks.add(attack);
             }
             return false;
-        }, f -> false);
+        }, null, null);
 
         this.totalAttacksByDay = new HashMap<>();
         for (AbstractCursor attack : attacks) {

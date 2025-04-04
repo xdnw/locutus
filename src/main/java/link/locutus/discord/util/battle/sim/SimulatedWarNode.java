@@ -235,7 +235,7 @@ public class SimulatedWarNode {
         aggressor = new WarNation(Locutus.imp().getNationDB().getNationById(aggId));
         defender = new WarNation(Locutus.imp().getNationDB().getNationById(defId));
 
-        List<AbstractCursor> attacks = war.getAttacks2(true);
+        List<AbstractCursor> attacks = war.getAttacks3(true);
         Map.Entry<Integer, Integer> resistance = war.getResistance(attacks);
 
         aggressor.setResistance(resistance.getKey());

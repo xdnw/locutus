@@ -31,6 +31,7 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
+import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
@@ -582,7 +583,7 @@ public class WarCategory {
 
                             int unitDiff = current.getUnits(mB.getMilitaryUnit()) - previous.getUnits(mB.getMilitaryUnit());
                             if (unitDiff > 0) {
-                                rebuys.put(mB.getMilitaryUnit(), new AbstractMap.SimpleEntry<>(unitDiff, unitDiff > maxBuy));
+                                rebuys.put(mB.getMilitaryUnit(), new KeyValue<>(unitDiff, unitDiff > maxBuy));
                             }
                         }
                     }

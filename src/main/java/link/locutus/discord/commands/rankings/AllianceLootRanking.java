@@ -60,13 +60,11 @@ public class AllianceLootRanking extends Command {
         Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsById();
         Map<Integer, Map<ResourceType, Double>> byAlliance = new HashMap<>();
 
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().queryAttacks()
-                .withWars(f -> f.possibleEndDate() >= cutoffMs && (f.getAttacker_aa() > 0 || f.getDefender_aa() > 0)).afterDate(cutoffMs).withTypes(AttackType.A_LOOT, AttackType.VICTORY, AttackType.GROUND).getList();
-
-        for (AbstractCursor attack : attacks) {
-
+        Locutus.imp().getWarDb().queryAttacks()
+            .withWars(f -> f.possibleEndDate() >= cutoffMs && (f.getAttacker_aa() > 0 || f.getDefender_aa() > 0)).afterDate(cutoffMs).withTypes(AttackType.A_LOOT, AttackType.VICTORY, AttackType.GROUND)
+            .iterateAttacks((war, attack) -> {
             double[] loot = attack.getLoot();
-            if (loot == null) continue;
+            if (loot == null) return;
             int looter = attack.getAttacker_id();
             {
                 DBNation nation = nations.get(looter);
@@ -78,7 +76,7 @@ public class AllianceLootRanking extends Command {
                 Map<ResourceType, Double> add = ResourceType.add(map, ResourceType.resourcesToMap(loot));
                 byAlliance.put(allianceId, add);
             }
-        }
+        });
 
         List<Map.Entry<Integer, Map<ResourceType, Double>>> sorted = new ArrayList<>(byAlliance.entrySet())
                 .stream()

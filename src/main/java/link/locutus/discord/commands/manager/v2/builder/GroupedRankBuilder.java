@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.builder;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.util.MathMan;
 
 import java.util.*;
@@ -48,7 +49,7 @@ public class GroupedRankBuilder<T, G> {
     public void put(T key, G value) {
         List<G> existing = mapped.get(key);
         if (existing == null) {
-            existing = new ArrayList<>(1);
+            existing = new ObjectArrayList<>(1);
             existing.add(value);
             mapped.put(key, existing);
         } else {

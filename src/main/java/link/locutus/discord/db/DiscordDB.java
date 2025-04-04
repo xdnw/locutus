@@ -21,6 +21,7 @@ import link.locutus.discord.event.nation.NationRegisterEvent;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.offshore.EncryptionUtil;
@@ -566,7 +567,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
 
     public Map.Entry<String, String> getUserPass2(long nationId, String table, EncryptionUtil.Algorithm algorithm) {
         if ((nationId == Settings.INSTANCE.ADMIN_USER_ID || nationId == Settings.INSTANCE.NATION_ID) && nationId > 0 && !Settings.INSTANCE.USERNAME.isEmpty() && !Settings.INSTANCE.PASSWORD.isEmpty()) {
-            return Map.entry(Settings.INSTANCE.USERNAME, Settings.INSTANCE.PASSWORD);
+            return KeyValue.of(Settings.INSTANCE.USERNAME, Settings.INSTANCE.PASSWORD);
         }
         try (PreparedStatement stmt = prepareQuery("select * FROM " + table + " WHERE `discordid` = ?")) {
             stmt.setLong(1, nationId);
@@ -584,7 +585,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
                     String user = new String(userBytes, StandardCharsets.ISO_8859_1);
                     String pass = new String(passBytes, StandardCharsets.ISO_8859_1);
 
-                    return new AbstractMap.SimpleEntry<>(user, pass);
+                    return new KeyValue<>(user, pass);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -624,7 +625,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
                 int nationId = rs.getInt("nation_id");
                 byte[] bytes = rs.getBytes("uuid");
                 long date = rs.getLong("date");
-                list.add(new AbstractMap.SimpleEntry<>(nationId, date));
+                list.add(new KeyValue<>(nationId, date));
             }
         });
         return list;
@@ -638,7 +639,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
                     int nationId = rs.getInt("nation_id");
                     byte[] bytes = rs.getBytes("uuid");
                     long date = rs.getLong("date");
-                    list.add(new AbstractMap.SimpleEntry<>(nationId, new AbstractMap.SimpleEntry<>(date, new BigInteger(bytes))));
+                    list.add(new KeyValue<>(nationId, new KeyValue<>(date, new BigInteger(bytes))));
                 }
             }
             return list;
@@ -780,7 +781,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
                     BigInteger uuid = new BigInteger(bytes);
 
                     List<Map.Entry<Long, Long>> list = result.computeIfAbsent(uuid, k -> new ArrayList<>());
-                    list.add(new AbstractMap.SimpleEntry<>(start, end));
+                    list.add(new KeyValue<>(start, end));
                     end = start;
                 }
             }
@@ -805,8 +806,8 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
 
                     BigInteger uuid = new BigInteger(bytes);
 
-                    Map.Entry<Long, Long> timePair = new AbstractMap.SimpleEntry<>(start, end);
-                    Map.Entry<BigInteger, Map.Entry<Long, Long>> uuidPair = new AbstractMap.SimpleEntry<>(uuid, timePair);
+                    Map.Entry<Long, Long> timePair = new KeyValue<>(start, end);
+                    Map.Entry<BigInteger, Map.Entry<Long, Long>> uuidPair = new KeyValue<>(uuid, timePair);
                     list.add(uuidPair);
                     end = start;
                 }

@@ -8,6 +8,7 @@ import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.CIEDE2000;
+import link.locutus.discord.util.scheduler.KeyValue;
 
 import java.awt.*;
 import java.util.List;
@@ -90,7 +91,7 @@ public class SphereGenerator {
     public Map.Entry<Integer, List<DBAlliance>> getSphere(DBAlliance alliance) {
         for (Map.Entry<Integer, List<DBAlliance>> entry : alliancesBySphere.entrySet()) {
             if (entry.getValue().contains(alliance)) {
-                return new AbstractMap.SimpleEntry<>(entry.getKey(), new ArrayList<>(entry.getValue()));
+                return new KeyValue<>(entry.getKey(), new ArrayList<>(entry.getValue()));
             }
         }
         return null;

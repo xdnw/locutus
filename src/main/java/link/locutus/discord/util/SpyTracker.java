@@ -5,6 +5,7 @@ import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationResponseProjection;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -22,10 +23,12 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.db.handlers.AttackQuery;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
+import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
@@ -208,18 +211,18 @@ public class SpyTracker {
     public synchronized long removeMatchingAttacks() {
         long cutoff = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(20);
         long requiredProximityMs = TimeUnit.SECONDS.toMillis(1);
-        List<AbstractCursor> allAttacks = Locutus.imp().getWarDb().queryAttacks().withAllWars().afterDate(cutoff).getList();
+        AttackQuery query = Locutus.imp().getWarDb().queryAttacks().withAllWars().afterDate(cutoff);
 
         Map<Integer, List<AbstractCursor>> attacksByNation = new HashMap<>();
 
-        long latestAttackMs = 0;
-        for (AbstractCursor attack : allAttacks) {
-            if (attack.getDate() > latestAttackMs) {
-                latestAttackMs = attack.getDate();
+        long[] latestAttackMs = {0};
+        query.iterateAttacks((war, attack) -> {
+            if (attack.getDate() > latestAttackMs[0]) {
+                latestAttackMs[0] = attack.getDate();
             }
-            attacksByNation.computeIfAbsent(attack.getAttacker_id(), k -> new ArrayList<>()).add(attack);
-            attacksByNation.computeIfAbsent(attack.getDefender_id(), k -> new ArrayList<>()).add(attack);
-        }
+            attacksByNation.computeIfAbsent(attack.getAttacker_id(), k -> new ObjectArrayList<>()).add(attack);
+            attacksByNation.computeIfAbsent(attack.getDefender_id(), k -> new ObjectArrayList<>()).add(attack);
+        });
         Iterator<SpyActivity> iter = queue.iterator();
         while (iter.hasNext()) {
             SpyActivity activity = iter.next();
@@ -251,7 +254,7 @@ public class SpyTracker {
                 }
             }
         }
-        return latestAttackMs;
+        return latestAttackMs[0];
     }
 
     public synchronized void processQueue() throws IOException {
@@ -351,7 +354,7 @@ public class SpyTracker {
                             if (!SpyCount.isInScoreRange(cachedNation.getScore(), defensive.score)) continue;
                             long activeMs = nation.getLast_active().toEpochMilli();
                             long diff = Math.max(0, defensive.timestamp - activeMs);
-                            alert.online.add(Map.entry(cachedNation, diff));
+                            alert.online.add(KeyValue.of(cachedNation, diff));
                         }
                         defensive.nationActiveInfo = null;
                     }

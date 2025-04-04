@@ -31,6 +31,7 @@ import com.google.gson.JsonParser;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
@@ -447,7 +448,7 @@ public class TradeManager {
             highMap.put(type, high);
         }
 
-        return new AbstractMap.SimpleEntry<>(lowMap, highMap);
+        return new KeyValue<>(lowMap, highMap);
 
     }
 
@@ -1004,7 +1005,7 @@ public class TradeManager {
                 double rads = radsStr.getLong() / 100d;
                 long turn = radsStr.getLong();
 
-                radiation.put(continent, new AbstractMap.SimpleEntry<>(rads, turn));
+                radiation.put(continent, new KeyValue<>(rads, turn));
                 if (turn == currentTurn) {
                     return rads;
                 }
@@ -1062,7 +1063,7 @@ public class TradeManager {
         byte[] bytes = ArrayUtil.toByteArray(pair);
         Locutus.imp().getNationDB().addRadiationByTurn(continent, currentTurn, rads);
         Locutus.imp().getDiscordDB().setInfo(DiscordMeta.RADIATION_CONTINENT, continent.ordinal(), bytes);
-        radiation.put(continent, new AbstractMap.SimpleEntry<>(rads, currentTurn));
+        radiation.put(continent, new KeyValue<>(rads, currentTurn));
     }
 
     public void updateColorBlocs() {
