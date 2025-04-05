@@ -26,6 +26,7 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCach
 import link.locutus.discord.commands.manager.v2.binding.bindings.ScopedPlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.command.*;
+import link.locutus.discord.commands.manager.v2.command.shrink.EmptyShrink;
 import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
@@ -5296,24 +5297,27 @@ public abstract class DBNation implements NationOrAlliance {
         return Locutus.imp().getNationDB().getPreviousAlliance(data()._nationId(), data()._allianceId());
     }
 
-    public String getWarInfoEmbed() {
+    public IShrink getWarInfoEmbed() {
         return getWarInfoEmbed(false);
     }
 
-    public String getWarInfoEmbed(DBWar war, boolean loot) {
+    public IShrink getWarInfoEmbed(DBWar war, boolean loot) {
         return war.getWarInfoEmbed(war.isAttacker(this), loot);
     }
 
-    public String getWarInfoEmbed(boolean loot) {
-        StringBuilder body = new StringBuilder();
+    public IShrink getWarInfoEmbed(boolean loot) {
+        IShrink body = EmptyShrink.EMPTY;
         Set<DBWar> wars = this.getActiveWars();
 
         for (DBWar war : wars) {
-            body.append(getWarInfoEmbed(war, loot));
+            body = body.append(getWarInfoEmbed(war, loot));
         }
-        body.append(this.getNationUrlMarkup());
-        body.append("\n").append(this.toCityMilMarkdown());
-        return body.toString().replaceAll(" \\| ","|");
+        body = body.append(this.getNationUrlMarkup());
+        if (getAlliance_id() != 0) {
+            body = body.append(IShrink.of("", " | " + getAllianceUrlMarkup()));
+        }
+        body = body.append("\n").append(this.toCityMilMarkdown());
+        return body;
     }
 
     @Command(desc = "Get units at a specific date")

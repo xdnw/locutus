@@ -6,6 +6,8 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.command.shrink.EmptyShrink;
+import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.util.MarkupUtil;
@@ -246,34 +248,34 @@ public class DBWar {
         return nation == null ? 0 : nation.getCities();
     }
 
-    public String getWarInfoEmbed(boolean isAttacker, boolean loot) {
-        return getWarInfoEmbed(isAttacker, loot, true);
+    public IShrink getWarInfoEmbed(boolean isAttacker) {
+        return getWarInfoEmbed(isAttacker, true);
     }
 
-    public String getWarInfoEmbed(boolean isAttacker, boolean loot, boolean title) {
-        StringBuilder body = new StringBuilder();
+    public IShrink getWarInfoEmbed(boolean isAttacker, boolean title) {
+        IShrink body = EmptyShrink.EMPTY;
 
         DBNation enemy = getNation(!isAttacker);
-        if (enemy == null) return body.toString();
+        if (enemy == null) return body;
         WarCard card = new WarCard(this, false);
 
         if (title) {
             String typeStr = isAttacker ? "\uD83D\uDD2A" : "\uD83D\uDEE1";
-            body.append(typeStr);
-            body.append("`" + enemy.getNation() + "`")
-                    .append(" | ").append(enemy.getAllianceName()).append(":");
+            body = body.append(typeStr);
+            body = body.append(IShrink.of(enemy.getNation(), enemy.getMarkdownUrl()))
+                    .append(IShrink.of("|", " | ")).append(IShrink.of(enemy.getAllianceName(), enemy.getAllianceUrlMarkup())).append(":");
         }
-        if (loot && isAttacker) {
+        { // loot
             double lootValue = enemy.lootTotal();
-            body.append("$" + MathMan.format((int) lootValue));
+            body = body.append(IShrink.of("", "$" + MathMan.format((int) lootValue)));
         }
-        body.append(enemy.toCityMilMarkdown());
+        body = body.append(enemy.toCityMilMarkdown());
 
         String attStr = card.condensedSubInfo(isAttacker);
         String defStr = card.condensedSubInfo(!isAttacker);
-        body.append("```" + attStr + "|" + defStr + "``` ");
-        body.append(StringMan.repeat("\u2501", 10) + "\n");
-        return body.toString();
+        body = body.append("```" + attStr + "|" + defStr + "``` ");
+        body = body.append(StringMan.repeat("\u2501", 10) + "\n");
+        return body;
     }
 
     public List<AbstractCursor> getAttacks3() {

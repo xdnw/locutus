@@ -192,25 +192,25 @@ public class EmbedShrink implements IShrink {
     }
 
     @Override
-    public IShrink prepend(String s) {
+    public EmbedShrink prepend(String s) {
         this.description = description.prepend(s);
         return this;
     }
 
     @Override
-    public IShrink append(IShrink s) {
+    public EmbedShrink append(IShrink s) {
         this.description = description.append(s);
         return this;
     }
 
     @Override
-    public IShrink prepend(IShrink s) {
+    public EmbedShrink prepend(IShrink s) {
         this.description = description.prepend(s);
         return this;
     }
 
     @Override
-    public IShrink clone() {
+    public EmbedShrink clone() {
         return new EmbedShrink(this);
     }
 

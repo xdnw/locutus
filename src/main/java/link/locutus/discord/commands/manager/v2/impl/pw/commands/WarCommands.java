@@ -12,6 +12,7 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
+import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
 import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.war.*;
@@ -379,37 +380,37 @@ public class WarCommands {
             DBNation enemy = war.getNation(!war.isAttacker(nation));
 
             String title = (war.isAttacker(nation) ? "Off" : "Def") + ": " + enemy.getNation() + " | " + enemy.getAllianceName();
-            StringBuilder body = new StringBuilder();
-            body.append(war.toUrl()).append("\n");
-            String info = war.getWarInfoEmbed(war.isAttacker(nation), true);
-            body.append(info);
-            body.append("\nBeige:");
+            EmbedShrink embed = new EmbedShrink().title(title);
+            embed.append(war.toUrl()).append("\n");
+            IShrink info = war.getWarInfoEmbed(war.isAttacker(nation), true);
+            embed.append(info);
+            embed.append("\nBeige:");
 
             if (enemy.active_m() > 10000) {
-                body.append("**YES** (inactive)");
+                embed.append("**YES** (inactive)");
             } else if (!enemies.contains(enemy.getAlliance_id())) {
-                body.append("**YES** (not an enemy)");
+                embed.append("**YES** (not an enemy)");
             } else {
                 List<BeigeReason> permitted = new ArrayList<>(BeigeReason.getAllowedBeigeReasons(db, nation, war, null));
 
                 if (permitted.isEmpty()) {
-                    body.append("**AVOID DEFEATING** (ping milcom for more info, or assistance)");
+                    embed.append("**AVOID DEFEATING** (ping milcom for more info, or assistance)");
                 } else {
                     Collections.sort(permitted);
                     BeigeReason firstReason = permitted.get(0);
-                    body.append("**YES**");
+                    embed.append("**YES**");
                     if (firstReason.getApproveMessage() != null) {
-                        body.append(" (" + firstReason.getApproveMessage() + ")");
+                        embed.append(" (" + firstReason.getApproveMessage() + ")");
                     }
-                    body.append("\n");
+                    embed.append("\n");
                     for (BeigeReason reason : permitted) {
-                        body.append("- " + reason + ": " + reason.getDescription() + "\n");
+                        embed.append("- " + reason + ": " + reason.getDescription() + "\n");
                     }
 
                 }
             }
 
-            channel.create().embed(title, body.toString()).send();
+            channel.create().embed(embed).send();
 
         }
         return "Notes:\n" +
@@ -4308,8 +4309,8 @@ public class WarCommands {
     public String wars(@Me IMessageIO channel, DBNation nation) {
         Set<DBWar> wars = nation.getActiveWars();
         String title = wars.size() + " wars";
-        String body = nation.getWarInfoEmbed();
-        channel.create().embed(title, body).send();
+        IShrink body = nation.getWarInfoEmbed();
+        channel.create().embed(new EmbedShrink().setTitle(title).append(body)).send();
         return null;
     }
 

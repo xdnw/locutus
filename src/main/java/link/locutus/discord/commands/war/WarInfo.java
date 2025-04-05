@@ -5,6 +5,8 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
+import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
@@ -70,8 +72,9 @@ public class WarInfo extends Command {
             if (nation == null) return "Invalid warId: " + warId;
             Set<DBWar> wars = nation.getActiveWars();
             String title = wars.size() + " wars";
-            String body = nation.getWarInfoEmbed(flags.contains('l'));
-            channel.create().embed(title, body).send();
+            IShrink body = nation.getWarInfoEmbed(flags.contains('l'));
+            EmbedShrink embed = new EmbedShrink().title(title).append(body);
+            channel.create().embed(embed).send();
         } else {
             new WarCard(warId).embed(channel, true, false);
         }
