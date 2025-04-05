@@ -2,6 +2,7 @@ package link.locutus.discord.db;
 
 import com.google.common.collect.Lists;
 import com.politicsandwar.graphql.model.*;
+import com.ptsmods.mysqlw.Database;
 import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TablePreset;
 import it.unimi.dsi.fastutil.ints.*;
@@ -52,13 +53,12 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.SWarContainer;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
+import java.io.File;
 import java.io.IOException;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.text.ParseException;
 import java.util.*;
+import java.util.Date;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -91,20 +91,49 @@ public class WarDB extends DBMainV2 {
 //        reserializedVictoryAttacks();
     }
 
-    public void resaveVictoryAttacks() {
+    public void importVictoryAttacksFromExternalDB(String filePath) throws SQLException {
+        System.out.println("Importing attacks from external db");
+        // load from the external db
+        Database otherDb = Database.connect(new File(filePath));
+        List<AttackEntry> toAdd = new ObjectArrayList<>();
+        int latestId = 0;
+        try (Connection conn = otherDb.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT * FROM `attacks3`")) {
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                int warId = rs.getInt("war_id");
+                int attackerId = rs.getInt("attacker_nation_id");
+                int defenderId = rs.getInt("defender_nation_id");
+                long date = rs.getLong("date");
+                byte[] data = rs.getBytes("data");
+                toAdd.add(new AttackEntry(id, warId, attackerId, defenderId, date, data));
+
+                latestId = Math.max(latestId, id);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        saveAttacksDb(toAdd);
+        if (latestId > 0) {
+            resaveVictoryAttacks(latestId);
+        }
+        System.out.println("Done importing attacks");
+    }
+
+    private void resaveVictoryAttacks(int sinceId) {
         List<AttackEntry> entries = new ObjectArrayList<>();
         AttackCursorFactory loader = new AttackCursorFactory(this);
 
         long[] last = new long[]{System.currentTimeMillis()};
 
         int[] saved = {0};
-        String keyHex = _Custom.key_remove;
-        PoliticsAndWarV3 api = new PoliticsAndWarV3("https://api.politicsandwar.com", ApiKeyPool.builder().addKey(295328, keyHex).build());
+        PoliticsAndWarV3 api = new PoliticsAndWarV3("https://api.politicsandwar.com", ApiKeyPool.builder().addKey(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.API_KEY_PRIMARY).build());
         System.out.println("STARTING ATTACKS");
         api.fetchAttacks(ATTACKS_PER_PAGE, new Consumer<WarattacksQueryRequest>() {
             @Override
             public void accept(WarattacksQueryRequest request) {
-
+                request.setMin_id(sinceId);
             }
         }, api.warAttackInfo(), f -> PoliticsAndWarV3.ErrorResponse.THROW, new Predicate<WarAttack>() {
             @Override

@@ -1267,7 +1267,6 @@ public final class PW {
 
         Continent continent = nation.getContinent();
         double grossModifier = nation.getGrossModifier(noFood) + treasureBonus;
-        int numCities = bonus ? nation.getCities() : 21;
 
         // Project revenue
 //        if (checkRpc && nation.getCities() <= 15 && nation.hasProject(Projects.ACTIVITY_CENTER)) {
@@ -1280,6 +1279,7 @@ public final class PW {
 
         // city revenue
         for (JavaCity build : cities) {
+            int numCities = bonus ? nation.getCities() : 21;
             profitBuffer = build.profit(continent, rads, date, nation::hasProject, profitBuffer, numCities, grossModifier, noPower, 12);
         }
 
