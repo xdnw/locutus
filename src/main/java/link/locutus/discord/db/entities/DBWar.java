@@ -264,10 +264,10 @@ public class DBWar {
             body = body.append(typeStr);
             body = body.append(IShrink.of(enemy.getNation(), enemy.getMarkdownUrl()))
                     .append(IShrink.of("|", " | ")).append(IShrink.of(enemy.getAllianceName(), enemy.getAllianceUrlMarkup())).append(":");
-        }
-        { // loot
-            double lootValue = enemy.lootTotal();
-            body = body.append(IShrink.of("", "$" + MathMan.format((int) lootValue)));
+            { // loot
+                double lootValue = enemy.lootTotal();
+                body = body.append(IShrink.of("", "$" + MathMan.format((int) lootValue)));
+            }
         }
         body = body.append(enemy.toCityMilMarkdown());
 

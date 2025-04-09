@@ -4048,7 +4048,7 @@ public class BankCommands {
                             CM.deposits.check.cmd.nationOrAllianceOrGuild(
                                     nationOrAllianceOrGuild.getQualifiedId())
                                     .offshores(
-                                    offshoreIds == null || offshoreIds.isEmpty() ? null : StringMan.join(offshoreIds, ",")
+                                            offshores == null || offshores.isEmpty() ? null : StringMan.join(offshores.stream().map(DBAlliance::getId).toList(), ",")
                                     ).timeCutoff(
                                     timeCutoff != null && timeCutoff > 0 ? "timestamp:" + timeCutoff : null
                                     ).includeBaseTaxes(

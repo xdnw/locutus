@@ -14,7 +14,7 @@ public class EmbedShrink implements IShrink {
     private IShrink description;
     private IShrink footer;
 
-    private List<ShrinkableField> fields = new ObjectArrayList<>();
+    private final List<ShrinkableField> fields = new ObjectArrayList<>();
     private Color color;
 
     public EmbedShrink() {
@@ -27,7 +27,6 @@ public class EmbedShrink implements IShrink {
         this.title = embed.title.clone();
         this.description = embed.description.clone();
         this.footer = embed.footer == null ? null : embed.footer.clone();
-        this.fields = new ObjectArrayList<>(embed.fields.size());
         this.color = embed.color;
         for (ShrinkableField field : embed.fields) {
             this.fields.add(field.clone());
@@ -104,6 +103,11 @@ public class EmbedShrink implements IShrink {
         }
         if (color != null) {
             builder.setColor(color);
+        }
+        if (!fields.isEmpty()) {
+            for (ShrinkableField field : fields) {
+                builder.addField(field.name.get(), field.value.get(), field.inline);
+            }
         }
         return builder;
     }

@@ -5297,20 +5297,16 @@ public abstract class DBNation implements NationOrAlliance {
         return Locutus.imp().getNationDB().getPreviousAlliance(data()._nationId(), data()._allianceId());
     }
 
+    public IShrink getWarInfoEmbed(DBWar war) {
+        return war.getWarInfoEmbed(war.isAttacker(this), true);
+    }
+
     public IShrink getWarInfoEmbed() {
-        return getWarInfoEmbed(false);
-    }
-
-    public IShrink getWarInfoEmbed(DBWar war, boolean loot) {
-        return war.getWarInfoEmbed(war.isAttacker(this), loot);
-    }
-
-    public IShrink getWarInfoEmbed(boolean loot) {
         IShrink body = EmptyShrink.EMPTY;
         Set<DBWar> wars = this.getActiveWars();
 
         for (DBWar war : wars) {
-            body = body.append(getWarInfoEmbed(war, loot));
+            body = body.append(getWarInfoEmbed(war));
         }
         body = body.append(this.getNationUrlMarkup());
         if (getAlliance_id() != 0) {

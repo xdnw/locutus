@@ -53,7 +53,6 @@ public class WarInfo extends Command {
         info.append("`\u2764` = offering peace\n");
         info.append("X/12 = Military Action Points\n");
         info.append("Y% = Resistance\n\n");
-        info.append("Add `-l` to show estimated raid loot (if showing nation war info)");
         return info.toString();
     }
 
@@ -72,7 +71,7 @@ public class WarInfo extends Command {
             if (nation == null) return "Invalid warId: " + warId;
             Set<DBWar> wars = nation.getActiveWars();
             String title = wars.size() + " wars";
-            IShrink body = nation.getWarInfoEmbed(flags.contains('l'));
+            IShrink body = nation.getWarInfoEmbed();
             EmbedShrink embed = new EmbedShrink().title(title).append(body);
             channel.create().embed(embed).send();
         } else {

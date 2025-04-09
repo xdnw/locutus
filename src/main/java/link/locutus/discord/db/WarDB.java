@@ -55,6 +55,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.sql.*;
 import java.text.ParseException;
 import java.util.*;
@@ -107,6 +108,9 @@ public class WarDB extends DBMainV2 {
                 int defenderId = rs.getInt("defender_nation_id");
                 long date = rs.getLong("date");
                 byte[] data = rs.getBytes("data");
+                int type = ByteBuffer.wrap(data, 0, 4).getInt();
+                if (type != AttackType.VICTORY.ordinal()) continue;
+
                 toAdd.add(new AttackEntry(id, warId, attackerId, defenderId, date, data));
 
                 latestId = Math.max(latestId, id);
@@ -115,9 +119,9 @@ public class WarDB extends DBMainV2 {
             throw new RuntimeException(e);
         }
         saveAttacksDb(toAdd);
-        if (latestId > 0) {
-            resaveVictoryAttacks(latestId);
-        }
+//        if (latestId > 0) {
+//            resaveVictoryAttacks(latestId);
+//        }
         System.out.println("Done importing attacks");
     }
 
