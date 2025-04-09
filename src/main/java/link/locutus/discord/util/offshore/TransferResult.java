@@ -22,7 +22,6 @@ public class TransferResult {
     private final List<String> resultMessage;
     private final double[] amount;
     private final String note;
-    private boolean isEscrowed = false;
 
     public static Map<OffshoreInstance.TransferStatus, Integer> count(Collection<TransferResult> list) {
         Map<OffshoreInstance.TransferStatus, Integer> map = new HashMap<>();
@@ -50,7 +49,7 @@ public class TransferResult {
             body = result.toEmbedString();
         } else {
             int success = results.stream().mapToInt(f -> f.getStatus().isSuccess() ? 1 : 0).sum();
-            int escrowed = results.stream().mapToInt(f -> f.getStatus().isSuccess() && f.isEscrowed ? 1 : 0).sum();
+            int escrowed = results.stream().mapToInt(f -> f.getStatus() == OffshoreInstance.TransferStatus.ESCROWED ? 1 : 0).sum();
 
             String mixedStatus = escrowed == success ? escrowed > 0 ? "Escrow" : "Transfer" : escrowed > 0 ? "Escrow/Transfer" : "Transfer";
 
@@ -180,17 +179,12 @@ public class TransferResult {
         return body.toString();
     }
 
-    public TransferResult setEscrowed(boolean escrowed) {
-        isEscrowed = escrowed;
-        return this;
-    }
-
     public String toTitleString() {
         String title;
         if (status.isSuccess()) {
-            title = "Successfully " + (isEscrowed ? "escrowed" : "transferred");
+            title = "Successfully " + (status == OffshoreInstance.TransferStatus.ESCROWED ? "escrowed" : "transferred");
         } else {
-            title = "Failed to " + (isEscrowed ? "escrow" : "transfer");
+            title = "Failed to " + (status == OffshoreInstance.TransferStatus.ESCROWED ? "escrow" : "transfer");
         }
         title += " to " + receiver.getTypePrefix() + ":" + receiver.getName();
         if (status != OffshoreInstance.TransferStatus.SUCCESS) {

@@ -990,7 +990,7 @@ public class OffshoreInstance {
                     senderDB.setEscrowed(receiver.asNation(), balance, escrowDate);
                 }
 //                result = KeyValue.of(TransferStatus.SUCCESS, "Escrowed `" + PW.resourcesToString(amount) + "` for " + receiver.getName() + ". use " + CM.escrow.withdraw.cmd.toSlashMention() + " to withdraw.");
-                result = new TransferResult(TransferStatus.SUCCESS, receiver, amount, ingameNote).setEscrowed(true)
+                result = new TransferResult(TransferStatus.ESCROWED, receiver, amount, ingameNote)
                         .addMessage("Escrowed `" + ResourceType.toString(amount) + "` for " + receiver.getMarkdownUrl(),
                         "Use " + CM.escrow.withdraw.cmd.toSlashMention() + " to withdraw.");
             }
@@ -1004,6 +1004,7 @@ public class OffshoreInstance {
                     }
                     break;
                 }
+                case ESCROWED:
                 case SENT_TO_ALLIANCE_BANK:
                 case SUCCESS: {
                     if (taxAccount != null) {
@@ -1296,6 +1297,7 @@ public class OffshoreInstance {
                 default:
                 case OTHER:
                     log(senderDB, banker, receiver, "Unknown result: " + result + " | <@" + Locutus.loader().getAdminUserId() + ">");
+                case ESCROWED:
                 case SUCCESS:
                 case SENT_TO_ALLIANCE_BANK: {
                     {
@@ -1750,6 +1752,7 @@ public class OffshoreInstance {
 
     public enum TransferStatus {
         SUCCESS("You successfully transferred funds from the alliance bank."),
+        ESCROWED("You successfully escrowed funds for withdrawal at a later date"),
         BLOCKADE("You can't withdraw resources to a blockaded nation."),
         MULTI("This player has been flagged for using the same network as you."),
         TURN_CHANGE("You cannot transfer close to turn change. (DC = 10m, TC = 1m)"),
@@ -1796,7 +1799,7 @@ public class OffshoreInstance {
         }
 
         public boolean isSuccess() {
-            return this == SUCCESS || this == SENT_TO_ALLIANCE_BANK;
+            return this == SUCCESS || this == SENT_TO_ALLIANCE_BANK || this == ESCROWED;
         }
     }
 

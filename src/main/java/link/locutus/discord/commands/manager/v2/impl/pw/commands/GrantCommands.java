@@ -3064,6 +3064,7 @@ public class GrantCommands {
             long accountId = offshore.getAccountId(allowedIds, me, receiver);
             TransferResult result = offshore.transferFromAllianceDeposits(me, db, db::isAllianceId, receiver, amtArr, DepositType.IGNORE.name() + "=" + accountId);
             switch (result.getStatus()) {
+                case ESCROWED:
                 case SENT_TO_ALLIANCE_BANK:
                 case SUCCESS: {
                     channel.create().embed("Escrow " + result.toTitleString(), result.toEmbedString()).send();
