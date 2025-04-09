@@ -22,6 +22,7 @@ public class TransferResult {
     private final List<String> resultMessage;
     private final double[] amount;
     private final String note;
+    private boolean isEscrowed = false;
 
     public static Map<OffshoreInstance.TransferStatus, Integer> count(Collection<TransferResult> list) {
         Map<OffshoreInstance.TransferStatus, Integer> map = new HashMap<>();
@@ -49,10 +50,24 @@ public class TransferResult {
             body = result.toEmbedString();
         } else {
             int success = results.stream().mapToInt(f -> f.getStatus().isSuccess() ? 1 : 0).sum();
+            int escrowed = results.stream().mapToInt(f -> f.getStatus().isSuccess() && f.isEscrowed ? 1 : 0).sum();
+
+            String mixedStatus = escrowed == success ? escrowed > 0 ? "Escrow" : "Transfer" : escrowed > 0 ? "Escrow/Transfer" : "Transfer";
+
             int failed = results.size() - success;
-            title = success > 0 ? failed > 0 ? "Error transferring" : "Successfully transferred" : "Aborted transfer";
+            title = mixedStatus + (success > 0 ? failed > 0 ? " with Errors" : " Success" : "Aborted");
             if (failed > 0) {
-                title += " (" + success + " successful, " + failed + " failed)";
+                title += " (";
+                if (escrowed > 0) {
+                    title += escrowed + " escrowed, ";
+                }
+                if (success != escrowed && success > 0) {
+                    title += (success - escrowed) + " transferred, ";
+                }
+                if (failed > 0) {
+                    title += failed + " failed";
+                }
+                title += ")";
             }
             body = results.stream().map(TransferResult::toLineString).collect(Collectors.joining("\n"));
         }
@@ -155,9 +170,9 @@ public class TransferResult {
         body.append("**Amount:** `").append(ResourceType.toString(amount)).append("`\n");
         body.append(" - worth: `$" + MathMan.format(ResourceType.convertedTotal(amount)) + "`\n");
         body.append("**Note:** `").append(note).append("`\n");
-        if (status != OffshoreInstance.TransferStatus.SUCCESS) {
+        if (!resultMessage.isEmpty()) {
             if (resultMessage.size() == 1) {
-                body.append("**Response:** ").append(getMessageJoined(true));
+                body.append("**Response:** ").append(getMessageJoined(false));
             } else if (!resultMessage.isEmpty()) {
                 body.append("**Response:**\n").append(getMessageJoined(true));
             }
@@ -165,12 +180,17 @@ public class TransferResult {
         return body.toString();
     }
 
+    public TransferResult setEscrowed(boolean escrowed) {
+        isEscrowed = escrowed;
+        return this;
+    }
+
     public String toTitleString() {
         String title;
         if (status.isSuccess()) {
-            title = "Successfully transferred";
+            title = "Successfully " + (isEscrowed ? "escrowed" : "transferred");
         } else {
-            title = "Failed to transfer";
+            title = "Failed to " + (isEscrowed ? "escrow" : "transfer");
         }
         title += " to " + receiver.getTypePrefix() + ":" + receiver.getName();
         if (status != OffshoreInstance.TransferStatus.SUCCESS) {
