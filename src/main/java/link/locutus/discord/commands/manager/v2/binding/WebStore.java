@@ -9,10 +9,12 @@ import gg.jte.output.StringOutput;
 import io.javalin.http.Context;
 import io.javalin.http.HttpStatus;
 import io.javalin.http.RedirectResponse;
+import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.commands.binding.AuthBindings;
 import link.locutus.discord.web.commands.binding.DBAuthRecord;
+import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
@@ -161,5 +163,9 @@ public class WebStore {
 
     public List<List<Content>> tableUnsafe(List<List<String>> table) {
         return table.stream().map(this::listUnsafe).toList();
+    }
+
+    public PermissionHandler permisser() {
+        return WebRoot.getInstance().getPageHandler().getPermisser();
     }
 }

@@ -468,13 +468,13 @@ public class BlitzGenerator {
             }
 
             for (DBNation defender : colB) {
-                if (defender.getCities() > attacker.getCities() * maxCityRatio) {
+                if (maxCityRatio < 99 && defender.getCities() > attacker.getCities() * maxCityRatio) {
                     continue;
                 }
-                if (defender.getAircraft() > attacker.getAircraft() * maxAirRatio) {
+                if (maxAirRatio < 99 && defender.getAircraft() > attacker.getAircraft() * maxAirRatio) {
                     continue;
                 }
-                if (defender.getGroundStrength(true, defender.getAircraft() > attacker.getAircraft() * 0.66) > attacker.getGroundStrength(true, false) * maxGroundRatio) {
+                if (maxGroundRatio < 99 && defender.getGroundStrength(true, defender.getAircraft() > attacker.getAircraft() * 0.66) > attacker.getGroundStrength(true, false) * maxGroundRatio) {
                     continue;
                 }
 

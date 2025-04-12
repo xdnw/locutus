@@ -13,6 +13,7 @@ import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -71,8 +72,12 @@ public class EndpointPages extends PageHelper {
                     result.set(i, error("Invalid command: " + key));
                 }
             } catch (Exception e) {
-                e.printStackTrace();
-                result.set(i, error(e.getMessage()));
+                Throwable root = e;
+                while (root.getCause() != null && root.getCause() != root) {
+                    root = root.getCause();
+                }
+                root.printStackTrace();
+                result.set(i, error(root.getMessage()));
             }
         }
         return new WebBulkQuery(result);

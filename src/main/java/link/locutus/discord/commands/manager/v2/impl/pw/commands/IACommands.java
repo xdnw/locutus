@@ -1979,8 +1979,12 @@ public class IACommands {
             User nationUser = nation.getUser();
             String subjectFormat = subjectF.apply(nation);
             String bodyFormat = bodyF.apply(nation);
-
-            Map.Entry<CommandResult, List<StringMessageBuilder>> response = nation.runCommandInternally(guild, nationUser, command);
+            Map.Entry<CommandResult, List<StringMessageBuilder>> response;
+            try {
+                response = nation.runCommandInternally(guild, nationUser, command);
+            } catch (Exception e) {
+                response = Map.entry(CommandResult.ERROR, Collections.singletonList((StringMessageBuilder) new StringMessageBuilder(guild).append(e.getMessage())));
+            }
             CommandResult respType = response.getKey();
             List<StringMessageBuilder> messages = response.getValue();
 

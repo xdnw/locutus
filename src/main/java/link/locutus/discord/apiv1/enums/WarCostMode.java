@@ -9,6 +9,7 @@ import java.util.function.Function;
 
 public enum WarCostMode {
     DEALT(true, false, true, false, true, true),
+    DEALT_NO_SUBTRACT_LOOT(true, false, true, false, true, true),
 
     NET_DEALT(true, true, true, false, true, true),
 

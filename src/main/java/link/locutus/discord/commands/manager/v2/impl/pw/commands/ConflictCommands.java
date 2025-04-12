@@ -175,7 +175,7 @@ public class ConflictCommands {
     public String setCategory(ConflictManager manager, Conflict conflict, ConflictCategory category) throws IOException {
         conflict.setCategory(category);
         conflict.push(manager, null, false, true);
-        return "Done! Set the category of `" + conflict.getName() + "` to `" + category + "`";
+        return "Done! Set the category of `" + conflict.getName() + "` to `" + category + "` and pushed to site.";
     }
 
     @Command(desc = "Pushes conflict data to the AWS bucket for the website")

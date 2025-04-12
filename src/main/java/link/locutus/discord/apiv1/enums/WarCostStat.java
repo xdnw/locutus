@@ -91,7 +91,6 @@ public enum WarCostStat {
             return (attacker, war, attack) -> (double) (attacker ? attack.getAttUnitLosses(unit()) : attack.getDefUnitLosses(unit()));
         } else if (resource != null) {
             double[] rssBuffer = ResourceType.getBuffer();
-            Arrays.fill(rssBuffer, 0);
             if (!mode.includeOffAttacks()) {
                 return (attacker, war, attack) -> {
                     rssBuffer[resource.ordinal()] = 0;
@@ -101,6 +100,12 @@ public enum WarCostStat {
                 return (attacker, war, attack) -> {
                     rssBuffer[resource.ordinal()] = 0;
                     return attacker ? 0 : attack.addLosses(rssBuffer, war, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings)[resource.ordinal()];
+                };
+            }
+            if (mode == WarCostMode.DEALT_NO_SUBTRACT_LOOT && !excludeLoot) {
+                return (attacker, war, attack) -> {
+                    rssBuffer[resource.ordinal()] = 0;
+                    return attack.addLosses(rssBuffer, war, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !attacker, !excludeBuildings)[resource.ordinal()];
                 };
             }
             return (attacker, war, attack) -> {
@@ -113,20 +118,21 @@ public enum WarCostStat {
             }
             return (attacker, war, attack) -> attack.getAttack_type() == attack() ? 1d : 0d;
         } else {
-            double[] rssBuffer = ResourceType.getBuffer();
             if (!mode.includeOffAttacks()) {
                 return (attacker, war, attack) -> {
-                    Arrays.fill(rssBuffer, 0);
                     return !attacker ? 0 : attack.getLossesConverted(war, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings);
                 };
             } else if (!mode.includeDefAttacks()) {
                 return (attacker, war, attack) -> {
-                    Arrays.fill(rssBuffer, 0);
                     return attacker ? 0 : attack.getLossesConverted(war, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings);
                 };
             }
+            if (mode == WarCostMode.DEALT_NO_SUBTRACT_LOOT && !excludeLoot) {
+                return (attacker, war, attack) -> {
+                    return attack.getLossesConverted(war, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !attacker, !excludeBuildings);
+                };
+            }
             return (attacker, war, attack) -> {
-                Arrays.fill(rssBuffer, 0);
                 return attack.getLossesConverted(war, attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings);
             };
         }

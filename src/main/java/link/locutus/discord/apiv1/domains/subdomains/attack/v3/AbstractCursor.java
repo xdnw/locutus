@@ -1,6 +1,7 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
 import com.politicsandwar.graphql.model.WarAttack;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -113,6 +114,17 @@ public abstract class AbstractCursor implements IAttack {
     @Override
     public int getWar_id() {
         return war_id;
+    }
+
+    @Override
+    public DBWar getWar() {
+        if (war_cached == null) {
+            Locutus lc = Locutus.imp();
+            if (lc != null) {
+                war_cached = getWar(lc.getWarDb());
+            }
+        }
+        return war_cached;
     }
 
     @Override

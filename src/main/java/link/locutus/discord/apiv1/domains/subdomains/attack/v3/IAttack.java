@@ -3,6 +3,7 @@ package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -16,58 +17,82 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public interface IAttack {
+    @Command
     boolean isAttackerIdGreater();
+    @Command
     int getAttacker_id();
+    @Command
     int getDefender_id();
+    @Command
     int getWar_attack_id();
+    @Command
     long getDate();
     // skip war
     // skip attacker
     // skip defender
+    @Command
     AttackType getAttack_type();
+    @Command
     SuccessType getSuccess();
+    @Command
     int getAttcas1();
+    @Command
     int getAttcas2();
+    @Command
     int getDefcas1();
+    @Command
     int getDefcas2();
+    @Command
     int getDefcas3(); // ?
+    @Command
     double getInfra_destroyed();
+    @Command
     int getImprovements_destroyed(); // ?
+
     void addBuildingsDestroyed(int[] destroyedBuffer);
     void addBuildingsDestroyed(char[] destroyedBuffer);
     /**
      * Valid for victory when all cities receive damage
      * @return number between 0 and 100
      */
+    @Command
     double getInfra_destroyed_percent();
 
+    @Command
     int getCity_id();
+    @Command
     default int getAllianceIdLooted() {
         return 0;
     }
+    @Command
     double getMoney_looted();
     double[] getLoot();
+    @Command
     double getLootPercent();
     // skip getLooted
+    @Command
     double getCity_infra_before();
-
+    @Command
     double getInfra_destroyed_value();
-
+    @Command
     double getAtt_gas_used();
+    @Command
     double getAtt_mun_used();
+    @Command
     double getDef_gas_used();
+    @Command
     double getDef_mun_used();
-
+    @Command
     default int getVictor() {
         return getSuccess() != SuccessType.UTTER_FAILURE ? getAttacker_id() : getDefender_id();
     }
-
+    @Command
     int getWar_id();
-
+    @Command
     default String toUrl() {
         return "" + Settings.PNW_URL() + "/nation/war/timeline/war=" + getWar_id();
     }
-
+    @Command
     default int getResistance() {
         if (getSuccess() == SuccessType.UTTER_FAILURE) return 0;
         int damage;
@@ -122,15 +147,18 @@ public interface IAttack {
         }
         return null;
     }
-
+    @Command
     double getAttLossValue(DBWar war);
+    @Command
     double getDefLossValue(DBWar war);
     double[] addAttLosses(double[] buffer, DBWar war);
     double[] addDefLosses(double[] buffer, DBWar war);
 
     double[] addAttUnitCosts(double[] buffer, DBWar war);
     double[] addDefUnitCosts(double[] buffer, DBWar war);
+    @Command
     double getAttUnitLossValue(DBWar war);
+    @Command
     double getDefUnitLossValue(DBWar war);
     double[] addAttUnitLossValueByUnit(double[] valueByUnit, DBWar war);
     double[] addDefUnitLossValueByUnit(double[] valueByUnit, DBWar war);
@@ -138,11 +166,15 @@ public interface IAttack {
     double[] addInfraCosts(double[] buffer);
     double[] addAttConsumption(double[] buffer);
     double[] addDefConsumption(double[] buffer);
+    @Command
     double getAttConsumptionValue();
+    @Command
     double getDefConsumptionValue();
     double[] addAttLoot(double[] buffer);
     double[] addDefLoot(double[] buffer);
+    @Command
     double getAttLootValue();
+    @Command
     double getDefLootValue();
     double[] addBuildingCosts(double[] buffer);
     double getBuildingLossValue();
@@ -150,13 +182,16 @@ public interface IAttack {
     int[] addAttUnitLosses(int[] buffer);
     int[] addDefUnitLosses(int[] buffer);
 
+    @Command
     int getAttUnitLosses(MilitaryUnit unit);
+    @Command
     int getDefUnitLosses(MilitaryUnit unit);
 
     default int[] addUnitLosses(int[] buffer, boolean isAttacker) {
         return isAttacker ? addAttUnitLosses(buffer) : addDefUnitLosses(buffer);
     }
 
+    @Command
     default DBWar getWar() {
         Locutus lc = Locutus.imp();
         if (lc != null) {

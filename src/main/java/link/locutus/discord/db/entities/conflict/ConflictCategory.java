@@ -6,7 +6,8 @@ public enum ConflictCategory {
     MICRO,
     NON_MICRO,
     GREAT,
-
+    MAJOR,
+    SKIRMISH
     ;
 
     public static final ConflictCategory[] values = values();

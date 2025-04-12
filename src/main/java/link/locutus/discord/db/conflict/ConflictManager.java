@@ -1489,6 +1489,7 @@ public class ConflictManager {
         headerFuncs.put("cb", Conflict::getCasusBelli);
         headerFuncs.put("posts", Conflict::getAnnouncementsList);
         headerFuncs.put("source", Conflict::getGuildId);
+        headerFuncs.put("category", f -> f.getCategory().name());
 
         List<String> headers = new ObjectArrayList<>();
         List<Function<Conflict, Object>> funcs = new ObjectArrayList<>();
