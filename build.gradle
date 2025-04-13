@@ -87,6 +87,7 @@ generateTypeScript {
             'link.locutus.discord.web.commands.binding.value_types.WebValue',
             'link.locutus.discord.web.commands.binding.value_types.WebWarFinder',
             'link.locutus.discord.web.commands.binding.value_types.TaxExpenses',
+            'link.locutus.discord.web.commands.binding.value_types.WebPermission',
             'link.locutus.discord.util.task.multi.MultiResult',
             'link.locutus.discord.util.task.multi.NetworkRow',
             'link.locutus.discord.util.task.multi.SameNetworkTrade',
@@ -97,7 +98,7 @@ generateTypeScript {
     nullableAnnotations = ['org.checkerframework.checker.nullness.qual.Nullable']
     nullabilityDefinition = 'undefinedInlineUnion'
     // set output file
-    outputFile = file('../lc_cmd_react/src/lib/apitypes.d.ts')
+    outputFile = file('../lc_web_test/src/lib/apitypes.d.ts')
 }
 
 publishing {
