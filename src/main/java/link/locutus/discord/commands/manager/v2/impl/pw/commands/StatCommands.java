@@ -2453,6 +2453,7 @@ public class StatCommands {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.NthBeigeLootByScoreRange.cmd.getName(), command));
         }
+        msg.send();
         return null;
     }
 
