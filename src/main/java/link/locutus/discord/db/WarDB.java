@@ -89,7 +89,7 @@ public class WarDB extends DBMainV2 {
 
     public WarDB(String name) throws SQLException {
         super(Settings.INSTANCE.DATABASE, name);
-//        reserializedVictoryAttacks();
+        reserializeVictoryOnce();
     }
 
     public void importVictoryAttacksFromExternalDB(String filePath) throws SQLException {
@@ -168,6 +168,29 @@ public class WarDB extends DBMainV2 {
             entries.clear();
         }
         Logg.text("Done loading attacks");
+    }
+
+    private void reserializeVictoryOnce() {
+        // Create metadata table if it doesn't exist
+        executeStmt("CREATE TABLE IF NOT EXISTS war_metadata (key TEXT PRIMARY KEY, value TEXT)");
+
+        // Check if reserialization has already been run
+        boolean alreadyRun = select(
+                "SELECT value FROM war_metadata WHERE key = ?",
+                (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setString(1, "victory_attacks_reserialized"),
+                (ThrowingFunction<ResultSet, Boolean>) rs -> rs.next() && "true".equals(rs.getString("value"))
+        );
+
+        // Only run if it hasn't been done before
+        if (!alreadyRun) {
+            System.out.println("Running victory attacks reserialization...");
+            reserializedVictoryAttacks();
+
+            // Mark as complete
+            update("INSERT OR REPLACE INTO war_metadata (key, value) VALUES (?, ?)",
+                    "victory_attacks_reserialized", "true");
+            System.out.println("Victory attacks reserialization completed");
+        }
     }
 
     private void reserializedVictoryAttacks() {
