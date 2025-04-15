@@ -15,6 +15,7 @@ import link.locutus.discord.apiv1.enums.city.ICity;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
@@ -232,6 +233,7 @@ public enum ResourceType {
         }
         arg = arg.replace('=', ':').replaceAll("([0-9]),([0-9])", "$1$2").toUpperCase();
         arg = arg.replaceAll("([0-9.]+):([a-zA-Z]{3,})", "$2:$1");
+        arg = arg.replaceAll("([A-Z]+:[0-9,.]+) ([A-Z]+:[0-9,.]+)", "$1,$2");
         arg = arg.replace(" ", "");
         if (arg.startsWith("$") || arg.startsWith("-$")) {
             if (!arg.contains(",")) {

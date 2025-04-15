@@ -1,5 +1,6 @@
 package link.locutus.discord.db;
 
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Lists;
 import com.politicsandwar.graphql.model.*;
 import com.ptsmods.mysqlw.Database;
@@ -87,7 +88,10 @@ public class WarDB extends DBMainV2 {
 
     public WarDB(String name) throws SQLException {
         super(Settings.INSTANCE.DATABASE, name);
-        reserializeVictoryOnce();
+//        reserializeVictoryOnce();
+        executeStmt("CREATE TABLE IF NOT EXISTS war_metadata (key TEXT PRIMARY KEY, value TEXT)");
+        update("INSERT OR REPLACE INTO war_metadata (key, value) VALUES (?, ?)",
+                "victory_attacks_reserialized", "true");
     }
 
     public void importVictoryAttacksFromExternalDB(String filePath) throws SQLException {
@@ -824,10 +828,23 @@ public class WarDB extends DBMainV2 {
 
     public void iterateAttackList(Iterable<DBWar> wars, Predicate<AttackType> attackTypeFilter, Predicate<AbstractCursor> preliminaryFilter, BiConsumer<DBWar, List<AbstractCursor>> onEachWar, boolean load) {
         BiFunction<DBWar, byte[], AbstractCursor> loader = createLoader(attackTypeFilter, preliminaryFilter);
-        BiConsumer<DBWar, List<byte[]>> onEachWarAdapter = (war, bytes) -> {
-            List<AbstractCursor> adapted = Lists.transform(bytes, input -> loader.apply(war, input));
-            onEachWar.accept(war, adapted);
-        };
+
+        BiConsumer<DBWar, List<byte[]>> onEachWarAdapter;
+        if (preliminaryFilter != null) {
+            onEachWarAdapter = (war, bytes) -> {
+                List<AbstractCursor> adapted = FluentIterable.from(bytes)
+                        .transform(input -> loader.apply(war, input))
+                        .filter(Objects::nonNull)
+                        .toList();
+                onEachWar.accept(war, adapted);
+            };
+        } else {
+            onEachWarAdapter = (war, bytes) -> {
+                List<AbstractCursor> adapted = Lists.transform(bytes, input -> loader.apply(war, input));
+                onEachWar.accept(war, adapted);
+            };
+        }
+
         iterateAttackList(wars, onEachWarAdapter, load);
     }
 

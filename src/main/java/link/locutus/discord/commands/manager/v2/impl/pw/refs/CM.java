@@ -1200,12 +1200,20 @@ public class CM {
                     return set("alliances", value);
                 }
 
+                public attribute_ranking num_results(String value) {
+                    return set("num_results", value);
+                }
+
                 public attribute_ranking reverseOrder(String value) {
                     return set("reverseOrder", value);
                 }
 
                 public attribute_ranking uploadFile(String value) {
                     return set("uploadFile", value);
+                }
+
+                public attribute_ranking highlight(String value) {
+                    return set("highlight", value);
                 }
 
                 }
@@ -1306,6 +1314,14 @@ public class CM {
 
                 public loot_ranking max_score(String value) {
                     return set("max_score", value);
+                }
+
+                public loot_ranking highlight(String value) {
+                    return set("highlight", value);
+                }
+
+                public loot_ranking num_results(String value) {
+                    return set("num_results", value);
                 }
 
                 }
@@ -1504,6 +1520,14 @@ public class CM {
                     return set("uploadFile", value);
                 }
 
+                public ranking num_results(String value) {
+                    return set("num_results", value);
+                }
+
+                public ranking highlight(String value) {
+                    return set("highlight", value);
+                }
+
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="allianceRankingTime")
                 public static class rankingTime extends CommandRef {
@@ -1530,6 +1554,14 @@ public class CM {
 
                 public rankingTime uploadFile(String value) {
                     return set("uploadFile", value);
+                }
+
+                public rankingTime num_results(String value) {
+                    return set("num_results", value);
+                }
+
+                public rankingTime highlight(String value) {
+                    return set("highlight", value);
                 }
 
                 }
@@ -3627,39 +3659,47 @@ public class CM {
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="convertNegativeDeposits")
-            public static class convertNegative extends CommandRef {
-                public static final convertNegative cmd = new convertNegative();
-            public convertNegative nations(String value) {
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="convertDeposits")
+            public static class convert extends CommandRef {
+                public static final convert cmd = new convert();
+            public convert nations(String value) {
                 return set("nations", value);
             }
 
-            public convertNegative negativeResources(String value) {
-                return set("negativeResources", value);
+            public convert mode(String value) {
+                return set("mode", value);
             }
 
-            public convertNegative convertTo(String value) {
-                return set("convertTo", value);
+            public convert from_resources(String value) {
+                return set("from_resources", value);
             }
 
-            public convertNegative includeGrants(String value) {
+            public convert to_resource(String value) {
+                return set("to_resource", value);
+            }
+
+            public convert includeGrants(String value) {
                 return set("includeGrants", value);
             }
 
-            public convertNegative depositType(String value) {
+            public convert depositType(String value) {
                 return set("depositType", value);
             }
 
-            public convertNegative conversionFactor(String value) {
+            public convert conversionFactor(String value) {
                 return set("conversionFactor", value);
             }
 
-            public convertNegative note(String value) {
+            public convert note(String value) {
                 return set("note", value);
             }
 
-            public convertNegative sheet(String value) {
+            public convert sheet(String value) {
                 return set("sheet", value);
+            }
+
+            public convert force(String value) {
+                return set("force", value);
             }
 
             }
@@ -4743,6 +4783,14 @@ public class CM {
 
             public cost exclude_city_refund(String value) {
                 return set("exclude_city_refund", value);
+            }
+
+            public cost research(String value) {
+                return set("research", value);
+            }
+
+            public cost research_from_zero(String value) {
+                return set("research_from_zero", value);
             }
 
             public cost sheet(String value) {
@@ -7682,9 +7730,10 @@ public class CM {
                     return set("cutoffMs", value);
                 }
 
-                public CommandRef transfer_count(String value) {
+                public for_coalition transfer_count(String value) {
                     return set("transfer_count", value);
                 }
+
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="findOffshores")
                 public static class for_enemies extends CommandRef {
@@ -14481,6 +14530,14 @@ public class CM {
                 return set("snapshotDate", value);
             }
 
+            public findProducer num_results(String value) {
+                return set("num_results", value);
+            }
+
+            public findProducer highlight(String value) {
+                return set("highlight", value);
+            }
+
             }
             public static class global_metrics{
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="orbisStatByDay")
@@ -15427,6 +15484,14 @@ public class CM {
                 return set("uploadFile", value);
             }
 
+            public warCostRanking num_results(String value) {
+                return set("num_results", value);
+            }
+
+            public warCostRanking highlight(String value) {
+                return set("highlight", value);
+            }
+
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="warRanking")
             public static class warRanking extends CommandRef {
@@ -15808,6 +15873,14 @@ public class CM {
 
             public findProducer snapshotDate(String value) {
                 return set("snapshotDate", value);
+            }
+
+            public findProducer num_results(String value) {
+                return set("num_results", value);
+            }
+
+            public findProducer highlight(String value) {
+                return set("highlight", value);
             }
 
             }

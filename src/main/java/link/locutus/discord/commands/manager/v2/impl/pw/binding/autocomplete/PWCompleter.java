@@ -187,6 +187,12 @@ public class PWCompleter extends BindingHelper {
     }
 
     @Autocomplete
+    @Binding(types={RssConvertMode.class})
+    public List<String> RssConvertMode(String input) {
+        return StringMan.completeEnum(input, RssConvertMode.class);
+    }
+
+    @Autocomplete
     @Binding(types={WarCostStat.class})
     public List<String> WarCostStat(String input) {
         return StringMan.completeEnum(input, WarCostStat.class);

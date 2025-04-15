@@ -1429,6 +1429,11 @@ public class PWBindings extends BindingHelper {
         return emum(WarCostMode.class, input);
     }
 
+    @Binding(value = "The mode for calculating resource conversion")
+    public RssConvertMode RssConvertMode(String input) {
+        return emum(RssConvertMode.class, input);
+    }
+
     @Binding(value = "A war attack statistic")
     public WarCostStat WarCostStat(String input) {
         return emum(WarCostStat.class, input);

@@ -1694,7 +1694,7 @@ public class IACommands {
     @Command(desc = "Set the in-game position of a player in the alliance.", aliases = {"rank", "setrank", "rankup"})
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, any = true)
     @IsAlliance
-    public static String setRank(@Me User author, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, DBNation nation, DBAlliancePosition position, @Switch("f") boolean force, @Arg("Do NOT add/remove the corresponding locutus role") @Switch("d") boolean doNotUpdateDiscord) throws IOException {
+    public static String setRank(@Me User author, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Me JSONObject command, DBNation nation, DBAlliancePosition position, @Switch("f") boolean force, @Arg("Do NOT add/remove the corresponding locutus role") @Switch("d") boolean doNotUpdateDiscord) throws IOException {
         int allianceId = position.getAlliance_id();
         if (allianceId <= 0) allianceId = nation.getAlliance_id();
         if (nation.getAlliance_id() != position.getAlliance_id()) {
@@ -1785,36 +1785,43 @@ public class IACommands {
             if (!force) {
                 List<String> checks = new ArrayList<>();
                 if (nation.isGray()) {
-                    checks.add("Nation is gray (use `-f` to override this)");
+                    checks.add("Nation is gray");
                 }
                 if (nation.getCities() < 3) {
-                    checks.add("Nation has not bought up to 3 cities (use `-f` to override this)");
+                    checks.add("Nation has not bought up to 3 cities");
                 }
                 if (nation.getCities() < 10 && nation.getOff() < 5 && db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS)) {
-                    checks.add("Nation has not declared up to 5 raids ( use `-f` to override this)");
+                    checks.add("Nation has not declared up to 5 raids");
                 }
                 if (nation.getCities() > 3 && nation.getCities() < 10 && nation.getSoldierPct() < 0.25) {
-                    checks.add("Nation has not bought soldiers (use `-f` to override this)");
+                    checks.add("Nation has not bought soldiers");
                 }
 
                 if (nation.getCities() >= 10 && nation.getAircraftPct() < 0.18) {
-                    checks.add("Nation has not bought aircraft (use `-f` to override this)");
+                    checks.add("Nation has not bought aircraft");
                 }
                 if (nation.getCities() == 10 && nation.getSoldierPct() < 0.25 && nation.getTankPct() < 0.25) {
-                    checks.add("Nation has not bought tanks or soldiers (use `-f` to override this)");
+                    checks.add("Nation has not bought tanks or soldiers");
                 }
                 if (nation.getCities() <= 5 && !nation.getMMRBuildingStr().startsWith("5")) {
-                    checks.add("Nation does not have 5 barracks (use `-f` to override this)");
+                    checks.add("Nation does not have 5 barracks");
                 }
                 if (nation.getCities() >= 10) {
                     String mmr = nation.getMMRBuildingStr();
                     if (!mmr.matches("5.5.") && !mmr.matches(".[2-5]5.")) {
-                        checks.add("Nation is on insufficient MMR (use `-f` to override this)");
+                        checks.add("Nation is on insufficient MMR");
                     }
                 }
 
                 if (!checks.isEmpty()) {
-                    return "The following checks have failed:\n" + StringMan.join(checks, "\n- ");
+                    StringBuilder body = new StringBuilder();
+                    body.append("The following checks have failed:\n");
+                    for (String check : checks) {
+                        body.append("- ").append(check).append("\n");
+                    }
+                    body.append("\nWould you like to promote anyway?");
+                    channel.create().confirmation("Failed " + checks.size() + " checks", body.toString(), command).send();
+                    return null;
                 }
 
                 if (db.getOffshore() != null) {
@@ -1882,7 +1889,7 @@ public class IACommands {
 
 
     @Command(desc = "Get the top inactive players", viewable = true)
-    public void inactive(@Me IMessageIO channel, @Me JSONObject command, Set<DBNation> nations, @Arg("Required days inactive") @Default("7") int days, @Switch("a") boolean includeApplicants, @Switch("v") boolean includeVacationMode, @Switch("p") int page) {
+    public void inactive(@Me IMessageIO channel, @Me JSONObject command, Set<DBNation> nations, @Arg("Required days inactive") @Default("7") Integer days, @Switch("a") boolean includeApplicants, @Switch("v") boolean includeVacationMode, @Switch("p") Integer page) {
         if (!includeApplicants) nations.removeIf(f -> f.getPosition() <= 1);
         if (!includeVacationMode) nations.removeIf(f -> f.getVm_turns() > 0);
         nations.removeIf(f -> f.active_m() * TimeUnit.DAYS.toMinutes(1) < days);

@@ -28,6 +28,11 @@ public class AllianceCommands {
             public static final getAcronym cmd = new getAcronym();
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getAgeDays")
+        public static class getAgeDays extends CommandRef {
+            public static final getAgeDays cmd = new getAgeDays();
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getAlliance_id")
         public static class getAlliance_id extends CommandRef {
             public static final getAlliance_id cmd = new getAlliance_id();
@@ -85,6 +90,11 @@ public class AllianceCommands {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getColor")
         public static class getColor extends CommandRef {
             public static final getColor cmd = new getColor();
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getCostConverted")
+        public static class getCostConverted extends CommandRef {
+            public static final getCostConverted cmd = new getCostConverted();
 
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getCumulativeRevenue")
@@ -300,6 +310,22 @@ public class AllianceCommands {
 
         public getMetricAt date(String value) {
             return set("date", value);
+        }
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getMetricsGraph")
+        public static class getMetricsGraph extends CommandRef {
+            public static final getMetricsGraph cmd = new getMetricsGraph();
+        public getMetricsGraph metrics(String value) {
+            return set("metrics", value);
+        }
+
+        public getMetricsGraph start(String value) {
+            return set("start", value);
+        }
+
+        public getMetricsGraph end(String value) {
+            return set("end", value);
         }
 
         }

@@ -598,34 +598,7 @@ public final class PW {
             }
         }
 
-        Map<NationFilter, Map<ResourceType, Double>> rates = GuildKey.RSS_CONVERSION_RATES.getOrNull(guildDB);
-        Function<ResourceType, Double> rateFunc;
-        if (rates == null) {
-            rateFunc = _ -> 1d;
-        } else {
-            Map<ResourceType, Double> rate = null;
-            if (nation != null) {
-                for (Map.Entry<NationFilter, Map<ResourceType, Double>> entry : rates.entrySet()) {
-                    if (entry.getKey().test(nation)) {
-                        rate = entry.getValue();
-                        break;
-                    }
-                }
-            } else {
-                // get where nationfilter.getFiler() is *
-                for (Map.Entry<NationFilter, Map<ResourceType, Double>> entry : rates.entrySet()) {
-                    if (entry.getKey().getFilter().equals("*")) {
-                        rate = entry.getValue();
-                        break;
-                    }
-                }
-            }
-            if (rate == null) rateFunc = f -> 1d;
-            else {
-                Map<ResourceType, Double> rateFinal = rate;
-                rateFunc = f -> rateFinal.getOrDefault(f, 100d) * 0.01;
-            }
-        }
+        Function<ResourceType, Double> rateFunc = guildDB.getConversionRate(nation);
 
         for (Map.Entry<Integer, Transaction2> entry : transactionsEntries) {
             int sign = entry.getKey();
@@ -1523,9 +1496,20 @@ public final class PW {
     }
 
     public static <E extends Enum<E>, V extends Number> Map<E, V> parseEnumMap(String arg, Class<E> enumClass, Class<V> valueClass) {
+        if (arg.endsWith("},")) {
+            arg = arg.substring(0, arg.length() - 1);
+        }
+        if (arg.endsWith(",}")) {
+            arg = arg.substring(0, arg.length() - 2) + "}";
+        } else if (arg.endsWith(",")) {
+            arg = arg.substring(0, arg.length() - 1);
+        }
         arg = arg.trim();
         if (!arg.contains(":") && !arg.contains("=")) arg = arg.replaceAll("[ ]+", ":");
-        arg = arg.replace(" ", "").replace('=', ':').replaceAll("([0-9]),([0-9])", "$1$2").toUpperCase();
+        arg = arg.replace('=', ':').toUpperCase();
+        arg = arg.replaceAll("([A-Z]+:[0-9,.]+) ([A-Z]+:[0-9,.]+)", "$1,$2");
+        arg = arg.replace(" ", "");
+        arg = arg.replaceAll("([0-9]),([0-9])", "$1$2").toUpperCase();
         for (E unit : enumClass.getEnumConstants()) {
             String name = unit.name();
             arg = arg.replace(name.toUpperCase() + ":", name + ":");
