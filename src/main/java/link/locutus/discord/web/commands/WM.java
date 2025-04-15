@@ -505,6 +505,14 @@ public class WM {
             }
 
             }
+            @AutoRegister(clazz=link.locutus.discord.web.commands.api.EndpointPages.class,method="permission")
+            public static class permission extends CommandRef {
+                public static final permission cmd = new permission();
+            public permission command(String value) {
+                return set("command", value);
+            }
+
+            }
             @AutoRegister(clazz=link.locutus.discord.web.commands.api.EndpointPages.class,method="query")
             public static class query extends CommandRef {
                 public static final query cmd = new query();
@@ -760,11 +768,6 @@ public class WM {
             public tax_expense includeDeposits(String value) {
                 return set("includeDeposits", value);
             }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.web.commands.api.EndpointPages.class,method="test")
-            public static class test extends CommandRef {
-                public static final test cmd = new test();
 
             }
             @AutoRegister(clazz=link.locutus.discord.web.commands.api.GraphEndpoints.class,method="tradeMarginByDay")

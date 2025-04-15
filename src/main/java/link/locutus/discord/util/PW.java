@@ -598,34 +598,7 @@ public final class PW {
             }
         }
 
-        Map<NationFilter, Map<ResourceType, Double>> rates = GuildKey.RSS_CONVERSION_RATES.getOrNull(guildDB);
-        Function<ResourceType, Double> rateFunc;
-        if (rates == null) {
-            rateFunc = _ -> 1d;
-        } else {
-            Map<ResourceType, Double> rate = null;
-            if (nation != null) {
-                for (Map.Entry<NationFilter, Map<ResourceType, Double>> entry : rates.entrySet()) {
-                    if (entry.getKey().test(nation)) {
-                        rate = entry.getValue();
-                        break;
-                    }
-                }
-            } else {
-                // get where nationfilter.getFiler() is *
-                for (Map.Entry<NationFilter, Map<ResourceType, Double>> entry : rates.entrySet()) {
-                    if (entry.getKey().getFilter().equals("*")) {
-                        rate = entry.getValue();
-                        break;
-                    }
-                }
-            }
-            if (rate == null) rateFunc = f -> 1d;
-            else {
-                Map<ResourceType, Double> rateFinal = rate;
-                rateFunc = f -> rateFinal.getOrDefault(f, 100d) * 0.01;
-            }
-        }
+        Function<ResourceType, Double> rateFunc = guildDB.getConversionRate(nation);
 
         for (Map.Entry<Integer, Transaction2> entry : transactionsEntries) {
             int sign = entry.getKey();

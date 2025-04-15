@@ -317,7 +317,6 @@ public class AddBalanceBuilder {
 
         double[] totalAdded = ResourceType.getBuffer();
 
-
         if (!fundsToSendAAs.isEmpty()) {
             if (hasEcon) {
                 for (Map.Entry<DBAlliance, Map<String, double[]>> entry : fundsToSendAAs.entrySet()) {

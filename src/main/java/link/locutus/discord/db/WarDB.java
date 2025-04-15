@@ -87,7 +87,10 @@ public class WarDB extends DBMainV2 {
 
     public WarDB(String name) throws SQLException {
         super(Settings.INSTANCE.DATABASE, name);
-        reserializeVictoryOnce();
+//        reserializeVictoryOnce();
+        executeStmt("CREATE TABLE IF NOT EXISTS war_metadata (key TEXT PRIMARY KEY, value TEXT)");
+        update("INSERT OR REPLACE INTO war_metadata (key, value) VALUES (?, ?)",
+                "victory_attacks_reserialized", "true");
     }
 
     public void importVictoryAttacksFromExternalDB(String filePath) throws SQLException {

@@ -3,13 +3,11 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2DoubleLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
-import link.locutus.discord.apiv1.enums.AccessType;
-import link.locutus.discord.apiv1.enums.EscrowMode;
-import link.locutus.discord.apiv1.enums.FlowType;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
@@ -59,9 +57,6 @@ import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
-import link.locutus.discord.apiv1.enums.DepositType;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
@@ -105,9 +100,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static link.locutus.discord.apiv1.enums.ResourceType.convertedTotal;
+import static link.locutus.discord.apiv1.enums.ResourceType.*;
 import static link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.handleAddbalanceAllianceScope;
-import static link.locutus.discord.apiv1.enums.ResourceType.toString;
 
 public class BankCommands {
 
@@ -2866,70 +2860,87 @@ public class BankCommands {
             "If no resources are specified, all negative resources are converted to money",
             "Defaults to all types, except grants"
     })
-    @RolePermission(value = Roles.ECON)
-    public String convertNegativeDeposits(@Me IMessageIO channel, @Me GuildDB db,
+    @RolePermission(value = {Roles.ECON, Roles.RESOURCE_CONVERSION}, any = true)
+    public String convertDeposits(@Me IMessageIO channel, @Me GuildDB db, @Me User user, @Me DBNation me, @Me JSONObject command,
                                           Set<DBNation> nations,
+                                          RssConvertMode mode,
 
                                           @Arg(value = "The resources to convert", group = 0)
-                                          @Default("manu,raws,food") Set<ResourceType> negativeResources,
+                                          @Default("manu,raws,food") Set<ResourceType> from_resources,
+
                                           @Arg(value = "What resource to convert to\n" +
                                                   "Conversion uses weekly market average prices", group = 0)
-                                          @Default("money") ResourceType convertTo,
+                                          @Default("money") ResourceType to_resource,
 
 
                                           @Arg(value = "If grants are also converted", group = 1)
                                           @Switch("g") boolean includeGrants,
                                           @Arg(value = "Convert transfers of this note category", group = 1)
-                                              @Switch("t") DepositType.DepositTypeInfo depositType,
+                                          @Switch("t") DepositType.DepositTypeInfo depositType,
 
                                           @Arg(value = "What factor to multiple the converted resources by\n" +
                                                   "e.g. Use a value below 1.0 to incur a fee", group = 2) @Switch("f")
                                               Double conversionFactor,
                                           @Arg(value = "The transfer note to use for the adjustment", group = 2)
                                               @Default() @Switch("n") String note,
-                                          @Switch("s") SpreadSheet sheet
+                                          @Switch("s") SpreadSheet sheet,
+                                            @Switch("force") boolean force
                                               ) throws IOException, GeneralSecurityException {
         if (nations.size() > 500) return "Too many nations > 500";
-        // get deposits of nations
-        // get negatives
-
-        double convertValue = ResourceType.convertedTotal(convertTo, 1);
-        if (conversionFactor != null) convertValue /= conversionFactor;
-
-        Map<NationOrAlliance, double[]> toAddMap = new LinkedHashMap<>();
-        double[] total = ResourceType.getBuffer();
-
-        for (DBNation nation : nations) {
-            double[] depo;
-            if (depositType != null) {
-                Map<DepositType, double[]> depoByCategory = nation.getDeposits(db, null, true, true, -1, 0L, false);
-                depo = depoByCategory.get(depositType.type);
-                if (depo == null) continue;
-            } else {
-                depo = nation.getNetDeposits(db, null, true, true, includeGrants, -1, 0L, false);
-            }
-            double[] amtAdd = ResourceType.getBuffer();
-            boolean add = false;
-            for (ResourceType type : ResourceType.values) {
-                if (!negativeResources.contains(type) || type == convertTo) continue;
-                double currAmt = depo[type.ordinal()];
-                if (currAmt < -0.01) {
-                    add = true;
-                    double newAmt = ResourceType.convertedTotal(type, -currAmt) / convertValue;
-                    amtAdd[type.ordinal()] = -currAmt;
-                    amtAdd[convertTo.ordinal()] += -newAmt;
+        boolean isMe = (nations.size() == 1 && me.getId() == nations.iterator().next().getId());
+        if ((nations.size() > 1 && !Roles.ECON.has(user, db.getGuild())) || !isMe) {
+            for (DBNation nation : nations) {
+                if (!Roles.ECON.has(user, db.getGuild(), nation.getAlliance_id())) {
+                    throw new IllegalArgumentException("Missing (alliance: " + nation.getAllianceUrlMarkup() + "): " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
                 }
             }
-            if (add) {
-                total = ResourceType.add(total, amtAdd);
-                toAddMap.put(nation, amtAdd);
+        }
+        if (isMe && !Roles.ECON.has(user, db.getGuild()) && !Roles.ECON.has(user, db.getGuild(), me.getAlliance_id())) {
+            String msg = """
+            The following arguments are not allowed for personal conversion:
+            - convertTo
+            - includeGrants
+            - depositType
+            - conversionFactor
+            - note
+            """;
+            boolean disallowed = false;
+            if (to_resource != null) {
+                msg = msg.replace("convertTo", "**convertTo**");
+                disallowed = true;
+            }
+            if (includeGrants) {
+                msg = msg.replace("includeGrants", "**includeGrants**");
+                disallowed = true;
+            }
+            if (depositType != null) {
+                msg = msg.replace("depositType", "**depositType**");
+                disallowed = true;
+            }
+            if (conversionFactor != null) {
+                msg = msg.replace("conversionFactor", "**conversionFactor**");
+                disallowed = true;
+            }
+            if (note != null) {
+                msg = msg.replace("note", "**note**");
+                disallowed = true;
+            }
+            if (disallowed) {
+                throw new IllegalArgumentException("You cannot use the following arguments for personal conversion: " + msg);
             }
         }
 
-        if (toAddMap.isEmpty()) return "No deposits need to be adjusted (" + nations.size() + " nations checked)";
-        if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.TRANSFER_SHEET);
+        Function<ResourceType, Double> conversionRate;
+        if (conversionFactor != null || !isMe) {
+            conversionRate = _ -> 1d;
+        } else if (isMe) {
+            conversionRate = db.getConversionRate(me);
+        } else {
+            conversionRate = null;
+        }
 
-        TransferSheet txSheet = new TransferSheet(sheet).write(toAddMap).build();
+        Map<NationOrAlliance, double[]> toAddMap = new LinkedHashMap<>();
+        double[] total = ResourceType.getBuffer();
 
         if (note == null) {
             if (depositType != null) {
@@ -2939,14 +2950,105 @@ public class BankCommands {
             }
         }
 
-        CM.deposits.addSheet cmd = CM.deposits.addSheet.cmd.sheet(txSheet.getSheet().getURL()).note(note);
-
         String title = "Addbalance";
-        String body = "Total: \n`" + ResourceType.toString(total) + "`\nWorth: ~$" + MathMan.format(ResourceType.convertedTotal(total));
+        StringBuilder body = new StringBuilder("Total: \n`" + ResourceType.toString(total) + "`\nWorth: ~$" + MathMan.format(ResourceType.convertedTotal(total)));
         String emoji = "Confirm";
 
+        Map<ResourceType, Double> rates = new Object2DoubleLinkedOpenHashMap<>();
 
-        channel.create().embed(title, body)
+        Object lock = isMe && force ? OffshoreInstance.BANK_LOCK : new Object();
+        synchronized (lock) {
+            for (DBNation nation : nations) {
+                Function<ResourceType, Double> rateFinal = conversionRate == null ? db.getConversionRate(nation) : conversionRate;
+
+                double[] depo;
+                if (depositType != null) {
+                    Map<DepositType, double[]> depoByCategory = nation.getDeposits(db, null, true, true, -1, 0L, false);
+                    depo = depoByCategory.get(depositType.type);
+                    if (depo == null) continue;
+                } else {
+                    depo = nation.getNetDeposits(db, null, true, true, includeGrants, -1, 0L, false);
+                }
+                double[] amtAddArr = ResourceType.getBuffer();
+                boolean add = false;
+                for (ResourceType type : ResourceType.values) {
+                    if (!from_resources.contains(type) || type == to_resource) continue;
+                    double currAmt = depo[type.ordinal()];
+                    double addAmt = 0;
+                    if (mode == RssConvertMode.NEGATIVE) {
+                        if (currAmt < -0.01) {
+                            add = true;
+                            addAmt = -currAmt;
+
+                        }
+                    } else {
+                        if (currAmt > 0.01) {
+                            add = true;
+                            addAmt = -currAmt;
+                        }
+                    }
+                    if (addAmt != 0) {
+                        double from_rate = type == MONEY ? 1 : conversionRate.apply(type);
+                        double to_rate = to_resource == MONEY ? 1 : rateFinal.apply(to_resource);
+
+                        if (from_rate == 0 || to_rate == 0) {
+                            continue;
+                        }
+
+                        rates.put(type, from_rate);
+                        rates.put(to_resource, to_rate);
+
+                        double perUnitFrom = ResourceType.convertedTotal(type, 1);
+                        double perUnitTo = ResourceType.convertedTotal(to_resource, 1);
+
+                        double newAmt;
+                        if (addAmt > 0) {
+                            newAmt = (addAmt * perUnitFrom) / (perUnitTo * from_rate * to_rate);
+                        } else {
+                            newAmt = (addAmt * from_rate * to_rate * perUnitFrom) / (perUnitTo);
+                        }
+
+                        amtAddArr[type.ordinal()] = addAmt;
+                        amtAddArr[to_resource.ordinal()] -= newAmt;
+                    }
+                }
+                if (add) {
+                    if (isMe) {
+                        body.append("\n").append("**Resource Rates**:\n")
+                                .append("-# Resource amounts are multiplied by these values before converting based on weekly average price\n")
+                                .append("`" + ResourceType.toString(rates) + "`\n");
+                    }
+
+                    total = ResourceType.add(total, amtAddArr);
+                    toAddMap.put(nation, amtAddArr);
+                }
+            }
+
+            if (toAddMap.isEmpty()) return "No deposits need to be adjusted (" + nations.size() + " nations checked)";
+
+            body.append("**Total Conversion Amount:**\n")
+                    .append("`" + ResourceType.toString(total) + "`\n");
+
+            if (isMe) {
+                if (force) {
+                    AddBalanceBuilder builder = db.addBalanceBuilder();
+                    builder.add(me, total, note);
+                    return builder.buildAndSend(me, true);
+                } else {
+                    channel.create().confirmation(title, body.toString(), command).send();
+                    return null;
+                }
+            }
+        }
+
+
+        if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.TRANSFER_SHEET);
+
+        TransferSheet txSheet = new TransferSheet(sheet).write(toAddMap).build();
+
+        CM.deposits.addSheet cmd = CM.deposits.addSheet.cmd.sheet(txSheet.getSheet().getURL()).note(note).force(force ? "true" : null);
+
+        channel.create().embed(title, body.toString())
                 .commandButton(cmd, emoji)
                 .send();
         return null;

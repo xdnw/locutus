@@ -142,6 +142,11 @@ public class NationCommands {
             public static final correctAllianceMMR cmd = new correctAllianceMMR();
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="costConverted")
+        public static class costConverted extends CommandRef {
+            public static final costConverted cmd = new costConverted();
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="countCities")
         public static class countCities extends CommandRef {
             public static final countCities cmd = new countCities();
@@ -875,6 +880,11 @@ public class NationCommands {
             public static final getLeaving_vm cmd = new getLeaving_vm();
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getLootRevenueConverted")
+        public static class getLootRevenueConverted extends CommandRef {
+            public static final getLootRevenueConverted cmd = new getLootRevenueConverted();
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getLootRevenueTotal")
         public static class getLootRevenueTotal extends CommandRef {
             public static final getLootRevenueTotal cmd = new getLootRevenueTotal();
@@ -893,6 +903,11 @@ public class NationCommands {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getMMRBuildingStr")
         public static class getMMRBuildingStr extends CommandRef {
             public static final getMMRBuildingStr cmd = new getMMRBuildingStr();
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getMMRUnitDecimal")
+        public static class getMMRUnitDecimal extends CommandRef {
+            public static final getMMRUnitDecimal cmd = new getMMRUnitDecimal();
 
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getMarkdownUrl")
@@ -1353,6 +1368,18 @@ public class NationCommands {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getTurnsTillDC")
         public static class getTurnsTillDC extends CommandRef {
             public static final getTurnsTillDC cmd = new getTurnsTillDC();
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getUnitCap")
+        public static class getUnitCap extends CommandRef {
+            public static final getUnitCap cmd = new getUnitCap();
+        public getUnitCap unit(String value) {
+            return set("unit", value);
+        }
+
+        public getUnitCap checkBuildingsAndPop(String value) {
+            return set("checkBuildingsAndPop", value);
+        }
 
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getUnits")
@@ -1936,6 +1963,11 @@ public class NationCommands {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="treasureDays")
         public static class treasureDays extends CommandRef {
             public static final treasureDays cmd = new treasureDays();
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="unitValue")
+        public static class unitValue extends CommandRef {
+            public static final unitValue cmd = new unitValue();
 
         }
 
