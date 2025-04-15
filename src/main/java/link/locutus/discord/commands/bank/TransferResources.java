@@ -46,6 +46,11 @@ public class TransferResources extends Command {
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.isEmpty()) return usage();
+        for (String arg : args) {
+            if (arg.startsWith("#")) {
+                throw new IllegalArgumentException("This command does not utilize notes. Remove `" + arg + "` and try again, or use " + CM.transfer.resources.cmd.toSlashMention() + " instead.");
+            }
+        }
 
         if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
         if (me.isGray() && !flags.contains('f')) {
