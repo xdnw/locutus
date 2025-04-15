@@ -51,7 +51,7 @@ public class EndpointPages extends PageHelper {
             return new WebPermission(null, true);
         } catch (Throwable e) {
             String msg = e.getMessage();
-            return new WebPermission(msg, true);
+            return new WebPermission(msg, false);
         }
     }
 
