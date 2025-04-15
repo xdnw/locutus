@@ -1134,7 +1134,9 @@ public abstract class DBNation implements NationOrAlliance {
                     for (Project project : currentProjects) {
                         if (!originalProjects.contains(project)) {
                             if (eventConsumer != null) eventConsumer.accept(new NationCreateProjectEvent(copyOriginal, this, project));
-                            this.setProjectTimer(TimeUtil.getTurn() + GameTimers.PROJECT.getTurns());
+                            if (currentProjects.size() >= 5) {
+                                this.setProjectTimer(TimeUtil.getTurn() + GameTimers.PROJECT.getTurns());
+                            }
                         }
                     }
                     for (Project project : originalProjects) {

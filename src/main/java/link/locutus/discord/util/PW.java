@@ -1496,6 +1496,14 @@ public final class PW {
     }
 
     public static <E extends Enum<E>, V extends Number> Map<E, V> parseEnumMap(String arg, Class<E> enumClass, Class<V> valueClass) {
+        if (arg.endsWith("},")) {
+            arg = arg.substring(0, arg.length() - 1);
+        }
+        if (arg.endsWith(",}")) {
+            arg = arg.substring(0, arg.length() - 2) + "}";
+        } else if (arg.endsWith(",")) {
+            arg = arg.substring(0, arg.length() - 1);
+        }
         arg = arg.trim();
         if (!arg.contains(":") && !arg.contains("=")) arg = arg.replaceAll("[ ]+", ":");
         arg = arg.replace(" ", "").replace('=', ':').replaceAll("([0-9]),([0-9])", "$1$2").toUpperCase();

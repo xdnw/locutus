@@ -17,6 +17,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -535,6 +536,10 @@ public class OptimalBuild extends Command {
             Function<CityNode, Double> finalValueFunc = valueFunc;
             Function<Function<CityNode, Double>, Function<CityNode, Double>> modifyValueFunc = f -> finalValueFunc;
             optimized = origin.roiBuild(continent, rads, numCities, hasProject, finalMe.getGrossModifier(), days, timeout, !manu, infraLow, modifyValueFunc, goal);
+        }
+        if (optimized == null) {
+            throw new IllegalArgumentException("The bot failed to resolve an optimalbuild based on your inputs. Please try different arguments.\n" +
+                    "If you believe this error is a bug, open a ticket in: " + DiscordUtil.getSupportServer() + " and provide the EXACT command you used.");
         }
 
         optimized.setInfra(origin.getInfra());

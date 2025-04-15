@@ -9,7 +9,9 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.FACommands;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
@@ -70,11 +72,11 @@ public class Embassy extends Command {
             if (!me.equals(nation) && !Roles.FOREIGN_AFFAIRS.has(author, guild)) return "You do not have FOREIGN_AFFAIRS";
         }
 
-        if (me.getAlliance_id() == 0) {
+        DBAlliance aa = me.getAlliance();
+        if (aa == null || aa.getAlliance_id() == 0) {
             return "You are not in an alliance.";
         }
-        int aa = me.getAlliance_id();
-        String aaName = Locutus.imp().getNationDB().getAllianceName(aa);
+        String aaName = aa.getName();
 
         Role role = DiscordUtil.getAARoles(guild.getRoles()).get(aa);
         if (role == null) {
@@ -83,7 +85,7 @@ public class Embassy extends Command {
 
         for (TextChannel catChan : category.getTextChannels()) {
             String[] split = catChan.getName().split("-");
-            if (MathMan.isInteger(split[split.length - 1]) && Integer.parseInt(split[split.length - 1]) == aa) {
+            if (MathMan.isInteger(split[split.length - 1]) && Integer.parseInt(split[split.length - 1]) == aa.getAlliance_id()) {
                 FACommands.updateEmbassyPerms(catChan, role, author, true);
                 return "Embassy: <#" + catChan.getId() + ">";
             }
@@ -94,8 +96,38 @@ public class Embassy extends Command {
 
         String embassyName = aaName + "-" + aa;
 
-        TextChannel embassyChan = RateLimitUtil.complete(category.createTextChannel(embassyName).setParent(category));
+        TextChannel embassyChan = RateLimitUtil.complete(category.createTextChannel(embassyName).setParent(category).setTopic("Embassy: " + aa.getMarkdownUrl()));
+
+        StringBuilder body = new StringBuilder();
+        // Alliance name/link
+        body.append("## Embassy for: " + aa.getMarkdownUrl() + " `#" + aa.getRank() + "`\n");
+        // score
+        body.append("-# color:`" + aa.getColor().name() + "` | " +
+                "Score:" + aa.getScore() + " | " +
+                "Members:" + aa.countMembers() + " | " +
+                "Taxable:" + aa.getNations(true, 0, true).size());
+        if (!aa.getDiscord_link().isEmpty()) {
+            body.append("- **Discord**: <" + aa.getDiscord_link() + ">\n");
+        }
+        if (!aa.getFlag().isEmpty()) {
+            body.append("- **Flag**: " + aa.getFlag() + "\n");
+        }
+        Map<Integer, Treaty> treaties = aa.getTreaties();
+        if (!treaties.isEmpty()) {
+            body.append("***Treaties**:\n");
+            for (Map.Entry<Integer, Treaty> entry : treaties.entrySet()) {
+                Treaty treaty = entry.getValue();
+                DBAlliance other = DBAlliance.get(entry.getKey());
+                if (other == null) continue;
+                body.append("- " + treaty.getType().getName() + ": " + other.getMarkdownUrl() + "\n");
+            }
+        } else {
+            body.append("> No treaties found\n");
+        }
+
         FACommands.updateEmbassyPerms(embassyChan, role, author, true);
+
+        RateLimitUtil.queue(embassyChan.sendMessage(body.toString()));
 
         return "Embassy: <#" + embassyChan.getId() + ">";
     }

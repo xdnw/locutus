@@ -75,6 +75,8 @@ public class Settings extends Config {
     @Comment("The nation id of the admin. (generated from login or api key)")
     public int NATION_ID = 0; // generated
 
+    @Comment("The discord invite CODE of the support sever")
+    public String SUPPORT_INVITE = "cUuskPDrB7";
 
     ////////////////////////////////////////////////////////////////////////////
 

@@ -20,6 +20,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import org.json.JSONObject;
 
 import java.util.List;
 import java.util.Set;
@@ -56,6 +57,12 @@ public class SetRank extends Command {
         GuildDB db = Locutus.imp().getGuildDB(guild);
         DBNation nation = DiscordUtil.parseNation(args.get(0));
         DBAlliancePosition position = PWBindings.position(db, me, args.get(1));
-        return IACommands.setRank(author, channel, db, me, nation, position, flags.contains('f'), flags.contains('d'));
+        JSONObject command = CM.nation.set.rank.cmd
+                .nation(nation.getQualifiedId())
+                .position(position.getQualifiedName())
+                .force(flags.contains('f') ? "true" : null)
+                .doNotUpdateDiscord(flags.contains('d') ? "true" : null)
+                .toJson();
+        return IACommands.setRank(author, channel, db, me, command, nation, position, flags.contains('f'), flags.contains('d'));
     }
 }
