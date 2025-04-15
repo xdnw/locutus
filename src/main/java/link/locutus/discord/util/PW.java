@@ -642,11 +642,9 @@ public final class PW {
         return currentMMR.matches(requiredMMR);
     }
 
-    public static Map<String, String> parseTransferHashNotes(String note) {
+    public static Map<DepositType, Object> parseTransferHashNotes2(String note) {
         if (note == null || note.isEmpty()) return Collections.emptyMap();
-
-        Map<String, String> result = new LinkedHashMap<>();
-
+        Map<DepositType, Object> result = new LinkedHashMap<>();
         String[] split = note.split("(?=#)");
         for (String filter : split) {
             if (filter.charAt(0) != '#') continue;
@@ -655,9 +653,13 @@ public final class PW {
             String tag = tagSplit[0].toLowerCase();
             String value = tagSplit.length == 2 && !tagSplit[1].trim().isEmpty() ? tagSplit[1].split(" ")[0].trim() : null;
 
-            result.put(tag.toLowerCase(), value);
+            DepositType type = DepositType.parse(tag);
+            if (type != null) {
+                Object resolved = type.resolve(value);
+                result.put(type, resolved);
+            }
         }
-        return result;
+        return result.isEmpty() ? Collections.emptyMap() : result;
     }
 
     public static void processDeposit(Transaction2 record,
@@ -683,21 +685,21 @@ public final class PW {
         }
         // TODO also update Grant.isNoteFromDeposits if this code is updated
 
-        Map<String, String> notes = parseTransferHashNotes(note);
+        Map<DepositType, String> notes2 = parseTransferHashNotes2(note);
         DepositType type = DepositType.DEPOSIT;
         double decayFactor = 1;
 
-        for (Map.Entry<String, String> entry : notes.entrySet()) {
-            String tag = entry.getKey();
+        for (Map.Entry<DepositType, String> entry : notes2.entrySet()) {
+            DepositType tag2 = entry.getKey();
             String value = entry.getValue();
 
-            switch (tag) {
-                case "#nation":
-                case "#alliance":
-                case "#guild":
-                case "#account":
+            switch (tag2) {
+                case NATION:
+                case ALLIANCE:
+                case GUILD:
+                case ACCOUNT:
                     return;
-                case "#ignore":
+                case IGNORE:
                     if (includeIgnored) {
                         if (value != null && !value.isEmpty() && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && MathMan.isInteger(value) && !tracked.contains(Long.parseLong(value))) {
                             return;
@@ -705,36 +707,23 @@ public final class PW {
                         continue;
                     }
                     return;
-                case "#deposit":
-                case "#deposits":
-                case "#trade":
-                case "#trades":
-                case "#trading":
-                case "#credits":
-                case "#buy":
-                case "#sell":
-                case "#warchest":
+                case DEPOSIT:
+                case TRADE:
+                case WARCHEST:
                     if (value != null && !value.isEmpty() && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && MathMan.isInteger(value) && !tracked.contains(Long.parseLong(value))) {
                         return;
                     }
                     type = DepositType.DEPOSIT;
                     continue;
-                case "#raws":
-                case "#raw":
-                case "#tax":
-                case "#taxes":
-                case "#disperse":
-                case "#disburse":
+                case RAWS:
+                case TAX:
                     type = DepositType.TAX;
                     if (value != null && !value.isEmpty() && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && MathMan.isInteger(value) && !tracked.contains(Long.parseLong(value))) {
                         return;
                     }
                     continue;
-                default:
-                    if (!tag.startsWith("#")) continue;
-                    continue;
-                case "#loan":
-                case "#grant":
+                case LOAN:
+                case GRANT:
                     if (value != null && !value.isEmpty() && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && MathMan.isInteger(value) && !tracked.contains(Long.parseLong(value))) {
                         return;
                     }
@@ -742,7 +731,7 @@ public final class PW {
                         type = DepositType.LOAN;
                     }
                     continue;
-                case "#decay": {
+                case DECAY: {
                     if (allowExpiry.test(record) && value != null && !value.isEmpty()) {
                         try {
                             long now = System.currentTimeMillis();
@@ -759,7 +748,7 @@ public final class PW {
                     }
                     continue;
                 }
-                case "#expire": {
+                case EXPIRE: {
                     if (allowExpiry.test(record) && value != null && !value.isEmpty()) {
                         try {
                             long now = System.currentTimeMillis();
@@ -775,16 +764,16 @@ public final class PW {
                     }
                     continue;
                 }
-                case "#cash":
+                case CASH:
                     if (allowConversion) {
-                        applyCashConversion(guildDB, allowArbitraryConversion, notes, amount, value, record, date, rates);
+                        applyCashConversion(guildDB, allowArbitraryConversion, notes2, amount, value, record, date, rates);
                         allowConversion = false;
                     }
                     continue;
             }
         }
         if (allowConversion && forceConvertRssAfter > 0 && forceConvertRssAfter > date) {
-            applyCashConversion(guildDB, allowArbitraryConversion, notes, amount, null, record, date, rates);
+            applyCashConversion(guildDB, allowArbitraryConversion, notes2, amount, null, record, date, rates);
         }
         double[] rss = result.computeIfAbsent(type, f -> ResourceType.getBuffer());
         if (sign == 1 && decayFactor == 1) {
@@ -801,7 +790,7 @@ public final class PW {
 
     private static void applyCashConversion(GuildDB guildDB,
             boolean allowArbitraryConversion,
-            Map<String, String> notes,
+            Map<DepositType, String> notes2,
             double[] amount,
             String valueStr,
             Transaction2 record,
@@ -821,7 +810,7 @@ public final class PW {
         Double cashValue = null;
         Set<Byte> convert = null;
 
-        String rssNote = notes.get("#rss");
+        String rssNote = notes2.get(DepositType.RSS);
         if (rssNote != null && !rssNote.isEmpty() && MathMan.isInteger(rssNote)) {
             long rssId = Long.parseLong(rssNote);
             convert = new ByteOpenHashSet();

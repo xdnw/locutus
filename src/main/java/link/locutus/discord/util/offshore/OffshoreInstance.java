@@ -2,6 +2,8 @@
 package link.locutus.discord.util.offshore;
 
 import com.politicsandwar.graphql.model.Bankrec;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.AccessType;
 import link.locutus.discord.apiv1.enums.DepositType;
@@ -107,12 +109,12 @@ public class OffshoreInstance {
         return false;
     }
 
-    public Set<Long> getOffshoreAAs() {
-        Set<Long> result = new LinkedHashSet<>();
-        result.add((long) allianceId);
+    public Set<Integer> getOffshoreAAIds() {
+        Set<Integer> result = new IntOpenHashSet();
+        result.add(allianceId);
         GuildDB db = getGuildDB();
         if (db != null) {
-            result.addAll(db.getCoalitionRaw(Coalition.OFFSHORE));
+            result.addAll(db.getCoalition(Coalition.OFFSHORE));
         }
         return result;
     }
@@ -320,6 +322,22 @@ public class OffshoreInstance {
     public synchronized List<Transaction2> getTransactionsAA(int allianceId, boolean force) {
         return getTransactionsAA(Collections.singleton(allianceId), force);
     }
+
+    private List<Transaction2> getTransactions(int id, int type) {
+        Set<Integer> offshoreIds = getOffshoreAAIds();
+        List<Transaction2> transfers = Locutus.imp().getBankDB().getAllianceTransactions(offshoreIds, true);
+        List<Transaction2> result = new ObjectArrayList<>();
+        for (Transaction2 tx : transfers) {
+            if (tx.sender_type != 2) continue;
+            if (tx.sender_id == id) {
+                result.add(tx);
+            } else if (tx.note)
+
+
+
+        }
+    }
+
     public synchronized List<Transaction2> getTransactionsAA(Set<Integer> allianceId, boolean force) {
         if (force || outOfSync.get()) sync();
 
@@ -330,8 +348,6 @@ public class OffshoreInstance {
             transactions.addAll(Locutus.imp().getBankDB().getBankTransactions(id, 2));
             offset.addAll(db.getDepositOffsetTransactions(-id));
         }
-
-
         transactions.addAll(offset);
 
         List<Transaction2> toProcess = new ArrayList<>();
@@ -523,7 +539,7 @@ public class OffshoreInstance {
         if (receiver.isAlliance() && !receiver.asAlliance().exists()) {
             return new TransferResult(TransferStatus.INVALID_DESTINATION, receiver, amount, depositType.toString()).addMessage("Alliance: " + receiver.getMarkdownUrl() + " has no receivable nations");
         }
-        if (!receiver.isNation() && !depositType.isIgnored() && nationAccount == null) {
+        if (!receiver.isNation() && !depositType.isReservedOrIgnored() && nationAccount == null) {
             return new TransferResult(TransferStatus.INVALID_NOTE, receiver, amount, depositType.toString()).addMessage("Please use `" + DepositType.IGNORE + "` as the `depositType` when transferring to alliances");
         }
 
@@ -703,7 +719,7 @@ public class OffshoreInstance {
 //                    return KeyValue.of(TransferStatus.AUTHORIZATION, "Transfers are temporarily disabled for this account due to an error. Have a server admin use " + CM.bank.unlockTransfers.cmd.toSlashMention() + " to re-enable");
                     return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, depositType.toString()).addMessage("Transfers are temporarily disabled for this account due to an error.", "Have a server admin use " + CM.bank.unlockTransfers.cmd.nationOrAllianceOrGuild(nationAccount.getId() + "") + " in " + getGuild());
                 }
-                if (!depositType.isDeposits() || depositType.isIgnored()) {
+                if (!depositType.isDeposits() || depositType.isReservedOrIgnored()) {
                     allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
                     if (allowedIds.isEmpty()) {
 //                        return KeyValue.of(TransferStatus.AUTHORIZATION, "You are only authorized for the note `" + DepositType.DEPOSIT + "` but attempted to do `" + depositType + "`");
@@ -722,7 +738,7 @@ public class OffshoreInstance {
 
                 if (!receiver.isNation() || nationAccount.getNation_id() != receiver.asNation().getNation_id()) {
                     isInternalTransfer = true;
-                    if (depositType.isIgnored()) {
+                    if (depositType.isReservedOrIgnored()) {
                         allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
                         if (allowedIds.isEmpty()) {
 //                        return KeyValue.of(TransferStatus.INVALID_NOTE, "Please use `" + DepositType.DEPOSIT + "` as the depositType when transferring to another nation");
@@ -1706,7 +1722,6 @@ public class OffshoreInstance {
             guildDb = delegate;
         }
         if (guildDb.getOffshore() != this) return result;
-
 
         Set<Integer> ids = guildDb.getAllianceIds();
 

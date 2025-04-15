@@ -56,8 +56,9 @@ public class Transaction2 {
     public long receiver_id;
     public int receiver_type;
     public int banker_nation;
-    public String note;
     public double[] resources;
+    public String note;
+    private Map<DepositType, Object> parsed;
 
     public Transaction2(int tx_id, long tx_datetime, long sender_id, int sender_type, long receiver_id, int receiver_type, int banker_nation, String note, double[] resources) {
         this.tx_id = tx_id;
@@ -69,6 +70,13 @@ public class Transaction2 {
         this.banker_nation = banker_nation;
         this.note = note;
         this.resources = resources;
+    }
+
+    public Map<DepositType, Object> getParsed() {
+        if (parsed == null) {
+            parsed = PW.parseTransferHashNotes2(note);
+        }
+        return parsed;
     }
 
     public static Transaction2 fromApiV3(Bankrec rec) {

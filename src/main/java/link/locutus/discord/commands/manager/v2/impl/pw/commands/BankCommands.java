@@ -3151,9 +3151,9 @@ public class BankCommands {
 
             if (onlyOffshoreTransfers) {
                 if (offshore == null) throw new IllegalArgumentException("This alliance does not have an offshore account");
-                Set<Long> offshoreAAs = db.getOffshore().getOffshoreAAs();
+                Set<Integer> offshoreAAIds = db.getOffshore().getOffshoreAAIds();
                 transactions.removeIf(f -> f.sender_type == 1 || f.receiver_type == 1);
-                transactions.removeIf(f -> f.tx_id != -1 && f.sender_id != 0 && f.receiver_id != 0 && !offshoreAAs.contains(f.sender_id) && !offshoreAAs.contains(f.receiver_id));
+                transactions.removeIf(f -> f.tx_id != -1 && f.sender_id != 0 && f.receiver_id != 0 && !offshoreAAIds.contains((int) f.sender_id) && !offshoreAAIds.contains((int) f.receiver_id));
             }
 
         } else if (nationOrAllianceOrGuild.isGuild()) {

@@ -8,16 +8,54 @@ import java.util.Locale;
 import java.util.Map;
 
 public enum DepositType {
-    DEPOSIT("For funds directly deposited or withdrawn"),
-    TAX("For city raw consumption or taxes"),
-    LOAN("For funds members are expected to repay at some date in the future"),
-    GRANT("Can be excluded from withdrawal limit, considered a loan if no time is specified e.g. `#expire=60d` or `#decay=3w`"),
-    IGNORE("Excluded from deposits"),
-    TRADE("Sub type of deposits, earmarked as trading funds"),
+    DEPOSIT("For funds directly deposited or withdrawn") {
+        @Override
+        public Object resolve(String value) {
+            return Long.parseLong(value);
+        }
+    },
+    TAX("For city raw consumption or taxes") {
+        @Override
+        public Object resolve(String value) {
+            return Long.parseLong(value);
+        }
+    },
+    LOAN("For funds members are expected to repay at some date in the future") {
+        @Override
+        public Object resolve(String value) {
+            return Long.parseLong(value);
+        }
+    },
+    GRANT("Can be excluded from withdrawal limit, considered a loan if no time is specified e.g. `#expire=60d` or `#decay=3w`") {
+        @Override
+        public Object resolve(String value) {
+            return Long.parseLong(value);
+        }
+    },
+    IGNORE("Excluded from deposits") {
+        @Override
+        public Object resolve(String value) {
+            return Long.parseLong(value);
+        }
+    },
+    TRADE("Sub type of deposits, earmarked as trading funds") {
+        @Override
+        public Object resolve(String value) {
+            return Long.parseLong(value);
+        }
+    },
 
     CITY(GRANT, "Go to <https://{test}politicsandwar.com/city/create/> and purchase a new city", "A city grant with a value either the number of cities, -1 for all cities, or the city id\n" +
             "Can be applied alongside another modifier, e.g. `#land=2000 #city=-1` would be 2000 land for all cities",
-            true),
+            true) {
+        @Override
+        public Object resolve(String value) {
+            if (value.equals("*")) {
+                return -1;
+            }
+            return Long.parseLong(value);
+        }
+    },
     PROJECT(GRANT, "Go to <https://{test}politicsandwar.com/nation/projects/> and purchase the desired project",
             "A project grant with the id or name for a value. `#project=BAUXITEWORKS`", true),
     INFRA(GRANT, "Go to your city <https://{test}politicsandwar.com/cities/> and purchase the desired infrastructure",
@@ -31,6 +69,13 @@ public enum DepositType {
     EXPIRE(GRANT, "Will be excluded from deposits after the specified time e.g. `#expire=60d`", "", false),
     DECAY(GRANT, "Expires by reducing linearly over time until 0 e.g. `#decay=60d`", "", false),
 
+    GUILD("The guild id this transfer belongs to"),
+    ALLIANCE("The guild id this transfer belongs to"),
+    NATION("Reserved. DO NOT USE"),
+    ACCOUNT("Reserved. DO NOT USE"),
+    CASH("Reserved. DO NOT USE"),
+    RSS("Reserved. DO NOT USE"),
+
     ;
 
     public static DepositType parse(String note) {
@@ -43,6 +88,14 @@ public enum DepositType {
             }
             return DepositType.valueOf(note.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
+            switch (note.toLowerCase()) {
+                case "raw":
+                case "disperse":
+                case "disburse":
+                    return RAWS;
+                case "taxes":
+                    return TAX;
+            }
             return null;
         }
     }
@@ -99,6 +152,11 @@ public enum DepositType {
         return new DepositTypeInfo(this, amount, city, ignore);
     }
 
+    public boolean isReserved() {
+        return this == GUILD || this == ALLIANCE || this == NATION || this == ACCOUNT || this == CASH || this == RSS;
+    }
+
+    public abstract Object resolve(String value);
 
     public static class DepositTypeInfo {
         public final DepositType type;
@@ -181,6 +239,10 @@ public enum DepositType {
 
         public boolean isIgnored() {
             return ignore || type == IGNORE;
+        }
+
+        public boolean isReservedOrIgnored() {
+            return type.isReserved() || isIgnored();
         }
 
         public DepositTypeInfo applyClassifiers(Map<String, String> parsed) {

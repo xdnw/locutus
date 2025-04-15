@@ -588,6 +588,9 @@ public class PWBindings extends BindingHelper {
             value = city;
             city = 0;
         }
+        if (type.isReserved()) {
+            throw new IllegalArgumentException("The note `" + type + "` is reserved for internal use. Please use a different note.");
+        }
         return new DepositType.DepositTypeInfo(type, value, city, ignore);
     }
 
@@ -1146,7 +1149,11 @@ public class PWBindings extends BindingHelper {
     @Binding(value = "A note to use for a bank transfer")
     public static DepositType DepositType(String input) {
         if (input.startsWith("#")) input = input.substring(1);
-        return StringMan.parseUpper(DepositType.class, input.toUpperCase(Locale.ROOT));
+        DepositType result = StringMan.parseUpper(DepositType.class, input.toUpperCase(Locale.ROOT));
+        if (result.isReserved()) {
+            throw new IllegalArgumentException("The note `" + result + "` is reserved for internal use. Please use a different note.");
+        }
+        return result;
     }
 
     @Binding(value = "The mode for escrowing funds for a transfer, such as when a receiver is blockaded")
