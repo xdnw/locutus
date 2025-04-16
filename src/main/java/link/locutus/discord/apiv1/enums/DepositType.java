@@ -73,8 +73,9 @@ public enum DepositType {
     ALLIANCE("The guild id this transfer belongs to"),
     NATION("Reserved. DO NOT USE"),
     ACCOUNT("Reserved. DO NOT USE"),
-    CASH("Reserved. DO NOT USE"),
-    RSS("Reserved. DO NOT USE"),
+    CASH("The value of this transfer in nation balance is converted to cash"),
+    RSS("The bits representing the resources in the transfer. Resource ordinals aare the same as appear in the game's bank records table"),
+    BANKER("The nation initiating the transfer"),
 
     ;
 

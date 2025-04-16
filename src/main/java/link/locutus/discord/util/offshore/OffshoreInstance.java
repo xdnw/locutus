@@ -273,40 +273,14 @@ public class OffshoreInstance {
     public synchronized List<Transaction2> getTransactionsGuild(long guildId, boolean force) {
         if (force || outOfSync.get()) sync();
 
-        List<Transaction2> transactions = Locutus.imp().getBankDB().getBankTransactions(guildId, 3);
+        List<Transaction2> transactions = new ObjectArrayList<>();
+        transactions.addAll(getOffshoreTransactions(guildId, 3));
 
         GuildDB db = getGuildDB();
         List<Transaction2> offset = db.getDepositOffsetTransactions(guildId);
         transactions.addAll(offset);
 
-        List<Transaction2> toProcess = new ArrayList<>();
-
-        outer:
-        for (Transaction2 transfer : transactions) {
-            String note = transfer.note;
-            if (note != null) {
-                Map<String, String> parsed = PW.parseTransferHashNotes(note);
-                for (Map.Entry<String, String> entry : parsed.entrySet()) {
-                    String value = entry.getValue();
-                    switch (entry.getKey()) {
-                        case "#guild":
-                            if (!MathMan.isInteger(value)) continue outer;
-                            long transferGuild = Long.parseLong(value);
-                            if (transferGuild != guildId || isOffshoreAA(transfer.getSender())) continue outer;
-                            transfer.sender_id = transferGuild;
-                            transfer.sender_type = 3;
-                            continue;
-                        case "#alliance":
-                        case "#account":
-                        case "#nation":
-                        case "#ignore":
-                            continue outer;
-                    }
-                }
-            }
-            toProcess.add(transfer);
-        }
-        return toProcess;
+        return transactions;
     }
 
     public synchronized Map<ResourceType, Double> getDeposits(long guildId, boolean force) {
@@ -323,62 +297,50 @@ public class OffshoreInstance {
         return getTransactionsAA(Collections.singleton(allianceId), force);
     }
 
-    private List<Transaction2> getTransactions(int id, int type) {
+    private List<Transaction2> getOffshoreTransactions(long id, int type) {
         Set<Integer> offshoreIds = getOffshoreAAIds();
         List<Transaction2> transfers = Locutus.imp().getBankDB().getAllianceTransactions(offshoreIds, true);
         List<Transaction2> result = new ObjectArrayList<>();
         for (Transaction2 tx : transfers) {
             if (tx.sender_type != 2) continue;
-            if (tx.sender_id == id) {
+
+            Map<DepositType, Object> parsed = tx.getParsed();
+            if (!parsed.isEmpty()) {
+                if (parsed.containsKey(DepositType.IGNORE)) continue;
+
+                Object aaAccount = (Object) parsed.get(DepositType.ALLIANCE);
+                Object guildAccount = (Object) parsed.get(DepositType.GUILD);
+                if (aaAccount != null && guildAccount != null) {
+                    // invalid, cannot use both
+                    continue;
+                }
+                Object account = type == 2 ? aaAccount : type == 3 ? guildAccount : null;
+                if (account instanceof Number n) {
+                    if (account != null && n.longValue() == id) {
+                        tx.sender_id = id;
+                        tx.sender_type = type;
+                        result.add(tx);
+                    }
+                    continue;
+                }
+            }
+
+            if (tx.sender_id == id && tx.sender_type == type) {
                 result.add(tx);
-            } else if (tx.note)
-
-
-
+            }
         }
+        return result;
     }
 
     public synchronized List<Transaction2> getTransactionsAA(Set<Integer> allianceId, boolean force) {
         if (force || outOfSync.get()) sync();
 
         GuildDB db = getGuildDB();
-        List<Transaction2> transactions = new ArrayList<>();
-        List<Transaction2> offset = new ArrayList<>();
+        List<Transaction2> toProcess = new ObjectArrayList<>();
         for (int id : allianceId) {
-            transactions.addAll(Locutus.imp().getBankDB().getBankTransactions(id, 2));
-            offset.addAll(db.getDepositOffsetTransactions(-id));
+            toProcess.addAll(getOffshoreTransactions((long) id, 2));
+            toProcess.addAll(db.getDepositOffsetTransactions(-id));
         }
-        transactions.addAll(offset);
-
-        List<Transaction2> toProcess = new ArrayList<>();
-
-        outer:
-        for (Transaction2 transfer : transactions) {
-            String note = transfer.note;
-            if (note != null) {
-                Map<String, String> parsed = PW.parseTransferHashNotes(note);
-                for (Map.Entry<String, String> entry : parsed.entrySet()) {
-                    String value = entry.getValue();
-                    switch (entry.getKey()) {
-                        case "#alliance":
-                            if (!MathMan.isInteger(value)) continue outer;
-                            int transferAA = Integer.parseInt(value);
-                            if (!allianceId.contains(transferAA) || isOffshoreAA(transfer.getSender()))
-                                continue outer;
-                            transfer.sender_id = transferAA;
-                            transfer.sender_type = 2;
-                            continue;
-                        case "#guild":
-                        case "#account":
-                        case "#nation":
-                        case "#ignore":
-                            continue outer;
-                    }
-                }
-            }
-            toProcess.add(transfer);
-        }
-
         return toProcess;
     }
 
@@ -1111,10 +1073,12 @@ public class OffshoreInstance {
                 }
             }
         }
-        Map<String, String> notes = PW.parseTransferHashNotes(note);
-        if (notes.containsKey("#alliance") || notes.containsKey("#guild") || notes.containsKey("#account")) {
+        if (note != null) {
+            String noteLower = note.toLowerCase(Locale.ROOT);
+            if (noteLower.contains("#alliance") || noteLower.contains("#guild") || noteLower.contains("#account")) {
 //            return KeyValue.of(TransferStatus.INVALID_NOTE, "You cannot send with #alliance #guild or #account as the note");
-            return new TransferResult(TransferStatus.INVALID_NOTE, receiver, amount, note).addMessage("You cannot send with `#alliance`, `#guild` or `#account` as the note");
+                return new TransferResult(TransferStatus.INVALID_NOTE, receiver, amount, note).addMessage("You cannot send with `#alliance`, `#guild` or `#account` as the note");
+            }
         }
 
         if (receiver.isAlliance() && !receiver.asAlliance().exists()) {
@@ -1171,11 +1135,11 @@ public class OffshoreInstance {
                             cutoff -= TimeUnit.DAYS.toMillis(1);
                         }
                         List<Transaction2> transactions = Locutus.imp().getBankDB().getTransactionsByNote(append, cutoff);
-                        Set<Long> offshoreAAIds = getOffshoreAAs();
+                        Set<Integer> offshoreAAIds2 = getOffshoreAAIds();
                         Set<Integer> aaIds = senderDB.getAllianceIds();
                         double total = 0;
                         for (Transaction2 transaction : transactions) {
-                            if (!transaction.isTrackedForGuild(senderDB, aaIds, offshoreAAIds)) continue;
+                            if (!transaction.isTrackedForGuild(senderDB, aaIds, offshoreAAIds2)) continue;
                             total += transaction.convertedTotal();
                         }
                         if (total > withdrawLimit) {

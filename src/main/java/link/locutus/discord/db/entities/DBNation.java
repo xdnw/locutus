@@ -6564,4 +6564,8 @@ public abstract class DBNation implements NationOrAlliance {
         total += getResearchValue();
         return total;
     }
+
+    public Predicate<Project> hasProjectPredicate() {
+        return Projects.optimize(this::hasProject);
+    }
 }

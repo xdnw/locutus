@@ -611,7 +611,7 @@ public final class PW {
             boolean allowArbitraryConversion = record.tx_id != -1 && isOffshoreSender;
 
             Predicate<Transaction2> allowExpiryFinal = isOffshoreSender || record.isInternal() ? allowExpiry : f -> false;
-            PW.processDeposit(record, guildDB, tracked, sign, result, record.resources, record.note, record.tx_datetime, allowExpiryFinal, allowConversion, allowArbitraryConversion, true, forceIncludeIgnored, rateFunc, forceRssConversionAfter);
+            PW.processDeposit(record, guildDB, tracked, sign, result, record.resources, record.tx_datetime, allowExpiryFinal, allowConversion, allowArbitraryConversion, true, forceIncludeIgnored, rateFunc, forceRssConversionAfter);
         }
         long diff = System.currentTimeMillis() - start;
         if (diff > 50) {
@@ -642,33 +642,12 @@ public final class PW {
         return currentMMR.matches(requiredMMR);
     }
 
-    public static Map<DepositType, Object> parseTransferHashNotes2(String note) {
-        if (note == null || note.isEmpty()) return Collections.emptyMap();
-        Map<DepositType, Object> result = new LinkedHashMap<>();
-        String[] split = note.split("(?=#)");
-        for (String filter : split) {
-            if (filter.charAt(0) != '#') continue;
-
-            String[] tagSplit = filter.split("[=| ]", 2);
-            String tag = tagSplit[0].toLowerCase();
-            String value = tagSplit.length == 2 && !tagSplit[1].trim().isEmpty() ? tagSplit[1].split(" ")[0].trim() : null;
-
-            DepositType type = DepositType.parse(tag);
-            if (type != null) {
-                Object resolved = type.resolve(value);
-                result.put(type, resolved);
-            }
-        }
-        return result.isEmpty() ? Collections.emptyMap() : result;
-    }
-
     public static void processDeposit(Transaction2 record,
                                       GuildDB guildDB,
                                       Set<Long> tracked,
                                       int sign,
                                       Map<DepositType, double[]> result,
                                       double[] amount,
-                                      String note,
                                       long date,
                                       Predicate<Transaction2> allowExpiry,
                                       boolean allowConversion,
@@ -685,7 +664,7 @@ public final class PW {
         }
         // TODO also update Grant.isNoteFromDeposits if this code is updated
 
-        Map<DepositType, String> notes2 = parseTransferHashNotes2(note);
+        Map<DepositType, Object> notes3 = record.getParsed();
         DepositType type = DepositType.DEPOSIT;
         double decayFactor = 1;
 

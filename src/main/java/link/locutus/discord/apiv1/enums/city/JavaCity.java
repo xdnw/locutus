@@ -516,7 +516,7 @@ public class JavaCity implements ICity {
                 nation.getCities(),
                 CityNode::getRevenueConverted,
                 null,
-                nation::hasProject,
+                nation.hasProjectPredicate(),
                 timeout,
                 nation.getRads(),
                 selfSufficient,

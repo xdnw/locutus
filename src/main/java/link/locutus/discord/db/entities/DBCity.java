@@ -90,11 +90,12 @@ public abstract class DBCity implements ICity {
     @Command(desc = "Number of buildings in this city")
     public int getNumBuildings() {
         int total = 0;
-        if (getBuildings3().length == PW.City.Building.SIZE) {
-            for (byte amt : getBuildings3()) total += amt;
+        byte[] arr = getBuildings3();
+        if (arr.length == PW.City.Building.SIZE) {
+            for (byte amt : arr) total += amt;
         } else {
             // two buildings per byte
-            for (byte amt : getBuildings3()) {
+            for (byte amt : arr) {
                 if (amt == 0) continue;
                 total += amt & 0x0F;
                 total += (amt >> 4) & 0x0F;
@@ -104,11 +105,12 @@ public abstract class DBCity implements ICity {
     }
 
     public int getBuildingOrdinal(int ordinal) {
-        if (getBuildings3().length == PW.City.Building.SIZE) {
-            return getBuildings3()[ordinal];
+        byte[] arr = getBuildings3();
+        if (arr.length == PW.City.Building.SIZE) {
+            return arr[ordinal];
         } else {
             int byteIndex = ordinal >> 1;
-            byte pair = getBuildings3()[byteIndex];
+            byte pair = arr[byteIndex];
             if ((ordinal & 1) == 0) {
                 return (pair >> 4) & 0x0F;
             } else {

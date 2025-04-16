@@ -31,9 +31,8 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -50,7 +49,6 @@ import static link.locutus.discord.apiv1.enums.ResourceType.MUNITIONS;
 import static link.locutus.discord.apiv1.enums.ResourceType.OIL;
 import static link.locutus.discord.apiv1.enums.ResourceType.STEEL;
 import static link.locutus.discord.apiv1.enums.ResourceType.URANIUM;
-import static link.locutus.discord.util.PW.CONVERSION_SECRET;
 
 public class Transaction2 {
     public int original_id;
@@ -83,8 +81,8 @@ public class Transaction2 {
     private static final Pattern MD5_HASH = Pattern.compile("#([a-fA-F0-9]{32})");
 
     public Map<DepositType, Object> getParsed() {
-        if (parsed == null) {
-            parsed = PW.parseTransferHashNotes2(note);
+        if (parsed == null && note != null && !note.isEmpty()) {
+            parsed = parseTransferHashNotes2(note, tx_datetime);
             if (parsed.containsKey(DepositType.CASH) && receiver_type != 1) {
                 Matcher matcher = MD5_HASH.matcher(note);
                 if (matcher.find()) {
@@ -97,6 +95,26 @@ public class Transaction2 {
             }
         }
         return parsed;
+    }
+
+    private static Map<DepositType, Object> parseTransferHashNotes2(String note, long date) {
+        if (note == null || note.isEmpty()) return Collections.emptyMap();
+        Map<DepositType, Object> result = new LinkedHashMap<>();
+        String[] split = note.split("(?=#)");
+        for (String filter : split) {
+            if (filter.charAt(0) != '#') continue;
+
+            String[] tagSplit = filter.split("[=| ]", 2);
+            String tag = tagSplit[0].toLowerCase();
+            String value = tagSplit.length == 2 && !tagSplit[1].trim().isEmpty() ? tagSplit[1].split(" ")[0].trim() : null;
+
+            DepositType type = DepositType.parse(tag);
+            if (type != null) {
+                Object resolved = type.resolve(value, date);
+                result.put(type, resolved);
+            }
+        }
+        return result.isEmpty() ? Collections.emptyMap() : result;
     }
 
     public boolean isValidHash() {
@@ -155,32 +173,42 @@ public class Transaction2 {
 
     public boolean isSelfWithdrawal(DBNation nation) {
         if (this.isSenderAA() && this.note != null) {
-            Map<String, String> notes = PW.parseTransferHashNotes(this.note);
-            if (notes.containsKey("#deposit")) {
-                String banker = notes.get("#banker");
-                return MathMan.isInteger(banker) && Long.parseLong(banker) == nation.getNation_id();
+            Map<DepositType, Object> noteMap = getParsed();
+            if (noteMap.containsKey(DepositType.DEPOSIT)) {
+                Object banker = noteMap.get(DepositType.BANKER);
+                if (banker instanceof Number n) {
+                    return n.intValue() == nation.getNation_id();
+                }
             }
         }
         return false;
     }
 
-    public long getAccountId(Set<Long> offshoreAlliances) {
+    public long getAccountId(Set<Integer> offshoreAlliances, boolean ignoreIgnore) {
         if (this.note != null) {
-            Map<String, String> notes = PW.parseTransferHashNotes(this.note);
-            for (Map.Entry<String, String> entry : notes.entrySet()) {
-                if (entry.getValue() == null) continue;
-                if (entry.getKey().equalsIgnoreCase("#alliance") || entry.getKey().equalsIgnoreCase("#guild")) {
-                    if (MathMan.isInteger(entry.getValue())) {
-                        return Long.parseLong(entry.getValue());
-                    }
+            Map<DepositType, Object> notes2 = getParsed();
+
+            if (!notes2.isEmpty()) {
+                if (ignoreIgnore && notes2.containsKey(DepositType.IGNORE)) return 0;
+
+                Object aaAccount = (Object) notes2.get(DepositType.ALLIANCE);
+                Object guildAccount = (Object) notes2.get(DepositType.GUILD);
+                if (aaAccount != null && guildAccount != null) {
+                    // invalid, cannot use both
+                    return 0;
                 }
-            }
-            for (Map.Entry<String, String> entry : notes.entrySet()) {
-                if (entry.getValue() == null) continue;
-                DepositType type = DepositType.parse(entry.getKey());
-                if (type != null && type.getParent() == null) {
-                    if (MathMan.isInteger(entry.getValue())) {
-                        return Long.parseLong(entry.getValue());
+                if (aaAccount != null && aaAccount instanceof Number n) {
+                    return n.longValue();
+                }
+                if (guildAccount != null && guildAccount instanceof Number n) {
+                    return n.longValue();
+                }
+                for (Map.Entry<DepositType, Object> entry : notes2.entrySet()) {
+                    DepositType type = entry.getKey();
+                    Object value = entry.getValue();
+                    if (value == null || type.getParent() != null || type.isReserved()) continue;
+                    if (value instanceof Number n) {
+                        return n.longValue();
                     }
                 }
             }
@@ -191,18 +219,18 @@ public class Transaction2 {
         if (!isSenderAA()) {
             return receiver_id;
         }
-        if (offshoreAlliances.contains(receiver_id)) {
+        if (offshoreAlliances.contains((int) receiver_id)) {
             return sender_id;
         }
-        if (offshoreAlliances.contains(sender_id)) {
+        if (offshoreAlliances.contains((int) sender_id)) {
             return receiver_id;
         }
         return 0;
     }
 
-    public boolean isTrackedForGuild(GuildDB db, Set<Integer> aaIds, Set<Long> offshoreAAs) {
+    public boolean isTrackedForGuild(GuildDB db, Set<Integer> aaIds, Set<Integer> offshoreAAs) {
         if (aaIds.contains((int) sender_id) || aaIds.contains((int) receiver_id)) return true;
-        long accountId = getAccountId(offshoreAAs);
+        long accountId = getAccountId(offshoreAAs, false);
         return (accountId == 0 || accountId == db.getIdLong() || aaIds.contains((int) accountId));
     }
 
