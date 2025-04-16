@@ -233,7 +233,7 @@ public enum ResourceType {
         }
         arg = arg.replace('=', ':').replaceAll("([0-9]),([0-9])", "$1$2").toUpperCase();
         arg = arg.replaceAll("([0-9.]+):([a-zA-Z]{3,})", "$2:$1");
-        arg = arg.replaceAll("([A-Z]+:[0-9,.]+) ([A-Z]+:[0-9,.]+)", "$1,$2");
+        arg = arg.replaceAll("([A-Z]+:[0-9.]+) ([A-Z]+:[0-9.]+)", "$1,$2");
         arg = arg.replace(" ", "");
         if (arg.startsWith("$") || arg.startsWith("-$")) {
             if (!arg.contains(",")) {

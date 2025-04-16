@@ -2697,6 +2697,9 @@ public class WarCommands {
         if (numDays > 365) {
             throw new IllegalArgumentException("Too many days: `" + numDays + " (max 365)");
         }
+        if (nations.size() > 1000) {
+            throw new IllegalArgumentException("Too many nations: `" + nations.size() + " (max 1000)");
+        }
         if (endTurn <= startTurn) {
             throw new IllegalArgumentException("End time must be after start time (2h)");
         }
