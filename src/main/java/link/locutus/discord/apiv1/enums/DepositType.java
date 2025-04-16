@@ -1,63 +1,39 @@
 package link.locutus.discord.apiv1.enums;
 
+import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.TimeUtil;
 
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
 
 public enum DepositType {
-    DEPOSIT("For funds directly deposited or withdrawn") {
-        @Override
-        public Object resolve(String value) {
-            return Long.parseLong(value);
-        }
-    },
-    TAX("For city raw consumption or taxes") {
-        @Override
-        public Object resolve(String value) {
-            return Long.parseLong(value);
-        }
-    },
-    LOAN("For funds members are expected to repay at some date in the future") {
-        @Override
-        public Object resolve(String value) {
-            return Long.parseLong(value);
-        }
-    },
-    GRANT("Can be excluded from withdrawal limit, considered a loan if no time is specified e.g. `#expire=60d` or `#decay=3w`") {
-        @Override
-        public Object resolve(String value) {
-            return Long.parseLong(value);
-        }
-    },
-    IGNORE("Excluded from deposits") {
-        @Override
-        public Object resolve(String value) {
-            return Long.parseLong(value);
-        }
-    },
-    TRADE("Sub type of deposits, earmarked as trading funds") {
-        @Override
-        public Object resolve(String value) {
-            return Long.parseLong(value);
-        }
-    },
+    DEPOSIT("For funds directly deposited or withdrawn"),
+    TAX("For city raw consumption or taxes"),
+    LOAN("For funds members are expected to repay at some date in the future"),
+    GRANT("Can be excluded from withdrawal limit, considered a loan if no time is specified e.g. `#expire=60d` or `#decay=3w`"),
+    IGNORE("Excluded from deposits"),
+    TRADE("Sub type of deposits, earmarked as trading funds"),
 
     CITY(GRANT, "Go to <https://{test}politicsandwar.com/city/create/> and purchase a new city", "A city grant with a value either the number of cities, -1 for all cities, or the city id\n" +
             "Can be applied alongside another modifier, e.g. `#land=2000 #city=-1` would be 2000 land for all cities",
-            true) {
+            true),
+    PROJECT(GRANT, "Go to <https://{test}politicsandwar.com/nation/projects/> and purchase the desired project",
+            "A project grant with the id or name for a value. `#project=BAUXITEWORKS`", true) {
+
         @Override
-        public Object resolve(String value) {
-            if (value.equals("*")) {
-                return -1;
+        public Object resolve(String value, long timestamp) {
+            Object parsed = super.resolve(value, timestamp);
+            if (parsed != null) {
+                return parsed;
             }
-            return Long.parseLong(value);
+            Project project = Projects.get(value);
+            return project != null ? project : null;
         }
     },
-    PROJECT(GRANT, "Go to <https://{test}politicsandwar.com/nation/projects/> and purchase the desired project",
-            "A project grant with the id or name for a value. `#project=BAUXITEWORKS`", true),
     INFRA(GRANT, "Go to your city <https://{test}politicsandwar.com/cities/> and purchase the desired infrastructure",
             "A grant for infra level. Can be added with `#city`", true),
     LAND(GRANT, "Go to your city <https://{test}politicsandwar.com/cities/> and purchase the desired land", "A grant for a land level. Can be added with `#city`", true),
@@ -66,8 +42,32 @@ public enum DepositType {
     RESEARCH(GRANT, "Go to <https://{test}politicsandwar.com/nation/military/research/> and purchase the desired research", "A grant for research", true),
     RAWS(GRANT, "Raw resources for city consumption", "", true),
 
-    EXPIRE(GRANT, "Will be excluded from deposits after the specified time e.g. `#expire=60d`", "", false),
-    DECAY(GRANT, "Expires by reducing linearly over time until 0 e.g. `#decay=60d`", "", false),
+    EXPIRE(GRANT, "Will be excluded from deposits after the specified time e.g. `#expire=60d`", "", false) {
+        @Override
+        public Object resolve(String value, long timestamp) {
+            try {
+                if (value == null || value.isEmpty()) {
+                    return null;
+                }
+                return TimeUtil.timeToSec_BugFix1(value, timestamp) * 1000L;
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+        }
+    },
+    DECAY(GRANT, "Expires by reducing linearly over time until 0 e.g. `#decay=60d`", "", false) {
+        @Override
+        public Object resolve(String value, long timestamp) {
+            try {
+                if (value == null || value.isEmpty()) {
+                    return null;
+                }
+                return TimeUtil.timeToSec_BugFix1(value, timestamp) * 1000L;
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+        }
+    },
 
     GUILD("The guild id this transfer belongs to"),
     ALLIANCE("The guild id this transfer belongs to"),
@@ -156,7 +156,25 @@ public enum DepositType {
         return this == GUILD || this == ALLIANCE || this == NATION || this == ACCOUNT || this == CASH || this == RSS;
     }
 
-    public abstract Object resolve(String value);
+    public Object resolve(String value, long timestamp) {
+        if (value == null || value.isEmpty()) {
+             return null;
+        }
+        if (value.equals("*")) {
+            return -1L;
+        }
+        if (value.endsWith(".0")) {
+            value = value.substring(0, value.length() - 2);
+        }
+        try {
+            if (MathMan.isInteger(value)) {
+                return Long.parseLong(value);
+            }
+            return Double.parseDouble(value);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
 
     public static class DepositTypeInfo {
         public final DepositType type;

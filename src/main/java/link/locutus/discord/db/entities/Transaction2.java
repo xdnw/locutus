@@ -1,10 +1,12 @@
 package link.locutus.discord.db.entities;
 
+import com.google.common.hash.Hashing;
 import com.google.gson.JsonElement;
 import com.politicsandwar.graphql.model.Bankrec;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.entities.BankRecord;
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TaxDeposit;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
@@ -19,6 +21,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.parser.Parser;
 import org.jsoup.select.Elements;
 
+import java.nio.charset.StandardCharsets;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -31,6 +34,8 @@ import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static link.locutus.discord.apiv1.enums.ResourceType.ALUMINUM;
 import static link.locutus.discord.apiv1.enums.ResourceType.BAUXITE;
@@ -45,6 +50,7 @@ import static link.locutus.discord.apiv1.enums.ResourceType.MUNITIONS;
 import static link.locutus.discord.apiv1.enums.ResourceType.OIL;
 import static link.locutus.discord.apiv1.enums.ResourceType.STEEL;
 import static link.locutus.discord.apiv1.enums.ResourceType.URANIUM;
+import static link.locutus.discord.util.PW.CONVERSION_SECRET;
 
 public class Transaction2 {
     public int original_id;
@@ -58,7 +64,9 @@ public class Transaction2 {
     public int banker_nation;
     public double[] resources;
     public String note;
+
     private Map<DepositType, Object> parsed;
+    private boolean validHash;
 
     public Transaction2(int tx_id, long tx_datetime, long sender_id, int sender_type, long receiver_id, int receiver_type, int banker_nation, String note, double[] resources) {
         this.tx_id = tx_id;
@@ -72,11 +80,32 @@ public class Transaction2 {
         this.resources = resources;
     }
 
+    private static final Pattern MD5_HASH = Pattern.compile("#([a-fA-F0-9]{32})");
+
     public Map<DepositType, Object> getParsed() {
         if (parsed == null) {
             parsed = PW.parseTransferHashNotes2(note);
+            if (parsed.containsKey(DepositType.CASH) && receiver_type != 1) {
+                Matcher matcher = MD5_HASH.matcher(note);
+                if (matcher.find()) {
+                    String md5Hash = matcher.group(1);
+                    String expected = Hashing.md5()
+                            .hashString(Settings.INSTANCE.CONVERSION_SECRET + tx_id, StandardCharsets.UTF_8)
+                            .toString();
+                    validHash = md5Hash.equalsIgnoreCase(expected);
+                }
+            }
         }
         return parsed;
+    }
+
+    public boolean isValidHash() {
+        getParsed();
+        return validHash;
+    }
+
+    public void setValidHash(boolean validHash) {
+        this.validHash = validHash;
     }
 
     public static Transaction2 fromApiV3(Bankrec rec) {

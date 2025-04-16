@@ -831,10 +831,12 @@ public final class PW {
             Supplier<String> getHash = ArrayUtil.memorize(() -> Hashing.md5()
                     .hashString(CONVERSION_SECRET + record.tx_id, StandardCharsets.UTF_8)
                     .toString());
+            boolean hasHash = false;
             if (valueStr != null) {
                 String hash = getHash.get();
                 if (record.note.contains(hash)) {
                     cashValue = MathMan.parseDouble(valueStr);
+                    hasHash = true;
                 }
             }
 
@@ -874,6 +876,7 @@ public final class PW {
                 if (setConvert) {
                     convert = convertCached;
                 }
+                if (!hasHash)
                 {
                     // set hash
                     String hash = getHash.get();
@@ -902,8 +905,6 @@ public final class PW {
             amount[0] = cashValue;
         }
     }
-
-    private static String CONVERSION_SECRET = "fe51a236d437901bc1650b0187ac3e46";
 
     public static double WAR_RANGE_MAX_MODIFIER = 2.50;
     public static double WAR_RANGE_MIN_MODIFIER = 0.75;
