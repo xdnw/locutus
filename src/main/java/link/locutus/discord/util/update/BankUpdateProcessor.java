@@ -1,7 +1,9 @@
 package link.locutus.discord.util.update;
 
 import com.google.common.eventbus.Subscribe;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -54,15 +56,16 @@ public class BankUpdateProcessor {
         int aaId = (int) (transfer.isSenderAA() ? transfer.getSender() : transfer.getReceiver());
 
         if (!isLoot) {
-            Set<Integer> trackedAlliances = new HashSet<>();
+            Set<Integer> trackedAlliances = new IntOpenHashSet();
             trackedAlliances.add(aaId);
             if (transfer.note != null) {
-                for (Map.Entry<String, String> entry : PW.parseTransferHashNotes(transfer.note).entrySet()) {
-                    if (MathMan.isInteger(entry.getValue())) {
+                Map<DepositType, Object> noteMap = transfer.getParsed();
+                for (Map.Entry<DepositType, Object> entry : noteMap.entrySet()) {
+                    if (entry.getKey().getParent() != null) continue;
+                    if (entry.getValue() instanceof Number n) {
                         try {
-                            int id = Integer.parseInt(entry.getValue());
-                            trackedAlliances.add(id);
-                        } catch (NumberFormatException ignore) {
+                            trackedAlliances.add(Math.toIntExact(n.longValue()));
+                        } catch (ArithmeticException ignore) {
                         }
                     }
                 }

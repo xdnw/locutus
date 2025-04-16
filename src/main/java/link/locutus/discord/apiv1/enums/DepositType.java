@@ -1,5 +1,6 @@
 package link.locutus.discord.apiv1.enums;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.config.Settings;
@@ -9,6 +10,7 @@ import link.locutus.discord.util.TimeUtil;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 public enum DepositType {
     DEPOSIT("For funds directly deposited or withdrawn"),
@@ -20,7 +22,22 @@ public enum DepositType {
 
     CITY(GRANT, "Go to <https://{test}politicsandwar.com/city/create/> and purchase a new city", "A city grant with a value either the number of cities, -1 for all cities, or the city id\n" +
             "Can be applied alongside another modifier, e.g. `#land=2000 #city=-1` would be 2000 land for all cities",
-            true),
+            true) {
+        @Override
+        public Object resolve(String value, long timestamp) {
+            Object result = super.resolve(value, timestamp);
+            if (result == null && value.contains(",")) {
+                try {
+                    Set<Integer> ids = new IntOpenHashSet();
+                    for (String elem : value.split(",")) {
+                        ids.add(Integer.parseInt(elem));
+                    }
+                    return ids;
+                } catch (NumberFormatException e) {}
+            }
+            return result;
+        }
+    },
     PROJECT(GRANT, "Go to <https://{test}politicsandwar.com/nation/projects/> and purchase the desired project",
             "A project grant with the id or name for a value. `#project=BAUXITEWORKS`", true) {
 
@@ -49,7 +66,7 @@ public enum DepositType {
                 if (value == null || value.isEmpty()) {
                     return null;
                 }
-                return TimeUtil.timeToSec_BugFix1(value, timestamp) * 1000L;
+                return timestamp + TimeUtil.timeToSec_BugFix1(value, timestamp) * 1000L;
             } catch (IllegalArgumentException e) {
                 return null;
             }
@@ -62,7 +79,7 @@ public enum DepositType {
                 if (value == null || value.isEmpty()) {
                     return null;
                 }
-                return TimeUtil.timeToSec_BugFix1(value, timestamp) * 1000L;
+                return timestamp + TimeUtil.timeToSec_BugFix1(value, timestamp) * 1000L;
             } catch (IllegalArgumentException e) {
                 return null;
             }
@@ -76,6 +93,8 @@ public enum DepositType {
     CASH("The value of this transfer in nation balance is converted to cash"),
     RSS("The bits representing the resources in the transfer. Resource ordinals aare the same as appear in the game's bank records table"),
     BANKER("The nation initiating the transfer"),
+
+    AMOUNT(GRANT, "Meta note for recording an amount of a tag", "Meta note for recording an amount of a tag", true)
 
     ;
 
