@@ -1507,7 +1507,7 @@ public final class PW {
         arg = arg.trim();
         if (!arg.contains(":") && !arg.contains("=")) arg = arg.replaceAll("[ ]+", ":");
         arg = arg.replace('=', ':').toUpperCase();
-        arg = arg.replaceAll("([A-Z]+:[0-9,.]+) ([A-Z]+:[0-9,.]+)", "$1,$2");
+        arg = arg.replaceAll("([A-Z]+:[0-9.]+) ([A-Z]+:[0-9.]+)", "$1,$2");
         arg = arg.replace(" ", "");
         arg = arg.replaceAll("([0-9]),([0-9])", "$1$2").toUpperCase();
         for (E unit : enumClass.getEnumConstants()) {
