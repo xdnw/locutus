@@ -293,32 +293,36 @@ public class OffshoreInstance {
                     }
                     return false;
                 }
-                if (tx.sender_type != 2 || tx.note == null) return false;
+                if (tx.sender_type != 2) {
+                    return false;
+                } else if (tx.note == null || tx.note.isEmpty()) {
+                    return tx.sender_id == id && tx.sender_type == type;
+                }
 
                 Map<DepositType, Object> parsed = tx.getNoteMap();
                 if (!parsed.isEmpty()) {
                     if (parsed.containsKey(DepositType.IGNORE)) {
                         return false;
                     }
-
                     Object aaAccount = (Object) parsed.get(DepositType.ALLIANCE);
                     Object guildAccount = (Object) parsed.get(DepositType.GUILD);
-                    if (aaAccount != null && guildAccount != null) {
-                        // invalid, cannot use both
-                        return false;
-                    }
-                    Object account = type == 2 ? aaAccount : type == 3 ? guildAccount : null;
-                    if (account instanceof Number n) {
-                        if (account != null && n.longValue() == id) {
-                            tx.sender_id = id;
-                            tx.sender_type = type;
-                            return true;
+                    if (aaAccount != null || guildAccount != null) {
+                        if (aaAccount != null && guildAccount != null) {
+                            return false;
+                        }
+                        Object account = type == 2 ? aaAccount : type == 3 ? guildAccount : null;
+                        if (account instanceof Number n) {
+                            if (account != null && n.longValue() == id) {
+                                tx.sender_id = id;
+                                tx.sender_type = type;
+                                return true;
+                            }
+                            return false;
                         }
                         return false;
                     }
-                    return false;
-                }
 
+                }
                 if (tx.sender_id == id && tx.sender_type == type) {
                     return true;
                 }
