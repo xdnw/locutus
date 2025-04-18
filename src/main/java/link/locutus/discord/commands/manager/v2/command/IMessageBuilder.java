@@ -269,7 +269,7 @@ public interface IMessageBuilder {
             previousPageCmd = cmdCleared + " page:" + (page - 1);
             nextPageCmd = cmdCleared + " page:" + (page + 1);
         } else if (command.charAt(0) == '{') {
-            JSONObject json = new JSONObject(command);
+            JSONObject json = new JSONObject(command, JSONObject.getNames(command));
             Map<String, Object> arguments = json.toMap();
 
             previousPageCmd = new JSONObject(arguments).put("page", page - 1).toString();

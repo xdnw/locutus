@@ -511,7 +511,7 @@ public class StockCommands {
                     results.add(IShrink.of(trade.amount + "x " + exchange.symbol + " @ $" + MathMan.format(trade.price / 100d)));
                 }
 
-                JSONObject cmdCopy = new JSONObject(command);
+                JSONObject cmdCopy = new JSONObject(command, JSONObject.getNames(command));
                 cmdCopy.put("onlyBuyOffers", "true");
                 channel.create().paginate(title, cmdCopy, page, perPage, results).send();
             }
@@ -527,7 +527,7 @@ public class StockCommands {
                     results.add(IShrink.of(trade.amount + "x " + exchange.symbol + " @ $" + MathMan.format(trade.price / 100d)));
                 }
 
-                JSONObject cmdCopy = new JSONObject(command);
+                JSONObject cmdCopy = new JSONObject(command, JSONObject.getNames(command));
                 cmdCopy.put("onlySellOffers", "true");
                 channel.create().paginate(title, cmdCopy, page, perPage, results).send();
             }
@@ -563,7 +563,7 @@ public class StockCommands {
                     results.add(IShrink.of("#" + trade.tradeId + ": " + trade.amount + "x " + db.getName(trade.company) + " @ $" + MathMan.format(trade.price / 100d)));
                 }
 
-                JSONObject cmdCopy = new JSONObject(command);
+                JSONObject cmdCopy = new JSONObject(command, JSONObject.getNames(command));
                 cmdCopy.put("onlyBuyOffers", "true");
                 channel.create().paginate(title, cmdCopy, page, perPage, results).send();
             }
@@ -579,7 +579,7 @@ public class StockCommands {
                     results.add(IShrink.of("#" + trade.tradeId + ": " + trade.amount + "x " + db.getName(trade.company) + " @ $" + MathMan.format(trade.price / 100d)));
                 }
 
-                JSONObject cmdCopy = new JSONObject(command);
+                JSONObject cmdCopy = new JSONObject(command, JSONObject.getNames(command));
                 cmdCopy.put("onlySellOffers", "true");
                 channel.create().paginate(title, cmdCopy, page, perPage, results).send();
             }

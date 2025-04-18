@@ -356,8 +356,8 @@ public class WebUtil {
         if (args != null) {
             URIBuilder uriBuilder = new URIBuilder();
             for (String key : args.keySet()) {
-                if (key.isEmpty()) continue;
-                uriBuilder.addParameter(key, args.getString(key));
+                if (key.isEmpty() || args.optString(key).isEmpty()) continue;
+                uriBuilder.addParameter(key, args.optString(key));
             }
             url += uriBuilder.toString();
         }
