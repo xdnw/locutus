@@ -878,6 +878,34 @@ public class DiscordUtil {
         return parseNationId(Locutus.imp().getNationDB(), arg);
     }
 
+    public static Integer parseNationIdUser(INationSnapshot snapshot, String arg) {
+        String argNoBrackets = arg.substring(1, arg.length() - 1);
+        if (argNoBrackets.charAt(0) == '@') {
+            String idStr = argNoBrackets.substring(1);
+            if (idStr.charAt(0) == '!') idStr = idStr.substring(1);
+            if (MathMan.isInteger(idStr)) {
+                long discordId = Long.parseLong(idStr);
+                PNWUser user = Locutus.imp().getDiscordDB().getUserFromDiscordId(discordId);
+                if (user != null) {
+                    return user.getNationId();
+                }
+            }
+        }
+        if (MathMan.isInteger(argNoBrackets)) {
+            long id = Long.parseLong(argNoBrackets);
+            DBNation nation;
+            if (id > Integer.MAX_VALUE) {
+                nation = snapshot.getNationByUser(id);
+            } else {
+                nation = snapshot.getNationById((int) id);
+            }
+            if (nation != null) {
+                return (int) nation.getId();
+            }
+        }
+        return null;
+    }
+
     public static Integer parseNationId(INationSnapshot snapshot, String arg) {
         if (arg.isEmpty()) return null;
         boolean checkUser = true;
@@ -885,16 +913,20 @@ public class DiscordUtil {
             arg = arg.substring(1, arg.length() - 1);
         }
         if (arg.charAt(0) == '<' && arg.charAt(arg.length() - 1) == '>') {
-            arg = arg.substring(1, arg.length() - 1);
+            return parseNationIdUser(snapshot, arg);
         }
         if (arg.toLowerCase().startsWith("nation:")) arg = arg.substring(7);
-
         if (arg.contains("/nation/id=") || arg.contains("politicsandwar.com/nation/war/declare/id=") || arg.contains("politicsandwar.com/nation/espionage/eid=")) {
             String[] split = arg.split("=");
             if (split.length == 2) {
                 arg = split[1].replaceAll("/", "");
             }
-        } else if (arg.charAt(0) == '@') {
+            if (MathMan.isInteger(arg)) {
+                return Integer.parseInt(arg);
+            }
+            return null;
+        }
+        if (arg.charAt(0) == '@') {
             String idStr = arg.substring(1);
             if (idStr.charAt(0) == '!') idStr = idStr.substring(1);
             if (MathMan.isInteger(idStr)) {
@@ -904,6 +936,16 @@ public class DiscordUtil {
                     return user.getNationId();
                 }
             }
+            PNWUser user = Locutus.imp().getDiscordDB().getUser(null, arg, arg);
+            if (user != null) {
+                return user.getNationId();
+            }
+            List<User> discUsers = Locutus.imp().getDiscordApi().getUsersByName(arg, true);
+            if (discUsers != null && !discUsers.isEmpty()) {
+                DBNation nation = snapshot.getNationByUser(discUsers.get(0));
+                if (nation != null) return nation.getId();
+            }
+            return null;
         }
         if (MathMan.isInteger(arg)) {
             long id = Long.parseLong(arg);
@@ -914,7 +956,16 @@ public class DiscordUtil {
                 nation = snapshot.getNationById((int) id);
             }
             if (nation != null) {
-                return (int) id;
+                return (int) nation.getId();
+            }
+        }
+        if (arg.startsWith("=")) {
+            if (arg.contains("=HYPERLINK") && arg.contains("nation/id=")) {
+                String regex = "nation/id=([0-9]+)";
+                Matcher m = Pattern.compile(regex).matcher(arg);
+                m.find();
+                arg = m.group(1);
+                return Integer.parseInt(arg);
             }
         }
         DBNation nation = snapshot.getNationByNameOrLeader(arg);
@@ -925,25 +976,13 @@ public class DiscordUtil {
         if (user != null) {
             return user.getNationId();
         }
-        List<User> discordUsers = checkUser ? Locutus.imp().getDiscordApi().getUsersByName(arg, true) : null;
-        User discordUser = discordUsers != null && !discordUsers.isEmpty() ? discordUsers.get(0) : null;
-        if (discordUser != null) {
-            nation = snapshot.getNationByUser(discordUser);
-            if (nation != null) return nation.getId();
-        }
-        if (!MathMan.isInteger(arg)) {
-            if (arg.contains("=HYPERLINK") && arg.contains("nation/id=")) {
-                String regex = "nation/id=([0-9]+)";
-                Matcher m = Pattern.compile(regex).matcher(arg);
-                m.find();
-                arg = m.group(1);
-                return Integer.parseInt(arg);
+        String regex = "([a-zA-Z0-9_.]{2,32})";
+        if (arg.matches(regex)) {
+            List<User> discordUsers = Locutus.imp().getDiscordApi().getUsersByName(arg, true);
+            if (discordUsers != null && !discordUsers.isEmpty()) {
+                nation = snapshot.getNationByUser(discordUsers.get(0));
+                if (nation != null) return nation.getId();
             }
-            return null;
-        }
-        try {
-            return Integer.parseInt(arg);
-        } catch (NumberFormatException e) {
         }
         return null;
     }
