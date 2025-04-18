@@ -288,7 +288,10 @@ public class OffshoreInstance {
             @Override
             public boolean test(Transaction2 tx) {
                 if (tx.sender_type == 3) {
-                    return tx.sender_id == id;
+                    if (tx.sender_id == id && tx.sender_type == type) {
+                        return true;
+                    }
+                    return false;
                 }
                 if (tx.sender_type != 2 || tx.note == null) return false;
 
@@ -313,6 +316,7 @@ public class OffshoreInstance {
                         }
                         return false;
                     }
+                    return false;
                 }
 
                 if (tx.sender_id == id && tx.sender_type == type) {
