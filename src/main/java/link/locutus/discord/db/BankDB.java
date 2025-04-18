@@ -627,7 +627,7 @@ public class BankDB extends DBMainV3 {
 
     private void cache(Transaction2 tx) {
         if (tx.sender_type != 2 || tx.receiver_type != 2) return;
-        Set<Transaction2> existingSet = transactionCache2.get(tx.receiver_id);
+        Set<Transaction2> existingSet = transactionCache2.get((int) tx.receiver_id);
         if (existingSet != null) {
             existingSet.add(tx);
         }
