@@ -287,11 +287,16 @@ public class OffshoreInstance {
         return new Predicate<Transaction2>() {
             @Override
             public boolean test(Transaction2 tx) {
-                if (tx.sender_type != 2) return false;
+                if (tx.sender_type == 3) {
+                    return tx.sender_id == id;
+                }
+                if (tx.sender_type != 2 || tx.note == null) return false;
 
                 Map<DepositType, Object> parsed = tx.getNoteMap();
                 if (!parsed.isEmpty()) {
-                    if (parsed.containsKey(DepositType.IGNORE)) return false;
+                    if (parsed.containsKey(DepositType.IGNORE)) {
+                        return false;
+                    }
 
                     Object aaAccount = (Object) parsed.get(DepositType.ALLIANCE);
                     Object guildAccount = (Object) parsed.get(DepositType.GUILD);
@@ -395,9 +400,8 @@ public class OffshoreInstance {
 
             // transfer.sender_id == 0 && transfer.sender_type == 0 &&
             if ((transfer.sender_id == id && transfer.sender_type == type) &&
-                    ((transfer.tx_id == -1) || (transfer.sender_type == 2 && offshoreAAs.contains((int) transfer.receiver_id)))) {
+                    ((transfer.tx_id == -1) || (transfer.receiver_type == 2 && offshoreAAs.contains((int) transfer.receiver_id)))) {
                 sign = 1;
-
                 // transfer.receiver_id == 0 && transfer.receiver_type == 0 &&
             } else if ((transfer.receiver_id == id && transfer.receiver_type == type) &&
                     ((transfer.tx_id == -1) || (transfer.sender_type == 2 && offshoreAAs.contains((int) transfer.sender_id)))) {
