@@ -2090,12 +2090,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     public List<Transaction2> getDepositOffsetTransactions(long sender_id, int sender_type) {
         Map<ResourceType, Map<String, Double>> legacyOffset = sender_type <= 3 ? getDepositOffset(sender_type == 2 ? -sender_id : sender_id) : new Object2ObjectOpenHashMap<>();
         List<Transaction2> legacyTransfers = getDepositOffsetTransactionsLegacy(sender_id, sender_type, legacyOffset);
-        System.out.println("LEGACY " + legacyTransfers.size() + " | " + sender_id + " | " + sender_type);
 
         List<Transaction2> transfers = getTransactionsById(sender_id, sender_type);
         transfers.addAll(legacyTransfers);
-
-        System.out.println("MODERN " + transfers.size() + " | " + sender_id + " | " + sender_type);
 
         for (Transaction2 transfer : transfers) {
             transfer.tx_id = -1;
