@@ -5,6 +5,8 @@ import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArraySet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -164,7 +166,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     private MenuManager menuManager;
 
     public GuildDB(Guild guild) throws SQLException, ClassNotFoundException {
-        super("guilds/" + guild.getId());
+        this(guild, guild.getIdLong());
+    }
+
+    public GuildDB(Guild guild, long id) throws SQLException, ClassNotFoundException {
+        super("guilds/" + id);
         this.roleToAccountToDiscord  = new ConcurrentHashMap<>();
         this.guild = guild;
         Logg.text(guild + " | AA:" + StringMan.getString(getInfoRaw(GuildKey.ALLIANCE_ID, false)));
@@ -915,8 +921,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     public List<Transaction2> getTransactionsById(long senderOrReceiverId, int type) {
         GuildDB delegate = getDelegateServer();
         if (delegate != null) return delegate.getTransactionsById(senderOrReceiverId, type);
-        List<Transaction2> list = new ArrayList<>();
+        List<Transaction2> list = new ObjectArrayList<>();
 
+        System.out.println("FINDING " + senderOrReceiverId + " " + type + " | " + this.getFile());
         String query = "select * FROM INTERNAL_TRANSACTIONS2 WHERE ((sender_id = ? AND sender_TYPE = ?) OR (receiver_id = ? AND receiver_type = ?))";
 
         query(query, new ThrowingConsumer<PreparedStatement>() {
@@ -2067,9 +2074,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     public List<Transaction2> getDepositOffsetTransactions(long id) {
         long sender_id = Math.abs(id);
 
-        // nation_id
-        // alliance_id
-        // guild_id
+        // nation_id = 1
+        // alliance_id = 2
+        // guild_id = 3
+        // tax_id = 4
         int sender_type;
         if (sender_id > Integer.MAX_VALUE) {
             sender_type = id > 0 ? 3 : 4;
@@ -2080,11 +2088,14 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
     public List<Transaction2> getDepositOffsetTransactions(long sender_id, int sender_type) {
-        Map<ResourceType, Map<String, Double>> legacyOffset = sender_type <= 3 ? getDepositOffset(sender_type == 2 ? -sender_id : sender_id) : new HashMap<>();
+        Map<ResourceType, Map<String, Double>> legacyOffset = sender_type <= 3 ? getDepositOffset(sender_type == 2 ? -sender_id : sender_id) : new Object2ObjectOpenHashMap<>();
         List<Transaction2> legacyTransfers = getDepositOffsetTransactionsLegacy(sender_id, sender_type, legacyOffset);
+        System.out.println("LEGACY " + legacyTransfers.size() + " | " + sender_id + " | " + sender_type);
 
         List<Transaction2> transfers = getTransactionsById(sender_id, sender_type);
         transfers.addAll(legacyTransfers);
+
+        System.out.println("MODERN " + transfers.size() + " | " + sender_id + " | " + sender_type);
 
         for (Transaction2 transfer : transfers) {
             transfer.tx_id = -1;

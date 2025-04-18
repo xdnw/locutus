@@ -716,8 +716,7 @@ public class DiscordCommands {
         List<Map.Entry<Integer, Transaction2>> transfers = nation.getTransactions(db, null, false, true, 0, 0, true);
 
         if (note != null) {
-            String noteStr = "#" + note.name().toLowerCase(Locale.ROOT);
-            transfers.removeIf(f -> !PW.parseTransferHashNotes(f.getValue().note).containsKey(noteStr));
+            transfers.removeIf(f -> !f.getValue().getNoteMap().containsKey(note));
         }
         double[] manual = FlowType.INTERNAL.getTotal(transfers, nation.getNation_id());
 //      - Amount withdrawn via a # note

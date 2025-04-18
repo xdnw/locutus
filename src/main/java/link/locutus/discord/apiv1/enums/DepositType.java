@@ -1,11 +1,16 @@
 package link.locutus.discord.apiv1.enums;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.TimeUtil;
 
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 public enum DepositType {
     DEPOSIT("For funds directly deposited or withdrawn"),
@@ -17,9 +22,35 @@ public enum DepositType {
 
     CITY(GRANT, "Go to <https://{test}politicsandwar.com/city/create/> and purchase a new city", "A city grant with a value either the number of cities, -1 for all cities, or the city id\n" +
             "Can be applied alongside another modifier, e.g. `#land=2000 #city=-1` would be 2000 land for all cities",
-            true),
+            true) {
+        @Override
+        public Object resolve(String value, long timestamp) {
+            Object result = super.resolve(value, timestamp);
+            if (result == null && value.contains(",")) {
+                try {
+                    Set<Integer> ids = new IntOpenHashSet();
+                    for (String elem : value.split(",")) {
+                        ids.add(Integer.parseInt(elem));
+                    }
+                    return ids;
+                } catch (NumberFormatException e) {}
+            }
+            return result;
+        }
+    },
     PROJECT(GRANT, "Go to <https://{test}politicsandwar.com/nation/projects/> and purchase the desired project",
-            "A project grant with the id or name for a value. `#project=BAUXITEWORKS`", true),
+            "A project grant with the id or name for a value. `#project=BAUXITEWORKS`", true) {
+
+        @Override
+        public Object resolve(String value, long timestamp) {
+            Object parsed = super.resolve(value, timestamp);
+            if (parsed != null) {
+                return parsed;
+            }
+            Project project = Projects.get(value);
+            return project != null ? project : null;
+        }
+    },
     INFRA(GRANT, "Go to your city <https://{test}politicsandwar.com/cities/> and purchase the desired infrastructure",
             "A grant for infra level. Can be added with `#city`", true),
     LAND(GRANT, "Go to your city <https://{test}politicsandwar.com/cities/> and purchase the desired land", "A grant for a land level. Can be added with `#city`", true),
@@ -28,8 +59,48 @@ public enum DepositType {
     RESEARCH(GRANT, "Go to <https://{test}politicsandwar.com/nation/military/research/> and purchase the desired research", "A grant for research", true),
     RAWS(GRANT, "Raw resources for city consumption", "", true),
 
-    EXPIRE(GRANT, "Will be excluded from deposits after the specified time e.g. `#expire=60d`", "", false),
-    DECAY(GRANT, "Expires by reducing linearly over time until 0 e.g. `#decay=60d`", "", false),
+    EXPIRE(GRANT, "Will be excluded from deposits after the specified time e.g. `#expire=60d`", "", false) {
+        @Override
+        public Object resolve(String value, long timestamp) {
+            try {
+                if (value == null || value.isEmpty()) {
+                    return null;
+                }
+                return timestamp + TimeUtil.timeToSec_BugFix1(value, timestamp) * 1000L;
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+        }
+    },
+    DECAY(GRANT, "Expires by reducing linearly over time until 0 e.g. `#decay=60d`", "", false) {
+        @Override
+        public Object resolve(String value, long timestamp) {
+            try {
+                if (value == null || value.isEmpty()) {
+                    return null;
+                }
+                return timestamp + TimeUtil.timeToSec_BugFix1(value, timestamp) * 1000L;
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+        }
+    },
+
+    AMOUNT(GRANT, "Meta note for recording an amount of a tag", "Meta note for recording an amount of a tag", true),
+    INCENTIVE(DEPOSIT, "Reward for government activity", "Reward for government activity", true) {
+        @Override
+        public Object resolve(String value, long timestamp) {
+            return value;
+        }
+    },
+
+    GUILD("The guild id this transfer belongs to"),
+    ALLIANCE("The guild id this transfer belongs to"),
+    NATION("Reserved. DO NOT USE"),
+    ACCOUNT("Reserved. DO NOT USE"),
+    CASH("The value of this transfer in nation balance is converted to cash"),
+    RSS("The bits representing the resources in the transfer. Resource ordinals aare the same as appear in the game's bank records table"),
+    BANKER("The nation initiating the transfer"),
 
     ;
 
@@ -37,12 +108,21 @@ public enum DepositType {
         if (note == null || note.isEmpty()) {
             return null;
         }
+        if (note.charAt(0) == '#') {
+            note = note.substring(1);
+        }
+        note = note.toUpperCase(Locale.ROOT);
         try {
-            if (note.startsWith("#")) {
-                note = note.substring(1);
-            }
-            return DepositType.valueOf(note.toUpperCase(Locale.ROOT));
+            return DepositType.valueOf(note);
         } catch (IllegalArgumentException e) {
+            switch (note) {
+                case "RAW":
+                case "DISPERSE":
+                case "DISBURSE":
+                    return RAWS;
+                case "TAXES":
+                    return TAX;
+            }
             return null;
         }
     }
@@ -99,6 +179,29 @@ public enum DepositType {
         return new DepositTypeInfo(this, amount, city, ignore);
     }
 
+    public boolean isReserved() {
+        return this == GUILD || this == ALLIANCE || this == NATION || this == ACCOUNT || this == CASH || this == RSS;
+    }
+
+    public Object resolve(String value, long timestamp) {
+        if (value == null || value.isEmpty()) {
+             return null;
+        }
+        if (value.equals("*")) {
+            return -1L;
+        }
+        if (value.endsWith(".0")) {
+            value = value.substring(0, value.length() - 2);
+        }
+        try {
+            if (MathMan.isInteger(value)) {
+                return Long.parseLong(value);
+            }
+            return Double.parseDouble(value);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
 
     public static class DepositTypeInfo {
         public final DepositType type;
@@ -183,25 +286,23 @@ public enum DepositType {
             return ignore || type == IGNORE;
         }
 
-        public DepositTypeInfo applyClassifiers(Map<String, String> parsed) {
-            for (Map.Entry<String, String> noteEntry : parsed.entrySet()) {
-                String noteStr = noteEntry.getKey().substring(1);
-                String valueStr = noteEntry.getValue();
+        public boolean isReservedOrIgnored() {
+            return type.isReserved() || isIgnored();
+        }
+
+        public DepositTypeInfo applyClassifiers(Map<DepositType, Object> parsed2) {
+            for (Map.Entry<DepositType, Object> noteEntry2 : parsed2.entrySet()) {
+                DepositType type = noteEntry2.getKey();
                 boolean ignore = isIgnored();
-                try {
-                    DepositType type = DepositType.valueOf(noteStr.toUpperCase(Locale.ROOT));
-                    if (!type.isClassifier()) {
-                        throw new IllegalArgumentException();
-                    }
-                    long amount = getAmount();
-                    if (valueStr != null && !valueStr.isEmpty() && MathMan.isInteger(valueStr)) {
-                        amount = Long.parseLong(valueStr);
-                    }
-                    return new DepositTypeInfo(type, amount, 0, ignore);
-                } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException("Cannot apply modifier: `" + noteStr + "`, only " +
-                            Arrays.stream(DepositType.values()).filter(DepositType::isClassifier).map(DepositType::name).toList());
+                if (!type.isClassifier()) {
+                    throw new IllegalArgumentException();
                 }
+                long amount = getAmount();
+                Object value = noteEntry2.getValue();
+                if (value instanceof Number n) {
+                    amount = n.longValue();
+                }
+                return new DepositTypeInfo(type, amount, 0, ignore);
             }
             return this;
         }

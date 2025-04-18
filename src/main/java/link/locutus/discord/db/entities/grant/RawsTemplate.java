@@ -134,8 +134,8 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
 
         for (Transaction2 record : receiver.getTransactions(-1, true)) {
             if(record.tx_datetime > cutoff && record.note != null && record.sender_id == receiver.getId()) {
-                Map<String, String> notes = PW.parseTransferHashNotes(record.note);
-                if (notes.containsKey("#raws") || notes.containsKey("#tax")) {
+                Map<DepositType, Object> noteMap = record.getNoteMap();
+                if (noteMap.containsKey(DepositType.RAWS) || noteMap.containsKey(DepositType.TAX)) {
                     minDate = Math.min(record.tx_datetime, minDate);
                     receivedBuilder.add(record.resources);
                 }

@@ -102,6 +102,7 @@ import java.util.stream.Collectors;
 
 import static link.locutus.discord.apiv1.enums.ResourceType.*;
 import static link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.handleAddbalanceAllianceScope;
+import static link.locutus.discord.util.offshore.OffshoreInstance.DISABLED_MESSAGE;
 
 public class BankCommands {
 
@@ -2033,37 +2034,29 @@ public class BankCommands {
                 List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, true, true, -1, 0, true);
                 for (Map.Entry<Integer, Transaction2> entry : transactions) {
                     Transaction2 tx = entry.getValue();
-                    if (tx.note == null || (!tx.note.contains("#expire") && !tx.note.contains("#decay")) || (tx.receiver_id != nation.getNation_id() && tx.sender_id != nation.getNation_id()))
+                    if (tx.note == null || (tx.receiver_id != nation.getNation_id() && tx.sender_id != nation.getNation_id()) || (!tx.note.contains("#expire") && !tx.note.contains("#decay")))
                         continue;
                     if (tx.sender_id == tx.receiver_id) continue;
-                    Map<String, String> notes = PW.parseTransferHashNotes(tx.note);
-                    String expire2 = notes.get("#expire");
-                    String decay2 = notes.get("#decay");
+                    Map<DepositType, Object> noteMap = tx.getNoteMap();
+                    Object expire3 = noteMap.get(DepositType.EXPIRE);
+                    Object decay3 = noteMap.get(DepositType.DECAY);
                     long expireEpoch = Long.MAX_VALUE;
                     long decayEpoch = Long.MAX_VALUE;
-                    if (expire2 != null) {
-                        try {
-                            expireEpoch = tx.tx_datetime + TimeUtil.timeToSec_BugFix1(expire2, tx.tx_datetime) * 1000L;
-                        } catch (IllegalArgumentException e) {
-                            continue;
-                        }
+                    if (expire3 instanceof Number n) {
+                        expireEpoch = n.longValue();
                     }
-                    if (decay2 != null) {
-                        try {
-                            decayEpoch = tx.tx_datetime + TimeUtil.timeToSec_BugFix1(decay2, tx.tx_datetime) * 1000L;
-                        } catch (IllegalArgumentException e) {
-                            continue;
-                        }
+                    if (decay3 instanceof Number n) {
+                        decayEpoch = n.longValue();
                     }
                     expireEpoch = Math.min(expireEpoch, decayEpoch);
                     if (expireEpoch > now) {
-                        String noteCopy = tx.note
+                        String noteCopy = tx.note.toLowerCase(Locale.ROOT)
                                 .replaceAll("#expire=[a-zA-Z0-9:]+", "")
                                 .replaceAll("#decay=[a-zA-Z0-9:]+", "");
-                        if (expire2 != null) {
+                        if (expire3 instanceof Number) {
                             noteCopy += " #expire=" + "timestamp:" + expireEpoch;
                         }
-                        if (decay2 != null) {
+                        if (decay3 instanceof Number) {
                             noteCopy += " #decay=" + "timestamp:" + decayEpoch;
                         }
                         noteCopy = noteCopy.trim();
@@ -2570,8 +2563,6 @@ public class BankCommands {
             Locutus.imp().runEventsAsync(events -> Locutus.imp().getBankDB().updateBankRecs(false, events));
         }
 
-        String noteFlowStr = useFlowNote == null ? null : "#" + useFlowNote.name().toLowerCase(Locale.ROOT);
-
         long last = System.currentTimeMillis();
         for (DBNation nation : nations) {
             if (System.currentTimeMillis() - last > 5000) {
@@ -2581,7 +2572,10 @@ public class BankCommands {
             }
 
             List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, tracked, useTaxBase, useOffset, (updateBulk && !force) ? -1 : 0L, 0L, false);
-            List<Map.Entry<Integer, Transaction2>> flowTransfers = useFlowNote == null ? transactions : transactions.stream().filter(f -> PW.parseTransferHashNotes(f.getValue().note).containsKey(noteFlowStr)).collect(Collectors.toList());
+            List<Map.Entry<Integer, Transaction2>> flowTransfers = transactions;
+            if (useFlowNote != null) {
+                flowTransfers = flowTransfers.stream().filter(f -> f.getValue().getNoteMap().containsKey(useFlowNote)).toList();
+            }
             double[] internal = FlowType.INTERNAL.getTotal(flowTransfers, nation.getId());
             double[] withdrawal = FlowType.WITHDRAWAL.getTotal(flowTransfers, nation.getId());
             double[] deposit = FlowType.DEPOSIT.getTotal(flowTransfers, nation.getId());
@@ -3151,9 +3145,9 @@ public class BankCommands {
 
             if (onlyOffshoreTransfers) {
                 if (offshore == null) throw new IllegalArgumentException("This alliance does not have an offshore account");
-                Set<Long> offshoreAAs = db.getOffshore().getOffshoreAAs();
+                Set<Integer> offshoreAAIds = db.getOffshore().getOffshoreAAIds();
                 transactions.removeIf(f -> f.sender_type == 1 || f.receiver_type == 1);
-                transactions.removeIf(f -> f.tx_id != -1 && f.sender_id != 0 && f.receiver_id != 0 && !offshoreAAs.contains(f.sender_id) && !offshoreAAs.contains(f.receiver_id));
+                transactions.removeIf(f -> f.tx_id != -1 && f.sender_id != 0 && f.receiver_id != 0 && !offshoreAAIds.contains((int) f.sender_id) && !offshoreAAIds.contains((int) f.receiver_id));
             }
 
         } else if (nationOrAllianceOrGuild.isGuild()) {
@@ -3359,7 +3353,7 @@ public class BankCommands {
             DepositType.DepositTypeInfo depositTypeFinal = depositType.clone();
             String note = notes.get(receiver);
             if (note != null) {
-                Map<String, String> parsed = PW.parseTransferHashNotes(note);
+                Map<DepositType, Object> parsed = Transaction2.parseTransferHashNotes(note, System.currentTimeMillis());
                 depositTypeFinal.applyClassifiers(parsed);
             }
 
@@ -3789,7 +3783,7 @@ public class BankCommands {
                        @Default DBAlliance sender_alliance,
 
                        @Switch("f") boolean force) throws IOException {
-        if (OffshoreInstance.DISABLE_TRANSFERS && user.getIdLong() != Locutus.loader().getAdminUserId()) throw new IllegalArgumentException("Error: Maintenance");
+        if (OffshoreInstance.DISABLE_TRANSFERS && user.getIdLong() != Locutus.loader().getAdminUserId()) throw new IllegalArgumentException(DISABLED_MESSAGE);
         return sendAA(channel, command, senderDB, user, me, amount, receiver_account, receiver_nation, sender_alliance, me, force);
     }
 
@@ -3822,7 +3816,7 @@ public class BankCommands {
                          @Default DBNation sender_nation,
                          @Switch("f") boolean force) throws IOException {
         if (user.getIdLong() != Locutus.loader().getAdminUserId()) return "WIP";
-        if (OffshoreInstance.DISABLE_TRANSFERS && user.getIdLong() != Locutus.loader().getAdminUserId()) throw new IllegalArgumentException("Error: Maintenance");
+        if (OffshoreInstance.DISABLE_TRANSFERS && user.getIdLong() != Locutus.loader().getAdminUserId()) throw new IllegalArgumentException(DISABLED_MESSAGE);
         if (sender_alliance != null && !senderDB.isAllianceId(sender_alliance.getId())) {
             throw new IllegalArgumentException("Sender alliance is not in this guild");
         }
@@ -3987,25 +3981,30 @@ public class BankCommands {
                     if (!isOffshoreSender && !record.isInternal()) continue;
                     int sign = entry.getKey();
 
-                    Map<String, String> notes = PW.parseTransferHashNotes(record.note);
-                    String expireVal = notes.get("#expire");
-                    String decayVal = notes.get("#decay");
-                    if (expireVal == null && decayVal == null) continue;
-                    String dateStr = decayVal != null ? decayVal : expireVal;
-                    long expireDate = TimeUtil.timeToSec_BugFix1(dateStr, record.tx_datetime) * 1000L;
-                    if (expireDate + record.tx_datetime <= now) continue;
+                    Map<DepositType, Object> noteMap = record.getNoteMap();
+                    Object expireVal = noteMap.get(DepositType.EXPIRE);
+                    Object decayVal = noteMap.get(DepositType.DECAY);
+                    Long dateVal;
+                    if (decayVal instanceof Number n) {
+                        dateVal = n.longValue();
+                    } else if (expireVal instanceof Number n) {
+                        dateVal = n.longValue();
+                    } else {
+                        continue;
+                    }
+                    if (dateVal <= now) continue;
 
                     List<Object> row = new ObjectArrayList<>();
                     row.add(sign);
-                    row.add(TimeUtil.YYYY_MM_DD_HH_MM_SS.format(expireDate + record.tx_datetime));
+                    row.add(TimeUtil.YYYY_MM_DD_HH_MM_SS.format(dateVal));
                     row.add(TimeUtil.YYYY_MM_DD_HH_MM_SS.format(record.tx_datetime));
                     row.add(ResourceType.convertedTotal(record.resources));
 
                     if (decayVal != null) {
                         double[] principal = record.resources.clone();
-                        double decayFactor = 1 - (now - record.tx_datetime) / (double) expireDate;
+                        double decayFactor = 1 - (now - record.tx_datetime) / (double) (dateVal - record.tx_datetime);
                         double[] remaining = PW.multiply(principal.clone(), decayFactor);
-                        double decayFactorPerDay = (double) TimeUnit.DAYS.toMillis(1) / expireDate;
+                        double decayFactorPerDay = (double) TimeUnit.DAYS.toMillis(1) / (dateVal - record.tx_datetime);
                         double[] decayPerDay = ResourceType.getBuffer();
                         for (int i = 0; i < principal.length; i++) {
                             decayPerDay[i] = Math.min(remaining[i], principal[i] * decayFactorPerDay);

@@ -8,7 +8,6 @@ import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import org.json.JSONObject;
@@ -167,26 +166,26 @@ public class AddBalanceBuilder {
                 Transaction2 tx = entry.getValue();
                 if (tx.note == null || (!tx.note.contains("#expire") && !tx.note.contains("#decay")) || (tx.receiver_id != nation.getNation_id() && tx.sender_id != nation.getNation_id())) continue;
                 if (tx.sender_id == tx.receiver_id) continue;
-                Map<String, String> notes = PW.parseTransferHashNotes(tx.note);
-                String decay2 = notes.get("#decay");
-                String expire2 = notes.get("#expire");
+                Map<DepositType, Object> notes2 = tx.getNoteMap();
+                Object decay3 = notes2.get(DepositType.DECAY);
+                Object expire3 = notes2.get(DepositType.EXPIRE);
                 long expireEpoch = 0;
                 long decayEpoch = 0;
-                if (expire2 != null) {
-                    expireEpoch = tx.tx_datetime + TimeUtil.timeToSec_BugFix1(expire2, tx.tx_datetime) * 1000L;
+                if (expire3 instanceof Number n) {
+                    expireEpoch = n.longValue();
                 }
-                if (decay2 != null) {
-                    decayEpoch = tx.tx_datetime + TimeUtil.timeToSec_BugFix1(decay2, tx.tx_datetime) * 1000L;
+                if (decay3 instanceof Number n) {
+                    decayEpoch = n.longValue();
                 }
                 expireEpoch = Math.min(expireEpoch, decayEpoch);
                 if (expireEpoch > now) {
-                    String noteCopy = tx.note
+                    String noteCopy = tx.note.toLowerCase(Locale.ROOT)
                             .replaceAll("#expire=[a-zA-Z0-9:]+", "")
                             .replaceAll("#decay=[a-zA-Z0-9:]+", "");
-                    if (expire2 != null) {
+                    if (expire3 != null) {
                         noteCopy += " #expire=" + "timestamp:" + expireEpoch;
                     }
-                    if (decay2 != null) {
+                    if (decay3 != null) {
                         noteCopy += " #decay=" + "timestamp:" + decayEpoch;
                     }
                     noteCopy = noteCopy.trim();

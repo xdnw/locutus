@@ -1,8 +1,8 @@
 package link.locutus.discord.util.offshore;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.EscrowMode;
-import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -14,13 +14,11 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -100,11 +98,10 @@ public class Grant {
     }
 
     public static Set<Integer> getCityIdsBeforeDate(DBNation nation, long date) {
-        Set<Integer> cities = new HashSet<>();
+        Set<Integer> cities = new IntOpenHashSet();
         long now = System.currentTimeMillis();
         for (Map.Entry<Integer, JavaCity> entry : nation.getCityMap(false, false).entrySet()) {
             JavaCity city = entry.getValue();
-
             if (now - TimeUnit.DAYS.toMillis(city.getAgeDays()) < date) {
                 cities.add(entry.getKey());
             }
@@ -129,17 +126,16 @@ public class Grant {
         for (Transaction2 transaction : transactions) {
             if (transaction.note == null) continue;
             if (!transaction.note.toLowerCase().contains("#land")) continue;
-            String landAmt = PW.parseTransferHashNotes(transaction.note).get("#land");
-            if (landAmt != null) {
+            Map<DepositType, Object> noteMap = transaction.getNoteMap();
+            Object landObj = noteMap.get(DepositType.LAND);
+            if (landObj instanceof Number amt) {
                 try {
-                    double amt = Double.parseDouble(landAmt);
-
-                    Set<Integer> cities = getCities(nation, transaction.note, transaction.tx_datetime);
+                    Set<Integer> cities = getCities(nation, transaction, transaction.tx_datetime);
                     if (cities == null) {
                         cities = getCityIdsBeforeDate(nation, transaction.tx_datetime);
                     }
                     for (Integer cityId : cities) {
-                        double max = Math.max(result.getOrDefault(cityId, 0d), amt);
+                        double max = Math.max(result.getOrDefault(cityId, 0d), amt.doubleValue());
                         result.put(cityId, max);
                     }
                 } catch (NumberFormatException ignore) {}
@@ -154,17 +150,16 @@ public class Grant {
         for (Transaction2 transaction : transactions) {
             if (transaction.note == null) continue;
             if (!transaction.note.toLowerCase().contains("#infra")) continue;
-            String infraAmt = PW.parseTransferHashNotes(transaction.note).get("#infra");
-            if (infraAmt != null) {
+            Map<DepositType, Object> noteMap = transaction.getNoteMap();
+            Object infraObj = noteMap.get(DepositType.INFRA);
+            if (infraObj instanceof Number amt) {
                 try {
-                    double amt = Double.parseDouble(infraAmt);
-
-                    Set<Integer> cities = getCities(nation, transaction.note, transaction.tx_datetime);
+                    Set<Integer> cities = getCities(nation, transaction, transaction.tx_datetime);
                     if (cities == null) {
                         cities = getCityIdsBeforeDate(nation, transaction.tx_datetime);
                     }
                     for (Integer cityId : cities) {
-                        result.computeIfAbsent(cityId, f -> new HashMap<>()).put(transaction.tx_datetime, amt);
+                        result.computeIfAbsent(cityId, f -> new HashMap<>()).put(transaction.tx_datetime, amt.doubleValue());
                     }
                 } catch (NumberFormatException ignore) {}
             }
@@ -196,8 +191,8 @@ public class Grant {
         for (Transaction2 transaction : transactions) {
             if (transaction.note == null) continue;
             if (!transaction.note.toLowerCase().contains("#city")) continue;
-            Set<Integer> cities = Grant.getCities(nation, transaction.note, transaction.tx_datetime);
-            Double amount = Grant.getAmount(transaction.note);
+            Set<Integer> cities = Grant.getCities(nation, transaction, transaction.tx_datetime);
+            Double amount = Grant.getAmount(transaction);
 
             if (cities != null && cities.size() == 1) {
                 int num = cities.iterator().next();
@@ -221,39 +216,39 @@ public class Grant {
         return false;
     }
 
-    public static Set<Project> getProjectsGranted(DBNation nation, Collection<Transaction2> transactions) {
-        Set<Project> result = new HashSet<>();
-        for (Transaction2 transaction : transactions) {
-            if (transaction.note == null || !transaction.note.contains("#project")) continue;
-            String projectName = Grant.getAmountStr(transaction.note);
-            if (projectName != null) {
-                Project project = Projects.get(projectName.toUpperCase());
-                if (project != null) {
-                    result.add(project);
-                    continue;
-                }
-            }
-
-            Set<Project> possible = new HashSet<>();
-            for (Project project : Projects.values) {
-                if (result.contains(project)) continue;
-
-                double[] cost = ResourceType.resourcesToArray(project.cost());
-                double[] cost2 = ResourceType.resourcesToArray(PW.multiply(project.cost(), 0.95d));
-                if (Arrays.equals(transaction.resources, cost) || Arrays.equals(transaction.resources, cost2)) {
-                    if (nation.hasProject(project)) {
-                        result.add(project);
-                        continue;
-                    }
-                    possible.add(project);
-                }
-            }
-            if (possible.size() >= 1) {
-                result.add(possible.iterator().next());
-            }
-        }
-        return result;
-    }
+//    public static Set<Project> getProjectsGranted(DBNation nation, Collection<Transaction2> transactions) {
+//        Set<Project> result = new HashSet<>();
+//        for (Transaction2 transaction : transactions) {
+//            if (transaction.note == null || !transaction.note.contains("#project")) continue;
+//            String projectName = Grant.getAmountStr(transaction.note);
+//            if (projectName != null) {
+//                Project project = Projects.get(projectName.toUpperCase());
+//                if (project != null) {
+//                    result.add(project);
+//                    continue;
+//                }
+//            }
+//
+//            Set<Project> possible = new HashSet<>();
+//            for (Project project : Projects.values) {
+//                if (result.contains(project)) continue;
+//
+//                double[] cost = ResourceType.resourcesToArray(project.cost());
+//                double[] cost2 = ResourceType.resourcesToArray(PW.multiply(project.cost(), 0.95d));
+//                if (Arrays.equals(transaction.resources, cost) || Arrays.equals(transaction.resources, cost2)) {
+//                    if (nation.hasProject(project)) {
+//                        result.add(project);
+//                        continue;
+//                    }
+//                    possible.add(project);
+//                }
+//            }
+//            if (possible.size() >= 1) {
+//                result.add(possible.iterator().next());
+//            }
+//        }
+//        return result;
+//    }
 
     public DBNation getNation() {
         return DBNation.getById(nation.getNation_id());
@@ -334,35 +329,31 @@ public class Grant {
     /**
      * Get the city uds granted from a note
      * @param nation
-     * @param note
+     * @param tx
      * @param date
      * @return
      */
-    public static Set<Integer> getCities(DBNation nation, String note, long date) {
-        Map<String, String> parsed = PW.parseTransferHashNotes(note);
-        String citiesStr = parsed.get("cities");
-        if (citiesStr != null) {
-            Set<Integer> result = new LinkedHashSet<>();
-            for (String s : citiesStr.split(",")) {
-                if (MathMan.isInteger(s)) {
-                    result.add(Integer.parseInt(s));
-                } else if (s.equalsIgnoreCase("*")) {
-                    result.addAll(getCityIdsBeforeDate(nation, date));
+    public static Set<Integer> getCities(DBNation nation, Transaction2 tx, long date) {
+        Map<DepositType, Object> parsed2 = tx.getNoteMap();
+        Object citiesObj = parsed2.get(DepositType.CITY);
+        if (citiesObj != null) {
+            if (citiesObj instanceof Number n) {
+                if (n.intValue() == -1) {
+                    return getCityIdsBeforeDate(nation, date);
                 }
+                return new IntOpenHashSet(Collections.singleton(n.intValue()));
+            } else if (citiesObj instanceof Set s) {
+                return s;
             }
-            return result;
         }
         return null;
     }
 
-    public static Double getAmount(String note) {
-        Map<String, String> parsed = PW.parseTransferHashNotes(note);
-        String amountStr = parsed.get("amount");
-        return amountStr == null ? null : MathMan.parseDouble(amountStr);
-    }
-
-    public static String getAmountStr(String note) {
-        return PW.parseTransferHashNotes(note).get("amount");
+    public static Double getAmount(Transaction2 tx) {
+        Map<DepositType, Object> parsed = tx.getNoteMap();
+        Object amountObj = parsed.get(DepositType.AMOUNT);
+        if (amountObj instanceof Number n) return n.doubleValue();
+        return null;
     }
 
     public Grant setAmount(double amount) {

@@ -1,10 +1,12 @@
 package link.locutus.discord.db.entities;
 
+import com.google.common.hash.Hashing;
 import com.google.gson.JsonElement;
 import com.politicsandwar.graphql.model.Bankrec;
-import link.locutus.discord.Locutus;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.apiv1.entities.BankRecord;
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TaxDeposit;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
@@ -19,6 +21,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.parser.Parser;
 import org.jsoup.select.Elements;
 
+import java.nio.charset.StandardCharsets;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -28,9 +31,10 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static link.locutus.discord.apiv1.enums.ResourceType.ALUMINUM;
 import static link.locutus.discord.apiv1.enums.ResourceType.BAUXITE;
@@ -56,8 +60,11 @@ public class Transaction2 {
     public long receiver_id;
     public int receiver_type;
     public int banker_nation;
-    public String note;
     public double[] resources;
+    public String note;
+
+    private Map<DepositType, Object> parsed;
+    private boolean validHash;
 
     public Transaction2(int tx_id, long tx_datetime, long sender_id, int sender_type, long receiver_id, int receiver_type, int banker_nation, String note, double[] resources) {
         this.tx_id = tx_id;
@@ -69,6 +76,103 @@ public class Transaction2 {
         this.banker_nation = banker_nation;
         this.note = note;
         this.resources = resources;
+    }
+
+    private static final Pattern MD5_HASH = Pattern.compile("#([a-fA-F0-9]{32})");
+
+    public Map<DepositType, Object> getNoteMap() {
+        if (parsed == null) {
+            if (note != null && !note.isEmpty()) {
+                parsed = parseTransferHashNotes(note, tx_datetime);
+                if (parsed.containsKey(DepositType.CASH) && receiver_type != 1) {
+                    Matcher matcher = MD5_HASH.matcher(note);
+                    if (matcher.find()) {
+                        String md5Hash = matcher.group(1);
+                        String expected = Hashing.md5()
+                                .hashString(Settings.INSTANCE.CONVERSION_SECRET + tx_id, StandardCharsets.UTF_8)
+                                .toString();
+                        validHash = md5Hash.equalsIgnoreCase(expected);
+                    }
+                }
+            } else {
+                parsed = Collections.emptyMap();
+            }
+        }
+        return parsed;
+    }
+
+    public static Map<DepositType, Object> parseTransferHashNotes(String note, long date) {
+        if (note == null || note.isEmpty()) return Collections.emptyMap();
+        Map<DepositType, Object> result = new LinkedHashMap<>();
+
+        int i = 0;
+        final int length = note.length();
+
+        while (i < length) {
+            // Find next hashtag
+            while (i < length && note.charAt(i) != '#') i++;
+            if (i >= length) break;
+
+            int hashtagStart = i++;
+
+            // Find the end of this hashtag segment (next hashtag or end of string)
+            while (i < length && note.charAt(i) != '#') i++;
+
+            // Process the segment directly
+            processHashtagSegment(note, hashtagStart, i, result, date);
+        }
+
+        return result.isEmpty() ? Collections.emptyMap() : result;
+    }
+
+    private static void processHashtagSegment(String note, int start, int end, Map<DepositType, Object> result, long date) {
+        // Skip empty segments
+        if (end <= start + 1) return;
+
+        // Find separator (= or space)
+        int separatorIdx = -1;
+        for (int i = start + 1; i < end; i++) {
+            char c = note.charAt(i);
+            if (c == '=' || c == ' ') {
+                separatorIdx = i;
+                break;
+            }
+        }
+
+        // Extract tag and value
+        String tag;
+        String value = null;
+
+        if (separatorIdx != -1) {
+            tag = note.substring(start, separatorIdx).toLowerCase();
+
+            // Extract value if present
+            if (separatorIdx < end - 1) {
+                String remainder = note.substring(separatorIdx + 1, end).trim();
+                if (!remainder.isEmpty()) {
+                    int spaceIdx = remainder.indexOf(' ');
+                    value = (spaceIdx != -1) ? remainder.substring(0, spaceIdx).trim() : remainder;
+                }
+            }
+        } else {
+            tag = note.substring(start, end).toLowerCase();
+        }
+
+        // Parse and resolve
+        DepositType type = DepositType.parse(tag);
+        if (type != null) {
+            Object resolved = type.resolve(value, date);
+            result.put(type, resolved);
+        }
+    }
+
+    public boolean isValidHash() {
+        getNoteMap();
+        return validHash;
+    }
+
+    public void setValidHash(boolean validHash) {
+        this.validHash = validHash;
     }
 
     public static Transaction2 fromApiV3(Bankrec rec) {
@@ -118,32 +222,42 @@ public class Transaction2 {
 
     public boolean isSelfWithdrawal(DBNation nation) {
         if (this.isSenderAA() && this.note != null) {
-            Map<String, String> notes = PW.parseTransferHashNotes(this.note);
-            if (notes.containsKey("#deposit")) {
-                String banker = notes.get("#banker");
-                return MathMan.isInteger(banker) && Long.parseLong(banker) == nation.getNation_id();
+            Map<DepositType, Object> noteMap = getNoteMap();
+            if (noteMap.containsKey(DepositType.DEPOSIT)) {
+                Object banker = noteMap.get(DepositType.BANKER);
+                if (banker instanceof Number n) {
+                    return n.intValue() == nation.getNation_id();
+                }
             }
         }
         return false;
     }
 
-    public long getAccountId(Set<Long> offshoreAlliances) {
+    public long getAccountId(Set<Integer> offshoreAlliances, boolean ignoreIgnore) {
         if (this.note != null) {
-            Map<String, String> notes = PW.parseTransferHashNotes(this.note);
-            for (Map.Entry<String, String> entry : notes.entrySet()) {
-                if (entry.getValue() == null) continue;
-                if (entry.getKey().equalsIgnoreCase("#alliance") || entry.getKey().equalsIgnoreCase("#guild")) {
-                    if (MathMan.isInteger(entry.getValue())) {
-                        return Long.parseLong(entry.getValue());
-                    }
+            Map<DepositType, Object> notes2 = getNoteMap();
+
+            if (!notes2.isEmpty()) {
+                if (ignoreIgnore && notes2.containsKey(DepositType.IGNORE)) return 0;
+
+                Object aaAccount = (Object) notes2.get(DepositType.ALLIANCE);
+                Object guildAccount = (Object) notes2.get(DepositType.GUILD);
+                if (aaAccount != null && guildAccount != null) {
+                    // invalid, cannot use both
+                    return 0;
                 }
-            }
-            for (Map.Entry<String, String> entry : notes.entrySet()) {
-                if (entry.getValue() == null) continue;
-                DepositType type = DepositType.parse(entry.getKey());
-                if (type != null && type.getParent() == null) {
-                    if (MathMan.isInteger(entry.getValue())) {
-                        return Long.parseLong(entry.getValue());
+                if (aaAccount != null && aaAccount instanceof Number n) {
+                    return n.longValue();
+                }
+                if (guildAccount != null && guildAccount instanceof Number n) {
+                    return n.longValue();
+                }
+                for (Map.Entry<DepositType, Object> entry : notes2.entrySet()) {
+                    DepositType type = entry.getKey();
+                    Object value = entry.getValue();
+                    if (value == null || type.getParent() != null || type.isReserved()) continue;
+                    if (value instanceof Number n) {
+                        return n.longValue();
                     }
                 }
             }
@@ -154,18 +268,18 @@ public class Transaction2 {
         if (!isSenderAA()) {
             return receiver_id;
         }
-        if (offshoreAlliances.contains(receiver_id)) {
+        if (offshoreAlliances.contains((int) receiver_id)) {
             return sender_id;
         }
-        if (offshoreAlliances.contains(sender_id)) {
+        if (offshoreAlliances.contains((int) sender_id)) {
             return receiver_id;
         }
         return 0;
     }
 
-    public boolean isTrackedForGuild(GuildDB db, Set<Integer> aaIds, Set<Long> offshoreAAs) {
+    public boolean isTrackedForGuild(GuildDB db, Set<Integer> aaIds, Set<Integer> offshoreAAs) {
         if (aaIds.contains((int) sender_id) || aaIds.contains((int) receiver_id)) return true;
-        long accountId = getAccountId(offshoreAAs);
+        long accountId = getAccountId(offshoreAAs, false);
         return (accountId == 0 || accountId == db.getIdLong() || aaIds.contains((int) accountId));
     }
 

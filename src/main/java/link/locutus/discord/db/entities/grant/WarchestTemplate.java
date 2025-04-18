@@ -257,8 +257,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
 
         for (Transaction2 record : receiver.getTransactions(-1, true)) {
             if(record.tx_datetime > cutoff && record.note != null && record.sender_id == receiver.getId()) {
-                Map<String, String> notes = PW.parseTransferHashNotes(record.note);
-                if (notes.containsKey("#warchest")) {
+                if (record.getNoteMap().get(DepositType.WARCHEST) != null) {
                     received = ResourceType.add(received, record.resources);
                 }
             }

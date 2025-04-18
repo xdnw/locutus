@@ -7,7 +7,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.politicsandwar.graphql.model.GameInfo;
 import it.unimi.dsi.fastutil.bytes.ByteOpenHashSet;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
@@ -26,12 +25,10 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.file.NationsFileSnapshot;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.stock.Exchange;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.TradeDB;
@@ -611,7 +608,7 @@ public final class PW {
             boolean allowArbitraryConversion = record.tx_id != -1 && isOffshoreSender;
 
             Predicate<Transaction2> allowExpiryFinal = isOffshoreSender || record.isInternal() ? allowExpiry : f -> false;
-            PW.processDeposit(record, guildDB, tracked, sign, result, record.resources, record.note, record.tx_datetime, allowExpiryFinal, allowConversion, allowArbitraryConversion, true, forceIncludeIgnored, rateFunc, forceRssConversionAfter);
+            PW.processDeposit(record, guildDB, tracked, sign, result, record.resources, record.tx_datetime, allowExpiryFinal, allowConversion, allowArbitraryConversion, true, forceIncludeIgnored, rateFunc, forceRssConversionAfter);
         }
         long diff = System.currentTimeMillis() - start;
         if (diff > 50) {
@@ -642,31 +639,12 @@ public final class PW {
         return currentMMR.matches(requiredMMR);
     }
 
-    public static Map<String, String> parseTransferHashNotes(String note) {
-        if (note == null || note.isEmpty()) return Collections.emptyMap();
-
-        Map<String, String> result = new LinkedHashMap<>();
-
-        String[] split = note.split("(?=#)");
-        for (String filter : split) {
-            if (filter.charAt(0) != '#') continue;
-
-            String[] tagSplit = filter.split("[=| ]", 2);
-            String tag = tagSplit[0].toLowerCase();
-            String value = tagSplit.length == 2 && !tagSplit[1].trim().isEmpty() ? tagSplit[1].split(" ")[0].trim() : null;
-
-            result.put(tag.toLowerCase(), value);
-        }
-        return result;
-    }
-
     public static void processDeposit(Transaction2 record,
                                       GuildDB guildDB,
                                       Set<Long> tracked,
                                       int sign,
                                       Map<DepositType, double[]> result,
                                       double[] amount,
-                                      String note,
                                       long date,
                                       Predicate<Transaction2> allowExpiry,
                                       boolean allowConversion,
@@ -683,74 +661,61 @@ public final class PW {
         }
         // TODO also update Grant.isNoteFromDeposits if this code is updated
 
-        Map<String, String> notes = parseTransferHashNotes(note);
+        Map<DepositType, Object> notes3 = record.getNoteMap();
         DepositType type = DepositType.DEPOSIT;
         double decayFactor = 1;
 
-        for (Map.Entry<String, String> entry : notes.entrySet()) {
-            String tag = entry.getKey();
-            String value = entry.getValue();
+        for (Map.Entry<DepositType, Object> entry2 : notes3.entrySet()) {
+            DepositType tag2 = entry2.getKey();
+            Object value2 = entry2.getValue();
 
-            switch (tag) {
-                case "#nation":
-                case "#alliance":
-                case "#guild":
-                case "#account":
+            switch (tag2) {
+                case NATION:
+                case ALLIANCE:
+                case GUILD:
+                case ACCOUNT:
                     return;
-                case "#ignore":
+                case IGNORE:
                     if (includeIgnored) {
-                        if (value != null && !value.isEmpty() && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && MathMan.isInteger(value) && !tracked.contains(Long.parseLong(value))) {
+                        if (value2 instanceof Number n && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && !tracked.contains(n.longValue())) {
                             return;
                         }
                         continue;
                     }
                     return;
-                case "#deposit":
-                case "#deposits":
-                case "#trade":
-                case "#trades":
-                case "#trading":
-                case "#credits":
-                case "#buy":
-                case "#sell":
-                case "#warchest":
-                    if (value != null && !value.isEmpty() && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && MathMan.isInteger(value) && !tracked.contains(Long.parseLong(value))) {
+                case DEPOSIT:
+                case TRADE:
+                case WARCHEST:
+                    if (value2 instanceof Number n && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && !tracked.contains(n.longValue())) {
                         return;
                     }
                     type = DepositType.DEPOSIT;
                     continue;
-                case "#raws":
-                case "#raw":
-                case "#tax":
-                case "#taxes":
-                case "#disperse":
-                case "#disburse":
+                case RAWS:
+                case TAX:
                     type = DepositType.TAX;
-                    if (value != null && !value.isEmpty() && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && MathMan.isInteger(value) && !tracked.contains(Long.parseLong(value))) {
+                    if (value2 instanceof Number n && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && !tracked.contains(n.longValue())) {
                         return;
                     }
                     continue;
-                default:
-                    if (!tag.startsWith("#")) continue;
-                    continue;
-                case "#loan":
-                case "#grant":
-                    if (value != null && !value.isEmpty() && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && MathMan.isInteger(value) && !tracked.contains(Long.parseLong(value))) {
+                case LOAN:
+                case GRANT:
+                    if (value2 instanceof Number n && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && !tracked.contains(n.longValue())) {
                         return;
                     }
                     if (type == DepositType.DEPOSIT) {
                         type = DepositType.LOAN;
                     }
                     continue;
-                case "#decay": {
-                    if (allowExpiry.test(record) && value != null && !value.isEmpty()) {
+                case DECAY: {
+                    if (allowExpiry.test(record) && value2 instanceof Number n) {
                         try {
                             long now = System.currentTimeMillis();
-                            long expire = TimeUtil.timeToSec_BugFix1(value, record.tx_datetime) * 1000L;
-                            if (now > date + expire) {
+                            long expire = n.longValue();
+                            if (now > expire) {
                                 return;
                             }
-                            decayFactor = Math.min(decayFactor, 1 - (now - date) / (double) expire);
+                            decayFactor = Math.min(decayFactor, 1 - (now - date) / (double) (expire - date));
                             type = DepositType.GRANT;
                         } catch (IllegalArgumentException e) {
                             e.printStackTrace();
@@ -759,12 +724,12 @@ public final class PW {
                     }
                     continue;
                 }
-                case "#expire": {
-                    if (allowExpiry.test(record) && value != null && !value.isEmpty()) {
+                case EXPIRE: {
+                    if (allowExpiry.test(record) && value2 instanceof Number n) {
                         try {
                             long now = System.currentTimeMillis();
-                            long expire = TimeUtil.timeToSec_BugFix1(value, record.tx_datetime) * 1000L;
-                            if (now > date + expire) {
+                            long expire = n.longValue();
+                            if (now > expire) {
                                 return;
                             }
                             type = DepositType.GRANT;
@@ -775,16 +740,16 @@ public final class PW {
                     }
                     continue;
                 }
-                case "#cash":
+                case CASH:
                     if (allowConversion) {
-                        applyCashConversion(guildDB, allowArbitraryConversion, notes, amount, value, record, date, rates);
+                        applyCashConversion(guildDB, allowArbitraryConversion, notes3, amount, value2, record, date, rates);
                         allowConversion = false;
                     }
                     continue;
             }
         }
         if (allowConversion && forceConvertRssAfter > 0 && forceConvertRssAfter > date) {
-            applyCashConversion(guildDB, allowArbitraryConversion, notes, amount, null, record, date, rates);
+            applyCashConversion(guildDB, allowArbitraryConversion, notes3, amount, null, record, date, rates);
         }
         double[] rss = result.computeIfAbsent(type, f -> ResourceType.getBuffer());
         if (sign == 1 && decayFactor == 1) {
@@ -801,13 +766,13 @@ public final class PW {
 
     private static void applyCashConversion(GuildDB guildDB,
             boolean allowArbitraryConversion,
-            Map<String, String> notes,
+            Map<DepositType, Object> notes3,
             double[] amount,
-            String valueStr,
+            Object value,
             Transaction2 record,
             long date,
             Function<ResourceType, Double> rates) {
-        if (valueStr != null && valueStr.equals("0")) return;
+        if (value != null && value instanceof Number n && n.doubleValue() == 0d) return;
 
         boolean hasNonCashRss = false;
         for (ResourceType rss : ResourceType.values) {
@@ -821,9 +786,9 @@ public final class PW {
         Double cashValue = null;
         Set<Byte> convert = null;
 
-        String rssNote = notes.get("#rss");
-        if (rssNote != null && !rssNote.isEmpty() && MathMan.isInteger(rssNote)) {
-            long rssId = Long.parseLong(rssNote);
+        Object rssNote = notes3.get(DepositType.RSS);
+        if (rssNote instanceof Number n) {
+            long rssId = n.longValue();
             convert = new ByteOpenHashSet();
             for (ResourceType rss : ResourceType.values) {
                 if ((rssId & (1L << rss.ordinal())) != 0) {
@@ -832,20 +797,22 @@ public final class PW {
             }
         }
 
-        if (valueStr != null) {
+        if (value instanceof Number n) {
             if (allowArbitraryConversion) {
-                cashValue = MathMan.parseDouble(valueStr);
+                cashValue = n.doubleValue();
             }
         }
 
         if (cashValue == null) {
             Supplier<String> getHash = ArrayUtil.memorize(() -> Hashing.md5()
-                    .hashString(CONVERSION_SECRET + record.tx_id, StandardCharsets.UTF_8)
+                    .hashString(Settings.INSTANCE.CONVERSION_SECRET + record.tx_id, StandardCharsets.UTF_8)
                     .toString());
-            if (valueStr != null) {
+            boolean hasHash = false;
+            if (value instanceof Number n) {
                 String hash = getHash.get();
                 if (record.note.contains(hash)) {
-                    cashValue = MathMan.parseDouble(valueStr);
+                    cashValue = n.doubleValue();
+                    hasHash = true;
                 }
             }
 
@@ -885,6 +852,7 @@ public final class PW {
                 if (setConvert) {
                     convert = convertCached;
                 }
+                if (!hasHash)
                 {
                     // set hash
                     String hash = getHash.get();
@@ -913,8 +881,6 @@ public final class PW {
             amount[0] = cashValue;
         }
     }
-
-    private static String CONVERSION_SECRET = "fe51a236d437901bc1650b0187ac3e46";
 
     public static double WAR_RANGE_MAX_MODIFIER = 2.50;
     public static double WAR_RANGE_MIN_MODIFIER = 0.75;

@@ -1,6 +1,7 @@
 package link.locutus.discord.db.entities;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
 import link.locutus.discord.db.BankDB;
@@ -188,10 +189,13 @@ public class TaxRecordCategorizer2 {
         if (!dontRequireTagged) {
             expenseRequirements.add(tx -> {
                 if (aaIds.contains((int) tx.sender_id) && tx.isSenderAA()) return true;
-                Map<String, String> notes = PW.parseTransferHashNotes(tx.note);
-                for (String value : notes.values()) {
-                    if (MathMan.isInteger(value)) {
-                        if (aaIds.contains((int) Long.parseLong(value))) return true;
+                Map<DepositType, Object> noteMap = tx.getNoteMap();
+                for (Map.Entry<DepositType, Object> entry : noteMap.entrySet()) {
+                    if (entry.getKey().getParent() != null) continue;
+                    if (entry.getValue() instanceof Number n) {
+                        if (aaIds.contains(n.intValue())) return true; {
+                            return true;
+                        }
                     }
                 }
                 return false;

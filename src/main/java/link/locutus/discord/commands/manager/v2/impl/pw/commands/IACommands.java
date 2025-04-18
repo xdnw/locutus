@@ -6,6 +6,7 @@ import com.politicsandwar.graphql.model.NationResponseProjection;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.account.question.questions.InterviewQuestion;
@@ -1256,8 +1257,8 @@ public class IACommands {
 
         for (Transaction2 transaction : transactions) {
             if (transaction.note == null || !transaction.note.contains("#incentive")) continue;
-            Map<String, String> notes = PW.parseTransferHashNotes(transaction.note);
-            String incentive = notes.get("#incentive");
+            Map<DepositType, Object> noteMap = transaction.getNoteMap();
+            String incentive = (String) noteMap.get(DepositType.INCENTIVE);
             DBNation gov = DBNation.getById((int) transaction.sender_id);
 
             if (gov != null) {

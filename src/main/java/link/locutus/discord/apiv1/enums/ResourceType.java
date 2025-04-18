@@ -961,7 +961,8 @@ public enum ResourceType {
     private final int cap;
     private final double capInverse;
     private final double boostFactor;
-    private final Supplier<Project> project;
+    private final Supplier<Project> getProject;
+    private final Predicate<Predicate<Project>> hasProject;
     private final ResourceType[] inputs;
     private final int baseInput;
     private final int pollution;
@@ -990,7 +991,8 @@ public enum ResourceType {
         this.baseInput = baseInput;
         this.pollution = pollution;
         this.upkeep = upkeep;
-        this.project = project;
+        this.getProject = project == null ? () -> null : project;
+        this.hasProject = project == null ? p -> false : p -> p.test(project.get());
         this.inputs = inputs;
         this.graphId = graphId;
     }
@@ -1059,7 +1061,7 @@ public enum ResourceType {
 
     public double getBaseProduction(Continent continent, double rads, Predicate<Project> hasProject, double land, long date) {
         double factor = 1;
-        if (getProject() != null && hasProject.test(getProject())) {
+        if (this.hasProject.test(hasProject)) {
             factor = boostFactor;
         }
         return baseProduction * factor;
@@ -1072,7 +1074,7 @@ public enum ResourceType {
 
     @Command(desc = "The project required to boost this resource's production (if any)")
     public Project getProject() {
-        return project == null ? null : project.get();
+        return getProject.get();
     }
 
     @Command(desc = "The building cap for this resource's production")

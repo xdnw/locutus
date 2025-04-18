@@ -78,6 +78,9 @@ public class Settings extends Config {
     @Comment("The discord invite CODE of the support sever")
     public String SUPPORT_INVITE = "cUuskPDrB7";
 
+    @Comment("")
+    public String CONVERSION_SECRET = "TODO";
+
     ////////////////////////////////////////////////////////////////////////////
 
     @Create

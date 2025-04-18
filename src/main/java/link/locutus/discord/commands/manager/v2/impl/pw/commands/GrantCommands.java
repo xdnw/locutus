@@ -2996,7 +2996,10 @@ public class GrantCommands {
             if (receiver.active_m() > 2880) {
                 body.append("**Warning: **`Inactive for ").append(TimeUtil.secToTime(TimeUnit.MINUTES, receiver.active_m())).append("`\n");
             }
-            body.append(receiver.getNationUrlMarkup() + " | " + receiver.getAllianceUrlMarkup()).append("\n");
+            body.append("**To**: " + receiver.getNationUrlMarkup() + " | " + receiver.getAllianceUrlMarkup()).append("\n");
+            body.append("**Amount**: `" + ResourceType.toString(amtArr) + "`\n");
+            body.append("- worth: ~$" + MathMan.format(ResourceType.convertedTotal(amtArr)));
+
             channel.create().confirmation(title, body.toString(), command).send();
             return null;
         }
@@ -3012,11 +3015,14 @@ public class GrantCommands {
                 return "No escrowed resources found for " + receiver.getNation();
             }
             long escrowDate = escrowedPair.getValue();
-            // Ensure transfer amount is <= escrowed
             for (ResourceType type : ResourceType.values) {
                 if (Math.round(amtArr[type.ordinal()] * 100) > Math.round(escrowedPair.getKey()[type.ordinal()] * 100)) {
-                    return "Cannot withdraw more than escrowed for " + type.getName() + "=" + MathMan.format(amtArr[type.ordinal()]) + " > " + MathMan.format(escrowedPair.getKey()[type.ordinal()]) + "\n" +
+                    String msg = "Cannot withdraw more than what the account (" + receiver.getMarkdownUrl() + ") has in escrow\n" +
+                            "**Amount Specified:** `" + type.getName() + "=" + MathMan.format(amtArr[type.ordinal()]) + "`\n" +
+                            "**Amount escrowed:** `" + MathMan.format(escrowedPair.getKey()[type.ordinal()]) + "`\n" +
                             "See: " + CM.deposits.check.cmd.toSlashMention();
+                    channel.create().embed("Escrow Withdraw Failed", msg).send();
+                    return null;
                 }
             }
             //  - Deduct from escrowed
