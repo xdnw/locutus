@@ -154,9 +154,9 @@ public class PnwPusherShardManager {
 
         { // cities
             root.subscribeBuilder(Locutus.loader().getApiKey(), City.class, PnwPusherEvent.CREATE).build(cities ->
-                    Locutus.imp().runEventsAsync(events -> nationDB.updateCities(cities, events)));
+                    Locutus.imp().runEventsAsync(events -> nationDB.updateCitiesSubscribe(cities, events)));
             root.subscribeBuilder(Locutus.loader().getApiKey(), City.class, PnwPusherEvent.UPDATE).build(cities ->
-                    Locutus.imp().runEventsAsync(events -> nationDB.updateCities(cities, events)));
+                    Locutus.imp().runEventsAsync(events -> nationDB.updateCitiesSubscribe(cities, events)));
             root.subscribeBuilder(Locutus.loader().getApiKey(), City.class, PnwPusherEvent.DELETE).build(cities ->
                     Locutus.imp().runEventsAsync(events -> nationDB.deleteCities(cities, events)));
         }

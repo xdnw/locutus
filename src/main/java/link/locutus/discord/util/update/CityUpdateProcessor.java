@@ -102,12 +102,16 @@ public class CityUpdateProcessor {
             int arrLen = 0;
             Map<Integer, int[]> beforeByCity = new HashMap<>();
             Map<Integer, int[]> afterByCity = new HashMap<>();
+            Set<String> reasons = new HashSet<>();
             for (MMRChange change : entry.getValue()) {
                 int[] mmrFrom = beforeByCity.computeIfAbsent(change.cityId, f -> change.mmrFrom);
                 int[] mmrTo = afterByCity.computeIfAbsent(change.cityId, f -> change.mmrTo);
                 for (int i = 0; i < change.mmrTo.length; i++) mmrFrom[i] = Math.min(mmrFrom[i], change.mmrFrom[i]);
                 for (int i = 0; i < change.mmrTo.length; i++) mmrTo[i] = Math.min(mmrTo[i], change.mmrTo[i]);
                 arrLen = change.mmrTo.length;
+                if (change.reason != null) {
+                    reasons.add(change.reason);
+                }
             }
             double[] beforeAvg = new double[arrLen];
             double[] afterAvg = new double[arrLen];
@@ -142,6 +146,7 @@ public class CityUpdateProcessor {
             String title = "MMR: " + nation.getNation() + " | " + nation.getAllianceName();
             StringBuilder body = new StringBuilder();
             body.append(nation.getNationUrlMarkup() + " | " + nation.getAllianceUrlMarkup() + "\n");
+            body.append("\n-# caller: " + StringMan.getString(reasons));
 
             if (alliance != null) {
                 DBAlliance parent = alliance.getCachedParentOfThisOffshore();
@@ -191,13 +196,15 @@ public class CityUpdateProcessor {
         public final int[] mmrTo;
         public final int cityId;
         public final int nationId;
+        public final String reason;
 
-        public MMRChange(long time, int[] mmrFrom, int[] mmrTo, int cityId, int nationId) {
+        public MMRChange(long time, int[] mmrFrom, int[] mmrTo, int cityId, int nationId, String reason) {
             this.time = time;
             this.mmrFrom = mmrFrom;
             this.mmrTo = mmrTo;
             this.cityId = cityId;
             this.nationId = nationId;
+            this.reason = reason;
         }
     }
 
@@ -206,10 +213,10 @@ public class CityUpdateProcessor {
         DBNation nation = event.getNation();
         if (nation == null) return;
 
-        processOfficerChangeMMR(nation, event.getPrevious(), event.getCurrent());
+        processOfficerChangeMMR(nation, event.getPrevious(), event.getCurrent(), event.getReason());
     }
 
-    private void processOfficerChangeMMR(DBNation nation, DBCity cityFrom, DBCity cityTo) {
+    private void processOfficerChangeMMR(DBNation nation, DBCity cityFrom, DBCity cityTo, String reason) {
         if (this.changes2 == null) return;
 
         DBAlliance alliance = nation.getAlliance();
@@ -224,7 +231,7 @@ public class CityUpdateProcessor {
 
         if (increase <= 0) return;
 
-        MMRChange change = new MMRChange(cityTo.getFetched(), mmrFrom, mmrTo, cityTo.getId(), nation.getNation_id());
+        MMRChange change = new MMRChange(cityTo.getFetched(), mmrFrom, mmrTo, cityTo.getId(), nation.getNation_id(), reason);
         changes2.computeIfAbsent(nation.getNation_id(), f -> new ConcurrentHashMap<>()).put(cityTo.getId(), change);
     }
 }

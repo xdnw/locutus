@@ -9,8 +9,9 @@ import java.util.Map;
 
 public class CityBuildingChangeEvent extends CityChangeEvent {
     private final Map<Building, Integer> change;
+    private final String reason;
 
-    public CityBuildingChangeEvent(int nation, DBCity previous, DBCity current) {
+    public CityBuildingChangeEvent(int nation, DBCity previous, DBCity current, String reason) {
         super(nation, previous, current);
         this.change = new HashMap<>();
         for (Building building : Buildings.values()) {
@@ -19,6 +20,11 @@ public class CityBuildingChangeEvent extends CityChangeEvent {
                 change.put(building, diff);
             }
         }
+        this.reason = reason;
+    }
+
+    public String getReason() {
+        return reason;
     }
 
     public Map<Building, Integer> getChange() {

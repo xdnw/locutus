@@ -294,7 +294,7 @@ public abstract class DBCity implements ICity {
         return newBuildings != null;
     }
 
-    public boolean runChangeEvents(int nationId, DBCity previous, Consumer<Event> eventConsumer) {
+    public boolean runChangeEvents(int nationId, DBCity previous, Consumer<Event> eventConsumer, String reason) {
         if (previous == null) {
             if (eventConsumer != null) {
 //                DBNation nation = DBNation.getById(nationId);
@@ -346,7 +346,7 @@ public abstract class DBCity implements ICity {
         if (!Arrays.equals(this.toFull(), previous.toFull())) {
             if (eventConsumer != null) {
                 if (previousClone == null) previousClone = new SimpleDBCity(previous);
-                eventConsumer.accept(new CityBuildingChangeEvent(nationId, previousClone, this));
+                eventConsumer.accept(new CityBuildingChangeEvent(nationId, previousClone, this, reason));
             }
             changed = true;
         }
