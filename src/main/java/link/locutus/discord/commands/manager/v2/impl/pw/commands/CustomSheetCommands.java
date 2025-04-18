@@ -516,7 +516,7 @@ public class CustomSheetCommands {
             if (index == null) {
                 IMessageBuilder embed = io.create().embed("Multiple attachments found", "Please specify the index by clicking a number below");
                 for (int i = 0; i < attachments.size(); i++) {
-                    JSONObject copy = new JSONObject(command).put("index", i + 1);
+                    JSONObject copy = new JSONObject(command, JSONObject.getNames(command)).put("index", i + 1);
                     embed = embed.commandButton(copy, String.valueOf(i + 1));
                 }
                 embed.send();

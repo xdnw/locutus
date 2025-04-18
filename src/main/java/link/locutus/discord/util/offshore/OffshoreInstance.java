@@ -73,7 +73,7 @@ public class OffshoreInstance {
     public static final ConcurrentHashMap<Integer, Boolean> FROZEN_ESCROW = new ConcurrentHashMap<>();
 
     public static String DISABLED_MESSAGE = "Disabled temporarily for maintenance. Please try again later or contact the bot developer if you need immediate assistance.";
-    public static final boolean DISABLE_TRANSFERS = true;
+    public static final boolean DISABLE_TRANSFERS = false;
     private final int allianceId;
     private final AtomicInteger transfersThisSession = new AtomicInteger();
 

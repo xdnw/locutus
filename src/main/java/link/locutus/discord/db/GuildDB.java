@@ -923,7 +923,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         if (delegate != null) return delegate.getTransactionsById(senderOrReceiverId, type);
         List<Transaction2> list = new ObjectArrayList<>();
 
-        System.out.println("FINDING " + senderOrReceiverId + " " + type + " | " + this.getFile());
         String query = "select * FROM INTERNAL_TRANSACTIONS2 WHERE ((sender_id = ? AND sender_TYPE = ?) OR (receiver_id = ? AND receiver_type = ?))";
 
         query(query, new ThrowingConsumer<PreparedStatement>() {

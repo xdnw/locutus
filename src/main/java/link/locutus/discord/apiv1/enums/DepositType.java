@@ -26,14 +26,18 @@ public enum DepositType {
         @Override
         public Object resolve(String value, long timestamp) {
             Object result = super.resolve(value, timestamp);
-            if (result == null && value.contains(",")) {
-                try {
-                    Set<Integer> ids = new IntOpenHashSet();
-                    for (String elem : value.split(",")) {
-                        ids.add(Integer.parseInt(elem));
+            if (result == null) {
+                if (value == null || value.isEmpty()) return null;
+                if (value.contains(",")) {
+                    try {
+                        Set<Integer> ids = new IntOpenHashSet();
+                        for (String elem : value.split(",")) {
+                            ids.add(Integer.parseInt(elem));
+                        }
+                        return ids;
+                    } catch (NumberFormatException e) {
                     }
-                    return ids;
-                } catch (NumberFormatException e) {}
+                }
             }
             return result;
         }
@@ -47,6 +51,7 @@ public enum DepositType {
             if (parsed != null) {
                 return parsed;
             }
+            if (value == null || value.isEmpty()) return null;
             Project project = Projects.get(value);
             return project != null ? project : null;
         }

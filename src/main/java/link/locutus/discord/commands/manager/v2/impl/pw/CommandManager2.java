@@ -934,6 +934,8 @@ public class CommandManager2 {
                         try {
                             Map<ParameterData, Map.Entry<String, Object>> map = parametric.parseArgumentsToMap(stack);
                             Object[] parsed = parametric.argumentMapToArray(map);
+                            User user = (User) locals.getProvided(Key.of(User.class, Me.class), false);
+                            System.out.println("User `" + user + "`" + fullCmdStr);
                             return parametric.call(null, locals, parsed);
                         } catch (RuntimeException e) {
                             Throwable e2 = e;
@@ -997,6 +999,7 @@ public class CommandManager2 {
                                 }
                             }
                             Object[] parsed = parametric.parseArgumentMap(finalArguments, finalLocals, validators, permisser);
+                            System.out.println("User `" + user + "` execut6e command " + parametric.getFullPath() + " with args " + finalArguments);
                             return parametric.call(null, finalLocals, parsed);
                         } catch (RuntimeException e) {
                             Throwable e2 = e;
