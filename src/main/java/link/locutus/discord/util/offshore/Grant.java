@@ -3,7 +3,6 @@ package link.locutus.discord.util.offshore;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.EscrowMode;
-import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -15,13 +14,11 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -129,7 +126,7 @@ public class Grant {
         for (Transaction2 transaction : transactions) {
             if (transaction.note == null) continue;
             if (!transaction.note.toLowerCase().contains("#land")) continue;
-            Map<DepositType, Object> noteMap = transaction.getParsed();
+            Map<DepositType, Object> noteMap = transaction.getNoteMap();
             Object landObj = noteMap.get(DepositType.LAND);
             if (landObj instanceof Number amt) {
                 try {
@@ -153,7 +150,7 @@ public class Grant {
         for (Transaction2 transaction : transactions) {
             if (transaction.note == null) continue;
             if (!transaction.note.toLowerCase().contains("#infra")) continue;
-            Map<DepositType, Object> noteMap = transaction.getParsed();
+            Map<DepositType, Object> noteMap = transaction.getNoteMap();
             Object infraObj = noteMap.get(DepositType.INFRA);
             if (infraObj instanceof Number amt) {
                 try {
@@ -337,7 +334,7 @@ public class Grant {
      * @return
      */
     public static Set<Integer> getCities(DBNation nation, Transaction2 tx, long date) {
-        Map<DepositType, Object> parsed2 = tx.getParsed();
+        Map<DepositType, Object> parsed2 = tx.getNoteMap();
         Object citiesObj = parsed2.get(DepositType.CITY);
         if (citiesObj != null) {
             if (citiesObj instanceof Number n) {
@@ -353,7 +350,7 @@ public class Grant {
     }
 
     public static Double getAmount(Transaction2 tx) {
-        Map<DepositType, Object> parsed = tx.getParsed();
+        Map<DepositType, Object> parsed = tx.getNoteMap();
         Object amountObj = parsed.get(DepositType.AMOUNT);
         if (amountObj instanceof Number n) return n.doubleValue();
         return null;

@@ -1013,23 +1013,28 @@ public class BankDB extends DBMainV3 {
         return list;
     }
 
-    public List<Transaction2> getAllianceTransactions(Set<Integer> receiverAAs, boolean includeLegacy) {
-        if (receiverAAs.isEmpty()) return Collections.emptyList();
-
-        List<Transaction2> result = new ObjectArrayList<>();
-
+    public List<Transaction2> getAllianceTransactions(Set<Integer> receiverAAs, boolean includeLegacy, Predicate<Transaction2> filter) {
+        List<Transaction2> result2 = new ObjectArrayList<>();
+        if (receiverAAs.isEmpty()) return result2;
         List<Integer> remaining = new IntArrayList();
         synchronized (transactionCache2) {
             for (int id : receiverAAs) {
                 Set<Transaction2> existing = transactionCache2.get(id);
                 if (existing != null) {
-                    result.addAll(existing);
+                    for (Transaction2 tx : existing) {
+                        if (filter.test(tx)) {
+                            result2.add(tx);
+                        }
+                    }
                 } else {
+                    transactionCache2.computeIfAbsent(id, k -> new ObjectOpenHashSet<>());
                     remaining.add(id);
                 }
             }
         }
-        if (remaining.isEmpty()) return result;
+        if (remaining.isEmpty()) {
+            return result2;
+        }
 
         remaining.sort(Comparator.naturalOrder());
         // condition = sender type = 2, receiver type = 2, receiver id in receiverAAs
@@ -1040,37 +1045,49 @@ public class BankDB extends DBMainV3 {
             condition = condition.and(TRANSACTIONS_2.RECEIVER_ID.in(remaining));
         }
 
-        result.addAll(getTransactions(condition));
+        Consumer<Transaction2> addToCache = tx -> {
+            transactionCache2.computeIfAbsent((int) tx.receiver_id, k -> new ObjectOpenHashSet<>()).add(tx);
+        };
+
+        List<Transaction2> modern = getTransactions(condition);
+        for (Transaction2 tx : modern) {
+            if (filter.test(tx)) {
+                result2.add(tx);
+            }
+        }
+        synchronized (transactionCache2) {
+            for (Transaction2 tx : modern) {
+                addToCache.accept(tx);
+            }
+        }
 
         if (includeLegacy) {
-            String query = "select * FROM TRANSACTIONS_ALLIANCE_2 WHERE ((sender_id = ? AND sender_TYPE = ?) OR (receiver_id = ? AND receiver_type in ?))";
+            List<Transaction2> legacy = new ObjectArrayList<>();
+            String inOrEqual = remaining.size() == 1 ? " = " + remaining.get(0) : " IN " + StringMan.getString(remaining);
+            String query = "select * FROM TRANSACTIONS_ALLIANCE_2 WHERE ((sender_type = ? AND receiver_type = ? AND receiver_id " + inOrEqual + "))";
             queryLegacy(query, new ThrowingConsumer<PreparedStatement>() {
                 @Override
                 public void acceptThrows(PreparedStatement stmt) throws Exception {
                     stmt.setLong(1, 2);
-                    stmt.setInt(2, 2);
-                    stmt.setLong(3, 2);
-                    stmt.setArray(4, stmt.getConnection().createArrayOf("int", remaining.toArray()));
+                    stmt.setLong(2, 2);
                 }
             }, (ThrowingConsumer<ResultSet>) rs -> {
                 while (rs.next()) {
-                    result.add(new Transaction2(rs));
+                    legacy.add(new Transaction2(rs));
                 }
             });
-        }
-
-        // cache transactions
-        synchronized (transactionCache2) {
-            for (Transaction2 tx : result) {
-                Set<Transaction2> existing = transactionCache2.get(tx.receiver_id);
-                if (existing == null) {
-                    existing = new ObjectOpenHashSet<>();
-                    transactionCache2.put((int) tx.receiver_id, existing);
+            for (Transaction2 tx : legacy) {
+                if (filter.test(tx)) {
+                    result2.add(tx);
                 }
-                existing.add(tx);
+            }
+            synchronized (transactionCache2) {
+                for (Transaction2 tx : legacy) {
+                    addToCache.accept(tx);
+                }
             }
         }
-        return result;
+        return result2;
     }
 
 //    private void cache(Transaction2 tx) {

@@ -7,7 +7,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.politicsandwar.graphql.model.GameInfo;
 import it.unimi.dsi.fastutil.bytes.ByteOpenHashSet;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
@@ -26,12 +25,10 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.file.NationsFileSnapshot;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.stock.Exchange;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.TradeDB;
@@ -664,13 +661,13 @@ public final class PW {
         }
         // TODO also update Grant.isNoteFromDeposits if this code is updated
 
-        Map<DepositType, Object> notes3 = record.getParsed();
+        Map<DepositType, Object> notes3 = record.getNoteMap();
         DepositType type = DepositType.DEPOSIT;
         double decayFactor = 1;
 
-        for (Map.Entry<DepositType, String> entry : notes2.entrySet()) {
-            DepositType tag2 = entry.getKey();
-            String value = entry.getValue();
+        for (Map.Entry<DepositType, Object> entry2 : notes3.entrySet()) {
+            DepositType tag2 = entry2.getKey();
+            Object value2 = entry2.getValue();
 
             switch (tag2) {
                 case NATION:
@@ -680,7 +677,7 @@ public final class PW {
                     return;
                 case IGNORE:
                     if (includeIgnored) {
-                        if (value != null && !value.isEmpty() && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && MathMan.isInteger(value) && !tracked.contains(Long.parseLong(value))) {
+                        if (value2 instanceof Number n && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && !tracked.contains(n.longValue())) {
                             return;
                         }
                         continue;
@@ -689,7 +686,7 @@ public final class PW {
                 case DEPOSIT:
                 case TRADE:
                 case WARCHEST:
-                    if (value != null && !value.isEmpty() && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && MathMan.isInteger(value) && !tracked.contains(Long.parseLong(value))) {
+                    if (value2 instanceof Number n && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && !tracked.contains(n.longValue())) {
                         return;
                     }
                     type = DepositType.DEPOSIT;
@@ -697,13 +694,13 @@ public final class PW {
                 case RAWS:
                 case TAX:
                     type = DepositType.TAX;
-                    if (value != null && !value.isEmpty() && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && MathMan.isInteger(value) && !tracked.contains(Long.parseLong(value))) {
+                    if (value2 instanceof Number n && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && !tracked.contains(n.longValue())) {
                         return;
                     }
                     continue;
                 case LOAN:
                 case GRANT:
-                    if (value != null && !value.isEmpty() && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && MathMan.isInteger(value) && !tracked.contains(Long.parseLong(value))) {
+                    if (value2 instanceof Number n && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && ignoreMarkedDeposits && !tracked.contains(n.longValue())) {
                         return;
                     }
                     if (type == DepositType.DEPOSIT) {
@@ -711,14 +708,14 @@ public final class PW {
                     }
                     continue;
                 case DECAY: {
-                    if (allowExpiry.test(record) && value != null && !value.isEmpty()) {
+                    if (allowExpiry.test(record) && value2 instanceof Number n) {
                         try {
                             long now = System.currentTimeMillis();
-                            long expire = TimeUtil.timeToSec_BugFix1(value, record.tx_datetime) * 1000L;
-                            if (now > date + expire) {
+                            long expire = n.longValue();
+                            if (now > expire) {
                                 return;
                             }
-                            decayFactor = Math.min(decayFactor, 1 - (now - date) / (double) expire);
+                            decayFactor = Math.min(decayFactor, 1 - (now - date) / (double) (expire - date));
                             type = DepositType.GRANT;
                         } catch (IllegalArgumentException e) {
                             e.printStackTrace();
@@ -728,11 +725,11 @@ public final class PW {
                     continue;
                 }
                 case EXPIRE: {
-                    if (allowExpiry.test(record) && value != null && !value.isEmpty()) {
+                    if (allowExpiry.test(record) && value2 instanceof Number n) {
                         try {
                             long now = System.currentTimeMillis();
-                            long expire = TimeUtil.timeToSec_BugFix1(value, record.tx_datetime) * 1000L;
-                            if (now > date + expire) {
+                            long expire = n.longValue();
+                            if (now > expire) {
                                 return;
                             }
                             type = DepositType.GRANT;
@@ -745,14 +742,14 @@ public final class PW {
                 }
                 case CASH:
                     if (allowConversion) {
-                        applyCashConversion(guildDB, allowArbitraryConversion, notes2, amount, value, record, date, rates);
+                        applyCashConversion(guildDB, allowArbitraryConversion, notes3, amount, value2, record, date, rates);
                         allowConversion = false;
                     }
                     continue;
             }
         }
         if (allowConversion && forceConvertRssAfter > 0 && forceConvertRssAfter > date) {
-            applyCashConversion(guildDB, allowArbitraryConversion, notes2, amount, null, record, date, rates);
+            applyCashConversion(guildDB, allowArbitraryConversion, notes3, amount, null, record, date, rates);
         }
         double[] rss = result.computeIfAbsent(type, f -> ResourceType.getBuffer());
         if (sign == 1 && decayFactor == 1) {
@@ -769,13 +766,13 @@ public final class PW {
 
     private static void applyCashConversion(GuildDB guildDB,
             boolean allowArbitraryConversion,
-            Map<DepositType, String> notes2,
+            Map<DepositType, Object> notes3,
             double[] amount,
-            String valueStr,
+            Object value,
             Transaction2 record,
             long date,
             Function<ResourceType, Double> rates) {
-        if (valueStr != null && valueStr.equals("0")) return;
+        if (value != null && value instanceof Number n && n.doubleValue() == 0d) return;
 
         boolean hasNonCashRss = false;
         for (ResourceType rss : ResourceType.values) {
@@ -789,9 +786,9 @@ public final class PW {
         Double cashValue = null;
         Set<Byte> convert = null;
 
-        String rssNote = notes2.get(DepositType.RSS);
-        if (rssNote != null && !rssNote.isEmpty() && MathMan.isInteger(rssNote)) {
-            long rssId = Long.parseLong(rssNote);
+        Object rssNote = notes3.get(DepositType.RSS);
+        if (rssNote instanceof Number n) {
+            long rssId = n.longValue();
             convert = new ByteOpenHashSet();
             for (ResourceType rss : ResourceType.values) {
                 if ((rssId & (1L << rss.ordinal())) != 0) {
@@ -800,21 +797,21 @@ public final class PW {
             }
         }
 
-        if (valueStr != null) {
+        if (value instanceof Number n) {
             if (allowArbitraryConversion) {
-                cashValue = MathMan.parseDouble(valueStr);
+                cashValue = n.doubleValue();
             }
         }
 
         if (cashValue == null) {
             Supplier<String> getHash = ArrayUtil.memorize(() -> Hashing.md5()
-                    .hashString(CONVERSION_SECRET + record.tx_id, StandardCharsets.UTF_8)
+                    .hashString(Settings.INSTANCE.CONVERSION_SECRET + record.tx_id, StandardCharsets.UTF_8)
                     .toString());
             boolean hasHash = false;
-            if (valueStr != null) {
+            if (value instanceof Number n) {
                 String hash = getHash.get();
                 if (record.note.contains(hash)) {
-                    cashValue = MathMan.parseDouble(valueStr);
+                    cashValue = n.doubleValue();
                     hasHash = true;
                 }
             }

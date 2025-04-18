@@ -21,8 +21,6 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.nation.DBNationData;
-import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
@@ -38,7 +36,6 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
-import link.locutus.discord.web.jooby.BankRequestHandler;
 import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -63,10 +60,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
@@ -78,7 +72,8 @@ public class OffshoreInstance {
     public static final ConcurrentHashMap<Integer, Object> NATION_LOCKS = new ConcurrentHashMap<>();
     public static final ConcurrentHashMap<Integer, Boolean> FROZEN_ESCROW = new ConcurrentHashMap<>();
 
-    public static final boolean DISABLE_TRANSFERS = false;
+    public static String DISABLED_MESSAGE = "Disabled temporarily for maintenance. Please try again later or contact the bot developer if you need immediate assistance.";
+    public static final boolean DISABLE_TRANSFERS = true;
     private final int allianceId;
     private final AtomicInteger transfersThisSession = new AtomicInteger();
 
@@ -99,15 +94,6 @@ public class OffshoreInstance {
         return guildDBCached;
     }
 
-
-    public boolean isOffshoreAA(long allianceId) {
-        if (allianceId == this.allianceId) return true;
-        GuildDB db = getGuildDB();
-        if (db != null) {
-            return db.getCoalitionRaw(Coalition.OFFSHORE).contains((long) allianceId);
-        }
-        return false;
-    }
 
     public Set<Integer> getOffshoreAAIds() {
         Set<Integer> result = new IntOpenHashSet();
@@ -289,7 +275,7 @@ public class OffshoreInstance {
         }
         List<Transaction2> toProcess = getTransactionsGuild(guildId, force);
 
-        Map<ResourceType, Double> result = ResourceType.resourcesToMap(addTransfers(toProcess, guildId, 3));
+        Map<ResourceType, Double> result = ResourceType.resourcesToMap(getTotal(getOffshoreAAIds(), toProcess, guildId, 3));
         return result;
     }
 
@@ -297,38 +283,45 @@ public class OffshoreInstance {
         return getTransactionsAA(Collections.singleton(allianceId), force);
     }
 
+    public static Predicate<Transaction2> getFilter(long id, int type) {
+        return new Predicate<Transaction2>() {
+            @Override
+            public boolean test(Transaction2 tx) {
+                if (tx.sender_type != 2) return false;
+
+                Map<DepositType, Object> parsed = tx.getNoteMap();
+                if (!parsed.isEmpty()) {
+                    if (parsed.containsKey(DepositType.IGNORE)) return false;
+
+                    Object aaAccount = (Object) parsed.get(DepositType.ALLIANCE);
+                    Object guildAccount = (Object) parsed.get(DepositType.GUILD);
+                    if (aaAccount != null && guildAccount != null) {
+                        // invalid, cannot use both
+                        return false;
+                    }
+                    Object account = type == 2 ? aaAccount : type == 3 ? guildAccount : null;
+                    if (account instanceof Number n) {
+                        if (account != null && n.longValue() == id) {
+                            tx.sender_id = id;
+                            tx.sender_type = type;
+                            return true;
+                        }
+                        return false;
+                    }
+                }
+
+                if (tx.sender_id == id && tx.sender_type == type) {
+                    return true;
+                }
+                return false;
+            }
+        };
+    }
+
     private List<Transaction2> getOffshoreTransactions(long id, int type) {
         Set<Integer> offshoreIds = getOffshoreAAIds();
-        List<Transaction2> transfers = Locutus.imp().getBankDB().getAllianceTransactions(offshoreIds, true);
-        List<Transaction2> result = new ObjectArrayList<>();
-        for (Transaction2 tx : transfers) {
-            if (tx.sender_type != 2) continue;
-
-            Map<DepositType, Object> parsed = tx.getParsed();
-            if (!parsed.isEmpty()) {
-                if (parsed.containsKey(DepositType.IGNORE)) continue;
-
-                Object aaAccount = (Object) parsed.get(DepositType.ALLIANCE);
-                Object guildAccount = (Object) parsed.get(DepositType.GUILD);
-                if (aaAccount != null && guildAccount != null) {
-                    // invalid, cannot use both
-                    continue;
-                }
-                Object account = type == 2 ? aaAccount : type == 3 ? guildAccount : null;
-                if (account instanceof Number n) {
-                    if (account != null && n.longValue() == id) {
-                        tx.sender_id = id;
-                        tx.sender_type = type;
-                        result.add(tx);
-                    }
-                    continue;
-                }
-            }
-
-            if (tx.sender_id == id && tx.sender_type == type) {
-                result.add(tx);
-            }
-        }
+        Predicate<Transaction2> filter = getFilter(id, type);
+        List<Transaction2> result = Locutus.imp().getBankDB().getAllianceTransactions(offshoreIds, true, filter);
         return result;
     }
 
@@ -354,7 +347,7 @@ public class OffshoreInstance {
         if (allianceIds.isEmpty()) return new HashMap<>();
         List<Transaction2> toProcess = getTransactionsAA(allianceIds, force);
         Set<Long> allianceIdsLong = allianceIds.stream().map(Integer::longValue).collect(Collectors.toSet());
-        double[] sum = addTransfers(toProcess, allianceIdsLong, 2);
+        double[] sum = getTotal(getOffshoreAAIds(), toProcess, allianceIdsLong, 2);
         return ResourceType.resourcesToMap(sum);
     }
 
@@ -368,19 +361,22 @@ public class OffshoreInstance {
 
 //    public List<Transaction2> filterTransactions(int allianceId)
 
-    private double[] addTransfers(List<Transaction2> transactions, Set<Long> ids, int type) {
+    public static double[] getTotal(Set<Integer> offshoreAAs, List<Transaction2> transactions, Set<Long> ids, int type) {
+        if (ids.size() == 1) {
+            long id = ids.iterator().next();
+            return getTotal(offshoreAAs, transactions, id, type);
+        }
         double[] resources = ResourceType.getBuffer();
         for (Transaction2 transfer : transactions) {
             int sign;
 
             // transfer.sender_id == 0 && transfer.sender_type == 0 &&
             if ((ids.contains(transfer.sender_id) && transfer.sender_type == type) &&
-                    (isOffshoreAA(transfer.getReceiver()) || (transfer.tx_id == -1))) {
+                    ((transfer.tx_id == -1) || (transfer.receiver_type == 2 && offshoreAAs.contains((int) transfer.receiver_id)))) {
                 sign = 1;
-
                 // transfer.receiver_id == 0 && transfer.receiver_type == 0 &&
             } else if ((ids.contains(transfer.receiver_id) && transfer.receiver_type == type) &&
-                    (isOffshoreAA(transfer.getSender()) || (transfer.tx_id == -1))) {
+                    ((transfer.tx_id == -1) || (transfer.sender_type == 2 && offshoreAAs.contains((int) transfer.sender_id)))) {
                 sign = -1;
             } else {
                 continue;
@@ -392,19 +388,19 @@ public class OffshoreInstance {
 
         return resources;
     }
-    private double[] addTransfers(List<Transaction2> transactions, long id, int type) {
+    public static double[] getTotal(Set<Integer> offshoreAAs, List<Transaction2> transactions, long id, int type) {
         double[] resources = ResourceType.getBuffer();
         for (Transaction2 transfer : transactions) {
             int sign;
 
             // transfer.sender_id == 0 && transfer.sender_type == 0 &&
             if ((transfer.sender_id == id && transfer.sender_type == type) &&
-                    (isOffshoreAA(transfer.getReceiver()) || (transfer.tx_id == -1))) {
+                    ((transfer.tx_id == -1) || (transfer.sender_type == 2 && offshoreAAs.contains((int) transfer.receiver_id)))) {
                 sign = 1;
 
                 // transfer.receiver_id == 0 && transfer.receiver_type == 0 &&
             } else if ((transfer.receiver_id == id && transfer.receiver_type == type) &&
-                    (isOffshoreAA(transfer.getSender()) || (transfer.tx_id == -1))) {
+                    ((transfer.tx_id == -1) || (transfer.sender_type == 2 && offshoreAAs.contains((int) transfer.sender_id)))) {
                 sign = -1;
             } else {
                 continue;
@@ -422,7 +418,7 @@ public class OffshoreInstance {
     }
 
     public TransferResult transferSafe(NationOrAlliance nation, Map<ResourceType, Double> transfer, String note, Map<DBAlliance, Map<ResourceType, Double>> transferRoute) {
-        if (DISABLE_TRANSFERS) throw new IllegalArgumentException("Error: Maintenance");
+        if (DISABLE_TRANSFERS) throw new IllegalArgumentException(DISABLED_MESSAGE);
         synchronized (BANK_LOCK) {
             if (nation.isNation()) return transferSafe(nation.asNation(), transfer, note, transferRoute);
             return transfer(nation.asAlliance(), transfer, note, transferRoute);
@@ -1106,7 +1102,7 @@ public class OffshoreInstance {
 
         if (DISABLE_TRANSFERS && (banker == null || banker.getNation_id() != Locutus.loader().getNationId())) {
 //            return KeyValue.of(TransferStatus.AUTHORIZATION, "Error: Maintenance. Transfers are currently disabled");
-            return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, note).addMessage("Error: Maintenance. Transfers are currently disabled");
+            return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, note).addMessage(DISABLED_MESSAGE);
         }
 
         synchronized (BANK_LOCK) {
@@ -1445,7 +1441,7 @@ public class OffshoreInstance {
 //            return KeyValue.of(TransferStatus.TURN_CHANGE, "You cannot transfer close to turn change");
             return new TransferResult(TransferStatus.TURN_CHANGE, nation, transfer, note).addMessage("You cannot transfer close to turn change");
         }
-        if (DISABLE_TRANSFERS) throw new IllegalArgumentException("Error: Maintenance");
+        if (DISABLE_TRANSFERS) throw new IllegalArgumentException(DISABLED_MESSAGE);
         synchronized (BANK_LOCK) {
 //            BankWithTask task = new BankWithTask(auth, allianceId, 0, nation, new Function<Map<ResourceType, Double>, String>() {
 //                @Override
@@ -1653,7 +1649,7 @@ public class OffshoreInstance {
         if (!TimeUtil.checkTurnChange()) {
             return new TransferResult(TransferStatus.TURN_CHANGE, alliance, transfer, note).addMessage("You cannot transfer close to turn change");
         }
-        if (DISABLE_TRANSFERS) throw new IllegalArgumentException("Error: Maintenance");
+        if (DISABLE_TRANSFERS) throw new IllegalArgumentException(DISABLED_MESSAGE);
         if (!alliance.exists()) {
 //            return KeyValue.of(TransferStatus.INVALID_DESTINATION, "The alliance does not exist");
             return new TransferResult(TransferStatus.INVALID_DESTINATION, alliance, transfer, note).addMessage("The alliance <" + alliance.getUrl() + "> does not exist");

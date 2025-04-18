@@ -8,7 +8,6 @@ import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import org.json.JSONObject;
@@ -167,7 +166,7 @@ public class AddBalanceBuilder {
                 Transaction2 tx = entry.getValue();
                 if (tx.note == null || (!tx.note.contains("#expire") && !tx.note.contains("#decay")) || (tx.receiver_id != nation.getNation_id() && tx.sender_id != nation.getNation_id())) continue;
                 if (tx.sender_id == tx.receiver_id) continue;
-                Map<DepositType, Object> notes2 = tx.getParsed();
+                Map<DepositType, Object> notes2 = tx.getNoteMap();
                 Object decay3 = notes2.get(DepositType.DECAY);
                 Object expire3 = notes2.get(DepositType.EXPIRE);
                 long expireEpoch = 0;

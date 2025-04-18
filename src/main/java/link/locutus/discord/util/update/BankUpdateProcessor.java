@@ -59,7 +59,7 @@ public class BankUpdateProcessor {
             Set<Integer> trackedAlliances = new IntOpenHashSet();
             trackedAlliances.add(aaId);
             if (transfer.note != null) {
-                Map<DepositType, Object> noteMap = transfer.getParsed();
+                Map<DepositType, Object> noteMap = transfer.getNoteMap();
                 for (Map.Entry<DepositType, Object> entry : noteMap.entrySet()) {
                     if (entry.getKey().getParent() != null) continue;
                     if (entry.getValue() instanceof Number n) {

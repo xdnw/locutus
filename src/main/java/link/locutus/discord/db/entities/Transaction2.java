@@ -3,7 +3,7 @@ package link.locutus.discord.db.entities;
 import com.google.common.hash.Hashing;
 import com.google.gson.JsonElement;
 import com.politicsandwar.graphql.model.Bankrec;
-import link.locutus.discord.Locutus;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.apiv1.entities.BankRecord;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.config.Settings;
@@ -80,45 +80,94 @@ public class Transaction2 {
 
     private static final Pattern MD5_HASH = Pattern.compile("#([a-fA-F0-9]{32})");
 
-    public Map<DepositType, Object> getParsed() {
-        if (parsed == null && note != null && !note.isEmpty()) {
-            parsed = parseTransferHashNotes2(note, tx_datetime);
-            if (parsed.containsKey(DepositType.CASH) && receiver_type != 1) {
-                Matcher matcher = MD5_HASH.matcher(note);
-                if (matcher.find()) {
-                    String md5Hash = matcher.group(1);
-                    String expected = Hashing.md5()
-                            .hashString(Settings.INSTANCE.CONVERSION_SECRET + tx_id, StandardCharsets.UTF_8)
-                            .toString();
-                    validHash = md5Hash.equalsIgnoreCase(expected);
+    public Map<DepositType, Object> getNoteMap() {
+        if (parsed == null) {
+            if (note != null && !note.isEmpty()) {
+                parsed = parseTransferHashNotes(note, tx_datetime);
+                if (parsed.containsKey(DepositType.CASH) && receiver_type != 1) {
+                    Matcher matcher = MD5_HASH.matcher(note);
+                    if (matcher.find()) {
+                        String md5Hash = matcher.group(1);
+                        String expected = Hashing.md5()
+                                .hashString(Settings.INSTANCE.CONVERSION_SECRET + tx_id, StandardCharsets.UTF_8)
+                                .toString();
+                        validHash = md5Hash.equalsIgnoreCase(expected);
+                    }
                 }
+            } else {
+                parsed = Collections.emptyMap();
             }
         }
         return parsed;
     }
 
-    private static Map<DepositType, Object> parseTransferHashNotes2(String note, long date) {
+    public static Map<DepositType, Object> parseTransferHashNotes(String note, long date) {
         if (note == null || note.isEmpty()) return Collections.emptyMap();
         Map<DepositType, Object> result = new LinkedHashMap<>();
-        String[] split = note.split("(?=#)");
-        for (String filter : split) {
-            if (filter.charAt(0) != '#') continue;
 
-            String[] tagSplit = filter.split("[=| ]", 2);
-            String tag = tagSplit[0].toLowerCase();
-            String value = tagSplit.length == 2 && !tagSplit[1].trim().isEmpty() ? tagSplit[1].split(" ")[0].trim() : null;
+        int i = 0;
+        final int length = note.length();
 
-            DepositType type = DepositType.parse(tag);
-            if (type != null) {
-                Object resolved = type.resolve(value, date);
-                result.put(type, resolved);
-            }
+        while (i < length) {
+            // Find next hashtag
+            while (i < length && note.charAt(i) != '#') i++;
+            if (i >= length) break;
+
+            int hashtagStart = i++;
+
+            // Find the end of this hashtag segment (next hashtag or end of string)
+            while (i < length && note.charAt(i) != '#') i++;
+
+            // Process the segment directly
+            processHashtagSegment(note, hashtagStart, i, result, date);
         }
+
         return result.isEmpty() ? Collections.emptyMap() : result;
     }
 
+    private static void processHashtagSegment(String note, int start, int end, Map<DepositType, Object> result, long date) {
+        // Skip empty segments
+        if (end <= start + 1) return;
+
+        // Find separator (= or space)
+        int separatorIdx = -1;
+        for (int i = start + 1; i < end; i++) {
+            char c = note.charAt(i);
+            if (c == '=' || c == ' ') {
+                separatorIdx = i;
+                break;
+            }
+        }
+
+        // Extract tag and value
+        String tag;
+        String value = null;
+
+        if (separatorIdx != -1) {
+            tag = note.substring(start, separatorIdx).toLowerCase();
+
+            // Extract value if present
+            if (separatorIdx < end - 1) {
+                String remainder = note.substring(separatorIdx + 1, end).trim();
+                if (!remainder.isEmpty()) {
+                    int spaceIdx = remainder.indexOf(' ');
+                    value = (spaceIdx != -1) ? remainder.substring(0, spaceIdx).trim() : remainder;
+                }
+            }
+        } else {
+            tag = note.substring(start, end).toLowerCase();
+        }
+
+        // Parse and resolve
+        DepositType type = DepositType.parse(tag);
+        if (type != null) {
+            Object resolved = type.resolve(value, date);
+            result.put(type, resolved);
+        }
+    }
+
     public boolean isValidHash() {
-        getParsed();
+        getNoteMap();
         return validHash;
     }
 
@@ -173,7 +222,7 @@ public class Transaction2 {
 
     public boolean isSelfWithdrawal(DBNation nation) {
         if (this.isSenderAA() && this.note != null) {
-            Map<DepositType, Object> noteMap = getParsed();
+            Map<DepositType, Object> noteMap = getNoteMap();
             if (noteMap.containsKey(DepositType.DEPOSIT)) {
                 Object banker = noteMap.get(DepositType.BANKER);
                 if (banker instanceof Number n) {
@@ -186,7 +235,7 @@ public class Transaction2 {
 
     public long getAccountId(Set<Integer> offshoreAlliances, boolean ignoreIgnore) {
         if (this.note != null) {
-            Map<DepositType, Object> notes2 = getParsed();
+            Map<DepositType, Object> notes2 = getNoteMap();
 
             if (!notes2.isEmpty()) {
                 if (ignoreIgnore && notes2.containsKey(DepositType.IGNORE)) return 0;

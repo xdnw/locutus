@@ -86,6 +86,14 @@ public enum DepositType {
         }
     },
 
+    AMOUNT(GRANT, "Meta note for recording an amount of a tag", "Meta note for recording an amount of a tag", true),
+    INCENTIVE(DEPOSIT, "Reward for government activity", "Reward for government activity", true) {
+        @Override
+        public Object resolve(String value, long timestamp) {
+            return value;
+        }
+    },
+
     GUILD("The guild id this transfer belongs to"),
     ALLIANCE("The guild id this transfer belongs to"),
     NATION("Reserved. DO NOT USE"),
@@ -94,26 +102,25 @@ public enum DepositType {
     RSS("The bits representing the resources in the transfer. Resource ordinals aare the same as appear in the game's bank records table"),
     BANKER("The nation initiating the transfer"),
 
-    AMOUNT(GRANT, "Meta note for recording an amount of a tag", "Meta note for recording an amount of a tag", true)
-
     ;
 
     public static DepositType parse(String note) {
         if (note == null || note.isEmpty()) {
             return null;
         }
+        if (note.charAt(0) == '#') {
+            note = note.substring(1);
+        }
+        note = note.toUpperCase(Locale.ROOT);
         try {
-            if (note.startsWith("#")) {
-                note = note.substring(1);
-            }
-            return DepositType.valueOf(note.toUpperCase(Locale.ROOT));
+            return DepositType.valueOf(note);
         } catch (IllegalArgumentException e) {
-            switch (note.toLowerCase()) {
-                case "raw":
-                case "disperse":
-                case "disburse":
+            switch (note) {
+                case "RAW":
+                case "DISPERSE":
+                case "DISBURSE":
                     return RAWS;
-                case "taxes":
+                case "TAXES":
                     return TAX;
             }
             return null;
@@ -283,25 +290,19 @@ public enum DepositType {
             return type.isReserved() || isIgnored();
         }
 
-        public DepositTypeInfo applyClassifiers(Map<String, String> parsed) {
-            for (Map.Entry<String, String> noteEntry : parsed.entrySet()) {
-                String noteStr = noteEntry.getKey().substring(1);
-                String valueStr = noteEntry.getValue();
+        public DepositTypeInfo applyClassifiers(Map<DepositType, Object> parsed2) {
+            for (Map.Entry<DepositType, Object> noteEntry2 : parsed2.entrySet()) {
+                DepositType type = noteEntry2.getKey();
                 boolean ignore = isIgnored();
-                try {
-                    DepositType type = DepositType.valueOf(noteStr.toUpperCase(Locale.ROOT));
-                    if (!type.isClassifier()) {
-                        throw new IllegalArgumentException();
-                    }
-                    long amount = getAmount();
-                    if (valueStr != null && !valueStr.isEmpty() && MathMan.isInteger(valueStr)) {
-                        amount = Long.parseLong(valueStr);
-                    }
-                    return new DepositTypeInfo(type, amount, 0, ignore);
-                } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException("Cannot apply modifier: `" + noteStr + "`, only " +
-                            Arrays.stream(DepositType.values()).filter(DepositType::isClassifier).map(DepositType::name).toList());
+                if (!type.isClassifier()) {
+                    throw new IllegalArgumentException();
                 }
+                long amount = getAmount();
+                Object value = noteEntry2.getValue();
+                if (value instanceof Number n) {
+                    amount = n.longValue();
+                }
+                return new DepositTypeInfo(type, amount, 0, ignore);
             }
             return this;
         }

@@ -32,6 +32,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static link.locutus.discord.util.offshore.OffshoreInstance.DISABLED_MESSAGE;
 
 public class SendInternalTask {
     private final static Map<Long, Double> CURR_TURN_VALUE_BY_USER = new Long2ObjectOpenHashMap<>();
@@ -52,7 +53,7 @@ public class SendInternalTask {
     private final OffshoreInstance receiverOffshore;
 
     public SendInternalTask(@Me User banker, @Me DBNation bankerNation, GuildDB senderDB, DBAlliance senderAlliance, DBNation senderNation, GuildDB receiverDB, DBAlliance receiverAlliance, DBNation receiverNation, double[] amount) throws IOException {
-        if (OffshoreInstance.DISABLE_TRANSFERS && banker.getIdLong() != Locutus.loader().getAdminUserId()) throw new IllegalArgumentException("Error: Maintenance");
+        if (OffshoreInstance.DISABLE_TRANSFERS && banker.getIdLong() != Locutus.loader().getAdminUserId()) throw new IllegalArgumentException(DISABLED_MESSAGE);
         checkNotNull(bankerNation, "No banker specified. Register with " + CM.register.cmd.toSlashMention());
         checkArgsNotNull(senderDB, senderAlliance, senderNation, receiverDB, receiverAlliance, receiverNation);
         checkNonNegative(amount);

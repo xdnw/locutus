@@ -123,22 +123,19 @@ public class ResearchTemplate extends AGrantTemplate<Void>{
         list.add(new Grant.Requirement("Must not have received a transfer for " + (research == null ? "`{research}`" : research) + " already", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                String findNote = "#research=";
                 outer:
                 for (Transaction2 transaction : nation.getTransactions(-1, true)) {
                     if (transaction.note == null) continue;
-                    String noteLower = transaction.note.toLowerCase();
-                    if (noteLower.contains(findNote)) {
-                        String rss = PW.parseTransferHashNotes(transaction.note).get("#research");
-                        if (rss == null || !MathMan.isInteger(rss)) continue;
-                        int researchBits = Integer.parseInt(rss);
+                    Map<DepositType, Object> noteMap = transaction.getNoteMap();
+                    Object researchVal = noteMap.get(DepositType.RESEARCH);
+                    if (researchVal instanceof  Number n) {
+                        int researchBits = n.intValue();
                         Map<Research, Integer> researchMap = Research.fromBits(researchBits);
                         for (Map.Entry<Research, Integer> entry : research.entrySet()) {
                             if (researchMap.getOrDefault(entry.getKey(), 0) < entry.getValue()) {
                                 continue outer;
                             }
                         }
-
                     }
                 }
                 return true;
@@ -200,14 +197,15 @@ public class ResearchTemplate extends AGrantTemplate<Void>{
             if (transaction.note == null) continue;
             String noteLower = transaction.note.toLowerCase();
             if (noteLower.contains(findNote)) {
-                String rss = PW.parseTransferHashNotes(transaction.note).get("#research");
-                if (rss == null || !MathMan.isInteger(rss)) continue;
-                int researchBits = Integer.parseInt(rss);
-                Map<Research, Integer> priorGrants = Research.fromBits(researchBits);
-                for (Map.Entry<Research, Integer> entry : priorGrants.entrySet()) {
-                    int level = Math.min(entry.getValue(), research.get(entry.getKey()));
-                    if (level > 0) {
-                        start.put(entry.getKey(), Math.max(start.getOrDefault(entry.getKey(), 0), level));
+                Object researchObj = transaction.getNoteMap().get(DepositType.RESEARCH);
+                if (researchObj instanceof Number n) {
+                    int researchBits = n.intValue();
+                    Map<Research, Integer> priorGrants = Research.fromBits(researchBits);
+                    for (Map.Entry<Research, Integer> entry : priorGrants.entrySet()) {
+                        int level = Math.min(entry.getValue(), research.get(entry.getKey()));
+                        if (level > 0) {
+                            start.put(entry.getKey(), Math.max(start.getOrDefault(entry.getKey(), 0), level));
+                        }
                     }
                 }
             }
