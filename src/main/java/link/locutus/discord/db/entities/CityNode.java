@@ -219,7 +219,7 @@ public class CityNode implements ICity {
                     throw new IllegalArgumentException("Building " + building.name() + " has no cap");
                 }
                 double[] profitConverted = new double[cap];
-                for (int k = 0; k <= cap; k++) {
+                for (int k = 0; k < cap; k++) {
                     profitConverted[k] = building.profitConverted(continent, rads, hasProject, this.land, k + 1);
                 }
                 modifiableProfit[j] = profitConverted;
