@@ -40,8 +40,13 @@ public class Unregister extends Command {
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1) return usage(args.size(), 1, channel);
         String arg0 = args.get(0);
-        DBNation nation = DiscordUtil.parseNation(arg0);
-
+        String errMsg = null;
+        DBNation nation = null;
+        try {
+             nation = DiscordUtil.parseNation(arg0, true);
+        } catch (IllegalArgumentException e) {
+            errMsg = e.getMessage();
+        }
         DBNation selfNation = DiscordUtil.getNation(author);
         if (selfNation == null) {
             return "You aren't registered.";
@@ -53,8 +58,14 @@ public class Unregister extends Command {
             Locutus.imp().getDiscordDB().unregister(nation.getNation_id(), null);
             Locutus.imp().getDiscordDB().deleteApiKeyPairByNation(nation.getNation_id());
         } else {
-            User user = DiscordBindings.user(author, arg0);
-            Locutus.imp().getDiscordDB().unregister(null, user.getIdLong());
+            try {
+                User user = DiscordBindings.user(author, arg0);
+                Locutus.imp().getDiscordDB().unregister(null, user.getIdLong());
+            } catch (IllegalArgumentException e) {
+                return "No user or nation found:\n" +
+                        "- " + errMsg + "\n" +
+                        "- " + e.getMessage();
+            }
         }
         return "Unregistered user.";
     }

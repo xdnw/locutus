@@ -67,7 +67,7 @@ public class WarCat extends Command {
 
         String categoryName = args.get(0);
         if (categoryName.startsWith("<")) {
-            DBNation nation = DiscordUtil.parseNation(categoryName);
+            DBNation nation = DiscordUtil.parseNation(categoryName, true);
             if (nation == null) {
                 return "Unregistered: `" + args.get(0) + "`";
             }

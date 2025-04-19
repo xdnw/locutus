@@ -67,14 +67,13 @@ public class CityBranch implements BiConsumer<CityNode, PriorityQueue<CityNode>>
 
     public CityBranch(CityNode.CachedCity cached) {
         this.origin = cached;
-        CityNode tmpNode = origin.create();
         Map<ResourceBuilding, Double> rssBuildings = new HashMap<>();
         for (Building building : Buildings.values()) {
             if (!building.canBuild(origin.getContinent())) continue;
             if (!(building instanceof ResourceBuilding rssBuild)) continue;
             if (origin.getRads() <= 0 && building == Buildings.FARM) continue;
             int cap = Math.min(10, rssBuild.cap(origin.hasProject()));
-            double profit = rssBuild.profitConverted(origin.getContinent(), origin.getRads(), origin.hasProject(), tmpNode, cap) / cap;
+            double profit = rssBuild.profitConverted(origin.getContinent(), origin.getRads(), origin.hasProject(), origin.getLand(), cap) / cap;
             if (profit <= 0) continue;
             rssBuildings.put(rssBuild, profit);
         }

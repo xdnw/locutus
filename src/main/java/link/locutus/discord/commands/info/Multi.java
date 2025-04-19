@@ -48,7 +48,7 @@ public class Multi extends Command {
         if (args.isEmpty()) {
             return usage(args.size(), 1, channel);
         }
-        Integer nationId = DiscordUtil.parseNationId(args.get(0));
+        Integer nationId = DiscordUtil.parseNationId(args.get(0), true);
         if (nationId == null) {
             return "Invalid nation: `" + args.get(0) + "`";
         }

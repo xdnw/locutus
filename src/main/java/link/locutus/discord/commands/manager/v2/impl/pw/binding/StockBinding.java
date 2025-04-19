@@ -82,6 +82,6 @@ public class StockBinding extends BindingHelper {
     @Binding
     public NationOrExchange nationOrExchange(StockDB db, String input) {
         if (input.charAt(0) == '*') return new NationOrExchange(exchange(db, input.substring(1)));
-        return new NationOrExchange(DiscordUtil.parseNation(input));
+        return new NationOrExchange(DiscordUtil.parseNation(input, true));
     }
 }

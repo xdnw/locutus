@@ -68,7 +68,7 @@ public class RegisterCommand extends Command {
                 index = 0;
             }
             String nationLink = String.join(" ", args.subList(index, args.size()));
-            Integer nationId = DiscordUtil.parseNationId(nationLink);
+            Integer nationId = DiscordUtil.parseNationId(nationLink, true);
             if (nationId == null) {
                 return "Invalid nation: ``" + nationLink + "`" + "`";
             }
@@ -142,7 +142,7 @@ public class RegisterCommand extends Command {
             return "";
         }
 
-        Integer nationId = DiscordUtil.parseNationId(args.get(0));
+        Integer nationId = DiscordUtil.parseNationId(args.get(0), true);
         if (nationId == null) {
             return "Must be an nation id or link: ``" + args.get(0) + "`" + "`";
         }

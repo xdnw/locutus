@@ -694,7 +694,7 @@ public class ReportCommands {
                 receiverId = PW.parseAllianceId(receiverStr);
                 isRecieverAA = true;
             } else {
-                receiverId = DiscordUtil.parseNationId(receiverStr);
+                receiverId = DiscordUtil.parseNationId(receiverStr, true);
                 isRecieverAA = false;
             }
 

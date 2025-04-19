@@ -38,8 +38,8 @@ public interface INationSnapshot {
         return nation;
     }
 
-    default DBNation getNationByInput(String input, boolean allowDeleted) {
-        return DiscordUtil.parseNation(this, input, true, false);
+    default DBNation getNationByInput(String input, boolean allowDeleted, boolean throwError) {
+        return DiscordUtil.parseNation(this, input, true, false, throwError);
     }
 
     Set<DBNation> getAllNations();

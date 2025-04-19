@@ -48,7 +48,7 @@ public class Reroll extends Command {
         }
 
         String arg0 = args.get(0);
-        Integer id = DiscordUtil.parseNationId(arg0);
+        Integer id = DiscordUtil.parseNationId(arg0, true);
         if (id == null) {
             return "Invalid nation`" + arg0 + "`";
         }

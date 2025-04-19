@@ -290,13 +290,13 @@ public final class PW {
                             unpoweredInfra = unpoweredInfra - ((APowerBuilding) building).getInfraMax();
                         }
                     }
-                    profit += building.profitConverted(continent, rads, hasProject, city, amt);
+                    profit += building.profitConverted(continent, rads, hasProject, city.getLand(), amt);
                 }
                 for (int ordinal = Buildings.GAS_REFINERY.ordinal(); ordinal < PW.City.Building.SIZE; ordinal++) {
                     int amt = city.getBuildingOrdinal(ordinal);
                     if (amt == 0) continue;
                     link.locutus.discord.apiv1.enums.city.building.Building building = Buildings.get(ordinal);
-                    profit += building.profitConverted(continent, rads, hasProject, city, amt);
+                    profit += building.profitConverted(continent, rads, hasProject, city.getLand(), amt);
                 }
             }
 
@@ -305,7 +305,7 @@ public final class PW {
                 if (amt == 0) continue;
 
                 link.locutus.discord.apiv1.enums.city.building.Building building = Buildings.get(ordinal);
-                profit += building.profitConverted(continent, rads, hasProject, city, amt);
+                profit += building.profitConverted(continent, rads, hasProject, city.getLand(), amt);
             }
 
             int commerce = powered ? city.calcCommerce(hasProject) : 0;

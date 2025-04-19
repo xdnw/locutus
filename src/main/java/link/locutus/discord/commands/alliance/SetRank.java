@@ -55,7 +55,7 @@ public class SetRank extends Command {
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 2) return usage();
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        DBNation nation = DiscordUtil.parseNation(args.get(0));
+        DBNation nation = DiscordUtil.parseNation(args.get(0), true);
         DBAlliancePosition position = PWBindings.position(db, me, args.get(1));
         JSONObject command = CM.nation.set.rank.cmd
                 .nation(nation.getQualifiedId())

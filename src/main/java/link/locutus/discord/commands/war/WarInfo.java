@@ -62,12 +62,14 @@ public class WarInfo extends Command {
             return usage(args.size(), 1, channel);
         }
         String arg0 = args.get(0);
+        boolean nationErrors = true;
         if (arg0.contains("/war=")) {
-            arg0 = arg0.split("war=")[1];
+            arg0 = arg0.split("war=")[1].split("/")[0];
+            nationErrors = false;
         }
         Integer warId = MathMan.parseInt(arg0);
         if (warId == null || Locutus.imp().getWarDb().getWar(warId) == null) {
-            DBNation nation = DiscordUtil.parseNation(args.get(0));
+            DBNation nation = DiscordUtil.parseNation(args.get(0), nationErrors);
             if (nation == null) return "Invalid warId: " + warId;
             Set<DBWar> wars = nation.getActiveWars();
             String title = wars.size() + " wars";

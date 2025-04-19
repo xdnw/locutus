@@ -97,7 +97,7 @@ public class GetBuild extends Command {
             return "Invalid nation, Are you sure you are registered?" + author.getAsMention();
         }
 
-        Integer id = DiscordUtil.parseNationId(args.get(0));
+        Integer id = DiscordUtil.parseNationId(args.get(0), true);
         if (id == null) {
             return "Not found: `" + Settings.commandPrefix(true) + "pnw-who <user>`";
         }

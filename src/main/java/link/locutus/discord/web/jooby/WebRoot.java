@@ -7,6 +7,7 @@ import io.javalin.config.SizeUnit;
 import link.locutus.discord.Logg;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.test.WebDB;
 import gg.jte.ContentType;
 import gg.jte.TemplateEngine;
@@ -207,12 +208,19 @@ public class WebRoot {
                 }
                 String nationId = context.queryParam("nation");
                 if (nationId != null) {
-                    DBNation nation = DiscordUtil.parseNation(nationId);
-                    PNWUser user = nation == null ? null : nation.getDBUser();
-                    if (user == null) {
-                        context.result(nationId + "\t-1\t");
-                    } else {
-                        context.result(user.getNationId() + "\t" + user.getDiscordId() + "\t" + user.getDiscordName());
+                    try {
+                        DBNation nation = DiscordUtil.parseNation(nationId, true);
+                        PNWUser user = nation == null ? null : nation.getDBUser();
+                        if (user == null) {
+                            context.result(nationId + "\t-1\t");
+                        } else {
+                            context.result(user.getNationId() + "\t" + user.getDiscordId() + "\t" + user.getDiscordName());
+                        }
+                    } catch (IllegalArgumentException e) {
+                        context.result(WebUtil.GSON.toJson(Map.of(
+                                "error", e.getMessage(),
+                                "nation_id", nationId
+                        )));
                     }
                     return;
                 }
