@@ -39,7 +39,7 @@ public class BeigeTurns extends Command {
         if (args.size() != 1) {
             return usage(args.size(), 1, channel);
         }
-        Integer nationId = DiscordUtil.parseNationId(args.get(0));
+        Integer nationId = DiscordUtil.parseNationId(args.get(0), true);
         if (nationId == null) {
             return "Invalid nation: " + nationId;
         }

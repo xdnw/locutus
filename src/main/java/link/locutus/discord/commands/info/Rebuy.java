@@ -40,7 +40,7 @@ public class Rebuy extends Command {
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1) return usage(args.size(), 1, channel);
-        DBNation nation = DiscordUtil.parseNation(args.get(0));
+        DBNation nation = DiscordUtil.parseNation(args.get(0), true);
         if (nation == null) return "Unknown nation `" + args.get(0) + "`";
 
         Map<Integer, Long> dcProb = nation.findDayChange();

@@ -164,7 +164,7 @@ public class TransferSheet {
                     nation = Locutus.imp().getNationDB().getNationByName(nameStr);
                 }
                 if (nation == null) {
-                    nation = DiscordUtil.parseNation(nameStr);
+                    nation = DiscordUtil.parseNation(nameStr, false);
                 }
                 if (nation == null) invalidNationOrAlliance.add(nameStr);
                 else {

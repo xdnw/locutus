@@ -82,7 +82,7 @@ public class Interview extends QuestionCommand<InterviewQuestion> {
                 return "No category found for: `" + arg0 + "`";
             }
 
-            DBNation nation = DiscordUtil.parseNation(args.get(0));
+            DBNation nation = DiscordUtil.parseNation(args.get(0), true);
             if (nation != null) {
                 user = nation.getUser();
             }

@@ -39,8 +39,8 @@ public class GetActiveWars implements Callable<Collection<Map.Entry<Integer, Int
             if (columns.get(3).text().contains("Active War")) {
                 String attackerStr = columns.get(1).getElementsByTag("a").get(0).attr("href");
                 String defenderStr = columns.get(2).getElementsByTag("a").get(0).attr("href");
-                Integer attacker = DiscordUtil.parseNationId(attackerStr);
-                Integer defender = DiscordUtil.parseNationId(defenderStr);
+                Integer attacker = DiscordUtil.parseNationId(attackerStr, true);
+                Integer defender = DiscordUtil.parseNationId(defenderStr, true);
                 wars.add(new KeyValue<>(attacker, defender));
             }
         }

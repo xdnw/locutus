@@ -61,8 +61,7 @@ public class Sudo extends Command implements Noformat {
 
         DBNation nation;
         if (user == null) {
-            Integer nationId = DiscordUtil.parseNationId(arg0);
-
+            Integer nationId = DiscordUtil.parseNationId(arg0, true);
             if (nationId == null) {
                 return "Invalid nation: `" + arg0 + "`";
             }

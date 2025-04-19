@@ -337,7 +337,7 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
                         default -> null;
                     }, (type, input) -> {
                         return switch (type) {
-                            case 0 -> snapshot.getNationByInput(input, allowDeleted);
+                            case 0 -> snapshot.getNationByInput(input, allowDeleted, true);
                             case 1 -> snapshot.getNationByLeader(input);
                             default -> null;
                         };
@@ -388,7 +388,15 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
 
         Set<DBNation> nations = new LinkedHashSet<>();
         boolean containsAA = nameLower.contains("/alliance/");
-        DBNation nation = containsAA ? null : snapshot.getNationByInput(name, allowDeleted);
+        String errMsg = "";
+        DBNation nation = null;
+        if (!containsAA) {
+            try {
+                nation = snapshot.getNationByInput(name, allowDeleted, true);
+            } catch (IllegalArgumentException e) {
+                errMsg = "\n" + e.getMessage();
+            }
+        }
         if (nation == null || containsAA) {
             Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name);
             if (alliances == null) {
@@ -402,10 +410,10 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
                         nation = snapshot.getNationById(user.getNationId());
                     }
                     if (nation == null) {
-                        throw new IllegalArgumentException("Invalid nation/aa: `" + name + "`");
+                        throw new IllegalArgumentException("Invalid nation/aa: `" + name + "`" + errMsg);
                     }
                 } else {
-                    throw new IllegalArgumentException("Invalid nation/aa: `" + name + "`");
+                    throw new IllegalArgumentException("Invalid nation/aa: `" + name + "`" + errMsg);
                 }
             } else {
                 Set<DBNation> allianceMembers = snapshot.getNationsByAlliance(alliances);
@@ -438,7 +446,7 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
                         default -> null;
                     }, (type, input) -> {
                         return switch (type) {
-                            case 0 -> snapshot.getNationByInput(input, true);
+                            case 0 -> snapshot.getNationByInput(input, true, true);
                             case 1 -> snapshot.getNationByLeader(input);
                             default -> null;
                         };
@@ -457,7 +465,15 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
             return f -> f.getTax_id() == taxId;
         }
         boolean containsAA = nameLower.contains("/alliance/");
-        DBNation nation = containsAA ? null : snapshot.getNationByInput(name, true);
+        String errMsg = "";
+        DBNation nation = null;
+        if (!containsAA) {
+            try {
+                nation = snapshot.getNationByInput(name, true, true);
+            } catch (IllegalArgumentException e) {
+                errMsg = "\n" + e.getMessage();
+            }
+        }
         if (nation == null) {
             Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name);
             if (alliances == null) {
@@ -477,12 +493,12 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
                         nation = snapshot.getNationById(user.getNationId());
                     }
                     if (nation == null) {
-                        throw new IllegalArgumentException("Invalid nation/aa: `" + name + "`");
+                        throw new IllegalArgumentException("Invalid nation/aa: `" + name + "`" + errMsg);
                     }
                     int id = nation.getId();
                     return f -> f.getId() == id;
                 } else {
-                    throw new IllegalArgumentException("Invalid nation/aa: `" + name + "`");
+                    throw new IllegalArgumentException("Invalid nation/aa: `" + name + "`" + errMsg);
                 }
             } else {
                 return f -> alliances.contains(f.getAlliance_id());

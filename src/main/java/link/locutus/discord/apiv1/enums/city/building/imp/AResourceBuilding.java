@@ -77,7 +77,7 @@ public class AResourceBuilding extends ABuilding implements ResourceBuilding {
     }
 
     private static interface InputValueFunc {
-        public double apply(Continent continent, double rads, Predicate<Project> hasProjects, ICity city, int amt, double production);
+        public double apply(Continent continent, double rads, Predicate<Project> hasProjects, double land, int amt, double production);
     }
 
     public AResourceBuilding continents(Continent... continents) {
@@ -111,11 +111,11 @@ public class AResourceBuilding extends ABuilding implements ResourceBuilding {
     }
 
     @Override
-    public double profitConverted(Continent continent, double rads, Predicate<Project> hasProjects, ICity city, int amt) {
-        double profit = super.profitConverted(continent, rads, hasProjects, city, amt);
-        double production = output.getProduction(continent, rads, hasProjects, city.getLand(), amt, -1);
+    public double profitConverted(Continent continent, double rads, Predicate<Project> hasProjects, double land, int amt) {
+        double profit = super.profitConverted(continent, rads, hasProjects, land, amt);
+        double production = output.getProduction(continent, rads, hasProjects, land, amt, -1);
         profit += production * outputValue.get();
-        profit += inputValueFunc.apply(continent, rads, hasProjects, city, amt, production);
+        profit += inputValueFunc.apply(continent, rads, hasProjects, land, amt, production);
         return profit;
     }
 

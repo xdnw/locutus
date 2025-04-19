@@ -364,7 +364,7 @@ public class PlaceholdersMap {
         if (aaId != null) {
             return Set.of(DBAlliance.getOrCreate(aaId));
         }
-        Integer nationId = DiscordUtil.parseNationId(input);
+        Integer nationId = DiscordUtil.parseNationId(input, false);
         if (nationId != null) {
             return Set.of(DBNation.getOrCreate(nationId));
         }
@@ -683,7 +683,7 @@ public class PlaceholdersMap {
                     if (input.equalsIgnoreCase("*")) return f -> true;
                     if (SpreadSheet.isSheet(input)) {
                         Set<Integer> sheet = SpreadSheet.parseSheet(input, List.of("bans"), true,
-                                (type, str) -> DiscordUtil.parseNationId(str));
+                                (type, str) -> DiscordUtil.parseNationId(str, true));
                         return f -> sheet.contains(f.getNation_id());
                     }
                     if (MathMan.isInteger(input)) {
@@ -1010,7 +1010,7 @@ public class PlaceholdersMap {
         if (id != null) {
             return f -> f.getUserId() == id;
         }
-        Integer nationId = DiscordUtil.parseNationId(input);
+        Integer nationId = DiscordUtil.parseNationId(input, false);
         if (nationId != null) {
             return f -> {
                 DBNation nation = f.getNation();
@@ -1442,7 +1442,7 @@ public class PlaceholdersMap {
                             switch (type) {
                                 case 0 -> ids.add(Integer.parseInt(str));
                                 case 1 -> taxIds.add(Integer.parseInt(str));
-                                case 2 -> nations.add(DiscordUtil.parseNationId(str));
+                                case 2 -> nations.add(DiscordUtil.parseNationId(str, true));
                             }
                             return null;
                         });
@@ -1472,7 +1472,7 @@ public class PlaceholdersMap {
                     switch (type) {
                         case 0 -> ids.add(Integer.parseInt(str));
                         case 1 -> taxIds.add(Integer.parseInt(str));
-                        case 2 -> nations.add(DiscordUtil.parseNationId(str));
+                        case 2 -> nations.add(DiscordUtil.parseNationId(str, true));
                     }
                     return null;
                 });

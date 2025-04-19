@@ -107,6 +107,7 @@ public class CityNode implements ICity {
         private final boolean selfSufficient;
         private final int maxSlots;
         private final double infraLow;
+        private final double[][] modifiableProfit;
         private int maxIndex;
 
         public int getBuildingOrdinal(int ordinal) {
@@ -193,7 +194,7 @@ public class CityNode implements ICity {
                             }
                         }
                     }
-                    baseProfitConverted += building.profitConverted(continent, rads, hasProject, city, num);
+                    baseProfitConverted += building.profitConverted(continent, rads, hasProject, this.land, num);
                     building.profit(continent, rads, -1L, hasProject, city, this.baseProfit, 12, num);
                 }
             }
@@ -206,11 +207,23 @@ public class CityNode implements ICity {
 
             ADD_BUILDING = new Consumer[modIe - modIs];
             REMOVE_BUILDING = new Consumer[modIe - modIs];
+            this.modifiableProfit = new double[modIe - modIs][];
+
             for (int i = modIs, j = 0; i < modIe; i++, j++) {
                 int finalJ = j;
                 Building building = Buildings.get(i);
                 int addCommerce = building.getCommerce();
                 int addPollution = building.getPollution(hasProject);
+                int cap = building.getCap(hasProject);
+                if (cap <= 0 || cap > 200) {
+                    throw new IllegalArgumentException("Building " + building.name() + " has no cap");
+                }
+                double[] profitConverted = new double[cap];
+                for (int k = 0; k <= cap; k++) {
+                    profitConverted[k] = building.profitConverted(continent, rads, hasProject, this.land, k + 1);
+                }
+                modifiableProfit[j] = profitConverted;
+
                 if (addCommerce != 0) {
                     if (addPollution != 0) {
                         ADD_BUILDING[j] = (n) -> {
@@ -301,6 +314,10 @@ public class CityNode implements ICity {
         public int getMaxIndex() {
             return maxIndex;
         }
+
+        public double getLand() {
+            return land;
+        }
     }
 
     public CityNode(CachedCity origin, byte[] modifiable, int numBuildings, int commerce, int pollution, int index) {
@@ -368,8 +385,7 @@ public class CityNode implements ICity {
         for (int i = 0; i < modifiable.length; i++) {
             byte amt = modifiable[i];
             if (amt == 0) continue;
-            Building building = Buildings.get(i + modIs);
-            revenue += building.profitConverted(cached.continent, cached.rads, cached.hasProject, this, amt);
+            revenue += cached.modifiableProfit[i][amt - 1];
         }
         return this.revenue = revenue;
     }

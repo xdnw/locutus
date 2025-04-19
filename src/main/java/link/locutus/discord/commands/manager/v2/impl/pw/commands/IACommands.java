@@ -2083,7 +2083,7 @@ public class IACommands {
             String nationNameStr = nationNameObj.toString();
             if (nationNameStr.isEmpty()) continue;
 
-            DBNation nation = DiscordUtil.parseNation(nationNameStr);
+            DBNation nation = DiscordUtil.parseNation(nationNameStr, true);
             if (nation == null) return "Invalid nation: `" + nationNameStr + "`";
 
             Object subjectObj = subjects.get(i);

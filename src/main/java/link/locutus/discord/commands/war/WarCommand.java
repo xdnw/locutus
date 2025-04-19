@@ -84,7 +84,7 @@ public class WarCommand extends Command {
             args.clear();
         }
 
-        if (nationArg != null) me = DiscordUtil.parseNation(nationArg);
+        if (nationArg != null) me = DiscordUtil.parseNation(nationArg, true);
         if (me == null) {
             return "Invalid nation? Are you sure you are registered?" + author.getAsMention();
         }

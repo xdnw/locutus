@@ -51,9 +51,9 @@ public class MoneyTrades extends Command {
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 2) return usage(args.size(), 2, channel);
-        Integer user = DiscordUtil.parseNationId(args.get(0));
-        if (user == null) {
-            return "invalid user `" + args.get(0) + "`";
+        Integer nationId = DiscordUtil.parseNationId(args.get(0), true);
+        if (nationId == null) {
+            return "invalid nation `" + args.get(0) + "`";
         }
         long timeDiff = TimeUtil.timeToSec(args.get(1)) * 1000L;
         if (timeDiff == 0) return "Invalid time: `" + args.get(1) + "`";
@@ -65,7 +65,7 @@ public class MoneyTrades extends Command {
 
         Map<Integer, Map<ResourceType, Long>> netInflows = new HashMap<>();
 
-        List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(user, cuttOff);
+        List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(nationId, cuttOff);
         for ( DBTrade offer : trades) {
             if (offer.getResource() == ResourceType.CREDITS) continue;
             int max = offer.getResource() == ResourceType.FOOD ? 1000 : 10000;
@@ -74,7 +74,7 @@ public class MoneyTrades extends Command {
             int sign = offer.isBuy() ? -1 : 1;
             int per = offer.getPpu();
 
-            Integer client = (offer.getSeller() == (user)) ? offer.getBuyer() : offer.getSeller();
+            Integer client = (offer.getSeller() == (nationId)) ? offer.getBuyer() : offer.getSeller();
 
             Map<ResourceType, Long> existing = netInflows.computeIfAbsent(client,  integer -> Maps.newLinkedHashMap());
 
@@ -85,7 +85,7 @@ public class MoneyTrades extends Command {
             }
         }
 
-        if (netInflows.isEmpty()) return "No trades found for " + user + " in the past " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, timeDiff);
+        if (netInflows.isEmpty()) return "No trades found for `" + nationId + "` in the past " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, timeDiff);
 
         StringBuilder response = new StringBuilder("Your net inflows from:");
         for (Map.Entry<Integer, Map<ResourceType, Long>> entry : netInflows.entrySet()) {

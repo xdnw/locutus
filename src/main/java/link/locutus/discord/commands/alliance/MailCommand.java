@@ -69,7 +69,7 @@ public class MailCommand extends Command implements Noformat {
                 Auth auth;
 
                 if (fromStr != null) {
-                    DBNation from = DiscordUtil.parseNation(fromStr);
+                    DBNation from = DiscordUtil.parseNation(fromStr, true);
                     if (from == null) throw new IllegalArgumentException("Invalid sender: " + fromStr);
                     auth = from.getAuth(true);
                     GuildDB authDB = Locutus.imp().getGuildDB(from.getAlliance_id());

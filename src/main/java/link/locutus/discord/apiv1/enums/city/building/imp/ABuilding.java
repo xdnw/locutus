@@ -80,7 +80,7 @@ public abstract class ABuilding implements Building {
     }
 
     @Override
-    public double profitConverted(Continent continent, double rads, Predicate<Project> hasProject, ICity city, int amt) {
+    public double profitConverted(Continent continent, double rads, Predicate<Project> hasProject, double land, int amt) {
         return -(getUpkeepConverted(hasProject) * amt);
     }
 

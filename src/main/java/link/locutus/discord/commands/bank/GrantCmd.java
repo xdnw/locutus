@@ -203,7 +203,7 @@ public class GrantCmd extends Command {
         }
         if (num <= 0) return "Invalid positive number: " + num;
 
-        me = DiscordUtil.parseNation(args.get(0));
+        me = DiscordUtil.parseNation(args.get(0), false);
         String typeArg = args.get(1);
         if (me == null) {
             Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, false);

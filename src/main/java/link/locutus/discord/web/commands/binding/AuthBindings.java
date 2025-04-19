@@ -329,7 +329,11 @@ public class AuthBindings extends WebBindingHelper {
             String nationStr = StringMan.join(queryMap.getOrDefault("nation", new ArrayList<>()), ",");
             Integer nationIdFilter = null;
             if (!nationStr.isEmpty()) {
-                nationIdFilter = DiscordUtil.parseNationId(nationStr);
+                try {
+                    nationIdFilter = DiscordUtil.parseNationId(nationStr, true);
+                } catch (IllegalArgumentException e) {
+                    errors.add(e.getMessage());
+                }
             }
 
             String errorsStr = StringMan.join(queryMap.getOrDefault("message", new ArrayList<>()), "\n");

@@ -63,7 +63,7 @@ public class Inflows extends Command {
         long cutoffMs = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
 
         String arg0 = args.get(0);
-        Integer nationId = DiscordUtil.parseNationId(arg0);
+        Integer nationId = DiscordUtil.parseNationId(arg0, false);
 
         List<Transaction2> allTransfers = new ArrayList<>();
 

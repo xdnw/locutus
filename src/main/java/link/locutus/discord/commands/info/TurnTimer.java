@@ -41,7 +41,7 @@ public class TurnTimer extends Command {
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1) return usage(args.size(), 1, channel);
-        DBNation nation = DiscordUtil.parseNation(args.get(0));
+        DBNation nation = DiscordUtil.parseNation(args.get(0), true);
         if (nation == null) return "Invalid nation: `" + args.get(0) + "`";
 
         return "City: " + nation.getCityTurns() + " turns (" + nation.getCities() + " cities)\n" +

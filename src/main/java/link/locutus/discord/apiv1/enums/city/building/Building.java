@@ -111,7 +111,7 @@ public interface Building {
     @Command(desc = "Get the numeric id of this building")
     int ordinal();
 
-    double profitConverted(Continent continent, double rads, Predicate<Project> hasProject, ICity city, int amt);
+    double profitConverted(Continent continent, double rads, Predicate<Project> hasProject, double land, int amt);
 
     double[] profit(Continent continent, double rads, long date, Predicate<Project> hasProject, ICity city, double[] profitBuffer, int turns, int amt);
 

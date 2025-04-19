@@ -13,6 +13,7 @@ import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationModifier;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
@@ -830,19 +831,19 @@ public class DiscordUtil {
         return  Locutus.imp().getDiscordDB().getUserFromNationId(nation.getNation_id());
     }
 
-    public static DBNation parseNation(String arg) {
-        return parseNation(arg, false);
+    public static DBNation parseNation(String arg, boolean throwError) {
+        return parseNation(arg, false, throwError);
     }
 
-    public static DBNation parseNation(String arg, boolean allowDeleted) {
-        return parseNation(arg, allowDeleted, false);
+    public static DBNation parseNation(String arg, boolean allowDeleted, boolean throwError) {
+        return parseNation(arg, allowDeleted, false, throwError);
     }
 
-    public static DBNation parseNation(String arg, boolean allowDeleted, boolean useLeader) {
-        return parseNation(Locutus.imp().getNationDB(), arg, allowDeleted, useLeader);
+    public static DBNation parseNation(String arg, boolean allowDeleted, boolean useLeader, boolean throwError) {
+        return parseNation(Locutus.imp().getNationDB(), arg, allowDeleted, useLeader, throwError);
     }
 
-    public static DBNation parseNation(INationSnapshot snapshot, String arg, boolean allowDeleted, boolean useLeader) {
+    public static DBNation parseNation(INationSnapshot snapshot, String arg, boolean allowDeleted, boolean useLeader, boolean throwError) {
         String argLower = arg.toLowerCase();
         if (argLower.contains("/alliance/") || argLower.startsWith("aa:") || argLower.startsWith("alliance:")) return null;
         if (arg.startsWith("leader:")) {
@@ -853,12 +854,17 @@ public class DiscordUtil {
             DBNation nation = snapshot.getNationByLeader(arg);
             if (nation != null) return nation;
         }
-        Integer id = parseNationId(snapshot, arg);
+        Integer id = parseNationId(snapshot, arg, throwError);
         if (id != null) {
             DBNation nation = snapshot.getNationById(id);
-            if (nation == null && allowDeleted) {
-                nation = new SimpleDBNation(new DBNationData());
-                nation.setNation_id(id);
+            if (nation == null) {
+                if (allowDeleted) {
+                    nation = new SimpleDBNation(new DBNationData());
+                    nation.setNation_id(id);
+                }
+                if (throwError) {
+                    throw new IllegalArgumentException("Nation not found by id: `" + id + "` (did they delete?)");
+                }
             }
             return nation;
         }
@@ -874,21 +880,30 @@ public class DiscordUtil {
         return name;
     }
 
-    public static Integer parseNationId(String arg) {
-        return parseNationId(Locutus.imp().getNationDB(), arg);
+    public static Integer parseNationId(String arg, boolean throwError) {
+        return parseNationId(Locutus.imp().getNationDB(), arg, throwError);
     }
 
-    public static Integer parseNationIdUser(INationSnapshot snapshot, String arg) {
+    public static Integer parseNationIdUser(INationSnapshot snapshot, String arg, boolean throwError) {
         String argNoBrackets = arg.substring(1, arg.length() - 1);
         if (argNoBrackets.charAt(0) == '@') {
             String idStr = argNoBrackets.substring(1);
             if (idStr.charAt(0) == '!') idStr = idStr.substring(1);
             if (MathMan.isInteger(idStr)) {
                 long discordId = Long.parseLong(idStr);
-                PNWUser user = Locutus.imp().getDiscordDB().getUserFromDiscordId(discordId);
-                if (user != null) {
-                    return user.getNationId();
+                PNWUser dbUser = Locutus.imp().getDiscordDB().getUserFromDiscordId(discordId);
+                if (dbUser != null) {
+                    return dbUser.getNationId();
                 }
+
+                if (throwError) {
+                    User user = Locutus.imp().getDiscordApi().getUserById(discordId);
+                    if (user != null) {
+                        throw new IllegalArgumentException("User: `" + user + "` is not registered to a nation. See: " + CM.register.cmd.toSlashMention());
+                    }
+                    throw new IllegalArgumentException("No registered user found by id: `" + discordId + "` (are you sure they are registered?)");
+                }
+
             }
         }
         if (MathMan.isInteger(argNoBrackets)) {
@@ -902,20 +917,50 @@ public class DiscordUtil {
             if (nation != null) {
                 return (int) nation.getId();
             }
+            if (throwError) {
+                if (id > Integer.MAX_VALUE) {
+                    User user = Locutus.imp().getDiscordApi().getUserById(id);
+                    if (user != null) {
+                        throw new IllegalArgumentException("User: `" + user + "` is not registered to a nation. See: " + CM.register.cmd.toSlashMention());
+                    }
+                    throw new IllegalArgumentException("No registered user found by id: `" + id + "` (are you sure they are registered?)");
+                } else {
+                    throw new IllegalArgumentException("No registered nation found by id: `" + id + "` (did they delete?. See also `" + CM.admin.sync.syncNations.cmd.nations(argNoBrackets) + "`)");
+                }
+            }
+        }
+        if (throwError) {
+            throw new IllegalArgumentException("Invalid user syntax: `" + arg + "`");
         }
         return null;
     }
 
-    public static Integer parseNationId(INationSnapshot snapshot, String arg) {
+    public static Integer parseNationId(INationSnapshot snapshot, String arg, boolean throwError) {
         if (arg.isEmpty()) return null;
-        boolean checkUser = true;
         if (arg.charAt(0) == '"' && arg.charAt(arg.length() - 1) == '"') {
             arg = arg.substring(1, arg.length() - 1);
         }
         if (arg.charAt(0) == '<' && arg.charAt(arg.length() - 1) == '>') {
-            return parseNationIdUser(snapshot, arg);
+            return parseNationIdUser(snapshot, arg, throwError);
         }
-        if (arg.toLowerCase().startsWith("nation:")) arg = arg.substring(7);
+        boolean checkUser = true;
+        if (arg.toLowerCase().startsWith("nation:")) {
+            arg = arg.substring(7);
+            checkUser = false;
+        }
+        if (arg.toLowerCase().startsWith("leader:")) {
+            arg = arg.substring(7);
+            DBNation nation = snapshot.getNationByLeader(arg);
+            if (nation != null) return nation.getId();
+            if (MathMan.isInteger(arg)) {
+                Long id = Long.parseLong(arg);
+                nation = snapshot.getNationById(id.intValue());
+            }
+            if (throwError) {
+                throw new IllegalArgumentException("No registered nation found by leader: `" + arg + "`");
+            }
+            return null;
+        }
         if (arg.contains("/nation/id=") || arg.contains("politicsandwar.com/nation/war/declare/id=") || arg.contains("politicsandwar.com/nation/espionage/eid=")) {
             String[] split = arg.split("=");
             if (split.length == 2) {
@@ -924,6 +969,9 @@ public class DiscordUtil {
             if (MathMan.isInteger(arg)) {
                 return Integer.parseInt(arg);
             }
+            if (throwError) {
+                throw new IllegalArgumentException("Invalid nation id: `" + arg + "`");
+            }
             return null;
         }
         if (arg.charAt(0) == '@') {
@@ -931,19 +979,30 @@ public class DiscordUtil {
             if (idStr.charAt(0) == '!') idStr = idStr.substring(1);
             if (MathMan.isInteger(idStr)) {
                 long discordId = Long.parseLong(idStr);
-                PNWUser user = Locutus.imp().getDiscordDB().getUserFromDiscordId(discordId);
-                if (user != null) {
-                    return user.getNationId();
+                PNWUser dbUser = Locutus.imp().getDiscordDB().getUserFromDiscordId(discordId);
+                if (dbUser != null) {
+                    return dbUser.getNationId();
+                }
+                if (throwError) {
+                    User user = Locutus.imp().getDiscordApi().getUserById(discordId);
+                    if (user != null) {
+                        throw new IllegalArgumentException("User: `" + user + "` is not registered to a nation. See: " + CM.register.cmd.toSlashMention());
+                    }
+                    throw new IllegalArgumentException("No registered user found by id: `" + discordId + "` (are you sure they are registered?)");
                 }
             }
-            PNWUser user = Locutus.imp().getDiscordDB().getUser(null, arg, arg);
-            if (user != null) {
-                return user.getNationId();
+            PNWUser dbUser = Locutus.imp().getDiscordDB().getUser(null, arg, arg);
+            if (dbUser != null) {
+                return dbUser.getNationId();
             }
             List<User> discUsers = Locutus.imp().getDiscordApi().getUsersByName(arg, true);
             if (discUsers != null && !discUsers.isEmpty()) {
-                DBNation nation = snapshot.getNationByUser(discUsers.get(0));
+                User user = discUsers.get(0);
+                DBNation nation = snapshot.getNationByUser(user);
                 if (nation != null) return nation.getId();
+                if (throwError) {
+                    throw new IllegalArgumentException("User: `" + user + "` is not registered to a nation. See: " + CM.register.cmd.toSlashMention());
+                }
             }
             return null;
         }
@@ -958,6 +1017,18 @@ public class DiscordUtil {
             if (nation != null) {
                 return (int) nation.getId();
             }
+            if (throwError) {
+                if (id > Integer.MAX_VALUE) {
+                    User user = Locutus.imp().getDiscordApi().getUserById(id);
+                    if (user != null) {
+                        throw new IllegalArgumentException("User: `" + user + "` is not registered to a nation. See: " + CM.register.cmd.toSlashMention());
+                    }
+                    throw new IllegalArgumentException("No registered user found by id: `" + id + "` (are you sure they are registered?)");
+                } else {
+                    throw new IllegalArgumentException("No registered nation found by id: `" + id + "` (did they delete?. See also `" + CM.admin.sync.syncNations.cmd.nations(arg) + "`)");
+                }
+            }
+            return null;
         }
         if (arg.startsWith("=")) {
             if (arg.contains("=HYPERLINK") && arg.contains("nation/id=")) {
@@ -967,6 +1038,10 @@ public class DiscordUtil {
                 arg = m.group(1);
                 return Integer.parseInt(arg);
             }
+            if (throwError) {
+                throw new IllegalArgumentException("Invalid formula: `" + arg + "`");
+            }
+            return null;
         }
         DBNation nation = snapshot.getNationByNameOrLeader(arg);
         if (nation != null) {
@@ -976,13 +1051,18 @@ public class DiscordUtil {
         if (user != null) {
             return user.getNationId();
         }
-        String regex = "([a-zA-Z0-9_.]{2,32})";
-        if (arg.matches(regex)) {
+        if (checkUser && arg.matches("([a-zA-Z0-9_.]{2,32})")) {
             List<User> discordUsers = Locutus.imp().getDiscordApi().getUsersByName(arg, true);
             if (discordUsers != null && !discordUsers.isEmpty()) {
                 nation = snapshot.getNationByUser(discordUsers.get(0));
                 if (nation != null) return nation.getId();
             }
+            if (throwError) {
+                throw new IllegalArgumentException("No registered nation or discord user: `" + arg + "`");
+            }
+        }
+        if (throwError) {
+            throw new IllegalArgumentException("Invalid nation syntax: `" + arg + "`");
         }
         return null;
     }
@@ -1012,7 +1092,7 @@ public class DiscordUtil {
         if (user != null) {
             return user.getIdLong();
         }
-        DBNation nation = parseNation(arg);
+        DBNation nation = parseNation(arg, false);
         if (nation != null) {
             return nation.getUserId();
         }
@@ -1032,7 +1112,7 @@ public class DiscordUtil {
         if (MathMan.isInteger(arg)) {
             return Locutus.imp().getDiscordApi().getUserById(Long.parseLong(arg));
         }
-        DBNation nation = parseNation(arg);
+        DBNation nation = parseNation(arg, false);
         if (nation != null) {
             return nation.getUser();
         }
