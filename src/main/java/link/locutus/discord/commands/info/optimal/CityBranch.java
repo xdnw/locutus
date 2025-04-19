@@ -33,12 +33,11 @@ public class CityBranch implements BiConsumer<CityNode, PriorityQueue<CityNode>>
             goal = f -> f.getFreeSlots() <= 0;
         }
 
-        Function<CityNode, Double> valueFunction2 = valueFunction::apply;
-        Function<CityNode, Boolean> finalGoal = goal;
-        Function<CityNode, Boolean> goal2 = finalGoal::apply;
+        // todo test TObjectPriorityQueue trove
+        // todo test eclipse collection
 
         PriorityQueue<CityNode> queue = new ObjectHeapPriorityQueue<CityNode>(500000,
-                (o1, o2) -> Double.compare(valueFunction2.apply(o2), valueFunction2.apply(o1)));
+                (o1, o2) -> Double.compare(valueFunction.apply(o2), valueFunction.apply(o1)));
 
         CityNode init = origin.create();
         origin.setMaxIndex(buildings.length);
@@ -46,7 +45,7 @@ public class CityBranch implements BiConsumer<CityNode, PriorityQueue<CityNode>>
         Function<Double, Function<CityNode, Double>> valueCompletionFunction;
 
         valueCompletionFunction = factor -> (Function<CityNode, Double>) entry -> {
-            Double parentValue = valueFunction2.apply(entry);
+            Double parentValue = valueFunction.apply(entry);
             int imps = entry.getNumBuildings();
             if (factor <= 1) {
                 parentValue = (parentValue * imps) * factor + (parentValue * (1 - factor));
@@ -61,7 +60,7 @@ public class CityBranch implements BiConsumer<CityNode, PriorityQueue<CityNode>>
             throw new IllegalArgumentException("The city infrastructure (" + MathMan.format(init.getInfra()) + ") is too low for the required buildings (required infra: " + MathMan.format(init.getRequiredInfra()) + ")");
         }
 
-        CityNode optimized = BFSUtil.search(goal2, valueFunction2, valueCompletionFunction, this, this, init, queue, timeout);
+        CityNode optimized = BFSUtil.search(goal, valueFunction, valueCompletionFunction, this, this, init, queue, timeout);
         return optimized;
     }
 
