@@ -6,6 +6,7 @@ import it.unimi.dsi.fastutil.PriorityQueue;
 import it.unimi.dsi.fastutil.objects.ObjectArrayFIFOQueue;
 import it.unimi.dsi.fastutil.objects.ObjectHeapPriorityQueue;
 import link.locutus.discord.db.entities.CityNode;
+import link.locutus.discord.util.MathMan;
 
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -107,7 +108,7 @@ public class BFSUtil {
         }
 
         long diff = System.currentTimeMillis() - originalStart;
-        Logg.text("BFS searched " + i + " options in " + diff + "ms for a rate of " + (i * 1000d / diff) + " per second");
+        Logg.text("BFS searched " + i + " options in " + diff + "ms for a rate of " + MathMan.format(i * 1000d / diff) + " per second");
         return max;
     }
 }
