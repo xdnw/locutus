@@ -1,5 +1,6 @@
 package link.locutus.discord.util.search;
 
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import it.unimi.dsi.fastutil.PriorityQueue;
@@ -10,22 +11,37 @@ import link.locutus.discord.util.MathMan;
 
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.function.*;
 
-public class BFSUtil {
-    public static <T> T search(Function<T, Boolean> goal, Function<T, Double> valueFunction, Function<Double, Function<T, Double>> valueCompletionFunction, BiConsumer<T, PriorityQueue<T>> branch, Consumer<T> garbageLastMax, T origin, long timeout) {
-        ObjectArrayFIFOQueue<T> queue = new ObjectArrayFIFOQueue<>(500000) {
-            @Override
-            public void enqueue(T x) {
-                super.enqueue(x);
-            }
-        };
-        return search(goal, valueFunction, valueCompletionFunction, branch, garbageLastMax, origin, queue, timeout);
+public class BFSUtil<T> {
+
+    private PriorityQueue<T> originQueue;
+    private final Predicate<T> goal;
+    private final ToDoubleFunction<T> valueFunction;
+    private final Function<Double, Function<T, Double>> valueCompletionFunction;
+    private final BiConsumer<T, PriorityQueue<T>> branch;
+    private final Consumer<T> garbageLastMax;
+    private final T origin;
+    private final long timeout;
+
+    private static final long MAX_TIMEOUT = TimeUnit.MINUTES.toMillis(1);
+
+    public BFSUtil(Predicate<T> goal, ToDoubleFunction<T> valueFunction,
+                   Function<Double, Function<T, Double>> valueCompletionFunction,
+                   BiConsumer<T, PriorityQueue<T>> branch, Consumer<T> garbageLastMax,
+                   T origin, final PriorityQueue<T> queue, long timeout) {
+        this.originQueue = queue;
+        this.goal = goal;
+        this.valueFunction = valueFunction;
+        this.valueCompletionFunction = valueCompletionFunction;
+        this.branch = branch;
+        this.garbageLastMax = garbageLastMax;
+        this.origin = origin;
+        this.timeout = timeout;
     }
 
-    public static <T, G> T search(Function<T, Boolean> goal, Function<T, Double> valueFunction, Function<Double, Function<T, Double>> valueCompletionFunction, BiConsumer<T, PriorityQueue<T>> branch, Consumer<T> garbageLastMax, T origin, PriorityQueue<T> queue, long timeout) {
+    public T search() {
+        PriorityQueue<T> queue = originQueue;
         queue.enqueue(origin);
 
         T max = null;
@@ -33,7 +49,6 @@ public class BFSUtil {
 
         long originalStart = System.currentTimeMillis();
         long start = originalStart;
-        long maxTimeout = TimeUnit.MINUTES.toMillis(1);
 
         double completeFactor = 0;
 
@@ -44,9 +59,6 @@ public class BFSUtil {
         int i = 0;
         while (!queue.isEmpty()) {
             T next = queue.dequeue();
-            if (next == null) {
-                break;
-            }
             if ((i++ & 0xFFFF) == 0) {
                 long diff = System.currentTimeMillis() - start;
                 if (diff > timeout) {
@@ -62,7 +74,6 @@ public class BFSUtil {
                             completeFactor += 0.2;
                         }
                         completeValueFuncFinal[0] = valueCompletionFunction.apply(completeFactor);
-
                         if (isNew || completeFactor >= 0.1) {
                             PriorityQueue<T> oldQueue = queue;
                             queue = new ObjectHeapPriorityQueue<T>(500000,
@@ -78,15 +89,15 @@ public class BFSUtil {
                         }
 
                         start = System.currentTimeMillis() - timeout + delay;
-                    } else if (System.currentTimeMillis() - start > maxTimeout) {
+                    } else if (System.currentTimeMillis() - start > MAX_TIMEOUT) {
                         break;
                     }
                 }
             }
 
-            Boolean result = goal.apply(next);
-            if (result == Boolean.TRUE) {
-                Double value = valueFunction.apply(next);
+            boolean result = goal.test(next);
+            if (result) {
+                double value = valueFunction.applyAsDouble(next);
                 if (value > maxValue) {
                     T lastMax = max;
                     max = next;
@@ -98,9 +109,6 @@ public class BFSUtil {
                 } else {
                     garbageLastMax.accept(next);
                 }
-                continue;
-            } else if (result == null) {
-                garbageLastMax.accept(next);
                 continue;
             }
 

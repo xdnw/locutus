@@ -16,10 +16,7 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.search.BFSUtil;
 
 import java.util.*;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.function.*;
 
 public class CityBranch implements BiConsumer<CityNode, PriorityQueue<CityNode>>, Consumer<CityNode> {
     private final Building[] buildings;
@@ -28,7 +25,7 @@ public class CityBranch implements BiConsumer<CityNode, PriorityQueue<CityNode>>
 
     private final CityNode.CachedCity origin;
 
-    public CityNode toOptimal(Function<CityNode, Double> valueFunction, Function<CityNode, Boolean> goal, long timeout) {
+    public CityNode toOptimal(ToDoubleFunction<CityNode> valueFunction, Predicate<CityNode> goal, long timeout) {
         if (goal == null) {
             goal = f -> f.getFreeSlots() <= 0;
         }
@@ -36,8 +33,8 @@ public class CityBranch implements BiConsumer<CityNode, PriorityQueue<CityNode>>
         // todo test TObjectPriorityQueue trove
         // todo test eclipse collection
 
-        PriorityQueue<CityNode> queue = new ObjectHeapPriorityQueue<CityNode>(500000,
-                (o1, o2) -> Double.compare(valueFunction.apply(o2), valueFunction.apply(o1)));
+        ObjectHeapPriorityQueue<CityNode> queue = new ObjectHeapPriorityQueue<CityNode>(500000,
+                (o1, o2) -> Double.compare(valueFunction.applyAsDouble(o2), valueFunction.applyAsDouble(o1)));
 
         CityNode init = origin.create();
         origin.setMaxIndex(buildings.length);
@@ -45,7 +42,7 @@ public class CityBranch implements BiConsumer<CityNode, PriorityQueue<CityNode>>
         Function<Double, Function<CityNode, Double>> valueCompletionFunction;
 
         valueCompletionFunction = factor -> (Function<CityNode, Double>) entry -> {
-            Double parentValue = valueFunction.apply(entry);
+            double parentValue = valueFunction.applyAsDouble(entry);
             int imps = entry.getNumBuildings();
             if (factor <= 1) {
                 parentValue = (parentValue * imps) * factor + (parentValue * (1 - factor));
@@ -60,7 +57,7 @@ public class CityBranch implements BiConsumer<CityNode, PriorityQueue<CityNode>>
             throw new IllegalArgumentException("The city infrastructure (" + MathMan.format(init.getInfra()) + ") is too low for the required buildings (required infra: " + MathMan.format(init.getRequiredInfra()) + ")");
         }
 
-        CityNode optimized = BFSUtil.search(goal, valueFunction, valueCompletionFunction, this, this, init, queue, timeout);
+        CityNode optimized = new BFSUtil<>(goal, valueFunction, valueCompletionFunction, this, this, init, queue, timeout).search();
         return optimized;
     }
 

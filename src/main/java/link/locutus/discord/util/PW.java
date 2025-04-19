@@ -312,7 +312,7 @@ public final class PW {
 
             double newPlayerBonus = 1 + Math.max(1 - (numCities - 1) * 0.05, 0);
 
-            double income = Math.max(0, (((commerce * 0.02) * 0.725) + 0.725) * city.calcPopulation(hasProject) * newPlayerBonus) * grossModifier;;
+            double income = Math.max(0, (((commerce * 0.02) * 0.725) + 0.725) * city.calcPopulation(hasProject) * newPlayerBonus) * grossModifier;
 
             profit += income;
 

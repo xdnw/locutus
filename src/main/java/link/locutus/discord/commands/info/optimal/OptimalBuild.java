@@ -36,6 +36,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.ToDoubleFunction;
 
 public class OptimalBuild extends Command {
     public OptimalBuild() {
@@ -338,7 +339,7 @@ public class OptimalBuild extends Command {
 
         CompletableFuture<IMessageBuilder> future = io.send("Please wait...");
 
-        Function<CityNode, Double> valueFunc;
+        ToDoubleFunction<CityNode> valueFunc;
         if (taxes != null) {
             double[] buffer = new double[ResourceType.values.length];
             double moneyFactor = (100 - taxes.money) / 100d;
@@ -359,7 +360,7 @@ public class OptimalBuild extends Command {
         }
 
 //        if (infraLow != null) {
-//            Function<CityNode, Double> parent = valueFunc;
+//            ToDoubleFunction<CityNode> parent = valueFunc;
 //            Double finalInfraLow = infraLow;
 //            Double popLowFinal = popLow;
 //            valueFunc = city -> {
@@ -380,25 +381,25 @@ public class OptimalBuild extends Command {
         if (popLimit != null) {
             Double finalpopLimit = popLimit;
 
-            Function<CityNode, Double> parent = valueFunc;
+            ToDoubleFunction<CityNode> parent = valueFunc;
             valueFunc = city -> {
                 if (city.calcPopulation(hasProject) < finalpopLimit) return Double.NEGATIVE_INFINITY;
-                return parent.apply(city);
+                return parent.applyAsDouble(city);
             };
         }
 
         if (popLow != null) {
             Double finalpopLimit = popLow;
 
-            Function<CityNode, Double> parent = valueFunc;
+            ToDoubleFunction<CityNode> parent = valueFunc;
             valueFunc = city -> {
                 if (city.calcPopulation(hasProject) < finalpopLimit) return Double.NEGATIVE_INFINITY;
-                return parent.apply(city);
+                return parent.applyAsDouble(city);
             };
         }
 //
 //        if (!manu) {
-//            Function<CityNode, Double> parent = valueFunc;
+//            ToDoubleFunction<CityNode> parent = valueFunc;
 //            valueFunc = city -> {
 //                if (city.getBuilding(Buildings.MUNITIONS_FACTORY) > city.getBuilding(Buildings.LEAD_MINE))
 //                    return Double.NEGATIVE_INFINITY;
@@ -411,7 +412,7 @@ public class OptimalBuild extends Command {
 //            };
 //        }
 
-        Function<CityNode, Boolean> goal = javaCity -> javaCity.getFreeSlots() <= 0;
+        Predicate<CityNode> goal = javaCity -> javaCity.getFreeSlots() <= 0;
 
         if (diseaseLimit != null) {
             Double finalDiseaseLimit = diseaseLimit;
@@ -420,7 +421,7 @@ public class OptimalBuild extends Command {
             double recyclingPct = (-Buildings.RECYCLING_CENTER.pollution(hasProject)) * 0.05;
             double subwayPct = (-Buildings.SUBWAY.pollution(hasProject)) * 0.05;
 
-            Function<CityNode, Double> parent = valueFunc;
+            ToDoubleFunction<CityNode> parent = valueFunc;
             valueFunc = city -> {
                 Double disease = city.calcDisease(hasProject);
                 if (disease > finalDiseaseLimit) {
@@ -441,7 +442,7 @@ public class OptimalBuild extends Command {
                         if (amt > 0) {
                             pollutionDisease = Math.max(0, pollutionDisease - recyclingPct * amt);
                             double reduced = pollutionDisease + diseaseInfra;
-                            if (reduced <= finalDiseaseLimit) return parent.apply(city);
+                            if (reduced <= finalDiseaseLimit) return parent.applyAsDouble(city);
                             remainingSlots -= amt;
                             if (remainingSlots <= 0) return Double.NEGATIVE_INFINITY;
                         }
@@ -452,7 +453,7 @@ public class OptimalBuild extends Command {
                         if (amt > 0) {
                             diseaseInfra -= hospitalPct * amt;
                             double reduced = pollutionDisease + diseaseInfra;
-                            if (reduced <= finalDiseaseLimit) return parent.apply(city);
+                            if (reduced <= finalDiseaseLimit) return parent.applyAsDouble(city);
                             remainingSlots -= amt;
                             if (remainingSlots <= 0) return Double.NEGATIVE_INFINITY;
                         }
@@ -463,13 +464,13 @@ public class OptimalBuild extends Command {
                         if (amt > 0) {
                             pollutionDisease = Math.max(0, pollutionDisease - subwayPct * amt);
                             double reduced = pollutionDisease + diseaseInfra;
-                            if (reduced <= finalDiseaseLimit) return parent.apply(city);
+                            if (reduced <= finalDiseaseLimit) return parent.applyAsDouble(city);
                         }
                     }
 
                     return Double.NEGATIVE_INFINITY;
                 }
-                return parent.apply(city);
+                return parent.applyAsDouble(city);
             };
         }
 
@@ -482,7 +483,7 @@ public class OptimalBuild extends Command {
             int policeIndex = Buildings.POLICE_STATION.ordinal();
             int diff = maxIndex - policeIndex;
 
-            Function<CityNode, Double> parent = valueFunc;
+            ToDoubleFunction<CityNode> parent = valueFunc;
             valueFunc = city -> {
                 double crime = city.calcCrime(hasProject);
 
@@ -499,12 +500,12 @@ public class OptimalBuild extends Command {
                         return Double.NEGATIVE_INFINITY;
                     }
                 }
-                return parent.apply(city);
+                return parent.applyAsDouble(city);
             };
         }
 
         if (positiceCash) {
-            Function<CityNode, Boolean> parentGoal = goal;
+            Predicate<CityNode> parentGoal = goal;
             double[] profitBuffer = new double[ResourceType.values.length];
             double upkeepCash = 0;
             for (MilitaryUnit unit : MilitaryUnit.values) {
@@ -518,7 +519,7 @@ public class OptimalBuild extends Command {
             }
             double finalUpkeepCash = upkeepCash;
             goal = city -> {
-                if (parentGoal.apply(city)) {
+                if (parentGoal.test(city)) {
                     Arrays.fill(profitBuffer, 0);
                     city.profit(profitBuffer);
                     profitBuffer[0] += 500000d / numCities;
@@ -533,8 +534,8 @@ public class OptimalBuild extends Command {
         if (days == null) {
             optimized = origin.optimalBuild(continent, numCities, valueFunc, goal, hasProject, timeout, rads, !manu, finalMe.getGrossModifier(), infraLow);
         } else {
-            Function<CityNode, Double> finalValueFunc = valueFunc;
-            Function<Function<CityNode, Double>, Function<CityNode, Double>> modifyValueFunc = f -> finalValueFunc;
+            ToDoubleFunction<CityNode> finalValueFunc = valueFunc;
+            Function<ToDoubleFunction<CityNode>, ToDoubleFunction<CityNode>> modifyValueFunc = f -> finalValueFunc;
             optimized = origin.roiBuild(continent, rads, numCities, hasProject, finalMe.getGrossModifier(), days, timeout, !manu, infraLow, modifyValueFunc, goal);
         }
         if (optimized == null) {

@@ -37,6 +37,7 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.ToDoubleFunction;
 
 public class JavaCity implements ICity {
     private final byte[] buildings;
@@ -538,7 +539,7 @@ public class JavaCity implements ICity {
         return roiBuild(continent, rads, numCities, hasProject, grossModifier, days, timeout, selfSufficient, infraLow, f -> f, null);
     }
 
-    public JavaCity roiBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, double grossModifier, int days, long timeout, boolean selfSufficient, Double infraLow, Function<Function<CityNode, Double>, Function<CityNode, Double>> modifyValueFunc, Function<CityNode, Boolean> goal) {
+    public JavaCity roiBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, double grossModifier, int days, long timeout, boolean selfSufficient, Double infraLow, Function<ToDoubleFunction<CityNode>, ToDoubleFunction<CityNode>> modifyValueFunc, Predicate<CityNode> goal) {
         JavaCity origin = new JavaCity(this);
         origin.setAge(this.getAgeDays() + days / 2);
 
@@ -557,7 +558,7 @@ public class JavaCity implements ICity {
         double profitPerImp = baseProfitNonTax / impOverZero;
 
         Predicate<Project> finalHasProject = Projects.optimize(hasProject);
-        Function<CityNode, Double> valueFunction = javaCity -> {
+        ToDoubleFunction<CityNode> valueFunction = javaCity -> {
             double newProfit = javaCity.getRevenueConverted();
             double cost = javaCity.calculateCostConverted(origin);
             return (newProfit * days - cost) / javaCity.getNumBuildings();
@@ -608,7 +609,7 @@ public class JavaCity implements ICity {
         return this;
     }
 
-    public JavaCity optimalBuild(Continent continent, int numCities, Function<CityNode, Double> valueFunction, Function<CityNode, Boolean> goal, Predicate<Project> hasProject, long timeout, double rads, boolean selfSufficient, double grossModifier, Double infraLow) {
+    public JavaCity optimalBuild(Continent continent, int numCities, ToDoubleFunction<CityNode> valueFunction, Predicate<CityNode> goal, Predicate<Project> hasProject, long timeout, double rads, boolean selfSufficient, double grossModifier, Double infraLow) {
         JavaCity copy = new JavaCity(this);
         CityNode.CachedCity cached = new CityNode.CachedCity(this, continent, selfSufficient, hasProject, numCities, grossModifier, rads, infraLow);
         CityBranch searchServices = new CityBranch(cached);
