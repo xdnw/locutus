@@ -10,13 +10,13 @@ import java.util.Map;
 
 public class FlatCodedStringMap implements ICodedStringMap {
     private final List<String> list = new ObjectArrayList<>();
-    private Long2IntOpenHashMap hashes = new Long2IntOpenHashMap();
+    private final Long2IntOpenHashMap hashes = new Long2IntOpenHashMap();
 
     @Override
     public int insert(String value) {
         long hash = StringMan.hash(value);
-        Integer index = hashes.get(hash);
-        if (index != null) {
+        int index = hashes.getOrDefault(hash, -1);
+        if (index == -1) {
             return index;
         }
         int size = list.size();
