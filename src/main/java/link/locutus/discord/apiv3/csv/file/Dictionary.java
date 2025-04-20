@@ -1,12 +1,7 @@
 package link.locutus.discord.apiv3.csv.file;
 
-import it.unimi.dsi.fastutil.chars.Char2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.io.FastBufferedInputStream;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.util.IOUtil;
 import link.locutus.discord.util.StringMan;
 import net.jpountz.lz4.LZ4BlockInputStream;
@@ -17,20 +12,18 @@ import java.util.*;
 
 public class Dictionary {
     private final File file;
-    private Map<Long, Integer> reverseHash;
     private ICodedStringMap compressed;
     private volatile boolean loaded;
     private boolean saved;
 
     public Dictionary(File folder) {
-        this(folder, new GlobalSubstringDAG());
+        this(folder, new FlatCodedStringMap());
     }
 
     public Dictionary(File folder, ICodedStringMap map) {
         this.file = new File(folder, "dict.bin");
         this.compressed = map;
         this.saved = true;
-        this.reverseHash = new Long2IntOpenHashMap();
     }
 
     public Dictionary load() {
@@ -43,14 +36,10 @@ public class Dictionary {
                     new FastBufferedInputStream(new FileInputStream(file), Character.MAX_VALUE)))) {
 
                 int lines = IOUtil.readVarInt(in);
-                int i = 0;
                 for (int line = 0; line < lines; line++) {
                     String value = in.readUTF();
-                    long hash = StringMan.hash(value);
-                    if (this.reverseHash.putIfAbsent(hash, i) == null) {
-                        this.compressed.insert(value);
-                        i++;
-                    }
+                    if (value.isEmpty()) continue;
+                    this.compressed.insert(value);
                 }
                 this.compressed.finishLoad();
             } catch (EOFException e) {
@@ -63,18 +52,18 @@ public class Dictionary {
     }
 
     public String get(int value) {
+        if (value == -1) return "";
         return this.compressed.get(value);
     }
 
     public synchronized int put(String value) {
-        long hash = StringMan.hash(value);
-        Integer index = this.reverseHash.get(hash);
-        if (index != null) {
-            return index;
+        if (value.isEmpty()) return -1;
+        int index = this.compressed.size();
+        this.compressed.insert(value);
+        int newIndex = this.compressed.size();
+        if (newIndex != index) {
+            this.saved = false;
         }
-        int newIndex = this.compressed.insert(value);
-        this.reverseHash.put(hash, newIndex);
-        this.saved = false;
         return newIndex;
     }
 
