@@ -1583,7 +1583,15 @@ public class BankCommands {
         }
         sheet.setHeader(header);
 
+        CompletableFuture<IMessageBuilder> msgFuture = (io.sendMessage("Please wait... "));
+        long[] start = {System.currentTimeMillis()};
+
         Function<DBNation, List<String>> addRowTask = nation -> {
+            if (start[0] + 10000 < System.currentTimeMillis()) {
+                start[0] = System.currentTimeMillis();
+                io.updateOptionally(msgFuture, "Updating build for " + nation.getMarkdownUrl());
+            }
+
             double[] revenue = nation.getRevenue();
 
             double disease = 0;
@@ -2174,8 +2182,9 @@ public class BankCommands {
             }
         }
         if (!forceErrors.isEmpty() && !bypassChecks) {
-            String title = forceErrors.size() + " **ERRORS**!";
-            String body = StringMan.join(forceErrors, "\n");
+            String title = forceErrors.size() + " **ERRORS**. Please confirm transfer";
+            String body = StringMan.join(forceErrors, "\n") + "\n\n" +
+                    "Press `Confirm` to attempt to send anyway";
             channel.create().confirmation(title, body, command, "bypassChecks").send();
             return null;
         }

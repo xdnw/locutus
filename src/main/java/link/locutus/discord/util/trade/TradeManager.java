@@ -267,7 +267,7 @@ public class TradeManager {
         Map<ResourceType, Integer> initDefaults = new EnumMap<>(ResourceType.class);
         initDefaults.put(ResourceType.MONEY, 1);
         initDefaults.put(ResourceType.CREDITS, 50_000_000);
-        if (Settings.INSTANCE.TEST) {
+        if (Settings.INSTANCE.TEST && false) {
             initDefaults.put(ResourceType.FOOD, 10);
             initDefaults.put(ResourceType.COAL, 25);
             initDefaults.put(ResourceType.OIL, 25);

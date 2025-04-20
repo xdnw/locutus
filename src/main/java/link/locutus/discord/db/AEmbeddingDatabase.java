@@ -520,9 +520,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
 
     @Override
     public long getHash(String data) {
-        BigInteger value = StringMan.hash_fnv1a_64(data.getBytes());
-        value = value.add(BigInteger.valueOf(Long.MIN_VALUE));
-        return value.longValueExact();
+        return StringMan.hash(data);
     }
 
     @Override

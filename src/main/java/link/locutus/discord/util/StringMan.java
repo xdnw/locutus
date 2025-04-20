@@ -1397,23 +1397,33 @@ public class StringMan {
 
         return hash;
     }
+    private static final long FNV_OFFSET_BASIS_64 = 0xcbf29ce484222325L;
+    private static final long FNV_PRIME_64 = 0x100000001b3L;
 
     public static long hash(String input) {
-        BigInteger value = StringMan.hash_fnv1a_64(input.getBytes());
-        value = value.add(BigInteger.valueOf(Long.MIN_VALUE));
-        return value.longValueExact();
-    }
-
-    public static BigInteger hash_fnv1a_64(byte[] data) {
-        BigInteger hash = INIT64;
-
-        for (byte b : data) {
-            hash = hash.xor(BigInteger.valueOf((int) b & 0xff));
-            hash = hash.multiply(PRIME64).mod(MOD64);
+        long hash = FNV_OFFSET_BASIS_64;
+        for (byte b : input.getBytes()) {
+            hash ^= (b & 0xff);
+            hash *= FNV_PRIME_64;
         }
-
-        return hash;
+        return hash + Long.MIN_VALUE;
     }
+//    private static long hash2(String input) {
+//        BigInteger value = StringMan.hash_fnv1a_64(input.getBytes());
+//        value = value.add(BigInteger.valueOf(Long.MIN_VALUE));
+//        return value.longValueExact();
+//    }
+//
+//    public static BigInteger hash_fnv1a_64(byte[] data) {
+//        BigInteger hash = INIT64;
+//
+//        for (byte b : data) {
+//            hash = hash.xor(BigInteger.valueOf((int) b & 0xff));
+//            hash = hash.multiply(PRIME64).mod(MOD64);
+//        }
+//
+//        return hash;
+//    }
 
     public static String classNameToSimple(String className) {
         return className.toString().replaceAll("[a-z_A-Z0-9.]+\\.([a-z_A-Z0-9]+)", "$1").replaceAll("[a-z_A-Z0-9]+\\$([a-z_A-Z0-9]+)", "$1");

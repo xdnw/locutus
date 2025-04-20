@@ -138,7 +138,6 @@ public class OptimalBuild extends Command {
         String mmr = null;
 
         GuildDB db = guild == null ? null : Locutus.imp().getGuildDB(guild);
-        Guild root = Locutus.imp().getServer();
         long timeout = io instanceof StringMessageIO ? 1000 : db != null && db.isWhitelisted() && (Roles.ADMIN.hasOnRoot(author) || db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS)) ? 20000 : 9000;
 
         Double crimeLimit = null;
