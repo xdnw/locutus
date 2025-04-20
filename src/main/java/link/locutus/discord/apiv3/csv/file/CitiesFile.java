@@ -52,7 +52,7 @@ public class CitiesFile extends DataFile<DBCity, CityHeader, CityHeaderReader> {
 
         Map<Integer, int[]> offsetsArr = new Int2ObjectOpenHashMap<>();
         for (Map.Entry<Integer, IntArrayList> entry : offsets.entrySet()) {
-            int[] arr = entry.getValue().toArray((int[]) null);
+            int[] arr = entry.getValue().toArray(new int[0]);
             offsetsArr.put(entry.getKey(), arr);
         }
         return offsetsArr;
