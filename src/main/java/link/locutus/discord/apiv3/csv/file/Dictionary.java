@@ -28,13 +28,15 @@ public class Dictionary {
 
     public Dictionary load() {
         if (loaded) return this;
-
+        if (!file.exists()) {
+            loaded = true;
+            return this;
+        }
         synchronized (this) {
             if (loaded) return this;
             loaded = true;
             try (DataInputStream in = new DataInputStream(new LZ4BlockInputStream(
                     new FastBufferedInputStream(new FileInputStream(file), Character.MAX_VALUE)))) {
-
                 int lines = IOUtil.readVarInt(in);
                 for (int line = 0; line < lines; line++) {
                     String value = in.readUTF();
