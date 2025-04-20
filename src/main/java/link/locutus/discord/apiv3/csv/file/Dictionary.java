@@ -60,13 +60,13 @@ public class Dictionary {
 
     public synchronized int put(String value) {
         if (value.isEmpty()) return -1;
-        int index = this.compressed.size();
-        this.compressed.insert(value);
-        int newIndex = this.compressed.size();
-        if (newIndex != index) {
+        int oldSize = this.compressed.size();
+        int index = this.compressed.insert(value);
+        int newSize = this.compressed.size();
+        if (oldSize != newSize) {
             this.saved = false;
         }
-        return newIndex;
+        return index;
     }
 
     public synchronized void save() {

@@ -10,15 +10,19 @@ import java.util.Map;
 
 public class FlatCodedStringMap implements ICodedStringMap {
     private final List<String> list = new ObjectArrayList<>();
-    private LongOpenHashSet hashes = new LongOpenHashSet();
+    private Long2IntOpenHashMap hashes = new Long2IntOpenHashMap();
 
     @Override
-    public boolean insert(String value) {
+    public int insert(String value) {
         long hash = StringMan.hash(value);
-        if (hashes.add(hash)) {
-            list.add(value);
+        Integer index = hashes.get(hash);
+        if (index != null) {
+            return index;
         }
-        return false;
+        int size = list.size();
+        hashes.put(hash, size);
+        list.add(value);
+        return size;
     }
 
     @Override
