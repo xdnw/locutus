@@ -16,7 +16,7 @@ public class FlatCodedStringMap implements ICodedStringMap {
     public int insert(String value) {
         long hash = StringMan.hash(value);
         int index = hashes.getOrDefault(hash, -1);
-        if (index == -1) {
+        if (index != -1) {
             return index;
         }
         int size = list.size();
