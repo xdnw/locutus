@@ -2953,11 +2953,10 @@ public class BankCommands {
             }
         }
 
-        String title = "Addbalance";
-        StringBuilder body = new StringBuilder("Total: \n`" + ResourceType.toString(total) + "`\nWorth: ~$" + MathMan.format(ResourceType.convertedTotal(total)));
-        String emoji = "Confirm";
-
         Map<ResourceType, Double> rates = new Object2DoubleLinkedOpenHashMap<>();
+
+        String title = "Addbalance";
+        StringBuilder body = new StringBuilder();
 
         Object lock = isMe && force ? OffshoreInstance.BANK_LOCK : new Object();
         synchronized (lock) {
@@ -3016,18 +3015,19 @@ public class BankCommands {
                     }
                 }
                 if (add) {
-                    if (isMe) {
-                        body.append("\n").append("**Resource Rates**:\n")
-                                .append("-# Resource amounts are multiplied by these values before converting based on weekly average price\n")
-                                .append("`" + ResourceType.toString(rates) + "`\n");
-                    }
-
                     total = ResourceType.add(total, amtAddArr);
                     toAddMap.put(nation, amtAddArr);
                 }
             }
 
             if (toAddMap.isEmpty()) return "No deposits need to be adjusted (" + nations.size() + " nations checked)";
+
+            body.append("Total: \n`" + ResourceType.toString(total) + "`\nWorth: ~$" + MathMan.format(ResourceType.convertedTotal(total)));
+            if (isMe) {
+                body.append("\n").append("**Resource Rates**:\n")
+                        .append("-# Resource amounts are multiplied by these values before converting based on weekly average price\n")
+                        .append("`" + ResourceType.toString(rates) + "`\n");
+            }
 
             body.append("**Total Conversion Amount:**\n")
                     .append("`" + ResourceType.toString(total) + "`\n");
@@ -3037,11 +3037,13 @@ public class BankCommands {
                     AddBalanceBuilder builder = db.addBalanceBuilder();
                     builder.add(me, total, note);
                     return builder.buildAndSend(me, true);
-                } else {
-                    channel.create().confirmation(title, body.toString(), command).send();
-                    return null;
                 }
             }
+        }
+
+        if (isMe) {
+            channel.create().confirmation(title, body.toString(), command).send();
+            return null;
         }
 
 
@@ -3052,7 +3054,7 @@ public class BankCommands {
         CM.deposits.addSheet cmd = CM.deposits.addSheet.cmd.sheet(txSheet.getSheet().getURL()).note(note).force(force ? "true" : null);
 
         channel.create().embed(title, body.toString())
-                .commandButton(cmd, emoji)
+                .commandButton(cmd, "confirm")
                 .send();
         return null;
     }
