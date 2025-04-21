@@ -1027,6 +1027,10 @@ public final class Locutus extends ListenerAdapter {
             MessageEmbed embed = !embeds.isEmpty() ? embeds.get(0) : null;
 
             InteractionHook hook = event.getHook();
+            boolean forceEphemeral = message != null && message.isEphemeral();
+            if (message != null && message.isEphemeral()) {
+                hook.setEphemeral(true);
+            }
             IMessageIO io = new DiscordHookIO(hook, event).setInteraction(true);
             IMessageIO ioToUse = io;
 
@@ -1066,7 +1070,7 @@ public final class Locutus extends ListenerAdapter {
                     String id = info.command;
                     if (!deferred && !id.contains("modal create")) {
                         deferred = true;
-                        if (info.behavior == CommandBehavior.EPHEMERAL) {
+                        if (forceEphemeral || info.behavior == CommandBehavior.EPHEMERAL) {
                             event.deferReply(true).queue();
                             hook.setEphemeral(true);
                         } else {
