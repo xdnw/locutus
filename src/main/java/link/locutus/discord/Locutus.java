@@ -1028,9 +1028,6 @@ public final class Locutus extends ListenerAdapter {
 
             InteractionHook hook = event.getHook();
             boolean forceEphemeral = message != null && message.isEphemeral();
-            if (message != null && message.isEphemeral()) {
-                hook.setEphemeral(true);
-            }
             IMessageIO io = new DiscordHookIO(hook, event).setInteraction(true);
             IMessageIO ioToUse = io;
 
