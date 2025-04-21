@@ -146,7 +146,7 @@ public class CityUpdateProcessor {
             String title = "MMR: " + nation.getNation() + " | " + nation.getAllianceName();
             StringBuilder body = new StringBuilder();
             body.append(nation.getNationUrlMarkup() + " | " + nation.getAllianceUrlMarkup() + "\n");
-            body.append("\n-# caller: " + StringMan.getString(reasons));
+            body.append("-# caller: " + StringMan.getString(reasons) + "\n");
 
             if (alliance != null) {
                 DBAlliance parent = alliance.getCachedParentOfThisOffshore();

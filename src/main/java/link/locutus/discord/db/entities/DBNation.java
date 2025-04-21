@@ -4470,11 +4470,12 @@ public abstract class DBNation implements NationOrAlliance {
             } else {
                 nationUrl = getNationUrlMarkup();
             }
-            String allianceUrl = getAllianceUrlMarkup();
-            response
-                    .append(nationUrl)
-                    .append(" | ")
-                    .append(allianceUrl);
+            response.append(nationUrl);
+            if (getAlliance_id() != 0) {
+                String allianceUrl = getAllianceUrlMarkup();
+                response.append(" | ").append(allianceUrl);
+                response.append("`#" + getAllianceRank(null) + "`");
+            }
 
             if (embed && getPositionEnum() == Rank.APPLICANT && data()._allianceId() != 0) response.append(" (applicant)");
 

@@ -1640,7 +1640,7 @@ public class GuildKey {
                 if (entry.getKey() == ResourceType.MONEY || entry.getKey() == ResourceType.CREDITS) {
                     throw new IllegalArgumentException("Cannot set conversion rate for money or credits");
                 }
-                if (entry.getValue() > 0 || entry.getValue() <= 1 || entry.getValue() < 0 || entry.getValue() > 100) {
+                if ((entry.getValue() > 0  && entry.getValue() <= 1) || entry.getValue() < 0 || entry.getValue() > 100) {
                     throw new IllegalArgumentException("Invalid value for " + entry.getKey() + ": " + entry.getValue() + ". Conversion is between 0 and 100");
                 }
             }

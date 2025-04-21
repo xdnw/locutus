@@ -99,6 +99,7 @@ public class NationUpdateProcessor {
         Map<Integer, Integer> membersByAA = new Int2IntOpenHashMap(); // only <7d non vm nations
         Map<Integer, Integer> activeMembersByAA = new Int2IntOpenHashMap();
         Map<Integer, Double> averageMilitarization = new Int2DoubleOpenHashMap();
+        Map<Integer, Double> totalCities = new Int2DoubleOpenHashMap();
 
         Set<Integer> online = new IntOpenHashSet();
         Set<Long> checkedUser = new LongOpenHashSet();
@@ -136,6 +137,7 @@ public class NationUpdateProcessor {
                     value = (previous.getAircraftPct() + previous.getTankPct() + previous.getSoldierPct()) / 3d;
                 }
                 averageMilitarization.put(aaId, averageMilitarization.getOrDefault(aaId, 0d) + value);
+                totalCities.put(aaId, totalCities.getOrDefault(aaId, 0d) + nation.getCities());
             }
         }
         Locutus.imp().getExecutor().submit(new Runnable() {
@@ -147,6 +149,7 @@ public class NationUpdateProcessor {
                     int active = activeMembersByAA.getOrDefault(aaId, 0);
                     if (members < 10 || active < 4) continue;
                     double avgMMR = averageMilitarization.getOrDefault(aaId, 0d) / (double) active;
+                    double avgCities = totalCities.getOrDefault(aaId, 0d) / (double) active;
 
                     int required = (int) Math.floor(Math.pow(members, 0.7) * 1.5);
                     if (active < required) {
@@ -163,10 +166,11 @@ public class NationUpdateProcessor {
                     DBAlliance alliance = Locutus.imp().getNationDB().getOrCreateAlliance(aaId);
                     String title = alliance.getName() + " is " + MathMan.format(100d * active / members) + "% online";
                     StringBuilder body = new StringBuilder();
-                    body.append(alliance.getMarkdownUrl()).append("\n");
+                    body.append(alliance.getMarkdownUrl() + " `#" + alliance.getRank() + "`").append("\n");
                     body.append("Members: " + members).append("\n");
                     body.append("Online: " + active).append("\n");
-                    body.append("Avg Military: " + MathMan.format(100 * avgMMR) + "%").append("\n");
+                    body.append("Avg. MMR: " + MathMan.format(100 * avgMMR) + "%").append("\n");
+                    body.append("Avg. City: " + MathMan.format(avgCities)).append("\n");
 
                     AlertUtil.forEachChannel(f -> true, GuildKey.ACTIVITY_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                         @Override
