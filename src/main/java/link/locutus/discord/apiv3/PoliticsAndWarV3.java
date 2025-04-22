@@ -332,11 +332,11 @@ public class PoliticsAndWarV3 {
             {
                 requestTracker.addRequest(queryUrlStub, this.url);
             }
-            try {
-                restTemplate.acceptHeaderRequestCallback(String.class);
-                HttpEntity<String> entity = httpEntity(graphQLRequest, pair.getKey(), pair.getBotKey());
+            restTemplate.acceptHeaderRequestCallback(String.class);
+            HttpEntity<String> entity = httpEntity(graphQLRequest, pair.getKey(), pair.getBotKey());
+            URI uri = URI.create(url);
 
-                URI uri = URI.create(url);
+            try {
                 exchange =
                         FileUtil.submit(priorityId, priority.getAllowedBufferingMs(), priority.getAllowableDelayMs(), () -> restTemplate.exchange(uri,
                         HttpMethod.POST,
@@ -365,8 +365,10 @@ public class PoliticsAndWarV3 {
                     rethrow(new IllegalArgumentException(StringUtils.replaceIgnoreCase(message, pair.getKey(), "XXX")), pair, true);
                 }
 
+                FileUtil.setRateLimited(uri, false);
                 return jacksonObjectMapper.readValue(body, resultBody);
             } catch (HttpClientErrorException.TooManyRequests e) {
+                FileUtil.setRateLimited(uri, true);
                 rateLimitGlobal.handleRateLimit(e.getResponseHeaders());
                 try {
                     HttpHeaders headers = e.getResponseHeaders();
@@ -397,12 +399,14 @@ public class PoliticsAndWarV3 {
                 }
                 pool.removeKey(pair);
             } catch (HttpClientErrorException e) {
+                FileUtil.setRateLimited(uri, true);
                 rateLimitGlobal.handleRateLimit(e.getResponseHeaders());
                 e.printStackTrace();
                 AlertUtil.error(e.getMessage(), e);
                 rethrow(e, pair, false);
                 throw e;
             } catch (HttpServerErrorException.InternalServerError e) {
+                FileUtil.setRateLimited(uri, true);
                 rateLimitGlobal.handleRateLimit(e.getResponseHeaders());
                 e.printStackTrace();
                 String msg = "Error 500 thrown by " + endpoint + ". Is the game's API down?";

@@ -966,6 +966,16 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         return userCache.get(discordId);
     }
 
+    public Integer getNationId(long userId) {
+        if (userId == Settings.INSTANCE.ADMIN_USER_ID && Settings.INSTANCE.NATION_ID > 0) {
+            return Settings.INSTANCE.NATION_ID;
+        }
+        updateUserCache();
+        PNWUser user = userCache.get(userId);
+        if (user == null) return null;
+        return user.getNationId();
+    }
+
     private ConcurrentHashMap<Long, PNWUser> userCache = new ConcurrentHashMap<>();
     private ConcurrentHashMap<Integer, PNWUser> userNationCache = new ConcurrentHashMap<>();
 

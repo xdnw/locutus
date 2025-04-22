@@ -213,24 +213,12 @@ public class Settings extends Config {
                 "Minimum = 120 turns (10 days)"
         })
         public int UNLOAD_WARS_AFTER_TURNS = -1;
-//
-        @Comment("Fetches most active nations (default disabled)")
-        public int ACTIVE_NATION_SECONDS = -1;
-
-        @Comment("Fetches colored nations (default disabled)")
-        public int COLORED_NATIONS_SECONDS = -1;
-
-        @Comment("Fetches non Vacation Mode nations (default 15 minutes)")
-        public int ALL_NATIONS_SECONDS = 60 * 15;
-
-        @Comment("Fetches outdated cities (default disabled)")
-        public int OUTDATED_CITIES_SECONDS = -1;
-
-        @Comment("Fetches outdated cities (default 30 minute)")
-        public int ALL_CITIES_SECONDS = 60 * 30;
 
         @Comment("Runs the pre update beige reminders (default: 61 seconds)")
         public int BEIGE_REMINDER_SECONDS = 61;
+
+        @Comment("Runs the nation and city update fetching")
+        public int NATION_CITY_UPDATE_INTERVAL = 13;
 
         @Comment({"What range of top alliances to check the MMR of (default: 80)",
         "set to 0 to disable"})

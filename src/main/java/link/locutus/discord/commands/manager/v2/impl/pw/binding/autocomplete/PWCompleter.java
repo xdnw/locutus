@@ -309,6 +309,10 @@ public class PWCompleter extends BindingHelper {
 
         List<DBNation> options = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
         options = StringMan.getClosest(input, options, DBNation::getName, OptionData.MAX_CHOICES, true, true);
+        if (options.size() == 1) {
+            DBNation nation = options.get(0);
+            Locutus.imp().getNationDB().markNationDirty(nation.getNation_id());
+        }
 
         return options.stream().map(f -> KeyValue.of(f.getName(), f.getQualifiedId())).collect(Collectors.toList());
     }
@@ -335,6 +339,12 @@ public class PWCompleter extends BindingHelper {
         options.addAll(Locutus.imp().getNationDB().getAlliances());
 
         options = StringMan.getClosest(input, options, NationOrAlliance::getName, OptionData.MAX_CHOICES, true, true);
+        if (options.size() == 1) {
+            NationOrAlliance nation = options.get(0);
+            if (nation.isNation()) {
+                Locutus.imp().getNationDB().markNationDirty(nation.getId());
+            }
+        }
 
         return options.stream().map(f -> KeyValue.of(f.getName(), f.getTypePrefix() + ":" + f.getId())).collect(Collectors.toList());
     }
@@ -375,6 +385,12 @@ public class PWCompleter extends BindingHelper {
             }
         }
         options = StringMan.getClosest(input, options, NationOrAllianceOrGuild::getName, OptionData.MAX_CHOICES, true, true);
+        if (options.size() == 1) {
+            NationOrAllianceOrGuild nation = options.get(0);
+            if (nation.isNation()) {
+                Locutus.imp().getNationDB().markNationDirty(nation.getId());
+            }
+        }
         return options.stream().map(f -> KeyValue.of((f.isGuild() ? "guild:" : "") + f.getName(), f.getTypePrefix() + ":" + f.getIdLong())).collect(Collectors.toList());
     }
 
@@ -426,6 +442,12 @@ public class PWCompleter extends BindingHelper {
         }
 
         options = StringMan.getClosest(input, options, NationOrAllianceOrGuildOrTaxid::getName, OptionData.MAX_CHOICES, true, true);
+        if (options.size() == 1) {
+            NationOrAllianceOrGuildOrTaxid nation = options.get(0);
+            if (nation.isNation()) {
+                Locutus.imp().getNationDB().markNationDirty(nation.getId());
+            }
+        }
         return options.stream().map(f -> KeyValue.of((f.isGuild() ? "guild:" : "") + f.getName(), f.getTypePrefix() + ":" + f.getIdLong())).collect(Collectors.toList());
     }
 

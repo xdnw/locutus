@@ -291,4 +291,63 @@ public final class FileUtil {
     private static long getPriority(int priority) {
         return requestOrder.incrementAndGet() + Integer.MAX_VALUE * (long) priority;
     }
+
+    public static void waitRateLimit(URI domain, long maxWaitMs, long waitIntervalMs) {
+        int domainId = pageRequestQueue.getTracker().getDomainId(domain);
+        if (hasRateLimiting(domainId)) {
+            long endWait = System.currentTimeMillis() + maxWaitMs;
+            do {
+                try {
+                    Thread.sleep(waitIntervalMs);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            } while (System.currentTimeMillis() < endWait && hasRateLimiting(domainId));
+        }
+    }
+
+    public static class RateLimitSkipper {
+        private final int domainId;
+        private final long maxWaitMs;
+        private long waitUntil = -1;
+
+        public RateLimitSkipper(URI url, long maxWaitMs) {
+            this.domainId = pageRequestQueue.getTracker().getDomainId(url);
+            this.maxWaitMs = maxWaitMs;
+        }
+
+        public boolean shouldSkip() {
+            if (waitUntil != -1) {
+                if (System.currentTimeMillis() > waitUntil) {
+                    waitUntil = -1;
+                    return false;
+                }
+                if (hasRateLimiting(domainId)) {
+                    return true;
+                }
+                waitUntil = -1;
+                return false;
+            } else if (hasRateLimiting(domainId)) {
+                waitUntil = System.currentTimeMillis() + maxWaitMs;
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    public static boolean hasRateLimiting(URI url) {
+        int domain = pageRequestQueue.getTracker().getDomainId(url);
+        return hasRateLimiting(domain);
+    }
+
+    private static boolean hasRateLimiting(int domain) {
+        return pageRequestQueue.getTracker().hasRateLimiting(domain);
+    }
+
+    public static void setRateLimited(URI uri, boolean limited) {
+        int domain = pageRequestQueue.getTracker().getDomainId(uri);
+        pageRequestQueue.getTracker().setRateLimited(domain, limited);
+    }
 }
