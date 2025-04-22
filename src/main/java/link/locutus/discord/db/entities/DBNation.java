@@ -11,8 +11,6 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
-import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
-import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.building.PowerBuilding;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -29,7 +27,6 @@ import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.command.shrink.EmptyShrink;
 import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
@@ -3004,6 +3001,11 @@ public abstract class DBNation implements NationOrAlliance {
         return (int) TimeUnit.MILLISECONDS.toMinutes(now - lastActiveMs());
     }
 
+    @Command(desc = "Number of turns this nation has been inactive for")
+    public long getInactiveTurns() {
+        return TimeUtil.getTurn() - TimeUtil.getTurn(lastActiveMs());
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -3266,7 +3268,7 @@ public abstract class DBNation implements NationOrAlliance {
         }
     }
 
-    public int getTurnsInactive(LootEntry loot) {
+    public int getTurnsInactiveForLoot(LootEntry loot) {
         long turnInactive = TimeUtil.getTurn(lastActiveMs());
         if (loot != null) {
             long lootTurn = TimeUtil.getTurn(loot.getDate());
@@ -3312,7 +3314,7 @@ public abstract class DBNation implements NationOrAlliance {
     @Command
     public Map<ResourceType, Double> getLootRevenueTotal() {
         LootEntry loot = getBeigeLoot();
-        int turnsInactive = getTurnsInactive(loot);
+        int turnsInactive = getTurnsInactiveForLoot(loot);
         double lootFactor = 0.14 * lootModifier();
 
         double[] lootRevenue = loot == null ? ResourceType.getBuffer() : PW.multiply(loot.getTotal_rss().clone(), lootFactor);

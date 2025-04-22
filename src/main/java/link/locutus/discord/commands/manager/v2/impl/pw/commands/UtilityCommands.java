@@ -1070,7 +1070,7 @@ public class UtilityCommands {
 
             LootEntry lootInfo = Locutus.imp().getNationDB().getLoot(nationOrAlliance.getId());
 
-            revenueTurns = nation.getTurnsInactive(lootInfo);
+            revenueTurns = nation.getTurnsInactiveForLoot(lootInfo);
             if (revenueTurns > 0) {
                 revenue = nation.getRevenue(revenueTurns + 24, true, true, false, true, false, false, 0d, false);
                 if (lootInfo != null) {
