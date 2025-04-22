@@ -2032,21 +2032,35 @@ public class WarDB extends DBMainV2 {
         for (DBWar war : wars) {
             ids.add(war.getWarId());
         }
-        fetchWarsById(ids, eventConsumer);
+        updateWarsById(ids, eventConsumer, false);
         return true;
     }
 
-    public void fetchWarsById(Collection<Integer> ids, Consumer<Event> eventConsumer) {
-        List<Integer> idsSorted = new ArrayList<>(ids);
-        Collections.sort(idsSorted);
-        int chunkSize = PoliticsAndWarV3.WARS_PER_PAGE;
-        if (idsSorted.size() % chunkSize != 0) {
-            int toAdd = chunkSize - (idsSorted.size() % chunkSize);
-            int maxId = idsSorted.get(idsSorted.size() - 1);
-            for (int i = 0; i < toAdd; i++) {
-                idsSorted.add(maxId + i + 1);
+    public void updateWarsById(Collection<Integer> ids2, Consumer<Event> eventConsumer, boolean checkInactive) {
+        Set<Integer> unique = new IntOpenHashSet(ids2);
+        if (checkInactive) {
+            for (DBWar war : activeWars.getActiveWars()) {
+                if (war.shouldBeExpired()) {
+                    unique.add(war.getWarId());
+                }
             }
         }
+        int chunkSize = PoliticsAndWarV3.WARS_PER_PAGE;
+        int latestWarId = getLatestWarId();
+        if (latestWarId > 0) {
+            int remainder = unique.size() % chunkSize;
+            if (remainder != 0) {
+                int toAdd = chunkSize - remainder;
+                for (int i = 0; i < toAdd; i++) {
+                    unique.add(latestWarId + i + 1);
+                }
+            }
+        }
+
+
+        List<Integer> idsSorted = new IntArrayList(unique);
+        Collections.sort(idsSorted);
+
         for (int i = 0; i < idsSorted.size(); i += chunkSize) {
             int end = Math.min(i + chunkSize, idsSorted.size());
             List<Integer> subList = idsSorted.subList(i, end);
@@ -2128,6 +2142,12 @@ public class WarDB extends DBMainV2 {
         updateWars(dbWars, warIdsToUpdate, eventConsumer, true);
 
         return true;
+    }
+
+    private int getLatestWarId() {
+        int[] latestWarId = {0};
+        activeWars.iterateActiveWars(war -> latestWarId[0] = Math.max(latestWarId[0], war.getWarId()));
+        return latestWarId[0];
     }
 
     public boolean updateWars(List<DBWar> dbWars, Collection<Integer> expectedIds, Consumer<Event> eventConsumer, boolean handleNationStatus) {
@@ -2694,10 +2714,6 @@ public class WarDB extends DBMainV2 {
         });
     }
 
-    public boolean updateAttacks(Consumer<Event> eventConsumer) {
-        return updateAttacks( eventConsumer != null, eventConsumer);
-    }
-
     private AbstractCursor getLatestAttack() {
         // active wars
         AbstractCursor[] latest = new AbstractCursor[1];
@@ -2715,23 +2731,16 @@ public class WarDB extends DBMainV2 {
         }, f -> false, (w, a) -> {});
         return latest[0];
     }
-    public boolean updateAttacks(boolean runAlerts, Consumer<Event> eventConsumer) {
-        return updateAttacks(runAlerts, eventConsumer, false);
-    }
 
-    public boolean updateAttacks(boolean runAlerts, Consumer<Event> eventConsumer, boolean v2) {
+    public boolean updateAttacksAndWarsV3(boolean runAlerts, Consumer<Event> eventConsumer, boolean v2) throws IOException {
         AbstractCursor latest = getLatestAttack();
-        return updateAttacks(latest, runAlerts, eventConsumer, v2);
-    }
-
-    private boolean updateAttacks(AbstractCursor latest, boolean runAlerts, Consumer<Event> eventConsumer, boolean v2) {
         Integer maxId = latest == null ? null : latest.getWar_attack_id();
         if (maxId == null || maxId == 0) runAlerts = false;
-
         AttackCursorFactory factory = new AttackCursorFactory(this);
 
-        // Dont run events if attacks are > 1 day old
         if (!v2 && (latest == null || latest.getDate() < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1))) {
+            updateAllWars(eventConsumer);
+
             PoliticsAndWarV3 v3 = Locutus.imp().getV3();
             Logg.text("No recent attack data in DB. Updating attacks without event handling: " + maxId);
             List<AbstractCursor> attackList = new ArrayList<>();
@@ -2752,6 +2761,7 @@ public class WarDB extends DBMainV2 {
             saveAttacks(attackList, eventConsumer);
             return true;
         }
+
         List<AbstractCursor> dbAttacks = new ObjectArrayList<>();
         List<AbstractCursor> newAttacks;
         Set<DBWar> warsToSave = new LinkedHashSet<>();
@@ -2759,47 +2769,53 @@ public class WarDB extends DBMainV2 {
         List<AbstractCursor> dirtyCities = new ArrayList<>();
 
         synchronized (activeWars) {
-            if (v2) {
-                try {
-                    List<WarAttacksContainer> attacksv2;
-                    if (maxId == null) {
-                        attacksv2 = Locutus.imp().getPnwApiV2().getWarAttacks().getWarAttacksContainers();
-                    } else {
-                        attacksv2 = Locutus.imp().getPnwApiV2().getWarAttacksByMinWarAttackId(maxId).getWarAttacksContainers();
-                    }
-                    newAttacks = attacksv2.stream().map(DBAttack::new).map(f -> factory.load(f, true)).collect(Collectors.toList());
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
+        if (v2) {
+            try {
+                List<WarAttacksContainer> attacksv2;
+                if (maxId == null) {
+                    attacksv2 = Locutus.imp().getPnwApiV2().getWarAttacks().getWarAttacksContainers();
+                } else {
+                    attacksv2 = Locutus.imp().getPnwApiV2().getWarAttacksByMinWarAttackId(maxId).getWarAttacksContainers();
                 }
-            } else {
-                PoliticsAndWarV3 v3 = Locutus.imp().getV3();
-                newAttacks = v3
-                        .fetchAttacksSince(maxId, f -> true)
-                        .stream().map(f -> factory.load(f, true)).toList();
+                newAttacks = attacksv2.stream().map(DBAttack::new).map(f -> factory.load(f, true)).collect(Collectors.toList());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
+        } else {
+            PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+            newAttacks = v3
+                    .fetchAttacksSince(maxId, f -> true)
+                    .stream().map(f -> factory.load(f, true)).toList();
+        }
 
-            // remove existing
-            {
-                Set<Integer> warIds = newAttacks.stream().map(AbstractCursor::getWar_id).collect(Collectors.toSet());
-                Set<Integer> existingAttackIds = new IntOpenHashSet();
-                synchronized (attacksByWarId2) {
-                    for (int warId : warIds) {
-                        List<byte[]> attackData = attacksByWarId2.get(warId);
-                        if (attackData == null || attackData.isEmpty()) continue;
-                        for (byte[] data : attackData) {
-                            existingAttackIds.add(factory.getId(data));
-                        }
+        {
+            Set<Integer> warIds = newAttacks.stream().map(AbstractCursor::getWar_id).collect(Collectors.toSet());
+            Set<Integer> existingAttackIds = new IntOpenHashSet();
+            synchronized (attacksByWarId2) {
+                for (int warId : warIds) {
+                    List<byte[]> attackData = attacksByWarId2.get(warId);
+                    if (attackData == null || attackData.isEmpty()) continue;
+                    for (byte[] data : attackData) {
+                        existingAttackIds.add(factory.getId(data));
                     }
                 }
-                newAttacks = new ObjectArrayList<>(newAttacks);
-                newAttacks.removeIf(f -> existingAttackIds.contains(f.getWar_attack_id()));
             }
+            newAttacks = new ObjectArrayList<>(newAttacks);
+            newAttacks.removeIf(f -> existingAttackIds.contains(f.getWar_attack_id()));
+        }
 
+        Set<Integer> warIdsToUpdate = new IntOpenHashSet();
+        for (AbstractCursor attack : newAttacks) {
+            warIdsToUpdate.add(attack.getWar_id());
+        }
+        updateWarsById(warIdsToUpdate, eventConsumer, true);
             long now = System.currentTimeMillis();
 
             for (AbstractCursor attack : newAttacks) {
                 if (runAlerts) {
                     Locutus.imp().getNationDB().setNationActive(attack.getAttacker_id(), attack.getDate(), eventConsumer);
+                    Locutus.imp().getNationDB().markNationDirty(attack.getAttacker_id());
+                    Locutus.imp().getNationDB().markNationDirty(attack.getDefender_id());
                     Map<MilitaryUnit, Integer> attLosses = attack.getUnitLosses2(true);
                     Map<MilitaryUnit, Integer> defLosses = attack.getUnitLosses2(false);
                     if (!attLosses.isEmpty()) {

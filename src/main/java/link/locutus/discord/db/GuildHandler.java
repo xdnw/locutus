@@ -209,7 +209,7 @@ public class GuildHandler {
                 Locutus.imp().getNationDB().markNationDirty(nation.getId());
             }
         }
-        Locutus.imp().runEventsAsync(Locutus.imp().getNationDB()::updateDirtyNations);
+        Locutus.imp().runEventsAsync(events -> Locutus.imp().getNationDB().updateDirtyNations(events, Integer.MAX_VALUE));
         return nationsMovedBracket;
     }
 

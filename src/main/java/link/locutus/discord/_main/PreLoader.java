@@ -102,7 +102,7 @@ public class PreLoader implements ILoader {
         this.discordDB = add("Discord Database", () -> new DiscordDB());
         this.nationDB = add("Nation Database", () -> new NationDB().load());
         add("Flag Outdated Cities", () -> {
-            getNationDB().markDirtyIncorrectNations(true, true);
+            getNationDB().markDirtyIncorrectNations();
             return null;
         });
         add("Initialize Nuke Dates", () -> {

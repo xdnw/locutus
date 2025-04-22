@@ -9,6 +9,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
 public class RepeatingTasks {
@@ -48,6 +49,7 @@ public class RepeatingTasks {
     public ScheduledFuture<?> addTask(String name, CaughtTask task, long interval, TimeUnit unit) {
         if (interval <= 0) return null;
         int id = getNextId();
+
         ExecutionInfo info = new ExecutionInfo(name, id, 0, 0);
         taskMap.put(id, info);
         Runnable delegate = new Runnable() {

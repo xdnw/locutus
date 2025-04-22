@@ -213,6 +213,10 @@ public class DBWar {
         }
     }
 
+    public boolean shouldBeExpired() {
+        return TimeUtil.getTurn() - TimeUtil.getTurn(getDate()) >= 60;
+    }
+
     public DBWar(War war) {
         this(war, true);
     }

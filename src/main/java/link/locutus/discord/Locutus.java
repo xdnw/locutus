@@ -3,6 +3,7 @@ package link.locutus.discord;
 import com.google.common.eventbus.AsyncEventBus;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord._main.*;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
@@ -94,6 +95,7 @@ import org.jetbrains.annotations.NotNull;
 import javax.annotation.Nonnull;
 import javax.security.auth.login.LoginException;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.text.ParseException;
@@ -579,103 +581,102 @@ public final class Locutus extends ListenerAdapter {
             }, 60, TimeUnit.SECONDS);
         }
         if (Settings.USE_V2) {
-            taskTrack.addTask("Update Nations V2 (No VM)", () -> {
-                runEventsAsync(events -> getNationDB().updateNationsV2(false, events));
-            }, Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS, TimeUnit.SECONDS);
-
             taskTrack.addTask("Update Nations V2", () -> {
                 runEventsAsync(events -> getNationDB().updateNationsV2(true, events));
-            }, Settings.INSTANCE.TASKS.ALL_NATIONS_SECONDS, TimeUnit.SECONDS);
+            }, Settings.INSTANCE.TASKS.NATION_CITY_UPDATE_INTERVAL * 8, TimeUnit.SECONDS);
 
             taskTrack.addTask("City (V2)", () -> {
                 runEventsAsync(events -> getNationDB().updateCitiesV2(events));
-            }, Settings.INSTANCE.TASKS.ALL_CITIES_SECONDS, TimeUnit.SECONDS);
+            }, Settings.INSTANCE.TASKS.NATION_CITY_UPDATE_INTERVAL * 8, TimeUnit.SECONDS);
 
             taskTrack.addTask("War/Attack (V2)", () -> {
                 synchronized (warUpdateLock)
                 {
-                    runEventsAsync(getWarDb()::updateAllWarsV2);
-                    runEventsAsync(e -> getWarDb().updateAttacks(true, e, true));
+                    runEventsAsync(e -> getWarDb().updateAttacksAndWarsV3(true, e, true));
                 }
             }, Settings.INSTANCE.TASKS.ALL_WAR_SECONDS, TimeUnit.SECONDS);
         } else {
-//            taskTrack.addTask("Nation (Active)", () -> {
-//                try {
-//                    runEventsAsync(events -> getNationDB().updateMostActiveNations(490, events));
-//                } catch (Throwable e) {
-//                    e.printStackTrace();
-//                }
-//            }, Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS, TimeUnit.SECONDS);
+            URI domain = URI.create(getV3().getUrl(""));
+            FileUtil.RateLimitSkipper fiveMinSkipper = new FileUtil.RateLimitSkipper(domain, 5 * 60 * 1000);
+            FileUtil.RateLimitSkipper fifteenMinSkipper = new FileUtil.RateLimitSkipper(domain, 15 * 60 * 1000);
+            FileUtil.RateLimitSkipper thirtyMinSkipper = new FileUtil.RateLimitSkipper(domain, 30 * 60 * 1000);
+            FileUtil.RateLimitSkipper hourMinSkipper = new FileUtil.RateLimitSkipper(domain, 60 * 60 * 1000);
+            FileUtil.RateLimitSkipper twoHourMinSkipper = new FileUtil.RateLimitSkipper(domain, 2 * 60 * 60 * 1000);
+
+            List<Runnable> updateTasks = new ObjectArrayList<>();
+            updateTasks.add(() -> {
+                int maxCities = FileUtil.hasRateLimiting(domain) ? PoliticsAndWarV3.CITIES_PER_PAGE : Integer.MAX_VALUE;
+                getNationDB().markDirtyIncorrectCities(true, true);
+                runEventsAsync(events -> getNationDB().updateDirtyCities(false, events, maxCities));
+            });
+            updateTasks.add(() -> {
+                int maxNations = FileUtil.hasRateLimiting(domain) ? PoliticsAndWarV3.NATIONS_PER_PAGE : Integer.MAX_VALUE;
+                getNationDB().markDirtyIncorrectNations();
+                runEventsAsync(events -> getNationDB().updateDirtyNations(events, maxNations));
+            });
+            updateTasks.add(() -> {
+                // Every minute if not rate limited, else every 5m
+                runEventsAsync(events -> getNationDB().updateRecentNations(events));
+            });
+            updateTasks.add(() -> {
+                // Every minute if not rate limited, else every 5m
+                runEventsAsync(events -> getNationDB().updateNewAndOutdatedCities(500, events));
+            });
+
+            AtomicInteger lastTask = new AtomicInteger();
+            taskTrack.addTask("Update Dirty Nations/Cities", () -> {
+                try {
+                    if (Settings.USE_V2) return;
+                    if (fiveMinSkipper.shouldSkip()) return;
+                    int taskIndex = lastTask.getAndIncrement() % updateTasks.size();
+                    Runnable task = updateTasks.get(taskIndex);
+                    task.run();
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+            }, Settings.INSTANCE.TASKS.NATION_CITY_UPDATE_INTERVAL, TimeUnit.SECONDS);
 
             taskTrack.addTask("Treaty", () -> {
                 if (Settings.USE_V2) return;
+                if (twoHourMinSkipper.shouldSkip()) return;
                 runEventsAsync(getNationDB()::updateTreaties);
             }, Settings.INSTANCE.TASKS.TREATY_UPDATE_SECONDS, TimeUnit.SECONDS);
 
             taskTrack.addTask("Bank", () -> {
                 if (Settings.USE_V2) return;
+                if (fiveMinSkipper.shouldSkip()) return;
                 runEventsAsync(f -> getBankDB().updateBankRecs(false, f));
             }, Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS, TimeUnit.SECONDS);
 
-            taskTrack.addTask("Nation (Recent)", () -> {
-                if (Settings.USE_V2) return;
-                runEventsAsync(getNationDB()::updateRecentNations);
-            }, Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS, TimeUnit.SECONDS);
+//            taskTrack.addTask("All Nations", () -> {
+//                if (Settings.USE_V2 || true) {
+//                    runEventsAsync(events -> getNationDB().updateNationsV2(false, events));
+//                    return;
+//                } else {
+//                    if (fifteenMinSkipper.shouldSkip()) return;
+//                    runEventsAsync(events -> getNationDB().updateNationsV2(false, events)); // TODO v3 (inefficient)
+//                    runEventsAsync(getNationDB()::updateUnknownAlliances);
+//                }
+//            }, Settings.INSTANCE.TASKS.ALL_NATIONS_SECONDS, TimeUnit.SECONDS);
 
-            taskTrack.addTask("All Nations", () -> {
-                if (Settings.USE_V2) {
-                    runEventsAsync(events -> getNationDB().updateNationsV2(false, events));
-                    return;
-                }
-                runEventsAsync(events -> {
-                    getNationDB().updateAllNations(events, true);
-                    Set<Integer> unknownAA = new IntOpenHashSet();
-                    for (DBNation nation : getNationDB().getNationsMatching(f -> f.getAlliance_id() > 0 && f.getVm_turns() == 0)) {
-                        if (nation.getAlliance_id() != 0 && DBAlliance.get(nation.getAlliance_id()) == null) {
-                            unknownAA.add(nation.getAlliance_id());
-                            break;
-                        }
-                    }
-                    if (!unknownAA.isEmpty()) {
-                        getNationDB().updateAlliancesById(new IntArrayList(unknownAA), events);
-                    }
-                });
-            }, Settings.INSTANCE.TASKS.ALL_NATIONS_SECONDS, TimeUnit.SECONDS);
-
-            taskTrack.addTask("New Nations", () -> {
-                if (Settings.USE_V2) return;
-                runEventsAsync(events -> {
-                    getNationDB().updateAllNations(events, true);
-                    Set<Integer> unknownAA = new IntOpenHashSet();
-                    for (DBNation nation : getNationDB().getNationsMatching(f -> f.getAlliance_id() > 0 && f.getVm_turns() == 0)) {
-                        if (nation.getAlliance_id() != 0 && DBAlliance.get(nation.getAlliance_id()) == null) {
-                            unknownAA.add(nation.getAlliance_id());
-                            break;
-                        }
-                    }
-                    if (!unknownAA.isEmpty()) {
-                        getNationDB().updateAlliancesById(new IntArrayList(unknownAA), events);
-                    }
-                });
-            }, Settings.INSTANCE.TASKS.ALL_NATIONS_SECONDS, TimeUnit.SECONDS);
-
-            taskTrack.addTask("Nation (Active)", () -> {
-                if (Settings.USE_V2) return;
-                getNationDB().getActive(false, true);
-            }, Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS, TimeUnit.SECONDS);
-
-            taskTrack.addTask("Outdated Cities", () -> {
-                if (Settings.USE_V2) return;
-                runEventsAsync(f -> getNationDB().updateDirtyCities(false, f));
-            }, Settings.INSTANCE.TASKS.OUTDATED_CITIES_SECONDS, TimeUnit.SECONDS);
-
-            taskTrack.addTask("All Cities", () -> {
-                if (Settings.USE_V2) {
-                    runEventsAsync(events -> getNationDB().updateCitiesV2(events));
-                    return;
-                }
-                runEventsAsync(f -> getNationDB().updateAllCities(f));
-            }, Settings.INSTANCE.TASKS.ALL_CITIES_SECONDS, TimeUnit.SECONDS);
+//            taskTrack.addTask("Nation (Active)", () -> {
+//                if (Settings.USE_V2) return;
+//                getNationDB().getActive(false, true);
+//            }, Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS, TimeUnit.SECONDS);
+//            taskTrack.addTask("Outdated Cities", () -> {
+//                if (Settings.USE_V2) return;
+//                runEventsAsync(f -> getNationDB().updateDirtyCities(false, f, 500));
+//            }, Settings.INSTANCE.TASKS.OUTDATED_CITIES_SECONDS, TimeUnit.SECONDS);
+//            taskTrack.addTask("All Cities", () -> {
+//                if (Settings.USE_V2) {
+//                    runEventsAsync(events -> getNationDB().updateCitiesV2(events));
+//                    return;
+//                } else {
+//                    // TODO V3 (inefficient)
+////                    runEventsAsync(f -> getNationDB().updateAllCities(f));
+//                    runEventsAsync(events -> getNationDB().updateCitiesV2(events));
+//                }
+//            }, Settings.INSTANCE.TASKS.ALL_CITIES_SECONDS, TimeUnit.SECONDS);
 
             if (Settings.INSTANCE.TASKS.FETCH_SPIES_INTERVAL_SECONDS > 0) {
                 if (Settings.USE_V2) return;
@@ -685,35 +686,22 @@ public final class Locutus extends ListenerAdapter {
                 }, Settings.INSTANCE.TASKS.FETCH_SPIES_INTERVAL_SECONDS, TimeUnit.SECONDS);
             }
 
-//            taskTrack.addTask("War/Attack", () -> {
-//                try {
-//                    synchronized (warUpdateLock) {
-////                        runEventsAsync(f -> getWarDb().updateActiveWars(f, false));
-//                        runEventsAsync(events -> getWarDb().updateAllWars(events));
-//                        runEventsAsync(getWarDb()::updateAttacks);
-//                    }
-//                } catch (Throwable e) {
-//                    e.printStackTrace();
-//                }
-//
-//            }, Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS, TimeUnit.SECONDS);
-
             taskTrack.addTask("All War/Attack", () -> {
+                if (fifteenMinSkipper.shouldSkip()) return;
                 synchronized (warUpdateLock) {
                     if (Settings.USE_V2) {
-                        runEventsAsync(getWarDb()::updateAllWarsV2);
-                        runEventsAsync(e -> getWarDb().updateAttacks(true, e, true));
+                        runEventsAsync(e -> getWarDb().updateAllWarsV2(e));
                     } else {
-                        runEventsAsync(getWarDb()::updateAllWars);
-                        runEventsAsync(getWarDb()::updateAttacks);
+                        runEventsAsync(e -> getWarDb().updateAllWars(e));
                     }
+
                 }
             }, Settings.INSTANCE.TASKS.ALL_WAR_SECONDS, TimeUnit.SECONDS);
 
             taskTrack.addTask("Active War/Attack", () -> {
+                if (fiveMinSkipper.shouldSkip()) return;
                 synchronized (warUpdateLock) {
-                    runEventsAsync(f -> getWarDb().updateActiveWars(f, Settings.USE_V2));
-                    runEventsAsync(getWarDb()::updateAttacks);
+                    runEventsAsync(f -> getWarDb().updateAttacksAndWarsV3(true, f, Settings.USE_V2));
                 }
             }, Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS, TimeUnit.SECONDS);
 
@@ -721,6 +709,11 @@ public final class Locutus extends ListenerAdapter {
                 if (Settings.USE_V2) {
                     runEventsAsync(getNationDB()::updateAlliancesV2);
                 } else {
+                    if (hourMinSkipper.shouldSkip()) {
+                        if (fiveMinSkipper.shouldSkip()) return;
+                        runEventsAsync(events -> getNationDB().updateOutdatedAlliances(true, events));
+                        return;
+                    }
                     runEventsAsync(f -> getNationDB().updateAlliances(null, f));
                 }
             }, Settings.INSTANCE.TASKS.ALL_ALLIANCES_SECONDS, TimeUnit.SECONDS);
@@ -730,6 +723,7 @@ public final class Locutus extends ListenerAdapter {
             if (Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS > 0) {
                 taskTrack.addTask("Bounties", () -> {
                     if (Settings.USE_V2) return;
+                    if (twoHourMinSkipper.shouldSkip()) return;
                     Locutus.imp().getWarDb().updateBountiesV3();
                 },
                 Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS, TimeUnit.SECONDS);
@@ -737,6 +731,7 @@ public final class Locutus extends ListenerAdapter {
             if (Settings.INSTANCE.TASKS.TREASURE_UPDATE_SECONDS > 0) {
                 taskTrack.addTask("Treasure", () -> {
                     if (Settings.USE_V2) return;
+                    if (thirtyMinSkipper.shouldSkip()) return;
                     runEventsAsync(Locutus.imp().getNationDB()::updateTreasures);
                 }, Settings.INSTANCE.TASKS.TREASURE_UPDATE_SECONDS, TimeUnit.SECONDS);
             }
@@ -744,6 +739,7 @@ public final class Locutus extends ListenerAdapter {
             if (Settings.INSTANCE.TASKS.BASEBALL_SECONDS > 0) {
                 taskTrack.addTask("Baseball", () -> {
                     if (Settings.USE_V2) return;
+                    if (twoHourMinSkipper.shouldSkip()) return;
                     runEventsAsync(getBaseballDB()::updateGames);
                 }, Settings.INSTANCE.TASKS.BASEBALL_SECONDS, TimeUnit.SECONDS);
             }
@@ -751,6 +747,7 @@ public final class Locutus extends ListenerAdapter {
             if (Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS > 0) {
                 taskTrack.addTask("Trade", () -> {
                             if (Settings.USE_V2) return;
+                            if (fifteenMinSkipper.shouldSkip()) return;
                             runEventsAsync(getTradeManager()::updateTradeList);
                         },
                         Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS, TimeUnit.SECONDS);
@@ -759,6 +756,7 @@ public final class Locutus extends ListenerAdapter {
             if (Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS > 0) {
                 taskTrack.addTask("Discord User Id", () -> {
                             if (Settings.USE_V2) return;
+                            if (twoHourMinSkipper.shouldSkip()) return;
                             Locutus.imp().getDiscordDB().updateUserIdsSince(Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS, false);
                         },
                         Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS, TimeUnit.SECONDS);
@@ -767,7 +765,6 @@ public final class Locutus extends ListenerAdapter {
 
         if (Settings.INSTANCE.TASKS.BEIGE_REMINDER_SECONDS > 0) {
             LeavingBeigeAlert beigeAlerter = new LeavingBeigeAlert();
-
             taskTrack.addTask("Beige Alert", beigeAlerter::run, Settings.INSTANCE.TASKS.BEIGE_REMINDER_SECONDS, TimeUnit.SECONDS);
         }
 
@@ -791,31 +788,30 @@ public final class Locutus extends ListenerAdapter {
 
             {
                 if (!Settings.USE_V2) {
-                    {
-                        runEventsAsync(events -> getNationDB().updateAllNations(events, true));
-                    }
-                    {
-                        runEventsAsync(events -> getNationDB().updateAlliances(null, events));
-                    }
-                    runEventsAsync(getNationDB()::updateTreaties);
-                    try {
-                        runEventsAsync(getNationDB()::updateBans);
-                    } catch (Throwable e) {
-                        e.printStackTrace();
-                    }
-
-                    getNationDB().saveAllCities(); // TODO save all cities
-
+                    runEventsAsync(events -> getNationDB().updateNationsV2(true, events));
+                    runEventsAsync(events -> getNationDB().updateCitiesV2(events));
+//                    {
+//                        runEventsAsync(events -> getNationDB().updateAllNations(events, true));
+//                    }
+//                    {
+//                        runEventsAsync(events -> getNationDB().updateAlliances(null, events));
+//                    }
+//                    runEventsAsync(getNationDB()::updateTreaties);
+//                    try {
+//                        runEventsAsync(getNationDB()::updateBans);
+//                    } catch (Throwable e) {
+//                        e.printStackTrace();
+//                    }
+//                    getNationDB().saveAllCities(); // TODO save all cities
                     getTradeManager().updateColorBlocs(); // TODO move to configurable task
                 } else {
                     runEventsAsync(events -> getNationDB().updateNationsV2(true, events));
                     runEventsAsync(events -> getNationDB().updateCitiesV2(events));
                     synchronized (warUpdateLock) {
-                        runEventsAsync(getWarDb()::updateAllWarsV2);
-                        runEventsAsync(e -> getWarDb().updateAttacks(true, e, true));
+                        runEventsAsync(e -> getWarDb().updateAttacksAndWarsV3(true, e, true));
                     }
-                    runEventsAsync(getNationDB()::deleteExpiredTreaties);
                 }
+                runEventsAsync(getNationDB()::deleteExpiredTreaties);
 
             }
 
@@ -944,7 +940,6 @@ public final class Locutus extends ListenerAdapter {
     @Override
     public void onModalInteraction(@NotNull ModalInteractionEvent event) {
         try {
-            ModalInteraction interaction = event.getInteraction();
             String id = event.getModalId();
             InteractionHook hook = event.getHook();
             List<ModalMapping> values = event.getValues();
@@ -1018,6 +1013,8 @@ public final class Locutus extends ListenerAdapter {
 
 
             User user = event.getUser();
+            Locutus.imp().getNationDB().markNationDirtyByUser(user.getIdLong());
+
             Guild guild = event.isFromGuild() ? event.getGuild() : message.isFromGuild() ? message.getGuild() : null;
             if (Settings.INSTANCE.MODERATION.BANNED_USERS.containsKey(user.getIdLong())) return;
             if (guild != null && Settings.INSTANCE.MODERATION.BANNED_GUILDS.containsKey(guild.getIdLong())) return;
@@ -1176,8 +1173,13 @@ public final class Locutus extends ListenerAdapter {
             User author = event.getAuthor();
 
             // Cache locutus messages to reduce lookups from message reactions
-            if (author.isBot() && author.getIdLong() == Settings.INSTANCE.APPLICATION_ID) {
-                isMessageLocutusMap.put(event.getMessageIdLong(), true);
+            if (author.isSystem() || author.isBot()) {
+                if (author.getIdLong() == Settings.INSTANCE.APPLICATION_ID) {
+                    isMessageLocutusMap.put(event.getMessageIdLong(), true);
+                } else {
+                    isMessageLocutusMap.put(event.getMessageIdLong(), false);
+                }
+                return;
             } else {
                 isMessageLocutusMap.put(event.getMessageIdLong(), false);
             }

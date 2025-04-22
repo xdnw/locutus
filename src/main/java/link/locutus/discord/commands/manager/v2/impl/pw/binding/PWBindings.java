@@ -504,7 +504,10 @@ public class PWBindings extends BindingHelper {
             }
             int nationId = cityEntry.getNationId();
             DBNation nation2 = DBNation.getById(nationId);
-            if (nation2 != null) nation = nation2;
+            if (nation2 != null) {
+                nation = nation2;
+                Locutus.imp().getNationDB().markCityDirty(nationId, cityEntry.getId(), System.currentTimeMillis());
+            }
             build = cityEntry.toJavaCity(nation == null ? f -> false : nation::hasProject).toCityBuild();
             build.setCity_id(cityEntry.getId());
         }
@@ -541,6 +544,7 @@ public class PWBindings extends BindingHelper {
         }
         DBCity cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId);
         if (cityEntry == null) throw new IllegalArgumentException("No city found in cache for id: " + cityId + " (expecting city id or url)");
+        Locutus.imp().getNationDB().markCityDirty(cityEntry.getNationId(), cityEntry.getId(), System.currentTimeMillis());
         return cityEntry;
     }
 
@@ -642,6 +646,8 @@ public class PWBindings extends BindingHelper {
                 }
                 throw new IllegalArgumentException(error);
             }
+        } else if (nation.isValid()) {
+            Locutus.imp().getNationDB().markNationDirty(nation.getNation_id());
         }
         return nation;
     }
@@ -677,6 +683,8 @@ public class PWBindings extends BindingHelper {
         DBNation nation = DiscordUtil.parseNation(input, forceAllowDeleted || (data != null && data.getAnnotation(AllowDeleted.class) != null));
         if (nation == null) {
             return alliance(data, input);
+        } else if (nation.isValid()) {
+            Locutus.imp().getNationDB().markNationDirty(nation.getNation_id());
         }
         return nation;
     }
@@ -1174,6 +1182,7 @@ public class PWBindings extends BindingHelper {
         }
         DBNation nation = DiscordUtil.getNation(user);
         if (nation == null) throw new IllegalStateException("Please use " + CM.register.cmd.toSlashMention());
+        Locutus.imp().getNationDB().markNationDirty(nation.getNation_id());
         return nation;
     }
 

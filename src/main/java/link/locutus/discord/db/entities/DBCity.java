@@ -138,9 +138,9 @@ public abstract class DBCity implements ICity {
         NationDB db = Locutus.imp().getNationDB();
         db.markCityDirty(-1, getId(), Long.MAX_VALUE);
         if (events) {
-            Locutus.imp().runEventsAsync(f -> db.updateDirtyCities(true, f));
+            Locutus.imp().runEventsAsync(f -> db.updateDirtyCities(true, f, Integer.MAX_VALUE));
         } else {
-            db.updateDirtyCities(true, null);
+            db.updateDirtyCities(true, null, Integer.MAX_VALUE);
         }
     }
 

@@ -95,6 +95,16 @@ public class ActiveWarHandler {
         return result;
     }
 
+    public void iterateActiveWars(Consumer<DBWar> consumer) {
+        synchronized (activeWars) {
+            for (DBWar[] nationWars : activeWars.values()) {
+                for (DBWar war : nationWars) {
+                    consumer.accept(war);
+                }
+            }
+        }
+    }
+
     public ObjectOpenHashSet<DBWar> getActiveWars(Predicate<Integer> nationId, Predicate<DBWar> warPredicate) {
         ObjectOpenHashSet<DBWar> result = new ObjectOpenHashSet<>();
         synchronized (activeWars) {

@@ -129,7 +129,7 @@ public interface NationList extends NationFilter {
 
         if (update) {
             Locutus.imp().getNationDB().markDirtyIncorrectCities(getNations(), true, true);
-            Locutus.imp().returnEventsAsync(events -> Locutus.imp().getNationDB().updateDirtyCities(false, events));
+            Locutus.imp().returnEventsAsync(events -> Locutus.imp().getNationDB().updateDirtyCities(false, events, Integer.MAX_VALUE));
         }
         for (DBNation nation : getNations()) {
             Map<Integer, JavaCity> cities = nation.getCityMap(false, false,false);

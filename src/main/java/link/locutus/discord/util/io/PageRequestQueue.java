@@ -118,7 +118,8 @@ public class PageRequestQueue {
         }
 
         for (PageRequestTask task : elems) {
-            if (!tracker.hasRateLimiting(task.getUrl())) {
+            int domainId = tracker.getDomainId(task.getUrl());
+            if (!tracker.hasRateLimiting(domainId)) {
                 return task;
             }
             long retry = tracker.getRetryAfter(task.getUrl());

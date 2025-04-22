@@ -967,6 +967,7 @@ public abstract class DBNation implements NationOrAlliance {
                 dirty = true;
                 if (copyOriginal == null && eventConsumer != null) copyOriginal = copy();
                 this.edit().setContinent(continent);
+                this.markCitiesDirty();
                 if (eventConsumer != null) eventConsumer.accept(new NationChangeContinentEvent(copyOriginal, this));
             }
         }
@@ -1029,6 +1030,11 @@ public abstract class DBNation implements NationOrAlliance {
             this.edit().setBeigeTimer(TimeUtil.getTurn() + 14 * 12);
         }
         return dirty;
+    }
+
+    private void markCitiesDirty() {
+        long now = System.currentTimeMillis();
+        for (int cityId : this._getCitiesV3().keySet()) Locutus.imp().getNationDB().markCityDirty(getNation_id(), cityId, now);
     }
 
     public boolean updateNationInfo(DBNation copyOriginal, com.politicsandwar.graphql.model.Nation nation, Consumer<Event> eventConsumer) {
@@ -1235,6 +1241,7 @@ public abstract class DBNation implements NationOrAlliance {
             Continent continent = Continent.parseV3(nation.getContinent().toUpperCase(Locale.ROOT));
             if (continent != this.getContinent()) {
                 this.setContinent(continent);
+                this.markCitiesDirty();
                 if (eventConsumer != null) eventConsumer.accept(new NationChangeContinentEvent(copyOriginal, this));
                 dirty = true;
             }
@@ -1301,6 +1308,7 @@ public abstract class DBNation implements NationOrAlliance {
             this.setGNI(nation.getGross_national_income());
             if (eventConsumer != null) eventConsumer.accept(new NationChangeGNIEvent(copyOriginal, this));
             dirty = true;
+            this.markCitiesDirty();
         }
 //        if (nation.getGross_domestic_product() != null && Math.round((this.gdp - nation.getGross_domestic_product()) * 100) != 0) {
 //            this.setGDP(nation.getGross_domestic_product());

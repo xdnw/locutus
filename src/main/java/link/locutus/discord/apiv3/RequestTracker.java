@@ -39,8 +39,12 @@ public class RequestTracker {
     private final Map<Integer, Boolean> DOMAIN_HAS_RATE_LIMITING = new ConcurrentHashMap<>();
     private final Map<Integer, Long> DOMAIN_RETRY_AFTER = new ConcurrentHashMap<>();
 
-    public boolean hasRateLimiting(URI url) {
-        return DOMAIN_HAS_RATE_LIMITING.getOrDefault(url.getHost(), false);
+    public boolean hasRateLimiting(int domainId) {
+        return DOMAIN_HAS_RATE_LIMITING.getOrDefault(domainId, false);
+    }
+
+    public void setRateLimited(int domainId, boolean rateLimited) {
+        DOMAIN_HAS_RATE_LIMITING.put(domainId, rateLimited);
     }
 
     public long getRetryAfter(URI url) {
@@ -74,6 +78,8 @@ public class RequestTracker {
     }
 
     private void runWithRetryAfter(final PageRequestQueue.PageRequestTask task, int depth) {
+        int domainId = getDomainId(task.getUrl());
+
         long now = System.currentTimeMillis();
         long retryMs = getRetryAfter(task.getUrl());
         boolean isRateLimited = false;
@@ -100,6 +106,7 @@ public class RequestTracker {
                 new Exception().printStackTrace();
                 task.completeExceptionally(new RuntimeException("Task failed"));
             }
+            DOMAIN_HAS_RATE_LIMITING.remove(domainId);
             return;
         } catch (FileUtil.TooManyRequests e) {
             if (depth > 3) {
@@ -150,7 +157,6 @@ public class RequestTracker {
         }
         if (isRateLimited) {
             try {
-                int domainId = getDomainId(task.getUrl());
                 // print rate limit when it hits (retry after, + how many requests on that domain + the domain)
                 {
                     int requestsPast2m = getDomainRequestsSince(domainId, now - TimeUnit.MINUTES.toMillis(2));

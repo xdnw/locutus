@@ -2297,7 +2297,7 @@ public class AdminCommands {
             "Note: This does not update cities")
     public String syncNations(NationDB db, @Default Set<DBNation> nations, @Switch("d") boolean dirtyNations) throws IOException, ParseException {
         if (dirtyNations) {
-            db.updateDirtyNations(Event::post);
+            db.updateDirtyNations(Event::post, Integer.MAX_VALUE);
         }
         List<Event> events = new ArrayList<>();
         Set<Integer> updatedIds;
@@ -2955,7 +2955,7 @@ public class AdminCommands {
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncAttacks(boolean runAlerts) throws IOException {
         WarUpdateProcessor.checkActiveConflicts();
-        Locutus.imp().getWarDb().updateAttacks(runAlerts, Event::post, Settings.USE_V2);
+        Locutus.imp().getWarDb().updateAttacksAndWarsV3(runAlerts, Event::post, Settings.USE_V2);
         return "Done!";
     }
 //    SyncTrade
