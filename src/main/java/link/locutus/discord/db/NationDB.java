@@ -962,7 +962,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                         nationIdActive.add(KeyValue.of(nationId, Long.MAX_VALUE)); // Always update dirty nations
                     }
                 }
-            } catch (NoSuchElementException ignore) {
+            } catch (NoSuchElementException | NullPointerException ignore) {
                 ignore.printStackTrace();
             }
 
@@ -1020,7 +1020,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                     int id = iter.next();
                     iter.remove();
                     ids.add(id);
-                } catch (NoSuchElementException ignore) {
+                } catch (NoSuchElementException | NullPointerException ignore) {
                     ignore.printStackTrace();
                 }
             }
@@ -1301,7 +1301,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 int cityId = iter.next();
                 iter.remove();
                 cityIds.add(cityId);
-            } catch (NoSuchElementException ignore) {
+            } catch (NoSuchElementException | NullPointerException ignore) {
             }
         }
 
