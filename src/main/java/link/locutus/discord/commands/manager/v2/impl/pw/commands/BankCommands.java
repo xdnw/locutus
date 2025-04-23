@@ -4033,6 +4033,7 @@ public class BankCommands {
                         row.add(ResourceType.toString(record.resources));
                         row.add(ResourceType.toString(record.resources));
                     }
+                    rows.add(row);
                 }
                 if (rows.size() > 1) {
                     String title = "expire_records.csv";
@@ -4113,6 +4114,9 @@ public class BankCommands {
                     footers.add("You do not have permission to withdraw escrowed funds");
                 }
             }
+            if (econ) {
+                footers.add("To view records: " + CM.bank.records.cmd.nationOrAllianceOrGuild(nationOrAllianceOrGuild.getQualifiedId() + ""));
+            }
         } else if (nationOrAllianceOrGuild.isAlliance()) {
             if (econ) {
                 buttons.put("withdraw",
@@ -4121,6 +4125,7 @@ public class BankCommands {
                                         .allianceAccount(nationOrAllianceOrGuild.getQualifiedId()),
                                 true));
                 footers.add("To withdraw: " + CM.transfer.resources.cmd.toSlashMention() + " with `#ignore` as note");
+                footers.add("To view records: " + CM.bank.records.cmd.nationOrAllianceOrGuild(nationOrAllianceOrGuild.getQualifiedId() + "").onlyOffshoreTransfers("true"));
             }
         } else if (nationOrAllianceOrGuild.isTaxid()) {
             buttons.put("withdraw",
@@ -4131,6 +4136,7 @@ public class BankCommands {
 
             if (econ) {
                 footers.add("To add balance: " + CM.deposits.add.cmd.toSlashMention() + " with `accounts: " + nationOrAllianceOrGuild.getQualifiedName() + "`");
+                footers.add("To view records: " + CM.bank.records.cmd.nationOrAllianceOrGuild(nationOrAllianceOrGuild.getQualifiedId()));
             }
         } else if (nationOrAllianceOrGuild.isGuild()) {
             // trade deposit
@@ -4147,6 +4153,7 @@ public class BankCommands {
                     footers.add("Send to " + PW.getMarkdownUrl(offshore.getValue(), true) + " with note `" + note + "` to offshore\n" +
                             "Or " + MarkupUtil.markdownUrl("send a trade", "https://github.com/xdnw/locutus/wiki/banking#for-my-corporation"));
                 }
+                footers.add("To view records: " + CM.bank.records.cmd.nationOrAllianceOrGuild(nationOrAllianceOrGuild.getIdLong() + "").onlyOffshoreTransfers("true"));
             }
         }
 
@@ -4203,13 +4210,13 @@ public class BankCommands {
 
         if (!footers.isEmpty()) {
             if (condensedFormat) {
-                response.append("\n**Tips:**\n");
+                response.append("\n-# **Tips:**\n");
             } else {
-                response.append("\n## Tips:\n");
+                response.append("\n-# **Tips:**\n");
             }
             for (int i = 0; i < footers.size(); i++) {
                 String footer = footers.get(i);
-                response.append("- " + footer + "\n");
+                response.append("-# - " + footer + "\n");
             }
         }
 

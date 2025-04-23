@@ -605,32 +605,59 @@ public final class Locutus extends ListenerAdapter {
             FileUtil.RateLimitSkipper twoHourMinSkipper = new FileUtil.RateLimitSkipper(domain, 2 * 60 * 60 * 1000);
 
             List<Runnable> updateTasks = new ObjectArrayList<>();
-            updateTasks.add(() -> {
+            Runnable updateDirtyCities = () -> {
                 int maxCities = FileUtil.hasRateLimiting(domain) ? PoliticsAndWarV3.CITIES_PER_PAGE : Integer.MAX_VALUE;
                 getNationDB().markDirtyIncorrectCities(true, true);
                 runEventsAsync(events -> getNationDB().updateDirtyCities(false, events, maxCities));
-            });
-            updateTasks.add(() -> {
+            };
+//            updateTasks.add(() -> {
+//                int maxNations = FileUtil.hasRateLimiting(domain) ? PoliticsAndWarV3.NATIONS_PER_PAGE : Integer.MAX_VALUE;
+//                getNationDB().markDirtyIncorrectNations();
+//                runEventsAsync(events -> getNationDB().updateDirtyNations(events, maxNations));
+//            });
+//            updateTasks.add(() -> {
+//                // Every minute if not rate limited, else every 5m
+//                runEventsAsync(events -> getNationDB().updateRecentNations(events));
+//            });
+//            updateTasks.add(() -> {
+//                // Every minute if not rate limited, else every 5m
+//                runEventsAsync(events -> getNationDB().updateNewAndOutdatedCities(500, events));
+//            });
+            Runnable updateDirtyNations = () -> {
                 int maxNations = FileUtil.hasRateLimiting(domain) ? PoliticsAndWarV3.NATIONS_PER_PAGE : Integer.MAX_VALUE;
                 getNationDB().markDirtyIncorrectNations();
                 runEventsAsync(events -> getNationDB().updateDirtyNations(events, maxNations));
-            });
-            updateTasks.add(() -> {
+            };
+            Runnable updateRecentNations = () -> {
                 // Every minute if not rate limited, else every 5m
                 runEventsAsync(events -> getNationDB().updateRecentNations(events));
-            });
-            updateTasks.add(() -> {
+            };
+            Runnable updateNewAndOutdatedCities = () -> {
                 // Every minute if not rate limited, else every 5m
-                runEventsAsync(events -> getNationDB().updateNewAndOutdatedCities(500, events));
-            });
+                runEventsAsync(events -> getNationDB().updateNewAndOutdatedCities(50, events));
+            };
+
+            updateTasks.add(updateDirtyCities);
+            updateTasks.add(updateDirtyNations);
+            updateTasks.add(updateRecentNations);
+            updateTasks.add(updateNewAndOutdatedCities);
+            updateTasks.add(updateNewAndOutdatedCities);
+            updateTasks.add(updateNewAndOutdatedCities);
+            updateTasks.add(updateNewAndOutdatedCities);
 
             AtomicInteger lastTask = new AtomicInteger();
             taskTrack.addTask("Update Dirty Nations/Cities", () -> {
                 try {
                     if (Settings.USE_V2) return;
-                    if (fiveMinSkipper.shouldSkip()) return;
-                    int taskIndex = lastTask.getAndIncrement() % updateTasks.size();
+                    int taskIndex = lastTask.get() % updateTasks.size();
                     Runnable task = updateTasks.get(taskIndex);
+                    if (fiveMinSkipper.shouldSkip()) {
+                        if (task == updateNewAndOutdatedCities) {
+                            lastTask.incrementAndGet();
+                        }
+                        return;
+                    }
+                    lastTask.incrementAndGet();
                     task.run();
                 } catch (Throwable e) {
                     e.printStackTrace();
