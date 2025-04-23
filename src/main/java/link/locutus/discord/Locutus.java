@@ -1055,6 +1055,7 @@ public final class Locutus extends ListenerAdapter {
             boolean forceEphemeral = message != null && message.isEphemeral();
             IMessageIO io = new DiscordHookIO(hook, event).setInteraction(true);
             IMessageIO ioToUse = io;
+            boolean isEphemeral = false;
 
             try {
                 Map<String, List<DiscordUtil.CommandInfo>> commandMap = DiscordUtil.getCommands(guild, embed, List.of(button), message.getJumpUrl(), false);
@@ -1077,7 +1078,22 @@ public final class Locutus extends ListenerAdapter {
                     if (info.command.isBlank()) {
                         continue;
                     }
-                    if (info.channelId != null) {
+
+                    String id = info.command;
+                    if (!deferred && !id.contains("modal create")) {
+                        deferred = true;
+                        if (forceEphemeral || info.behavior == CommandBehavior.EPHEMERAL) {
+                            event.deferReply(true).queue();
+                            hook.setEphemeral(true);
+                            isEphemeral = true;
+                        } else {
+                            RateLimitUtil.queue(event.deferEdit());
+                        }
+                        DiscordHookIO hookIO = (DiscordHookIO) io;
+                        hookIO.setIsModal(event);
+                    }
+
+                    if (info.channelId != null && !isEphemeral) {
                         if (ioToUse instanceof DiscordChannelIO channelIO && channelIO.getIdLong() == info.channelId) {
                             continue;
                         }
@@ -1087,19 +1103,6 @@ public final class Locutus extends ListenerAdapter {
                             continue;
                         }
                         ioToUse = new DiscordChannelIO(cmdChannel);
-                    }
-
-                    String id = info.command;
-                    if (!deferred && !id.contains("modal create")) {
-                        deferred = true;
-                        if (forceEphemeral || info.behavior == CommandBehavior.EPHEMERAL) {
-                            event.deferReply(true).queue();
-                            hook.setEphemeral(true);
-                        } else {
-                            RateLimitUtil.queue(event.deferEdit());
-                        }
-                        DiscordHookIO hookIO = (DiscordHookIO) io;
-                        hookIO.setIsModal(event);
                     }
 
                     if (!id.isEmpty() && (id.startsWith(Settings.commandPrefix(true)) || getCommandManager().isModernPrefix(id.charAt(0)))) {
