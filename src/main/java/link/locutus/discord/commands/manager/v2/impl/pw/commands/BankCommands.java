@@ -4033,6 +4033,7 @@ public class BankCommands {
                         row.add(ResourceType.toString(record.resources));
                         row.add(ResourceType.toString(record.resources));
                     }
+                    rows.add(row);
                 }
                 if (rows.size() > 1) {
                     String title = "expire_records.csv";
