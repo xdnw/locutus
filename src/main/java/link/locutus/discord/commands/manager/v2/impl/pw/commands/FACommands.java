@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
@@ -54,7 +56,7 @@ public class FACommands {
         }
         Set<Long> existing = db.getCoalitionRaw(coalition);
         if (existing != null) {
-            for (long id : new HashSet<>(existing)) {
+            for (long id : new LongOpenHashSet(existing)) {
                 db.removeCoalition(id, coalition);
             }
         }

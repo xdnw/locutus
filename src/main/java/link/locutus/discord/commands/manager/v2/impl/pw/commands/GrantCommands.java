@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
@@ -3111,7 +3112,7 @@ public class GrantCommands {
         }
     }
     //
-    private Set<Integer> disabledNations = new HashSet<>();
+    private Set<Integer> disabledNations = new IntOpenHashSet();
 //
 //    @WhitelistPermission
 //    @Command
