@@ -504,21 +504,20 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         }
         if (parsed != nullInstance) return (T) parsed;
 
-        boolean isDelegate = false;
         String value = getInfoRaw(key, false);
         if (value == null) {
-            isDelegate = true;
             if (allowDelegate) {
-                value = getInfoRaw(key, true);
+                GuildDB delegate = getDelegateServer();
+                if (delegate != null) {
+                    return delegate.getOrNull(key, false);
+                }
             }
+            return null;
         }
-        if (value == null) return null;
         try {
             parsed =  (T) key.parse(this, value);
-            if (!isDelegate) {
-                synchronized (infoParsed) {
-                    infoParsed.put(key, parsed);
-                }
+            synchronized (infoParsed) {
+                infoParsed.put(key, parsed);
             }
             return (T) parsed;
         } catch (IllegalArgumentException e) {
