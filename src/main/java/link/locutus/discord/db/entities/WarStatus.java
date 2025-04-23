@@ -23,4 +23,8 @@ public enum WarStatus {
         }
         return warStatuses;
     }
+
+    public boolean isActive() {
+        return this == ACTIVE || this == DEFENDER_OFFERED_PEACE || this == ATTACKER_OFFERED_PEACE;
+    }
 }

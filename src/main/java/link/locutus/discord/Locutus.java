@@ -872,6 +872,10 @@ public final class Locutus extends ListenerAdapter {
         return loader.getApiV3();
     }
 
+    public PoliticsAndWarV3 getApiPool() {
+        return loader.getApiPool();
+    }
+
     public PoliticsAndWarV2 getPnwApiV2() {
         return loader.getApiV2();
     }

@@ -279,23 +279,25 @@ public class WarCategory {
     }
 
     public void update(NationFilter filter, DBWar from, DBWar to) {
+        int targetId;
+        if (allianceIds.contains(to.getAttacker_aa())) {
+            targetId = to.getDefender_id();
+        } else if (allianceIds.contains(to.getDefender_aa())) {
+            targetId = to.getAttacker_id();
+        } else if (warRoomMap.containsKey(to.getAttacker_id())) {
+            targetId = to.getAttacker_id();
+        } else if (warRoomMap.containsKey(to.getDefender_id())) {
+            targetId = to.getDefender_id();
+        } else {
+            return;
+        }
         try {
-            int targetId;
-            if (allianceIds.contains(to.getAttacker_aa())) {
-                targetId = to.getDefender_id();
-            } else if (allianceIds.contains(to.getDefender_aa())) {
-                targetId = to.getAttacker_id();
-            } else if (warRoomMap.containsKey(to.getAttacker_id())) {
-                targetId = to.getAttacker_id();
-            } else {
-                return;
-            }
             int participantId = to.getAttacker_id() == targetId ? to.getDefender_id() : to.getAttacker_id();
             DBNation target = Locutus.imp().getNationDB().getNationById(targetId);
             DBNation participant = Locutus.imp().getNationDB().getNationById(participantId);
 
             boolean create = false;
-            WarCatReason reason = getActiveReason(filter, target);
+            WarCatReason reason = to.getStatus().isActive() ? getActiveReason(filter, target) : WarCatReason.NO_WARS;
             if (reason.isActive()) {
                 reason = getActiveReason(filter, participant);
             }
@@ -305,7 +307,13 @@ public class WarCategory {
             }
             WarRoom room = target == null ? warRoomMap.get(targetId) : createWarRoom(target, create, create && from == null, false, reason);
             if (room != null) {
-                if (to.getAttacker_id() == target.getNation_id()) {
+                if ((to.getStatus() == WarStatus.PEACE || to.getStatus() == WarStatus.ATTACKER_VICTORY || to.getStatus() == WarStatus.ATTACKER_VICTORY|| to.getStatus() == WarStatus.EXPIRED)) {
+                    if (!room.hasOtherWar(filter, to.warId)) {
+                        deleteRoom(room, "War ended: " + to.getStatus());
+                        return;
+                    }
+                }
+                if (target != null && to.getAttacker_id() == target.getNation_id()) {
                     CounterStat counterStat = Locutus.imp().getWarDb().getCounterStat(to);
                     if (counterStat != null) {
                         switch (counterStat.type) {
@@ -320,12 +328,6 @@ public class WarCategory {
                         }
                     }
                 }
-                if (to != null && (to.getStatus() == WarStatus.PEACE || to.getStatus() == WarStatus.ATTACKER_VICTORY || to.getStatus() == WarStatus.ATTACKER_VICTORY|| to.getStatus() == WarStatus.EXPIRED)) {
-                    if (!room.hasOtherWar(filter, to.warId)) {
-                        deleteRoom(room, "War ended: " + to.getStatus());
-                        return;
-                    }
-                }
                 if ((from == null || to.getStatus() != from.getStatus())) {
                     room.updateParticipants(from, to, from == null);
                 }
@@ -334,7 +336,11 @@ public class WarCategory {
             db.setWarCatError(e);
             GuildKey.ENABLE_WAR_ROOMS.set(db, null, false);
         } catch (Throwable e) {
-            e.printStackTrace();
+            MessageChannel logChan = GuildKey.WAR_ROOM_LOG.getOrNull(getGuildDb());
+            if (logChan != null) {
+                String msg = "Error with war war room for target-id: " + (targetId) + ":\n```java\n" + StringMan.stacktraceToString(e.getStackTrace()) + "```";
+                RateLimitUtil.queueMessage(logChan, msg, true, 60);
+            }
         }
     }
 

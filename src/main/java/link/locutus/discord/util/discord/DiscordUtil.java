@@ -651,7 +651,8 @@ public class DiscordUtil {
     }
 
     public static Map.Entry<Integer, Integer> getCityRange(String name) {
-        if (name.charAt(0) != 'c') return null;
+        var char0 = name.charAt(0);
+        if (char0 != 'c' && char0 != 'C') return null;
 
         String[] range = name.substring(1).split("-");
         int start = -1;

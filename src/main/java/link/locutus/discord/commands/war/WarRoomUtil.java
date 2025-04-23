@@ -354,7 +354,8 @@ public class WarRoomUtil {
         String[] split = category.getName().toLowerCase().split("-", 2);
         if (split.length == 2) {
             String filterStr = split[1];
-            if (filterStr.charAt(0) == 'c') {
+            var char0 = filterStr.charAt(0);
+            if (char0 == 'c' || char0 == 'C') {
                 if (!filterStr.contains("-") && !filterStr.contains("+")) filterStr += "+";
                 try {
                     return CityRanges.parse(filterStr);

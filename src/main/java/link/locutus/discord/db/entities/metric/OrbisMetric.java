@@ -67,7 +67,7 @@ public enum OrbisMetric {
     public static void update(NationDB db) {
         long day = db.getLatestMetricTime(false);
         if (day >= TimeUtil.getDay() - 1) return;
-        PoliticsAndWarV3 api = Locutus.imp().getV3();
+        PoliticsAndWarV3 api = Locutus.imp().getApiPool();
 
         long timeMs = TimeUtil.getTimeFromDay(day);
         List<ActivityStat> activity = api.getActivityStats(timeMs);

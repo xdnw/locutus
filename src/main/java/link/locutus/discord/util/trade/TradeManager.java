@@ -84,7 +84,7 @@ public class TradeManager {
                 if (gameAvg == null || (gameAvgUpdated < turn)) {
                     double[] tmp = ResourceType.getBuffer();
                     try {
-                        PoliticsAndWarV3 api = Locutus.imp().getV3();
+                        PoliticsAndWarV3 api = Locutus.imp().getApiPool();
                         Tradeprice price = api.getTradePrice();
 
                         tmp[ResourceType.MONEY.ordinal()] = 1;
@@ -712,7 +712,7 @@ public class TradeManager {
     private boolean fetchNewTradesNextTick = true;
 
     public synchronized boolean updateTradeList(Consumer<Event> eventConsumer) {
-        PoliticsAndWarV3 api = Locutus.imp().getV3();
+        PoliticsAndWarV3 api = Locutus.imp().getApiPool();
         // get last trade
         List<DBTrade> latestTrades = tradeDb.getTrades(f -> f.order("tradeId", QueryOrder.OrderDirection.DESC).limit(1));
         DBTrade latest = latestTrades.isEmpty() ? null : latestTrades.get(0);
@@ -1013,7 +1013,7 @@ public class TradeManager {
             }
         }
         try {
-            GameInfo gameInfo = Locutus.imp().getV3().getGameInfo();
+            GameInfo gameInfo = Locutus.imp().getApiPool().getGameInfo();
             Radiation info = gameInfo.getRadiation();
 
             setRadiation(Continent.NORTH_AMERICA, info.getNorth_america());
@@ -1068,7 +1068,7 @@ public class TradeManager {
     }
 
     public void updateColorBlocs() {
-        for (Color color : Locutus.imp().getV3().getColors()) {
+        for (Color color : Locutus.imp().getApiPool().getColors()) {
             NationColor dbColor = NationColor.fromV3(color);
             dbColor.setTurnBonus(color.getTurn_bonus());
             dbColor.setVotedName(color.getBloc_name());

@@ -693,7 +693,7 @@ public class WarDB extends DBMainV2 {
                 if (attacksByWarId2.isEmpty() && Settings.INSTANCE.TASKS.ALL_WAR_SECONDS > 0) {
                     Logg.text("Fetching all attacks");
                     AttackCursorFactory factory = new AttackCursorFactory(this);
-                    List<WarAttack> attacks = Locutus.imp().getV3().readSnapshot(PagePriority.ACTIVE_PAGE, WarAttack.class);
+                    List<WarAttack> attacks = Locutus.imp().getApiPool().readSnapshot(PagePriority.ACTIVE_PAGE, WarAttack.class);
                     List<AbstractCursor> attackList = new ObjectArrayList<>(attacks.size());
                     for (WarAttack v3Attack : attacks) {
                         attackList.add(factory.load(v3Attack, true));
@@ -1241,7 +1241,7 @@ public class WarDB extends DBMainV2 {
 
         for (int i = 0; i < attackIds.size(); i += 500) {
             List<Integer> subList = attackIds.subList(i, Math.min(i + 500, attackIds.size()));
-            for (WarAttack attack : Locutus.imp().getV3().fetchAttacks(f -> f.setId(subList), new Consumer<WarAttackResponseProjection>() {
+            for (WarAttack attack : Locutus.imp().getApiPool().fetchAttacks(f -> f.setId(subList), new Consumer<WarAttackResponseProjection>() {
                 @Override
                 public void accept(WarAttackResponseProjection proj) {
                     proj.def_id();
@@ -1860,7 +1860,7 @@ public class WarDB extends DBMainV2 {
 
             boolean callEvents = !removedBounties.isEmpty();
 
-            PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+            PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
             Collection<Bounty> bounties;
             if (Settings.INSTANCE.ENABLED_COMPONENTS.SNAPSHOTS) {
                 bounties = v3.readSnapshot(PagePriority.API_BOUNTIES, Bounty.class);
@@ -1937,14 +1937,14 @@ public class WarDB extends DBMainV2 {
             long start = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 61);
             return updateWarsSince(eventConsumer, start);
         }
-        List<DBWar> wars = Locutus.imp().getV3().readSnapshot(PagePriority.API_WARS, War.class)
+        List<DBWar> wars = Locutus.imp().getApiPool().readSnapshot(PagePriority.API_WARS, War.class)
                 .stream().map(f -> new DBWar(f, false)).toList();
         Set<Integer> activeWarIds = getActiveWars().stream().map(DBWar::getWarId).collect(Collectors.toSet());
         return updateWars(wars, activeWarIds, eventConsumer, eventConsumer != null);
     }
 
     public boolean updateWarsSince(Consumer<Event> eventConsumer, long date) {
-        PoliticsAndWarV3 api = Locutus.imp().getV3();
+        PoliticsAndWarV3 api = Locutus.imp().getApiPool();
         List<War> wars = api.fetchWarsWithInfo(r -> {
             r.setAfter(new Date(date));
             r.setActive(false); // needs to be set otherwise inactive wars wont be fetched
@@ -2066,7 +2066,7 @@ public class WarDB extends DBMainV2 {
             int end = Math.min(i + chunkSize, idsSorted.size());
             List<Integer> subList = idsSorted.subList(i, end);
 
-            PoliticsAndWarV3 api = Locutus.imp().getV3();
+            PoliticsAndWarV3 api = Locutus.imp().getApiPool();
             List<War> warsQL = api.fetchWarsWithInfo(r -> {
                 r.setId(subList);
                 r.setActive(false);
@@ -2082,7 +2082,7 @@ public class WarDB extends DBMainV2 {
         if (maxId == 0) {
             return;
         }
-        PoliticsAndWarV3 api = Locutus.imp().getV3();
+        PoliticsAndWarV3 api = Locutus.imp().getApiPool();
         List<War> warsQl = api.fetchWarsWithInfo(r -> {
             r.setMin_id(maxId + 1);
             r.setActive(false);
@@ -2128,7 +2128,7 @@ public class WarDB extends DBMainV2 {
 
         Collections.sort(warIdsToUpdate);
 
-        PoliticsAndWarV3 api = Locutus.imp().getV3();
+        PoliticsAndWarV3 api = Locutus.imp().getApiPool();
         List<War> wars = api.fetchWarsWithInfo(r -> {
             r.setId(warIdsToUpdate);
             r.setActive(false); // needs to be set otherwise inactive wars wont be fetched
@@ -2742,7 +2742,7 @@ public class WarDB extends DBMainV2 {
         if (!v2 && (latest == null || latest.getDate() < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1))) {
             updateAllWars(eventConsumer);
 
-            PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+            PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
             Logg.text("No recent attack data in DB. Updating attacks without event handling: " + maxId);
             List<AbstractCursor> attackList = new ArrayList<>();
             v3.fetchAttacksSince(maxId, new Predicate<WarAttack>() {
@@ -2783,7 +2783,7 @@ public class WarDB extends DBMainV2 {
                 throw new RuntimeException(e);
             }
         } else {
-            PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+            PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
             newAttacks = v3
                     .fetchAttacksSince(maxId, f -> true)
                     .stream().map(f -> factory.load(f, true)).toList();

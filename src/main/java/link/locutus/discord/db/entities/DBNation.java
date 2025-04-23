@@ -3233,7 +3233,7 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     public String fetchUsername() throws IOException {
-        List<Nation> discord = Locutus.imp().getV3().fetchNations(true, f -> f.setId(List.of(data()._nationId())), r -> r.discord());
+        List<Nation> discord = Locutus.imp().getApiPool().fetchNations(true, f -> f.setId(List.of(data()._nationId())), r -> r.discord());
         if (discord.isEmpty()) return null;
         return discord.get(0).getDiscord();
     }

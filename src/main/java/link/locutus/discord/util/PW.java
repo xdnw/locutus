@@ -430,7 +430,7 @@ public final class PW {
         }
 
         public static void updateCityAverage() {
-            GameInfo gameInfo = Locutus.imp().getV3().getGameInfo();
+            GameInfo gameInfo = Locutus.imp().getApiPool().getGameInfo();
             Double avg = gameInfo.getCity_average();
             if (avg != null) {
                 CITY_AVERAGE = avg;
