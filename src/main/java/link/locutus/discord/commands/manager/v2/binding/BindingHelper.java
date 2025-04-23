@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.binding;
 
 import com.google.gson.reflect.TypeToken;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.util.StringMan;
 
@@ -18,7 +19,7 @@ public class BindingHelper {
     }
 
     public static <T extends Enum> Set<T> emumSet(Class<T> emum, String input) {
-        return new LinkedHashSet<>(emumList(emum, input));
+        return new ObjectLinkedOpenHashSet<>(emumList(emum, input));
     }
 
     public static <T extends Enum> List<T> emumList(Class<T> emum, String input) {
@@ -76,7 +77,7 @@ public class BindingHelper {
             store.addParser(key, parser);
         } else {
             Class<?>[] typesArr = binding.types();
-            Set<Type> types = new LinkedHashSet<>(Math.max(1, typesArr.length));
+            Set<Type> types = new ObjectLinkedOpenHashSet<>(Math.max(1, typesArr.length));
             for (Class<?> type : typesArr) types.add(type);
             if (types.isEmpty()) {
                 types.add(method.getGenericReturnType());

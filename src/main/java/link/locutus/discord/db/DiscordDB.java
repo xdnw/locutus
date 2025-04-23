@@ -820,7 +820,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
     }
 
     public Set<Integer> getMultis(BigInteger uuid) {
-            Set<Integer> list = new LinkedHashSet<>();
+            Set<Integer> list = new ObjectLinkedOpenHashSet<>();
         try (PreparedStatement stmt = prepareQuery("select * FROM UUIDS WHERE uuid = ?")) {
             stmt.setBytes(1, uuid.toByteArray());
             try (ResultSet rs = stmt.executeQuery()) {

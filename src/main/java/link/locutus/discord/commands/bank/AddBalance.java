@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.bank;
 
+import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
@@ -115,7 +116,7 @@ public class AddBalance extends Command {
                 if ((args.size() == 2 || args.size() == 3) && args.get(1).equalsIgnoreCase("*")) {
                     Set<Long> tracked = null;
                     if (args.size() == 3) {
-                        tracked = new LinkedHashSet<>();
+                        tracked = new LongLinkedOpenHashSet();
                         Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, args.get(2));
                         if (alliances == null || alliances.isEmpty()) {
                             return "Invalid alliance: `" + args.get(2) + "`";

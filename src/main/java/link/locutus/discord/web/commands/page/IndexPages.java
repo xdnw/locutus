@@ -1,38 +1,40 @@
 package link.locutus.discord.web.commands.page;
 
-import com.google.gson.Gson;
 import gg.jte.generated.precompiled.JteindexGenerated;
-import gg.jte.generated.precompiled.auth.JteunregisterGenerated;
-import gg.jte.generated.precompiled.auth.JtenationpickerGenerated;
 import gg.jte.generated.precompiled.auth.JtelogoutGenerated;
-import gg.jte.generated.precompiled.command.JteguildindexGenerated;
 import gg.jte.generated.precompiled.auth.JtenationpickedGenerated;
 import gg.jte.generated.precompiled.auth.JtepickerGenerated;
+import gg.jte.generated.precompiled.auth.JteunregisterGenerated;
+import gg.jte.generated.precompiled.command.JteguildindexGenerated;
 import gg.jte.generated.precompiled.command.JtesearchGenerated;
 import gg.jte.generated.precompiled.guild.JteguildsGenerated;
 import gg.jte.generated.precompiled.guild.JtememberindexGenerated;
+import io.javalin.http.Context;
 import io.javalin.http.HandlerType;
 import io.javalin.http.HttpStatus;
 import io.javalin.http.RedirectResponse;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoForm;
-import link.locutus.discord.commands.manager.v2.command.CommandGroup;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
+import link.locutus.discord.commands.manager.v2.command.CommandGroup;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
@@ -45,11 +47,6 @@ import link.locutus.discord.web.commands.search.SearchResult;
 import link.locutus.discord.web.commands.search.SearchType;
 import link.locutus.discord.web.jooby.PageHandler;
 import link.locutus.discord.web.jooby.WebRoot;
-import link.locutus.discord.config.Settings;
-import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
-import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.city.JavaCity;
-import io.javalin.http.Context;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
@@ -63,7 +60,6 @@ import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 public class IndexPages extends PageHelper {
     @Command
@@ -314,7 +310,7 @@ public class IndexPages extends PageHelper {
         String locutusInvite = null;
         String joinLink = nation != null && nation.getAlliance_id() == 0 ? Settings.PNW_URL() + "/alliances/" : null;
 
-        Set<GuildDB> dbs = new LinkedHashSet<>();
+        Set<GuildDB> dbs = new ObjectLinkedOpenHashSet<>();
 
         if (current != null) {
             dbs.add(current);

@@ -5,6 +5,7 @@ import ai.djl.repository.zoo.ModelNotFoundException;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.commands.manager.v2.binding.*;
@@ -77,7 +78,7 @@ public class CommandManager2 {
         Set<String> checkedOptions = new HashSet<>();
         Map<String, Object> optionsData = new LinkedHashMap<>();
 
-        Set<Parser> parsers = new LinkedHashSet<>();
+        Set<Parser> parsers = new ObjectLinkedOpenHashSet<>();
         for (ParametricCallable callable : commands.getParametricCallables(f -> true)) {
             for (ParameterData param : callable.getUserParameters()) {
                 Parser<?> parser = param.getBinding();

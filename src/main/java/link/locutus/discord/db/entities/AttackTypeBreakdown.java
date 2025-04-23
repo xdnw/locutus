@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.util.MathMan;
@@ -65,7 +66,7 @@ public class AttackTypeBreakdown {
         allTypes.addAll(mapA.keySet());
         allTypes.addAll(mapB.keySet());
         Collections.sort(allTypes);
-        allTypes = new ArrayList<>(new LinkedHashSet<>(allTypes));
+        allTypes = new ArrayList<>(new ObjectLinkedOpenHashSet<>(allTypes));
         for (AttackTypeSubCategory type : allTypes) {
             String amtA = MathMan.format(mapA.getOrDefault(type, 0));
             String amtB = MathMan.format(mapB.getOrDefault(type, 0));

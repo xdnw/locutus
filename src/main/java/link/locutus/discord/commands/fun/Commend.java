@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.fun;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
@@ -17,7 +18,7 @@ import java.util.Set;
 
 public class Commend extends Command {
     private final boolean isCommend;
-    Set<Integer> history = new HashSet<>();
+    Set<Integer> history = new IntOpenHashSet();
 
     public Commend(String id, boolean isCommend) {
         super(id, CommandCategory.FUN);

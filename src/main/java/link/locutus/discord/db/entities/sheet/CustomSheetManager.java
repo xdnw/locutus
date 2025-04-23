@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities.sheet;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.db.GuildDB;
@@ -191,7 +192,7 @@ public class CustomSheetManager {
     }
 
     public Set<String> getSelectionAliasNames() {
-        Set<String> names = new LinkedHashSet<>();
+        Set<String> names = new ObjectLinkedOpenHashSet<>();
         for (Map.Entry<Class, Map<String, SelectionAlias>> entry : getSelectionAliases().entrySet()) {
             String prefix = PlaceholdersMap.getClassName(entry.getKey()) + ":";
             for (String name : entry.getValue().keySet()) {

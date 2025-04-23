@@ -1,5 +1,6 @@
 package link.locutus.discord.gpt.pw;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Logg;
 import link.locutus.wiki.game.PWWikiUtil;
 import link.locutus.discord.db.entities.EmbeddingSource;
@@ -35,7 +36,7 @@ public class WikiManager {
 
     public Set<WikiPagePW> getModifiedPages() throws IOException {
         // return list of pages where hash of file != hash
-        Set<WikiPagePW> pages = new LinkedHashSet<>();
+        Set<WikiPagePW> pages = new ObjectLinkedOpenHashSet<>();
         // iterate over each page
         for (Map.Entry<Integer, WikiPagePW> entry : gameWikiPagesBySourceId.entrySet()) {
             int sourceId = entry.getKey();
@@ -88,7 +89,7 @@ public class WikiManager {
     }
 
     public Set<String> getCategories() {
-        Set<String> categories = new LinkedHashSet<>();
+        Set<String> categories = new ObjectLinkedOpenHashSet<>();
         for (WikiPagePW page : gameWikiPagesBySourceId.values()) {
             categories.addAll(page.getCategories());
         }
@@ -96,7 +97,7 @@ public class WikiManager {
     }
 
     public Set<WikiPagePW> getPages(Set<String> allowedCategories) {
-            Set<WikiPagePW> pages = new LinkedHashSet<>();
+            Set<WikiPagePW> pages = new ObjectLinkedOpenHashSet<>();
         for (WikiPagePW page : gameWikiPagesBySourceId.values()) {
             if (page.getCategories().stream().anyMatch(allowedCategories::contains)) {
                 pages.add(page);
@@ -128,7 +129,7 @@ public class WikiManager {
             String url = f.get("url", String.class);
             long hash = f.get("hash", Long.class);
             String categories = f.get("categories", String.class);
-            Set<String> categorySet = new LinkedHashSet<>();
+            Set<String> categorySet = new ObjectLinkedOpenHashSet<>();
             for (String category : categories.split(",")) {
                 categorySet.add(category.trim());
             }

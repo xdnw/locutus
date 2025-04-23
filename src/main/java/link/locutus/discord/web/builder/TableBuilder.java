@@ -5,18 +5,12 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import gg.jte.generated.precompiled.data.Jtetable_dataGenerated;
 import gg.jte.generated.precompiled.data.Jtetable_fullGenerated;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import org.apache.commons.lang3.StringEscapeUtils;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 
 public class TableBuilder<T> {
@@ -34,8 +28,8 @@ public class TableBuilder<T> {
         this.ws = ws;
         this.columns = new ArrayList<>();
         this.valueFunctions = new ArrayList<>();
-        this.visibleColumns = new LinkedHashSet<>();
-        this.searchableColumns = new LinkedHashSet<>();
+        this.visibleColumns = new ObjectLinkedOpenHashSet<>();
+        this.searchableColumns = new ObjectLinkedOpenHashSet<>();
         this.cellFormatFunction = new HashMap<>();
     }
 
@@ -43,8 +37,8 @@ public class TableBuilder<T> {
         this.ws = other.ws;
         this.columns = new ArrayList<>(other.columns);
         this.valueFunctions = new ArrayList<>(other.valueFunctions);
-        this.visibleColumns = new LinkedHashSet<>(other.visibleColumns);
-        this.searchableColumns = new LinkedHashSet<>(other.searchableColumns);
+        this.visibleColumns = new ObjectLinkedOpenHashSet<>(other.visibleColumns);
+        this.searchableColumns = new ObjectLinkedOpenHashSet<>(other.searchableColumns);
         this.cellFormatFunction = new HashMap<>(other.cellFormatFunction);
         this.rowFormatFunction = other.rowFormatFunction;
         this.sortColumn = other.sortColumn;
@@ -152,7 +146,7 @@ public class TableBuilder<T> {
     }
 
     public TableBuilder<T> setRenderer(int columnIndex, String functionName) {
-        cellFormatFunction.computeIfAbsent(functionName, k -> new LinkedHashSet<>()).add(columnIndex);
+        cellFormatFunction.computeIfAbsent(functionName, k -> new ObjectLinkedOpenHashSet<>()).add(columnIndex);
         return this;
     }
 }

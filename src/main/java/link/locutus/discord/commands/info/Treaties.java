@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.info;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.commands.manager.Command;
@@ -54,7 +55,7 @@ public class Treaties extends Command {
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
         Set<Integer> aaIds = db.getAllianceIds();
-        Set<Treaty> allTreaties = new LinkedHashSet<>();
+        Set<Treaty> allTreaties = new ObjectLinkedOpenHashSet<>();
         Map<Integer, Treaty> treaties = new LinkedHashMap<>();
         for (Integer alliance : alliances) {
             DBAlliance.getOrCreate(alliance).getTreaties(alliances.size() == 1 && aaIds.contains(alliance));

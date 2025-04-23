@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.external.guild;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -121,7 +122,7 @@ public class WarRoomCmd extends Command {
             }
             targets.entrySet().removeIf(f -> f.getValue().isEmpty());
 
-            Set<GuildMessageChannel> channels = new LinkedHashSet<>();
+            Set<GuildMessageChannel> channels = new ObjectLinkedOpenHashSet<>();
             for (Map.Entry<DBNation, Set<DBNation>> entry : targets.entrySet()) {
                 DBNation target = entry.getKey();
                 Set<DBNation> attackers = entry.getValue();
@@ -147,7 +148,7 @@ public class WarRoomCmd extends Command {
         }
         DBNation target = DiscordUtil.parseNation(arg, true);
         if (target == null) return "Invalid target: `" + args.get(0) + "`";
-        Set<DBNation> attackers = new LinkedHashSet<>();
+        Set<DBNation> attackers = new ObjectLinkedOpenHashSet<>();
         for (int i = 1; i < args.size(); i++) {
             DBNation attacker = DiscordUtil.parseNation(args.get(i), true);
             if (attacker == null) {

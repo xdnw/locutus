@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.sheets;
 
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.Command;
@@ -116,7 +118,7 @@ public class MailTargets extends Command {
 
         Map<DBNation, Set<DBNation>> warAttDefMap = BlitzGenerator.reverse(warDefAttMap);
         Map<DBNation, Set<DBNation>> spyAttDefMap = BlitzGenerator.reverse(spyDefAttMap);
-        Set<DBNation> allAttackers = new LinkedHashSet<>();
+        Set<DBNation> allAttackers = new ObjectLinkedOpenHashSet<>();
         allAttackers.addAll(warAttDefMap.keySet());
         allAttackers.addAll(spyAttDefMap.keySet());
 
@@ -173,10 +175,10 @@ public class MailTargets extends Command {
                     mail.append((i + 1) + ". War Target: " + MarkupUtil.htmlUrl(defender.getNation(), defender.getUrl()) + "\n");
                     mail.append(getStrengthInfo(defender) + "\n"); // todo
 
-                    Set<DBNation> others = new LinkedHashSet<>(warDefAttMap.get(defender));
+                    Set<DBNation> others = new ObjectLinkedOpenHashSet<>(warDefAttMap.get(defender));
                     others.remove(attacker);
                     if (!others.isEmpty()) {
-                        Set<String> allies = new LinkedHashSet<>();
+                        Set<String> allies = new ObjectLinkedOpenHashSet<>();
                         for (DBNation other : others) {
                             allies.add(other.getNation());
                         }
@@ -249,7 +251,7 @@ public class MailTargets extends Command {
         if (!flags.contains('f')) {
             String title = totalWarTargets + " wars & " + totalSpyTargets + " spyops";
 
-            Set<Integer> alliances = new LinkedHashSet<>();
+            Set<Integer> alliances = new IntLinkedOpenHashSet();
             for (DBNation nation : mailTargets.keySet()) alliances.add(nation.getAlliance_id());
             String embedTitle = title + " to " + mailTargets.size() + " nations";
             if (alliances.size() != 1) embedTitle += " in " + alliances.size() + " alliances";

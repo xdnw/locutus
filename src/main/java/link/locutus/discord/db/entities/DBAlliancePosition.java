@@ -1,6 +1,7 @@
 package link.locutus.discord.db.entities;
 
 import com.politicsandwar.graphql.model.AlliancePosition;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -239,7 +240,7 @@ public class DBAlliancePosition {
     }
 
     public Set<AlliancePermission> getPermissions() {
-        Set<AlliancePermission> result = new LinkedHashSet<>();
+        Set<AlliancePermission> result = new ObjectLinkedOpenHashSet<>();
         for (AlliancePermission perm : AlliancePermission.values()) {
             if (hasPermission(perm)) result.add(perm);
         }

@@ -199,7 +199,7 @@ public class PageHandler implements Handler {
 
     //    private Schema generateSchema() {
 //        CommandGroup api = (CommandGroup) commands.get("api");
-//        Set<Class<?>> schemaClasses = new LinkedHashSet<>();
+//        Set<Class<?>> schemaClasses = new ObjectLinkedOpenHashSet<>();
 //        for (ParametricCallable cmd : api.getParametricCallables(f -> true)) {
 //            Method method = cmd.getMethod();
 //            ReturnType returnType = method.getAnnotation(ReturnType.class);

@@ -7,6 +7,7 @@ import com.politicsandwar.graphql.model.Nation;
 import com.pusher.client.connection.ConnectionState;
 import com.pusher.client.connection.ConnectionStateChange;
 import graphql.GraphQLException;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -72,7 +73,7 @@ public class PnwPusherShardManager {
         }
     }
 
-    private final Set<Integer> runningAlliances = new HashSet<>();
+    private final Set<Integer> runningAlliances = new IntOpenHashSet();
 
     public boolean setupSpySubscriptions(GuildDB db, DBAlliance alliance) {
         synchronized (runningAlliances) {

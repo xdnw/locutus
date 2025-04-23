@@ -1,14 +1,14 @@
 package link.locutus.wiki.pages;
 
-import link.locutus.wiki.BotWikiGen;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
+import link.locutus.wiki.BotWikiGen;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
@@ -23,11 +23,11 @@ public class WikiSetupPage extends BotWikiGen {
 
     @Override
     public String generateMarkdown() {
-        Set<Roles> usedRoles = new LinkedHashSet<>();
+        Set<Roles> usedRoles = new ObjectLinkedOpenHashSet<>();
         usedRoles.add(Roles.REGISTERED);
         usedRoles.add(Roles.MEMBER);
 
-        Set<Roles> basicRoles = new LinkedHashSet<>(Arrays.asList(
+        Set<Roles> basicRoles = new ObjectLinkedOpenHashSet<>(Arrays.asList(
                 MILCOM,
                 ECON,
                 FOREIGN_AFFAIRS,

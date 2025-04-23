@@ -1,6 +1,7 @@
 package link.locutus.discord.util.offshore;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.EscrowMode;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -306,10 +307,10 @@ public class Grant {
     public Grant(DBNation nation, DepositType.DepositTypeInfo type) {
         this.nation = nation;
         this.cost = f -> ResourceType.getBuffer();
-        this.requirements = new LinkedHashSet<>();
+        this.requirements = new ObjectLinkedOpenHashSet<>();
         this.type = type;
         this.notes = new HashSet<>();
-        this.cities = new LinkedHashSet<>();
+        this.cities = new ObjectLinkedOpenHashSet<>();
     }
 
     /**

@@ -8,6 +8,7 @@ import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TablePreset;
 import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
@@ -1187,7 +1188,7 @@ public class WarDB extends DBMainV2 {
     }
 
     public void iterateAttacksEither(Set<Integer> nationIds, long start, long end, BiConsumer<DBWar, AbstractCursor> forEachAttack) {
-        Set<DBWar> allWars = new LinkedHashSet<>();
+        Set<DBWar> allWars = new ObjectLinkedOpenHashSet<>();
         long startWithExpire = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(start) - 60);
         synchronized (warsByNationLock) {
             for (int nationId : nationIds) {
@@ -1207,7 +1208,7 @@ public class WarDB extends DBMainV2 {
         iterateAttacksAny(nationIds, cuttoffMs, Long.MAX_VALUE, forEachAttack);
     }
     public void iterateAttacksAny(Set<Integer> nationIds, long start, long end, BiConsumer<DBWar, AbstractCursor> forEachAttack) {
-        Set<DBWar> allWars = new LinkedHashSet<>();
+        Set<DBWar> allWars = new ObjectLinkedOpenHashSet<>();
         long startWithExpire = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(start) - 60);
         synchronized (warsByNationLock) {
             for (int nationId : nationIds) {
@@ -1816,7 +1817,7 @@ public class WarDB extends DBMainV2 {
     }
 
     public Set<DBBounty> getBounties(int nationId) {
-        LinkedHashSet<DBBounty> result = new LinkedHashSet<>();
+        Set<DBBounty> result = new ObjectLinkedOpenHashSet<>();
 
         query("SELECT * FROM `BOUNTIES_V3` WHERE nation_id = ? ORDER BY date DESC", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, nationId);
@@ -1838,7 +1839,7 @@ public class WarDB extends DBMainV2 {
     }
 
     public Set<DBBounty> getBounties() {
-        LinkedHashSet<DBBounty> result = new LinkedHashSet<>();
+        Set<DBBounty> result = new ObjectLinkedOpenHashSet<>();
         query("SELECT * FROM `BOUNTIES_V3` ORDER BY date DESC", (ThrowingConsumer<PreparedStatement>) stmt -> {},
                 (ThrowingConsumer<ResultSet>) rs -> {
             while (rs.next()) {
@@ -1855,7 +1856,7 @@ public class WarDB extends DBMainV2 {
         List<Event> events = null;
         synchronized (bountyLock) {
             Set<DBBounty> removedBounties = getBounties();
-            Set<DBBounty> newBounties = new LinkedHashSet<>();
+            Set<DBBounty> newBounties = new ObjectLinkedOpenHashSet<>();
 
             boolean callEvents = !removedBounties.isEmpty();
 
@@ -2764,7 +2765,7 @@ public class WarDB extends DBMainV2 {
 
         List<AbstractCursor> dbAttacks = new ObjectArrayList<>();
         List<AbstractCursor> newAttacks;
-        Set<DBWar> warsToSave = new LinkedHashSet<>();
+        Set<DBWar> warsToSave = new ObjectLinkedOpenHashSet<>();
         List<Map.Entry<DBWar, DBWar>> warsToProcess = new ArrayList<>();
         List<AbstractCursor> dirtyCities = new ArrayList<>();
 

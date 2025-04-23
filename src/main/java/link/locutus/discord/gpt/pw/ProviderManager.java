@@ -1,6 +1,7 @@
 package link.locutus.discord.gpt.pw;
 
 import com.knuddels.jtokkit.api.ModelType;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -69,7 +70,7 @@ public class ProviderManager {
     }
 
     public Set<GPTProvider> getProviders(GuildDB db) {
-        Set<GPTProvider> providers = new LinkedHashSet<>();
+        Set<GPTProvider> providers = new ObjectLinkedOpenHashSet<>();
         // add guild
         Map<ProviderType, GPTProvider> result = guildProviders.computeIfAbsent(db.getIdLong(), k -> new ConcurrentHashMap<>());
         synchronized (result) {

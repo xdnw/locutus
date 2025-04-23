@@ -1,63 +1,53 @@
 package link.locutus.discord.util.update;
 
+import com.google.common.eventbus.Subscribe;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.SuccessType;
+import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
-import link.locutus.discord.commands.war.WarCatReason;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.war.WarRoom;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.conflict.ConflictManager;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.GuildHandler;
+import link.locutus.discord.db.conflict.ConflictManager;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
-import link.locutus.discord.event.war.*;
-import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.event.bounty.BountyCreateEvent;
 import link.locutus.discord.event.bounty.BountyRemoveEvent;
+import link.locutus.discord.event.war.AttackEvent;
+import link.locutus.discord.event.war.WarCreateEvent;
+import link.locutus.discord.event.war.WarPeaceStatusEvent;
+import link.locutus.discord.event.war.WarStatusChangeEvent;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.task.war.WarCard;
-import com.google.common.eventbus.Subscribe;
-import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
-import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.WarPolicy;
-import link.locutus.discord.apiv1.enums.WarType;
-import link.locutus.discord.apiv1.enums.city.building.Buildings;
-import link.locutus.discord.db.entities.AllianceMeta;
-import link.locutus.discord.db.entities.CounterStat;
-import link.locutus.discord.db.entities.CounterType;
-import link.locutus.discord.db.entities.DBBounty;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.WarStatus;
-import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
-import java.awt.Desktop;
+import java.awt.*;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -289,7 +279,7 @@ public class WarUpdateProcessor {
 
 
 
-            Set<WarCategory> toUpdate = new LinkedHashSet<>();
+            Set<WarCategory> toUpdate = new ObjectLinkedOpenHashSet<>();
             Map<Long, NationFilter> filters = new Long2ObjectOpenHashMap<>();
             for (Map.Entry<DBWar, DBWar> pair : wars) {
                 DBWar current = pair.getValue();
@@ -352,13 +342,13 @@ public class WarUpdateProcessor {
             if (defChan != null) {
                 Set<Integer> tracked = handler.getTrackedWarAlliances(false);
                 for (Integer aaId : tracked) {
-                    defGuildsByAA.computeIfAbsent(aaId, f -> new LinkedHashSet<>()).add(handler);
+                    defGuildsByAA.computeIfAbsent(aaId, f -> new ObjectLinkedOpenHashSet<>()).add(handler);
                 }
             }
             if (offChan != null) {
                 Set<Integer> tracked = handler.getTrackedWarAlliances(true);
                 for (Integer aaId : tracked) {
-                    offGuildsByAA.computeIfAbsent(aaId, f -> new LinkedHashSet<>()).add(handler);
+                    offGuildsByAA.computeIfAbsent(aaId, f -> new ObjectLinkedOpenHashSet<>()).add(handler);
                 }
             }
         }

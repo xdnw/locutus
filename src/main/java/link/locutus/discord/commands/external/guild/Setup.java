@@ -66,7 +66,7 @@
 //
 //        Map<String, Set<Integer>> coalitions = guildDb.getCoalitions();
 //        {
-//            Set<Integer> offshores = coalitions.getOrDefault("offshore", new LinkedHashSet<>());
+//            Set<Integer> offshores = coalitions.getOrDefault("offshore", new ObjectLinkedOpenHashSet<>());
 //            boolean hasValidOffshore = false;
 //            for (int allianceId : offshores) {
 //                String name = Locutus.imp().getNationDB().getAllianceName(allianceId);
@@ -76,7 +76,7 @@
 //                return "Please set an offshore using " + CM.coalition.add.cmd.create("", Coalition.OFFSHORE.name()).toSlashCommand() + "";
 //            }
 //
-//            if (coalitions.getOrDefault("allies", new LinkedHashSet<>()).isEmpty()) {
+//            if (coalitions.getOrDefault("allies", new ObjectLinkedOpenHashSet<>()).isEmpty()) {
 //                return "Please set allies using `" + Settings.commandPrefix(true) + "setcoalition <alliance> allies";
 //            }
 //        }

@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import gg.jte.generated.precompiled.command.JteparametriccallableGenerated;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
@@ -88,8 +89,8 @@ public class ParametricCallable implements ICommand {
         this.returnType = method.getGenericReturnType();
         this.annotations =  method.getAnnotations();
         method.setAccessible(true);
-        this.valueFlags = new LinkedHashSet<>();
-        this.provideFlags = new LinkedHashSet<>();
+        this.valueFlags = new ObjectLinkedOpenHashSet<>();
+        this.provideFlags = new ObjectLinkedOpenHashSet<>();
 
         Annotation[][] methodAnnotations = method.getParameterAnnotations();
         String[] names = lookupParameterNames(method);
@@ -106,7 +107,7 @@ public class ParametricCallable implements ICommand {
 
         LocalValueStore locals = new LocalValueStore<>(store);
 
-        Set<String> flagList = new LinkedHashSet<>();
+        Set<String> flagList = new ObjectLinkedOpenHashSet<>();
 
         // Go through each parameter
         for (int i = 0; i < types.length; i++) {
@@ -953,7 +954,7 @@ public class ParametricCallable implements ICommand {
         if (groupDescs != null && groupDescs.length != 0) {
             command.put("group_descs", Arrays.asList(groupDescs));
         }
-//        Set<String> flags = new LinkedHashSet<>();
+//        Set<String> flags = new ObjectLinkedOpenHashSet<>();
 //        if (valueFlags != null && !valueFlags.isEmpty()) flags.addAll(valueFlags);
 //        if (provideFlags != null && !provideFlags.isEmpty()) flags.addAll(provideFlags);
 //        if (!flags.isEmpty()) {

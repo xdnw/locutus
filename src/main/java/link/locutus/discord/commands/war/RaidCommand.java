@@ -1,29 +1,30 @@
 package link.locutus.discord.commands.war;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
+import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
+import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
-import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.WarType;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -197,7 +198,7 @@ public class RaidCommand extends Command {
 
         if (beigeTurns > 0) vm = Math.max(vm, beigeTurns);
 
-        Set<DBNation> allNations = new LinkedHashSet<>(Locutus.imp().getNationDB().getAllNations());
+        Set<DBNation> allNations = new ObjectLinkedOpenHashSet<>(Locutus.imp().getNationDB().getAllNations());
         Set<DBNation> nations;
 
         switch (args.size()) {
@@ -208,7 +209,7 @@ public class RaidCommand extends Command {
                 aa = args.get(0);
             case 0:
                 if (aa == null) {
-                    nations = new LinkedHashSet<>(allNations);
+                    nations = new ObjectLinkedOpenHashSet<>(allNations);
                     nations.removeIf(new Predicate<DBNation>() {
                         @Override
                         public boolean test(DBNation nation) {
@@ -217,7 +218,7 @@ public class RaidCommand extends Command {
                     });
                     nations.addAll(Locutus.imp().getNationDB().getNationsByAlliance(enemyAAs));
                 } else if (aa.equalsIgnoreCase("*")) {
-                    nations = new LinkedHashSet<>(allNations);
+                    nations = new ObjectLinkedOpenHashSet<>(allNations);
                 } else {
                     double min = PW.getAttackRange(true, true, true, score);
                     double max = PW.getAttackRange(true, true, false, score);

@@ -148,7 +148,7 @@ public class DiscordCompleter extends BindingHelper {
 //
 //    @Binding
 //    public Set<Member> members(@Me Guild guild, String input) {
-//        Set<Member> members = new LinkedHashSet<>();
+//        Set<Member> members = new ObjectLinkedOpenHashSet<>();
 //        for (String arg : input.split("[|]+")) {
 //            if (arg.equalsIgnoreCase("*")) {
 //                members.addAll(guild.getMembers());

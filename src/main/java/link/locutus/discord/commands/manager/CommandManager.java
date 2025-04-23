@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager;
 
 import it.unimi.dsi.fastutil.chars.CharOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -167,7 +168,7 @@ public class CommandManager {
     }
 
     public Set<Character> getAllPrefixes() {
-        Set<Character> prefixes = new LinkedHashSet<>();
+        Set<Character> prefixes = new ObjectLinkedOpenHashSet<>();
         prefixes.add(prefix1);
         prefixes.addAll(modernPrefixes);
         return prefixes;

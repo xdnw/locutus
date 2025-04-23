@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.coalition;
 
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -59,7 +60,7 @@ public class RemoveCoalition extends Command {
                 return "Removed coalition: `" + coalition + "`";
             }
             case 2 -> {
-                Set<Long> alliancesOrGuilds = new HashSet<>();
+                Set<Long> alliancesOrGuilds = new LongOpenHashSet();
                 if (MathMan.isInteger(args.get(1)) && Long.parseLong(args.get(1)) > Integer.MAX_VALUE) {
                     alliancesOrGuilds.add(Long.parseLong(args.get(1)));
                 } else {

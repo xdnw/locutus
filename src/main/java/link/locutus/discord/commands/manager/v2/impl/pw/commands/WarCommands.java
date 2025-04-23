@@ -2,10 +2,12 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -3381,7 +3383,7 @@ public class WarCommands {
         if (room != null) {
             return toString.apply(room);
         } else {
-            Set<WarRoom> rooms = new LinkedHashSet<>();
+            Set<WarRoom> rooms = new ObjectLinkedOpenHashSet<>();
             for (Map.Entry<Integer, WarRoom> entry : roomMap.entrySet()) {
                 room = entry.getValue();
                 if (room.isParticipant(nation, false)) {
@@ -3457,7 +3459,7 @@ public class WarCommands {
         }
         targets.entrySet().removeIf(f -> f.getValue().isEmpty());
 
-        Set<GuildMessageChannel> channels = new LinkedHashSet<>();
+        Set<GuildMessageChannel> channels = new ObjectLinkedOpenHashSet<>();
         for (Map.Entry<DBNation, Set<DBNation>> entry : targets.entrySet()) {
             DBNation target = entry.getKey();
             Set<DBNation> attackers = entry.getValue();
@@ -3567,7 +3569,7 @@ public class WarCommands {
 
         Map<DBNation, Set<DBNation>> warAttDefMap = BlitzGenerator.reverse(warDefAttMap);
         Map<DBNation, Set<DBNation>> spyAttDefMap = BlitzGenerator.reverse(spyDefAttMap);
-        Set<DBNation> allAttackers = new LinkedHashSet<>();
+        Set<DBNation> allAttackers = new ObjectLinkedOpenHashSet<>();
         allAttackers.addAll(warAttDefMap.keySet());
         allAttackers.addAll(spyAttDefMap.keySet());
 
@@ -3635,10 +3637,10 @@ public class WarCommands {
                     mail.append((i + 1) + ". War Target: " + MarkupUtil.htmlUrl(defender.getNation(), defender.getUrl()) + "\n");
                     mail.append(getStrengthInfo(defender) + "\n"); // todo
 
-                    Set<DBNation> others = new LinkedHashSet<>(warDefAttMap.get(defender));
+                    Set<DBNation> others = new ObjectLinkedOpenHashSet<>(warDefAttMap.get(defender));
                     others.remove(attacker);
                     if (!others.isEmpty()) {
-                        Set<String> allies = new LinkedHashSet<>();
+                        Set<String> allies = new ObjectLinkedOpenHashSet<>();
                         for (DBNation other : others) {
                             allies.add(other.getNation());
                         }
@@ -3712,7 +3714,7 @@ public class WarCommands {
         if (!force) {
             String title = totalWarTargets + " wars & " + totalSpyTargets + " spyops";
 
-            Set<Integer> alliances = new LinkedHashSet<>();
+            Set<Integer> alliances = new IntLinkedOpenHashSet();
             for (DBNation nation : mailTargets.keySet()) alliances.add(nation.getAlliance_id());
             String embedTitle = title + " to " + mailTargets.size() + " nations";
             if (alliances.size() != 1) embedTitle += " in " + alliances.size() + " alliances";
@@ -4806,7 +4808,7 @@ public class WarCommands {
         if (results.isEmpty()) {
 
             List<DBAlliance> alliances = new ArrayList<>(Locutus.imp().getNationDB().getAlliances(true, true, true, 1000));
-            Set<DBAlliance> top30 = new LinkedHashSet<>(Locutus.imp().getNationDB().getAlliances(true, true, true, topX));
+            Set<DBAlliance> top30 = new ObjectLinkedOpenHashSet<>(Locutus.imp().getNationDB().getAlliances(true, true, true, topX));
 
             outer:
             for (DBAlliance alliance : alliances) {

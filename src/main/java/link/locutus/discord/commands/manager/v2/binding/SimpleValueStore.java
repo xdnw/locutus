@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.binding;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 
@@ -8,7 +9,7 @@ import java.util.*;
 
 public class SimpleValueStore<T> implements ValueStore<T> {
     public Map<Type, Map<Key, Parser>> bindings = new LinkedHashMap<>();
-    public Set<Type> allowedAnnotations = new LinkedHashSet<>();
+    public Set<Type> allowedAnnotations = new ObjectLinkedOpenHashSet<>();
 
     public SimpleValueStore() {
     }
@@ -31,7 +32,7 @@ public class SimpleValueStore<T> implements ValueStore<T> {
             return new ProviderParser<>((Key) key, this);
         }
         if (!key.getAnnotationTypes().isEmpty()) {
-            Set<Class<?>> types = new LinkedHashSet<>(key.getAnnotationTypes());
+            Set<Class<?>> types = new ObjectLinkedOpenHashSet<>(key.getAnnotationTypes());
             types.removeIf(f -> !allowedAnnotations.contains(f));
             if (types.size() != key.getAnnotationTypes().size()) {
                 key = Key.of(key.getType(), types.toArray(new Class[0]));

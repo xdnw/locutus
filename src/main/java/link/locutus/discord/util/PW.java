@@ -7,6 +7,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.politicsandwar.graphql.model.GameInfo;
 import it.unimi.dsi.fastutil.bytes.ByteOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
@@ -1448,7 +1449,7 @@ public final class PW {
 
 
     public static Set<Integer> parseAlliances(GuildDB db, String arg) {
-        Set<Integer> aaIds = new LinkedHashSet<>();
+        Set<Integer> aaIds = new IntLinkedOpenHashSet();
         for (String allianceName : arg.split(",")) {
             Set<Integer> coalition = db == null ? Collections.emptySet() : db.getCoalition(allianceName);
             if (!coalition.isEmpty()) aaIds.addAll(coalition);

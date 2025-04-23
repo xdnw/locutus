@@ -1,39 +1,29 @@
 package link.locutus.discord.util.battle;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Logg;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
-import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
-import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.pnw.SimpleNationList;
-import link.locutus.discord.pnw.Spyop;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.SpyCount;
-import link.locutus.discord.util.io.PagePriority;
-import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.NationMeta;
+import link.locutus.discord.pnw.SimpleNationList;
+import link.locutus.discord.pnw.Spyop;
+import link.locutus.discord.util.PW;
+import link.locutus.discord.util.SpyCount;
+import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.io.PagePriority;
+import link.locutus.discord.util.sheet.SpreadSheet;
 
 import java.nio.ByteBuffer;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -798,7 +788,7 @@ public class SpyBlitzGenerator {
                             break;
                     }
                     Spyop op = new Spyop(attacker, defender, spies, opType, 0, safety);
-                    targets.computeIfAbsent(attacker, f -> new LinkedHashSet<>()).add(op);
+                    targets.computeIfAbsent(attacker, f -> new ObjectLinkedOpenHashSet<>()).add(op);
                 }
             } else if (!targetsIndexesRoseFormat.isEmpty()) {
                 for (Integer j : targetsIndexesRoseFormat) {
@@ -876,9 +866,9 @@ public class SpyBlitzGenerator {
                     if (spies == null) spies = 60;
                     Spyop op = new Spyop(attacker, defender, spies, type, 0, safety);
                     if (groupByAttacker) {
-                        targets.computeIfAbsent(attacker, f -> new LinkedHashSet<>()).add(op);
+                        targets.computeIfAbsent(attacker, f -> new ObjectLinkedOpenHashSet<>()).add(op);
                     } else {
-                        targets.computeIfAbsent(defender, f -> new LinkedHashSet<>()).add(op);
+                        targets.computeIfAbsent(defender, f -> new ObjectLinkedOpenHashSet<>()).add(op);
                     }
                 }
             } else {

@@ -4,6 +4,7 @@ import com.politicsandwar.graphql.model.*;
 import com.ptsmods.mysqlw.query.QueryOrder;
 import it.unimi.dsi.fastutil.longs.Long2LongLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
@@ -966,7 +967,7 @@ public class TradeManager {
         message.append("\n1. Creating trade DBTrades, see the trading guide for more info: <https://docs.google.com/document/d/1sO4TnONEg3nPMr3SXK_Q1zeYj--V42xa-hhVKHxhv1A/edit#heading=h.723u4ibh8mxy>");
         message.append("\n2. Buy from the alliance by asking in " + rssChannel.getAsMention());
         message.append("\n3. Sell to the alliance by depositing with the note `#cash`");
-        Set<String> tradePartnerNames = new LinkedHashSet<>();
+        Set<String> tradePartnerNames = new ObjectLinkedOpenHashSet<>();
         for (Integer aaId : tradePartners) {
             DBAlliance aa = DBAlliance.getOrCreate(aaId);
             if (aa.exists()) tradePartnerNames.add(aa.getName());

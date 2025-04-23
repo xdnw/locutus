@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.binding;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.util.StringMan;
@@ -23,7 +24,7 @@ public class Key<T> {
     }
     private Key(Type type, List<Class<?>> annotationClasses) {
         this.type = type;
-        this.annotationTypes = new LinkedHashSet<>(annotationClasses);
+        this.annotationTypes = new ObjectLinkedOpenHashSet<>(annotationClasses);
         if (!this.annotationTypes.isEmpty()) {
             Iterator<Class<?>> iter = this.annotationTypes.iterator();
             while (iter.hasNext()) {
@@ -65,7 +66,7 @@ public class Key<T> {
     private Key(Binding binding, Type type, Annotation... annotations) {
         this.binding = binding;
         this.type = type;
-        this.annotationTypes = new LinkedHashSet<>(annotations.length);
+        this.annotationTypes = new ObjectLinkedOpenHashSet<>(annotations.length);
         this.annotations = annotations;
         for (Annotation annotation : annotations) {
             Class<? extends Annotation> annType = annotation.annotationType();

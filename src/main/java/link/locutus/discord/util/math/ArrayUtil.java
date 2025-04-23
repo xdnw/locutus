@@ -1,12 +1,7 @@
 package link.locutus.discord.util.math;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
-import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntFunction;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.binding.bindings.ResolvedFunction;
 import link.locutus.discord.util.IOUtil;
@@ -587,7 +582,7 @@ public class ArrayUtil {
                 Comparator.comparingDouble(Number::doubleValue) :
                 (o1, o2) -> Double.compare(o2.doubleValue(), o1.doubleValue());
         sorted.sort(keyComparator);
-        return new LinkedHashSet<>(sorted);
+        return new ObjectLinkedOpenHashSet<>(sorted);
     }
 
     public static <T> Map<T, String> sortStringMap(Map<T, String> unsorted, boolean ascendingAlphabetValues) {
@@ -1457,7 +1452,7 @@ public class ArrayUtil {
             this.input = input;
             this.predicates = new ArrayList<>(predicates);
             this.selectorPredicates = new ArrayList<>();
-            this.resolvedNumbers = new LinkedHashSet<>();
+            this.resolvedNumbers = new ObjectLinkedOpenHashSet<>();
             this.conditionalNumbers = new LinkedHashMap<>();
             this.hadNonFilter = hadNonFilter;
         }

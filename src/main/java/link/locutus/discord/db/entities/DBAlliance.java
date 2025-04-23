@@ -437,7 +437,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     public static Set<DBAlliance> getTopX(int topX, boolean checkTreaty) {
-        Set<DBAlliance> results = new LinkedHashSet<>();
+        Set<DBAlliance> results = new ObjectLinkedOpenHashSet<>();
         Map<Integer, Double> aas = new RankBuilder<>(Locutus.imp().getNationDB().getAllNations()).group(DBNation::getAlliance_id).sumValues(DBNation::getScore).sort().get();
         for (Map.Entry<Integer, Double> entry : aas.entrySet()) {
             if (entry.getKey() == 0) continue;
@@ -827,7 +827,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     public boolean updateSpies(AllianceMembers members) {
-//        Set<DBNation> toUpdate = new LinkedHashSet<>();
+//        Set<DBNation> toUpdate = new ObjectLinkedOpenHashSet<>();
 //        for (AllianceMembersContainer member : members.getNations()) {
 //            Integer spies = Integer.parseInt(member.getSpies());
 //            DBNation nation = Locutus.imp().getNationDB().getNation(member.getNationId());
@@ -1199,7 +1199,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     public ApiKeyPool getApiKeys(AlliancePermission... permissions) {
-        Set<String> apiKeysToUse = new LinkedHashSet<>();
+        Set<String> apiKeysToUse = new ObjectLinkedOpenHashSet<>();
         GuildDB db = getGuildDB();
         if (db != null) {
             List<String> apiKeys = db.getOrNull(GuildKey.API_KEY);
@@ -1755,7 +1755,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 
     @Command
     public Map<String, Object> getMilitarizationGraph(@Default @Timestamp Long start, @Default @Timestamp Long end) {
-        Set<AllianceMetric> metrics = new LinkedHashSet<>(List.of(AllianceMetric.SOLDIER_PCT, AllianceMetric.TANK_PCT, AllianceMetric.AIRCRAFT_PCT, AllianceMetric.SHIP_PCT));
+        Set<AllianceMetric> metrics = new ObjectLinkedOpenHashSet<>(List.of(AllianceMetric.SOLDIER_PCT, AllianceMetric.TANK_PCT, AllianceMetric.AIRCRAFT_PCT, AllianceMetric.SHIP_PCT));
         return getMetricsGraph(metrics, start, end);
     }
 

@@ -1,6 +1,8 @@
 package link.locutus.discord.apiv1.enums.city.building;
 
 import static link.locutus.discord.apiv1.enums.Continent.*;
+
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.building.imp.*;
@@ -220,7 +222,7 @@ public class Buildings {
                 BUILDINGS_MAP.put(key.replace(" ", "-"), entry.getValue());
                 BUILDINGS_MAP.put(key.replace(" ", ""), entry.getValue());
             }
-            Set<String> current = new LinkedHashSet<>(BUILDINGS_MAP.keySet());
+            Set<String> current = new ObjectLinkedOpenHashSet<>(BUILDINGS_MAP.keySet());
             for (String name : current) {
                 if (name.endsWith("s")) {
                     continue;

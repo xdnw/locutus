@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.IPoliticsAndWar;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -177,7 +178,7 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
         String key = parent.getClassName() + "." + parent.getMethodName();
         methodToCount.computeIfAbsent(key, f -> new AtomicInteger()).incrementAndGet();
 
-        Set<List<StackTraceElement>> methodTraces = methodToStacktrace.computeIfAbsent(key, f -> new LinkedHashSet<>());
+        Set<List<StackTraceElement>> methodTraces = methodToStacktrace.computeIfAbsent(key, f -> new ObjectLinkedOpenHashSet<>());
         if (methodTraces.size() < 10) {
             List<StackTraceElement> trace = Arrays.asList(stackTrace);
             methodTraces.add(trace);

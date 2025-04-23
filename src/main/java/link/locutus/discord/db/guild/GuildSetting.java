@@ -1,6 +1,7 @@
 package link.locutus.discord.db.guild;
 
 import com.google.gson.reflect.TypeToken;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -52,9 +53,9 @@ import java.util.function.Supplier;
 import static com.google.gson.internal.$Gson$Preconditions.checkNotNull;
 
 public abstract class GuildSetting<T> {
-    private final Set<GuildSetting> requires = new LinkedHashSet<>();
-    private final Set<String> requiresCoalitionStr = new LinkedHashSet<>();
-    private final Set<String> requiresCoalitionRootStr = new LinkedHashSet<>();
+    private final Set<GuildSetting> requires = new ObjectLinkedOpenHashSet<>();
+    private final Set<String> requiresCoalitionStr = new ObjectLinkedOpenHashSet<>();
+    private final Set<String> requiresCoalitionRootStr = new ObjectLinkedOpenHashSet<>();
 
     private final Map<BiPredicate<GuildDB, Boolean>, Supplier<String>> requiresFunction = new LinkedHashMap<>();
     private final Map<Roles, Boolean> requiresRole = new LinkedHashMap<>();

@@ -11,6 +11,7 @@ import info.debatty.java.stringsimilarity.WeightedLevenshtein;
 import info.debatty.java.stringsimilarity.experimental.Sift4;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import org.apache.commons.lang3.StringUtils;
@@ -247,7 +248,7 @@ public class StringMan {
             throw new IllegalArgumentException("Depth is too high");
         }
         List<String[]> replacementsSplit = getReplacementString(announcement, replacements);
-        Set<String> results = new LinkedHashSet<>();
+        Set<String> results = new ObjectLinkedOpenHashSet<>();
         replace(announcement, replacementsSplit, 0, 0, 0, -2, 0, requiredDiff, requiredDepth, requiredResults, results, 0, i -> i == index);
         if (results.isEmpty()) return null;
         return results.iterator().next();
@@ -258,7 +259,7 @@ public class StringMan {
             throw new IllegalArgumentException("Depth is too high");
         }
         List<String[]> replacementsSplit = getReplacementString(announcement, replacements);
-        Set<String> results = new LinkedHashSet<>();
+        Set<String> results = new ObjectLinkedOpenHashSet<>();
         replace(announcement, replacementsSplit, 0, 0, 0, -2, 0, requiredDiff, requiredDepth, requiredResults, results, 0, f -> true);
         return results;
     }

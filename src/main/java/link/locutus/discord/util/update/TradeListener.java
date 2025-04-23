@@ -1,6 +1,7 @@
 package link.locutus.discord.util.update;
 
 import com.google.common.eventbus.Subscribe;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -9,12 +10,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TradeDB;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.DBTrade;
-import link.locutus.discord.db.entities.DBTreasure;
-import link.locutus.discord.db.entities.TradeSubscription;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.game.TurnChangeEvent;
 import link.locutus.discord.event.trade.BulkTradeSubscriptionEvent;
@@ -25,8 +21,8 @@ import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -298,7 +294,7 @@ public class TradeListener {
             MessageChannel channel = db.getOrNull(GuildKey.TRADE_ALERT_CHANNEL);
             if (channel == null || subscriptionsForGuild.isEmpty()) continue;
 
-            Set<String> allPings = new LinkedHashSet<>();
+            Set<String> allPings = new ObjectLinkedOpenHashSet<>();
             IMessageBuilder msg = new DiscordChannelIO(channel).create();
 
             for (Map.Entry<ResourceType, List<TradeSubscription>> rssEntry : subscriptionsForGuild.entrySet()) {

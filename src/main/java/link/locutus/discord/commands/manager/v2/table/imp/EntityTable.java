@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.table.imp;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.Attribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
@@ -19,7 +20,7 @@ public class EntityTable<T> extends SimpleTable<Void> {
     private final Map<Integer, List<T>> byTier;
 
          public static EntityTable<DBNation> create(String title, Set<NationAttributeDouble> metrics, Collection<DBAlliance> alliances, NationAttributeDouble groupBy, boolean total, boolean removeVM, int removeActiveM, boolean removeApps) {
-            List<DBNation> nations = toNations(Collections.singletonList(new LinkedHashSet<>(alliances)), removeVM, removeActiveM, removeApps).get(0);
+            List<DBNation> nations = toNations(Collections.singletonList(new ObjectLinkedOpenHashSet<>(alliances)), removeVM, removeActiveM, removeApps).get(0);
             return new EntityTable<>(title, (Set) metrics, nations, groupBy, total);
         }
 

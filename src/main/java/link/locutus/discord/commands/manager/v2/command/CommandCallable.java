@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.command;
 
 import com.google.gson.JsonObject;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
@@ -176,7 +177,7 @@ public interface CommandCallable {
         String path = (parentPath + " " + name).trim();
         if (this instanceof CommandGroup group) {
             if (!name.isEmpty()) output.append(indentStr).append("public static class ").append(name).append("{\n");
-            List<CommandCallable> subCommands = new ArrayList<>(new LinkedHashSet<>(group.getSubcommandsSorted().values()));
+            List<CommandCallable> subCommands = new ArrayList<>(new ObjectLinkedOpenHashSet<>(group.getSubcommandsSorted().values()));
             for (CommandCallable callable : subCommands) {
                 callable.generatePojo(path, output, indent + 4);
             }

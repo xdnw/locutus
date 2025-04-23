@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
@@ -1288,7 +1289,7 @@ public class TradeCommands {
             attachJson,
                                      boolean attachCsv, GuildDB db, SheetKey key, Set<ResourceType> resources, JSONObject command, CommandRef ref) throws IOException {
         if (end == null) end = Long.MAX_VALUE;
-        if (resources == null) resources = new LinkedHashSet<>(Arrays.asList(ResourceType.values));
+        if (resources == null) resources = new ObjectLinkedOpenHashSet<>(Arrays.asList(ResourceType.values));
         resources.remove(ResourceType.CREDITS);
         resources.remove(ResourceType.MONEY);
 

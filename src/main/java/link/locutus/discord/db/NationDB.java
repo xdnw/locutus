@@ -411,7 +411,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public Set<Integer> updateNewAlliances(Set<Integer> alsoFetch, Consumer<Event> eventConsumer) {
-        Set<Integer> newIds = new LinkedHashSet<>(alsoFetch);
+        Set<Integer> newIds = new IntLinkedOpenHashSet(alsoFetch);
 
         int pad = PoliticsAndWarV3.ALLIANCES_PER_PAGE - newIds.size() % PoliticsAndWarV3.ALLIANCES_PER_PAGE;
         if (pad != PoliticsAndWarV3.ALLIANCES_PER_PAGE || newIds.isEmpty()) {
@@ -481,7 +481,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     public Set<Integer> updateAlliancesById(List<Integer> ids, Consumer<Event> eventConsumer) {
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
 
-        Set<Integer> fetched = new LinkedHashSet<>();
+        Set<Integer> fetched = new IntLinkedOpenHashSet();
         if (ids.isEmpty()) return fetched;
         ids = new ArrayList<>(ids);
         Collections.sort(ids);
@@ -507,8 +507,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public void deleteAlliances(Set<Integer> ids, Consumer<Event> eventConsumer) {
-        Set<Treaty> treatiesToDelete = new LinkedHashSet<>();
-        Set<Integer> positionsToDelete = new LinkedHashSet<>();
+        Set<Treaty> treatiesToDelete = new ObjectLinkedOpenHashSet<>();
+        Set<Integer> positionsToDelete = new IntLinkedOpenHashSet();
         Set<DBNation> dirtyNations = new HashSet<>();
 
         for (int id : ids) {
@@ -744,7 +744,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     private Set<Integer> getUnknownPositionAlliances(boolean positions, boolean alliances) {
-        Set<Integer> alliancesToFetch = new LinkedHashSet<>();
+        Set<Integer> alliancesToFetch = new IntLinkedOpenHashSet();
 //        Map<Integer, Set<Integer>> positionsToFetchByAlliance = new Int2ObjectOpenHashMap<>();
         synchronized (nationsById) {
             for (Map.Entry<Integer, DBNation> entry : nationsById.entrySet()) {
@@ -993,7 +993,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         return updateNations(ids, true, eventConsumer);
     }
     public Set<Integer> updateNations(List<Integer> ids, boolean allowPadding, Consumer<Event> eventConsumer) {
-        Set<Integer> fetched = new LinkedHashSet<>();
+        Set<Integer> fetched = new IntLinkedOpenHashSet();
         if (ids.isEmpty()) return fetched;
         ids = new ArrayList<>(ids);
 
@@ -1036,7 +1036,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         Collections.sort(idsFinal);
         Set<Integer> fetched;
         if (idsFinal.size() > 500) {
-            fetched = new LinkedHashSet<>();
+            fetched = new IntLinkedOpenHashSet();
             for (int i = 0; i < idsFinal.size(); i += 500) {
                 int end = Math.min(i + 500, idsFinal.size());
                 List<Integer> toFetch = idsFinal.subList(i, end);
@@ -1649,7 +1649,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
     private int loadTreaties() throws SQLException {
         int total = 0;
-        Set<Integer> treatiesToDelete = new LinkedHashSet<>();
+        Set<Integer> treatiesToDelete = new IntLinkedOpenHashSet();
         long currentTurn = TimeUtil.getTurn();
         List<Event> postAsync = null;
 
@@ -1814,7 +1814,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     public void updateAlliancesV2(Consumer<Event> eventConsumer) {
         try {
             List<SAllianceContainer> alliances = Locutus.imp().getPnwApiV2().getAlliances().getAlliances();
-            Set<Integer> expected = new LinkedHashSet<>(alliances.size());
+            Set<Integer> expected = new IntLinkedOpenHashSet(alliances.size());
             synchronized (alliancesById) {
                 expected.addAll(alliancesById.keySet());
             }
@@ -1874,7 +1874,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             List<SNationContainer> nations = Locutus.imp().getPnwApiV2().getNationsByScore(includeVM, 999999, -1).getNationsContainer();
 
             List<DBNation> toSave = new ArrayList<>();
-            Set<Integer> expected = new LinkedHashSet<>(nations.size());
+            Set<Integer> expected = new IntLinkedOpenHashSet(nations.size());
             synchronized (nationsById) {
                 for (Map.Entry<Integer, DBNation> entry : nationsById.entrySet()) {
                     if (entry.getValue().getVm_turns() <= 0) expected.add(entry.getValue().getNation_id());
@@ -2014,7 +2014,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public Set<Integer> updateNonVMNations(Consumer<Event> eventConsumer) {
-        Set<Integer> currentNations = new LinkedHashSet<>();
+        Set<Integer> currentNations = new IntLinkedOpenHashSet();
         synchronized (nationsById) {
             for (Map.Entry<Integer, DBNation> entry : nationsById.entrySet()) {
                 int id = entry.getKey();
@@ -2222,7 +2222,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     public void saveNations(Map<DBNation, DBNation> nationChanges) {
 
         if (!nationChanges.isEmpty()) {
-            Set<DBNation> nationsToSave = new LinkedHashSet<>();
+            Set<DBNation> nationsToSave = new ObjectLinkedOpenHashSet<>();
             for (Map.Entry<DBNation, DBNation> entry : nationChanges.entrySet()) {
                 DBNation nation = entry.getKey();
                 if (nation == null) nation = entry.getValue();
@@ -3189,7 +3189,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         synchronized (nationsByAlliance) {
             Map<Integer, DBNation> nations = nationsByAlliance.get(id);
             if (nations == null) {
-                return new LinkedHashSet<>();
+                return new ObjectLinkedOpenHashSet<>();
             }
             return new ObjectOpenHashSet<>(nations.values());
         }
@@ -3198,7 +3198,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     @Override
     public Set<DBNation> getNationsByAlliance(Set<Integer> alliances) {
         if (alliances.isEmpty()) {
-            return new LinkedHashSet<>();
+            return new ObjectLinkedOpenHashSet<>();
         }
         Set<DBNation> result;
         if (alliances.contains(0)) {
@@ -3208,7 +3208,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             }
             return getNationsMatching(f -> alliances.contains(f.getAlliance_id()));
         } else {
-            result = new LinkedHashSet<>();
+            result = new ObjectLinkedOpenHashSet<>();
             for (int aaId : alliances) {
                 synchronized (nationsByAlliance) {
                     Map<Integer, DBNation> nations = nationsByAlliance.get(aaId);
@@ -3355,7 +3355,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
         // Sorted
         score = new SummedMapRankBuilder<>(score).sort().get();
-        Set<DBAlliance> result = new LinkedHashSet<>();
+        Set<DBAlliance> result = new ObjectLinkedOpenHashSet<>();
         for (int aaId : score.keySet()) {
             DBAlliance alliance = getAlliance(aaId);
             if (alliance != null) result.add(alliance);
@@ -4010,7 +4010,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public Set<Long> getActivityByDay(int nationId, long minTurn) {
-        Set<Long> result = new LinkedHashSet<>();
+        Set<Long> result = new LongLinkedOpenHashSet();
         for (long turn : getActivity(nationId, minTurn, Long.MAX_VALUE)) {
             result.add(turn / 12);
         }
@@ -4111,7 +4111,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             stmt.setLong(2, minTurn);
             if (maxTurn != Long.MAX_VALUE) stmt.setLong(3, maxTurn);
 
-            Set<Long> set = new LinkedHashSet<>();
+            Set<Long> set = new LongLinkedOpenHashSet();
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {

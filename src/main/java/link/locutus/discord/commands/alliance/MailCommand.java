@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.alliance;
 
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.Command;
@@ -116,7 +117,7 @@ public class MailCommand extends Command implements Noformat {
             if (!flags.contains('f')) {
                 String title = "Send " + nations.size() + " messages.";
 
-                Set<Integer> alliances = new LinkedHashSet<>();
+                Set<Integer> alliances = new IntLinkedOpenHashSet();
                 for (DBNation nation : nations) alliances.add(nation.getAlliance_id());
                 String embedTitle = title + " to ";
                 if (nations.size() == 1) {

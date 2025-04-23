@@ -4,6 +4,7 @@ import com.google.common.eventbus.AsyncEventBus;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord._main.*;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
@@ -958,7 +959,7 @@ public final class Locutus extends ListenerAdapter {
             for (ModalMapping value : values) {
                 keyPairs.put(value.getId(), value.getAsString());
             }
-            Set<String> ignoreKeys = new HashSet<>();
+            Set<String> ignoreKeys = new ObjectLinkedOpenHashSet<>();
 
             Map<String, String> defaults = IModalBuilder.DEFAULT_VALUES.getIfPresent(uuid);
             if (defaults == null) defaults = new HashMap<>();

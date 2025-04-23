@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -263,7 +264,7 @@ public class FACommands {
             "Note: If you have the FORIEGN_AFFAIRS role you can view the pending treaties of your own alliance from its guild", viewable = true)
     public String treaties(@Me IMessageIO channel, @Me @Default User user, Set<DBAlliance> alliances, @Default Predicate<Treaty> treatyFilter) {
         StringBuilder response = new StringBuilder();
-        Set<Treaty> allTreaties = new LinkedHashSet<>();
+        Set<Treaty> allTreaties = new ObjectLinkedOpenHashSet<>();
 
         if (alliances.size() == 1) {
             DBAlliance alliance = alliances.iterator().next();

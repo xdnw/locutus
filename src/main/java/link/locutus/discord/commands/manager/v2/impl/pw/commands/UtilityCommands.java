@@ -2488,9 +2488,9 @@ public class UtilityCommands {
 //                }
 //                Integer vmTurns = header.vm_turns.get();
 //                if (vmTurns != null && vmTurns > 0) {
-//                    daysVM.computeIfAbsent(nationId, f -> new LinkedHashSet<>()).add(day);
+//                    daysVM.computeIfAbsent(nationId, f -> new ObjectLinkedOpenHashSet<>()).add(day);
 //                } else {
-//                    daysPresentNotVM.computeIfAbsent(nationId, f -> new LinkedHashSet<>()).add(day);
+//                    daysPresentNotVM.computeIfAbsent(nationId, f -> new ObjectLinkedOpenHashSet<>()).add(day);
 //                }
 //            }
 //        }, null, new Consumer<Long>() {

@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.*;
@@ -311,7 +312,7 @@ public class AdminCommands {
             EnumSet<Permission> selfPerms = self.getPermissions(category);
             for (Permission perm : catPerms) {
                 if (!selfPerms.contains(perm)) {
-                    permissionsMissing.computeIfAbsent(category, k -> new LinkedHashSet<>()).add(perm);
+                    permissionsMissing.computeIfAbsent(category, k -> new ObjectLinkedOpenHashSet<>()).add(perm);
                 }
             }
             CityRanges range = WarRoomUtil.getRangeFromCategory(category);
@@ -350,7 +351,7 @@ public class AdminCommands {
         Map<DBWar, WarCatReason> warsLog = new LinkedHashMap<>();
         Map<DBNation, WarCatReason> inactiveRoomLog = new LinkedHashMap<>();
         Map<DBNation, WarCatReason> activeRoomLog = new LinkedHashMap<>();
-        Set<DBNation> toCreate = new LinkedHashSet<>();
+        Set<DBNation> toCreate = new ObjectLinkedOpenHashSet<>();
         Map<Integer, WarCatReason> toDelete = new LinkedHashMap<>();
         Map<DBNation, TextChannel> toReassign = new LinkedHashMap<>();
         Map<Integer, Set<TextChannel>> duplicates = new LinkedHashMap<>();
@@ -591,8 +592,8 @@ public class AdminCommands {
                                 @Switch("f") boolean force) {
         Map<Guild, Map<GuildSetting, Set<String>>> unsetReasons = new LinkedHashMap<>();
 
-        Set<GuildSetting> channelTypes = new LinkedHashSet<>();
-        Set<GuildSetting> nonChanTypes = new LinkedHashSet<>();
+        Set<GuildSetting> channelTypes = new ObjectLinkedOpenHashSet<>();
+        Set<GuildSetting> nonChanTypes = new ObjectLinkedOpenHashSet<>();
         for (GuildSetting setting : settings) {
             Type type = setting.getType().getType();
             if (setting.isChannelType()) {
@@ -634,7 +635,7 @@ public class AdminCommands {
                 if (unset_cant_talk) {
                     if (!(channel instanceof GuildMessageChannel gmc) || !gmc.canTalk()) {
                         if (force) unset.accept(setting, "No Talk Permissions in " + channel.getAsMention());
-                        byGuild.computeIfAbsent(setting, k -> new LinkedHashSet<>()).add("Can't talk");
+                        byGuild.computeIfAbsent(setting, k -> new ObjectLinkedOpenHashSet<>()).add("Can't talk");
                         continue;
                     }
                 }
@@ -651,7 +652,7 @@ public class AdminCommands {
                 if (unset_null) {
                     if (value == null) {
                         if (force) unset.accept(setting, "Invalid value (null)");
-                        byGuild.computeIfAbsent(setting, k -> new LinkedHashSet<>()).add("Null");
+                        byGuild.computeIfAbsent(setting, k -> new ObjectLinkedOpenHashSet<>()).add("Null");
                         continue;
                     }
                 }
@@ -665,7 +666,7 @@ public class AdminCommands {
                     }
                     if (!allowed) {
                         if (force) unset.accept(setting, notAllowedReason);
-                        byGuild.computeIfAbsent(setting, k -> new LinkedHashSet<>()).add(notAllowedReason);
+                        byGuild.computeIfAbsent(setting, k -> new ObjectLinkedOpenHashSet<>()).add(notAllowedReason);
                         continue;
                     }
                 }
@@ -680,7 +681,7 @@ public class AdminCommands {
                     }
                     if (!valid) {
                         if (force) unset.accept(setting, validateReason);
-                        byGuild.computeIfAbsent(setting, k -> new LinkedHashSet<>()).add(validateReason);
+                        byGuild.computeIfAbsent(setting, k -> new ObjectLinkedOpenHashSet<>()).add(validateReason);
                         continue;
                     }
 
@@ -689,14 +690,14 @@ public class AdminCommands {
                     if (!otherDb.isValidAlliance()) {
 //                        if (force) otherDb.deleteInfo(setting);
                         if (force) unset.accept(setting, "No valid Alliance registered");
-                        byGuild.computeIfAbsent(setting, k -> new LinkedHashSet<>()).add("Invalid AA");
+                        byGuild.computeIfAbsent(setting, k -> new ObjectLinkedOpenHashSet<>()).add("Invalid AA");
                         continue;
                     }
                 }
                 if (unset_all) {
 //                    if (force) otherDb.deleteInfo(setting);
                     if (force) unset.accept(setting, "Setting removed by administrator.");
-                    byGuild.computeIfAbsent(setting, k -> new LinkedHashSet<>()).add("All");
+                    byGuild.computeIfAbsent(setting, k -> new ObjectLinkedOpenHashSet<>()).add("All");
                 }
             }
         }
@@ -1400,7 +1401,7 @@ public class AdminCommands {
             throw new IllegalArgumentException("Expecting at least one column starting with `role`");
         }
         if (removeAll) {
-            Set<String> parsed = new LinkedHashSet<>();
+            Set<String> parsed = new ObjectLinkedOpenHashSet<>();
             for (Map.Entry<String, List<Object>> entry : roles.entrySet()) {
                 String columnName = entry.getKey();
                 List<Object> roleValues = entry.getValue();
@@ -1419,7 +1420,7 @@ public class AdminCommands {
                         parsed.add(roleName);
                         try {
                             Role role = DiscordBindings.role(guild, roleName);
-                            if (removeRoles == null) removeRoles = new LinkedHashSet<>();
+                            if (removeRoles == null) removeRoles = new ObjectLinkedOpenHashSet<>();
                             removeRoles.add(role);
                         } catch (IllegalArgumentException e) {
                             continue;
@@ -1435,7 +1436,7 @@ public class AdminCommands {
         Map<Member, Set<Role>> rolesAdded = new LinkedHashMap<>();
         Map<Member, Set<Role>> rolesRemoved = new LinkedHashMap<>();
 
-        Set<DBNation> nationsInSheet = new LinkedHashSet<>();
+        Set<DBNation> nationsInSheet = new ObjectLinkedOpenHashSet<>();
 
         int max = Math.max(Math.max(nations == null ? 0 : nations.size(), leaders == null ? 0 : leaders.size()), users == null ? 0 : users.size());
         for (int i = 0; i < max; i++) {
@@ -1506,11 +1507,11 @@ public class AdminCommands {
                     roleName = roleName.trim();
                     try {
                         Role role = DiscordBindings.role(guild, roleName);
-                        rolesAllowed.computeIfAbsent(member, f -> new LinkedHashSet<>()).add(role);
+                        rolesAllowed.computeIfAbsent(member, f -> new ObjectLinkedOpenHashSet<>()).add(role);
                         if (existingRoles.computeIfAbsent(member, f -> new HashSet<>(f.getRoles())).contains(role)) {
                             continue;
                         }
-                        rolesAdded.computeIfAbsent(member, f -> new LinkedHashSet<>()).add(role);
+                        rolesAdded.computeIfAbsent(member, f -> new ObjectLinkedOpenHashSet<>()).add(role);
                     } catch (IllegalArgumentException e) {
                         errors.add("[Row:" + (i + 2) + ",Column:" + columnName + "] `" + input + "` -> `" + roleName + "`: " + e.getMessage());
                         continue;
@@ -1526,7 +1527,7 @@ public class AdminCommands {
                 for (Role role : removeRoles) {
                     if (!granted.contains(role)) {
                         if (existingRoles.computeIfAbsent(member, f -> new HashSet<>(f.getRoles())).contains(role)) {
-                            rolesRemoved.computeIfAbsent(member, f -> new LinkedHashSet<>()).add(role);
+                            rolesRemoved.computeIfAbsent(member, f -> new ObjectLinkedOpenHashSet<>()).add(role);
                         }
                     }
                 }
@@ -1652,7 +1653,7 @@ public class AdminCommands {
         }
         if (!force) {
             String title = "Send " + nations.size() + " messages";
-            Set<Integer> alliances = new LinkedHashSet<>();
+            Set<Integer> alliances = new IntLinkedOpenHashSet();
             for (DBNation nation : nations) alliances.add(nation.getAlliance_id());
             String embedTitle = title + " to nations.";
             if (alliances.size() != 1) embedTitle += " in " + alliances.size() + " alliances.";
@@ -2060,7 +2061,7 @@ public class AdminCommands {
             "Note: Do not remove deleted offshores or banks if you want to use their previous transactions in deposit calculations")
     @RolePermission(value = Roles.ADMIN)
     public String removeInvalidOffshoring(@Me GuildDB db, Coalition coalition) {
-        Set<Long> toRemove = new HashSet<>();
+        Set<Long> toRemove = new LongOpenHashSet();
         for (long id : db.getCoalitionRaw(coalition)) {
             GuildDB otherDb;
             if (id > Integer.MAX_VALUE) {
@@ -2098,8 +2099,8 @@ public class AdminCommands {
         Set<Long> coalitions = db.getCoalitionRaw(Coalition.OFFSHORING);
 
         Map<Long, List<String>> notices = new HashMap<>();
-        Set<Long> printDeposits = new HashSet<>();
-        Set<Long> hasError = new HashSet<>();
+        Set<Long> printDeposits = new LongOpenHashSet();
+        Set<Long> hasError = new LongOpenHashSet();
 
         for (Long id : coalitions) {
             List<String> notice = notices.computeIfAbsent(id, f -> new ArrayList<>());
@@ -2584,7 +2585,7 @@ public class AdminCommands {
         IMessageBuilder msg = null;
         long start = System.currentTimeMillis();
 
-        Set<Integer> nationIdsWithUids = new HashSet<>();
+        Set<Integer> nationIdsWithUids = new IntOpenHashSet();
         for (Set<DBNation> nationSet : uidsByNationExisting.values()) {
             for (DBNation nation : nationSet) {
                 nationIdsWithUids.add(nation.getId());

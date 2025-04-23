@@ -1,48 +1,35 @@
 package link.locutus.discord.commands.war;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.battle.SpyBlitzGenerator;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.SpyCount;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.Auth;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
 import java.io.IOException;
-import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -188,7 +175,7 @@ public class Spyops extends Command {
         Collection<DBNation> nations;
         if (args.get(0).equalsIgnoreCase("*")) {
             Map<Integer, DBWar> active = Locutus.imp().getWarDb().getWars(WarStatus.ACTIVE);
-            nations = new LinkedHashSet<>();
+            nations = new ObjectLinkedOpenHashSet<>();
             for (DBWar value : active.values()) {
                 int other;
                 if (isInvolved.apply(value.getAttacker_id())) {

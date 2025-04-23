@@ -1,6 +1,8 @@
 package link.locutus.discord.util.task.ia;
 
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.city.building.ServiceBuilding;
@@ -1134,7 +1136,7 @@ public class IACheckup {
     private Map.Entry<Object, String> checkOffensiveSlots(DBNation nation, GuildDB db) {
         if (nation.getOff() >= 4) return null;
         Set<Integer> enemyAAs = db.getCoalition(Coalition.ENEMIES);
-        Set<DBNation> targets = new LinkedHashSet<>();
+        Set<DBNation> targets = new ObjectLinkedOpenHashSet<>();
 
         double score = nation.getScore();
         double maxScore = score * PW.WAR_RANGE_MAX_MODIFIER;
@@ -1494,7 +1496,7 @@ public class IACheckup {
         }
         if (unpoweredInfra.isEmpty() && unpoweredRss.isEmpty()) return null;
 
-        Set<Integer> unpowered = new LinkedHashSet<>();
+        Set<Integer> unpowered = new IntLinkedOpenHashSet();
         unpowered.addAll(unpoweredInfra);
         unpowered.addAll(unpoweredRss);
 
@@ -1546,7 +1548,7 @@ public class IACheckup {
                 }
             }
         }
-        HashSet<Integer> combined = new LinkedHashSet<>();
+        Set<Integer> combined = new IntLinkedOpenHashSet();
         combined.addAll(unpowered);
         combined.addAll(nonNuclear);
         if (!combined.isEmpty()) {
@@ -1574,7 +1576,7 @@ public class IACheckup {
 //    }
 //
     public static Map.Entry<Object, String> checkEmptySlots(Map<Integer, JavaCity> cities) {
-        Set<Integer> empty = new LinkedHashSet<>();
+        Set<Integer> empty = new IntLinkedOpenHashSet();
         for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
             JavaCity city = entry.getValue();
             if (city.getFreeSlots() > 0) {

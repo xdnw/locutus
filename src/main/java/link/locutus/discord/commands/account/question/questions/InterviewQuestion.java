@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.account.question.questions;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.WarPolicy;
@@ -444,7 +445,7 @@ public enum InterviewQuestion implements Question {
         @Override
         public String format(Guild guild, User author, DBNation me, IMessageIO channel, String message) {
             double maxInfra = 0;
-            Set<Integer> infraLevels = new HashSet<>();
+            Set<Integer> infraLevels = new IntOpenHashSet();
 
             boolean oddInfraAmounts = false;
             boolean inefficientAmount = false;

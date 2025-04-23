@@ -1,7 +1,9 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import com.amazonaws.services.s3.model.S3ObjectSummary;
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -91,7 +93,7 @@ public class ConflictCommands {
             int i = 1;
             for (CoalitionSide side : sides) {
                 response.append("\n**" + side.getName() + "** (coalition " + (i++) + ")\n");
-                Set<Integer> ids = new LinkedHashSet<>();
+                Set<Integer> ids = new IntLinkedOpenHashSet();
                 for (int aaId : side.getAllianceIdsSorted()) {
                     if (DBAlliance.get(aaId) == null) {
                         if (hideDeleted) continue;
@@ -439,7 +441,7 @@ public class ConflictCommands {
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String removeCoalition(Conflict conflict, Set<DBAlliance> alliances) {
-        Set<DBAlliance> notRemoved = new LinkedHashSet<>();
+        Set<DBAlliance> notRemoved = new ObjectLinkedOpenHashSet<>();
         for (DBAlliance alliance : alliances) {
             if (conflict.getCoalition1().contains(alliance.getId()) || conflict.getCoalition2().contains(alliance.getId())) {
                 conflict.removeParticipant(alliance.getId());
@@ -640,7 +642,7 @@ public class ConflictCommands {
         // Cutoff date
         wikiConflicts.removeIf(f -> f.getStartTurn() < TimeUtil.getTurn(1577836800000L));
         // print all ongoing conflicts
-        Set<Conflict> loaded = new LinkedHashSet<>();
+        Set<Conflict> loaded = new ObjectLinkedOpenHashSet<>();
         for (Conflict wikiConflict : wikiConflicts) {
             Set<Conflict> existingSet = conflictsByWiki.get(wikiConflict.getWiki());
             if (existingSet == null) {
@@ -734,7 +736,7 @@ public class ConflictCommands {
         }
         if (loadGraphData && graphData == null) {
             io.updateOptionally(msgFuture, "Recaculating tables");
-            graphData = new LinkedHashSet<>(manager.getConflictMap().values());
+            graphData = new ObjectLinkedOpenHashSet<>(manager.getConflictMap().values());
             recalculateTables(manager, graphData);
         }
         if (graphData != null) {
@@ -835,8 +837,8 @@ public class ConflictCommands {
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String purgeFeatured(ConflictManager manager, @Me IMessageIO io, @Me JSONObject command, @Default @Timestamp Long olderThan, @Switch("f") boolean force) {
-        Set<String> deleted = new LinkedHashSet<>();
-        Set<String> kept = new LinkedHashSet<>();
+        Set<String> deleted = new ObjectLinkedOpenHashSet<>();
+        Set<String> kept = new ObjectLinkedOpenHashSet<>();
         for (S3ObjectSummary object : manager.getAws().getObjects()) {
             Date date = object.getLastModified();
             if (olderThan != null && olderThan < date.getTime()) {

@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.command;
 
 import com.google.gson.JsonObject;
 import gg.jte.generated.precompiled.command.JtecommandgroupGenerated;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Logg;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
@@ -423,7 +424,7 @@ public class CommandGroup implements ICommandGroup {
 
             try {
                 CommandRef ref = (CommandRef) clazz.getDeclaredField("cmd").get(null);
-                Set<String> argsPresent = new LinkedHashSet<>();
+                Set<String> argsPresent = new ObjectLinkedOpenHashSet<>();
                 Class<? extends CommandRef> refClazz = ref.getClass();
                 for (Method method : refClazz.getMethods()) {
                     if (method.getDeclaringClass() != refClazz) continue;

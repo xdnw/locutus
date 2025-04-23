@@ -5,6 +5,7 @@ import com.ptsmods.mysqlw.query.QueryOrder;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TablePreset;
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
@@ -154,7 +155,7 @@ public class BaseballDB extends DBMainV2{
     }
 
     public Set<Integer> getBaseballGameIds() {
-        Set<Integer> result = new LinkedHashSet<>();
+        Set<Integer> result = new IntLinkedOpenHashSet();
         SelectBuilder builder = getDb().selectBuilder("games")
                 .select("id");
         try (ResultSet rs = builder.executeRaw()) {

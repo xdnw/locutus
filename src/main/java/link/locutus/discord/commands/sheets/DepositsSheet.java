@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.sheets;
 
+import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -71,7 +72,7 @@ public class DepositsSheet extends Command {
             nations = (DiscordUtil.parseNations(guild, author, me, args.get(0), false, true));
             if (args.size() == 2) {
                 Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, args.get(1));
-                tracked = new LinkedHashSet<>();
+                tracked = new LongLinkedOpenHashSet();
                 for (Integer alliance : alliances) tracked.add(alliance.longValue());
                 tracked = PW.expandCoalition(tracked);
             }

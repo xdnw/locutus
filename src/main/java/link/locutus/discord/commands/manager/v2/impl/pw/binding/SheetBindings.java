@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
@@ -136,7 +137,7 @@ public class SheetBindings extends BindingHelper {
     @Binding("A comma separated list of spreadsheets")
     public Set<SpreadSheet> sheets(String input) throws GeneralSecurityException, IOException {
         List<String> split = StringMan.split(input, ",");
-        Set<SpreadSheet> sheets = new LinkedHashSet<>();
+        Set<SpreadSheet> sheets = new ObjectLinkedOpenHashSet<>();
         for (String s : split) {
             sheets.add(sheet(s));
         }

@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.wiki.game.PWWikiUtil;
 import com.vdurmont.emoji.EmojiParser;
 import link.locutus.discord.Locutus;
@@ -776,7 +777,7 @@ public class GPTCommands {
 
             Map<String, Set<TextChannel>> channelsBySlug = new LinkedHashMap<>();
             for (TextChannel channel : channels) {
-                channelsBySlug.computeIfAbsent(PWWikiUtil.slugify(channel.getName(), false), f -> new LinkedHashSet<>()).add(channel);
+                channelsBySlug.computeIfAbsent(PWWikiUtil.slugify(channel.getName(), false), f -> new ObjectLinkedOpenHashSet<>()).add(channel);
             }
             Map<TextChannel, Map.Entry<String, String>> emojis = new LinkedHashMap<>();
 

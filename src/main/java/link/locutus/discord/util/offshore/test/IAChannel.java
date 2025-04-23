@@ -1,5 +1,6 @@
 package link.locutus.discord.util.offshore.test;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -69,7 +70,7 @@ public class IAChannel {
     }
 
     public void update(Map<IACheckup.AuditType, Map.Entry<Object, String>> audits) {
-        Set<String> emojis = new LinkedHashSet<>();
+        Set<String> emojis = new ObjectLinkedOpenHashSet<>();
         if (audits == null) {
             if (nation.getVm_turns() > 0) {
                 emojis.add("\uD83C\uDFD6\ufe0f");

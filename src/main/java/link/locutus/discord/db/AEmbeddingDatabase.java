@@ -6,7 +6,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import link.locutus.discord.Logg;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
@@ -24,17 +24,8 @@ import org.jooq.exception.DataAccessException;
 import org.jooq.impl.SQLDataType;
 
 import java.io.Closeable;
-import java.math.BigInteger;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
@@ -568,7 +559,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
     }
 
     public Set<EmbeddingSource> getSources(Predicate<Long> guildPredicateOrNull, Predicate<EmbeddingSource> sourcePredicate) {
-        Set<EmbeddingSource> result = new LinkedHashSet<>();
+        Set<EmbeddingSource> result = new ObjectLinkedOpenHashSet<>();
         for (EmbeddingSource source : embeddingSources.values()) {
             if (guildPredicateOrNull == null || guildPredicateOrNull.test(source.guild_id)) {
                 if (sourcePredicate == null || sourcePredicate.test(source)) {

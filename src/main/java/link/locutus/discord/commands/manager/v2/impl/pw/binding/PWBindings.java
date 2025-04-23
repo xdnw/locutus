@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv1.enums.*;
@@ -187,7 +189,7 @@ public class PWBindings extends BindingHelper {
             if (pair.length != 2) throw new IllegalArgumentException("Invalid `CITY_RANGE:BEIGE_REASON` pair: `" + s + "`");
             CityRanges range = CityRanges.parse(pair[0]);
             List<BeigeReason> list = StringMan.parseEnumList(BeigeReason.class, pair[1]);
-            result.put(range, new LinkedHashSet<>(list));
+            result.put(range, new ObjectLinkedOpenHashSet<>(list));
         }
         return result;
     }
@@ -240,7 +242,7 @@ public class PWBindings extends BindingHelper {
     @Binding(value = "A comma separated list of attack success types")
     public static Set<SuccessType> SuccessTypes(String input) {
         String[] split = input.split(",");
-        Set<SuccessType> result = new LinkedHashSet<>();
+        Set<SuccessType> result = new ObjectLinkedOpenHashSet<>();
         for (String s : split) {
             result.add(SuccessType.parse(s));
         }
@@ -844,7 +846,7 @@ public class PWBindings extends BindingHelper {
 
     @Binding(value = "A comma separated list of spy operation types")
     public Set<SpyCount.Operation> opTypes(String input) {
-        Set<SpyCount.Operation> allowedOpTypes = new LinkedHashSet<>();
+        Set<SpyCount.Operation> allowedOpTypes = new ObjectLinkedOpenHashSet<>();
         for (String type : input.split(",")) {
             if (type.equalsIgnoreCase("*")) {
                 allowedOpTypes.addAll(Arrays.asList(SpyCount.Operation.values()));
@@ -860,7 +862,7 @@ public class PWBindings extends BindingHelper {
 
     @Binding(value = "A comma separated list of alliance metrics")
     public Set<AllianceMetric> metrics(String input) {
-        Set<AllianceMetric> metrics = new LinkedHashSet<>();
+        Set<AllianceMetric> metrics = new ObjectLinkedOpenHashSet<>();
         for (String type : input.split(",")) {
             AllianceMetric arg = StringMan.parseUpper(AllianceMetric.class, type);
             metrics.add(arg);
@@ -915,7 +917,7 @@ public class PWBindings extends BindingHelper {
     @Binding(examples = "score,soldiers", value = "A comma separated list of numeric nation attributes",
     webType = "Set<TypedFunction<DBNation,Double>>")
     public Set<NationAttributeDouble> nationMetricDoubles(ValueStore store, String input) {
-        Set<NationAttributeDouble> metrics = new LinkedHashSet<>();
+        Set<NationAttributeDouble> metrics = new ObjectLinkedOpenHashSet<>();
         for (String arg : StringMan.split(input, ',')) {
             metrics.add(nationMetricDouble(store, arg));
         }
@@ -924,7 +926,7 @@ public class PWBindings extends BindingHelper {
 
     @Binding(examples = "warpolicy,color", value = "A comma separated list of nation attributes")
     public Set<NationAttribute> nationMetrics(ValueStore store, String input) {
-        Set<NationAttribute> metrics = new LinkedHashSet<>();
+        Set<NationAttribute> metrics = new ObjectLinkedOpenHashSet<>();
         for (String arg : StringMan.split(input, ',')) {
             metrics.add(nationMetric(store, arg));
         }
@@ -962,7 +964,7 @@ public class PWBindings extends BindingHelper {
 
     public static Set<NationOrAllianceOrGuildOrTaxid> nationOrAllianceOrGuildOrTaxId(ParameterData data, @Default @Me Guild guild, String input, boolean includeTaxId, @Default @Me User author, @Default @Me DBNation me) {
         List<String> args = StringMan.split(input, ',');
-        Set<NationOrAllianceOrGuildOrTaxid> result = new LinkedHashSet<>();
+        Set<NationOrAllianceOrGuildOrTaxid> result = new ObjectLinkedOpenHashSet<>();
         List<String> remainder = new ArrayList<>();
         outer:
         for (String arg : args) {
@@ -1050,7 +1052,7 @@ public class PWBindings extends BindingHelper {
 
     @Binding(examples = "ACTIVE,EXPIRED", value = "A comma separated list of war statuses")
     public static Set<WarStatus> WarStatuses(String input) {
-        Set<WarStatus> result = new LinkedHashSet<>();
+        Set<WarStatus> result = new ObjectLinkedOpenHashSet<>();
         for (String s : input.split(",")) {
             result.add(WarStatus.parse(s));
         }
@@ -1083,7 +1085,7 @@ public class PWBindings extends BindingHelper {
 
     @Binding(examples = {"aluminum", "money", "`*`", "manu", "raws", "!food"}, value = "A comma separated list of resource types")
     public static Set<ResourceType> rssTypes(String input) {
-        Set<ResourceType> types = new LinkedHashSet<>();
+        Set<ResourceType> types = new ObjectLinkedOpenHashSet<>();
         for (String arg : input.split(",")) {
             boolean remove = arg.startsWith("!");
             if (remove) arg = arg.substring(1);
@@ -1109,7 +1111,7 @@ public class PWBindings extends BindingHelper {
             if (remove) types.removeAll(toAddOrRemove);
             else types.addAll(toAddOrRemove);
         }
-        return new LinkedHashSet<>(types);
+        return new ObjectLinkedOpenHashSet<>(types);
     }
 
     @AllianceDepositLimit
@@ -1395,7 +1397,7 @@ public class PWBindings extends BindingHelper {
         String positionName = split[split.length - 1];
 
         if (aaId != null && !alliances.contains(aaId)) throw new IllegalArgumentException("Alliance " + aaId + " is not in the list of alliances registered to this guild: " + StringMan.getString(alliances.getIds()));
-        Set<Integer> aaIds = new LinkedHashSet<>();
+        Set<Integer> aaIds = new IntLinkedOpenHashSet();
         if (aaId != null) aaIds.add(aaId);
         else {
             if (nation != null && alliances.contains(nation.getAlliance_id())) aaIds.add(nation.getAlliance_id());
@@ -1513,7 +1515,7 @@ public class PWBindings extends BindingHelper {
         RolePermission perms = param.getAnnotation(RolePermission.class);
         if (perms != null) {
             if (user != null) {
-                Set<Integer> allowedIds = new LinkedHashSet<>();
+                Set<Integer> allowedIds = new IntLinkedOpenHashSet();
                 for (int aaId : list.getIds()) {
                     try {
                         PermissionBinding.checkRole(db.getGuild(), perms, user, aaId);

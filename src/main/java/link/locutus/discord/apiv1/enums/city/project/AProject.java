@@ -1,5 +1,6 @@
 package link.locutus.discord.apiv1.enums.city.project;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.apiv1.domains.Nation;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.entities.DBNation;
@@ -44,7 +45,7 @@ public class AProject implements Project {
 
     @Override
     public Set<Project> requiredProjects() {
-        return reqProjects == null ? Collections.emptySet() : new LinkedHashSet<>(Arrays.asList(reqProjects.get()));
+        return reqProjects == null ? Collections.emptySet() : new ObjectLinkedOpenHashSet<>(Arrays.asList(reqProjects.get()));
     }
 
     @Override

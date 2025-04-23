@@ -1,35 +1,23 @@
 package link.locutus.discord.util.task.nation;
 
+import com.google.api.client.util.Lists;
 import com.politicsandwar.graphql.model.BBGame;
 import com.ptsmods.mysqlw.query.QueryCondition;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.db.entities.DBBan;
-import link.locutus.discord.db.entities.DBTrade;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.task.multi.GetUid;
-import com.google.api.client.util.Lists;
-import link.locutus.discord.apiv1.enums.ResourceType;
 
 import java.math.BigInteger;
-import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -323,8 +311,8 @@ public class MultiReport {
                             continue;
                         }
 
-                        illegalWarsByMulti.computeIfAbsent(multiId1, f -> new LinkedHashSet<>()).add(new KeyValue<>(a, b));
-                        illegalWarsByMulti.computeIfAbsent(multiId2, f -> new LinkedHashSet<>()).add(new KeyValue<>(b, a));
+                        illegalWarsByMulti.computeIfAbsent(multiId1, f -> new ObjectLinkedOpenHashSet<>()).add(new KeyValue<>(a, b));
+                        illegalWarsByMulti.computeIfAbsent(multiId2, f -> new ObjectLinkedOpenHashSet<>()).add(new KeyValue<>(b, a));
                     }
                 }
             }
@@ -337,7 +325,7 @@ public class MultiReport {
         for (DBTrade offer : myTrades) {
             if ((offer.getSeller() == (nationId) || multis.contains(offer.getSeller())) && (offer.getBuyer() == (nationId) || multis.contains(offer.getBuyer()))) {
                 int multiId = (offer.getSeller() == (nationId)) ? offer.getBuyer() : offer.getSeller();
-                illegalTradesByMulti.computeIfAbsent(multiId, f -> new LinkedHashSet<>()).add(offer);
+                illegalTradesByMulti.computeIfAbsent(multiId, f -> new ObjectLinkedOpenHashSet<>()).add(offer);
             }
         }
 
@@ -394,8 +382,8 @@ public class MultiReport {
                         if (nationA == nationB) continue;
 
                         Map.Entry<Transaction2, Transaction2> entry = new KeyValue<>(a, b);
-                        illegalIndirectTransfers.computeIfAbsent(nationA, f -> new LinkedHashSet<>()).add(entry);
-                        illegalIndirectTransfers.computeIfAbsent(nationB, f -> new LinkedHashSet<>()).add(entry);
+                        illegalIndirectTransfers.computeIfAbsent(nationA, f -> new ObjectLinkedOpenHashSet<>()).add(entry);
+                        illegalIndirectTransfers.computeIfAbsent(nationB, f -> new ObjectLinkedOpenHashSet<>()).add(entry);
                     }
                 }
             }

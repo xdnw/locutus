@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.stock;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -425,7 +426,7 @@ public class Exchange {
             Rank rank = officers.get(nation.getNation_id());
             if (rank == null) continue;
 
-            result.computeIfAbsent(rank, f -> new LinkedHashSet<>()).add(member);
+            result.computeIfAbsent(rank, f -> new ObjectLinkedOpenHashSet<>()).add(member);
         }
         return result;
     }

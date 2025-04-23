@@ -6,6 +6,7 @@ import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.services.sheets.v4.model.*;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
@@ -87,7 +88,7 @@ public class SpreadSheet {
         sheet.valuesByTab.remove(tab.toLowerCase(Locale.ROOT));
         if (rows == null || rows.isEmpty()) return Collections.emptySet();
 
-        Set<T> toAdd = new LinkedHashSet<>();
+        Set<T> toAdd = new ObjectLinkedOpenHashSet<>();
         Map<Integer, String> columnIndexToName = new LinkedHashMap<>();
         Map<Integer, Integer> columnIndexToColumnType = new LinkedHashMap<>();
         List<Object> header = rows.get(0);
@@ -796,7 +797,7 @@ public class SpreadSheet {
         Map<String, Boolean> result = new LinkedHashMap<>();
         Spreadsheet sheet = service.spreadsheets().get(spreadsheetId).execute();
         List<Sheet> sheets = sheet.getSheets();
-        Set<String> tabsLower = tabs.stream().map(String::toLowerCase).collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<String> tabsLower = tabs.stream().map(String::toLowerCase).collect(Collectors.toCollection(ObjectLinkedOpenHashSet::new));
         for (Sheet subSheet : sheets) {
             String title = subSheet.getProperties().getTitle().toLowerCase();
             tabsLower.remove(title);

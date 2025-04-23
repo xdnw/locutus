@@ -1,5 +1,7 @@
 package link.locutus.discord.config.yaml;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -180,7 +182,7 @@ public class MemorySection implements ConfigurationSection {
 
     @Override
     public Set<String> getKeys(boolean deep) {
-        Set<String> result = new LinkedHashSet<>();
+        Set<String> result = new ObjectLinkedOpenHashSet<>();
 
         Configuration root = getRoot();
         if ((root != null) && root.options().copyDefaults()) {

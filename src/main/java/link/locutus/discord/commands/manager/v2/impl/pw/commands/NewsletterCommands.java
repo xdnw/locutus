@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -44,7 +45,7 @@ public class NewsletterCommands {
     public static void main(String[] args) {
         Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
         Settings.WEB.CHAT_EXPORTER exportSettings = Settings.INSTANCE.WEB.CHAT_EXPORTER;
-        Set<Long> channels = new LinkedHashSet<>(exportSettings.NEWS_CHANNELS);
+        Set<Long> channels = new LongLinkedOpenHashSet(exportSettings.NEWS_CHANNELS);
 
         // C:\DCE-CLI\DiscordChatExporter.Cli.exe export -t TOKEN -c CHANNEL -f Json --after "2019-09-17 23:34" --utc -o "TODO"
         // if I want media

@@ -325,7 +325,7 @@ public class WebOptionBindings extends BindingHelper {
     public WebOption getSelectionAlias() {
         return new WebOption(SelectionAlias.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
             Map<Class, Map<String, SelectionAlias>> aliases = db.getSheetManager().getSelectionAliases();
-            Set<SelectionAlias> allAliases = new LinkedHashSet<>();
+            Set<SelectionAlias> allAliases = new ObjectLinkedOpenHashSet<>();
             for (Map<String, SelectionAlias> map : aliases.values()) {
                 allAliases.addAll(map.values());
             }

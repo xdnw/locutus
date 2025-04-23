@@ -1,5 +1,6 @@
 package link.locutus.discord.util.sheet.templates;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -100,7 +101,7 @@ public class TransferSheet {
      * @return list of failed transfers
      */
     public Set<String> read() {
-        Set<String> invalidNationOrAlliance = new LinkedHashSet<>();
+        Set<String> invalidNationOrAlliance = new ObjectLinkedOpenHashSet<>();
         List<List<Object>> rows = parent.loadValuesCurrentTab(true);
         List<Object> header = rows.get(0);
 

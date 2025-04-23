@@ -1,5 +1,6 @@
 package link.locutus.discord.util.offshore.test;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -310,7 +311,7 @@ public class IACategory {
     }
 
     public List<Category> getCategories() {
-        Set<Category> result = new LinkedHashSet<>();
+        Set<Category> result = new ObjectLinkedOpenHashSet<>();
         result.addAll(activeCategories);
         result.addAll(inactiveCategories);
         result.addAll(passedCategories);
@@ -318,7 +319,7 @@ public class IACategory {
     }
 
     public List<TextChannel> getAllChannels() {
-        Set<TextChannel> result = new LinkedHashSet<>();
+        Set<TextChannel> result = new ObjectLinkedOpenHashSet<>();
         for (Category category : getCategories()) {
             result.addAll(category.getTextChannels());
         }

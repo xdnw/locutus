@@ -2,6 +2,8 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import it.unimi.dsi.fastutil.ints.Int2BooleanOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -1586,7 +1588,7 @@ public class UnsortedCommands {
             sheet.attach(msg, "departures");
         }
         if (listIds) {
-            Set<Integer> ids = new LinkedHashSet<>();
+            Set<Integer> ids = new IntLinkedOpenHashSet();
             for (AllianceChange r : removes) {
                 ids.add(r.getNationId());
             }
@@ -2078,7 +2080,7 @@ public class UnsortedCommands {
                            @Switch("w") boolean warningOrHigher,
                              @Switch("s") SpreadSheet sheet) throws IOException, ExecutionException, InterruptedException, GeneralSecurityException {
         if (includeAudits == null) {
-            includeAudits = new LinkedHashSet<>();
+            includeAudits = new ObjectLinkedOpenHashSet<>();
             for (IACheckup.AuditType value : IACheckup.AuditType.values()) {
                 if (excludeAudits == null || !excludeAudits.contains(value)) {
                     includeAudits.add(value);

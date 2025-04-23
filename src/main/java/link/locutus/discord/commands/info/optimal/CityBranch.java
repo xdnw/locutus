@@ -3,6 +3,7 @@ package link.locutus.discord.commands.info.optimal;
 import it.unimi.dsi.fastutil.PriorityQueue;
 import it.unimi.dsi.fastutil.objects.ObjectArrayFIFOQueue;
 import it.unimi.dsi.fastutil.objects.ObjectHeapPriorityQueue;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.ICity;
@@ -99,7 +100,7 @@ public class CityBranch implements BiConsumer<CityNode, PriorityQueue<CityNode>>
     }
 
     private static void resortList(List<Building> rssSorted) {
-        Set<ResourceType> seen = new HashSet<>();
+        Set<ResourceType> seen = new ObjectOpenHashSet<>();
         for (int i = 0; i < rssSorted.size(); i++) {
             ResourceBuilding building = (ResourceBuilding) rssSorted.get(i);
             seen.add(building.getResourceProduced());

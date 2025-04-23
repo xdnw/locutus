@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.manager;
 
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -16,13 +18,13 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import java.util.*;
 
 public abstract class Command {
-    public final Set<Long> WHITELIST_USERS = new HashSet<>();
+    public final Set<Long> WHITELIST_USERS = new LongOpenHashSet();
     private final List<String> aliases;
     private final Set<CommandCategory> categories;
 
     public Command(Object... args) {
         this.aliases = new ArrayList<>();
-        this.categories = new LinkedHashSet<>();
+        this.categories = new ObjectLinkedOpenHashSet<>();
         for (Object arg : args) {
             if (arg instanceof String) aliases.add(arg.toString());
             else if (arg instanceof CommandCategory) categories.add((CommandCategory) arg);

@@ -1,5 +1,6 @@
 package link.locutus.discord.util.offshore;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -573,7 +574,7 @@ public class Auth {
         Callable<Set<TradeResult>> task = new Callable<Set<TradeResult>>() {
             @Override
             public Set<TradeResult> call() throws Exception {
-                Set<TradeResult> responses = new LinkedHashSet<>();
+                Set<TradeResult> responses = new ObjectLinkedOpenHashSet<>();
 
                 boolean moreTrades = true;
                 int max = 14;

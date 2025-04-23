@@ -5,6 +5,7 @@ import com.politicsandwar.graphql.model.SortOrder;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.entities.BankRecord;
@@ -952,7 +953,7 @@ public class BankDB extends DBMainV3 {
 
     public Set<Subscription> getSubscriptions(int allianceOrNation, BankSubType type, boolean isReceive, long amount) {
         long date = System.currentTimeMillis();
-        Set<Subscription> list = new LinkedHashSet<>();
+        Set<Subscription> list = new ObjectLinkedOpenHashSet<>();
 
         ctx().selectFrom(SUBSCRIPTIONS)
                 .where(SUBSCRIPTIONS.ALLIANCEORNATION.eq(allianceOrNation))
@@ -1000,7 +1001,7 @@ public class BankDB extends DBMainV3 {
 
     public Set<Subscription> getSubscriptions(long userId) {
         long date = System.currentTimeMillis();
-        Set<Subscription> list = new LinkedHashSet<>();
+        Set<Subscription> list = new ObjectLinkedOpenHashSet<>();
 
         @NotNull Result<SubscriptionsRecord> records = ctx().selectFrom(SUBSCRIPTIONS).where(SUBSCRIPTIONS.USER.eq(userId)).and(SUBSCRIPTIONS.DATE.gt(date)).fetch();
         for (SubscriptionsRecord rs : records) {
@@ -1159,7 +1160,7 @@ public class BankDB extends DBMainV3 {
 //                if (transactionCache.containsKey(senderOrReceiverId)) {
 //                    transactionCache.get(senderOrReceiverId).addAll(result);
 //                } else {
-//                    transactionCache.put(senderOrReceiverId, new LinkedHashSet<>(result));
+//                    transactionCache.put(senderOrReceiverId, new ObjectLinkedOpenHashSet<>(result));
 //                }
 //            }
 //        }

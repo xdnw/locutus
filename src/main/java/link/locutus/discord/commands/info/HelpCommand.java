@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.info;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.CommandManager;
@@ -53,7 +54,7 @@ public class HelpCommand extends Command {
         StringBuilder response = new StringBuilder();
         if (args.size() == 0) {
             Set<CommandCategory> categories = new HashSet<>();
-            Set<Command> cmds = new LinkedHashSet<>(manager.getCommandMap().values());
+            Set<Command> cmds = new ObjectLinkedOpenHashSet<>(manager.getCommandMap().values());
             cmds.removeIf(cmd -> {
                 try {
                     return !cmd.checkPermission(guild != null ? guild : null, author);
@@ -87,7 +88,7 @@ public class HelpCommand extends Command {
                 }
             }
             if (!requiredCategories.isEmpty()) {
-                LinkedHashSet<Command> commands = new LinkedHashSet<>(manager.getCommandMap().values());
+                Set<Command> commands = new ObjectLinkedOpenHashSet<>(manager.getCommandMap().values());
                 for (Command command : commands) {
                     try {
                         if (!command.checkPermission(guild != null ? guild : null, author))

@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.coalition;
 
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -63,7 +64,7 @@ public class SetCoalition extends Command {
             if (coalition.equalsIgnoreCase(Coalition.OFFSHORE.name()) && !Roles.ADMIN.has(author, guild)) {
                 return "Only admin can set offshore coalitions.";
             }
-            Set<Long> alliancesOrGuilds = new HashSet<>();
+            Set<Long> alliancesOrGuilds = new LongOpenHashSet();
             if (MathMan.isInteger(args.get(0)) && Long.parseLong(args.get(0)) > Integer.MAX_VALUE) {
                 alliancesOrGuilds.add(Long.parseLong(args.get(0)));
             } else {

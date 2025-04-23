@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.info;
 
 import com.google.api.client.util.Sets;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -72,7 +73,7 @@ public class ListMultisByAlliance extends Command {
             for (Integer nationId : entry.getValue()) {
                 if (verified.contains(nationId)) continue;
 
-                Set<Integer> others = new HashSet<>(entry.getValue());
+                Set<Integer> others = new IntOpenHashSet(entry.getValue());
                 others.remove(nationId);
                 others.removeAll(verified);
                 multisByNation.computeIfAbsent(nationId, t -> Sets.newHashSet()).addAll(others);
@@ -146,7 +147,7 @@ public class ListMultisByAlliance extends Command {
 
     private Set<Integer> getDefenders(int nationId, Map<Integer, DBWar> allWars) {
         List<DBWar> myWars = allWars.values().stream().filter(f -> f.getAttacker_id() == nationId || f.getDefender_id() == nationId).toList();
-        Set<Integer> defenders = new HashSet<>();
+        Set<Integer> defenders = new IntOpenHashSet();
         for (DBWar war : myWars) {
             if (war.getDefender_id() != nationId) {
                 defenders.add(war.getDefender_id());

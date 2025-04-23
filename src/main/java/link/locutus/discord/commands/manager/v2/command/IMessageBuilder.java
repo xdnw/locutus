@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import de.vandermeer.asciitable.AT_Context;
 import de.vandermeer.asciitable.AsciiTable;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
 import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
@@ -124,7 +125,7 @@ public interface IMessageBuilder {
     @CheckReturnValue
     default IMessageBuilder modal(CommandBehavior behavior, Long outputChannel, String path, Map<String, String> arguments, String message) {
             Iterator<Map.Entry<String, String>> iter = arguments.entrySet().iterator();
-            Set<String> promptFor = new LinkedHashSet<>();
+            Set<String> promptFor = new ObjectLinkedOpenHashSet<>();
             while (iter.hasNext()) {
                 Map.Entry<String, String> entry = iter.next();
                 if (entry.getValue() == null) {

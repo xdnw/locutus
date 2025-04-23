@@ -137,7 +137,7 @@
 //                            PoliticsAndWarV2 api = otherDb.getApi();
 //                            if (api == null) continue;
 //                            if (checkVM && (TimeUtil.getTurn() % 12) == 0) {
-//                                Set<DBNation> toUpdate = new LinkedHashSet<>();
+//                                Set<DBNation> toUpdate = new ObjectLinkedOpenHashSet<>();
 //                                AllianceMembers members = api.getAllianceMembers(aaId);
 //                                for (AllianceMembersContainer member : members.getNations()) {
 //                                    Integer spies = Integer.parseInt(member.getSpies());

@@ -1,7 +1,6 @@
 package link.locutus.discord.web.jooby.adapter;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.JsonObject;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -16,10 +15,9 @@ import link.locutus.discord.util.math.ReflectionUtil;
 import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.ReturnType;
-import link.locutus.discord.web.commands.binding.value_types.*;
+import link.locutus.discord.web.commands.binding.value_types.CacheType;
 import link.locutus.discord.web.commands.options.WebOptionBindings;
 import link.locutus.discord.web.jooby.PageHandler;
-import link.locutus.discord.web.jooby.WebRoot;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -184,7 +182,7 @@ public class TsEndpointGenerator {
 //
 //
 //    public static Schema generateSchema(Collection<Class<?>> classes) {
-//        Set<Class<?>> processedClasses = new LinkedHashSet<>();
+//        Set<Class<?>> processedClasses = new ObjectLinkedOpenHashSet<>();
 //        List<Schema> schemas = new ArrayList<>();
 //        for (Class<?> clazz : classes) {
 //            if (!processedClasses.contains(clazz)) {
@@ -376,7 +374,7 @@ public class TsEndpointGenerator {
 
         javaClass.append("public class ").append(fileName).append(" {\n");
 
-        Set<Class> enumTypes = new LinkedHashSet<>();
+        Set<Class> enumTypes = new ObjectLinkedOpenHashSet<>();
         for (ParametricCallable callable : placeholders.getParametricCallables()) {
             String fieldName = callable.getPrimaryCommandId();
             Type type = callable.getReturnType();

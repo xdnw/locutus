@@ -1,5 +1,7 @@
 package link.locutus.discord.pnw;
 
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -50,7 +52,7 @@ public class AllianceList {
     }
 
     public <T> AllianceList(Collection<Integer> ids) {
-        this(new LinkedHashSet<>(ids));
+        this(new IntLinkedOpenHashSet(ids));
     }
 
     public boolean isInAlliance(DBNation nation) {
@@ -123,7 +125,7 @@ public class AllianceList {
     }
 
     public AllianceList subList(Set<Integer> aaIds) {
-        Set<Integer> copy = new LinkedHashSet<>(ids);
+        Set<Integer> copy = new IntLinkedOpenHashSet(ids);
         copy.retainAll(aaIds);
         return new AllianceList(copy);
     }
@@ -273,7 +275,7 @@ public class AllianceList {
     }
 
     public Set<DBAlliancePosition> getPositions() {
-        Set<DBAlliancePosition> positions = new LinkedHashSet<>();
+        Set<DBAlliancePosition> positions = new ObjectLinkedOpenHashSet<>();
         for (DBAlliance alliance : getAlliances()) {
             positions.addAll(alliance.getPositions());
         }

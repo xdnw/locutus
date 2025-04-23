@@ -18,6 +18,7 @@ import it.unimi.dsi.fastutil.longs.Long2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
@@ -1453,7 +1454,7 @@ public class StatCommands {
         nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
         Map<Integer, Set<DBNation>> natByAA = new HashMap<>();
         for (DBNation nation : nations) {
-            natByAA.computeIfAbsent(nation.getAlliance_id(), f -> new LinkedHashSet<>()).add(nation);
+            natByAA.computeIfAbsent(nation.getAlliance_id(), f -> new ObjectLinkedOpenHashSet<>()).add(nation);
         }
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.ALLIANCES_SHEET);

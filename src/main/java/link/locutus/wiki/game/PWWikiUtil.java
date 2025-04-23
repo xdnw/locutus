@@ -3,6 +3,7 @@ package link.locutus.wiki.game;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.db.conflict.Conflict;
 import link.locutus.discord.db.entities.DBTopic;
 import link.locutus.discord.db.entities.conflict.ConflictCategory;
@@ -20,15 +21,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.text.Normalizer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class PWWikiUtil {
@@ -581,7 +574,7 @@ public class PWWikiUtil {
             }
             return null;
         }
-        Set<String> unknownAlliances = new LinkedHashSet<>();
+        Set<String> unknownAlliances = new ObjectLinkedOpenHashSet<>();
         Map.Entry<Set<Integer>, Set<Integer>> combatants = page.getCombatants(unknownAlliances, date.getKey());
         if (combatants == null) {
             errorsByPage.put(name, "No combatants found (unknown: " + unknownAlliances + ")");

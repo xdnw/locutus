@@ -5,7 +5,10 @@ import com.knuddels.jtokkit.api.ModelType;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import com.theokanning.openai.service.OpenAiService;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -78,7 +81,7 @@ public class GuildKey {
         @RolePermission(Roles.ADMIN)
         public String registerAlliance(@Me GuildDB db, @Me User user, Set<DBAlliance> alliances) {
             Set<Integer> existing = ALLIANCE_ID.getOrNull(db, false);
-            existing = existing == null ? new LinkedHashSet<>() : new LinkedHashSet<>(existing);
+            existing = existing == null ? new IntLinkedOpenHashSet() : new IntLinkedOpenHashSet(existing);
             Set<Integer> toAdd = alliances.stream().map(DBAlliance::getId).collect(Collectors.toSet());
             for (DBAlliance alliance : alliances) {
                 if (existing.contains(alliance.getId())) {
@@ -95,7 +98,7 @@ public class GuildKey {
         @RolePermission(Roles.ADMIN)
         public String unregisterAlliance(@Me GuildDB db, @Me User user, Set<DBAlliance> alliances) {
             Set<Integer> existing = ALLIANCE_ID.getOrNull(db, false);
-            existing = existing == null ? new LinkedHashSet<>() : new LinkedHashSet<>(existing);
+            existing = existing == null ? new IntLinkedOpenHashSet() : new IntLinkedOpenHashSet(existing);
             for (DBAlliance alliance : alliances) {
                 if (!existing.contains(alliance.getId())) {
                     throw new IllegalArgumentException("Alliance " + alliance.getId() + " is not registered (registered: " + StringMan.join(existing, ",") + ")");
@@ -406,7 +409,7 @@ public class GuildKey {
                 }
             }
 
-            Set<String> toRemove = new LinkedHashSet<>();
+            Set<String> toRemove = new ObjectLinkedOpenHashSet<>();
             for (String key : existing) {
                 ApiKeyDetails details = null;
                 Integer nationId = null;
@@ -447,7 +450,7 @@ public class GuildKey {
 
         @Override
         public List<String> validate(GuildDB db, User user, List<String> keys) {
-            keys = new ArrayList<>(new LinkedHashSet<>(keys));
+            keys = new ArrayList<>(new ObjectLinkedOpenHashSet<>(keys));
             Set<Integer> aaIds = db.getAllianceIds();
             if (aaIds.isEmpty()) {
                 throw new IllegalArgumentException("Please first use " + GuildKey.ALLIANCE_ID.getCommandMention());

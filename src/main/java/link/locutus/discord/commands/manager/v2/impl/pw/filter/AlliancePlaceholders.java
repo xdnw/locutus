@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -64,7 +65,7 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance, Long> {
 
     @Override
     public Set<SelectorInfo> getSelectorInfo() {
-        return new LinkedHashSet<>(List.of(
+        return new ObjectLinkedOpenHashSet<>(List.of(
                 new SelectorInfo("aa:ALLIANCE_NAME", "aa:Rose", "A qualified alliance name"),
                 new SelectorInfo("alliance:ALLIANCE_NAME", "alliance:Eclipse", "A qualified alliance name"),
                 new SelectorInfo("alliance/id=ALLIANCE_ID", "alliance/id=790", "An alliance url"),
@@ -77,7 +78,7 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance, Long> {
 
     @Override
     public Set<String> getSheetColumns() {
-        return new LinkedHashSet<>(List.of("alliance", "{id}", "{name}", "{getname}", "{getid}"));
+        return new ObjectLinkedOpenHashSet<>(List.of("alliance", "{id}", "{name}", "{getname}", "{getid}"));
     }
 
     public AllianceInstanceAttributeDouble getMetricDouble(ValueStore store, String id) {

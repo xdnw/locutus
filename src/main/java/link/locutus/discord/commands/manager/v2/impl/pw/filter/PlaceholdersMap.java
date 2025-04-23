@@ -450,12 +450,12 @@ public class PlaceholdersMap {
         return new Placeholders<NationOrAlliance, NationModifier>(NationOrAlliance.class, NationModifier.class, store, validators, permisser) {
             @Override
             public Set<String> getSheetColumns() {
-                return new LinkedHashSet<>(List.of("nation", "alliance"));
+                return new ObjectLinkedOpenHashSet<>(List.of("nation", "alliance"));
             }
 
             @Override
             public Set<SelectorInfo> getSelectorInfo() {
-                Set<SelectorInfo> selectors = new LinkedHashSet<>(NATIONS.getSelectorInfo());
+                Set<SelectorInfo> selectors = new ObjectLinkedOpenHashSet<>(NATIONS.getSelectorInfo());
                 selectors.addAll(ALLIANCES.getSelectorInfo());
                 return selectors;
             }
@@ -612,7 +612,7 @@ public class PlaceholdersMap {
         }) {
             @Override
             public Set<SelectorInfo> getSelectorInfo() {
-                return new LinkedHashSet<>(List.of(
+                return new ObjectLinkedOpenHashSet<>(List.of(
                         new SelectorInfo("GUILD", "123456789012345678", "Guild ID"),
                         new SelectorInfo("*", null, "All shared guilds")
                 ));
@@ -708,7 +708,7 @@ public class PlaceholdersMap {
                 }) {
             @Override
             public Set<SelectorInfo> getSelectorInfo() {
-                return new LinkedHashSet<>(List.of(
+                return new ObjectLinkedOpenHashSet<>(List.of(
                         new SelectorInfo("BAN", "1234", "Ban ID"),
                         new SelectorInfo("NATION", "189573", "Nation id, name, leader, url, user id or mention (see nation type)"),
                         new SelectorInfo("*", null, "All bans")
@@ -838,7 +838,7 @@ public class PlaceholdersMap {
         }) {
             @Override
             public Set<SelectorInfo> getSelectorInfo() {
-                return new LinkedHashSet<>(List.of(
+                return new ObjectLinkedOpenHashSet<>(List.of(
                         new SelectorInfo("*", null, "A single list with all nations"),
                         new SelectorInfo("~", null, "A set of nation lists for each coalition in the server"),
                         new SelectorInfo("coalition:COALITION_NAME", "coalition:allies", "A single list with the nations in the coalition"),
@@ -902,7 +902,7 @@ public class PlaceholdersMap {
         }
         NationPlaceholders nationPlaceholders = (NationPlaceholders) (Placeholders) get(DBNation.class);
         Set<DBNation> nations = nationPlaceholders.parseSingleElem(store, input, false);
-        Set<DBCity> cities = new LinkedHashSet<>();
+        Set<DBCity> cities = new ObjectLinkedOpenHashSet<>();
         for (DBNation nation : nations) {
             cities.addAll(nation._getCitiesV3().values());
         }
@@ -922,7 +922,7 @@ public class PlaceholdersMap {
         // user id / mention
         User user = DiscordUtil.getUser(input);
         if (user != null) {
-            return new LinkedHashSet<>(List.of(new UserWrapper(guild, user)));
+            return new ObjectLinkedOpenHashSet<>(List.of(new UserWrapper(guild, user)));
         }
         // Role
         Role role = DiscordUtil.getRole(guild, input);
@@ -935,7 +935,7 @@ public class PlaceholdersMap {
             if (user == null) {
                 throw new IllegalArgumentException("Nation " + natOrAA.getMarkdownUrl() + " is not registered. See: " + CM.register.cmd.toSlashMention());
             }
-            return new LinkedHashSet<>(List.of(new UserWrapper(guild, user)));
+            return new ObjectLinkedOpenHashSet<>(List.of(new UserWrapper(guild, user)));
         }
         return natOrAA.asAlliance().getNations().stream().map(f -> {
             Long id = f.getUserId();
@@ -1075,7 +1075,7 @@ public class PlaceholdersMap {
         }) {
             @Override
             public Set<SelectorInfo> getSelectorInfo() {
-                return new LinkedHashSet<>(List.of(
+                return new ObjectLinkedOpenHashSet<>(List.of(
                         new SelectorInfo("USER", "Borg", "Discord user name"),
                         new SelectorInfo("USER_ID", "123456789012345678", "Discord user id"),
                         new SelectorInfo("@ROLE", "@Member", "All users with a discord role by a given name or mention"),
@@ -1168,7 +1168,7 @@ public class PlaceholdersMap {
         }) {
             @Override
             public Set<SelectorInfo> getSelectorInfo() {
-                return new LinkedHashSet<>(List.of(
+                return new ObjectLinkedOpenHashSet<>(List.of(
                         new SelectorInfo("#CHANNEL", "#general", "Discord channel name"),
                         new SelectorInfo("CHANNEL_ID", "123456789012345678", "Discord channel id"),
                         new SelectorInfo("*", null, "All guild channels")
@@ -1235,7 +1235,7 @@ public class PlaceholdersMap {
                     }
                     if (SpreadSheet.isSheet(input)) {
                         Set<Set<DBCity>> result = SpreadSheet.parseSheet(input, List.of("city", "cities"), true, (type, str) -> parseCitiesSingle(store, str));
-                        Set<DBCity> cities = new LinkedHashSet<>();
+                        Set<DBCity> cities = new ObjectLinkedOpenHashSet<>();
                         for (Set<DBCity> set : result) {
                             cities.addAll(set);
                         }
@@ -1273,7 +1273,7 @@ public class PlaceholdersMap {
         }) {
             @Override
             public Set<SelectorInfo> getSelectorInfo() {
-                return new LinkedHashSet<>(List.of(
+                return new ObjectLinkedOpenHashSet<>(List.of(
                         new SelectorInfo("CITY_ID", "12345", "City ID"),
                         new SelectorInfo("CITY_URL", "/city/id=12345", "City URL"),
                         new SelectorInfo("NATION", "Borg", "Nation name, id, leader, url, user id or mention (see nation type)"),
@@ -1283,7 +1283,7 @@ public class PlaceholdersMap {
 
             @Override
             public Set<String> getSheetColumns() {
-                return new LinkedHashSet<>(List.of("city", "cities"));
+                return new ObjectLinkedOpenHashSet<>(List.of("city", "cities"));
             }
 
             @NoFormat
@@ -1504,7 +1504,7 @@ public class PlaceholdersMap {
         }) {
             @Override
             public Set<SelectorInfo> getSelectorInfo() {
-                return new LinkedHashSet<>(List.of(
+                return new ObjectLinkedOpenHashSet<>(List.of(
                         new SelectorInfo("TAX_ID", "12345", "Tax record ID"),
                         new SelectorInfo("TAX_URL", "/tax/id=12345", "Tax URL"),
                         new SelectorInfo("NATION", "Borg", "Nation name, id, leader, url, user id or mention (see nation type) - if in this guild's alliance"),
@@ -1515,7 +1515,7 @@ public class PlaceholdersMap {
 
             @Override
             public Set<String> getSheetColumns() {
-                return new LinkedHashSet<>(List.of("id", "tax_id", "nation"));
+                return new ObjectLinkedOpenHashSet<>(List.of("id", "tax_id", "nation"));
             }
 
             @NoFormat
@@ -1570,7 +1570,7 @@ public class PlaceholdersMap {
                     if (selection != null) return selection;
                     ConflictManager manager = Locutus.imp().getWarDb().getConflicts();
                     if (input.equalsIgnoreCase("*")) {
-                        return new LinkedHashSet<>(manager.getConflictMap().values());
+                        return new ObjectLinkedOpenHashSet<>(manager.getConflictMap().values());
                     }
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("conflict"), true, (type, str) -> PWBindings.conflict(manager, str));
@@ -1594,7 +1594,7 @@ public class PlaceholdersMap {
         }) {
             @Override
             public Set<SelectorInfo> getSelectorInfo() {
-                return new LinkedHashSet<>(List.of(
+                return new ObjectLinkedOpenHashSet<>(List.of(
                         new SelectorInfo("CONFLICT_ID", "12345", "Public Conflict ID"),
                         new SelectorInfo("CONFLICT_NAME", "Duck Hunt", "Public Conflict name, as stored by the bot"),
                         new SelectorInfo("*", null, "All public conflicts")
@@ -1656,7 +1656,7 @@ public class PlaceholdersMap {
                     Set<GuildSetting> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) {
-                        return new LinkedHashSet<>(Arrays.asList(GuildKey.values()));
+                        return new ObjectLinkedOpenHashSet<>(Arrays.asList(GuildKey.values()));
                     }
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("setting"), true, (type, str) -> PWBindings.key(str));
@@ -1679,7 +1679,7 @@ public class PlaceholdersMap {
         }) {
             @Override
             public Set<SelectorInfo> getSelectorInfo() {
-                return new LinkedHashSet<>(List.of(
+                return new ObjectLinkedOpenHashSet<>(List.of(
                         new SelectorInfo("SETTING", GuildKey.ALLIANCE_ID.name(), "Guild setting name"),
                         new SelectorInfo("*", null, "All guild settings")
                 ));
@@ -1901,14 +1901,14 @@ public class PlaceholdersMap {
         ) {
             @Override
             public Set<SelectorInfo> getSelectorInfo() {
-                Set<SelectorInfo> mySet = new LinkedHashSet<>(List.of(new SelectorInfo("ATTACK_ID", "123456", "Attack ID")));
+                Set<SelectorInfo> mySet = new ObjectLinkedOpenHashSet<>(List.of(new SelectorInfo("ATTACK_ID", "123456", "Attack ID")));
                 mySet.addAll(WARS.getSelectorInfo());
                 return mySet;
             }
 
             @Override
             public Set<String> getSheetColumns() {
-                return new LinkedHashSet<>(List.of("id", "war_id", "nation", "leader", "alliance"));
+                return new ObjectLinkedOpenHashSet<>(List.of("id", "war_id", "nation", "leader", "alliance"));
             }
 
             @NoFormat
@@ -2045,7 +2045,7 @@ public class PlaceholdersMap {
         }) {
             @Override
             public Set<SelectorInfo> getSelectorInfo() {
-                return new LinkedHashSet<>(List.of(
+                return new ObjectLinkedOpenHashSet<>(List.of(
                         new SelectorInfo("WAR_ID", "12345", "War ID"),
                         new SelectorInfo("NATION", "Borg", "Nation name, id, leader, url, user id or mention (see nation type)"),
                         new SelectorInfo("ALLIANCE", "AA:Rose", "Alliance id, name, url or mention (see alliance type)"),
@@ -2055,7 +2055,7 @@ public class PlaceholdersMap {
 
             @Override
             public Set<String> getSheetColumns() {
-                return new LinkedHashSet<>(List.of("id", "war_id", "nation", "leader", "alliance"));
+                return new ObjectLinkedOpenHashSet<>(List.of("id", "war_id", "nation", "leader", "alliance"));
             }
 
             @NoFormat
@@ -2156,12 +2156,12 @@ public class PlaceholdersMap {
         ) {
             @Override
             public Set<String> getSheetColumns() {
-                return new LinkedHashSet<>(List.of("id"));
+                return new ObjectLinkedOpenHashSet<>(List.of("id"));
             }
 
             @Override
             public Set<SelectorInfo> getSelectorInfo() {
-                return new LinkedHashSet<>(List.of(
+                return new ObjectLinkedOpenHashSet<>(List.of(
                         new SelectorInfo("TAX_ID", "tx_id=12345", "Tax Bracket ID"),
                         new SelectorInfo("ALLIANCE", "AA:Rose", "Alliance id, name, url or mention (see alliance type)"),
                         new SelectorInfo("*", null, "All tax brackets in this guilds alliances, else all tax brackets")
@@ -2259,7 +2259,7 @@ public class PlaceholdersMap {
         ){
             @Override
             public Set<SelectorInfo> getSelectorInfo() {
-                return new LinkedHashSet<>(List.of(
+                return new ObjectLinkedOpenHashSet<>(List.of(
                         new SelectorInfo("TRADE_ID", "12345", "Trade ID"),
                         new SelectorInfo("NATION", "Borg", "Nation name, id, leader, url, user id or mention (see nation type)")
                 ));
@@ -2267,7 +2267,7 @@ public class PlaceholdersMap {
 
             @Override
             public Set<String> getSheetColumns() {
-                return new LinkedHashSet<>(List.of("id"));
+                return new ObjectLinkedOpenHashSet<>(List.of("id"));
             }
 
             @NoFormat
@@ -2357,7 +2357,7 @@ public class PlaceholdersMap {
         }) {
             @Override
             public Set<SelectorInfo> getSelectorInfo() {
-                return new LinkedHashSet<>(List.of(
+                return new ObjectLinkedOpenHashSet<>(List.of(
                         new SelectorInfo("TX_ID", "12345", "Bank Transaction ID"),
                         new SelectorInfo("NATION", "Borg", "Nation name, id, leader, url, user id or mention (see nation type)")
                 ));
@@ -2365,7 +2365,7 @@ public class PlaceholdersMap {
 
             @Override
             public Set<String> getSheetColumns() {
-                return new LinkedHashSet<>(List.of("id"));
+                return new ObjectLinkedOpenHashSet<>(List.of("id"));
             }
 
             @Override
@@ -2560,7 +2560,7 @@ public class PlaceholdersMap {
                     DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
                     Set<DBNation> nations = PWBindings.nations(null, guild, input, author, me);
                     Map<Integer, List<DBBounty>> bounties = Locutus.imp().getWarDb().getBountiesByNation();
-                    Set<DBBounty> bountySet = new LinkedHashSet<>();
+                    Set<DBBounty> bountySet = new ObjectLinkedOpenHashSet<>();
                     for (DBNation nation : nations) {
                         List<DBBounty> list = bounties.get(nation.getId());
                         if (list != null) {
@@ -2594,7 +2594,7 @@ public class PlaceholdersMap {
         }) {
             @Override
             public Set<SelectorInfo> getSelectorInfo() {
-                Set<SelectorInfo> result = new LinkedHashSet<>(List.of(
+                Set<SelectorInfo> result = new ObjectLinkedOpenHashSet<>(List.of(
                         new SelectorInfo("BOUNTY_ID", "12345", "Bounty ID"),
                         new SelectorInfo("*", null, "All bounties")
                 ));
@@ -2739,7 +2739,7 @@ public class PlaceholdersMap {
         }) {
             @Override
             public Set<SelectorInfo> getSelectorInfo() {
-                return new LinkedHashSet<>(List.of(
+                return new ObjectLinkedOpenHashSet<>(List.of(
                         new SelectorInfo("ALLIANCES:ALLIANCES", "`Rose:Eclipse`, `Rose,Eclipse:~allies`", "A treaty between two sets of alliances or coalitions (direction agnostic)"),
                         new SelectorInfo("ALLIANCES>ALLIANCES", "Rose>Eclipse", "A treaty from one alliance or coalition to another"),
                         new SelectorInfo("ALLIANCES<ALLIANCES", "Rose<Eclipse", "A treaty from one alliance or coalition to another"),
@@ -3133,7 +3133,7 @@ public class PlaceholdersMap {
 
             @Override
             public Set<SelectorInfo> getSelectorInfo() {
-                Set<SelectorInfo> selectors = new LinkedHashSet<>(super.getSelectorInfo());
+                Set<SelectorInfo> selectors = new ObjectLinkedOpenHashSet<>(super.getSelectorInfo());
                 selectors.addAll(NATIONS.getSelectorInfo());
                 selectors.addAll(ALLIANCES.getSelectorInfo());
                 return selectors;

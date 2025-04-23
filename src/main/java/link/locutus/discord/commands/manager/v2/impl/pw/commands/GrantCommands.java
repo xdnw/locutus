@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -3337,7 +3338,7 @@ public class GrantCommands {
                 }
             }
 
-            Set<Project> projectsBought = new LinkedHashSet<>();
+            Set<Project> projectsBought = new ObjectLinkedOpenHashSet<>();
             double[] projectCost = ResourceType.getBuffer();
             if (buy_projects != null) {
                 for (Project project : buy_projects) {

@@ -4,29 +4,23 @@ import gg.jte.generated.precompiled.grant.JtecitiesGenerated;
 import gg.jte.generated.precompiled.grant.JteinfrasGenerated;
 import gg.jte.generated.precompiled.grant.JtelandsGenerated;
 import gg.jte.generated.precompiled.grant.JteprojectsGenerated;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.util.offshore.Grant;
-import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.offshore.Grant;
 import net.dv8tion.jda.api.entities.User;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 
 public class GrantPages {
@@ -35,7 +29,7 @@ public class GrantPages {
         boolean overrideSafe = Roles.ECON_STAFF.has(user, db.getGuild());
         boolean overrideUnsafe = Roles.ECON.has(user, db.getGuild());
 
-        Set<Grant> grants = new LinkedHashSet<>(db.getHandler().getEligableGrants(nation, type, overrideSafe, overrideUnsafe));
+        Set<Grant> grants = new ObjectLinkedOpenHashSet<>(db.getHandler().getEligableGrants(nation, type, overrideSafe, overrideUnsafe));
 
         for (Grant grant : grants) {
             grant.getNote();

@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
@@ -181,7 +182,7 @@ public class EmbedCommands {
         Set<String> labelSet = Set.copyOf(labels);
 
         Set<String> invalidLabels = new HashSet<>(labels);
-        Set<String> validLabels = new LinkedHashSet<>();
+        Set<String> validLabels = new ObjectLinkedOpenHashSet<>();
         List<ActionRow> rows = new ArrayList<>(message.getActionRows());
         for (int i = 0; i < rows.size(); i++) {
             ActionRow row = rows.get(i);

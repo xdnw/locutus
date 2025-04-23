@@ -1,33 +1,23 @@
 package link.locutus.discord.util.battle;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.sheet.SheetUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
-import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
@@ -77,7 +67,7 @@ public class BlitzGenerator {
         for (Map.Entry<DBNation, Set<DBNation>> entry : targets.entrySet()) {
             DBNation defender = entry.getKey();
             for (DBNation attacker : entry.getValue()) {
-                reversed.computeIfAbsent(attacker, f -> new LinkedHashSet<>()).add(defender);
+                reversed.computeIfAbsent(attacker, f -> new ObjectLinkedOpenHashSet<>()).add(defender);
             }
         }
         return reversed;
@@ -199,8 +189,8 @@ public class BlitzGenerator {
 
         }
 
-        Set<DBNation> allAttackers = new LinkedHashSet<>();
-        Set<DBNation> allDefenders = new LinkedHashSet<>();
+        Set<DBNation> allAttackers = new ObjectLinkedOpenHashSet<>();
+        Set<DBNation> allDefenders = new ObjectLinkedOpenHashSet<>();
         Map<DBNation, Set<DBNation>> targets = new LinkedHashMap<>();
         Map<DBNation, Set<DBNation>> offensiveWars = new LinkedHashMap<>();
         Set<String> outMessages = new HashSet<>();
@@ -275,8 +265,8 @@ public class BlitzGenerator {
                         allAttackers.add(attackerMutable);
                         allDefenders.add(defenderMutable);
 
-                        targets.computeIfAbsent(defenderMutable, f -> new LinkedHashSet<>()).add(attackerMutable);
-                        offensiveWars.computeIfAbsent(attackerMutable, f -> new LinkedHashSet<>()).add(defenderMutable);
+                        targets.computeIfAbsent(defenderMutable, f -> new ObjectLinkedOpenHashSet<>()).add(attackerMutable);
+                        offensiveWars.computeIfAbsent(attackerMutable, f -> new ObjectLinkedOpenHashSet<>()).add(defenderMutable);
                     }
                 };
                 if (att2 == null && att3 == null) {
@@ -313,8 +303,8 @@ public class BlitzGenerator {
                     allAttackers.add(attacker);
                     allDefenders.add(defender);
 
-                    targets.computeIfAbsent(defender, f -> new LinkedHashSet<>()).add(attacker);
-                    offensiveWars.computeIfAbsent(attacker, f -> new LinkedHashSet<>()).add(defender);
+                    targets.computeIfAbsent(defender, f -> new ObjectLinkedOpenHashSet<>()).add(attacker);
+                    offensiveWars.computeIfAbsent(attacker, f -> new ObjectLinkedOpenHashSet<>()).add(defender);
                 }
 
             } else {

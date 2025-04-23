@@ -2,6 +2,7 @@ package link.locutus.discord.db.entities.menu;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -55,7 +56,7 @@ public class MenuManager {
         boolean isUser = menu.title.equalsIgnoreCase("user");
         boolean isMessage = !isUser && menu.title.equalsIgnoreCase("message");
         if (isUser || isMessage) {
-            Set<String> labels = new LinkedHashSet<>();
+            Set<String> labels = new ObjectLinkedOpenHashSet<>();
             for (Map.Entry<String, String> entry : menu.buttons.entrySet()) {
                 if (labels.size() < 5) {
                     labels.add(entry.getKey());

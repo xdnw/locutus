@@ -1,5 +1,6 @@
 package link.locutus.discord.db;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.DepositType;
@@ -842,7 +843,7 @@ public class GuildHandler {
         if (Buildings.URANIUM_MINE.canBuild(nation.getContinent())) {
             resourceProjects.add(Projects.URANIUM_ENRICHMENT_PROGRAM);
         }
-        Set<Project> potentialRssProjects = new LinkedHashSet<>();
+        Set<Project> potentialRssProjects = new ObjectLinkedOpenHashSet<>();
         int numRss = 0;
         for (Project project : resourceProjects) {
             if (nation.hasProject(project)) numRss++;

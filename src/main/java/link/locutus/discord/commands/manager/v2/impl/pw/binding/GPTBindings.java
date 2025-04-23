@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 
 import com.knuddels.jtokkit.api.ModelType;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
@@ -45,7 +46,7 @@ public class GPTBindings extends BindingHelper {
     public Set<EmbeddingSource> EmbeddingSources(PWGPTHandler handler, @Me Guild guild, String input) {
         Set<String> sourcesStr = StringMan.split(input, ',').stream().map(String::toLowerCase).collect(Collectors.toCollection(LinkedHashSet::new));
         Set<Long> sourceIds = sourcesStr.stream().filter(f -> MathMan.isInteger(f)).map(Long::parseLong).collect(Collectors.toCollection(LinkedHashSet::new));
-        Set<EmbeddingSource> sources = new LinkedHashSet<>();
+        Set<EmbeddingSource> sources = new ObjectLinkedOpenHashSet<>();
         for (EmbeddingSource source : sources) {
             if (sourceIds.contains((long) source.source_id) || sourcesStr.contains(source.source_name.toLowerCase())) {
                 sources.add(source);

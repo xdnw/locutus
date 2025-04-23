@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 
 import io.javalin.http.RedirectResponse;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
@@ -58,7 +59,7 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
 
     @Override
     public Set<SelectorInfo> getSelectorInfo() {
-        return new LinkedHashSet<>(List.of(
+        return new ObjectLinkedOpenHashSet<>(List.of(
                 new SelectorInfo("nation:NATION_NAME", "nation:Borg", "A qualified nation name"),
                 new SelectorInfo("leader:NATION_NAME", "leader:Danzek", "A qualified leader name"),
                 new SelectorInfo("aa:ALLIANCE_NAME", "aa:Rose", "A qualified alliance name"),
@@ -84,7 +85,7 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
 
     @Override
     public Set<String> getSheetColumns() {
-        return new LinkedHashSet<>(List.of("nation", "leader", "{id}", "{nation}", "{leader}"));
+        return new ObjectLinkedOpenHashSet<>(List.of("nation", "leader", "{id}", "{nation}", "{leader}"));
     }
 
     @Override
@@ -109,7 +110,7 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
                 }
             }
             return 0;
-        }).collect(Collectors.toCollection(LinkedHashSet::new));
+        }).collect(Collectors.toCollection(ObjectLinkedOpenHashSet::new));
     }
 
     @NoFormat
@@ -252,7 +253,7 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
     public static Set<DBNation> getByRole(Guild guild, String name, Role role, INationSnapshot snapshot) {
         if (role == null) throw new IllegalArgumentException("Invalid role: `" + name + "`");
         List<Member> members = guild.getMembersWithRoles(role);
-        Set<DBNation> nations = new LinkedHashSet<>();
+        Set<DBNation> nations = new ObjectLinkedOpenHashSet<>();
         for (Member member : members) {
             DBNation nation = snapshot.getNationByUser(member.getUser());
             if (nation != null) nations.add(nation);
@@ -386,7 +387,7 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
 //            if (alliance != null) return alliance.getNations();
         }
 
-        Set<DBNation> nations = new LinkedHashSet<>();
+        Set<DBNation> nations = new ObjectLinkedOpenHashSet<>();
         boolean containsAA = nameLower.contains("/alliance/");
         String errMsg = "";
         DBNation nation = null;

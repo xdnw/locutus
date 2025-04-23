@@ -113,7 +113,7 @@ public class Deposits extends Command {
 //
 //        String arg0 = args.get(0);
 //
-//        Set<String> split = new LinkedHashSet<>(Arrays.asList(arg0.split(",")));
+//        Set<String> split = new ObjectLinkedOpenHashSet<>(Arrays.asList(arg0.split(",")));
 //
 //        StringBuilder response = new StringBuilder();
 //        response.append("**").append(arg0).append("**:\n");
@@ -124,7 +124,7 @@ public class Deposits extends Command {
 //
 //        Set<Long> tracked = null;
 //        if (args.size() == 2) {
-//            tracked = new LinkedHashSet<>();
+//            tracked = new ObjectLinkedOpenHashSet<>();
 //            Set<Integer> alliances = DiscordUtil.parseAlliances(guild, args.get(1));
 //            if (alliances == null || alliances.isEmpty()) {
 //                return "Invalid alliance: `" + args.get(1) + "`";

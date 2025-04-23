@@ -4,6 +4,7 @@ package link.locutus.discord.util.offshore;
 import com.politicsandwar.graphql.model.Bankrec;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.AccessType;
 import link.locutus.discord.apiv1.enums.DepositType;
@@ -354,7 +355,7 @@ public class OffshoreInstance {
         return getDepositsAA(Collections.singleton(allianceId), force);
     }
     public synchronized Map<ResourceType, Double> getDepositsAA(Set<Integer> allianceIds, boolean force) {
-        allianceIds = new LinkedHashSet<>(allianceIds);
+        allianceIds = new ObjectLinkedOpenHashSet<>(allianceIds);
         Set<Integer> allowed = getGuildDB().getCoalition(Coalition.OFFSHORING);
         allianceIds.removeIf(f -> !allowed.contains(f));
         if (allianceIds.isEmpty()) return new HashMap<>();

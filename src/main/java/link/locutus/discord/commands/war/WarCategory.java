@@ -802,7 +802,7 @@ public class WarCategory {
                     }
 
                     if (!duplicateChannels.add(targetId)) {
-                        if (duplicates != null) duplicates.computeIfAbsent(targetId, f -> new LinkedHashSet<>()).add(channel);
+                        if (duplicates != null) duplicates.computeIfAbsent(targetId, f -> new ObjectLinkedOpenHashSet<>()).add(channel);
                         if (create) {
                             RateLimitUtil.queueWhenFree(channel.delete());
                         }

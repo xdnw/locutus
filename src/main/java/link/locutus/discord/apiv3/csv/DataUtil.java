@@ -248,7 +248,7 @@ public class DataUtil {
     }
 
     public Set<Integer> getNationsAtWar(long timestamp, Map<DBWar, Long> getWarEndDates) {
-        Set<Integer> nationsAtWar = new HashSet<>();
+        Set<Integer> nationsAtWar = new IntOpenHashSet();
         for (Map.Entry<DBWar, Long> entry : getWarEndDates.entrySet()) {
             DBWar war = entry.getKey();
             if (war.getDate() <= timestamp && timestamp <= entry.getValue()) {

@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2DoubleLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.*;
@@ -2378,7 +2379,7 @@ public class BankCommands {
         if (nations == null) {
             Set<Integer> aaIds = db.getAllianceIds();
             if (!aaIds.isEmpty()) {
-                nations = new LinkedHashSet<>(Locutus.imp().getNationDB().getNationsByAlliance(aaIds));
+                nations = new ObjectLinkedOpenHashSet<>(Locutus.imp().getNationDB().getNationsByAlliance(aaIds));
                 if (includePastDepositors == null || includePastDepositors.isEmpty()) nations.removeIf(n -> n.getPosition() <= 1);
 
                 if (includePastDepositors != null && !includePastDepositors.isEmpty()) {
@@ -2394,7 +2395,7 @@ public class BankCommands {
                 }
                 if (Roles.MEMBER.toRoles(db).isEmpty()) throw new IllegalArgumentException("No " + GuildKey.ALLIANCE_ID.getCommandMention() + " set, or " +
                         "" + CM.role.setAlias.cmd.locutusRole(Roles.MEMBER.name()).discordRole("") + " set");
-                nations = new LinkedHashSet<>();
+                nations = new ObjectLinkedOpenHashSet<>();
                 for (Member member : Roles.MEMBER.getAll(db)) {
                     DBNation nation = DiscordUtil.getNation(member.getUser());
                     if (nation != null) {
@@ -2528,7 +2529,7 @@ public class BankCommands {
         if (nations == null) {
             Set<Integer> aaIds = db.getAllianceIds();
             if (!aaIds.isEmpty()) {
-                nations = new LinkedHashSet<>(Locutus.imp().getNationDB().getNationsByAlliance(aaIds));
+                nations = new ObjectLinkedOpenHashSet<>(Locutus.imp().getNationDB().getNationsByAlliance(aaIds));
                 if (includePastDepositors == null || includePastDepositors.isEmpty()) nations.removeIf(n -> n.getPosition() <= 1);
 
                 if (includePastDepositors != null && !includePastDepositors.isEmpty()) {
@@ -2544,7 +2545,7 @@ public class BankCommands {
                 }
                 if (Roles.MEMBER.toRoles(db).isEmpty()) throw new IllegalArgumentException("No " + GuildKey.ALLIANCE_ID.getCommandMention() + " set, or " +
                         "" + CM.role.setAlias.cmd.locutusRole(Roles.MEMBER.name()).discordRole("") + " set");
-                nations = new LinkedHashSet<>();
+                nations = new ObjectLinkedOpenHashSet<>();
                 for (Member member : Roles.MEMBER.getAll(db)) {
                     DBNation nation = DiscordUtil.getNation(member.getUser());
                     if (nation != null) {
@@ -2559,7 +2560,7 @@ public class BankCommands {
         }
         Set<Long> tracked = null;
         if (offshores != null) {
-            tracked = new LinkedHashSet<>();
+            tracked = new ObjectLinkedOpenHashSet<>();
             for (DBAlliance aa : offshores) tracked.add((long) aa.getAlliance_id());
             tracked = PW.expandCoalition(tracked);
         }

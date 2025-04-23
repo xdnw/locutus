@@ -39,13 +39,6 @@ public class CounterStats extends Command {
         Integer id = PW.parseAllianceId(args.get(0));
         if (id == null) return "Invalid id: `" + id + "`";
 
-        Set<Integer> ids = new HashSet<>(Collections.singleton(id));
-        if (flags.contains('a')) {
-            for (Map.Entry<Integer, Treaty> entry : Locutus.imp().getNationDB().getTreaties(id).entrySet()) {
-                Treaty treaty = entry.getValue();
-            }
-
-        }
         List<Map.Entry<DBWar, CounterStat>> counters = Locutus.imp().getWarDb().getCounters(Collections.singleton(id));
 
         if (counters.isEmpty()) return "No data (to include treatied alliances, append `-a`)";

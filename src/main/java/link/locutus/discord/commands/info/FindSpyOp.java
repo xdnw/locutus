@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.info;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.Command;
@@ -54,7 +55,7 @@ public class FindSpyOp extends Command {
             defender = me;
         } else return usage(args.size(), 2, 3, channel);
 
-        Set<Integer> ids = new HashSet<>();
+        Set<Integer> ids = new IntOpenHashSet();
         Map<DBSpyUpdate, Long> updatesTmp = new HashMap<>();
         long interval = TimeUnit.MINUTES.toMillis(3);
 

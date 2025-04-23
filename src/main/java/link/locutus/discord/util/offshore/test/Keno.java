@@ -1,5 +1,6 @@
 package link.locutus.discord.util.offshore.test;
 
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.MathMan;
@@ -107,7 +108,7 @@ public class Keno {
                 int numToAdd = option.size() - contains;
                 if (base.size() + numToAdd > 10) continue;
             }
-            Set<Integer> newSet = new LinkedHashSet<>(base);
+            Set<Integer> newSet = new IntLinkedOpenHashSet(base);
             newSet.addAll(option);
             if (!visited.add(newSet)) continue;
             if (newSet.size() > 10) continue;

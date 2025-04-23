@@ -7,6 +7,7 @@ import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.Trade;
 import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
@@ -715,7 +716,7 @@ public abstract class DBNation implements NationOrAlliance {
         Set<Project> set = null;
         for (Project value : Projects.values) {
             if (hasProject(value)) {
-                if (set == null) set = new LinkedHashSet<>();
+                if (set == null) set = new ObjectLinkedOpenHashSet<>();
                 set.add(value);
             }
         }

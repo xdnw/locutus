@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.alliance;
 
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
@@ -70,7 +71,7 @@ public class Dm extends Command {
         if (mentions.size() > 1 && !flags.contains('f')) {
             String title = "Send " + mentions.size() + " messages.";
 
-            Set<Integer> alliances = new LinkedHashSet<>();
+            Set<Integer> alliances = new IntLinkedOpenHashSet();
             for (DBNation nation : nations) alliances.add(nation.getAlliance_id());
 
             String embedTitle = title + " to nations.";

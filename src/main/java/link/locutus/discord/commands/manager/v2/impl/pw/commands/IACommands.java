@@ -4,6 +4,8 @@ import com.politicsandwar.graphql.model.AlliancePosition;
 import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationResponseProjection;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.DepositType;
@@ -180,7 +182,7 @@ public class IACommands {
         }
 
         if (list_missing != null) {
-            Set<DBNation> missing = new LinkedHashSet<>();
+            Set<DBNation> missing = new ObjectLinkedOpenHashSet<>();
             for (DBNation nation : list_missing) {
                 if (!nationChannels.containsKey(nation)) {
                     missing.add(nation);
@@ -261,7 +263,7 @@ public class IACommands {
             }
         }
         Function<DBNation, Set<Category>> catFunc = nation -> {
-            Set<Category> categories = new LinkedHashSet<>();
+            Set<Category> categories = new ObjectLinkedOpenHashSet<>();
             for (Map.Entry<Category, NationFilter> entry : filterMap.entrySet()) {
                 if (entry.getValue().test(nation)) {
                     categories.add(entry.getKey());
@@ -327,7 +329,7 @@ public class IACommands {
         }
 
         Function<DBNation, Set<Category>> catFunc = nation -> {
-            Set<Category> categories = new LinkedHashSet<>();
+            Set<Category> categories = new ObjectLinkedOpenHashSet<>();
             for (Map.Entry<Category, NationFilter> entry : filters.entrySet()) {
                 if (entry.getValue().test(nation)) {
                     categories.add(entry.getKey());
@@ -413,7 +415,7 @@ public class IACommands {
     }
 
     public static IMessageBuilder sortChannels(@Me GuildDB db, @Me Guild guild, @Me IMessageIO io, @Me JSONObject command, Set<Category> from, Function<DBNation, Set<Category>> newCategory, @Default NationFilter filter, @Switch("w") boolean warn_on_filter_fail, @Switch("f") boolean force) {
-        Set<TextChannel> channels = new LinkedHashSet<>();
+        Set<TextChannel> channels = new ObjectLinkedOpenHashSet<>();
         for (Category category : from) {
             channels.addAll(category.getTextChannels());
         }
@@ -1541,7 +1543,7 @@ public class IACommands {
         if (!force) {
             String title = "Send " + nations.size() + " messages";
 
-            Set<Integer> alliances = new LinkedHashSet<>();
+            Set<Integer> alliances = new IntLinkedOpenHashSet();
             for (DBNation nation : nations) alliances.add(nation.getAlliance_id());
             String embedTitle = title + " to ";
             if (nations.size() == 1) {
@@ -2631,7 +2633,7 @@ public class IACommands {
 
         sheet.setHeader(header);
         if (nations == null) {
-            nations = new LinkedHashSet<>();
+            nations = new ObjectLinkedOpenHashSet<>();
             IACategory iaCat = db.getIACategory();
             if (iaCat != null) {
                 nations.addAll(iaCat.load().getChannelMap().keySet());

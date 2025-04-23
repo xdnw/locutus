@@ -1,5 +1,6 @@
 package link.locutus.discord.db.handlers;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -168,7 +169,7 @@ public class AttackQuery {
     }
 
     public AttackQuery withTypes(AttackType... types) {
-        Set<AttackType> typeSet = new LinkedHashSet<>();
+        Set<AttackType> typeSet = new ObjectLinkedOpenHashSet<>();
         Collections.addAll(typeSet, types);
         appendAttackTypeFilter(typeSet::contains);
         return this;

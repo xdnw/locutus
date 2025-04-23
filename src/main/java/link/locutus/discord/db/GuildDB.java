@@ -3,10 +3,13 @@ package link.locutus.discord.db;
 import com.google.common.eventbus.AsyncEventBus;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArraySet;
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -2351,7 +2354,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
 
     public Set<String> findCoalitions(int aaId) {
         loadCoalitions();
-        Set<String> coalitions = new LinkedHashSet<>();
+        Set<String> coalitions = new ObjectLinkedOpenHashSet<>();
         for (Map.Entry<Long, Set<Long>> entry : coalitions2.entrySet()) {
             if (entry.getValue().contains((long) aaId)) {
                 String name = coalitionId2Name.get(entry.getKey());
@@ -2495,7 +2498,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
         if (faServer != null && faServer.getIdLong() != getIdLong()) return faServer.getCoalitionNames();
         loadCoalitions();
-        return new LinkedHashSet<>(coalitionName2Id.keySet());
+        return new ObjectLinkedOpenHashSet<>(coalitionName2Id.keySet());
     }
 
     public enum AutoNickOption {
@@ -2936,7 +2939,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     private Map<String, Set<Integer>> coalitionToAlliances(Map<String, Set<Long>> input) {
         Map<String, Set<Integer>> result = new HashMap<>();
         for (Map.Entry<String, Set<Long>> entry : input.entrySet()) {
-            Set<Integer> aaIds = new LinkedHashSet<>();
+            Set<Integer> aaIds = new IntLinkedOpenHashSet();
             for (Long id : entry.getValue()) {
                 if (id > Integer.MAX_VALUE) {
                     GuildDB db = Locutus.imp().getGuildDB(id);
@@ -3146,7 +3149,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
     public Set<Long> getTrackedBanks() {
-        Set<Long> tracked = new LinkedHashSet<>(getCoalitionRaw(OFFSHORE));
+        Set<Long> tracked = new LongLinkedOpenHashSet(getCoalitionRaw(OFFSHORE));
         tracked.add(getGuild().getIdLong());
         tracked.addAll(getCoalitionRaw(Coalition.TRACK_DEPOSITS));
         for (Integer id : getAllianceIds()) tracked.add(id.longValue());
@@ -3178,7 +3181,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             if (aaIds == null) return Collections.emptySet();
             return aaIds;
         }
-        Set<Integer> alliances = new LinkedHashSet<>();
+        Set<Integer> alliances = new IntLinkedOpenHashSet();
         for (int offshoreId : offshore) {
             GuildDB otherGuild = Locutus.imp().getGuildDBByAA(offshoreId);
             if (otherGuild == null || otherGuild == this) {

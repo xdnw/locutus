@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.binding.bindings;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
@@ -66,7 +67,7 @@ public class PrimitiveBindings extends BindingHelper {
 
     @Binding(examples = {"1,2,5"})
     public static Set<Integer> integerSet(String argument) {
-        Set<Integer> ids = new LinkedHashSet<>();
+        Set<Integer> ids = new IntOpenHashSet();
         for (String arg : StringMan.split(argument, ',')) {
             ids.add(Integer(arg));
         }

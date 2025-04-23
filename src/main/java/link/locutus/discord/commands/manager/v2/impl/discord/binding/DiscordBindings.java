@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.discord.binding;
 
 import cn.easyproject.easyocr.ImageType;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
@@ -115,7 +116,7 @@ public class DiscordBindings extends BindingHelper {
 
     @Binding(examples = "@role1,@role2", value = "A comma separated list of discord role names or mentions")
     public static Set<Role> roles(@Me Guild guild, String input) {
-        Set<Role> roles = new LinkedHashSet<>();
+        Set<Role> roles = new ObjectLinkedOpenHashSet<>();
         for (String arg : input.split(",")) {
             roles.add(role(guild, arg));
         }
@@ -124,7 +125,7 @@ public class DiscordBindings extends BindingHelper {
 
     @Binding(examples = "interview,warcat,public", value = "A comma separated list of discord categories")
     public static Set<Category> categories(@Me Guild guild, String input) {
-        Set<Category> categories = new LinkedHashSet<>();
+        Set<Category> categories = new ObjectLinkedOpenHashSet<>();
         for (String arg : input.split(",")) {
             categories.add(category(guild, arg, null));
         }
@@ -179,7 +180,7 @@ public class DiscordBindings extends BindingHelper {
 
     @Binding(examples = {"@member1,@member2", "`*`"}, value = "A comma separated list of discord user mentions, or if a nation name, id or url if they are registered")
     public Set<Member> members(ValueStore store, @Me Guild guild, String input) {
-        Set<Member> members = new LinkedHashSet<>();
+        Set<Member> members = new ObjectLinkedOpenHashSet<>();
         for (String arg : input.split("[|]+")) {
             if (arg.equalsIgnoreCase("*")) {
                 members.addAll(guild.getMembers());
