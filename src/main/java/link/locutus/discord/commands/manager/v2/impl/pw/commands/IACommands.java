@@ -5,6 +5,7 @@ import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationResponseProjection;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -2067,7 +2068,7 @@ public class IACommands {
         if (subjects == null) return "No column found: `subject`";
         if (bodies == null) return "No column found: `message`";
 
-        Set<Integer> alliances = new HashSet<>();
+        Set<Integer> alliances = new IntOpenHashSet();
         int inactive = 0;
         int vm = 0;
         int noAA = 0;

@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2DoubleLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
@@ -3257,7 +3258,7 @@ public class BankCommands {
         int nations = 0;
         int alliances = 0;
 
-        Set<Integer> memberAlliances = new HashSet<>();
+        Set<Integer> memberAlliances = new IntOpenHashSet();
         Map<NationOrAlliance, Map<ResourceType, Double>> transfers = sheet.getTransfers();
         Map<ResourceType, Double> totalRss = new LinkedHashMap<>();
         for (Map.Entry<NationOrAlliance, Map<ResourceType, Double>> entry : transfers.entrySet()) {
@@ -4244,12 +4245,12 @@ public class BankCommands {
                     if (stockpile != null && !stockpile.isEmpty() && stockpile.getOrDefault(ResourceType.CREDITS, 0d) != -1) {
                         Map<ResourceType, Double> excess = finalNation.checkExcessResources(db, stockpile);
                         if (!excess.isEmpty()) {
-                            response.append("- Excess can be deposited: ```" + ResourceType.toString(excess) + "```\n");
+                            response.append("-# - Excess can be deposited: ```" + ResourceType.toString(excess) + "```\n");
                         }
                     }
                     Map<ResourceType, Double> needed = finalNation.getResourcesNeeded(stockpile, 3, true);
                     if (!needed.isEmpty()) {
-                        response.append("- Missing resources for the next 3 days: ```" + ResourceType.toString(needed) + "```\n");
+                        response.append("-# - Missing resources for the next 3 days: ```" + ResourceType.toString(needed) + "```\n");
                     }
 
                     if (me != null && me.getNation_id() == finalNation.getNation_id() && Boolean.TRUE.equals(db.getOrNull(GuildKey.MEMBER_CAN_OFFSHORE)) && db.isValidAlliance()) {
@@ -4258,7 +4259,7 @@ public class BankCommands {
                             try {
                                 Map<ResourceType, Double> aaStockpile = me.getAlliance().getStockpile();
                                 if (aaStockpile != null && ResourceType.convertedTotal(aaStockpile) > 5000000) {
-                                    response.append("- The alliance bank has funds to offshore\n");
+                                    response.append("-# - The alliance bank has funds to offshore\n");
                                 }
                             } catch (Throwable ignore) {}
                         }
@@ -4510,8 +4511,8 @@ public class BankCommands {
 //                throw new IllegalArgumentException("You must be in the provided alliance: " + offshoreAlliance.getId() + " to set the new ALLIANCE_ID for this offshore");
             }
 
-            Set<Long> announceChannels = new HashSet<>();
-            Set<Long> serverIds = new HashSet<>();
+            Set<Long> announceChannels = new LongOpenHashSet();
+            Set<Long> serverIds = new LongOpenHashSet();
             if (nation.getNation_id() == Locutus.loader().getNationId()) {
                 announceChannels.add(Settings.INSTANCE.DISCORD.CHANNEL.ADMIN_ALERTS);
             }
@@ -4536,7 +4537,7 @@ public class BankCommands {
             }
 
             Set<Integer> aaIds = root.getAllianceIds();
-            Set<Integer> toUnregister = new HashSet<>();
+            Set<Integer> toUnregister = new IntOpenHashSet();
 
             // check which ids are are set in offshore and offshoring coalition
             Set<Integer> offshoringIds = root.getCoalition(Coalition.OFFSHORING);
@@ -4559,7 +4560,7 @@ public class BankCommands {
                 return null;
             }
 
-            Set<Integer> newIds = new HashSet<>(aaIds);
+            Set<Integer> newIds = new IntOpenHashSet(aaIds);
             newIds.removeAll(toUnregister);
             newIds.add(offshoreAlliance.getAlliance_id());
             GuildKey.ALLIANCE_ID.set(root, user, newIds);

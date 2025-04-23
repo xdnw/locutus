@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
@@ -141,7 +142,7 @@ public class ReportCommands {
             int nationId = nationIdStr.equalsIgnoreCase("unknown") ||
                     nationIdStr.equalsIgnoreCase("deleted") ||
                     nationIdStr.isEmpty() ? 0 : Integer.parseInt(nationIdStr);
-            Set<Long> discordIds = new HashSet<>();
+            Set<Long> discordIds = new LongOpenHashSet();
 
             if (!discordIdsStr.equalsIgnoreCase("unknown") &&
                     !discordIdsStr.equalsIgnoreCase("deleted") &&
@@ -860,7 +861,7 @@ public class ReportCommands {
 //        }
 
         // At least one forum post or news report must be attached
-        Set<Long> supportedServers = new HashSet<>(Arrays.asList(
+        Set<Long> supportedServers = new LongOpenHashSet(Arrays.asList(
                 869424139037990912L, // Ducc News Network
                 446601982564892672L, // Royal Orbis News
                 821587932384067584L, // Orbis Crowned News

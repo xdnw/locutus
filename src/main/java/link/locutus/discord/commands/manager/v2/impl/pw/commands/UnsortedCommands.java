@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import it.unimi.dsi.fastutil.ints.Int2BooleanOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -351,7 +352,7 @@ public class UnsortedCommands {
                                   @Switch("u") boolean includeUntaxable) throws GeneralSecurityException, IOException {
         Set<TaxBracket> brackets = new HashSet<>();
         Set<Integer> aaIds = db.getAllianceIds(true);
-        Set<Integer> alliancesUpdated = new HashSet<>();
+        Set<Integer> alliancesUpdated = new IntOpenHashSet();
         if (nations != null) {
             Map<Integer, Integer> taxIdToAA = new LinkedHashMap<>();
             for (DBNation nation : nations) {
@@ -553,7 +554,7 @@ public class UnsortedCommands {
         List<Transaction2> allTransfers = new ArrayList<>();
 
         String selfName = StringMan.join(nationOrAlliances.stream().map(f -> f.getName()).collect(Collectors.toList()), ",");
-        Set<Integer> self = new HashSet<>();
+        Set<Integer> self = new IntOpenHashSet();
         Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsById();
         Function<Integer, String> nationNameFunc = i -> {
             DBNation nation = nations.get(i);
@@ -867,7 +868,7 @@ public class UnsortedCommands {
                     List<String> log = new ArrayList<>();
                     List<String> errors = new ArrayList<>();
 
-                    Set<Integer> allIds = new HashSet<>(db.getAllianceIds());
+                    Set<Integer> allIds = new IntOpenHashSet(db.getAllianceIds());
                     if (type == ClearRolesEnum.NON_ALLIES) {
                         allIds.addAll(db.getCoalition(Coalition.ALLIES));
                         allIds.addAll(db.getCoalition(Coalition.OFFSHORE));

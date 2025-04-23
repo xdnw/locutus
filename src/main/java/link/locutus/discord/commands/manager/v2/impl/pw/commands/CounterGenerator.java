@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.war.WarRoom;
@@ -101,7 +102,7 @@ public class CounterGenerator {
 
             double roomFactor = 1;
             if (warCat != null) {
-                Set<Integer> inWarRoom = new HashSet<>();
+                Set<Integer> inWarRoom = new IntOpenHashSet();
                 for (WarRoom room : warCat.getWarRoomMap().values()) {
                     if (room.isParticipant(att, false) && room.target.active_m() < 2880) {
                         inWarRoom.add(room.target.getNation_id());

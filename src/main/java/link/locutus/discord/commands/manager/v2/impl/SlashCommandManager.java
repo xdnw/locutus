@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -132,14 +133,14 @@ public class SlashCommandManager extends ListenerAdapter {
     private final Supplier<CommandManager2> provider;
 
     private CommandManager2 commandsOrNull;
-    private Set<String> ephemeralOrNull;
-    private Set<String> userCommandsOrNull;
-    private Set<String> messageCommandsOrNull;
+    private Set<String> ephemeralOrNull = Collections.emptySet();
+    private Set<String> userCommandsOrNull = Collections.emptySet();
+    private Set<String> messageCommandsOrNull = Collections.emptySet();
     private final Map<String, Long> commandIds = new HashMap<>();
     private final Set<Key> bindingKeys = new HashSet<>();
     private final boolean registerAdminCmds;
 
-    private Map<ParametricCallable, String> commandNames = new HashMap<>();
+    private final Map<ParametricCallable, String> commandNames = Collections.synchronizedMap(new Object2ObjectOpenHashMap<>());
 
     public SlashCommandManager(boolean registerAdminCmds, Supplier<CommandManager2> provider) {
         this.registerAdminCmds = registerAdminCmds;

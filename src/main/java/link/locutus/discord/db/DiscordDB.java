@@ -42,6 +42,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -852,7 +853,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
 
     public int updateUserIds(boolean overrideExisting, Consumer<NationsQueryRequest> query, Consumer<Event> eventConsumer) {
         int updated = 0;
-        for (Nation nation : Locutus.imp().getV3().fetchNations(false, query::accept, r -> {
+        for (Nation nation : Locutus.imp().getApiPool().fetchNations(false, query::accept, r -> {
             r.id();
             r.discord();
             r.discord_id();
@@ -1064,5 +1065,48 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
 
     public void setCityAverage(double value) {
         setInfo(DiscordMeta.CITY_AVERAGE, 0, ByteBuffer.allocate(Double.BYTES).putDouble(value).array());
+    }
+
+    public Map<Integer, ApiKeyPool.ApiKey> getApiKeys(boolean deleteInvalid, boolean filterInactive, int maxResults) {
+        Set<Integer> toDelete = new IntOpenHashSet();
+        Map<Integer, ApiKeyPool.ApiKey> result = new Int2ObjectOpenHashMap<>();
+
+        long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7);
+        Predicate<DBNation> filter = filterInactive ? f -> f.getVm_turns() == 0 && f.lastActiveMs() > cutoff  : f -> true;
+
+        try (PreparedStatement stmt = prepareQuery("select * FROM API_KEYS3 WHERE nation_id != ? AND api_key IS NOT NULL")) {
+            stmt.setInt(1, Settings.INSTANCE.NATION_ID);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    int nationId = rs.getInt("nation_id");
+                    byte[] keyId = getBytes(rs, "api_key");
+                    DBNation nation = DBNation.getById(nationId);
+                    if (nation == null) {
+                        if (deleteInvalid) {
+                            toDelete.add(nationId);
+                        }
+                        continue;
+                    }
+                    if (!filter.test(nation)) {
+                        continue;
+                    }
+                    ApiKeyPool.ApiKey apiKey = new ApiKeyPool.ApiKey(nationId, SQLUtil.byteArrayToHexString(keyId), null);
+                    result.put(nationId, apiKey);
+                    if (maxResults > 0 && result.size() >= maxResults) {
+                        break;
+                    }
+                }
+            }
+
+            if (!toDelete.isEmpty()) {
+                synchronized (this) {
+                    executeStmt("DELETE FROM API_KEYS3 WHERE nation_id IN " + StringMan.getString(toDelete));
+                }
+            }
+
+            return result;
+        } catch (SQLException e) {
+            return result;
+        }
     }
 }

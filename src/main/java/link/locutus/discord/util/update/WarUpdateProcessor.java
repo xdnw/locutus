@@ -306,7 +306,7 @@ public class WarUpdateProcessor {
                         try {
                             NationFilter filter = filters.computeIfAbsent(warCat.getGuild().getIdLong(), f -> warCat.getFilter());
                             warCat.update(filter, pair.getKey(), pair.getValue());
-                        } catch (ErrorResponseException e) {
+                        } catch (Throwable e) {
                             e.printStackTrace();
                         }
                     }

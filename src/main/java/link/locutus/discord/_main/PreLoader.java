@@ -69,8 +69,13 @@ public class PreLoader implements ILoader {
     private final Future<Supplier<String>> getApiKeyPrimary;
     private final Future<Supplier<Integer>> getNationId;
     private final Future<Supplier<Long>> adminUserId;
+
     private final Future<PoliticsAndWarV2> apiV2;
+
     private final Future<PoliticsAndWarV3> apiV3;
+
+    private final Future<PoliticsAndWarV3> apiV3Pool;
+
     private final Future<Boolean> backup;
 
     public PreLoader(Locutus locutus, ThreadPoolExecutor executor, ScheduledThreadPoolExecutor scheduler) {
@@ -178,6 +183,20 @@ public class PreLoader implements ILoader {
         });
         this.apiV3 = add("PW-API V3", () -> {
             GraphQLRequestSerializer.OBJECT_MAPPER.registerModule(new JavaTimeModule());
+            ApiKeyPool v3Pool = ApiKeyPool.builder()
+                    .addKey(Settings.INSTANCE.NATION_ID,
+                            Settings.INSTANCE.API_KEY_PRIMARY,
+                            Settings.INSTANCE.ACCESS_KEY)
+                    .build();
+            return new PoliticsAndWarV3(v3Pool);
+        });
+
+        this.apiV3Pool = add("PW-API V3 Pool", () -> {
+            GraphQLRequestSerializer.OBJECT_MAPPER.registerModule(new JavaTimeModule());
+            Map<Integer, ApiKeyPool.ApiKey> keys = getDiscordDB().getApiKeys(true, true, 50);
+            if (keys.isEmpty()) {
+                keys.put(Settings.INSTANCE.NATION_ID, new ApiKeyPool.ApiKey(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.API_KEY_PRIMARY, null));
+            }
             ApiKeyPool v3Pool = ApiKeyPool.builder()
                     .addKey(Settings.INSTANCE.NATION_ID,
                             Settings.INSTANCE.API_KEY_PRIMARY,
@@ -458,5 +477,10 @@ public class PreLoader implements ILoader {
     @Override
     public PoliticsAndWarV3 getApiV3() {
         return FileUtil.get(apiV3);
+    }
+
+    @Override
+    public PoliticsAndWarV3 getApiPool() {
+        return FileUtil.get(apiV3Pool);
     }
 }

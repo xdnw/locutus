@@ -66,7 +66,7 @@ public class BaseballDB extends DBMainV2{
 
         if (gameIds.isEmpty()) eventConsumer = null;
 
-        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+        PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
         List<BBGame> games = v3.fetchBaseballGames(req -> {
             if (wagered) req.setMin_wager(1d);
             if (minId != null) req.setMin_id(minId);

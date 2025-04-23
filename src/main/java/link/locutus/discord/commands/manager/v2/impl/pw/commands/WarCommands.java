@@ -346,7 +346,7 @@ public class WarCommands {
         long minutesInactive = activeTimeCutoff == null ? 10000 : TimeUnit.MILLISECONDS.toMinutes(activeTimeCutoff);
         double score = nationScore == null ? me.getScore() : nationScore;
 
-        Set<Integer> ignoreAlliances = new HashSet<>();
+        Set<Integer> ignoreAlliances = new IntOpenHashSet();
         boolean includeAlliances = false;
         double minLoot = Double.NEGATIVE_INFINITY;
         if (numResults == null) numResults = 5;

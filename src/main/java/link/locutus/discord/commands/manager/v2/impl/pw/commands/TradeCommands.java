@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -281,7 +282,7 @@ public class TradeCommands {
                               @Default @ArgChoice(value = {"BUYING", "SELLING"}) String buyOrSell,
                               @Arg("The offer id you want to delete")
                               @Switch("i") Integer deleteId) {
-        Set<Integer> idsToDelete = new HashSet<>();
+        Set<Integer> idsToDelete = new IntOpenHashSet();
         if (deleteId != null) {
             TradeDB.BulkTradeOffer offer = tMan.getBulkOffer(deleteId);
             if (offer == null) {
@@ -1063,7 +1064,7 @@ public class TradeCommands {
         }
         sheet.setHeader(header);
 
-        Set<Long> testedIds = new HashSet<>();
+        Set<Long> testedIds = new LongOpenHashSet();
         for (Long coalition : coalitions) {
             GuildDB otherDb;
             if (coalition > Integer.MAX_VALUE) {
@@ -1075,7 +1076,7 @@ public class TradeCommands {
                 Set<Integer> otherAAIds = otherDb.getAllianceIds();
                 for (Integer aaId : otherAAIds) {
                     if (!testedIds.add(aaId.longValue())) {
-                        Set<Long> guildsMatching = new HashSet<>();
+                        Set<Long> guildsMatching = new LongOpenHashSet();
                         for (GuildDB value : Locutus.imp().getGuildDatabases().values()) {
                             if (value.isAllianceId(aaId)) guildsMatching.add(value.getIdLong());
                         }

@@ -1723,7 +1723,7 @@ public class StatCommands {
                                          @Switch("i") boolean includeInactives,
                                          @Switch("a") boolean includeApplicants) throws IOException, GeneralSecurityException {
         Map<Integer, List<DBNation>> nationsByAA = Locutus.imp().getNationDB().getNationsByAlliance(nations, false, !includeInactives, !includeApplicants, true);
-        Set<Integer> nationIds = new HashSet<>();
+        Set<Integer> nationIds = new IntOpenHashSet();
         for (List<DBNation> nationsInAA : nationsByAA.values()) {
             for (DBNation nation : nationsInAA) {
                 nationIds.add(nation.getNation_id());

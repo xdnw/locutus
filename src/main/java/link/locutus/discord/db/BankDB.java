@@ -145,7 +145,7 @@ public class BankDB extends DBMainV3 {
     }
 
     public void updateBankRecs(int nationId, boolean priority, Consumer<Event> eventConsumer) {
-        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+        PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
 
         List<Transaction2> latestTx = getTransactionsByNation(nationId, 1);
         int minId = latestTx.size() == 1 ? latestTx.get(0).tx_id : 0;
@@ -171,7 +171,7 @@ public class BankDB extends DBMainV3 {
         ByteBuffer info = Locutus.imp().getDiscordDB().getInfo(DiscordMeta.BANK_RECS_SEQUENTIAL, 0);
         int latestId = info == null ? -1 : info.getInt();
 
-        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+        PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
 
         List<Bankrec> records = new ArrayList<>();
         Runnable saveTransactions = () -> {

@@ -311,7 +311,7 @@ public class DataUtil {
         int amtPer = 999;
         for (int i = 0; i < attacksToFetch.size(); i += amtPer) {
             List<Integer> subList = attacksToFetch.subList(i, i + amtPer);
-            for (WarAttack attack : Locutus.imp().getV3().fetchAttacks(f -> f.setId(subList), proj -> {
+            for (WarAttack attack : Locutus.imp().getApiPool().fetchAttacks(f -> f.setId(subList), proj -> {
                 proj.id();
                 proj.loot_info();
             })) {

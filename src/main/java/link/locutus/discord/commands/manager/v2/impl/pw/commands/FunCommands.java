@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -56,7 +57,7 @@ public class FunCommands {
         msg += "\nThe city is now yours! (until someone wakes up)" + "\n- <" + url + ">";
 
         boolean stolenAll = false;
-        if (new HashSet<>(stolenCities.values()).size() == 1 && stolenCities.size() == cities.size()) {
+        if (new IntOpenHashSet(stolenCities.values()).size() == 1 && stolenCities.size() == cities.size()) {
             msg += "\n\nCongratulations, you have conquered borg!\nhttps://cdn.discordapp.com/attachments/672310912090243092/1004406809571905629/unknown.png";
         }
         return msg;

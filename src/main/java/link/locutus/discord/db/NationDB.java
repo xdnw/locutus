@@ -440,7 +440,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     public void updateAlliances(Consumer<AlliancesQueryRequest> filter, Consumer<Event> eventConsumer) {
         Set<Integer> toDelete = filter == null ? getAlliances().stream().map(DBAlliance::getId).collect(Collectors.toSet()) : new HashSet<>();
         List<Alliance> alliances;
-        PoliticsAndWarV3 api = Locutus.imp().getV3();
+        PoliticsAndWarV3 api = Locutus.imp().getApiPool();
         long now = System.currentTimeMillis();
         long diff = now - lastUpdatedAlliances;
         if (filter != null || diff < TimeUnit.MINUTES.toMillis(10) || !Settings.INSTANCE.ENABLED_COMPONENTS.SNAPSHOTS) {
@@ -479,7 +479,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public Set<Integer> updateAlliancesById(List<Integer> ids, Consumer<Event> eventConsumer) {
-        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+        PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
 
         Set<Integer> fetched = new IntLinkedOpenHashSet();
         if (ids.isEmpty()) return fetched;
@@ -796,7 +796,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public void updateTreaties(Consumer<Event> eventConsumer) {
-        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+        PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
 //        List<com.politicsandwar.graphql.model.Treaty> treatiesV3 = v3.readSnapshot(PagePriority.API_TREATIES, com.politicsandwar.graphql.model.Treaty.class);
 //        if (treatiesV3.isEmpty()) throw new IllegalStateException("No treaties returned from API! (updateTreaties())");
 //        treatiesV3 = new ObjectArrayList<>(treatiesV3);
@@ -934,7 +934,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
         if (nationIdIndex.isEmpty()) return Collections.emptyList();
 
-        List<Nation> nationActiveData = new ArrayList<>(Locutus.imp().getV3().fetchNationActive(priority, nationIds));
+        List<Nation> nationActiveData = new ArrayList<>(Locutus.imp().getApiPool().fetchNationActive(priority, nationIds));
         nationActiveData.sort(Comparator.comparingInt(o -> nationIdIndex.get(o.getId())));
 
         if (runEvents) {
@@ -1221,7 +1221,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     private long lastUpdatedCities = System.currentTimeMillis();
 
     public void updateAllCities(Consumer<Event> eventConsumer) {
-        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+        PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
         dirtyCities.clear();
         dirtyCityNations.clear();
         Map<Integer, Map<Integer, City>> nationIdCityIdCityMap = new Int2ObjectOpenHashMap<>();
@@ -1256,7 +1256,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public void updateCitiesOfNations(Set<Integer> nationIds, boolean priority, boolean bulk, Consumer<Event> eventConsumer) {
-        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+        PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
         List<Integer> idList = new ArrayList<>(nationIds);
         if (bulk) markDirtyIncorrectCities(true, true);
         int estimatedCitiesToFetch = estimateCities(nationIds);
@@ -1288,7 +1288,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
     public boolean updateDirtyCities(boolean priority, Consumer<Event> eventConsumer, int max) {
         List<Integer> cityIds = new IntArrayList();
-        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+        PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
 
         int dirtyNationCities = estimateCities(dirtyCityNations);
         if (dirtyCities.size() > 15000 || dirtyNationCities > 15000) {
@@ -1366,7 +1366,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public void updateNewCities(Consumer<Event> eventConsumer) {
-        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+        PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
         List<Integer> newIds = getNewCityIds(500, new HashSet<>());
         Collections.sort(newIds);
         List<City> cities = v3.fetchCitiesWithInfo(false, r -> r.setId(newIds), true);
@@ -1374,7 +1374,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public void updateNewAndOutdatedCities(int amtNew, Consumer<Event> eventConsumer) {
-        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+        PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
         List<Integer> newIds = getNewCityIds(amtNew, new IntOpenHashSet());
         List<Integer> outdatedIds = getMostOutdatedCities(amtNew, new IntOpenHashSet());
         newIds.addAll(outdatedIds);
@@ -2064,7 +2064,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         } else {
             lastUpdatedNations = now;
             fetched = updateNationsCustom(onEachNation -> {
-                PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+                PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
                 List<Nation> nations = v3.readSnapshot(PagePriority.API_NATIONS_AUTO, Nation.class);
                 for (Nation nation : nations) {
                     onEachNation.test(nation);
@@ -2161,7 +2161,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
     public Set<Integer> updateNations(Consumer<NationsQueryRequest> filter, Consumer<Event> eventConsumer) {
         return updateNationsCustom(onEachNation -> {
-            PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+            PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
             v3.fetchNationsWithInfo(false, filter, onEachNation);
         }, eventConsumer, true);
     }
@@ -2190,7 +2190,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
     public Set<Integer> updateNations(Consumer<NationsQueryRequest> filter, Consumer<Event> eventConsumer, boolean updateCitiesAndPositions) {
         return updateNationsCustom(onEachNation -> {
-            PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+            PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
             v3.fetchNationsWithInfo(false, filter, onEachNation);
         }, eventConsumer, updateCitiesAndPositions);
     }
@@ -2821,7 +2821,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
     public void updateBans(Consumer<Event> eventConsumer) throws SQLException {
         // get latest date from bans
-        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+        PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
         long latestBanDate = getLatestBanDate();
         List<BannedNation> newBans = v3.getBansSince(latestBanDate);
         List<DBBan> bans = new ArrayList<>();
@@ -2836,7 +2836,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
     public void updateTreasures(Consumer<Event> eventConsumer) {
         // get api v3 instance
-        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+        PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
 
         // get treasures fetchTreasures
         Set<DBTreasure> treasuresToUpdate = new HashSet<>();

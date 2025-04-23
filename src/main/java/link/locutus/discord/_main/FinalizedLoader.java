@@ -29,6 +29,7 @@ public class FinalizedLoader implements ILoader {
     private final CommandManager commandManager;
     private final PoliticsAndWarV2 apiV2;
     private final PoliticsAndWarV3 apiV3;
+    private final PoliticsAndWarV3 apiPool;
 
     public FinalizedLoader(PreLoader loader) {
         this.slashCommandManager = loader.getSlashCommandManager();
@@ -43,6 +44,7 @@ public class FinalizedLoader implements ILoader {
         this.commandManager = loader.getCommandManager();
         this.apiV2 = loader.getApiV2();
         this.apiV3 = loader.getApiV3();
+        this.apiPool = loader.getApiPool();
     }
 
     @Override
@@ -130,6 +132,13 @@ public class FinalizedLoader implements ILoader {
     public PoliticsAndWarV3 getApiV3() {
         return apiV3;
     }
+
+    @Override
+    public PoliticsAndWarV3 getApiPool() {
+        return apiPool;
+    }
+
+
 
 
 }

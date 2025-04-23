@@ -38,6 +38,7 @@ public interface ILoader {
     ForumDB getForumDB();
     BankDB getBankDB();
 
+    PoliticsAndWarV3 getApiPool();
     PoliticsAndWarV3 getApiV3();
     PoliticsAndWarV2 getApiV2();
 
