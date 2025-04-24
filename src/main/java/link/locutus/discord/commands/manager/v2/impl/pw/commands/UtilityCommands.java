@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
@@ -2380,7 +2381,8 @@ public class UtilityCommands {
 
     @Command(desc = "Get the VM history of a set of nations", viewable = true)
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
-    public static String vmHistory(@Me IMessageIO io, @Me @Default GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws IOException, ParseException, ExecutionException, InterruptedException, GeneralSecurityException {
+    public static String vmHistory(@Me IMessageIO io, @Me @Default GuildDB db, Set<DBNation> nations,
+                                   @Switch("s") SpreadSheet sheet) throws IOException, ParseException, ExecutionException, InterruptedException, GeneralSecurityException {
         CompletableFuture<IMessageBuilder> msgFuture = io.send("Mounting nation snapshots...");
         Map<Integer, List<Map.Entry<Integer, Integer>>> vmRanges = Locutus.imp().getDataDumper(true).load().getUtil().getCachedVmRanged(Long.MAX_VALUE, true);
 
@@ -2414,6 +2416,9 @@ public class UtilityCommands {
             sheet.updateWrite();
             IMessageBuilder msg = io.create();
             if (!hasData) msg.append("No VM history found");
+
+            msg.append("-# If two VM ranges exist for `Present` it means the range may have been extended");
+
             sheet.attach(msg, "vm_history").send();
             return null;
         }

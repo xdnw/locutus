@@ -1,5 +1,6 @@
 package link.locutus.discord.web.commands;
 
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -69,7 +70,7 @@ public class WebCommands {
             io.create().confirmation(title, body.toString(), command).send();
             return null;
         }
-        ApiKeyPool mailKey = db.getMailKey();
+        ApiKeyPool mailKey = ApiKeyPool.create(Locutus.loader().getNationId(), Locutus.loader().getApiKey());
         Map<String, String> errors = new LinkedHashMap<>();
         int success = 0;
         int i = 0;

@@ -1030,6 +1030,7 @@ public class TradeManager {
             if (cityAvg != null && Math.round(cityAvg * 10000) != Math.round(PW.City.CITY_AVERAGE * 10000)) {
                 Locutus.imp().getDiscordDB().setCityAverage(cityAvg);
                 PW.City.CITY_AVERAGE = cityAvg;
+                System.out.println("City average updated: " + cityAvg);
             }
         } catch (RuntimeException ignore) {
             ignore.printStackTrace();

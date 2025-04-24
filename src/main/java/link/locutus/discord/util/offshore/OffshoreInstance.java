@@ -193,7 +193,7 @@ public class OffshoreInstance {
 
                 Locutus.imp().runEventsAsync(events -> Locutus.imp().getBankDB().saveBankRecs(bankRecs, events));
 
-                if (bankRecs.size() > 0) {
+                if (!bankRecs.isEmpty()) {
                     // delete legacy transactions for alliance id after date
                     Locutus.imp().getBankDB().deleteLegacyAllianceTransactions(allianceId, minDate - 1000);
 
@@ -676,7 +676,7 @@ public class OffshoreInstance {
                 }
             }
         }
-        boolean allowNegative = senderDB.getOrNull(GuildKey.ALLOW_NEGATIVE_RESOURCES) == Boolean.TRUE;
+        boolean allowNegative = senderDB.getOrNull(GuildKey.ALLOW_NEGATIVE_RESOURCES) == Boolean.TRUE && rssConversion;
         boolean ignoreGrants = senderDB.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW_IGNORES_GRANTS) == Boolean.TRUE;
         double txValue = ResourceType.convertedTotal(amount);
 
@@ -721,44 +721,9 @@ public class OffshoreInstance {
                 boolean hasEcon = allowedIds.containsValue(AccessType.ECON);
                 if (!depositType.isIgnored() && (!hasEcon || requireConfirmation))
                 {
-                    myDeposits = nationAccount.getNetDeposits(senderDB, !ignoreGrants, requireConfirmation ? -1 : 0L, true);
-                    double[] myDepositsNormalized = PW.normalize(myDeposits);
-                    double myDepoValue = ResourceType.convertedTotal(myDepositsNormalized, false);
-                    double[] depoArr = (myDepoValue < txValue ? myDepositsNormalized : myDeposits);
-
-                    double[] missing = null;
-
-                    for (ResourceType type : ResourceType.values) {
-                        if (amount[type.ordinal()] > 0 && Math.round(depoArr[type.ordinal()] * 100) < Math.round(amount[type.ordinal()] * 100)) {
-                            if (missing == null) {
-                                missing = ResourceType.getBuffer();
-                            }
-                            missing[type.ordinal()] = amount[type.ordinal()] - depoArr[type.ordinal()];
-                        }
-                    }
-                    if (missing != null) {
-                        if (!allowNegative) {
-                            String[] msg = {nationAccount.getMarkdownUrl() + " is missing `" + ResourceType.toString(missing) + "`. (see " +
-                                    CM.deposits.check.cmd.nationOrAllianceOrGuild(nationAccount.getUrl()) +
-                                    " ).", "ALLOW_NEGATIVE_RESOURCES is disabled (see " +
-                                    GuildKey.ALLOW_NEGATIVE_RESOURCES.getCommandObj(senderDB, true) +
-                                    ")"};
-                            allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
-                            if (allowedIds.isEmpty()) {
-//                                return KeyValue.of(TransferStatus.INSUFFICIENT_FUNDS, msg);
-                                return new TransferResult(TransferStatus.INSUFFICIENT_FUNDS, receiver, amount, depositType.toString()).addMessage(msg);
-                            }
-                            reqMsg.append(StringMan.join(msg, "\n") + "\n");
-                        } else if (myDepoValue < txValue) {
-                            String msg = nationAccount.getNation() + "'s deposits are worth $" + MathMan.format(myDepoValue) + "(market max) but you requested to withdraw $" + MathMan.format(txValue) + " worth of resources";
-                            allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
-                            if (allowedIds.isEmpty()) {
-//                                return KeyValue.of(TransferStatus.INSUFFICIENT_FUNDS, msg);
-                                return new TransferResult(TransferStatus.INSUFFICIENT_FUNDS, receiver, amount, depositType.toString()).addMessage(msg);
-                            }
-                            reqMsg.append(msg + "\n");
-                        }
-                    }
+                    boolean allowUpdate = !requireConfirmation;
+                    boolean forceUpdate = !requireConfirmation && (Settings.USE_V2 || Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS <= 0);
+                    myDeposits = checkNationDeposits(senderDB, nationAccount, allowedIds, receiver, amount, txValue, depositType, ignoreGrants, allowNegative, reqMsg, forceUpdate, allowUpdate);
                 }
             }
 
@@ -1358,6 +1323,51 @@ public class OffshoreInstance {
 
             return result;
         }
+    }
+
+    private double[] checkNationDeposits(GuildDB senderDB, DBNation nationAccount, Map<Long, AccessType> allowedIds, NationOrAlliance receiver, double[] amount, double txValue, DepositType.DepositTypeInfo depositType, boolean ignoreGrants, boolean allowNegative, StringBuilder reqMsg, boolean update, boolean allowUpdate) throws IOException {
+        double[] myDeposits = nationAccount.getNetDeposits(senderDB, !ignoreGrants, update ? 0L : -1, true);
+        double[] myDepositsNormalized = PW.normalize(myDeposits);
+        double myDepoValue = ResourceType.convertedTotal(myDepositsNormalized, false);
+        double[] depoArr = (myDepoValue < txValue ? myDepositsNormalized : myDeposits);
+
+        double[] missing = null;
+
+        for (ResourceType type : ResourceType.values) {
+            if (amount[type.ordinal()] > 0 && Math.round(depoArr[type.ordinal()] * 100) < Math.round(amount[type.ordinal()] * 100)) {
+                if (!update && allowUpdate) {
+                    return checkNationDeposits(senderDB, nationAccount, allowedIds, receiver, amount, txValue, depositType, ignoreGrants, allowNegative, reqMsg, true, false);
+                }
+                if (missing == null) {
+                    missing = ResourceType.getBuffer();
+                }
+                missing[type.ordinal()] = amount[type.ordinal()] - depoArr[type.ordinal()];
+            }
+        }
+        if (missing != null) {
+            if (!allowNegative) {
+                String[] msg = {nationAccount.getMarkdownUrl() + " is missing `" + ResourceType.toString(missing) + "`. (see " +
+                        CM.deposits.check.cmd.nationOrAllianceOrGuild(nationAccount.getUrl()) +
+                        " ).", "ALLOW_NEGATIVE_RESOURCES is disabled (see " +
+                        GuildKey.ALLOW_NEGATIVE_RESOURCES.getCommandObj(senderDB, true) +
+                        ")"};
+                allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
+                if (allowedIds.isEmpty()) {
+//                                return KeyValue.of(TransferStatus.INSUFFICIENT_FUNDS, msg);
+                    return new TransferResult(TransferStatus.INSUFFICIENT_FUNDS, receiver, amount, depositType.toString()).addMessage(msg);
+                }
+                reqMsg.append(StringMan.join(msg, "\n") + "\n");
+            } else if (myDepoValue < txValue) {
+                String msg = nationAccount.getNation() + "'s deposits are worth $" + MathMan.format(myDepoValue) + "(market max) but you requested to withdraw $" + MathMan.format(txValue) + " worth of resources";
+                allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
+                if (allowedIds.isEmpty()) {
+//                                return KeyValue.of(TransferStatus.INSUFFICIENT_FUNDS, msg);
+                    return new TransferResult(TransferStatus.INSUFFICIENT_FUNDS, receiver, amount, depositType.toString()).addMessage(msg);
+                }
+                reqMsg.append(msg + "\n");
+            }
+        }
+        return myDeposits;
     }
 
     private Map.Entry<Map<NationOrAllianceOrGuild, double[]>, double[]> checkDeposits(GuildDB senderDB, Predicate<Integer> allowedAlliances, double[] amount, boolean update) {

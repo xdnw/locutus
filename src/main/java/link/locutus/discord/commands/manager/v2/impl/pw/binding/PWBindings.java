@@ -682,13 +682,21 @@ public class PWBindings extends BindingHelper {
         if (lower.contains("alliance/id=")) {
             return alliance(data, input);
         }
-        DBNation nation = DiscordUtil.parseNation(input, forceAllowDeleted || (data != null && data.getAnnotation(AllowDeleted.class) != null));
-        if (nation == null) {
-            return alliance(data, input);
-        } else if (nation.isValid()) {
-            Locutus.imp().getNationDB().markNationDirty(nation.getNation_id());
+        String errMsg = null;
+        try {
+            DBNation nation = DiscordUtil.parseNation(input, forceAllowDeleted || (data != null && data.getAnnotation(AllowDeleted.class) != null), true);
+            if (nation != null) {
+                if (nation.isValid()) {
+                    Locutus.imp().getNationDB().markNationDirty(nation.getNation_id());
+                }
+                return nation;
+            }
+        } catch (IllegalArgumentException e) {
+            errMsg = e.getMessage();
         }
-        return nation;
+        DBAlliance alliance = alliance(data, input);
+        if (alliance != null) return alliance;
+        throw new IllegalArgumentException("No such nation or alliance: `" + input + "`" + (errMsg != null ? "\n" + errMsg : ""));
     }
 
     @Binding(value = "A guild or alliance name, url or id. Prefix with `AA:` or `guild:` to avoid ambiguity if there exists both by the same name or id", examples = {"guild:216800987002699787", "aa:1234"})

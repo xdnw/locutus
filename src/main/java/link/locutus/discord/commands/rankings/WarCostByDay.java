@@ -130,12 +130,11 @@ public class WarCostByDay extends Command {
             Set<Integer> aaIdss1 = DiscordUtil.parseAllianceIds(guild, args.get(0));
             Set<Integer> aaIdss2 = DiscordUtil.parseAllianceIds(guild, args.get(1));
             if (aaIdss1 != null && aaIdss2 != null && !aaIdss1.isEmpty() && !aaIdss2.isEmpty()) {
-                HashSet<Integer> alliances = new IntOpenHashSet();
+                Set<Integer> alliances = new IntOpenHashSet();
                 alliances.addAll(aaIdss1);
                 alliances.addAll(aaIdss2);
                 Set<DBWar> wars = Locutus.imp().getWarDb().getWars(alliances, warCutoff);
                 Map<Integer, DBWar> warMap = new HashMap<>();
-                for (DBWar war : wars) warMap.put(war.warId, war);
                 attacks = f -> Locutus.imp().getWarDb().iterateAttacksByWars(wars, cutoffMs, f);
                 isPrimary = (war, a) -> {
                     int aa1 = war.getAttacker_id() == a.getAttacker_id() ? war.getAttacker_aa() : war.getDefender_aa();
