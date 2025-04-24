@@ -2,9 +2,11 @@
 package link.locutus.discord.util.offshore;
 
 import com.politicsandwar.graphql.model.Bankrec;
+import it.unimi.dsi.fastutil.Pair;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectObjectImmutablePair;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.AccessType;
 import link.locutus.discord.apiv1.enums.DepositType;
@@ -723,7 +725,9 @@ public class OffshoreInstance {
                 {
                     boolean allowUpdate = !requireConfirmation;
                     boolean forceUpdate = !requireConfirmation && (Settings.USE_V2 || Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS <= 0);
-                    myDeposits = checkNationDeposits(senderDB, nationAccount, allowedIds, receiver, amount, txValue, depositType, ignoreGrants, allowNegative, reqMsg, forceUpdate, allowUpdate);
+                    Map.Entry<double[], TransferResult> result = checkNationDeposits(senderDB, nationAccount, allowedIds, receiver, amount, txValue, depositType, ignoreGrants, allowNegative, reqMsg, forceUpdate, allowUpdate);
+                    if (result.getValue() != null) return result.getValue();
+                    myDeposits = result.getKey();
                 }
             }
 
@@ -1325,14 +1329,12 @@ public class OffshoreInstance {
         }
     }
 
-    private double[] checkNationDeposits(GuildDB senderDB, DBNation nationAccount, Map<Long, AccessType> allowedIds, NationOrAlliance receiver, double[] amount, double txValue, DepositType.DepositTypeInfo depositType, boolean ignoreGrants, boolean allowNegative, StringBuilder reqMsg, boolean update, boolean allowUpdate) throws IOException {
+    private Map.Entry<double[], TransferResult> checkNationDeposits(GuildDB senderDB, DBNation nationAccount, Map<Long, AccessType> allowedIds, NationOrAlliance receiver, double[] amount, double txValue, DepositType.DepositTypeInfo depositType, boolean ignoreGrants, boolean allowNegative, StringBuilder reqMsg, boolean update, boolean allowUpdate) throws IOException {
         double[] myDeposits = nationAccount.getNetDeposits(senderDB, !ignoreGrants, update ? 0L : -1, true);
         double[] myDepositsNormalized = PW.normalize(myDeposits);
         double myDepoValue = ResourceType.convertedTotal(myDepositsNormalized, false);
         double[] depoArr = (myDepoValue < txValue ? myDepositsNormalized : myDeposits);
-
         double[] missing = null;
-
         for (ResourceType type : ResourceType.values) {
             if (amount[type.ordinal()] > 0 && Math.round(depoArr[type.ordinal()] * 100) < Math.round(amount[type.ordinal()] * 100)) {
                 if (!update && allowUpdate) {
@@ -1353,21 +1355,19 @@ public class OffshoreInstance {
                         ")"};
                 allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
                 if (allowedIds.isEmpty()) {
-//                                return KeyValue.of(TransferStatus.INSUFFICIENT_FUNDS, msg);
-                    return new TransferResult(TransferStatus.INSUFFICIENT_FUNDS, receiver, amount, depositType.toString()).addMessage(msg);
+                    return new KeyValue(null, new TransferResult(TransferStatus.INSUFFICIENT_FUNDS, receiver, amount, depositType.toString()).addMessage(msg));
                 }
                 reqMsg.append(StringMan.join(msg, "\n") + "\n");
             } else if (myDepoValue < txValue) {
                 String msg = nationAccount.getNation() + "'s deposits are worth $" + MathMan.format(myDepoValue) + "(market max) but you requested to withdraw $" + MathMan.format(txValue) + " worth of resources";
                 allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
                 if (allowedIds.isEmpty()) {
-//                                return KeyValue.of(TransferStatus.INSUFFICIENT_FUNDS, msg);
-                    return new TransferResult(TransferStatus.INSUFFICIENT_FUNDS, receiver, amount, depositType.toString()).addMessage(msg);
+                    return new KeyValue(null, new TransferResult(TransferStatus.INSUFFICIENT_FUNDS, receiver, amount, depositType.toString()).addMessage(msg));
                 }
                 reqMsg.append(msg + "\n");
             }
         }
-        return myDeposits;
+        return new KeyValue(myDeposits, null);
     }
 
     private Map.Entry<Map<NationOrAllianceOrGuild, double[]>, double[]> checkDeposits(GuildDB senderDB, Predicate<Integer> allowedAlliances, double[] amount, boolean update) {
