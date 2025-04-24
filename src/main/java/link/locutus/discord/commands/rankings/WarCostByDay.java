@@ -135,7 +135,6 @@ public class WarCostByDay extends Command {
                 alliances.addAll(aaIdss2);
                 Set<DBWar> wars = Locutus.imp().getWarDb().getWars(alliances, warCutoff);
                 Map<Integer, DBWar> warMap = new HashMap<>();
-                for (DBWar war : wars) warMap.put(war.warId, war);
                 attacks = f -> Locutus.imp().getWarDb().iterateAttacksByWars(wars, cutoffMs, f);
                 isPrimary = (war, a) -> {
                     int aa1 = war.getAttacker_id() == a.getAttacker_id() ? war.getAttacker_aa() : war.getDefender_aa();

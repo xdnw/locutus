@@ -513,13 +513,13 @@ public final class Locutus extends ListenerAdapter {
     }
 
     public void runEventsAsync(ThrowingConsumer<Consumer<Event>> eventHandler) {
-        ArrayDeque<Event> events = new ArrayDeque<>(0);
+        Collection<Event> events = new ObjectArrayList<>(0);
         eventHandler.accept(events::add);
         runEventsAsync(events);
     }
 
     public <T> T returnEventsAsync(ThrowingFunction<Consumer<Event>, T> eventHandler) {
-        Collection<Event> events = new ArrayDeque<>(0);
+        Collection<Event> events = new ObjectArrayList<>(0);
         T result = eventHandler.apply(events::add);
         runEventsAsync(events);
         return result;

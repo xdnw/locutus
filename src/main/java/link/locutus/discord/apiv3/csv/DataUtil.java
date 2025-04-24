@@ -135,7 +135,9 @@ public class DataUtil {
                     if (!existing.isEmpty() && existing.get(existing.size() - 1).getValue() == Integer.MAX_VALUE) {
                         continue;
                     }
-                    existing.add(KeyValue.of((int) currentDay, Integer.MAX_VALUE));
+                    long dayEntered = TimeUtil.getDayFromTurn(nation.getEntered_vm());
+                    if (dayEntered <= 1) dayEntered = currentDay;
+                    existing.add(KeyValue.of((int) dayEntered, Integer.MAX_VALUE));
                 }
             }
         }
@@ -210,7 +212,7 @@ public class DataUtil {
             for (int id : lastPresentIds) {
                 if (!newPresentIds.contains(id)) {
                     long created = dateCreated.get(id);
-                    if (created >= timestamp - twoDays) continue;
+                    if (created >= timestamp - twoDays || lastDay == Long.MAX_VALUE) continue;
                     missing.put(id, lastDay);
                 }
             }
