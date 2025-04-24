@@ -1556,6 +1556,9 @@ public class OffshoreInstance {
             Bankrec result = api.transferFromBank(ResourceType.resourcesToArray(transfer), receiver, note);
             double[] amt = ResourceType.fromApiV3(result, ResourceType.getBuffer());
             String amtStr = ResourceType.toString(amt);
+            if (result.getId() != null) {
+                Locutus.imp().runEventsAsync(events -> Locutus.imp().getBankDB().saveBankRecs(List.of(result), events));
+            }
             txResult = new TransferResult(TransferStatus.SUCCESS, receiver, amt, note).addMessage("Success: " + amtStr);
         } catch (HttpClientErrorException.Unauthorized e) {
             txResult = new TransferResult(TransferStatus.INVALID_API_KEY, receiver, transfer, note).addMessage("Invalid API key");
