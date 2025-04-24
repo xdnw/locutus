@@ -3,6 +3,8 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 import com.google.common.util.concurrent.AtomicDouble;
 import com.opencsv.CSVWriter;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.project.Project;
@@ -177,17 +179,17 @@ public class AllianceMetricCommands {
         DataDumpParser parser = locutus.getDataDumper(true);
 
         AtomicLong previousDay = new AtomicLong();
-        Map<Integer, Set<Project>> previousProjects = new HashMap<>();
-        Map<Integer, Set<Project>> currentProjects = new HashMap<>();
-        Map<Integer, Integer> previousCities = new HashMap<>();
-        Map<Integer, Integer> currentCities = new HashMap<>();
+        Map<Integer, Set<Project>> previousProjects = new Int2ObjectOpenHashMap<>();
+        Map<Integer, Set<Project>> currentProjects = new Int2ObjectOpenHashMap<>();
+        Map<Integer, Integer> previousCities = new Int2ObjectOpenHashMap<>();
+        Map<Integer, Integer> currentCities = new Int2ObjectOpenHashMap<>();
 
-        Map<Integer, double[]> oldCostByTier = new HashMap<>();
-        Map<Integer, double[]> newCostByTier = new HashMap<>();
-        Map<Integer, Double> citiesByTier = new HashMap<>();
+        Map<Integer, double[]> oldCostByTier = new Int2ObjectOpenHashMap<>();
+        Map<Integer, double[]> newCostByTier = new Int2ObjectOpenHashMap<>();
+        Map<Integer, Double> citiesByTier = new Int2ObjectOpenHashMap<>();
 
         Map<Project, Map<Integer, Integer>> amtByTier = new HashMap<>();
-        Map<Project, Integer> numProject = new HashMap<>();
+        Map<Project, Integer> numProject = new Object2IntOpenHashMap<>();
 
 
         Consumer<Long> dayTask = new Consumer<Long>() {

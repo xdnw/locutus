@@ -1,5 +1,7 @@
 package com.jpson;
 
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+
 import java.beans.BeanInfo;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
@@ -19,7 +21,7 @@ public class PsonEncoder extends PsonWriter {
 
     protected PsonOptions options;
 
-    protected HashMap<String, Integer> initialDictionary;
+    protected Map<String, Integer> initialDictionary;
 
     public static byte[] encode(Object structure, List<String> initialDictionary, PsonOptions options) throws IOException {
         final ByteArrayOutputStream output = new ByteArrayOutputStream();
@@ -39,7 +41,7 @@ public class PsonEncoder extends PsonWriter {
         if (initialDictionary == null)
             this.initialDictionary = null;
         else {
-            this.initialDictionary = new HashMap<String, Integer>(initialDictionary.size());
+            this.initialDictionary = new Object2IntOpenHashMap<String>(initialDictionary.size());
             int index = 0;
             for (String item : initialDictionary) {
                 this.initialDictionary.put(item, index++);

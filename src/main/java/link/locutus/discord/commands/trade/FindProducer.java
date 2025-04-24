@@ -1,33 +1,27 @@
 package link.locutus.discord.commands.trade;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.manager.v2.command.CommandRef;
-import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.db.entities.DBCity;
+import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.builder.NumericGroupRankBuilder;
 import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
 import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.city.JavaCity;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class FindProducer extends Command {
@@ -86,7 +80,7 @@ public class FindProducer extends Command {
         }
         if (args.size() == 1 || args.get(0).equalsIgnoreCase("*")) {
             int topX = 80;
-            Set<Integer> allowedAAs = new HashSet<>();
+            Set<Integer> allowedAAs = new IntOpenHashSet();
             Set<DBAlliance> topAlliances = Locutus.imp().getNationDB().getAlliances(true, true, true, topX);
             for (DBAlliance topAlliance : topAlliances) allowedAAs.add(topAlliance.getAlliance_id());
             nations.removeIf(f -> !allowedAAs.contains(f.getAlliance_id()) || f.getPosition() <= 1);

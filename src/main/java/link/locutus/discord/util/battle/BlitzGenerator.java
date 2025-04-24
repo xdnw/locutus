@@ -1,5 +1,6 @@
 package link.locutus.discord.util.battle;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -503,7 +504,7 @@ public class BlitzGenerator {
         Set<DBWar> warsToRemove = new HashSet<>();
 
         if (parseExisting) {
-            Set<Integer> natIds = new HashSet<>();
+            Set<Integer> natIds = new IntOpenHashSet();
             for (DBNation nation : attPool.keySet()) natIds.add(nation.getNation_id());
             for (DBNation nation : defPool.keySet()) natIds.add(nation.getNation_id());
             Map<Integer, List<DBWar>> wars = Locutus.imp().getWarDb().getActiveWarsByAttacker(natIds, natIds, WarStatus.ACTIVE, WarStatus.DEFENDER_OFFERED_PEACE, WarStatus.ATTACKER_OFFERED_PEACE);
@@ -621,7 +622,7 @@ public class BlitzGenerator {
         Set<DBWar> warsToRemove = new HashSet<>();
 
         if (parseExisting) {
-            Set<Integer> natIds = new HashSet<>();
+            Set<Integer> natIds = new IntOpenHashSet();
             for (DBNation nation : attPool.keySet()) natIds.add(nation.getNation_id());
             for (DBNation nation : defPool.keySet()) natIds.add(nation.getNation_id());
             Map<Integer, List<DBWar>> wars = Locutus.imp().getWarDb().getActiveWarsByAttacker(natIds, natIds, WarStatus.ACTIVE, WarStatus.DEFENDER_OFFERED_PEACE, WarStatus.ATTACKER_OFFERED_PEACE);

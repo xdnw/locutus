@@ -2,6 +2,7 @@ package link.locutus.discord.util.update;
 
 import com.google.common.eventbus.Subscribe;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -109,7 +110,7 @@ public class BankUpdateProcessor {
         if (value > Settings.INSTANCE.UPDATE_PROCESSOR.THRESHOLD_BANK_SUB_ALERT) {
             long longValue = (long) value;
 
-            Set<Long> receiver = new HashSet<>();
+            Set<Long> receiver = new LongOpenHashSet();
             Set<BankDB.Subscription> subs = new HashSet<>();
 
             subs.addAll(Locutus.imp().getBankDB().getSubscriptions(0, BankDB.BankSubType.ALL, true, longValue));

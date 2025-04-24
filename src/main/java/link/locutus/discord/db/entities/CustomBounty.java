@@ -1,26 +1,16 @@
 package link.locutus.discord.db.entities;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
-import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.SuccessType;
-import link.locutus.discord.apiv1.enums.WarType;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.*;
 
 public class CustomBounty {
     public int id;
@@ -31,8 +21,8 @@ public class CustomBounty {
 
     public double[] resources;
 
-    public Set<Integer> nations = new HashSet<>();
-    public Set<Integer> alliances = new HashSet<>();
+    public Set<Integer> nations = new IntOpenHashSet();
+    public Set<Integer> alliances = new IntOpenHashSet();
     public NationFilter filter2;
 
     public Long totalDamage;

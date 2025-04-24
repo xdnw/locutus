@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.war;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -153,7 +154,7 @@ public class Spyops extends Command {
             operation = SpyCount.Operation.INTEL; // placeholder
         }
 
-        Set<Integer> allies = new HashSet<>();
+        Set<Integer> allies = new IntOpenHashSet();
         Set<Integer> alliesCoalition = db.getCoalition("allies");
         if (alliesCoalition != null) allies.addAll(alliesCoalition);
         if (attacker.getAlliance_id() != 0) allies.add(attacker.getAlliance_id());

@@ -1,5 +1,6 @@
 package link.locutus.discord.util.update;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -281,7 +282,7 @@ public class AllianceListener {
                     return (isGroundCoalition || isTopX) || (topX == null && groundCoalition.isEmpty());
                 };
 
-                Set<Integer> allowedIds = new HashSet<>();
+                Set<Integer> allowedIds = new IntOpenHashSet();
                 for (Map.Entry<DBAlliance, Integer> entry : alertAlliances.entrySet()) {
                     DBAlliance alliance = entry.getKey();
                     int rank = entry.getValue();

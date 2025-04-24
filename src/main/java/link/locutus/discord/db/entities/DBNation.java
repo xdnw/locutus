@@ -4800,7 +4800,7 @@ public abstract class DBNation implements NationOrAlliance {
 
     public Set<Integer> getMultis() {
         Set<BigInteger> uuids = Locutus.imp().getDiscordDB().getUuids(getNation_id()).keySet();
-        Set<Integer> multiNations = new HashSet<>();;
+        Set<Integer> multiNations = new IntOpenHashSet();
         for (BigInteger uuid : uuids) {
             Set<Integer> multis = Locutus.imp().getDiscordDB().getMultis(uuid);
             for (int nationId : multis) {
@@ -5769,7 +5769,7 @@ public abstract class DBNation implements NationOrAlliance {
                 total += history.getOrDefault(turn, 0);
                 summedPurchases[j] = total;
             }
-            Set<Integer> bestOffset = new HashSet<>();
+            Set<Integer> bestOffset = new IntOpenHashSet();
             int bestOffsetVal = 0;
 
             for (int offset = 0; offset < 12; offset++) {

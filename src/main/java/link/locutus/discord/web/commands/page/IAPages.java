@@ -3,6 +3,7 @@ package link.locutus.discord.web.commands.page;
 import gg.jte.generated.precompiled.guild.ia.JteauditsGenerated;
 import gg.jte.generated.precompiled.guild.ia.JteiachannelsGenerated;
 import gg.jte.generated.precompiled.guild.ia.JtementorsGenerated;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -67,7 +68,7 @@ public class IAPages {
         Map<GuildMessageChannel, User> interviewUsers = new HashMap<>();
         Map<GuildMessageChannel, DBNation> interviewNation = new HashMap<>();
         Set<GuildMessageChannel> myChannels = new HashSet<>();
-        Set<Long> existingChannelIds = new HashSet<>();
+        Set<Long> existingChannelIds = new LongOpenHashSet();
 
         for (GuildMessageChannel channel : iaCat.getAllChannels()) {
             List<InterviewMessage> chanMessages = messages.get(channel.getIdLong());
@@ -120,7 +121,7 @@ public class IAPages {
 
         Map<String, JsonArray> messagesMap = new HashMap<>();
         Map<String, String> usernames = new HashMap<>();
-        Set<Long> senderIds = new HashSet<>();
+        Set<Long> senderIds = new LongOpenHashSet();
         for (Map.Entry<Long, List<InterviewMessage>> entry : messages.entrySet()) {
             JsonArray channelMessagesJson = new JsonArray();
             for (InterviewMessage msg : entry.getValue()) {

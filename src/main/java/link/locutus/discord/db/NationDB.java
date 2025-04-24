@@ -361,7 +361,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     private List<Integer> getActiveAlliancesToUpdate(int amount, Rank requiredRank, AlliancePermission... requiredPerms) {
         if (amount <= 0) return new ArrayList<>();
 
-        Set<Integer> allianceIds = new HashSet<>();
+        Set<Integer> allianceIds = new IntOpenHashSet();
         List<Map.Entry<Integer, Long>> allianceIdActiveMs = new ArrayList<>();
         synchronized (nationsByAlliance) {
             for (Map<Integer, DBNation> entry : nationsByAlliance.values()) {
@@ -390,7 +390,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public Set<Integer> updateActiveAlliances(long activeSince, Rank requiredRank, Consumer<Event> eventConsumer) {
-        Set<Integer> activeAlliances = new HashSet<>();
+        Set<Integer> activeAlliances = new IntOpenHashSet();
         synchronized (nationsByAlliance) {
             for (Map<Integer, DBNation> entry : nationsByAlliance.values()) {
                 for (DBNation nation : entry.values()) {
@@ -438,7 +438,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     private long lastUpdatedAlliances = System.currentTimeMillis();
 
     public void updateAlliances(Consumer<AlliancesQueryRequest> filter, Consumer<Event> eventConsumer) {
-        Set<Integer> toDelete = filter == null ? getAlliances().stream().map(DBAlliance::getId).collect(Collectors.toSet()) : new HashSet<>();
+        Set<Integer> toDelete = filter == null ? getAlliances().stream().map(DBAlliance::getId).collect(Collectors.toSet()) : new IntOpenHashSet();
         List<Alliance> alliances;
         PoliticsAndWarV3 api = Locutus.imp().getApiPool();
         long now = System.currentTimeMillis();
@@ -486,7 +486,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         ids = new ArrayList<>(ids);
         Collections.sort(ids);
 
-        Set<Integer> toDelete = new HashSet<>();
+        Set<Integer> toDelete = new IntOpenHashSet();
         for (int i = 0; i < ids.size(); i += 500) {
             int end = Math.min(i + 500, ids.size());
             List<Integer> toFetch = ids.subList(i, end);
@@ -645,7 +645,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                     }
                 }
 
-                Set<Integer> positionsToRemove = new HashSet<>();
+                Set<Integer> positionsToRemove = new IntOpenHashSet();
                 synchronized (positionsByAllianceId) {
                     Map<Integer, DBAlliancePosition> existingByAA = positionsByAllianceId.get(alliance.getId());
                     if (existingByAA != null) {
@@ -951,7 +951,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         List<Map.Entry<Integer, Long>> nationIdActive = new ArrayList<>();
 
         long turn = TimeUtil.getTurn();
-        Set<Integer> visited = new HashSet<>();
+        Set<Integer> visited = new IntOpenHashSet();
         while (!dirtyNations.isEmpty() && nationIdActive.size() < amt) {
             try {
                 synchronized (dirtyNations) {
@@ -999,7 +999,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
         int pad = 500 - (ids.size() % 500);
         if (pad != 500 && allowPadding) {
-            ids.addAll(getNewNationIds(pad, new HashSet<>(ids)));
+            ids.addAll(getNewNationIds(pad, new IntOpenHashSet(ids)));
         }
         Collections.sort(ids);
 
@@ -1030,9 +1030,9 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     private Set<Integer> updateNationsById(List<Integer> ids, Consumer<Event> eventConsumer) {
-        if (ids.isEmpty()) return new HashSet<>();
+        if (ids.isEmpty()) return new IntOpenHashSet();
 
-        List<Integer> idsFinal = new ArrayList<>(ids);
+        List<Integer> idsFinal = new IntArrayList(ids);
         Collections.sort(idsFinal);
         Set<Integer> fetched;
         if (idsFinal.size() > 500) {
@@ -1049,7 +1049,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             return fetched;
         }
 
-        Set<Integer> deleted = new HashSet<>();
+        Set<Integer> deleted = new IntOpenHashSet();
         for (int id : idsFinal) {
             if (!fetched.contains(id)) deleted.add(id); // getNation(id) == null
         }
@@ -1267,7 +1267,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         if (bulk) {
             if (estimatedCitiesToFetch < 490) { // Slightly below 500 to avoid off by 1 errors with api
                 int numToFetch = 490 - idList.size();
-                List<Integer> mostActiveNations = getMostActiveNationIdsLimitCities(numToFetch, new HashSet<>(idList));
+                List<Integer> mostActiveNations = getMostActiveNationIdsLimitCities(numToFetch, new IntOpenHashSet(idList));
                 idList.addAll(mostActiveNations);
             }
         }
@@ -1367,7 +1367,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
     public void updateNewCities(Consumer<Event> eventConsumer) {
         PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
-        List<Integer> newIds = getNewCityIds(500, new HashSet<>());
+        List<Integer> newIds = getNewCityIds(500, Collections.emptySet());
         Collections.sort(newIds);
         List<City> cities = v3.fetchCitiesWithInfo(false, r -> r.setId(newIds), true);
         updateCities(cities, eventConsumer);
@@ -1375,8 +1375,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
     public void updateNewAndOutdatedCities(int amtNew, Consumer<Event> eventConsumer) {
         PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
-        List<Integer> newIds = getNewCityIds(amtNew, new IntOpenHashSet());
-        List<Integer> outdatedIds = getMostOutdatedCities(amtNew, new IntOpenHashSet());
+        List<Integer> newIds = getNewCityIds(amtNew, Collections.emptySet());
+        List<Integer> outdatedIds = getMostOutdatedCities(amtNew, Collections.emptySet());
         newIds.addAll(outdatedIds);
         Collections.sort(newIds);
         List<City> cities = v3.fetchCitiesWithInfo(false, r -> r.setId(newIds), true);
@@ -1396,7 +1396,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         List<DBCity> dirtyCities = new ArrayList<>(); // List<nation id, db city>
         AtomicBoolean dirtyFlag = new AtomicBoolean();
 
-        Set<Integer> citiesToDelete = new HashSet<>();
+        Set<Integer> citiesToDelete = new IntOpenHashSet();
 
         List<Event> events = null;
         for (Map.Entry<Integer, Map<Integer, City>> nationEntry : completeCitiesByNation.entrySet()) {
@@ -1880,7 +1880,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                     if (entry.getValue().getVm_turns() <= 0) expected.add(entry.getValue().getNation_id());
                 }
             }
-            Set<Integer> dirtyNationCities = new HashSet<>();
+            Set<Integer> dirtyNationCities = new IntOpenHashSet();
             for (SNationContainer nation : nations) {
                 DBNation existing = getNationById(nation.getNationid());
                 if (existing == null) {
@@ -1994,12 +1994,12 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public Set<Integer> updateNewNationsById(Consumer<Event> eventConsumer) {
-        List<Integer> newIds = getNewNationIds(500, new HashSet<>());
+        List<Integer> newIds = getNewNationIds(500, Collections.emptySet());
         return updateNationsById(newIds, eventConsumer);
     }
 
     public Set<Integer> updateNewNationsByDate(long minDate, Consumer<Event> eventConsumer) {
-        Set<Integer> expected = new HashSet<>();
+        Set<Integer> expected = new IntOpenHashSet();
         synchronized (nationsById) {
             for (DBNation nation : nationsById.values()) {
                 if (nation.getDate() > minDate) {
@@ -2024,7 +2024,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 }
             }
         }
-        Set<Integer> deleted = new HashSet<>();
+        Set<Integer> deleted = new IntOpenHashSet();
         Set<Integer> fetched = updateNations(f -> f.setVmode(false), eventConsumer, eventConsumer != null);
         for (int id : currentNations) {
             if (!fetched.contains(id)) deleted.add(id);
@@ -2055,7 +2055,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         synchronized (nationsById) {
             currentNations = new HashSet<>(nationsById.keySet());
         }
-        Set<Integer> deleted = new HashSet<>();
+        Set<Integer> deleted = new IntOpenHashSet();
         Set<Integer> fetched;
         long now = System.currentTimeMillis();
         long diff = now - lastUpdatedNations;
@@ -2168,7 +2168,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
     public Set<Integer> updateNations(Collection<Nation> nations, Consumer<Event> eventConsumer, long timestamp) {
         Map<DBNation, DBNation> nationChanges = new LinkedHashMap<>();
-        Set<Integer> nationsIdsFetched = new HashSet<>();
+        Set<Integer> nationsIdsFetched = new IntOpenHashSet();
         Set<DBNation> nationsFetched = new HashSet<>();
         for (Nation nation : nations) {
             if (nation.getId() != null) {
@@ -3038,7 +3038,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public Set<Integer> getDescriptionIds() {
-        Set<Integer> ids = new HashSet<>();
+        Set<Integer> ids = new IntOpenHashSet();
         String query = "SELECT id FROM NATION_DESCRIPTIONS";
         try (Statement stmt = getConnection().createStatement()) {
             ResultSet rs = stmt.executeQuery(query);
@@ -5030,9 +5030,10 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public void deleteNations(Set<Integer> ids, Consumer<Event> eventConsumer) {
-        Set<Integer> citiesToDelete = new HashSet<>();
-        Set<Integer> deleteInDb = new HashSet<>();
-        for (int id : new HashSet<>(ids)) {
+        Set<Integer> citiesToDelete = new IntOpenHashSet();
+        Iterator<Integer> iter = ids.iterator();
+        while (iter.hasNext()) {
+            int id = iter.next();
             DBNation nation;
             synchronized (nationsById) {
                 nation = nationsById.get(id);
@@ -5040,7 +5041,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             if (nation != null) {
                 if (nation.getDate() + TimeUnit.MINUTES.toMillis(30) > System.currentTimeMillis()) {
                     // don't delete new nations
-                    ids.remove(id);
+                    iter.remove();
                     continue;
                 }
                 synchronized (citiesByNation) {
@@ -5060,7 +5061,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 }
                 if (eventConsumer != null) eventConsumer.accept(new NationDeleteEvent(nation));
             } else {
-                ids.remove(id);
+                iter.remove();
             }
         }
         if (ids.isEmpty()) return;

@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
@@ -208,7 +209,7 @@ public class TaxRecordCategorizer2 {
             expenseRequirements.add(tx -> tx.note != null && (tx.note.contains("#expire") || tx.note.contains("#decay")));
         }
 
-        this.alliances = new HashSet<>();
+        this.alliances = new IntOpenHashSet();
         alliances.addAll(aaIds);
         alliances.addAll(db.getCoalition(Coalition.OFFSHORE));
 

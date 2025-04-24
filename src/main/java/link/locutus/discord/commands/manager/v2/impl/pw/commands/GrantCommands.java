@@ -1,6 +1,10 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
@@ -100,7 +104,7 @@ public class GrantCommands {
                     int currentCity = receiver.getCities();
                     int numBuy = getNumBuy.apply(receiver);
                     if (numBuy <= 0) {
-                        return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.CITY.withValue().toString()).addMessage("Nation already has " + amount + " cities");
+                        return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new Object2DoubleOpenHashMap<>(), DepositType.CITY.withValue().toString()).addMessage("Nation already has " + amount + " cities");
                     }
                     DepositType.DepositTypeInfo note = DepositType.CITY.withAmount(currentCity + numBuy);
                     double cost = PW.City.cityCost(currentCity, currentCity + numBuy, manifest_destiny != null ? manifest_destiny : receiver.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY,
@@ -175,7 +179,7 @@ public class GrantCommands {
         return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
             (receiver, grant) -> {
                 if (receiver.hasProject(project)) {
-                    return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.PROJECT.withValue().toString()).addMessage("Nation already has project: " + project.name());
+                    return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new Object2DoubleOpenHashMap<>(), DepositType.PROJECT.withValue().toString()).addMessage("Nation already has project: " + project.name());
                 }
                 boolean ta = technological_advancement != null ? technological_advancement : receiver.getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT;
                 boolean gsa = gov_support_agency != null ? gov_support_agency : receiver.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY);
@@ -254,7 +258,7 @@ public class GrantCommands {
                             domestic_affairs != null ? domestic_affairs : false);
                 }
                 if (cost <= 0) {
-                    return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.INFRA.withValue().toString()).addMessage( "Nation already has infra level: " + infra_level);
+                    return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new Object2DoubleOpenHashMap<>(), DepositType.INFRA.withValue().toString()).addMessage( "Nation already has infra level: " + infra_level);
                 }
                 if (single_new_city) {
                     grant.setInstructions("Go to your NEW city from <" + Settings.PNW_URL() + "/cities/> and enter `@" + infra_level + "` infra. Use the `@` symbol to buy UP TO an amount");
@@ -320,7 +324,7 @@ public class GrantCommands {
                             gov_support_agency != null ? gov_support_agency : false,
                             domestic_affairs != null ? domestic_affairs : false);
                     if (cost <= 0) {
-                        return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.LAND.withValue().toString()).addMessage( "Nation already has " + to_land + " land");
+                        return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new Object2DoubleOpenHashMap<>(), DepositType.LAND.withValue().toString()).addMessage( "Nation already has " + to_land + " land");
                     }
                     if (single_new_city) {
                         grant.setInstructions("Go to your NEW city from <" + Settings.PNW_URL() + "/cities/> and enter `@" + to_land + "` land. Use the `@` symbol to buy UP TO an amount");
@@ -374,7 +378,7 @@ public class GrantCommands {
         }
         return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
             (receiver, grant) -> {
-                Map<MilitaryUnit, Long> unitsToGrant = new HashMap<>();
+                Map<MilitaryUnit, Long> unitsToGrant = new Object2LongOpenHashMap<>();
                 units.forEach((unit, amount) -> {
                     long scaledAmount = scale_per_city ? amount * receiver.getCities() : amount;
                     long current = receiver.getUnits(unit);
@@ -384,7 +388,7 @@ public class GrantCommands {
                     }
                 });
                 if (unitsToGrant.isEmpty()) {
-                    return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.WARCHEST.withValue().toString()).addMessage( "Nation already has the units");
+                    return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new Object2DoubleOpenHashMap<>(), DepositType.WARCHEST.withValue().toString()).addMessage( "Nation already has the units");
                 }
                 ResourceType.ResourcesBuilder cost = ResourceType.builder();
                 unitsToGrant.forEach((unit, amount) -> {
@@ -441,7 +445,7 @@ public class GrantCommands {
         return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
             (receiver, grant) -> {
                 int cities = receiver.getCities();
-                Map<MilitaryUnit, Integer> unitsToGrant = new HashMap<>();
+                Map<MilitaryUnit, Integer> unitsToGrant = new Object2IntOpenHashMap<>();
                 for (Building building : Buildings.MILITARY_BUILDINGS) {
                     MilitaryBuilding militaryBuilding = (MilitaryBuilding) building;
                     MilitaryUnit unit = militaryBuilding.getMilitaryUnit();
@@ -455,7 +459,7 @@ public class GrantCommands {
                     if (numUnits > 0) unitsToGrant.put(unit, numUnits);
                 }
                 if (unitsToGrant.isEmpty()) {
-                    return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.WARCHEST.withValue().toString()).addMessage("Nation already has the units");
+                    return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new Object2DoubleOpenHashMap<>(), DepositType.WARCHEST.withValue().toString()).addMessage("Nation already has the units");
                 }
                 ResourceType.ResourcesBuilder cost = ResourceType.builder();
                 unitsToGrant.forEach((unit, amount) -> cost.add(unit.getCost(amount, receiver::getResearch)));
@@ -532,7 +536,7 @@ public class GrantCommands {
                         cost.add(PW.multiply(unit.getConsumption(), amount * maxUnits));
                     });
                     if (cost.isEmpty()) {
-                        return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.WARCHEST.withValue().toString()).addMessage( "No attacks specified");
+                        return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new Object2DoubleOpenHashMap<>(), DepositType.WARCHEST.withValue().toString()).addMessage( "No attacks specified");
                     }
                     double[] costArr = cost.build();;
                     if (bonus_percent != null && bonus_percent != 0) {
@@ -614,7 +618,7 @@ public class GrantCommands {
                     try {
                         grantTo.canBuild(receiver.getContinent(), receiver::hasProject, true);
                     } catch (IllegalArgumentException e) {
-                        return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.BUILD.withValue().toString()).addMessage( e.getMessage());
+                        return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new Object2DoubleOpenHashMap<>(), DepositType.BUILD.withValue().toString()).addMessage( e.getMessage());
                     }
                     boolean grantLand = build.getLand() != null && (grant_land != null ? grant_land : false);
                     boolean grantInfra = (grant_infra != null ? grant_infra : false);
@@ -648,13 +652,13 @@ public class GrantCommands {
                             grantFrom.put(entry.getKey(), city);
                         }
                         if (!hasDiffBuildings) {
-                            return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.BUILD.withValue().toString()).addMessage( "Nation already has the build");
+                            return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new Object2DoubleOpenHashMap<>(), DepositType.BUILD.withValue().toString()).addMessage( "Nation already has the build");
                         }
                         grant.setInstructions(grantTo.instructions(grantFrom, ResourceType.getBuffer(), city_ids == null, true));
                         citiesGranted = grantFrom.size();
                     }
                     if (ResourceType.isZero(cost)) {
-                        return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), DepositType.BUILD.withValue().toString()).addMessage( "No resources are needed to import this build");
+                        return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new Object2DoubleOpenHashMap<>(), DepositType.BUILD.withValue().toString()).addMessage( "No resources are needed to import this build");
                     }
                     if (bonus_percent != null && bonus_percent != 0) {
                         double factor = 1 + bonus_percent * 0.01;
@@ -750,7 +754,7 @@ public class GrantCommands {
         int researchBits = Research.toBits(research);
         return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
                 (receiver, grant) -> {
-                    Map<Research, Integer> base = research_from_zero ? new HashMap<>() : receiver.getResearchLevels();
+                    Map<Research, Integer> base = research_from_zero ? new Object2IntOpenHashMap<>() : receiver.getResearchLevels();
                     Map<ResourceType, Double> cost = Research.cost(base, research, receiver.getResearchCostFactor());
                     grant.setCost(f -> ResourceType.resourcesToArray(cost)).setType(DepositType.RESEARCH.withAmount(researchBits));
                     return null;
@@ -1913,7 +1917,7 @@ public class GrantCommands {
 
         OffshoreInstance offshore = db.getOffshore();
 
-        Map<Long, AccessType> accessType = new HashMap<>();
+        Map<Long, AccessType> accessType = new Long2ObjectOpenHashMap<>();
         for (Long id : Roles.MEMBER.getAllowedAccounts(selfMember.getUser(), db)) {
             accessType.put(id, AccessType.ECON);
         }
@@ -3272,6 +3276,7 @@ public class GrantCommands {
         double allNationLand = 0;
         double allNationCity = 0;
         double[] allNationProjectCost = ResourceType.getBuffer();
+        double[] allNationResearchCost = ResourceType.getBuffer();
 
         for (DBNation nation : receivers) {
             int citiesPurchased = 0;
@@ -3362,7 +3367,7 @@ public class GrantCommands {
             if (research != null) {
                 boolean md = nation.hasProject(Projects.MILITARY_DOCTRINE) || force_projects.contains(Projects.MILITARY_DOCTRINE);
                 double researchReduction = Research.costFactor(md);
-                Map<Research, Integer> start = research_from_zero ? new HashMap<>() : nation.getResearchLevels();
+                Map<Research, Integer> start = research_from_zero ? new Object2IntOpenHashMap<>() : nation.getResearchLevels();
                 researchCost = Research.cost(start, research, researchReduction);
             }
 
@@ -3379,9 +3384,9 @@ public class GrantCommands {
             headers.set(10, StringMan.join(projectsBought, ","));
             headers.set(11, ResourceType.toString(projectCost));
             headers.set(12, MathMan.format(ResourceType.convertedTotal(projectCost)));
-            headers.set(13, ResourceType.toString(projectCost));
-            headers.set(14, MathMan.format(ResourceType.convertedTotal(projectCost)));
-            double[] total = projectCost.clone();
+            headers.set(13, ResourceType.toString(researchCost));
+            headers.set(14, MathMan.format(ResourceType.convertedTotal(researchCost)));
+            double[] total = ResourceType.add(projectCost.clone(), ResourceType.resourcesToArray(researchCost));
             total[0] += cityCost + infraCost + landCost;
             headers.set(15, ResourceType.toString(total));
             headers.set(16, MathMan.format(ResourceType.convertedTotal(total)));
@@ -3390,6 +3395,7 @@ public class GrantCommands {
 
             ResourceType.add(allNationCost, total);
             ResourceType.add(allNationProjectCost, projectCost);
+            ResourceType.add(allNationResearchCost, ResourceType.resourcesToArray(researchCost));
             allNationInfra += infraCost;
             allNationLand += landCost;
             allNationCity += cityCost;
@@ -3402,6 +3408,7 @@ public class GrantCommands {
         body.append("Nations: `").append(receivers.size()).append("` in `").append(numAlliances).append("` alliances\n");
         body.append("Total: `~$").append(MathMan.format(totalConverted)).append("`\n").append("```\n" + ResourceType.toString(allNationCost) + "\n```\n");
         body.append("Projects: `~$").append(MathMan.format(ResourceType.convertedTotal(allNationProjectCost))).append("`\n");
+        body.append("Research: `~$").append(MathMan.format(ResourceType.convertedTotal(allNationResearchCost))).append("`\n");
         body.append("Infra: `~$").append(MathMan.format(allNationInfra)).append("`\n");
         body.append("Land: `~$").append(MathMan.format(allNationLand)).append("`\n");
         body.append("Cities: `~$").append(MathMan.format(allNationCity)).append("`\n");

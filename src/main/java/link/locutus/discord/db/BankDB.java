@@ -4,6 +4,7 @@ import com.politicsandwar.graphql.model.*;
 import com.politicsandwar.graphql.model.SortOrder;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -573,7 +574,7 @@ public class BankDB extends DBMainV3 {
         }
         GroupField groupBy = TRANSACTIONS_2.SENDER_ID;
         Result<Record> rs = query(TRANSACTIONS_2, condition, null, null, groupBy);
-        Set<Integer> set = new HashSet<>();
+        Set<Integer> set = new IntOpenHashSet();
         for (Record r : rs) {
             Transaction2 tx = Transaction2.fromTX2Table((Transactions_2Record) r);
             if (tx.sender_type == 1) {

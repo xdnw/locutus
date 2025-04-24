@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.bank;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.EscrowMode;
@@ -224,7 +226,7 @@ public class GrantCmd extends Command {
             ));
             sheet.setHeader(header);
 
-            Map<ResourceType, Double> total = new HashMap<>();
+            Map<ResourceType, Double> total = new Object2DoubleOpenHashMap<>();
             for (DBNation nation : nations) {
                 ArrayList<Object> row = new ArrayList<>();
                 row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
@@ -334,7 +336,7 @@ public class GrantCmd extends Command {
             }
         }
 
-        Map<ResourceType, Double> resources = new HashMap<>();
+        Map<ResourceType, Double> resources = new Object2DoubleOpenHashMap<>();
 
         if (arg.equalsIgnoreCase("city")) {
             if (me.getCityTurns() > 0 && me.getCities() >= 10 && !force) throw new IllegalArgumentException("You still have a city timer");
@@ -388,7 +390,7 @@ public class GrantCmd extends Command {
                     from = me.getCityMap(true);
                     citiesAmt = -1;
                 } else if (amt == 1) {
-                    from = new HashMap<>();
+                    from = new Int2ObjectOpenHashMap<>();
                     JavaCity newCity = new JavaCity();
                     if (noInfra) newCity.setInfra(city.getInfra());
                     if (noLand) newCity.setLand(city.getLand());

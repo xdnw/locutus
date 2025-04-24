@@ -1,5 +1,6 @@
 package link.locutus.discord.db;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.entities.DBComment;
 import link.locutus.discord.db.entities.DBTopic;
@@ -341,7 +342,7 @@ public class ForumDB extends DBMain {
     }
 
     public Set<Integer> getCommentIds() {
-        Set<Integer> comments = new HashSet<>();
+        Set<Integer> comments = new IntOpenHashSet();
         try (PreparedStatement stmt = prepareQuery("select `comment_id` FROM FORUM_POSTS")) {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {

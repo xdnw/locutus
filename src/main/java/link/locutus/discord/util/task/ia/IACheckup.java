@@ -608,7 +608,7 @@ public class IACheckup {
                 DBNation me = nation;
                 if (me.getMeta(NationMeta.INTERVIEW_OPTIMALBUILD) != null) return null;
                 double maxInfra = 0;
-                Set<Integer> infraLevels = new HashSet<>();
+                Set<Integer> infraLevels = new IntOpenHashSet();
 
                 boolean oddInfraAmounts = false;
                 boolean inefficientAmount = false;
@@ -776,8 +776,6 @@ public class IACheckup {
         if (nation.isBeige()) return null;
         if (nation.getCities() < 10) return null;
 
-        Set<Integer> lessThan5 = new HashSet<>();
-        Set<Integer> lessThan4 = new HashSet<>();
         double avgHangars = 0;
         for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
             int hangars = entry.getValue().getBuilding(Buildings.HANGAR);
@@ -883,7 +881,7 @@ public class IACheckup {
     }
 
     public static Map.Entry<Object, String> checkProductionBonus(DBNation nation, Map<Integer, JavaCity> cities) {
-        Set<Integer> violationCityIds = new HashSet<>();
+        Set<Integer> violationCityIds = new IntOpenHashSet();
         for (Map.Entry<Integer, JavaCity> cityEntry : cities.entrySet()) {
             int id = cityEntry.getKey();
             JavaCity city = cityEntry.getValue();
@@ -1215,7 +1213,7 @@ public class IACheckup {
         if (nation.getTanks() > max) {
             message = "You have " + nation.getTanks() + " tanks.";
         } else {
-            Set<Integer> hasFactories = new HashSet<>();
+            Set<Integer> hasFactories = new IntOpenHashSet();
             for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
                 if (entry.getValue().getBuilding(Buildings.FACTORY) > 0) {
                     hasFactories.add(entry.getKey());
@@ -1346,8 +1344,8 @@ public class IACheckup {
     }
 
     public Map.Entry<Object, String> checkPlaneBuy(DBNation nation, Map<Integer, JavaCity> cities) {
-        Set<Integer> citiesMissingHangars = new HashSet<>();
-        Set<Integer> citiesHavingHangars = new HashSet<>();
+        Set<Integer> citiesMissingHangars = new IntOpenHashSet();
+        Set<Integer> citiesHavingHangars = new IntOpenHashSet();
         int numHangars = 0;
         for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
             JavaCity city = entry.getValue();
@@ -1398,7 +1396,7 @@ public class IACheckup {
 
     public Map.Entry<Object, String> checkSoldierBuy(DBNation nation, Map<Integer, JavaCity> cities) {
         int numBarracks = 0;
-        Set<Integer> citiesMissingBarracks = new HashSet<>();
+        Set<Integer> citiesMissingBarracks = new IntOpenHashSet();
         for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
             JavaCity city = entry.getValue();
             int amt = city.getRequiredInfra() > city.getInfra() ? 4 : 5;
@@ -1438,7 +1436,7 @@ public class IACheckup {
     }
 
     public static Map.Entry<Object, String> checkOverpowered(Map<Integer, JavaCity> cities) {
-        Set<Integer> violationCityIds = new HashSet<>();
+        Set<Integer> violationCityIds = new IntOpenHashSet();
         for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
             JavaCity city = entry.getValue();
             int minPower = 2000;
@@ -1459,7 +1457,7 @@ public class IACheckup {
     public static Map.Entry<Object, String> checkExcessService(DBNation nation, Map<Integer, JavaCity> cities, ServiceBuilding building, GuildDB db) {
         if (db != null && !db.getCoalition("enemies").isEmpty()) return null;
 
-        Set<Integer> violationCityIds = new HashSet<>();
+        Set<Integer> violationCityIds = new IntOpenHashSet();
         for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
             JavaCity city = entry.getValue();
             int amt = city.getBuilding(building);
@@ -1483,8 +1481,8 @@ public class IACheckup {
     }
 
     public static Map.Entry<Object, String> checkUnpowered(DBNation nation, Map<Integer, JavaCity> cities) {
-        Set<Integer> unpoweredInfra = new HashSet<>();
-        Set<Integer> unpoweredRss = new HashSet<>();
+        Set<Integer> unpoweredInfra = new IntOpenHashSet();
+        Set<Integer> unpoweredRss = new IntOpenHashSet();
         for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
             JavaCity city = entry.getValue();
             JavaCity.Metrics metrics = city.getCachedMetrics();
@@ -1519,8 +1517,8 @@ public class IACheckup {
     }
 
     public static Map.Entry<Object, String> checkNuclearPower(Map<Integer, JavaCity> cities) {
-        Set<Integer> unpowered = new HashSet<>();
-        Set<Integer> nonNuclear = new HashSet<>();
+        Set<Integer> unpowered = new IntOpenHashSet();
+        Set<Integer> nonNuclear = new IntOpenHashSet();
         for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
             JavaCity city = entry.getValue();
             if (city.getInfra() > city.getPoweredInfra()) {

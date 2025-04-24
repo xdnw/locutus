@@ -3,6 +3,7 @@ package link.locutus.discord.util.update;
 import com.google.common.eventbus.Subscribe;
 import com.politicsandwar.graphql.model.BBGame;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -63,7 +64,7 @@ public class LootEstimateTracker {
     public void update() {
         long cutoff = System.currentTimeMillis() - queueBufferMs;
         Map<Integer, LootEstimate> toSave = new HashMap<>();
-        Set<Integer> toDelete = new HashSet<>();
+        Set<Integer> toDelete = new IntOpenHashSet();
 
         synchronized (nationLootMap) {
             // remove deleted nations

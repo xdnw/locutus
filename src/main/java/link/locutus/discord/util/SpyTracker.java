@@ -372,7 +372,7 @@ public class SpyTracker {
                         }
                     }
 
-                    Set<Integer> enemies = new HashSet<>();
+                    Set<Integer> enemies = new IntOpenHashSet();
                     for (DBWar war : defender.getActiveWars()) {
                         enemies.add(war.getAttacker_id());
                         enemies.add(war.getDefender_id());

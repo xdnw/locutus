@@ -1,6 +1,7 @@
 package link.locutus.discord.util.offshore;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.EscrowMode;
@@ -169,7 +170,7 @@ public class Grant {
     }
 
     public static boolean hasGrantedCity(DBNation nation, Collection<Transaction2> transactions, int city) {
-        Set<Long> costs = new HashSet<>();
+        Set<Long> costs = new LongOpenHashSet();
         for (boolean md : new boolean[]{true, false}) {
             for (boolean cp : new boolean[]{true, false}) {
                 if (cp && !nation.hasProject(Projects.URBAN_PLANNING)) continue;

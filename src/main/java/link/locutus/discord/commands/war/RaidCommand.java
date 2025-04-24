@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.war;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -92,7 +93,7 @@ public class RaidCommand extends Command {
 
         String aa = null;
 
-        Set<Integer> ignoreAlliances = new HashSet<>();
+        Set<Integer> ignoreAlliances = new IntOpenHashSet();
         ignoreAlliances.add(Settings.INSTANCE.ALLIANCE_ID());
         boolean includeAlliances = false;
 

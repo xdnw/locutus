@@ -1,6 +1,7 @@
 package link.locutus.discord.pnw;
 
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -131,7 +132,7 @@ public class AllianceList {
     }
 
     public AllianceList subList(Collection<DBNation> nations) {
-        Set<Integer> ids = new HashSet<>();
+        Set<Integer> ids = new IntOpenHashSet();
         for (DBNation nation : nations) {
             if (!this.ids.contains(nation.getAlliance_id())) {
                 throw new IllegalArgumentException("Nation " + nation.getNation() + " is not in the alliance: " + StringMan.getString(this.ids));

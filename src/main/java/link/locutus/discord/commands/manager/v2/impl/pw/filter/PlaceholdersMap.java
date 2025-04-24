@@ -2688,8 +2688,8 @@ public class PlaceholdersMap {
 
                 Map<Integer, Set<Integer>> treatyIds = new HashMap<>();
                 for (Treaty treaty : sheet) {
-                    treatyIds.computeIfAbsent(treaty.getFromId(), k -> new HashSet<>()).add(treaty.getToId());
-                    treatyIds.computeIfAbsent(treaty.getToId(), k -> new HashSet<>()).add(treaty.getFromId());
+                    treatyIds.computeIfAbsent(treaty.getFromId(), k -> new IntOpenHashSet()).add(treaty.getToId());
+                    treatyIds.computeIfAbsent(treaty.getToId(), k -> new IntOpenHashSet()).add(treaty.getFromId());
                 }
                 return f -> treatyIds.getOrDefault(f.getFromId(), Collections.emptySet()).contains(f.getToId());
             }

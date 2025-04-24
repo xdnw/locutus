@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.rankings;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -67,7 +68,7 @@ public class NetProfitPerWar extends Command {
                 profit = false;
             } else if (arg.equalsIgnoreCase("*")) {
                 id = "Nation";
-                AAs = new HashSet<>();
+                AAs = new IntOpenHashSet();
             } else {
                 id = arg;
                 AAs = DiscordUtil.parseAllianceIds(guild, arg);

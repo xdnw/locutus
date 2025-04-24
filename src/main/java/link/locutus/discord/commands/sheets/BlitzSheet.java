@@ -1,5 +1,10 @@
 package link.locutus.discord.commands.sheets;
 
+import com.google.api.client.util.Lists;
+import com.google.api.services.sheets.v4.model.CellData;
+import com.google.api.services.sheets.v4.model.RowData;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -12,27 +17,18 @@ import link.locutus.discord.db.entities.Activity;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SheetUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import com.google.api.client.util.Lists;
-import com.google.api.services.sheets.v4.model.CellData;
-import com.google.api.services.sheets.v4.model.RowData;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 
@@ -118,7 +114,7 @@ public class BlitzSheet extends Command {
         double attActivity = args.size() >= 7 ? Double.parseDouble(args.get(6)) : 0.5;
         double defActivity = args.size() >= 8 ? Double.parseDouble(args.get(7)) : 0.1;
 
-        Set<Long> guilds = new HashSet<>();
+        Set<Long> guilds = new LongOpenHashSet();
 
         if (args.size() == 9) {
             for (String guildIdStr : args.get(8).split(",")) {

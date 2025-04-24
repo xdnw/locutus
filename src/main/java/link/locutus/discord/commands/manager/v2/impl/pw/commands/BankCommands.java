@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2DoubleLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -823,7 +824,7 @@ public class BankCommands {
         for (DBAlliance from : alliances) {
             if (from.getAlliance_id() == to.getAlliance_id()) continue;
             Map<ResourceType, Double> resources = sendAmount != null ? sendAmount : from.getStockpile(true);
-            Map<ResourceType, Double> stockpile = sendAmount != null ? from.getStockpile(true) : new HashMap<>(resources);
+            Map<ResourceType, Double> stockpile = sendAmount != null ? from.getStockpile(true) : new Object2DoubleOpenHashMap<>(resources);
             Iterator<Map.Entry<ResourceType, Double>> iterator = resources.entrySet().iterator();
             while (iterator.hasNext()) {
                 Map.Entry<ResourceType, Double> sendAmt = iterator.next();
@@ -1423,7 +1424,7 @@ public class BankCommands {
                 }
                 if (!status.isSuccess()) {
                     iter.remove();
-                    allStatuses.add(new TransferResult(status, nation, new HashMap<>(), bank_note.toString()).addMessage(status.getMessage() + debug));
+                    allStatuses.add(new TransferResult(status, nation, new Object2DoubleOpenHashMap<>(), bank_note.toString()).addMessage(status.getMessage() + debug));
                 }
             }
             int removed = originalSize - nations.size();
@@ -3345,7 +3346,7 @@ public class BankCommands {
             depositsAccount = me;
         }
 
-        Map<ResourceType, Double> totalSent = new HashMap<>();
+        Map<ResourceType, Double> totalSent = new Object2DoubleOpenHashMap<>();
 
         Map<NationOrAlliance, String> notes = sheet.getNotes();
         StringBuilder output = new StringBuilder();
@@ -3692,7 +3693,7 @@ public class BankCommands {
         for (int allianceId : allianceIds) {
             taxes.addAll(Locutus.imp().getBankDB().getTaxesByAA(allianceId));
         }
-        Map<Integer, double[]> totalByNation = new HashMap<>();
+        Map<Integer, double[]> totalByNation = new Int2ObjectOpenHashMap<>();
 
         int[] baseArr = baseTaxRate == null ? null : baseTaxRate.toArray();
         TaxRate aaBase = db.getOrNull(GuildKey.TAX_BASE);

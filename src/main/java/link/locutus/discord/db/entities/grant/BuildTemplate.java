@@ -1,6 +1,7 @@
 package link.locutus.discord.db.entities.grant;
 
 import com.google.gson.reflect.TypeToken;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -462,7 +463,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                 case PROJECT, LAND -> projectOrLandDate = Math.max(projectOrLandDate, record.date);
             }
         }
-        Set<Integer> citiesToGrant = new HashSet<>();
+        Set<Integer> citiesToGrant = new IntOpenHashSet();
         long cutoff = onlyNewCities ? TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119) : 0;
         for (Map.Entry<Integer, Long> entry : createDate.entrySet()) {
             long date = entry.getValue();

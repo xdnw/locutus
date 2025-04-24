@@ -1726,7 +1726,7 @@ public class WarDB extends DBMainV2 {
             }
         });
 
-        Set<Integer> attAA = new HashSet<>(Collections.singleton(war.getAttacker_aa()));
+        Set<Integer> attAA = new IntOpenHashSet(Collections.singleton(war.getAttacker_aa()));
         for (Map.Entry<Integer, Treaty> entry : Locutus.imp().getNationDB().getTreaties(war.getAttacker_aa()).entrySet()) {
             switch (entry.getValue().getType()) {
                 case EXTENSION:
@@ -1739,7 +1739,7 @@ public class WarDB extends DBMainV2 {
             }
         }
 
-        Set<Integer> defAA = new HashSet<>(Collections.singleton(war.getDefender_aa()));
+        Set<Integer> defAA = new IntOpenHashSet(Collections.singleton(war.getDefender_aa()));
         for (Map.Entry<Integer, Treaty> entry : Locutus.imp().getNationDB().getTreaties(war.getDefender_aa()).entrySet()) {
             switch (entry.getValue().getType()) {
                 case EXTENSION:
@@ -1752,8 +1752,8 @@ public class WarDB extends DBMainV2 {
             }
         }
 
-        Set<Integer> counters = new HashSet<>();
-        Set<Integer> isCounter = new HashSet<>();
+        Set<Integer> counters = new IntOpenHashSet();
+        Set<Integer> isCounter = new IntOpenHashSet();
 
         Set<Integer> nationIds = new HashSet<>(Arrays.asList(war.getAttacker_id(), war.getDefender_id()));
         Collection<DBWar> possibleCounters = getWarsForNationOrAlliance(nationIds::contains, null,
@@ -2117,7 +2117,7 @@ public class WarDB extends DBMainV2 {
             warIdsToUpdate.add(i);
         }
 
-        Set<Integer> activeWarsToFetch = new HashSet<>();
+        Set<Integer> activeWarsToFetch = new IntOpenHashSet();
 
         for (int i = 0; i < mostActiveWars.size(); i++) {
             int warId = mostActiveWars.get(i).getWarId();
@@ -2301,7 +2301,7 @@ public class WarDB extends DBMainV2 {
     }
 
     public Map<Integer, List<DBWar>> getActiveWarsByAttacker(Set<Integer> attackers, Set<Integer> defenders, WarStatus... statuses) {
-        Set<Integer> all = new HashSet<>();
+        Set<Integer> all = new IntOpenHashSet();
 
         Map<Integer, List<DBWar>> map = new Int2ObjectOpenHashMap<>();
         activeWars.getActiveWars(f -> all.contains(f), new Predicate<DBWar>() {

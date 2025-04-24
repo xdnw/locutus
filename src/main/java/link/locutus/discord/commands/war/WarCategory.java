@@ -790,7 +790,7 @@ public class WarCategory {
             }
         }
 
-        Set<Integer> duplicateChannels = new HashSet<>();
+        Set<Integer> duplicateChannels = new IntOpenHashSet();
 
         for (Category category : getGuild().getCategories()) {
             String catName = category.getName().toLowerCase();

@@ -1,5 +1,6 @@
 package link.locutus.discord.apiv1.enums;
 
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -542,7 +543,7 @@ public enum AttackType {
 
     public Map<MilitaryUnit, Integer> getLosses(int a, int b, int c) {
         if (a == 0 && b == 0 && c == 0) return Collections.emptyMap();
-        Map<MilitaryUnit, Integer> map = new HashMap<>(2);
+        Map<MilitaryUnit, Integer> map = new Object2IntOpenHashMap<>(2);
         if (a != 0) {
             map.put(units[0], a);
         }

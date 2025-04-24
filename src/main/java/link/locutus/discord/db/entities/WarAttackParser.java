@@ -92,7 +92,7 @@ public class WarAttackParser {
             Set<Integer> aaIdss1 = DiscordUtil.parseAllianceIds(guild, args.get(0));
             Set<Integer> aaIdss2 = DiscordUtil.parseAllianceIds(guild, args.get(1));
             if (aaIdss1 != null && aaIdss2 != null && !aaIdss1.isEmpty() && !aaIdss2.isEmpty()) {
-                HashSet<Integer> alliances = new HashSet<>();
+                Set<Integer> alliances = new IntOpenHashSet();
                 alliances.addAll(aaIdss1);
                 alliances.addAll(aaIdss2);
                 Set<DBWar> wars = Locutus.imp().getWarDb().getWars(alliances, start - TimeUnit.DAYS.toMillis(6), end);
@@ -113,7 +113,7 @@ public class WarAttackParser {
             } else {
                 Set<DBNation> alliances1 = DiscordUtil.parseNations(guild, author, me, args.get(0), false, true);
                 Set<DBNation> alliances2 = DiscordUtil.parseNations(guild, author, me, args.get(1), false, true);
-                Set<Integer> allIds = new HashSet<>();
+                Set<Integer> allIds = new IntOpenHashSet();
 
                 for (DBNation nation : alliances1) allIds.add(nation.getNation_id());
                 for (DBNation nation : alliances2) allIds.add(nation.getNation_id());

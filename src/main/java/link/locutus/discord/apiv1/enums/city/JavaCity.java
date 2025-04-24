@@ -1,5 +1,7 @@
 package link.locutus.discord.apiv1.enums.city;
 
+import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.City;
 import link.locutus.discord.apiv1.enums.city.building.*;
@@ -319,14 +321,14 @@ public class JavaCity implements ICity {
     }
 
     public String instructions(int cityId, JavaCity from, double[] total) {
-        HashMap<Integer, JavaCity> map = new HashMap<>();
+        Map<Integer, JavaCity> map = new Int2ObjectOpenHashMap<>();
         map.put(cityId, from);
         return instructions(map, total, false, false);
     }
 
     public String instructions(Map<Integer, JavaCity> fromMap, double[] total, boolean isBulk, boolean dontSellInfra) {
-        Map<Integer, Double> landPurchases = new HashMap<>();
-        Map<Integer, Double> infraPurchases = new HashMap<>();
+        Map<Integer, Double> landPurchases = new Int2DoubleOpenHashMap();
+        Map<Integer, Double> infraPurchases = new Int2DoubleOpenHashMap();
 
         for (Map.Entry<Integer, JavaCity> entry : fromMap.entrySet()) {
             JavaCity from = entry.getValue();

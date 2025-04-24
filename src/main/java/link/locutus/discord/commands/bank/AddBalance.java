@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.bank;
 
 import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
@@ -112,7 +113,7 @@ public class AddBalance extends Command {
                     builder.add(DBAlliance.getOrCreate(alliance), transfer, note);
                 }
             } else {
-                Map<ResourceType, Double> transfer = new HashMap<>();
+                Map<ResourceType, Double> transfer = new Object2DoubleOpenHashMap<>();
                 if ((args.size() == 2 || args.size() == 3) && args.get(1).equalsIgnoreCase("*")) {
                     Set<Long> tracked = null;
                     if (args.size() == 3) {
@@ -126,7 +127,7 @@ public class AddBalance extends Command {
                     }
 
                     double[] total = nation.getNetDeposits(guildDb, tracked, true, true, 0L, 0L, false);
-                    transfer = ResourceType.subResourcesToA(new HashMap<>(), ResourceType.resourcesToMap(total));
+                    transfer = ResourceType.subResourcesToA(new Object2DoubleOpenHashMap<>(), ResourceType.resourcesToMap(total));
                 } else if (args.size() == 3) {
                     ResourceType resource = ResourceType.parse(args.get(1).toUpperCase());
                     Double amount = MathMan.parseDouble(args.get(2));

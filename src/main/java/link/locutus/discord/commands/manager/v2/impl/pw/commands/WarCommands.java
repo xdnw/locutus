@@ -796,7 +796,7 @@ public class WarCommands {
             response.append("------\n");
 
             Map<DBNation, Boolean> enemies = alliesBlockadedBy.get(ally);
-            Set<Integer> outOfRange = new HashSet<>();
+            Set<Integer> outOfRange = new IntOpenHashSet();
             for (Map.Entry<DBNation, Boolean> entry : enemies.entrySet()) {
                 DBNation enemy = entry.getKey();
                 int maxShips = 0;
@@ -896,7 +896,7 @@ public class WarCommands {
             nations.removeIf(f -> !dnr.apply(f));
         }
 
-        Set<Integer> aaIds = new HashSet<>();
+        Set<Integer> aaIds = new IntOpenHashSet();
         for (DBNation nation : nations) {
             if (nation.active_m() < 10000 && nation.getPosition() >= Rank.MEMBER.id) {
                 aaIds.add(nation.getAlliance_id());
@@ -1723,7 +1723,7 @@ public class WarCommands {
 
         boolean findOptimal = true;
 
-        Set<Integer> allies = new HashSet<>();
+        Set<Integer> allies = new IntOpenHashSet();
         Set<Integer> alliesCoalition = db.getCoalition("allies");
         if (alliesCoalition != null) allies.addAll(alliesCoalition);
         if (me.getAlliance_id() != 0) allies.add(me.getAlliance_id());
@@ -3901,7 +3901,7 @@ public class WarCommands {
                                      "e.g. A value of 1.5 means defenders can have 1.5x more aircraft than the attacker")
                              @Switch("a") Double maxAirRatio,
                              @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
-        Set<Long> guilds = new HashSet<>();
+        Set<Long> guilds = new LongOpenHashSet();
 
         BlitzGenerator blitz = new BlitzGenerator(turn, maxOff, sameAAPriority, sameActivityPriority, attActivity, defActivity, guilds, processActiveWars);
         blitz.addNations(attNations.getNations(), true);
@@ -4087,7 +4087,7 @@ public class WarCommands {
         boolean includeODP = true;
 
         Set<Integer> alliesIds = db.getAllies();
-        Set<Integer> protectorates = new HashSet<>();
+        Set<Integer> protectorates = new IntOpenHashSet();
 
         Set<Integer> aaIds = db.getAllianceIds();
         if (!aaIds.isEmpty()) {
@@ -4456,7 +4456,7 @@ public class WarCommands {
                                 "\nOR\n " +
                                 CM.coalition.create.cmd.coalitionName(Coalition.ALLIES.name());
                     }
-                    aaIds = new HashSet<>(Arrays.asList(me.getAlliance_id()));
+                    aaIds = new IntOpenHashSet(Arrays.asList(me.getAlliance_id()));
                     counterWith = new HashSet<>(new AllianceList(aaIds).getNations(true, 0, true));
                 } else {
                     counterWith = new HashSet<>(Locutus.imp().getNationDB().getNationsByAlliance(allies));

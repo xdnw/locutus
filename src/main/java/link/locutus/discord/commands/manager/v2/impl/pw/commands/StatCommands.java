@@ -9,16 +9,10 @@ import de.erichseifert.gral.io.plots.DrawableWriter;
 import de.erichseifert.gral.io.plots.DrawableWriterFactory;
 import de.erichseifert.gral.plots.BarPlot;
 import de.erichseifert.gral.plots.colors.ColorMapper;
-import it.unimi.dsi.fastutil.ints.Int2IntLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.longs.Long2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
@@ -426,7 +420,7 @@ public class StatCommands {
         }
         if (showWarTypes) {
             Set<DBWar> wars = Locutus.imp().getWarDb().getWarsById(cost.getWarIds());
-            Map<WarType, Integer> byType = new HashMap<>();
+            Map<WarType, Integer> byType = new Object2IntOpenHashMap<>();
             for (DBWar war : wars) {
                 byType.put(war.getWarType(), byType.getOrDefault(war.getWarType(), 0) + 1);
             }
@@ -438,7 +432,7 @@ public class StatCommands {
         }
         if (listWarIds) {
             Set<DBWar> wars = Locutus.imp().getWarDb().getWarsById(cost.getWarIds());
-            Map<CoalitionWarStatus, Integer> byStatus = new HashMap<>();
+            Map<CoalitionWarStatus, Integer> byStatus = new Object2IntOpenHashMap<>();
             for (DBWar war : wars) {
                 CoalitionWarStatus status = switch (war.getStatus()) {
                     case ATTACKER_OFFERED_PEACE, DEFENDER_OFFERED_PEACE, ACTIVE -> CoalitionWarStatus.ACTIVE;
@@ -530,7 +524,7 @@ public class StatCommands {
         long turn = TimeUtil.getTurn();
         Set<Integer> aaIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
 
-        Map<DBAlliance, Double> attributeByAlliance = new HashMap<>();
+        Map<DBAlliance, Double> attributeByAlliance = new Object2DoubleOpenHashMap<>();
         for (DBAlliance alliance : alliances) {
             Double value = attribute.apply(alliance);
             if (!Double.isFinite(value)) continue;
@@ -590,7 +584,7 @@ public class StatCommands {
                               @Switch("s") @Timestamp Long snapshotDate,
                               @Arg("Total value instead of average per nation") @Switch("t") boolean total) {
         Set<DBNation> nationsSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db == null ? null : db.getGuild());
-        Map<DBNation, Double> attributeByNation = new HashMap<>();
+        Map<DBNation, Double> attributeByNation = new Object2DoubleOpenHashMap<>();
         for (DBNation nation : nationsSet) {
             Double value = attribute.apply(nation);
             if (!Double.isFinite(value)) continue;
@@ -725,8 +719,8 @@ public class StatCommands {
 
         Function<DBNation, Integer> groupByInt = groupBy == null ? f -> f.getCities() : f -> (int) groupBy.apply(f).doubleValue();
 
-        Map<Integer, List<DBNation>> coalition1ByGroup = new HashMap<>();
-        Map<Integer, List<DBNation>> coalition2ByGroup = new HashMap<>();
+        Map<Integer, List<DBNation>> coalition1ByGroup = new Int2ObjectOpenHashMap<>();
+        Map<Integer, List<DBNation>> coalition2ByGroup = new Int2ObjectOpenHashMap<>();
 
         for (DBNation n : coalition1Nations) coalition1ByGroup.computeIfAbsent(groupByInt.apply(n), f -> new ArrayList<>()).add(n);
         for (DBNation n : coalition2Nations) coalition2ByGroup.computeIfAbsent(groupByInt.apply(n), f -> new ArrayList<>()).add(n);
@@ -1010,7 +1004,7 @@ public class StatCommands {
                                 @Timestamp long date, @Switch("f") boolean uploadFile, @Switch("a") boolean byAlliance) {
         List<BBGame> games = db.getBaseballGames(f -> f.where(QueryCondition.greater("date", date)));
 
-        Map<Integer, Integer> mostGames = new HashMap<>();
+        Map<Integer, Integer> mostGames = new Int2IntOpenHashMap();
         for (BBGame game : games) {
             if (byAlliance) {
                 DBNation home = DBNation.getById(game.getHome_nation_id());
@@ -1033,7 +1027,7 @@ public class StatCommands {
                                          @Arg("Group the rankings by alliance instead of nations") @Switch("a") boolean byAlliance) {
         List<BBGame> games = db.getBaseballGames(f -> f.where(QueryCondition.greater("wager", 0)));
 
-        Map<Integer, Integer> mostGames = new HashMap<>();
+        Map<Integer, Integer> mostGames = new Int2IntOpenHashMap();
         for (BBGame game : games) {
             if (byAlliance) {
 
@@ -1063,7 +1057,7 @@ public class StatCommands {
 
         {
             String title = "# Wagers with " + PW.getName(nationId, false);
-            Map<Integer, Integer> mostWageredGames = new HashMap<>();
+            Map<Integer, Integer> mostWageredGames = new Int2IntOpenHashMap();
             for (BBGame game : games) {
                 mostWageredGames.merge(game.getHome_nation_id(), 1, Integer::sum);
                 mostWageredGames.merge(game.getAway_nation_id(), 1, Integer::sum);
@@ -1073,7 +1067,7 @@ public class StatCommands {
         }
         {
             String title = "$ Wagered with " + PW.getName(nationId, false);
-            Map<Integer, Long> mostWageredWinnings = new HashMap<>();
+            Map<Integer, Long> mostWageredWinnings = new Int2LongOpenHashMap();
             for (BBGame game : games) {
                 int otherId = game.getAway_nation_id() == nationId ? game.getHome_nation_id() : game.getAway_nation_id();
                 mostWageredWinnings.merge(otherId, game.getWager().longValue(), Long::sum);
@@ -1092,7 +1086,7 @@ public class StatCommands {
                                         @Switch("a") boolean byAlliance) {
         List<BBGame> games = db.getBaseballGames(f -> f.where(QueryCondition.greater("date", date)));
 
-        Map<Integer, Long> mostWageredWinnings = new HashMap<>();
+        Map<Integer, Long> mostWageredWinnings = new Int2LongOpenHashMap();
         for (BBGame game : games) {
             int id;
             if (game.getHome_score() > game.getAway_score()) {
@@ -1120,7 +1114,7 @@ public class StatCommands {
                                                  @Switch("a") boolean byAlliance) {
         List<BBGame> games = db.getBaseballGames(f -> f.where(QueryCondition.greater("wager", 0)));
 
-        Map<Integer, Long> mostWageredWinnings = new HashMap<>();
+        Map<Integer, Long> mostWageredWinnings = new Int2LongOpenHashMap();
         for (BBGame game : games) {
             int id;
             if (game.getHome_score() > game.getAway_score()) {
@@ -1163,8 +1157,8 @@ public class StatCommands {
 
         WarParser parser = WarParser.ofAANatobj(null, attackers, null, defenders, time, Long.MAX_VALUE);
 
-        Map<Integer, Integer> victoryByEntity = new HashMap<>();
-        Map<Integer, Integer> expireByEntity = new HashMap<>();
+        Map<Integer, Integer> victoryByEntity = new Int2IntOpenHashMap();
+        Map<Integer, Integer> expireByEntity = new Int2IntOpenHashMap();
 
         for (Map.Entry<Integer, DBWar> entry : parser.getWars().entrySet()) {
             DBWar war = entry.getValue();
@@ -1205,8 +1199,8 @@ public class StatCommands {
         if (nations1.isEmpty() || nations2.isEmpty()) throw new IllegalArgumentException("No nations provided");
         if (nations1.size() < 3 || nations2.size() < 3) return "Coalitions are too small to compare";
 
-        Map<Integer, List<DBNation>> coalition1ByCity = new HashMap<>();
-        Map<Integer, List<DBNation>> coalition2ByCity = new HashMap<>();
+        Map<Integer, List<DBNation>> coalition1ByCity = new Int2ObjectOpenHashMap<>();
+        Map<Integer, List<DBNation>> coalition2ByCity = new Int2ObjectOpenHashMap<>();
 
         for (DBNation n : nations1) coalition1ByCity.computeIfAbsent(n.getCities(), f -> new ArrayList<>()).add(n);
         for (DBNation n : nations2) coalition2ByCity.computeIfAbsent(n.getCities(), f -> new ArrayList<>()).add(n);
@@ -1452,7 +1446,7 @@ public class StatCommands {
                                        @Arg("Use the sum of each nation's attributes instead of the average")
                                        @Switch("t") boolean useTotal, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants) throws IOException, GeneralSecurityException, IllegalAccessException, InvocationTargetException {
         nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
-        Map<Integer, Set<DBNation>> natByAA = new HashMap<>();
+        Map<Integer, Set<DBNation>> natByAA = new Int2ObjectOpenHashMap<>();
         for (DBNation nation : nations) {
             natByAA.computeIfAbsent(nation.getAlliance_id(), f -> new ObjectLinkedOpenHashSet<>()).add(nation);
         }
@@ -1583,7 +1577,7 @@ public class StatCommands {
         if ("*".equals(command.getString("defenders"))) defenders = null;
         WarParser parser1 = WarParser.of(attackers, defenders, time, Long.MAX_VALUE);
 
-        Map<Integer, DBWar> allWars = new HashMap<>(parser1.getWars());
+        Map<Integer, DBWar> allWars = new Int2ObjectOpenHashMap<>(parser1.getWars());
 
         Map<DBNation, List<DBWar>> warsByNation = new RankBuilder<>(allWars.values()).group((BiConsumer<DBWar, GroupedRankBuilder<DBNation, DBWar>>) (war, group) -> {
             DBNation attacker = war.getNation(true);
@@ -1669,7 +1663,7 @@ public class StatCommands {
             int numWars = activeCost.getNumWars();
             header.add(numWars);
 
-            Map<ResourceType, Double> total = new HashMap<>();
+            Map<ResourceType, Double> total = new Object2DoubleOpenHashMap<>();
 
             if (!excludeConsumption) {
                 total = ResourceType.add(total, activeCost.getConsumption(true));
@@ -1889,7 +1883,7 @@ public class StatCommands {
 
         sheet.setHeader(header);
 
-        Map<Integer, DBWar> allWars = new HashMap<>(parser1.getWars());
+        Map<Integer, DBWar> allWars = new Int2ObjectOpenHashMap<>(parser1.getWars());
 
         Map<Integer, List<DBWar>> warsByNation = new RankBuilder<>(allWars.values()).group((BiConsumer<DBWar, GroupedRankBuilder<Integer, DBWar>>) (war, group) -> {
             if (parser1.getIsPrimary().apply(war)) {
@@ -1936,7 +1930,7 @@ public class StatCommands {
             {
                 List<DBWar> wars = entry.getValue();
                 List<AbstractCursor> attacks = attacksByNation.remove(nationId);
-                Map<Integer, List<AbstractCursor>> attacksByWar = attacks == null ? new HashMap<>() : new RankBuilder<>(attacks).group(f -> f.getWar_id()).get();
+                Map<Integer, List<AbstractCursor>> attacksByWar = attacks == null ? new Int2ObjectOpenHashMap<>() : new RankBuilder<>(attacks).group(f -> f.getWar_id()).get();
 
                 for (DBWar war : wars) {
                     List<AbstractCursor> warAttacks = attacksByWar.getOrDefault(war.warId, Collections.emptyList());
@@ -2025,7 +2019,7 @@ public class StatCommands {
     }
 
     private double total(boolean consumption, boolean infra, boolean loot, boolean units, boolean normalize, DBNation nation, AttackCost cost, boolean isPrimary) {
-        Map<ResourceType, Double> total = new HashMap<>();
+        Map<ResourceType, Double> total = new Object2DoubleOpenHashMap<>();
 
         if (consumption) {
             total = ResourceType.add(total, cost.getConsumption(isPrimary));
@@ -2079,11 +2073,11 @@ public class StatCommands {
             tmp.removeIf(f -> f.getVm_turns() > 0);
             byAA = Locutus.imp().getNationDB().getNationsByAlliance(tmp, removeUntaxable, removeInactive, !includeApplicants, true);
         }
-        Map<Integer, Color> sphereColors = new HashMap<>();
-        Map<Integer, Double> sphereScore = new HashMap<>();
-        Map<Integer, Map<Integer, NationList>> sphereAllianceMembers = new HashMap<>();
+        Map<Integer, Color> sphereColors = new Int2ObjectOpenHashMap<>();
+        Map<Integer, Double> sphereScore = new Int2DoubleOpenHashMap();
+        Map<Integer, Map<Integer, NationList>> sphereAllianceMembers = new Int2ObjectOpenHashMap<>();
 
-        Map<Integer, DBAlliance> aaCache = new HashMap<>();
+        Map<Integer, DBAlliance> aaCache = new Int2ObjectOpenHashMap<>();
 
         int topX = top_n_alliances;
         for (Map.Entry<Integer, List<DBNation>> entry : byAA.entrySet()) {

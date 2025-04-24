@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.IPoliticsAndWar;
@@ -350,7 +351,7 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
     }
 
     public Map<String, Integer> getApiKeyUsageStats() {
-        Map<String, Integer> result = new HashMap<>();
+        Map<String, Integer> result = new Object2IntOpenHashMap<>();
         for (ApiKeyPool.ApiKey key : pool.getKeys()) {
             result.put(key.getKey().toLowerCase(Locale.ROOT), key.getUsage());
         }
