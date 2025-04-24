@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.info.optimal;
 
 import it.unimi.dsi.fastutil.PriorityQueue;
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayFIFOQueue;
 import it.unimi.dsi.fastutil.objects.ObjectHeapPriorityQueue;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -64,7 +65,7 @@ public class CityBranch implements BiConsumer<CityNode, PriorityQueue<CityNode>>
 
     public CityBranch(CityNode.CachedCity cached) {
         this.origin = cached;
-        Map<ResourceBuilding, Double> rssBuildings = new HashMap<>();
+        Map<ResourceBuilding, Double> rssBuildings = new Object2DoubleOpenHashMap<>();
         for (Building building : Buildings.values()) {
             if (!building.canBuild(origin.getContinent())) continue;
             if (!(building instanceof ResourceBuilding rssBuild)) continue;

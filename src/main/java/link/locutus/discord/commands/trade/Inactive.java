@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.trade;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -64,7 +65,7 @@ public class Inactive extends Command {
         Set<Integer> allianceIds = DiscordUtil.parseAllianceIds(guild, args.get(0));
         if (allianceIds == null) {
             if (args.get(0).equalsIgnoreCase("*")) {
-                allianceIds = new HashSet<>();
+                allianceIds = new IntOpenHashSet();
             } else {
                 return "Invalid aa or coaltion: `" + args.get(0) + "`";
             }

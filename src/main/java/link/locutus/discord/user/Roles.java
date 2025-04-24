@@ -1,5 +1,6 @@
 package link.locutus.discord.user;
 
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
@@ -305,13 +306,13 @@ public enum Roles {
             }
         }
         if (hasAdmin) {
-            Set<Long> allowed = new HashSet<>();
+            Set<Long> allowed = new LongOpenHashSet();
             allowed.add(0L);
             allowed.addAll(db.getAllianceIds().stream().map(Integer::longValue).collect(Collectors.toSet()));
             return allowed;
         } else {
             Set<Integer> aaIds = db.getAllianceIds();
-            Set<Long> allowed = new HashSet<>();
+            Set<Long> allowed = new LongOpenHashSet();
             if (aaIds.isEmpty()) {
                 if (has(member)) {
                     allowed.add(db.getIdLong());

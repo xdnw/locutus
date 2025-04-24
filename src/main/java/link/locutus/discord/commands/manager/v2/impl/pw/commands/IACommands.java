@@ -4,8 +4,12 @@ import com.politicsandwar.graphql.model.AlliancePosition;
 import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationResponseProjection;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
+import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -603,7 +607,7 @@ public class IACommands {
         boolean hasPerm = db != null && author != null && Roles.INTERNAL_AFFAIRS_STAFF.has(author, db.getGuild());
         Set<Integer> aaIdsProvided = nations.getAllianceIds();
         AllianceList subList = hasPerm ? db.getAllianceList().subList(aaIdsProvided) : new AllianceList();
-        Map<Integer, Double> timezones = new HashMap<>();
+        Map<Integer, Double> timezones = new Int2DoubleOpenHashMap();
 
         for (DBAlliance alliance : subList.getAlliances()) {
             PoliticsAndWarV3 api = alliance.getApi(AlliancePermission.SEE_RESET_TIMERS);
@@ -1038,7 +1042,7 @@ public class IACommands {
         Map<DBNation, List<DBNation>> mentorMenteeMap = new HashMap<>();
         Map<DBNation, DBNation> menteeMentorMap = new HashMap<>();
         Map<DBNation, IACategory.SortedCategory> categoryMap = new HashMap<>();
-        Map<DBNation, Boolean> passedMap = new HashMap<>();
+        Map<DBNation, Boolean> passedMap = new Object2BooleanOpenHashMap<>();
 
         for (Map.Entry<DBNation, IAChannel> entry : iaCat.getChannelMap().entrySet()) {
             DBNation mentee = entry.getKey();
@@ -1265,7 +1269,7 @@ public class IACommands {
             DBNation gov = DBNation.getById((int) transaction.sender_id);
 
             if (gov != null) {
-                Map<DBNation, Integer> byIncentive = incentivesByGov.computeIfAbsent(incentive, f -> new HashMap<>());
+                Map<DBNation, Integer> byIncentive = incentivesByGov.computeIfAbsent(incentive, f -> new Object2IntOpenHashMap<>());
                 byIncentive.put(gov, byIncentive.getOrDefault(gov, 0) + 1);
             }
         }
@@ -1451,7 +1455,7 @@ public class IACommands {
         sheet.setHeader(header);
 
         Map<DBNation, List<Object>> rows = new HashMap<>();
-        Map<DBNation, Double> loot = new HashMap<>();
+        Map<DBNation, Double> loot = new Object2DoubleOpenHashMap<>();
 
         for (DBNation nation : attackers) {
             List<Object> row = new ArrayList<>();

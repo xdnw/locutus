@@ -119,8 +119,6 @@ public class SpySheet extends Command {
             defenders.removeIf(n -> attScoreRange.apply(n.getScore() * 0.75, n.getScore() / 0.75) == 0);
         }
 
-        Set<Integer> updateSpies = new HashSet<>();
-
         if (flags.contains('f')) {
             for (DBNation defender : defenders) {
                 if (defender.getSpies() <= 3 && flags.contains('c')) continue;

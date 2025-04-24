@@ -238,7 +238,7 @@ public class AddBalanceBuilder {
                 int vm = 0;
                 int inactive = 0;
                 int applicants = 0;
-                Set<Integer> aaIds = new HashSet<>();
+                Set<Integer> aaIds = new IntOpenHashSet();
                 for (DBNation nation : getFundsToSendNations().keySet()) {
                     aaIds.add(nation.getAlliance_id());
                     if (nation.isGray()) gray++;

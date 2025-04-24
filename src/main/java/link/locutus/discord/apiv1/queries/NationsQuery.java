@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.domains.Nations;
 import link.locutus.discord.apiv1.enums.QueryURL;
 
 import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class NationsQuery extends Query {
@@ -26,7 +27,7 @@ public class NationsQuery extends Query {
     String url = UrlBuilder.build(QueryURL.NATIONS_URL, args);
     if (vm != null || maxScore != null || minScore != null || allianceId != null) {
       url = url.concat("&");
-      HashMap<String, String> params = new HashMap<>();
+      Map<String, String> params = new HashMap<>();
       if (vm != null)
         params.put("vm", vm.toString());
       if (maxScore != null)

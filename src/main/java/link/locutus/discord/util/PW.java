@@ -8,6 +8,7 @@ import com.google.gson.JsonParser;
 import com.politicsandwar.graphql.model.GameInfo;
 import it.unimi.dsi.fastutil.bytes.ByteOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
@@ -516,7 +517,7 @@ public final class PW {
     }
     
     public static Set<Long> expandCoalition(Collection<Long> coalition) {
-        Set<Long> extra = new HashSet<>(coalition);
+        Set<Long> extra = new LongOpenHashSet(coalition);
         for (Long id : coalition) {
             GuildDB other;
             if (id > Integer.MAX_VALUE) {

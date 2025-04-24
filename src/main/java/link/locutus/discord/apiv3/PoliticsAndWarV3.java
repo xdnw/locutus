@@ -13,6 +13,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.common.base.CaseFormat;
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
@@ -1665,7 +1666,7 @@ public class PoliticsAndWarV3 {
     }
 
     public Map<Integer, double[]> getStockPile(Consumer<NationsQueryRequest> query) {
-        Map<Integer, double[]> result = new HashMap<>();
+        Map<Integer, double[]> result = new Int2ObjectOpenHashMap<>();
         for (Nation rec : fetchNations(true, query::accept, new Consumer<NationResponseProjection>() {
             @Override
             public void accept(NationResponseProjection projection) {
@@ -1911,7 +1912,7 @@ public class PoliticsAndWarV3 {
     }
 
     public Map<Integer, TaxBracket> fetchTaxBrackets(int allianceId, boolean priority) {
-        Map<Integer, TaxBracket> taxBracketMap = new HashMap<>();
+        Map<Integer, TaxBracket> taxBracketMap = new Int2ObjectOpenHashMap<>();
         List<Alliance> alliances = fetchAlliances(priority, f -> f.setId(List.of(allianceId)), new Consumer<AllianceResponseProjection>() {
             @Override
             public void accept(AllianceResponseProjection proj) {

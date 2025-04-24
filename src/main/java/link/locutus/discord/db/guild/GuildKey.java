@@ -430,7 +430,7 @@ public class GuildKey {
             existing.addAll(apiKeys);
             existing.removeIf(String::isBlank);
             // List the missing keys
-            Set<Integer> aaIds = new HashSet<>(db.getAllianceIds());
+            Set<Integer> aaIds = new IntOpenHashSet(db.getAllianceIds());
             for (String key : existing) {
                 Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key, false);
                 if (nationId != null) {

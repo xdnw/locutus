@@ -2,6 +2,7 @@ package link.locutus.discord.util.update;
 
 import com.google.common.eventbus.Subscribe;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -603,7 +604,7 @@ public class WarUpdateProcessor {
         DBWar war = root.getWar();
         if (war == null) return null;
 
-        Set<Integer> enemies = db != null ? db.getCoalition("enemies") : new HashSet<>();
+        Set<Integer> enemies = db != null ? db.getCoalition("enemies") : new IntOpenHashSet();
 
         DBNation attacker = Locutus.imp().getNationDB().getNationById(root.getAttacker_id());
         DBNation defender = Locutus.imp().getNationDB().getNationById(root.getDefender_id());
@@ -1070,7 +1071,7 @@ public class WarUpdateProcessor {
 
             int planes = 0;
             int cities = 0;
-            Set<Integer> numAttacking = new HashSet<>();
+            Set<Integer> numAttacking = new IntOpenHashSet();
 
             outer:
             for (DBWar war : active) {
@@ -1140,13 +1141,13 @@ public class WarUpdateProcessor {
             if (lastWarring && lastWarRatio > 0.2) warring = true;
             Map<Integer, Integer> currentNotable = notableMap.getOrDefault(alliance, lastNotable);
             // For keys that are in currentNotable, but not in lastNotable
-            Set<Integer> newNotable = new HashSet<>(currentNotable.keySet());
+            Set<Integer> newNotable = new IntOpenHashSet(currentNotable.keySet());
             newNotable.removeAll(lastNotable.keySet());
 
-            Set<Integer> removedNotable = new HashSet<>(lastNotable.keySet());
+            Set<Integer> removedNotable = new IntOpenHashSet(lastNotable.keySet());
             removedNotable.removeAll(currentNotable.keySet());
 
-            Set<Integer> sameNotable = new HashSet<>(currentNotable.keySet());
+            Set<Integer> sameNotable = new IntOpenHashSet(currentNotable.keySet());
             sameNotable.retainAll(lastNotable.keySet());
 
             alliance.setMeta(AllianceMeta.LAST_BLITZ_PCT, currentRatio);

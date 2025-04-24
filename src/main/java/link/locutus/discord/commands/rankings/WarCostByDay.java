@@ -1,7 +1,6 @@
 package link.locutus.discord.commands.rankings;
 
-import de.erichseifert.gral.data.DataTable;
-import de.erichseifert.gral.data.Row;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -16,11 +15,9 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeDualNumericTable;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
-import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
 import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.WarParser;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
@@ -36,7 +33,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 import static link.locutus.discord.commands.rankings.WarCostRankingByDay.processTotal;
 
@@ -134,7 +130,7 @@ public class WarCostByDay extends Command {
             Set<Integer> aaIdss1 = DiscordUtil.parseAllianceIds(guild, args.get(0));
             Set<Integer> aaIdss2 = DiscordUtil.parseAllianceIds(guild, args.get(1));
             if (aaIdss1 != null && aaIdss2 != null && !aaIdss1.isEmpty() && !aaIdss2.isEmpty()) {
-                HashSet<Integer> alliances = new HashSet<>();
+                HashSet<Integer> alliances = new IntOpenHashSet();
                 alliances.addAll(aaIdss1);
                 alliances.addAll(aaIdss2);
                 Set<DBWar> wars = Locutus.imp().getWarDb().getWars(alliances, warCutoff);
@@ -156,7 +152,7 @@ public class WarCostByDay extends Command {
             } else {
                 Set<DBNation> alliances1 = DiscordUtil.parseNations(guild, author, me, args.get(0), false, true);
                 Set<DBNation> alliances2 = DiscordUtil.parseNations(guild, author, me, args.get(1), false, true);
-                Set<Integer> allIds = new HashSet<>();
+                Set<Integer> allIds = new IntOpenHashSet();
 
                 for (DBNation nation : alliances1) allIds.add(nation.getNation_id());
                 for (DBNation nation : alliances2) allIds.add(nation.getNation_id());

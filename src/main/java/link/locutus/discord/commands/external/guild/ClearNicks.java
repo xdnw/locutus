@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.external.guild;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
@@ -22,7 +23,7 @@ import java.util.Set;
 import java.util.concurrent.Future;
 
 public class ClearNicks extends Command {
-    private final Map<Long, String> previous = new HashMap<>();
+    private final Map<Long, String> previous = new Long2ObjectOpenHashMap<>();
 
     public ClearNicks() {
         super(CommandCategory.GUILD_MANAGEMENT);

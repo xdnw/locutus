@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.info;
 
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -81,7 +83,7 @@ public class Revenue extends Command {
             if (cityBuild.getLand() == null) {
                 jc.setLand(cityBuild.getInfraNeeded() * 1.5);
             }
-            HashMap<Integer, JavaCity> map = new HashMap<>();
+            Map<Integer, JavaCity> map = new Int2ObjectOpenHashMap<>();
             map.put(0, jc);
             cities.put(me, map);
             try {
@@ -95,7 +97,7 @@ public class Revenue extends Command {
             JavaCity jc = jcPair.getValue();
             DBNation nation = jcPair.getKey();
 
-            HashMap<Integer, JavaCity> map = new HashMap<>();
+            Map<Integer, JavaCity> map = new Int2ObjectOpenHashMap<>();
             map.put(cityId, jc);
             cities.put(nation, map);
         } else {
@@ -136,7 +138,7 @@ public class Revenue extends Command {
         double[] milUp = new double[ResourceType.values.length];
         long tradeBonus = 0;
 
-        Map<Integer, Integer> treasureByAA = new HashMap<>();
+        Map<Integer, Integer> treasureByAA = new Int2IntOpenHashMap();
         for (Map.Entry<DBNation, Map<Integer, JavaCity>> entry : cities.entrySet()) {
             DBNation nation = entry.getKey();
             if (nation.getAlliance_id() == 0) continue;

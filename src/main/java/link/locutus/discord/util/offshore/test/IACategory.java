@@ -1,5 +1,6 @@
 package link.locutus.discord.util.offshore.test;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -472,7 +473,7 @@ public class IACategory {
 
         List<TextChannel> channels = getAllChannels();
 
-        Set<Integer> duplicates = new HashSet<>();
+        Set<Integer> duplicates = new IntOpenHashSet();
 
         for (TextChannel channel : channels) {
             String name = channel.getName();

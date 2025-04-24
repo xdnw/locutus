@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -88,10 +89,10 @@ public class WarParser {
         if (coal1Alliances == null && coal1Nations == null && coal2Alliances == null && coal2Nations == null) {
             throw new IllegalArgumentException("At least one coalition must be non-null");
         }
-        if (coal1Alliances == null) coal1Alliances = new HashSet<>();
-        if (coal1Nations == null) coal1Nations = new HashSet<>();
-        if (coal2Alliances == null) coal2Alliances = new HashSet<>();
-        if (coal2Nations == null) coal2Nations = new HashSet<>();
+        if (coal1Alliances == null) coal1Alliances = new IntOpenHashSet();
+        if (coal1Nations == null) coal1Nations = new IntOpenHashSet();
+        if (coal2Alliances == null) coal2Alliances = new IntOpenHashSet();
+        if (coal2Nations == null) coal2Nations = new IntOpenHashSet();
         this.coal1Alliances = coal1Alliances;
         this.coal1Nations = coal1Nations;
         this.coal2Alliances = coal2Alliances;

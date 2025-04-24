@@ -10,6 +10,7 @@ import com.google.gson.JsonParseException;
 import com.politicsandwar.graphql.model.Bankrec;
 import it.unimi.dsi.fastutil.io.FastByteArrayInputStream;
 import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.ICity;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -135,7 +136,7 @@ public enum ResourceType {
     }
 
     public static Map<ResourceType, Double> roundResources(Map<ResourceType, Double> resources) {
-        HashMap<ResourceType, Double> copy = new HashMap<>(resources);
+        Map<ResourceType, Double> copy = new Object2DoubleOpenHashMap<>(resources);
         for (Map.Entry<ResourceType, Double> entry : copy.entrySet()) {
             entry.setValue(Math.round(entry.getValue() * 100.0) / 100.0);
         }

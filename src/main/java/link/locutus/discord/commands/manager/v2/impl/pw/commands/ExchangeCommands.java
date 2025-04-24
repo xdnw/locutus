@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
@@ -311,8 +312,8 @@ public class ExchangeCommands {
         for (Map.Entry<ResourceType, Double> entry : resources.entrySet()) {
             if (entry.getKey() == ResourceType.CREDITS) throw new IllegalArgumentException("Can not add credits.");
         }
-        Map<ResourceType, Double> added = new HashMap<>();
-        Map<ResourceType, Double> failed = new HashMap<>();
+        Map<ResourceType, Double> added = new Object2DoubleOpenHashMap<>();
+        Map<ResourceType, Double> failed = new Object2DoubleOpenHashMap<>();
         for (Map.Entry<ResourceType, Double> entry : resources.entrySet()) {
             ResourceType resource = entry.getKey();
             long amount = (long) (entry.getValue() * 100L);

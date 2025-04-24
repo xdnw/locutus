@@ -1,6 +1,7 @@
 package link.locutus.discord.util.offshore.test;
 
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.MathMan;
@@ -72,7 +73,7 @@ public class Keno {
                 String drawn2 = result.substring(result.indexOf("numbers_drawn2 = "));
                 String[] hit = drawn1.split(" = ")[1].split(";")[0].replace("[", "").replace("]", "").split(",");
                 String[] miss = drawn2.split(" = ")[1].split(";")[0].replace("[", "").replace("]", "").split(",");
-                Set<Integer> picks = new HashSet<>();
+                Set<Integer> picks = new IntOpenHashSet();
                 for (String num : hit) {
                     if (num.isEmpty()) continue;
                     int id = Integer.parseInt(num);

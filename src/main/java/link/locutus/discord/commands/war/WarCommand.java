@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.war;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -119,7 +120,7 @@ public class WarCommand extends Command {
                     if (enemies == null || enemies.isEmpty()) {
                         return "No enemies set. Please use `" + Settings.commandPrefix(true) + "setcoalition <alliance> enemies` or specify an enemy alliance/coalition as your second parameter";
                     }
-                    nations = Locutus.imp().getNationDB().getNationsByAlliance(new HashSet<>(enemies));
+                    nations = Locutus.imp().getNationDB().getNationsByAlliance(new IntOpenHashSet(enemies));
                     if (!includeApplicants) {
                         nations.removeIf(n -> n.getPosition() <= 1);
                     }

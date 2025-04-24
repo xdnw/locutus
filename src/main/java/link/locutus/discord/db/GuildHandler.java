@@ -1,5 +1,7 @@
 package link.locutus.discord.db;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -99,8 +101,8 @@ public class GuildHandler {
     private final boolean trackInvites;
     private Map<String, Integer> inviteUses = new ConcurrentHashMap<>();
     private Map<String, Boolean> ignoreInvites = new ConcurrentHashMap<>();
-    private final Set<Long> ignorePermanentInvitesFrom = new HashSet<>();
-    private final Set<Integer> ignoreIncentivesForNations = new HashSet<>();
+    private final Set<Long> ignorePermanentInvitesFrom = new LongOpenHashSet();
+    private final Set<Integer> ignoreIncentivesForNations = new IntOpenHashSet();
 
     public GuildHandler(Guild guild, GuildDB db) {
         this(guild, db, false);
@@ -2032,7 +2034,7 @@ public class GuildHandler {
     }
 
     public Set<Integer> getTrackedWarAlliances(boolean offensive) {
-        Set<Integer> tracked = new HashSet<>();
+        Set<Integer> tracked = new IntOpenHashSet();
         if (db.getOrNull(GuildKey.WAR_ALERT_FOR_OFFSHORES) != Boolean.FALSE) {
             tracked.addAll(db.getCoalition("offshore"));
         }
@@ -2489,8 +2491,8 @@ public class GuildHandler {
         });
     }
 
-    private final Set<Integer> sentMail = new HashSet<>();
-    private static Set<Long> guildsFailedMailSend = new HashSet<>();
+    private final Set<Integer> sentMail = new IntOpenHashSet();
+    private static Set<Long> guildsFailedMailSend = new LongOpenHashSet();
 
     @Subscribe
     public void onNationCreate(NationCreateEvent event) {

@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -23,7 +24,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class FunCommands {
 
 
-    private final Map<Integer, Integer> stolenCities = new HashMap<>();
+    private final Map<Integer, Integer> stolenCities = new Int2IntOpenHashMap();
     private final Map<Integer, Boolean> received = new ConcurrentHashMap<>();
     private String[] lines = null;
 

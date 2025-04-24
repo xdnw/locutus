@@ -6,6 +6,7 @@ import it.unimi.dsi.fastutil.ints.IntArraySet;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -1692,13 +1693,13 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                 if (channel != null) messageChannelIdOrNull = channel.getIdLong();
             }
             Set<Integer> guildAAIds = null;
-            Set<Long> allowedIds = new HashSet<>();
+            Set<Long> allowedIds = new LongOpenHashSet();
             for (Map.Entry<Long, MessageChannel> entry : channels.entrySet()) {
                 if (entry.getValue().getIdLong() == messageChannelIdOrNull) {
                     if (guildAAIds == null) guildAAIds = getAllianceIds();
                     if (entry.getKey() == 0L) {
                         if (guildAAIds.isEmpty()) {
-                            return new HashSet<>(Collections.singleton(getIdLong()));
+                            return new LongOpenHashSet(Collections.singleton(getIdLong()));
                         }
                         for (Integer aaId : guildAAIds) allowedIds.add(aaId.longValue());
                         return allowedIds;
@@ -1819,9 +1820,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         Set<Long> channelAccountIds;
         if (ignoreChannel) {
             if (aaIds.isEmpty()) {
-                channelAccountIds = new HashSet<>(Set.of(getIdLong()));
+                channelAccountIds = new LongOpenHashSet(Set.of(getIdLong()));
             } else {
-                channelAccountIds = new HashSet<>();
+                channelAccountIds = new LongOpenHashSet();
                 for (Integer aaId : aaIds) channelAccountIds.add(aaId.longValue());
             }
         } else {
@@ -1832,7 +1833,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         boolean requireAdmin = false;
         if (channelAccountIds == null || channelAccountIds.isEmpty()) {
             requireAdmin = getOrNull(GuildKey.RESOURCE_REQUEST_CHANNEL) != null;
-            channelAccountIds = new HashSet<>();
+            channelAccountIds = new LongOpenHashSet();
             if (!aaIds.isEmpty()) {
                 for (Integer aaId : aaIds) channelAccountIds.add(aaId.longValue());
             } else {
@@ -2552,13 +2553,13 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
         if (faServer != null && faServer.getIdLong() != getIdLong()) return faServer.getCanRaid(topX, checkTreaties);
         loadCoalitions();
-        Set<Integer> dnr = new HashSet<>(getCoalition(Coalition.ALLIES));
+        Set<Integer> dnr = new IntOpenHashSet(getCoalition(Coalition.ALLIES));
         dnr.addAll(getCoalition("dnr"));
-        Set<Integer> dnr_active = new HashSet<>(getCoalition("dnr_active"));
-        Set<Integer> dnr_member = new HashSet<>(getCoalition("dnr_member"));
-        Set<Integer> can_raid = new HashSet<>(getCoalition(Coalition.CAN_RAID));
+        Set<Integer> dnr_active = new IntOpenHashSet(getCoalition("dnr_active"));
+        Set<Integer> dnr_member = new IntOpenHashSet(getCoalition("dnr_member"));
+        Set<Integer> can_raid = new IntOpenHashSet(getCoalition(Coalition.CAN_RAID));
         can_raid.addAll(getCoalition(Coalition.ENEMIES));
-        Set<Integer> can_raid_inactive = new HashSet<>(getCoalition("can_raid_inactive"));
+        Set<Integer> can_raid_inactive = new IntOpenHashSet(getCoalition("can_raid_inactive"));
         Map<Integer, Long> dnr_timediff_member = new HashMap<>();
         Map<Integer, Long> dnr_timediff_app = new HashMap<>();
 
@@ -2891,7 +2892,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
 
         Map<Member, UnmaskedReason> result = new HashMap<>();
 
-        Set<Integer> allowedAAs = new HashSet<>(getAllianceIds());
+        Set<Integer> allowedAAs = new IntOpenHashSet(getAllianceIds());
         allowedAAs.addAll(getCoalition(OFFSHORE));
 
         for (Roles lcRole : lcRoles) {
@@ -3339,7 +3340,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         loadRoles();
         Map<Long, Long> roleIds = roleToAccountToDiscord.get(lcRole);
         if (roleIds == null) return Collections.emptySet();
-        Set<Integer> result = new HashSet<>();
+        Set<Integer> result = new IntOpenHashSet();
         for (Map.Entry<Long, Long> entry : roleIds.entrySet()) {
             if (entry.getValue() == discordRole.getIdLong()) {
                 result.add(entry.getKey().intValue());

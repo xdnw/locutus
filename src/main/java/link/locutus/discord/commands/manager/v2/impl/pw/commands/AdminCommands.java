@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.Logg;
@@ -871,7 +872,7 @@ public class AdminCommands {
         PageRequestQueue handler = FileUtil.getPageRequestQueue();
         List<PageRequestQueue.PageRequestTask<?>> jQueue = handler.getQueue();
 
-        Map<PagePriority, Integer> pagePriorities = new HashMap<>();
+        Map<PagePriority, Integer> pagePriorities = new Object2IntOpenHashMap<>();
         int unknown = 0;
         int size = 0;
         synchronized (jQueue) {
@@ -2098,7 +2099,7 @@ public class AdminCommands {
         GuildDB db = offshore.getGuildDB();
         Set<Long> coalitions = db.getCoalitionRaw(Coalition.OFFSHORING);
 
-        Map<Long, List<String>> notices = new HashMap<>();
+        Map<Long, List<String>> notices = new Long2ObjectOpenHashMap<>();
         Set<Long> printDeposits = new LongOpenHashSet();
         Set<Long> hasError = new LongOpenHashSet();
 
@@ -2669,7 +2670,7 @@ public class AdminCommands {
                 entry.getValue().removeIf(nation -> nation.getAlliance_id() == 0 || !aaIds.contains(nation.getAlliance_id()));
             }
             if (onlySimilarTime != null) {
-                Map<Integer, Boolean> hasSimilarTime = new HashMap<>();
+                Map<Integer, Boolean> hasSimilarTime = new Object2BooleanOpenHashMap<>();
                 for (DBNation nation : entry.getValue()) {
                     for (DBNation other : entry.getValue()) {
                         if (nation == other) continue;

@@ -4,6 +4,8 @@ import com.google.api.client.util.Lists;
 import com.politicsandwar.graphql.model.BBGame;
 import com.ptsmods.mysqlw.query.QueryCondition;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -205,7 +207,7 @@ public class MultiReport {
 
         uuidByNation.put(nationId, uuidsByTime.keySet());
 
-        Set<Integer> multis = new HashSet<>();
+        Set<Integer> multis = new IntOpenHashSet();
         for (BigInteger uuid : uuidsByTime.keySet()) {
             Set<Integer> currMultis = Locutus.imp().getDiscordDB().getMultis(uuid);
             multis.addAll(currMultis);
@@ -283,7 +285,7 @@ public class MultiReport {
         this.illegalWarsByMulti = new HashMap<>();
         {
             Map<Integer, List<DBWar>> wars = getDefenders(nationId);
-            Set<Integer> sharedWars = new HashSet<>();
+            Set<Integer> sharedWars = new IntOpenHashSet();
 
             for (int otherNationId : multis) {
                 Map<Integer, List<DBWar>> otherWars = getDefenders(otherNationId);
@@ -351,7 +353,7 @@ public class MultiReport {
             }
 
             Map<Long, List<Transaction2>> sharedTransfers = toShared(transfers);
-            Set<Long> sharedKeys = new HashSet<>();
+            Set<Long> sharedKeys = new LongOpenHashSet();
             for (int otherId : multis) {
                 Map<Long, List<Transaction2>> multiTransfers = toShared(trimTransfers(Locutus.imp().getBankDB().getNationTransfers(otherId, 0)));
                 for (Map.Entry<Long, List<Transaction2>> entry : multiTransfers.entrySet()) {

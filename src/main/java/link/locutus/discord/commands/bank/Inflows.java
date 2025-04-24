@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.bank;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
@@ -114,11 +116,11 @@ public class Inflows extends Command {
             }
         }
 
-        Map<Integer, List<Transaction2>> aaInflow = new HashMap<>();
-        Map<Integer, List<Transaction2>> nationInflow = new HashMap<>();
+        Map<Integer, List<Transaction2>> aaInflow = new Int2ObjectOpenHashMap<>();
+        Map<Integer, List<Transaction2>> nationInflow = new Int2ObjectOpenHashMap<>();
 
-        Map<Integer, List<Transaction2>> aaOutflow = new HashMap<>();
-        Map<Integer, List<Transaction2>> nationOutflow = new HashMap<>();
+        Map<Integer, List<Transaction2>> aaOutflow = new Int2ObjectOpenHashMap<>();
+        Map<Integer, List<Transaction2>> nationOutflow = new Int2ObjectOpenHashMap<>();
 
         for (Transaction2 transfer : allTransfers) {
             if (transfer.note != null && transfer.note.contains("'s nation and captured.")) continue;
@@ -173,7 +175,7 @@ public class Inflows extends Command {
 
             StringBuilder message = new StringBuilder();
 
-            Map<ResourceType, Double> totals = new HashMap<>();
+            Map<ResourceType, Double> totals = new Object2DoubleOpenHashMap<>();
             for (Transaction2 transfer : transfers) {
                 double[] rss = transfer.resources.clone();
                 totals = ResourceType.add(totals, ResourceType.resourcesToMap(rss));

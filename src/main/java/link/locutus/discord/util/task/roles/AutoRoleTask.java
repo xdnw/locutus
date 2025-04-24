@@ -1,5 +1,6 @@
 package link.locutus.discord.util.task.roles;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
@@ -127,12 +128,12 @@ public class AutoRoleTask implements IAutoRoleTask {
             if (topAAIds.size() > topX) {
                 topAAIds = topAAIds.subList(0, topX);
             }
-            Set<Integer> topAAIdSet = new HashSet<>(topAAIds);
+            Set<Integer> topAAIdSet = new IntOpenHashSet(topAAIds);
             topAAIdSet.remove(0);
             allowedAAs = topAAIdSet::contains;
         }
         if (setAllianceMask == GuildDB.AutoRoleOption.ALLIES) {
-            Set<Integer> allies = new HashSet<>(db.getAllies(true));
+            Set<Integer> allies = new IntOpenHashSet(db.getAllies(true));
 
             if (allowedAAs == null) allowedAAs = allies::contains;
             else {
@@ -401,7 +402,7 @@ public class AutoRoleTask implements IAutoRoleTask {
 
         Map<Integer, Role> existantAllianceRoles = new HashMap<>(allianceRoles);
 
-        Set<Integer> memberAllianceIds = new HashSet<>();
+        Set<Integer> memberAllianceIds = new IntOpenHashSet();
         int requiredRank = autoRoleRank == null ? Rank.MEMBER.id : autoRoleRank.id;
         for (int i = 0; i < members.size(); i++) {
             Member member = members.get(i);

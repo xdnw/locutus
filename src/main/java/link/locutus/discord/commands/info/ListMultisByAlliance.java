@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.info;
 
 import com.google.api.client.util.Sets;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
@@ -48,7 +49,7 @@ public class ListMultisByAlliance extends Command {
         NationDB nationDB = Locutus.imp().getNationDB();
 
         String[] lines = Objects.requireNonNull(FileUtil.readFile("/debug/nonreferrals.txt")).split("\\r?\\n");
-        Map<Integer, DBNation> referredNations = new HashMap<>(Locutus.imp().getNationDB().getNationsById());
+        Map<Integer, DBNation> referredNations = new Int2ObjectOpenHashMap<>(Locutus.imp().getNationDB().getNationsById());
         Map<String, DBNation> nationsByName = new HashMap<>();
         for (Map.Entry<Integer, DBNation> entry : referredNations.entrySet()) {
             nationsByName.putIfAbsent(entry.getValue().getNation(), entry.getValue());
@@ -66,7 +67,7 @@ public class ListMultisByAlliance extends Command {
         referredNations.entrySet().removeIf(e -> e.getValue().getNation_id() > finalOldest);
 
         Map<BigInteger, Set<Integer>> multis = Locutus.imp().getDiscordDB().getUuidMap();
-        Map<Integer, Set<Integer>> multisByNation = new HashMap<>();
+        Map<Integer, Set<Integer>> multisByNation = new Int2ObjectOpenHashMap<>();
         Set<Integer> verified = Locutus.imp().getDiscordDB().getVerified();
 
         for (Map.Entry<BigInteger, Set<Integer>> entry : multis.entrySet()) {

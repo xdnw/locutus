@@ -1,6 +1,8 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
@@ -201,7 +203,7 @@ public class ReportCommands {
 
         // ignore reports already exists
         List<ReportManager.Report> existing = reportManager.loadReports();
-        Map<Integer, Set<String>> existingMap = new HashMap<>();
+        Map<Integer, Set<String>> existingMap = new Int2ObjectOpenHashMap<>();
         for (ReportManager.Report report : existing) {
             int nationId = report.nationId;
             String msg = report.message;
@@ -339,7 +341,7 @@ public class ReportCommands {
             }
             // set paid to 0
             if (amountPaid == null) {
-                amountPaid = new HashMap<>();
+                amountPaid = new Object2DoubleOpenHashMap<>();
             }
         } else {
             loanerId = overwriteLoan.loanerGuildOrAA;
@@ -425,10 +427,10 @@ public class ReportCommands {
                 dueDate = TimeUtil.getTimeFromTurn(TimeUtil.getTurn()) + TimeUnit.DAYS.toMillis(7);
             }
             if (principal == null) {
-                principal = new HashMap<>();
+                principal = new Object2DoubleOpenHashMap<>();
             }
             if (remaining == null) {
-                remaining = new HashMap<>();
+                remaining = new Object2DoubleOpenHashMap<>();
             }
 
             overwriteLoan = new DBLoan(

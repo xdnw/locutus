@@ -5,6 +5,7 @@ import com.politicsandwar.graphql.model.NationsQueryRequest;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -528,7 +529,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
     }
 
     private void migrateCredentials() {
-        Set<Long> ids = new HashSet<>();
+        Set<Long> ids = new LongOpenHashSet();
         String query = getDb().selectBuilder("credentials").select("discordId").buildQuery();
         query(query, stmt -> {},
                 (ThrowingConsumer<ResultSet>) r -> ids.add(r.getLong(1)));
@@ -677,7 +678,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
     }
 
     public Set<Integer> getVerified() {
-            HashSet<Integer> set = new HashSet<>();
+            HashSet<Integer> set = new IntOpenHashSet<>();
         try (PreparedStatement stmt = prepareQuery("select * FROM VERIFIED")) {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -921,7 +922,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
     }
 
     private List<PNWUser> getUsersRaw() {
-        Set<Integer> nationsToDelete = new HashSet<>();
+        Set<Integer> nationsToDelete = new IntOpenHashSet();
         ArrayList<PNWUser> list = new ArrayList<>();
         try (PreparedStatement stmt = prepareQuery("select * FROM USERS")) {
             try (ResultSet rs = stmt.executeQuery()) {
