@@ -1766,7 +1766,7 @@ public class OffshoreInstance {
 
         INVALID_API_KEY("The API key you provided does not allow whitelisted access."),
 
-        ALLIANCE_ACCESS("Has disabled alliance access to resource information (account page)"),
+        ALLIANCE_ACCESS("Has disabled alliance access to resource information (account page). Or the API key set may be lacking the required scopes"),
 
         APPLICANT("is an applicant"),
 
