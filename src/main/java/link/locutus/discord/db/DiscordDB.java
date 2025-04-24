@@ -678,7 +678,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
     }
 
     public Set<Integer> getVerified() {
-            HashSet<Integer> set = new IntOpenHashSet<>();
+            Set<Integer> set = new IntOpenHashSet();
         try (PreparedStatement stmt = prepareQuery("select * FROM VERIFIED")) {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
