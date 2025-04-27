@@ -1269,8 +1269,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.SEE_SPIES);
         List<Integer> ids = getNations().stream()
                 .filter(f -> f.getVm_turns() == 0 && f.getPositionEnum().id > Rank.APPLICANT.id && fetchNations.test(f))
-                .map(f -> f.getNation_id()).collect(Collectors.toList());
-        ids.sort(Comparator.comparingInt(a -> a));
+                .map(DBNation::getNation_id).sorted(Comparator.comparingInt(a -> a)).collect(Collectors.toList());
         if (ids.isEmpty()) {
             return new HashMap<>();
         }
