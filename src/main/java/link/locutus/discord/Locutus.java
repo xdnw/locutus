@@ -610,19 +610,6 @@ public final class Locutus extends ListenerAdapter {
                 getNationDB().markDirtyIncorrectCities(true, true);
                 runEventsAsync(events -> getNationDB().updateDirtyCities(false, events, maxCities));
             };
-//            updateTasks.add(() -> {
-//                int maxNations = FileUtil.hasRateLimiting(domain) ? PoliticsAndWarV3.NATIONS_PER_PAGE : Integer.MAX_VALUE;
-//                getNationDB().markDirtyIncorrectNations();
-//                runEventsAsync(events -> getNationDB().updateDirtyNations(events, maxNations));
-//            });
-//            updateTasks.add(() -> {
-//                // Every minute if not rate limited, else every 5m
-//                runEventsAsync(events -> getNationDB().updateRecentNations(events));
-//            });
-//            updateTasks.add(() -> {
-//                // Every minute if not rate limited, else every 5m
-//                runEventsAsync(events -> getNationDB().updateNewAndOutdatedCities(500, events));
-//            });
             Runnable updateDirtyNations = () -> {
                 int maxNations = FileUtil.hasRateLimiting(domain) ? PoliticsAndWarV3.NATIONS_PER_PAGE : Integer.MAX_VALUE;
                 getNationDB().markDirtyIncorrectNations();
@@ -640,9 +627,6 @@ public final class Locutus extends ListenerAdapter {
             updateTasks.add(updateDirtyCities);
             updateTasks.add(updateDirtyNations);
             updateTasks.add(updateRecentNations);
-            updateTasks.add(updateNewAndOutdatedCities);
-            updateTasks.add(updateNewAndOutdatedCities);
-            updateTasks.add(updateNewAndOutdatedCities);
             updateTasks.add(updateNewAndOutdatedCities);
 
             AtomicInteger lastTask = new AtomicInteger();

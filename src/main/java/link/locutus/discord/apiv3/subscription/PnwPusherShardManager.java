@@ -18,6 +18,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.SpyTracker;
@@ -118,7 +119,12 @@ public class PnwPusherShardManager {
             root.subscribeBuilder(Locutus.loader().getApiKey(), Nation.class, PnwPusherEvent.CREATE).build(nations -> {
                 long ts = System.currentTimeMillis();
 //                for (Nation nation : nations) nationDB.markNationDirty(nation.getId());
-                Locutus.imp().runEventsAsync(events -> nationDB.updateNations(nations, events, ts));
+                Locutus.imp().runEventsAsync(events -> {
+                    for (Nation nation : nations) {
+                        nation.setGross_national_income(null);
+                    }
+                    nationDB.updateNations(nations, events, ts, "Pusher create");
+                });
             });
             root.subscribeBuilder(Locutus.loader().getApiKey(), Nation.class, PnwPusherEvent.DELETE).build(nations -> {
                 Locutus.imp().runEventsAsync(events -> nationDB.deleteNations(nations.stream().map(Nation::getId).collect(Collectors.toSet()), events));
@@ -126,7 +132,12 @@ public class PnwPusherShardManager {
             root.subscribeBuilder(Locutus.loader().getApiKey(), Nation.class, PnwPusherEvent.UPDATE).build(nations -> {
                 try {
                     spyTracker.updateCasualties(nations);
-                    Locutus.imp().runEventsAsync(f -> Locutus.imp().getNationDB().updateNations(nations, f, -1));
+                    Locutus.imp().runEventsAsync(f -> {
+                        for (Nation nation : nations) {
+                            nation.setGross_national_income(null);
+                        }
+                        Locutus.imp().getNationDB().updateNations(nations, f, -1, "Pusher Update");
+                    });
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }

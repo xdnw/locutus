@@ -1307,6 +1307,7 @@ public abstract class DBNation implements NationOrAlliance {
             dirty = true;
         }
         if (nation.getGross_national_income() != null && Math.round((this.data()._gni() - nation.getGross_national_income()) * 100) != 0) {
+        if (nation.getGross_national_income() != null && (Math.round(this.data()._gni()) != Math.round(nation.getGross_national_income()))) {
             this.setGNI(nation.getGross_national_income());
             if (eventConsumer != null) eventConsumer.accept(new NationChangeGNIEvent(copyOriginal, this));
             dirty = true;
