@@ -273,8 +273,7 @@ public class CounterSheet extends Command {
             row.add(enemy.getAircraft());
             row.add(enemy.getShips());
 
-            for (int i = 0; i < wars.size(); i++) {
-                DBWar war = wars.get(i);
+            for (DBWar war : wars) {
                 String url = war.toUrl();
                 DBNation defender = Locutus.imp().getNationDB().getNationById(war.getDefender_id());
                 String warStr = defender.getNation() + "|" + defender.getAllianceName();

@@ -199,8 +199,7 @@ public class BlitzSheet extends Command {
 
             List<DBNation> myCounters = targets.getOrDefault(defender, Collections.emptyList());
 
-            for (int i = 0; i < myCounters.size(); i++) {
-                DBNation counter = myCounters.get(i);
+            for (DBNation counter : myCounters) {
                 String counterUrl = MarkupUtil.sheetUrl(counter.getNation(), counter.getUrl());
                 row.add(counterUrl);
             }
@@ -359,8 +358,7 @@ public class BlitzSheet extends Command {
     }
 
     public void assignTargets(List<DBNation> attNations, List<DBNation> defNations, Map<Integer, List<DBNation>> counters, Map<Integer, List<DBNation>> targets, Set<Integer> strongTargets, BiFunction<DBNation, DBNation, Boolean> attDefIsAllowed) {
-        for (int i = 0; i < defNations.size(); i++) {
-            DBNation defender = defNations.get(i);
+        for (DBNation defender : defNations) {
             if (defender.isBeige()) continue;
             if (defender.getVm_turns() > 0) continue;
             if (defender.active_m() > 10000) continue;

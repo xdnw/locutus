@@ -673,7 +673,7 @@ public class SpreadSheet {
         }
     }
 
-    public void addRow(String tab, List<? extends Object> list) {
+    public void addRow(String tab, List<?> list) {
         this.getCachedValues(tab).add(formatRow(tab, new ArrayList<>(list)));
     }
 
@@ -706,7 +706,7 @@ public class SpreadSheet {
         return valuesByTab.computeIfAbsent(tab.toLowerCase(Locale.ROOT), k -> new ArrayList<>());
     }
 
-    public void addRow(List<? extends Object> row) {
+    public void addRow(List<?> row) {
         this.getCachedValues(null).add(formatRow(null, row));
     }
 
@@ -714,10 +714,9 @@ public class SpreadSheet {
         this.getCachedValues(null).add(formatRow(null, Arrays.asList(values)));
     }
 
-    private List<Object> formatRow(String tab, List<? extends Object> row) {
+    private List<Object> formatRow(String tab, List<?> row) {
         List<Object> out = new ArrayList<>();
-        for (int i = 0; i < row.size(); i++) {
-            Object value = row.get(i);
+        for (Object value : row) {
             if (value == null) {
                 out.add(null);
             } else {
@@ -1221,8 +1220,7 @@ public class SpreadSheet {
             String name = entry.getKey();
             int i = entry.getValue();
             List<Object> column = new ArrayList<>(values.size());
-            for (int j = 0; j < values.size(); j++) {
-                List<Object> row = values.get(j);
+            for (List<Object> row : values) {
                 if (row.size() <= i) {
                     column.add(null);
                 } else {
@@ -1238,7 +1236,7 @@ public class SpreadSheet {
         setHeader(Arrays.asList(header));
     }
 
-    public void setHeader(List<? extends Object> header) {
+    public void setHeader(List<?> header) {
         this.valuesByTab.clear();
         this.addRow(header);
     }

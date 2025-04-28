@@ -270,9 +270,7 @@ public class Spyops extends Command {
 
         ArrayList<Map.Entry<DBNation, Runnable>> targets = new ArrayList<>();
 
-        for (int i = 0; i < netDamage.size(); i++) {
-            Map.Entry<DBNation, Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>>> entry = netDamage.get(i);
-
+        for (Map.Entry<DBNation, Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>>> entry : netDamage) {
             Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> opinfo = entry.getValue();
             SpyCount.Operation op = opinfo.getKey();
             Map.Entry<Integer, Double> safetyDamage = opinfo.getValue();

@@ -60,7 +60,6 @@
         </div>
     </div>
     </div>
-    </div>
     <br>
 <script>
 var avatars = $unsafe{avatarsJson.toString()};

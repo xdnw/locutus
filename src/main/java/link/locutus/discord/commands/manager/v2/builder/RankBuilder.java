@@ -186,8 +186,8 @@ public class RankBuilder<T> {
         List<IShrink> items = toItems(limit, upload);
         String emoji = "Refresh";
         EmbedShrink embed = new EmbedShrink().title(title);
-        for (int i = 0; i < items.size(); i++) {
-            embed.append(items.get(i)).append("\n");
+        for (IShrink item : items) {
+            embed.append(item).append("\n");
         }
         if (author != null) embed.append("\n" + author.getAsMention());
         IMessageBuilder msg = channel.create().embed(embed);
@@ -207,8 +207,8 @@ public class RankBuilder<T> {
         String emoji = "Refresh";
         EmbedShrink embed = new EmbedShrink().title(title);
         embed.append("```\n");
-        for (int i = 0; i < items.size(); i++) {
-            embed.append(items.get(i)).append("\n");
+        for (IShrink item : items) {
+            embed.append(item).append("\n");
         }
         embed.append("```");
         if (author != null) embed.append("\n" + author.getAsMention());

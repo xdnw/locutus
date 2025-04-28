@@ -2,6 +2,8 @@ package link.locutus.discord.commands.stock;
 
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -10,31 +12,14 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.OffshoreInstance;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Invite;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.PermissionOverride;
-import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-import net.dv8tion.jda.api.entities.User;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -405,6 +390,7 @@ public class Exchange {
         return result;
     }
 
+    @SuppressWarnings("EmptyMethod")
     public void autoRole(Member member) {
         // autoRole shareholders and members
     }

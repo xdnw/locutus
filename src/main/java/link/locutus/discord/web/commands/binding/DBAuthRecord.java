@@ -10,8 +10,6 @@ import link.locutus.discord.web.commands.binding.value_types.WebSession;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -60,8 +58,6 @@ public class DBAuthRecord {
 
     /**
      * Convert this record to a map for JSON serialization
-     * @param includeExtras include names and icons
-     * @return
      */
     public WebSession toMap() {
         WebSession data = new WebSession();

@@ -626,8 +626,7 @@ public class ParametricCallable implements ICommand {
 
             int lastGroup = -1;
             result.append("**Arguments:**\n\n");
-            for (int i = 0; i < params.size(); i++) {
-                ParameterData parameter = params.get(i);
+            for (ParameterData parameter : params) {
                 Arg arg = parameter.getAnnotation(Arg.class);
                 String quotePrefix = "";
                 if (arg != null) {

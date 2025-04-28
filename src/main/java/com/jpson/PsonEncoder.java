@@ -100,8 +100,7 @@ public class PsonEncoder extends PsonWriter {
         }
         int count = list.length;
         writeStartArray(count);
-        for (int i = 0; i < count; ++i)
-            write(list[i]);
+        for (Object o : list) write(o);
     }
 
     protected void writeList(List list) throws IOException {

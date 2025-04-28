@@ -2119,8 +2119,8 @@ public class WarDB extends DBMainV2 {
 
         Set<Integer> activeWarsToFetch = new IntOpenHashSet();
 
-        for (int i = 0; i < mostActiveWars.size(); i++) {
-            int warId = mostActiveWars.get(i).getWarId();
+        for (DBWar mostActiveWar : mostActiveWars) {
+            int warId = mostActiveWar.getWarId();
             warIdsToUpdate.add(warId);
             activeWarsToFetch.add(warId);
             if (warIdsToUpdate.size() >= numToUpdate) break;

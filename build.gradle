@@ -118,7 +118,7 @@ compileJava.options.compilerArgs.addAll('-Xmaxerrs', '1000')
 compileJava.options.compilerArgs.add '-parameters'
 compileTestJava.options.compilerArgs.add '-parameters'
 
-import org.gradle.nativeplatform.platform.internal.Architectures
+
 import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 
 def brotliVersion = "1.15.0"
@@ -250,7 +250,7 @@ dependencies {
 }
 
 configurations {
-    all {
+    configureEach {
         exclude group: 'org.springframework.boot', module: 'spring-boot-starter-logging'
     }
 }
@@ -464,13 +464,13 @@ jooq {
  */
 
 compileJava.dependsOn "graphqlCodegenProductService"
-task graphqlCodegenProductService(type: GraphQLCodegenGradleTask) {
+tasks.register('graphqlCodegenProductService', GraphQLCodegenGradleTask) {
     graphqlSchemas.includePattern = "schema\\.graphqls"
     outputDir = new File("$buildDir/generated")
     modelPackageName = "com.politicsandwar.graphql.model"
     customTypesMapping = [
-            Date: "java.util.Date",
-            DateTime: "java.util.Date",
+            Date        : "java.util.Date",
+            DateTime    : "java.util.Date",
             DateTimeAuto: "java.time.Instant"
     ]
     useObjectMapperForRequestSerialization = [
@@ -498,7 +498,7 @@ task graphqlCodegenProductService(type: GraphQLCodegenGradleTask) {
     }
 }
 
-tasks.withType(JavaCompile) {
+tasks.withType(JavaCompile).configureEach {
     options.incremental = true
 }
 
@@ -548,10 +548,10 @@ shadowJar {
 
 build.dependsOn(shadowJar);
 
-task findDependency {
+tasks.register('findDependency') {
     doLast {
         configurations.compileClasspath.resolvedConfiguration.firstLevelModuleDependencies.each { dependency ->
-             dependency.moduleArtifacts.each { artifact ->
+            dependency.moduleArtifacts.each { artifact ->
                 def id = artifact.moduleVersion.id
                 if (id.name == 'ST4' || true) {
                     println "Group: ${id.group}, Name: ${id.name}, Version: ${id.version}"

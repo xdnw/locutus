@@ -136,7 +136,7 @@ public class SpyTracker {
         checkActive();
     }
 
-    public class SpyActivity {
+    public static class SpyActivity {
         private final int nationId;
         private final MilitaryUnit unit;
         private final int original;

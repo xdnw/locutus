@@ -1548,12 +1548,6 @@ public class ConflictManager {
         });
     }
 
-    // updating
-
-    public void update(AbstractCursor attack) {
-
-    }
-
     public AwsManager getAws() {
         return aws;
     }

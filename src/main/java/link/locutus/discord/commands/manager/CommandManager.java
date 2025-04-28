@@ -483,6 +483,7 @@ public class CommandManager {
         return false;
     }
 
+    @SuppressWarnings("EmptyMethod")
     private void handleSpyOp(Guild guild, User user, IMessageIO channel, String content) {
 
     }

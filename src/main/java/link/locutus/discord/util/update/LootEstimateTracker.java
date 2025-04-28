@@ -8,6 +8,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
@@ -15,12 +16,7 @@ import link.locutus.discord.db.entities.*;
 import link.locutus.discord.event.bank.LootInfoEvent;
 import link.locutus.discord.event.bank.TransactionEvent;
 import link.locutus.discord.event.baseball.BaseballGameEvent;
-import link.locutus.discord.event.city.CityBuildingChangeEvent;
-import link.locutus.discord.event.city.CityCreateEvent;
-import link.locutus.discord.event.city.CityInfraBuyEvent;
-import link.locutus.discord.event.city.CityInfraSellEvent;
-import link.locutus.discord.event.city.CityLandBuyEvent;
-import link.locutus.discord.event.city.CityLandSellEvent;
+import link.locutus.discord.event.city.*;
 import link.locutus.discord.event.game.TurnChangeEvent;
 import link.locutus.discord.event.nation.NationChangeActiveEvent;
 import link.locutus.discord.event.nation.NationChangeUnitEvent;
@@ -32,14 +28,12 @@ import link.locutus.discord.event.war.AttackEvent;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.TriConsumer;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -188,7 +182,7 @@ public class LootEstimateTracker {
         File output = new File("data/lootResolve.txt");
         synchronized (output) {
             try {
-                Files.write(output.toPath(), result.toString().getBytes(StandardCharsets.UTF_8));
+                Files.writeString(output.toPath(), result.toString());
             } catch (IOException e) {
                 e.printStackTrace();
             }

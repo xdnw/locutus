@@ -1,26 +1,20 @@
 package link.locutus.discord.commands.stock;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.DBMain;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrExchange;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.util.scheduler.KeyValue;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class StockDB extends DBMain {
@@ -865,7 +859,7 @@ public class StockDB extends DBMain {
         INVALID_TRANSFER
     }
 
-    public class ExchangeTransfer {
+    public static class ExchangeTransfer {
         public NationOrExchange receiver;
         Map<Exchange, Long> amounts = new LinkedHashMap<>();
     }

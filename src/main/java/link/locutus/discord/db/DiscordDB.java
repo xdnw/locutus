@@ -103,15 +103,9 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
             }
         }
 
-        fixTradeDates();
-
         setupApiKeys();
 
         createDeletionsTables();
-    }
-
-    public void fixTradeDates() {
-
     }
 
     public void addMultiReportLastUpdated(int id, long date) {

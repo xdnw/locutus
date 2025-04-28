@@ -44,11 +44,6 @@ public class TaxBracketSheet extends Command {
     }
 
     @Override
-    public String help() {
-        return super.help();
-    }
-
-    @Override
     public String desc() {
         return """
                 Generate a sheet of member tax brackets.

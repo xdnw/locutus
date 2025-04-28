@@ -188,8 +188,7 @@ public class GPTSearchUtil {
                 int success = 0;
                 List<String> found = new ArrayList<>();
                 int lineIndex = 1;
-                for (int j = 0; j < lines.size(); j++) {
-                    String line = lines.get(j);
+                for (String line : lines) {
                     if (line.length() < 4) continue;
                     int dotIndex = line.indexOf('.');
                     if ((dotIndex != 1 && dotIndex != 2) || !Character.isDigit(line.charAt(0))) {

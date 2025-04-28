@@ -24,7 +24,6 @@ import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.bounty.BountyCreateEvent;
-import link.locutus.discord.event.bounty.BountyRemoveEvent;
 import link.locutus.discord.event.war.AttackEvent;
 import link.locutus.discord.event.war.WarCreateEvent;
 import link.locutus.discord.event.war.WarPeaceStatusEvent;
@@ -39,7 +38,6 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
 import java.awt.*;
@@ -98,18 +96,12 @@ public class WarUpdateProcessor {
         });
     }
 
-    @Subscribe
-    public void onBountyRemove(BountyRemoveEvent event) {
-        // TODO idk
-    }
-
     public static void processWars(List<Map.Entry<DBWar, DBWar>> wars, Consumer<Event> eventConsumer) {
         if (wars.isEmpty()) return;
 
         long start = System.currentTimeMillis();
 //
         handleAlerts(wars);
-        handleAudits(wars); // TODO (from legacy)
 
         Locutus.imp().getExecutor().submit(() -> handleWarRooms(wars));
 
@@ -316,10 +308,6 @@ public class WarUpdateProcessor {
         } catch (Throwable e) {
             e.printStackTrace();
         }
-    }
-
-    public static void handleAudits(List<Map.Entry<DBWar, DBWar>> wars) {
-
     }
 
     public static void handleAlerts(List<Map.Entry<DBWar, DBWar>> wars) {

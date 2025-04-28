@@ -3806,8 +3806,7 @@ public abstract class DBNation implements NationOrAlliance {
         int searchIndex = SheetUtil.getIndex(columnSearch) - 1;
         int outputIndex = SheetUtil.getIndex(columnOutput) - 1;
 
-        for (int i = 0; i < values.size(); i++) {
-            List<Object> row = values.get(i);
+        for (List<Object> row : values) {
             if (row.size() > searchIndex && row.size() > outputIndex) {
                 Object cellSearch = row.get(searchIndex);
                 if (cellSearch == null) continue;

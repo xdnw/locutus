@@ -1,7 +1,7 @@
 package link.locutus.discord.db;
 
 import com.google.common.eventbus.AsyncEventBus;
-import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
+import com.google.common.eventbus.EventBus;
 import it.unimi.dsi.fastutil.ints.IntArraySet;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
@@ -14,19 +14,17 @@ import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
-import link.locutus.discord.apiv1.enums.AccessType;
-import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
-import link.locutus.discord.commands.war.WarCategory;
-import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
+import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.war.WarRoomUtil;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.*;
-import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.announce.AnnounceType;
 import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.db.entities.grant.GrantTemplateManager;
@@ -34,39 +32,26 @@ import link.locutus.discord.db.entities.grant.TemplateTypes;
 import link.locutus.discord.db.entities.menu.MenuManager;
 import link.locutus.discord.db.entities.newsletter.NewsletterManager;
 import link.locutus.discord.db.entities.sheet.CustomSheetManager;
-import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.SendInternalTask;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.db.handlers.SyncableDatabase;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
-import link.locutus.discord.pnw.AllianceList;
-import link.locutus.discord.pnw.BeigeReason;
-import link.locutus.discord.pnw.CityRanges;
-import link.locutus.discord.pnw.GuildOrAlliance;
-import link.locutus.discord.pnw.NationOrAlliance;
-import link.locutus.discord.pnw.NationOrAllianceOrGuild;
+import link.locutus.discord.pnw.*;
 import link.locutus.discord.pnw.json.CityBuildRange;
-import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.*;
+import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.TransferResult;
+import link.locutus.discord.util.offshore.test.IACategory;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
-import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.offshore.OffshoreInstance;
-import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.task.mail.MailApiResponse;
 import link.locutus.discord.util.task.roles.AutoRoleTask;
 import link.locutus.discord.util.task.roles.IAutoRoleTask;
-import com.google.common.eventbus.EventBus;
-import com.google.gson.JsonObject;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.TreatyType;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
@@ -86,32 +71,16 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static link.locutus.discord.db.entities.Coalition.FROZEN_FUNDS;
-import static link.locutus.discord.db.entities.Coalition.OFFSHORE;
-import static link.locutus.discord.db.entities.Coalition.OFFSHORING;
+import static link.locutus.discord.db.entities.Coalition.*;
 
 /**
  * The GuildDB class represents a Discord guild database for the Locutus Discord bot written in Java.
@@ -1913,8 +1882,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
     public Map<NationOrAllianceOrGuild, double[]> subBalanceMulti(Map<NationOrAllianceOrGuild, double[]> depositsByAA, long dateTime, double[] amount, int banker, String offshoreNote) {
-        for (int i = 0; i < amount.length; i++) {
-            if (amount[i] < 0) throw new IllegalArgumentException("Amount must be positive: " + ResourceType.toString(amount));
+        for (double v : amount) {
+            if (v < 0) throw new IllegalArgumentException("Amount must be positive: " + ResourceType.toString(amount));
         }
 
         double[] amountLeft = amount.clone();
@@ -2173,7 +2142,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
     private Throwable warCatError = null;
-    private String warCatErrorMsg = null;
 
     public WarCategory getWarChannel(boolean throwException) {
         return getWarChannel(throwException, false, true);
@@ -2224,6 +2192,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                     warChannelInit = true;
                     boolean allowed = Boolean.TRUE.equals(enabled);
                     if (allowed) {
+                        String warCatErrorMsg = null;
                         try {
                             warChannel = new WarCategory(this, "warcat");
                             warCatError = null;

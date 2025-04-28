@@ -371,9 +371,7 @@ public class CoalitionSide {
         List<Long> turnsSorted = new LongArrayList(turnData.keySet());
         turnsSorted.sort(Long::compareTo);
         Map<Integer, Map<Integer, Map<Byte, Long>>> previous = new Int2ObjectOpenHashMap<>();
-        for (int i = 0; i < turnsSorted.size(); i++) {
-            Long currentTurn = turnsSorted.get(i);
-
+        for (Long currentTurn : turnsSorted) {
             Map<Integer, Map<Integer, Map<Byte, Long>>> currentData = turnData.get(currentTurn);
             if (currentData == null || currentData.isEmpty()) continue;
 

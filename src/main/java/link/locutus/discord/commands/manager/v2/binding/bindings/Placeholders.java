@@ -723,9 +723,9 @@ public abstract class Placeholders<T, M> extends BindingHelper {
         if (split.isEmpty()) {
             throw new IllegalArgumentException("Invalid input, Empty function: `" + functionContent + "`");
         }
-        for (int i = 0; i < split.size(); i++) {
+        for (String s : split) {
             Map<String, TypedFunction<T, ?>> actualArguments = new HashMap<>();
-            String arg = split.get(i);
+            String arg = s;
             int indexPar = arg.indexOf('(');
             int indexSpace = arg.indexOf(' ');
             String functionName;
@@ -786,7 +786,7 @@ public abstract class Placeholders<T, M> extends BindingHelper {
             TypedFunction function = format(store, command, actualArguments);
             if (previousFunc == null) {
                 previousFunc = function;
-            } else if (function.isResolved()){
+            } else if (function.isResolved()) {
                 previousFunc = ResolvedFunction.createConstant(function.getType(), function.applyCached(null), functionContent);
             } else if (previousFunc.isResolved()) {
                 Object value = previousFunc.applyCached(null);

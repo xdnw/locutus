@@ -3,6 +3,9 @@ package link.locutus.discord.util.offshore.test;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.NationColor;
+import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -12,47 +15,24 @@ import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.AlertUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.task.ia.IACheckup;
-import link.locutus.discord.apiv1.enums.NationColor;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import net.dv8tion.jda.api.entities.PermissionOverride;
-import net.dv8tion.jda.api.entities.Role;
-
-import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.OffsetDateTime;
-import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -681,7 +661,7 @@ public class IACategory {
         }
     }
 
-    public class AssignedMentor {
+    public static class AssignedMentor {
         public final DBNation mentor;
         public final DBNation mentee;
         public final long timeAssigned;

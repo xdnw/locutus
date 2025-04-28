@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.command;
 
-import com.google.gson.JsonObject;
 import gg.jte.generated.precompiled.command.JtecommandgroupGenerated;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Logg;
@@ -13,15 +12,11 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.yaml.file.YamlConfiguration;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
 import org.apache.commons.lang3.ArrayUtils;
-import org.checkerframework.checker.units.qual.C;
-import org.json.JSONObject;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
@@ -395,7 +390,7 @@ public class CommandGroup implements ICommandGroup {
                 });
             }
             Method found = null;
-            Class<? extends Object> methClazz = instance.getClass();
+            Class<?> methClazz = instance.getClass();
             for (Method method : methClazz.getMethods()) {
                 if (method.getDeclaringClass() != methClazz) continue;
                 if (method.getName().equalsIgnoreCase(methodInfo.method()) && method.getAnnotation(Command.class) != null) {

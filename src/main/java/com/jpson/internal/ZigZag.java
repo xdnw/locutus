@@ -56,11 +56,11 @@ public final class ZigZag {
         return value;
     }
 
-    public static final long encode(int value) {
+    public static long encode(int value) {
         return ((((long) value) << 1) ^ (value >> 31));
     }
 
-    public static final long encode(long value) {
+    public static long encode(long value) {
         return (((value |= 0) << 1) ^ (value >> 63));
     }
 

@@ -7,7 +7,6 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;
 
-import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -133,9 +132,9 @@ public enum DepositType {
     }
 
     private final String description;
-    private DepositType parent;
-    private boolean isClassifier;
-    private String wikiDesc;
+    private final DepositType parent;
+    private final boolean isClassifier;
+    private final String wikiDesc;
 
     DepositType(String description) {
         this(null, description, "", false);

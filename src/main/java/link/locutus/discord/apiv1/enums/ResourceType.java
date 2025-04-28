@@ -123,7 +123,7 @@ public enum ResourceType {
         RSS_PATTERN = Pattern.compile(regex);
     }
 
-    public static final ResourceType parseChar(Character s) {
+    public static ResourceType parseChar(Character s) {
         if (s == '$') return MONEY;
         // ignore MONEY and CREDITS
         for (ResourceType type : values) {
@@ -597,7 +597,7 @@ public enum ResourceType {
         };
     }
 
-    public static final ResourceType parse(String input) {
+    public static ResourceType parse(String input) {
         String upper = input.toUpperCase();
         switch (upper) {
             case "$":
@@ -969,8 +969,8 @@ public enum ResourceType {
     private final int pollution;
     private final int upkeep;
 
-    private String name;
-    private String bankString;
+    private final String name;
+    private final String bankString;
     private final int graphId;
 
     ResourceType(String name, String bankString, int graphId) {

@@ -1,13 +1,15 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
+import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.header.NationHeaderReader;
 import link.locutus.discord.apiv3.enums.NationLootType;
@@ -15,6 +17,9 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
+import link.locutus.discord.commands.manager.v2.builder.GroupedRankBuilder;
+import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
+import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -24,16 +29,12 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
-import link.locutus.discord.commands.manager.v2.builder.GroupedRankBuilder;
-import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
-import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
-import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.nation.DBNationData;
 import link.locutus.discord.db.entities.nation.SimpleDBNation;
@@ -54,18 +55,15 @@ import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.nation.MultiReport;
 import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import link.locutus.discord.util.task.roles.IAutoRoleTask;
-import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.apiv1.enums.city.project.Project;
-import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.concrete.VoiceChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
 
 import java.awt.*;
@@ -79,11 +77,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
+import java.util.function.*;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.apiv1.enums.NationColor.COLOR_REVENUE_CAP;
@@ -1961,8 +1955,7 @@ public class UtilityCommands {
 
             if (listAlliances) {
                 // alliances
-                Set<DBAlliance> alliances = nations.stream().map(DBNation::getAlliance).filter(Objects::nonNull).collect(Collectors.toSet());
-                List<DBAlliance> alliancesSorted = new ArrayList<>(alliances);
+                List<DBAlliance> alliancesSorted = nations.stream().map(DBNation::getAlliance).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                 if (sortBy != null) {
                     alliancesSorted.sort((o1, o2) -> {
                         double v1 = o1.getTotal(sortBy, null);

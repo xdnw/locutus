@@ -340,10 +340,6 @@ public class SimulatedWarNode {
         return total;
     }
 
-    public void getWarOptionsFast(boolean isAggressor) {
-        // get war options, find the one with the highest net damage, then do that.
-    }
-
     public List<SimulatedWarNode> getWarOptions(boolean isAggressor) {
         WarNation aggressor = isAggressor ? this.aggressor : this.defender;
         WarNation defender = isAggressor ? this.defender : this.aggressor;

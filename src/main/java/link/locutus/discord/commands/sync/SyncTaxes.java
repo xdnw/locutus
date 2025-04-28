@@ -148,9 +148,7 @@ public class SyncTaxes extends Command {
 
         List<TaxDeposit> records = new ArrayList<>();
 
-        for (Iterator<List<Object>> iter = rows.iterator(); iter.hasNext();) {
-            List<Object> row = iter.next();
-
+        for (List<Object> row : rows) {
             if (row.size() != 17) continue;
             String indexStr = row.get(0).toString().replace(")", "").trim();
             if (!MathMan.isInteger(indexStr)) continue;

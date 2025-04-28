@@ -2,10 +2,9 @@ package link.locutus.discord.network;
 
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
 
 import java.io.IOException;
-import java.net.*;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 import static link.locutus.discord.network.PassthroughProxy.TIMEOUT_MILLIS;
@@ -16,7 +15,6 @@ public class ApiProxy implements IProxy {
     /**
      *
      * @param urlWithPlaceholder Uses String.format for the url and key (as ordered)
-     * @param key the api key
      */
     public ApiProxy(String urlWithPlaceholder) {
         this.urlWithPlaceholder = urlWithPlaceholder;

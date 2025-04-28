@@ -9,10 +9,8 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MathMan;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.List;
 import java.util.Set;
@@ -30,11 +28,6 @@ public class SyncTreaties extends Command {
     @Override
     public boolean checkPermission(Guild server, User user) {
         return super.checkPermission(server, user) && Roles.ADMIN.hasOnRoot(user);
-    }
-
-    @Override
-    public String help() {
-        return super.help();
     }
 
     @Override

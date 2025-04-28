@@ -3,24 +3,17 @@ package link.locutus.discord.commands.manager.v2.binding.bindings.autocomplete;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
-import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 
 import java.awt.*;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.*;
+import java.util.Map;
 
 public class PrimitiveCompleter extends BindingHelper {
-
-    @Autoparse
-    @Binding(types = {
-            UUID.class,
-            TaxRate.class
-    })
-    public static void uuid(String input) {
-    }
 
     @Autoparse
     @Binding(types = String.class)

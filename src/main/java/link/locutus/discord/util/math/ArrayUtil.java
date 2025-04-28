@@ -6,44 +6,17 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindin
 import link.locutus.discord.commands.manager.v2.binding.bindings.ResolvedFunction;
 import link.locutus.discord.util.IOUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.scheduler.KeyValue;
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.lz4.LZ4FastDecompressor;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.ByteBuffer;
-import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Deque;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Queue;
-import java.util.Set;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
-import java.util.function.DoubleBinaryOperator;
-import java.util.function.Function;
-import java.util.function.IntBinaryOperator;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
-import java.util.function.ToIntFunction;
+import java.util.function.*;
 import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
@@ -320,8 +293,7 @@ public class ArrayUtil {
 
     public static double addProbability(double[] probabilities) {
         double total = 0;
-        for (int i = 0; i < probabilities.length; i++) {
-            double prob = probabilities[i];
+        for (double prob : probabilities) {
             total = total + prob - (total * prob);
         }
         return total;
@@ -338,11 +310,11 @@ public class ArrayUtil {
         return buffer;
     }
 
-    public static int[] apply(IntBinaryOperator operator, int[] a, int b[]) {
+    public static int[] apply(IntBinaryOperator operator, int[] a, int[] b) {
         return apply(operator, a, b, false);
     }
 
-    public static int[] apply(IntBinaryOperator operator, int[] a, int b[], boolean newArr) {
+    public static int[] apply(IntBinaryOperator operator, int[] a, int[] b, boolean newArr) {
         int[] result = newArr ? new int[a.length] : a;
         for (int i = 0; i < a.length; i++) {
             result[i] = operator.applyAsInt(a[i], b[i]);
@@ -362,11 +334,11 @@ public class ArrayUtil {
         return dollars;
     }
 
-    public static double[] apply(DoubleBinaryOperator operator, double[] a, double b[]) {
+    public static double[] apply(DoubleBinaryOperator operator, double[] a, double[] b) {
         return apply(operator, a, b, false);
     }
 
-    public static double[] apply(DoubleBinaryOperator operator, double[] a, double b[], boolean newArr) {
+    public static double[] apply(DoubleBinaryOperator operator, double[] a, double[] b, boolean newArr) {
         double[] result = newArr ? new double[a.length] : a;
         for (int i = 0; i < a.length; i++) {
             result[i] = operator.applyAsDouble(a[i], b[i]);

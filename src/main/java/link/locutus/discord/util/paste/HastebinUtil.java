@@ -1,8 +1,5 @@
 package link.locutus.discord.util.paste;
 
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
-
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -26,32 +23,26 @@ public class HastebinUtil {
         connection.setRequestProperty("User-Agent", USER_AGENT);
         connection.setDoOutput(true);
 
-        try {
-            try (DataOutputStream outputStream = new DataOutputStream(connection.getOutputStream())) {
-                outputStream.write(string.getBytes(StandardCharsets.ISO_8859_1));
-                outputStream.flush();
-            }
-
-            StringBuilder response;
-            try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
-                response = new StringBuilder();
-
-                String inputLine;
-                while ((inputLine = in.readLine()) != null) {
-                    response.append(inputLine);
-                }
-            }
-            Matcher matcher = PATTERN.matcher(response.toString());
-            if (matcher.matches()) {
-                return "https://hastebin.com/" + matcher.group(1);
-            } else {
-                throw new RuntimeException("Couldn't read response!");
-            }
-        } catch (Throwable e) {
-            throw e;
+        try (DataOutputStream outputStream = new DataOutputStream(connection.getOutputStream())) {
+            outputStream.write(string.getBytes(StandardCharsets.ISO_8859_1));
+            outputStream.flush();
         }
 
+        StringBuilder response;
+        try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+            response = new StringBuilder();
 
+            String inputLine;
+            while ((inputLine = in.readLine()) != null) {
+                response.append(inputLine);
+            }
+        }
+        Matcher matcher = PATTERN.matcher(response.toString());
+        if (matcher.matches()) {
+            return "https://hastebin.com/" + matcher.group(1);
+        } else {
+            throw new RuntimeException("Couldn't read response!");
+        }
     }
 
     public static String upload(final File file) throws IOException {

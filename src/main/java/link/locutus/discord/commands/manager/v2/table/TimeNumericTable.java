@@ -430,8 +430,8 @@ public abstract class TimeNumericTable<T> {
             // add the labels to the legend, using color format, index -> colormapper apply color
 //            The labels: this.labels
             DataTable data2 = new DataTable(String.class);
-            for (int i = 0; i < this.labels.length; i++) {
-                data2.add(this.labels[i]);
+            for (String label : this.labels) {
+                data2.add(label);
             }
 //            ((BarPlot.BarPlotLegend) plot.getLegend()).setLabelColumn(0);
             plot.getLegend().add(data2);

@@ -475,14 +475,12 @@ public class MultiReport {
 
     public static long getTimeDiff(List<Map.Entry<Long, BigInteger>> mine, List<Map.Entry<Long, BigInteger>> other) {
         long end = Long.MAX_VALUE;
-        for (int i = 0; i < mine.size(); i++) {
-            Map.Entry<Long, BigInteger> myEntry = mine.get(i);
+        for (Map.Entry<Long, BigInteger> myEntry : mine) {
             long start = myEntry.getKey();
             BigInteger myUUID = myEntry.getValue();
 
             long otherEnd = Long.MAX_VALUE;
-            for (int j = 0; j < other.size(); j++) {
-                Map.Entry<Long, BigInteger> otherEntry = other.get(j);
+            for (Map.Entry<Long, BigInteger> otherEntry : other) {
                 long otherStart = otherEntry.getKey();
                 BigInteger otherUUID = otherEntry.getValue();
 

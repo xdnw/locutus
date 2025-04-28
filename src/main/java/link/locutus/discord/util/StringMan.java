@@ -1,10 +1,6 @@
 package link.locutus.discord.util;
 
 import com.google.gson.*;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonNull;
-import com.google.gson.JsonPrimitive;
 import com.opencsv.CSVWriter;
 import info.debatty.java.stringsimilarity.CharacterSubstitutionInterface;
 import info.debatty.java.stringsimilarity.WeightedLevenshtein;
@@ -17,13 +13,7 @@ import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import org.apache.commons.lang3.StringUtils;
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
+import java.io.*;
 import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.text.Normalizer;
@@ -154,9 +144,8 @@ public class StringMan {
 
     public static String indentSpaces(int count) {
         StringBuilder spaces = new StringBuilder();
-        for (int i = 0; i < count * 4; i++) { // Using 4 spaces for each level of indentation
-            spaces.append(" ");
-        }
+        // Using 4 spaces for each level of indentation
+        spaces.append(" ".repeat(Math.max(0, count * 4)));
         return spaces.toString();
     }
 
@@ -378,8 +367,7 @@ public class StringMan {
     public static String abbreviate(String arg, char delim) {
         String[] myName = arg.split(delim + "");
         StringBuilder result = new StringBuilder();
-        for (int i = 0; i < myName.length; i++) {
-            String s = myName[i];
+        for (String s : myName) {
             if (s.length() != 0 && s.charAt(0) != delim) result.append(s.charAt(0));
         }
         return result.toString();

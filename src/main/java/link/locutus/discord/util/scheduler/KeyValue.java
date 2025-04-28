@@ -10,7 +10,7 @@ public class KeyValue<K, V> implements Map.Entry<K, V> {
         this(entry.getKey(), entry.getValue());
     }
 
-    public static final <T, V> KeyValue<T, V> of(T key, V value) {
+    public static <T, V> KeyValue<T, V> of(T key, V value) {
         return new KeyValue<>(key, value);
     }
 

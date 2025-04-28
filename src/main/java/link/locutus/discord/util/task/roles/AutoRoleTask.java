@@ -404,8 +404,7 @@ public class AutoRoleTask implements IAutoRoleTask {
 
         Set<Integer> memberAllianceIds = new IntOpenHashSet();
         int requiredRank = autoRoleRank == null ? Rank.MEMBER.id : autoRoleRank.id;
-        for (int i = 0; i < members.size(); i++) {
-            Member member = members.get(i);
+        for (Member member : members) {
             DBNation nation = DiscordUtil.getNation(member.getIdLong());
             if (nation != null && nation.getPositionEnum().id >= requiredRank) {
                 memberAllianceIds.add(nation.getAlliance_id());

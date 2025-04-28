@@ -34,7 +34,7 @@ public enum  NationColor implements NationList {
 
     ;
 
-    public static int COLOR_REVENUE_CAP = 125_000;
+    public static final int COLOR_REVENUE_CAP = 125_000;
 
     public static final NationColor[] values = values();
     private int turnBonus;

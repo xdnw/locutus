@@ -934,7 +934,7 @@ public class BankDB extends DBMainV3 {
         GUILD(4);
 
         public static final BankSubType[] values = values();
-        public static final BankSubType of(boolean isAA) {
+        public static BankSubType of(boolean isAA) {
             return isAA ? ALLIANCE : NATION;
         }
 

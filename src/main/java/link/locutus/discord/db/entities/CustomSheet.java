@@ -154,18 +154,19 @@ public class CustomSheet {
                                 String value1 = function.apply(o);
                                 header.set(i, value1 == null ? "" : value1);
                             } catch (Throwable e) {
+                                Throwable t = e;
                                 header.set(i, "");
-                                while (e.getCause() != null && e.getCause() != e) {
-                                    e = e.getCause();
+                                while (t.getCause() != null && t.getCause() != t) {
+                                    t = t.getCause();
                                 }
                                 int currentErrors = maxErrors.merge(tabName, 1, Integer::sum);
                                 if (currentErrors == 25) {
                                     errors.add("[Tab: `" + tabName + "`] Too many errors, skipping the rest.");
                                 } else if (currentErrors < 25) {
-                                    e.printStackTrace();
+                                    t.printStackTrace();
                                     String column = columns.get(i);
                                     String elemStr = ph.getName(o);
-                                    errors.add("[Tab: `" + tabName + "`,Column:`" + column + "`,Elem:`" + elemStr + "`] " + StringMan.stripApiKey(e.getMessage()));
+                                    errors.add("[Tab: `" + tabName + "`,Column:`" + column + "`,Elem:`" + elemStr + "`] " + StringMan.stripApiKey(throwable.getMessage()));
                                 }
                             }
                         }

@@ -1,23 +1,29 @@
 package link.locutus.discord.db;
 
+import com.google.common.eventbus.Subscribe;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
-import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
+import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
+import link.locutus.discord.apiv1.enums.city.building.Buildings;
+import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
+import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.war.WarCatReason;
 import link.locutus.discord.commands.war.WarCategory;
-import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.war.WarRoom;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.*;
@@ -26,41 +32,23 @@ import link.locutus.discord.event.Event;
 import link.locutus.discord.event.city.CityBuildingChangeEvent;
 import link.locutus.discord.event.city.CityInfraBuyEvent;
 import link.locutus.discord.event.game.TurnChangeEvent;
-import link.locutus.discord.event.nation.*;
 import link.locutus.discord.event.guild.NewApplicantOnDiscordEvent;
-import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.event.nation.*;
 import link.locutus.discord.event.war.WarPeaceStatusEvent;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.AlertUtil;
-import link.locutus.discord.util.AutoAuditType;
-import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.offshore.test.IAChannel;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.task.mail.MailApiResponse;
 import link.locutus.discord.util.task.mail.MailApiSuccess;
 import link.locutus.discord.util.task.war.WarCard;
-import com.google.common.eventbus.Subscribe;
-import com.google.gson.JsonObject;
-import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
-import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.NationColor;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.apiv1.enums.city.building.Buildings;
-import link.locutus.discord.apiv1.enums.city.project.Project;
-import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel;
@@ -75,16 +63,7 @@ import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
@@ -606,7 +585,7 @@ public class GuildHandler {
         DBNation nation = event.getNation();
         if (nation != null) {
 
-            int threshold = nation.getCities() <= 5 ? 1700 : 1700;
+            int threshold = nation.getCities() <= 5 ? 1500 : 1700;
             DBCity previous = event.getPrevious();
             DBCity current = event.getCurrent();
 
@@ -2814,6 +2793,7 @@ public class GuildHandler {
         }
     }
 
+    @SuppressWarnings("EmptyMethod")
     public void onSetRank(User author, IMessageIO channel, DBNation nation, DBAlliancePosition rank) {
 
     }

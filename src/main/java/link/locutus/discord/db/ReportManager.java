@@ -383,7 +383,7 @@ public class ReportManager {
 
         ;
 
-        public String description;
+        public final String description;
 
         ReportType(String description) {
             this.description = description;

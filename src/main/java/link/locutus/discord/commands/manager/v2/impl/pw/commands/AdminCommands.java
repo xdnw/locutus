@@ -1411,8 +1411,7 @@ public class AdminCommands {
                 if (roleValues == null || roleValues.isEmpty()) {
                     continue;
                 }
-                for (int i = 0; i < roleValues.size(); i++) {
-                    Object roleCell = roleValues.get(i);
+                for (Object roleCell : roleValues) {
                     if (roleCell == null) {
                         continue;
                     }

@@ -58,8 +58,8 @@ public class AResourceBuilding extends ABuilding implements ResourceBuilding {
                     newFunc = (c, r, h, b, a, p) -> {
                         double inputAmt = factor * p;
                         double profit = 0;
-                        for (int i = 0; i < values.length; i++) {
-                            profit -= values[i] * inputAmt;
+                        for (double value : values) {
+                            profit -= value * inputAmt;
                         }
                         return profit;
                     };

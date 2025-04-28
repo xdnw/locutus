@@ -7,20 +7,8 @@ import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Types;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.BiConsumer;
+import java.sql.*;
+import java.util.*;
 
 public interface SyncableDatabase {
 
@@ -343,9 +331,7 @@ public interface SyncableDatabase {
         }
         queryBuilder.delete(queryBuilder.length() - 2, queryBuilder.length()); // Remove the trailing comma and space
         queryBuilder.append(") VALUES (");
-        for (int i = 0; i < columns.size(); i++) {
-            queryBuilder.append("?, ");
-        }
+        queryBuilder.append("?, ".repeat(columns.size()));
         queryBuilder.delete(queryBuilder.length() - 2, queryBuilder.length()); // Remove the trailing comma and space
         queryBuilder.append(")");
         return queryBuilder.toString();

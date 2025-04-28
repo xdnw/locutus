@@ -4230,8 +4230,7 @@ public class BankCommands {
             } else {
                 response.append("\n-# **Tips:**\n");
             }
-            for (int i = 0; i < footers.size(); i++) {
-                String footer = footers.get(i);
+            for (String footer : footers) {
                 response.append("-# - " + footer + "\n");
             }
         }

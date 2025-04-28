@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.text.Normalizer;
 import java.util.*;
@@ -434,7 +435,7 @@ public class PWWikiUtil {
         // If the file doesn't exist, fetch and save it
         File jsonFile = new File("wiki/json/" + fileName + ".json");
         if (!jsonFile.exists()) {
-            String url = "https://politicsandwar.fandom.com/wiki/" + java.net.URLEncoder.encode(pageName, "UTF-8");
+            String url = "https://politicsandwar.fandom.com/wiki/" + java.net.URLEncoder.encode(pageName, StandardCharsets.UTF_8);
             saveToJson(pageName, url);
         }
         return jsonFile;

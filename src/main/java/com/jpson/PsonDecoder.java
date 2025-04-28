@@ -2,6 +2,7 @@ package com.jpson;
 
 import java.io.ByteArrayInputStream;
 import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -161,7 +162,7 @@ class PsonDecoder {
         byte[] buffer = new byte[count];
         if (input.read(buffer, 0, count) != count)
             throw new PsonException("stream ended prematurely");
-        String value = new String(buffer, "UTF-8");
+        String value = new String(buffer, StandardCharsets.UTF_8);
         if (token == Token.STRING_ADD) {
             if (isKey) {
                 if (options == PsonOptions.ProgressiveKeys)

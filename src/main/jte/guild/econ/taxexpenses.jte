@@ -86,8 +86,7 @@ incomeByNation,
 transactionsByNation,
 expenseTransfers,
 expenseTotal,
-expensesByNation
-)
+expensesByNation)
 
 @for (Map.Entry<Integer, TaxBracket> entry : brackets.entrySet())
     @if(expensesByBracket.get(entry.getKey()) != null || incomeByBracket.get(entry.getKey()) != null)

@@ -2,7 +2,6 @@ package link.locutus.discord.commands.manager.result;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 public abstract class CmdResult {
     private final JsonObject obj;
@@ -50,6 +49,4 @@ public abstract class CmdResult {
         JsonElement msg = obj.get("message");
         return msg == null ? null : msg.getAsString();
     }
-
-    public abstract void build(MessageReceivedEvent event);
 }

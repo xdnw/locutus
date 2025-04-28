@@ -5,6 +5,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -114,7 +115,7 @@ class PsonWriter {
     }
 
     protected void writestringdelimited(String str) throws IOException {
-        byte[] bytes = str.getBytes("UTF-8");
+        byte[] bytes = str.getBytes(StandardCharsets.UTF_8);
         ZigZag.writeVarint(output, bytes.length);
         output.write(bytes, 0, bytes.length);
 

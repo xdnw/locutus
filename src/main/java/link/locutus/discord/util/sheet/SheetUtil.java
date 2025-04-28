@@ -51,8 +51,7 @@ public class SheetUtil {
     public static RowData toRowData(List myList) {
         RowData row = new RowData();
         ArrayList<CellData> cellData = new ArrayList<CellData>();
-        for (int i = 0; i < myList.size(); i++) {
-            Object obj = myList.get(i);
+        for (Object obj : myList) {
             if (obj == null) cellData.add(null);
 
             CellData cell = new CellData();
@@ -120,8 +119,7 @@ public class SheetUtil {
 
             List<DBNation> myCounters = targets.getOrDefault(defender, Collections.emptyList());
 
-            for (int i = 0; i < myCounters.size(); i++) {
-                DBNation counter = myCounters.get(i);
+            for (DBNation counter : myCounters) {
                 String counterUrl = MarkupUtil.sheetUrl(counter.getNation(), counter.getUrl());
                 row.add(counterUrl);
             }

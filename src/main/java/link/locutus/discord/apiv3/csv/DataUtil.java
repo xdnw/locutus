@@ -6,9 +6,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.io.FastBufferedInputStream;
-import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
@@ -17,12 +15,8 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors.VictoryCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv3.csv.file.CitiesFile;
-import link.locutus.discord.apiv3.csv.file.NationsFile;
-import link.locutus.discord.apiv3.csv.header.CityHeader;
 import link.locutus.discord.apiv3.csv.header.CityHeaderReader;
-import link.locutus.discord.apiv3.csv.header.NationHeader;
 import link.locutus.discord.apiv3.csv.header.NationHeaderReader;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
@@ -31,28 +25,20 @@ import link.locutus.discord.util.IOUtil;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
-import link.locutus.discord.util.scheduler.TriConsumer;
 import net.jpountz.lz4.LZ4BlockInputStream;
 import net.jpountz.lz4.LZ4BlockOutputStream;
 
-import javax.security.auth.login.LoginException;
 import java.io.*;
-import java.sql.SQLException;
 import java.text.ParseException;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 public class DataUtil {
     private final DataDumpParser parser;
@@ -63,7 +49,7 @@ public class DataUtil {
 
     /**
      * Get the VM ranges for each nation, using a cached file
-     * @param updateAfterDay Update if the cache day is below this (use Long.MAX_VALUE to force update)
+     * @param minDay Update if the cache day is below this (use Long.MAX_VALUE to force update)
      * @return Map of nation id to the last day they were present
      * @throws IOException
      * @throws ParseException

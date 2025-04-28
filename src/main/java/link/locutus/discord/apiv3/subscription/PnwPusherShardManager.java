@@ -4,7 +4,6 @@ import com.politicsandwar.graphql.model.Alliance;
 import com.politicsandwar.graphql.model.Bounty;
 import com.politicsandwar.graphql.model.City;
 import com.politicsandwar.graphql.model.Nation;
-import com.pusher.client.connection.ConnectionState;
 import com.pusher.client.connection.ConnectionStateChange;
 import graphql.GraphQLException;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
@@ -14,20 +13,16 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.SpyTracker;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -123,7 +118,7 @@ public class PnwPusherShardManager {
                     for (Nation nation : nations) {
                         nation.setGross_national_income(null);
                     }
-                    nationDB.updateNations(nations, events, ts, "Pusher create");
+                    nationDB.updateNations(nations, events, ts);
                 });
             });
             root.subscribeBuilder(Locutus.loader().getApiKey(), Nation.class, PnwPusherEvent.DELETE).build(nations -> {
@@ -136,7 +131,7 @@ public class PnwPusherShardManager {
                         for (Nation nation : nations) {
                             nation.setGross_national_income(null);
                         }
-                        Locutus.imp().getNationDB().updateNations(nations, f, -1, "Pusher Update");
+                        Locutus.imp().getNationDB().updateNations(nations, f, -1);
                     });
                 } catch (Throwable e) {
                     e.printStackTrace();

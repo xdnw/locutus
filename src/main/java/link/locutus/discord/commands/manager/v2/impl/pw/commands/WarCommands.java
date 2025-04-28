@@ -1628,9 +1628,7 @@ public class WarCommands {
         StringBuilder body = new StringBuilder();
 
         int nationCount = 0;
-        for (int i = 0; i < netDamage.size(); i++) {
-            Map.Entry<DBNation, Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>>> entry = netDamage.get(i);
-
+        for (Map.Entry<DBNation, Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>>> entry : netDamage) {
             Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> opinfo = entry.getValue();
             SpyCount.Operation op = opinfo.getKey();
             Map.Entry<Integer, Double> safetyDamage = opinfo.getValue();
@@ -1820,9 +1818,7 @@ public class WarCommands {
 
         ArrayList<Map.Entry<DBNation, Runnable>> targets = new ArrayList<>();
 
-        for (int i = 0; i < netDamage.size(); i++) {
-            Map.Entry<DBNation, Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>>> entry = netDamage.get(i);
-
+        for (Map.Entry<DBNation, Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>>> entry : netDamage) {
             Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> opinfo = entry.getValue();
             SpyCount.Operation op = opinfo.getKey();
             Map.Entry<Integer, Double> safetyDamage = opinfo.getValue();
@@ -4305,8 +4301,7 @@ public class WarCommands {
             row.add(enemy.getAircraft());
             row.add(enemy.getShips());
 
-            for (int i = 0; i < wars.size(); i++) {
-                DBWar war = wars.get(i);
+            for (DBWar war : wars) {
                 String url = war.toUrl();
                 DBNation defender = Locutus.imp().getNationDB().getNationById(war.getDefender_id());
                 String warStr = defender.getNation() + "|" + defender.getAllianceName();

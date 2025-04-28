@@ -1,24 +1,20 @@
 package link.locutus.discord.apiv1.enums;
 
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.StringMan;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
-import org.jetbrains.annotations.NotNull;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.PW;
+import link.locutus.discord.util.StringMan;
 
-import java.io.IOException;
-import java.util.*;
+import java.util.Collection;
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -98,7 +94,7 @@ public enum MilitaryUnit {
     ),
     ;
 
-    public static double NUKE_RADIATION = 5;
+    public static final double NUKE_RADIATION = 5;
 
     private final double[] cost;
     private final Map<ResourceType, Double> costMap;

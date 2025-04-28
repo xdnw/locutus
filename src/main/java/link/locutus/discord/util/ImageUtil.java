@@ -19,32 +19,14 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import javax.imageio.ImageIO;
-import java.awt.AlphaComposite;
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.Graphics2D;
+import java.awt.*;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
-import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 
 public class ImageUtil {
 
@@ -414,9 +396,9 @@ public class ImageUtil {
                 result.append("&");
             }
 
-            result.append(URLEncoder.encode(key, "UTF-8"));
+            result.append(URLEncoder.encode(key, StandardCharsets.UTF_8));
             result.append("=");
-            result.append(URLEncoder.encode(value.toString(), "UTF-8"));
+            result.append(URLEncoder.encode(value.toString(), StandardCharsets.UTF_8));
         }
         return result.toString();
     }
@@ -534,7 +516,7 @@ public class ImageUtil {
 
             return imageInByte;
         } catch (IOException ex) {
-            System.err.println(ex);
+            ex.printStackTrace();
             throw new RuntimeException(ex);
         }
     }

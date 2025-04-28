@@ -1224,8 +1224,6 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
                         } else {
                             db.setInfoRaw(GuildKey.API_KEY, newKeys);
                         }
-                    } catch (Throwable e) {
-                        throw e;
                     }
                 }
             }

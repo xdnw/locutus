@@ -161,8 +161,8 @@ public class AttackTypeNode {
                 root2 = root2.parent;
                 if ((root1 == null) != (root2 == null)) return false;
             } while (root1 != null);
-            for (int i = 0; i < diff.length; i++) {
-                if (diff[i] != 0) return false;
+            for (byte value : diff) {
+                if (value != 0) return false;
             }
             return true;
         }
@@ -185,8 +185,8 @@ public class AttackTypeNode {
                     root2 = root2.parent;
                     if ((root1 == null) != (root2 == null)) return false;
                 } while (root1 != null);
-                for (int i = 0; i < diff.length; i++) {
-                    if (diff[i] != 0) return false;
+                for (byte value : diff) {
+                    if (value != 0) return false;
                 }
                 return true;
             }
