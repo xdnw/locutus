@@ -162,9 +162,10 @@ public class BankCommands {
                                        @Range(min = 0)
                                        @Switch("r") Double rawsDays,
 
-                                   @Arg(value = "Alternatively specify a number of days of raws for each individual resource type\n" +
-                                           "Overrides any value set for `rawsDays`\n" +
-                                           "Ommitted resources will use 0 if `rawsDays` is not provided", group = 2)
+                                   @Arg(value = """
+                                           Alternatively specify a number of days of raws for each individual resource type
+                                           Overrides any value set for `rawsDays`
+                                           Ommitted resources will use 0 if `rawsDays` is not provided""", group = 2)
                                        @Range(min = 0)
                                        @Switch("rb") Map<ResourceType, Double> raws_days_by_resource,
 
@@ -173,9 +174,10 @@ public class BankCommands {
                                    @Arg(value = "Do not keep any money\n" +
                                            "Requires `rawsDays` to be set ", group = 2) @Switch("c") boolean rawsNoCash,
 
-                                   @Arg(value = "Number of default warchests to keep per city\n" +
-                                           "Recommended value: 1\n" +
-                                           "Default warchest is is set via the settings command", group = 2)
+                                   @Arg(value = """
+                                           Number of default warchests to keep per city
+                                           Recommended value: 1
+                                           Default warchest is is set via the settings command""", group = 2)
                                    @Switch("wcf") Double keepWarchestFactor,
                                    @Arg(value = "Amount of resources to keep per city", group = 2)
                                    @Switch("pc") Map<ResourceType, Double> keepPerCity,
@@ -778,9 +780,10 @@ public class BankCommands {
                                           "Defaults to the sender alliance", group = 0) @Default NationOrAllianceOrGuild account,
                                   @Arg(value = "The amount of resources to keep in the bank\n" +
                                           "Defaults to keep nothing", group = 1) @Default("{}") Map<ResourceType, Double> keepAmount,
-                                  @Arg(value = "Specify specific resource amounts to offshore\n" +
-                                          "Defaults to all resources\n" +
-                                          "The send amount is auto capped by the resources available and `keepAmount`", group = 1)
+                                  @Arg(value = """
+                                          Specify specific resource amounts to offshore
+                                          Defaults to all resources
+                                          The send amount is auto capped by the resources available and `keepAmount`""", group = 1)
                                   @Default Map<ResourceType, Double> sendAmount) throws IOException {
         if (account != null && account.isNation()) {
             throw new IllegalArgumentException("You can't offshore into a nation. You can only offshore into an alliance or guild. Value provided: `Nation:" + account.getName() + "`");
@@ -813,7 +816,7 @@ public class BankCommands {
             }
             to = offshore.getAlliance();
         } else {
-            if (!offshores.contains(to.getAlliance_id())) return "Please add the offshore using " + CM.coalition.add.cmd.alliances(to.getQualifiedId()).coalitionName(Coalition.OFFSHORE.name()) + "";
+            if (!offshores.contains(to.getAlliance_id())) return "Please add the offshore using " + CM.coalition.add.cmd.alliances(to.getQualifiedId()).coalitionName(Coalition.OFFSHORE.name());
         }
         Set<DBAlliance> alliances = allianceList.getAlliances();
         if (alliances.size() == 1 && alliances.iterator().next().equals(to)) {
@@ -901,7 +904,7 @@ public class BankCommands {
         for (DBWar war : wars) {
             List<AbstractCursor> attacks = attacksByWar.get(war.warId);
             AttackCost ac = war.toCost(attacks, false, false, false, false, false);
-            boolean primary = allies.contains(war.getAttacker_aa());
+            boolean primary = allyIds.contains(war.getAttacker_aa());
             double[] units = ResourceType.resourcesToArray(ac.getUnitCost(primary));
             double[] consume = ResourceType.resourcesToArray(ac.getConsumption(primary));
 
@@ -928,7 +931,7 @@ public class BankCommands {
         for (Map.Entry<Integer, double[]> entry : warcostByNation.entrySet()) {
             int id = entry.getKey();
             DBNation nation = DBNation.getById(id);
-            if (nation == null || !allies.contains(nation.getAlliance_id()) || nation.getPosition() <= 1 || nation.getVm_turns() > 0 || nation.active_m() > 7200 || nation.getCities() < 10) continue;
+            if (nation == null || !allyIds.contains(nation.getAlliance_id()) || nation.getPosition() <= 1 || nation.getVm_turns() > 0 || nation.active_m() > 7200 || nation.getCities() < 10) continue;
             header.clear();
             header.add(PW.getName(id, false));
             header.add(offensivesByNation.getOrDefault(id, 0) + "");
@@ -943,10 +946,11 @@ public class BankCommands {
         return StringMan.join(lines, "\n");
     }
 
-    @Command(desc = "Set the escrow account balances for nation to the values in a spreadshet\n" +
-            "The sheet must have a `nation` column, and then a column for each resource type\n" +
-            "Escrow funds can be withdrawn at a later date by the receiver, such as when a blockade ends\n" +
-            "Use the deposits sheet command to get a spreadsheet of the current escrow balances")
+    @Command(desc = """
+            Set the escrow account balances for nation to the values in a spreadshet
+            The sheet must have a `nation` column, and then a column for each resource type
+            Escrow funds can be withdrawn at a later date by the receiver, such as when a blockade ends
+            Use the deposits sheet command to get a spreadsheet of the current escrow balances""")
     @RolePermission(Roles.ECON)
     @IsAlliance
     @HasOffshore
@@ -1000,9 +1004,10 @@ public class BankCommands {
         );
     }
 
-    @Command(desc = "Add funds to the escrow account for a set of nations\n" +
-            "Escrow funds can be withdrawn at a later date by the receiver, such as when a blockade ends\n" +
-            "To transfer funds from a nation's deposits into their escrow, see the transfer command")
+    @Command(desc = """
+            Add funds to the escrow account for a set of nations
+            Escrow funds can be withdrawn at a later date by the receiver, such as when a blockade ends
+            To transfer funds from a nation's deposits into their escrow, see the transfer command""")
     @RolePermission(Roles.ECON)
     @IsAlliance
     @HasOffshore
@@ -1012,9 +1017,10 @@ public class BankCommands {
                             NationList nations,
                             @Switch("b") @Arg("The base amount of resources to escrow\n" +
                                     "If per city is set, the highest value of each resource is chosen") Map<ResourceType, Double> amountBase,
-                            @Switch("p") @Arg("Amount of resources to escrow for each city the receiver has\n" +
-                                    "If base is set, the highest value of each resource is chosen\n" +
-                                    "This uses the city count now, not when the funds are withdrawn later") Map<ResourceType, Double> amountPerCity,
+                            @Switch("p") @Arg("""
+                                    Amount of resources to escrow for each city the receiver has
+                                    If base is set, the highest value of each resource is chosen
+                                    This uses the city count now, not when the funds are withdrawn later""") Map<ResourceType, Double> amountPerCity,
                             @Switch("e") @Arg("Additional resources to escrow\n" +
                                     "If a base or per city are set, this adds to what is calculated for that") Map<ResourceType, Double> amountExtra,
                             @Arg("Don't add escrow resources that the nation has in their stockpile") @Switch("s") boolean subtractStockpile,
@@ -1031,9 +1037,10 @@ public class BankCommands {
         return addOrSetEscrow(true, db, io, command, nations, amountBase, amountPerCity, amountExtra, subtractStockpile, subtractNationsUnits, subtractDeposits, expireAfter, force);
     }
 
-    @Command(desc = "Set the escrow account balances for a set of nations\n" +
-            "Escrow funds can be withdrawn at a later date by the receiver, such as when a blockade ends\n" +
-            "To transfer funds from a nation's deposits into their escrow, see the transfer command")
+    @Command(desc = """
+            Set the escrow account balances for a set of nations
+            Escrow funds can be withdrawn at a later date by the receiver, such as when a blockade ends
+            To transfer funds from a nation's deposits into their escrow, see the transfer command""")
     @RolePermission(Roles.ECON)
     @IsAlliance
     @HasOffshore
@@ -1043,9 +1050,10 @@ public class BankCommands {
                             NationList nations,
                             @Switch("b") @Arg("The base amount of resources to escrow\n" +
                                     "If per city is set, the highest value of each resource is chosen") Map<ResourceType, Double> amountBase,
-                            @Switch("p") @Arg("Amount of resources to escrow for each city the receiver has\n" +
-                                    "If base is set, the highest value of each resource is chosen\n" +
-                                    "This uses the city count now, not when the funds are withdrawn later") Map<ResourceType, Double> amountPerCity,
+                            @Switch("p") @Arg("""
+                                    Amount of resources to escrow for each city the receiver has
+                                    If base is set, the highest value of each resource is chosen
+                                    This uses the city count now, not when the funds are withdrawn later""") Map<ResourceType, Double> amountPerCity,
                             @Switch("e") @Arg("Additional resources to escrow\n" +
                                     "If a base or per city are set, this adds to what is calculated for that") Map<ResourceType, Double> amountExtra,
                             @Arg("Don't add escrow resources that the nation has in their stockpile") @Switch("s") boolean subtractStockpile,
@@ -1210,9 +1218,10 @@ public class BankCommands {
                             NationList nations,
                             @Switch("b") @Arg("The base amount of resources to escrow\n" +
                                     "If per city is set, the highest value of each resource is chosen") Map<ResourceType, Double> amountBase,
-                            @Switch("p") @Arg("Amount of resources to escrow for each city the receiver has\n" +
-                                    "If base is set, the highest value of each resource is chosen\n" +
-                                    "This uses the city count now, not when the funds are withdrawn later") Map<ResourceType, Double> amountPerCity,
+                            @Switch("p") @Arg("""
+                                    Amount of resources to escrow for each city the receiver has
+                                    If base is set, the highest value of each resource is chosen
+                                    This uses the city count now, not when the funds are withdrawn later""") Map<ResourceType, Double> amountPerCity,
                             @Switch("e") @Arg("Additional resources to escrow\n" +
                                     "If a base or per city are set, this adds to what is calculated for that") Map<ResourceType, Double> amountExtra,
                             @Arg("Don't add escrow resources that the nation has in their stockpile") @Switch("s") boolean subtractStockpile,
@@ -1233,7 +1242,7 @@ public class BankCommands {
             return "No amount specified. Please specify at least one of: `amountBase`, `amountPerCity`, `amountExtra`";
         }
         if (db.getOrNull(GuildKey.RESOURCE_REQUEST_CHANNEL) == null) {
-            return "No resource request channel set. See " + GuildKey.RESOURCE_REQUEST_CHANNEL.getCommandMention() + "";
+            return "No resource request channel set. See " + GuildKey.RESOURCE_REQUEST_CHANNEL.getCommandMention();
         }
 
         Map<DBNation, OffshoreInstance.TransferStatus> errors = new LinkedHashMap<>();
@@ -1369,9 +1378,10 @@ public class BankCommands {
                                           "Defaults to never escrow", group = 2) @Switch("em") EscrowMode escrow_mode,
 
                            @Arg(value = "The in-game alliance bank to send from\nDefaults to the offshore set", group = 3, aliases = "usealliancebank") @Switch("a") DBAlliance ingame_bank,
-                           @Arg(value = "The account with the offshore to use\n" +
-                                   "The alliance must be registered to this guild\n" +
-                                   "Defaults to all the alliances of this guild", group = 3, aliases = "useoffshoreaccount") @Switch("o") DBAlliance offshore_account,
+                           @Arg(value = """
+                                   The account with the offshore to use
+                                   The alliance must be registered to this guild
+                                   Defaults to all the alliances of this guild""", group = 3, aliases = "useoffshoreaccount") @Switch("o") DBAlliance offshore_account,
 
                            @Arg(value = "The tax account to deduct from", group = 4) @Switch("t") TaxBracket tax_account,
                            @Arg(value = "Deduct from the receiver's tax bracket account", group = 4, aliases = "existingtaxaccount") @Switch("ta") boolean use_receiver_tax_account,
@@ -1896,9 +1906,10 @@ public class BankCommands {
 
                            @Arg(value = "The in-game alliance bank to send from\n" +
                                    "Defaults to the offshore set", group = 2, aliases = "usealliancebank") @Switch("a") DBAlliance ingame_bank,
-                           @Arg(value = "The account with the offshore to use\n" +
-                                   "The alliance must be registered to this guild\n" +
-                                   "Defaults to all the alliances of this guild", group = 2, aliases = "useoffshoreaccount") @Switch("o") DBAlliance offshore_account,
+                           @Arg(value = """
+                                   The account with the offshore to use
+                                   The alliance must be registered to this guild
+                                   Defaults to all the alliances of this guild""", group = 2, aliases = "useoffshoreaccount") @Switch("o") DBAlliance offshore_account,
 
                            @Arg(value = "The guild's nation account to use\n" +
                                    "Defaults to your nation", group = 3, aliases = "depositsaccount") @Switch("n") DBNation nation_account,
@@ -2395,8 +2406,7 @@ public class BankCommands {
                 if (includePastDepositors != null && !includePastDepositors.isEmpty()) {
                     throw new IllegalArgumentException("`usePastDepositors` is only for alliances");
                 }
-                if (Roles.MEMBER.toRoles(db).isEmpty()) throw new IllegalArgumentException("No " + GuildKey.ALLIANCE_ID.getCommandMention() + " set, or " +
-                        "" + CM.role.setAlias.cmd.locutusRole(Roles.MEMBER.name()).discordRole("") + " set");
+                if (Roles.MEMBER.toRoles(db).isEmpty()) throw new IllegalArgumentException("No " + GuildKey.ALLIANCE_ID.getCommandMention() + " set, or " + CM.role.setAlias.cmd.locutusRole(Roles.MEMBER.name()).discordRole("") + " set");
                 nations = new ObjectLinkedOpenHashSet<>();
                 for (Member member : Roles.MEMBER.getAll(db)) {
                     DBNation nation = DiscordUtil.getNation(member.getUser());
@@ -2466,16 +2476,17 @@ public class BankCommands {
     }
 
     @Command(aliases = {"depositSheet", "depositsSheet"}, desc =
-            "Get a sheet with member nations and their deposits\n" +
-                    "Each nation's safekeep should match the total balance given by deposits command" +
-                    "Add `-b` to \n" +
-                    "Add `-o` to not include any manual deposit offsets\n" +
-                    "Add `-d` to not include deposits\n" +
-                    "Add `-t` to not include taxes\n" +
-                    "Add `-l` to not include loans\n" +
-                    "Add `-g` to not include grants\n" +
-                    "Add `-p` to include past depositors\n" +
-                    "Add `-f` to force an update",
+            """
+                    Get a sheet with member nations and their deposits
+                    Each nation's safekeep should match the total balance given by deposits command\
+                    Add `-b` to\s
+                    Add `-o` to not include any manual deposit offsets
+                    Add `-d` to not include deposits
+                    Add `-t` to not include taxes
+                    Add `-l` to not include loans
+                    Add `-g` to not include grants
+                    Add `-p` to include past depositors
+                    Add `-f` to force an update""",
             viewable = true)
     @RolePermission(Roles.ECON)
     public static String depositSheet(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db,
@@ -2491,9 +2502,10 @@ public class BankCommands {
                                @Arg("Do NOT include deposits") @Switch("d") boolean noDeposits,
                                @Arg("Include past depositors") @Switch("p") Set<Integer> includePastDepositors,
                                @Arg("Do NOT include escrow sheet") @Switch("e") boolean noEscrowSheet,
-                               @Arg("Only show the flow for this note\n" +
-                                       "i.e. To only see funds marked as #TRADE\n" +
-                                       "This is for transfer flow breakdown internal, withdrawal, and deposit")
+                               @Arg("""
+                                       Only show the flow for this note
+                                       i.e. To only see funds marked as #TRADE
+                                       This is for transfer flow breakdown internal, withdrawal, and deposit""")
                                   @Switch("n") DepositType useFlowNote,
                                @Switch("f") boolean force
 
@@ -2545,8 +2557,7 @@ public class BankCommands {
                 if (includePastDepositors != null && !includePastDepositors.isEmpty()) {
                     throw new IllegalArgumentException("usePastDepositors is only implemented for alliances (ping borg)");
                 }
-                if (Roles.MEMBER.toRoles(db).isEmpty()) throw new IllegalArgumentException("No " + GuildKey.ALLIANCE_ID.getCommandMention() + " set, or " +
-                        "" + CM.role.setAlias.cmd.locutusRole(Roles.MEMBER.name()).discordRole("") + " set");
+                if (Roles.MEMBER.toRoles(db).isEmpty()) throw new IllegalArgumentException("No " + GuildKey.ALLIANCE_ID.getCommandMention() + " set, or " + CM.role.setAlias.cmd.locutusRole(Roles.MEMBER.name()).discordRole("") + " set");
                 nations = new ObjectLinkedOpenHashSet<>();
                 for (Member member : Roles.MEMBER.getAll(db)) {
                     DBNation nation = DiscordUtil.getNation(member.getUser());
@@ -3214,10 +3225,11 @@ public class BankCommands {
 
 
 
-    @Command(desc = "Send multiple transfers to nations/alliances according to a sheet\n" +
-                    "The transfer sheet columns must be `nations` (which has the nations or alliance name/id/url)\n" +
-                    "and then there must be a column named for each resource type you wish to transfer\n" +
-            "OR use a column called `resources` which has a resource list (e.g. a json object of the resources)")
+    @Command(desc = """
+            Send multiple transfers to nations/alliances according to a sheet
+            The transfer sheet columns must be `nations` (which has the nations or alliance name/id/url)
+            and then there must be a column named for each resource type you wish to transfer
+            OR use a column called `resources` which has a resource list (e.g. a json object of the resources)""")
     @RolePermission(value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON}, alliance = true, any = true)
     public static String transferBulk(@Me IMessageIO io, @Me JSONObject command, @Me User user, @Me DBNation me, @Me GuildDB db, TransferSheet sheet, DepositType.DepositTypeInfo depositType,
 
@@ -3424,9 +3436,10 @@ public class BankCommands {
         return null;
     }
 
-    @Command(desc = "Unlock transfers for an alliance or guild using this guild as an offshore\n" +
-            "Accounts are automatically locked if there is an error accessing the api, a game captcha, or if an admin of the account is banned in-game\n" +
-            "Only locks from game bans persist across restarts")
+    @Command(desc = """
+            Unlock transfers for an alliance or guild using this guild as an offshore
+            Accounts are automatically locked if there is an error accessing the api, a game captcha, or if an admin of the account is banned in-game
+            Only locks from game bans persist across restarts""")
     @RolePermission(value = Roles.ADMIN)
     public String unlockTransfers(@Me GuildDB db, @Default NationOrAllianceOrGuild nationOrAllianceOrGuild, @Switch("a") boolean unlockAll) {
         OffshoreInstance offshore = db.getOffshore();
@@ -3518,7 +3531,7 @@ public class BankCommands {
         messages.add("\n**About Internal Tax Rates**\n" +
                 "- Internal tax rates are NOT ingame tax rates\n" +
                 "- Internal rates determine what money%/resource% of ingame city taxes goes to the alliance\n" +
-                "- The remainder is added to a nation's " + CM.deposits.check.cmd.toSlashMention() + "");
+                "- The remainder is added to a nation's " + CM.deposits.check.cmd.toSlashMention());
 
         return StringMan.join(messages, "\n");
     }
@@ -3614,14 +3627,15 @@ public class BankCommands {
                 "- A tax bracket decides what % of city income (money/resources) goes to the alliance bank\n" +
                 "- Funds from raiding, trading or daily login are never taxed\n" +
                 "- Taxes bypass blockades\n" +
-                "- Your internal tax rate will then determine what portion of city taxes go to your " + CM.deposits.check.cmd.toSlashMention() + "");
+                "- Your internal tax rate will then determine what portion of city taxes go to your " + CM.deposits.check.cmd.toSlashMention());
 
         return StringMan.join(messages, "\n");
     }
 
-    @Command(aliases = {"acceptTrades", "acceptTrade"}, desc = "Deposit your pending trades into your nation's holdings for this guild\n" +
-            "The receiver must be authenticated with the bot and have bank access in an alliance\n" +
-            "Only resources sold for $0 or food bought for cash are accepted")
+    @Command(aliases = {"acceptTrades", "acceptTrade"}, desc = """
+            Deposit your pending trades into your nation's holdings for this guild
+            The receiver must be authenticated with the bot and have bank access in an alliance
+            Only resources sold for $0 or food bought for cash are accepted""")
     @RolePermission(value = Roles.MEMBER)
     public String acceptTrades(@Me JSONObject command, @Me IMessageIO io, @Me User user, @Me GuildDB db, @Me DBNation me, DBNation receiver, @Default Map<ResourceType, Double> amount, @Switch("a") boolean useLogin, @Switch("f") boolean force) throws Exception {
         OffshoreInstance offshore = db.getOffshore();
@@ -3943,7 +3957,7 @@ public class BankCommands {
                     Map<ResourceType, Double> stock = alliance.getStockpile(true);
                     accountDeposits.put(DepositType.DEPOSIT, ResourceType.resourcesToArray(stock));
                 } else {
-                    return "No offshore is set. In this server, use " + CM.coalition.add.cmd.alliances("AA:" + alliance.getAlliance_id()).coalitionName(Coalition.OFFSHORE.name()) + " and from the offshore server use " + CM.coalition.add.cmd.alliances("AA:" + alliance.getAlliance_id()).coalitionName(Coalition.OFFSHORING.name()) + "";
+                    return "No offshore is set. In this server, use " + CM.coalition.add.cmd.alliances("AA:" + alliance.getAlliance_id()).coalitionName(Coalition.OFFSHORE.name()) + " and from the offshore server use " + CM.coalition.add.cmd.alliances("AA:" + alliance.getAlliance_id()).coalitionName(Coalition.OFFSHORING.name());
                 }
             } else if (otherDb2 != db && offshore.getGuildDB() != db) {
                 return "You do not have permisssion to check another alliance's deposits (2)";
@@ -3957,7 +3971,7 @@ public class BankCommands {
         } else if (nationOrAllianceOrGuild.isGuild()) {
             GuildDB otherDb = nationOrAllianceOrGuild.asGuild();
             OffshoreInstance offshore = otherDb.getOffshore();
-            if (offshore == null) return "No offshore is set. In this server, use " + CM.coalition.add.cmd.alliances(nationOrAllianceOrGuild.getIdLong() + "").coalitionName(Coalition.OFFSHORE.name()) + " and from the offshore server use " + CM.coalition.add.cmd.alliances(nationOrAllianceOrGuild.getIdLong() + "").coalitionName(Coalition.OFFSHORING.name()) + "";
+            if (offshore == null) return "No offshore is set. In this server, use " + CM.coalition.add.cmd.alliances(nationOrAllianceOrGuild.getIdLong() + "").coalitionName(Coalition.OFFSHORE.name()) + " and from the offshore server use " + CM.coalition.add.cmd.alliances(nationOrAllianceOrGuild.getIdLong() + "").coalitionName(Coalition.OFFSHORING.name());
 
             if (!Roles.ECON.has(author, offshore.getGuildDB().getGuild()) && !Roles.ECON.has(author, otherDb.getGuild())) {
                 return "You do not have permission to check another guild's deposits";
@@ -4117,7 +4131,7 @@ public class BankCommands {
                 }
             }
             if (econ) {
-                footers.add("To view records: " + CM.bank.records.cmd.nationOrAllianceOrGuild(nationOrAllianceOrGuild.getQualifiedId() + ""));
+                footers.add("To view records: " + CM.bank.records.cmd.nationOrAllianceOrGuild(nationOrAllianceOrGuild.getQualifiedId()));
             }
         } else if (nationOrAllianceOrGuild.isAlliance()) {
             if (econ) {
@@ -4127,7 +4141,7 @@ public class BankCommands {
                                         .allianceAccount(nationOrAllianceOrGuild.getQualifiedId()),
                                 true));
                 footers.add("To withdraw: " + CM.transfer.resources.cmd.toSlashMention() + " with `#ignore` as note");
-                footers.add("To view records: " + CM.bank.records.cmd.nationOrAllianceOrGuild(nationOrAllianceOrGuild.getQualifiedId() + "").onlyOffshoreTransfers("true"));
+                footers.add("To view records: " + CM.bank.records.cmd.nationOrAllianceOrGuild(nationOrAllianceOrGuild.getQualifiedId()).onlyOffshoreTransfers("true"));
             }
         } else if (nationOrAllianceOrGuild.isTaxid()) {
             buttons.put("withdraw",
@@ -4200,9 +4214,9 @@ public class BankCommands {
                                 false));
                 if (!condensedFormat) {
                     if (GuildKey.API_KEY.getOrNull(db) != null) {
-                        footers.add("To offshore: " + CM.offshore.send.cmd.toSlashMention() + "");
+                        footers.add("To offshore: " + CM.offshore.send.cmd.toSlashMention());
                     } else {
-                        footers.add("To offshore, send to " + PW.getMarkdownUrl(offshore.getValue(), true) + "");
+                        footers.add("To offshore, send to " + PW.getMarkdownUrl(offshore.getValue(), true));
                     }
                 }
             }

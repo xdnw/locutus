@@ -292,7 +292,7 @@ public abstract class DBNation implements NationOrAlliance {
                 } else {
                     if (Roles.ADMIN.has(user, db.getGuild())) {
                         output.append("No REGISTERED role mapping found.");
-                        output.append("\nCreate a role mapping with " + CM.role.setAlias.cmd.toSlashMention() + "");
+                        output.append("\nCreate a role mapping with " + CM.role.setAlias.cmd.toSlashMention());
                     }
                 }
             } catch (HierarchyException e) {
@@ -732,7 +732,7 @@ public abstract class DBNation implements NationOrAlliance {
         post.put("bracket_id", "" + bracket.taxId);
         post.put("change_member_bracket", "Update Nation's Bracket");
         post.put("nation_id", getNation_id() + "");
-        String url = String.format("" + Settings.PNW_URL() + "/alliance/id=%s&display=taxes", data()._allianceId());
+        String url = String.format(Settings.PNW_URL() + "/alliance/id=%s&display=taxes", data()._allianceId());
 
         return PW.withLogin(() -> {
             String token = auth.getToken(PagePriority.BRACKET_SET_UNUSED, url);
@@ -886,7 +886,7 @@ public abstract class DBNation implements NationOrAlliance {
             }
         }
         if (auth == null && throwError) {
-            throw new IllegalArgumentException("Please authenticate using " + CM.credentials.login.cmd.toSlashMention() + "");
+            throw new IllegalArgumentException("Please authenticate using " + CM.credentials.login.cmd.toSlashMention());
         }
         return auth;
     }
@@ -912,13 +912,14 @@ public abstract class DBNation implements NationOrAlliance {
         return data()._rank().id;
     }
 
-    @Command(desc = "Alliance position enum id\n" +
-            "0 = None or Removed\n" +
-            "1 = Applicant\n" +
-            "2 = Member\n" +
-            "3 = Officer\n" +
-            "4 = Heir\n" +
-            "5 = Leader")
+    @Command(desc = """
+            Alliance position enum id
+            0 = None or Removed
+            1 = Applicant
+            2 = Member
+            3 = Officer
+            4 = Heir
+            5 = Leader""")
     public Rank getPositionEnum() {
         return data()._rank();
     }
@@ -2223,7 +2224,7 @@ public abstract class DBNation implements NationOrAlliance {
         } else {
             pool = alliance.getApiKeys(AlliancePermission.SEE_SPIES);
             if (pool == null) {
-                throw new IllegalArgumentException("No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention() + "");
+                throw new IllegalArgumentException("No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention());
             }
         }
 
@@ -2234,8 +2235,10 @@ public abstract class DBNation implements NationOrAlliance {
     @Command(desc = "Get nation deposits")
     @RolePermission(Roles.ECON)
     public Map<ResourceType, Double> getDeposits(ValueStore store, @Me GuildDB db, @Default @Timestamp Long start, @Default @Timestamp Long end, @NoFormat @Default Predicate<Transaction2> filter,
-                                                 @Arg("use 0/0 as the tax base\ni.e. All taxes included in deposits\n" +
-                                                         "The default internal taxrate is 100/100 (all taxes excluded)") @Switch("b") boolean ignoreBaseTaxrate,
+                                                 @Arg("""
+                                                         use 0/0 as the tax base
+                                                         i.e. All taxes included in deposits
+                                                         The default internal taxrate is 100/100 (all taxes excluded)""") @Switch("b") boolean ignoreBaseTaxrate,
                                                  @Arg("Do NOT include any manual deposit offesets") @Switch("o") boolean ignoreOffsets,
                                                  @Switch("e") boolean includeExpired,
                                                  @Switch("i") boolean includeIgnored,
@@ -3830,7 +3833,7 @@ public abstract class DBNation implements NationOrAlliance {
         int i = 0;
         for (Map.Entry<Integer, JavaCity> entry : cities) {
             if (++i == index) {
-                String url = "" + Settings.PNW_URL() + "/city/id=" + entry.getKey();
+                String url = Settings.PNW_URL() + "/city/id=" + entry.getKey();
                 return url;
             }
         }
@@ -3839,12 +3842,12 @@ public abstract class DBNation implements NationOrAlliance {
 
     @Command(desc = "Game url for nation")
     public String getUrl() {
-        return "" + Settings.PNW_URL() + "/nation/id=" + getNation_id();
+        return Settings.PNW_URL() + "/nation/id=" + getNation_id();
     }
 
     @Command(desc = "Game url for alliance")
     public String getAllianceUrl() {
-        return "" + Settings.PNW_URL() + "/alliance/id=" + getAlliance_id();
+        return Settings.PNW_URL() + "/alliance/id=" + getAlliance_id();
     }
 
     @Command(desc = "Markdown url for the nation")
@@ -4597,7 +4600,7 @@ public abstract class DBNation implements NationOrAlliance {
             post.put("to", getNation_id() + "");
             post.put("subject", subject);
             post.put("message", message);
-            String url = "" + Settings.PNW_URL() + "/api/send-message/?key=" + pair.getKey();
+            String url = Settings.PNW_URL() + "/api/send-message/?key=" + pair.getKey();
             String result = FileUtil.get(FileUtil.readStringFromURL(priority ? PagePriority.MAIL_SEND_SINGLE : PagePriority.MAIL_SEND_BULK, url, post, null));
             if (result.contains("Invalid API key")) {
                 pair.deleteApiKey();
@@ -4907,9 +4910,10 @@ public abstract class DBNation implements NationOrAlliance {
         return db.hasRequiredMMR(this);
     }
 
-    @Command(desc = "The average military buildings (building mmr) in all cities as a decimal\n" +
-            "barracks/factories/hangars/drydocks]\n" +
-            "e.g. 4.9/4.8/4.3/2.5")
+    @Command(desc = """
+            The average military buildings (building mmr) in all cities as a decimal
+            barracks/factories/hangars/drydocks]
+            e.g. 4.9/4.8/4.3/2.5""")
     public String getMMRBuildingDecimal() {
         double[] arr = getMMRBuildingArr();
         return Arrays.stream(arr).mapToObj(MathMan::format).collect(Collectors.joining("/"));
@@ -4933,30 +4937,33 @@ public abstract class DBNation implements NationOrAlliance {
         drydocks /= cityMap.size();
         return new double[]{barracks, factories, hangars, drydocks};
     }
-    @Command(desc = "The average military buildings (building mmr) in all cities as a whole number\n" +
-            "barracks factories hangars drydocks\n" +
-            "Maximum is: 5553")
+    @Command(desc = """
+            The average military buildings (building mmr) in all cities as a whole number
+            barracks factories hangars drydocks
+            Maximum is: 5553""")
     public String getMMRBuildingStr() {
         double[] arr = getMMRBuildingArr();
-        return Math.round(arr[0]) + "" + Math.round(arr[1]) + "" + Math.round(arr[2]) + "" + Math.round(arr[3]);
+        return Math.round(arr[0]) + "" + Math.round(arr[1]) + Math.round(arr[2]) + Math.round(arr[3]);
     }
 
     /**
      * MMR (units)
      * @return
      */
-    @Command(desc = "Average military building capacity used (unit mmr) in all cities as a whole number\n" +
-            "soldiers tanks aircraft ships\n" +
-            "Maximum is: 5553")
+    @Command(desc = """
+            Average military building capacity used (unit mmr) in all cities as a whole number
+            soldiers tanks aircraft ships
+            Maximum is: 5553""")
     public String getMMR() {
         double[] arr = getMMRUnitArr();
-        return Math.round(arr[0]) + "" + Math.round(arr[1]) + "" + Math.round(arr[2]) + "" + Math.round(arr[3]);
+        return Math.round(arr[0]) + "" + Math.round(arr[1]) + Math.round(arr[2]) + Math.round(arr[3]);
     }
 
     // decimal version of the above
-    @Command(desc = "Average military building capacity used (unit mmr) in all cities as a decimal\n" +
-            "soldiers/tanks/aircraft/ships\n" +
-            "e.g. 4.9/4.8/4.3/2.5")
+    @Command(desc = """
+            Average military building capacity used (unit mmr) in all cities as a decimal
+            soldiers/tanks/aircraft/ships
+            e.g. 4.9/4.8/4.3/2.5""")
     public String getMMRUnitDecimal() {
         double[] arr = getMMRUnitArr();
         return Arrays.stream(arr).mapToObj(MathMan::format).collect(Collectors.joining("/"));
@@ -6061,7 +6068,7 @@ public abstract class DBNation implements NationOrAlliance {
         Callable<Long> task = new Callable<Long>() {
             @Override
             public Long call() throws Exception {
-                String baseUrl = "" + Settings.PNW_URL() + "/nation/espionage/eid=";
+                String baseUrl = Settings.PNW_URL() + "/nation/espionage/eid=";
                 String url = baseUrl + getNation_id();
                 String html = auth.readStringFromURL(PagePriority.ESPIONAGE_FULL_UNUSED, url, Collections.emptyMap());
                 if (html.contains("This target has already had 3 espionage operations executed upon them today.")) {
@@ -6562,9 +6569,10 @@ public abstract class DBNation implements NationOrAlliance {
     public double  getResearchValue() {
         return ResourceType.convertedTotal(getResearchCost());
     }
-    @Command(desc = "The total value of all the assets this nation has\n" +
-            "Includes projects, infra, land, cities, buildings, units, and research\n" +
-            "Does not factor in cost reduction policies or projects")
+    @Command(desc = """
+            The total value of all the assets this nation has
+            Includes projects, infra, land, cities, buildings, units, and research
+            Does not factor in cost reduction policies or projects""")
     public double costConverted() {
         int total = 0;
         total += projectValue();

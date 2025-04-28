@@ -1037,7 +1037,7 @@ public class TradeCommands {
                 response.append("\n**" + name);
                 if (client != null) response.append(" | " + client.getAllianceName());
                 response.append(":**\n");
-                String url = "" + Settings.PNW_URL() + "/nation/id=" + clientId;
+                String url = Settings.PNW_URL() + "/nation/id=" + clientId;
                 response.append(CM.deposits.add.cmd.accounts(url).amount(ResourceType.toString(entry.getValue())).note("#deposit").toSlashCommand());
             } else {
                 response.append('\n').append("```").append(name).append(" | ");

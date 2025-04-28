@@ -2589,7 +2589,7 @@ public class PlaceholdersMap {
         }, new Function<DBBounty, String>() {
             @Override
             public String apply(DBBounty dbBounty) {
-                return dbBounty.toString() + "";
+                return dbBounty.toString();
             }
         }) {
             @Override
@@ -2719,14 +2719,14 @@ public class PlaceholdersMap {
                 if (aa1 != null) {
                     return aa1.contains(f);
                 } else {
-                    return db.getCoalitionById(coalitionId1).contains(f);
+                    return db.getCoalitionById(coalitionId1).contains(f.longValue());
                 }
             };
             Predicate<Integer> contains2 = f -> {
                 if (aa2 != null) {
                     return aa2.contains(f);
                 } else {
-                    return db.getCoalitionById(coalitionId2).contains(f);
+                    return db.getCoalitionById(coalitionId2).contains(f.longValue());
                 }
             };
             return f -> (contains1.test(f.getFromId()) && contains2.test(f.getToId()))

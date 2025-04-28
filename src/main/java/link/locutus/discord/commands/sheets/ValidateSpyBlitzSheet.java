@@ -39,9 +39,10 @@ public class ValidateSpyBlitzSheet extends Command {
 
     @Override
     public String desc() {
-        return "Check that all nations are in range of their spy blitz targets and that they have no more than the provided number of offensive operations.\n" +
-                "Add `true` for the day-change argument to double the offensive op limit\n" +
-                "Add `-l` to use leader name instead of nation name";
+        return """
+                Check that all nations are in range of their spy blitz targets and that they have no more than the provided number of offensive operations.
+                Add `true` for the day-change argument to double the offensive op limit
+                Add `-l` to use leader name instead of nation name""";
     }
 
     @Override

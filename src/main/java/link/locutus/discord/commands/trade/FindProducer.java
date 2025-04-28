@@ -42,15 +42,16 @@ public class FindProducer extends Command {
 
     @Override
     public String desc() {
-        return "List alliances most producing a resource\n" +
-                "Use `*` as all resources converted to weekly market median\n" +
-                "Use `-m` to not include military upkeep\n" +
-                "Use `-t` to not include trade bonus\n" +
-                "Use `-b` to not include new nation bonus\n" +
-                "Use `-n` to include consumption\n" +
-                "Use `-a` to list by nation instead of alliance\n" +
-                "Use `-s` to list the average instead of the sum\n" +
-                "Use `-i` to include gray/beige";
+        return """
+                List alliances most producing a resource
+                Use `*` as all resources converted to weekly market median
+                Use `-m` to not include military upkeep
+                Use `-t` to not include trade bonus
+                Use `-b` to not include new nation bonus
+                Use `-n` to include consumption
+                Use `-a` to list by nation instead of alliance
+                Use `-s` to list the average instead of the sum
+                Use `-i` to include gray/beige""";
     }
 
     @Override

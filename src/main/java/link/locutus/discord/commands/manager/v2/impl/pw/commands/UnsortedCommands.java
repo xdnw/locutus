@@ -117,9 +117,10 @@ public class UnsortedCommands {
             @Arg("Nations to list in the sheet\n" +
                     "Defaults to the guild alliance")
             @Default NationList nations,
-            @Default @TextArea @Arg("A space separated list of columns to add to the sheet\n" +
-                    "Can include NationAttribute as placeholders in columns\n" +
-                    "All NationAttribute placeholders must be surrounded by {} e.g. {nation}")
+            @Default @TextArea @Arg("""
+                    A space separated list of columns to add to the sheet
+                    Can include NationAttribute as placeholders in columns
+                    All NationAttribute placeholders must be surrounded by {} e.g. {nation}""")
             List<String> addColumns,
             @Switch("sheet") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (nations == null) nations = new SimpleNationList(db.getAllianceList().getNations());
@@ -224,9 +225,10 @@ public class UnsortedCommands {
             @Arg("Nations to list in the sheet\n" +
                     "Defaults to the guild alliance")
             @Default NationList nations,
-            @Default @TextArea @Arg("A space separated list of columns to add to the sheet\n" +
-                    "Can include NationAttribute as placeholders in columns\n" +
-                    "All NationAttribute placeholders must be surrounded by {} e.g. {nation}")
+            @Default @TextArea @Arg("""
+                    A space separated list of columns to add to the sheet
+                    Can include NationAttribute as placeholders in columns
+                    All NationAttribute placeholders must be surrounded by {} e.g. {nation}""")
             List<String> addColumns,
             @Arg("Number of free espionage ops required") @Switch("r") Integer requireXFreeOps,
             @Arg("Number of spies required")
@@ -509,7 +511,7 @@ public class UnsortedCommands {
     }
 
     private void sendIO(StringBuilder out, String selfName, boolean isAlliance, Map<Integer, List<Transaction2>> transferMap, long timestamp, boolean inflow) {
-        String URL_BASE = "" + Settings.PNW_URL() + "/%s/id=%s";
+        String URL_BASE = Settings.PNW_URL() + "/%s/id=%s";
         long days = TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - timestamp);
         for (Map.Entry<Integer, List<Transaction2>> entry : transferMap.entrySet()) {
             int id = entry.getKey();
@@ -735,8 +737,7 @@ public class UnsortedCommands {
             @Override
             public String apply(DBNation n) {
                 PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(n.getNation_id());
-                String result = "**" + n.getNation() + "**:" +
-                        "";
+                String result = "**" + n.getNation() + "**:";
 
                 String active;
                 if (n.active_m() < TimeUnit.DAYS.toMinutes(1)) {
@@ -1002,9 +1003,10 @@ public class UnsortedCommands {
         return "Cleared all nicknames (that I have permission to clear)!";
     }
 
-    @Command(desc = "Add or subtract from a nation, alliance, guild or tax bracket's account balance\n" +
-            "note: Mutated alliance deposits are only valid if your server is a bank/offshore\n" +
-            "Use `#expire=30d` to have the amount expire after X days")
+    @Command(desc = """
+            Add or subtract from a nation, alliance, guild or tax bracket's account balance
+            note: Mutated alliance deposits are only valid if your server is a bank/offshore
+            Use `#expire=30d` to have the amount expire after X days""")
     @RolePermission(Roles.ECON)
     public String addBalance(@Me GuildDB db, @Me JSONObject command, @Me IMessageIO channel, @Me Guild guild, @Me User author, @Me DBNation me,
                              @AllowDeleted Set<NationOrAllianceOrGuildOrTaxid> accounts, Map<ResourceType, Double> amount, String note, @Switch("f") boolean force) throws Exception {
@@ -1445,7 +1447,7 @@ public class UnsortedCommands {
     public String rebuy(@Me IMessageIO channel,
                         DBNation nation) throws Exception {
         Map<Integer, Long> dcProb = nation.findDayChange();
-        if (dcProb.isEmpty() || dcProb.size() == 12) return "Unknown day change. Try " + CM.unit.history.cmd.toSlashMention() + "";
+        if (dcProb.isEmpty() || dcProb.size() == 12) return "Unknown day change. Try " + CM.unit.history.cmd.toSlashMention();
 
         if (dcProb.size() == 1) {
             Map.Entry<Integer, Long> entry = dcProb.entrySet().iterator().next();
@@ -1670,7 +1672,7 @@ public class UnsortedCommands {
             if (missingRoles != null && !missingRoles.isEmpty()) {
                 throw new IllegalArgumentException("You do not have the required roles to use this command: `" + StringMan.join(missingRoles, ",") + "`");
             }
-            if (value == null) return "No message set for `" + key + "`. Plase use " + CM.copyPasta.cmd.toSlashMention() + "";
+            if (value == null) return "No message set for `" + key + "`. Plase use " + CM.copyPasta.cmd.toSlashMention();
 
             value = placeholders.format2(store, value, formatNation, false);
 
@@ -1739,7 +1741,7 @@ public class UnsortedCommands {
         IACheckup checkup = new IACheckup(db, db.getAllianceList().subList(aaIds), false);
 
         ApiKeyPool keys = mailResults ? db.getMailKey() : null;
-        if (mailResults && keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention() + "");
+        if (mailResults && keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention());
 
         CompletableFuture<IMessageBuilder> msg = channel.send("Please wait...");
 
@@ -1956,30 +1958,35 @@ public class UnsortedCommands {
                                @Arg("A city url or build json to optimize")
                                CityBuild build,
 
-                               @Arg(value = "Set the days the build is expected to last before replacement (or destruction)\n" +
-                                       "This factors in the cost to switch builds\n" +
-                                       "Defaults to None", group = 0)
+                               @Arg(value = """
+                                       Set the days the build is expected to last before replacement (or destruction)
+                                       This factors in the cost to switch builds
+                                       Defaults to None""", group = 0)
                                @Default Integer days,
 
                                @Arg(value = "Set the MMR (military building counts) of the city to optimize\n" +
                                        "Defaults to the current MMR of the build provided, else `0000`", group = 0)
                                @Switch("x") @Filter("[0-9]{4}") String buildMMR,
 
-                               @Arg(value = "Set the age of the city to optimize\n" +
-                                       "Defaults to the current city age, else `0`\n" +
-                                       "You can also specify `age: 1234` in the city json", group = 0)
+                               @Arg(value = """
+                                       Set the age of the city to optimize
+                                       Defaults to the current city age, else `0`
+                                       You can also specify `age: 1234` in the city json""", group = 0)
                                @Switch("a") Integer age,
-                               @Arg(value = "Set the infrastructure level of buildings in the city to optimize\n" +
-                                       "Defaults to the current infrastructure level\n" +
-                                       "You can also specify `infra:1234` in the city json", group = 0)
+                               @Arg(value = """
+                                       Set the infrastructure level of buildings in the city to optimize
+                                       Defaults to the current infrastructure level
+                                       You can also specify `infra:1234` in the city json""", group = 0)
                                @Switch("i") Integer infra,
-                               @Arg(value = "Set the damaged infrastructure level of the city to optimize\n" +
-                                       "i.e. To simulate a city with a infra level required for its buildings\n" +
-                                       "Defaults to the infra level", group = 0)
+                               @Arg(value = """
+                                       Set the damaged infrastructure level of the city to optimize
+                                       i.e. To simulate a city with a infra level required for its buildings
+                                       Defaults to the infra level""", group = 0)
                                @Switch("b") Integer baseReducedInfra,
-                               @Arg(value = "Set the land level of the city to optimize\n" +
-                                       "Defaults to the current land level, else the infra level\n" +
-                                       "You can specify `land: 1234` in the city json", group = 0)
+                               @Arg(value = """
+                                       Set the land level of the city to optimize
+                                       Defaults to the current land level, else the infra level
+                                       You can specify `land: 1234` in the city json""", group = 0)
                                @Switch("l") Integer land,
                                @Arg(value = "Set the radiation level\n" +
                                        "Defaults to the cities current radiation, or your nation's radiation level", group = 0)
@@ -2051,7 +2058,7 @@ public class UnsortedCommands {
         if (writePlaintext) flags.add('p');
         if (nationalProjects != null) {
             for (Project project : nationalProjects) {
-                cmd.add("" + project.name());
+                cmd.add(project.name());
             }
         }
 
@@ -2246,9 +2253,10 @@ public class UnsortedCommands {
         msg.send();
     }
 
-    @Command(desc = "Create, send and record unique invites to a set of nations\n" +
-            "The invite can be sent via discord direct message, mail, viewed from an embed, or command\n" +
-            "If `allowCreation` is not enabled, only a single invite will be created per nation; invites may expire and no new invites are permitted.")
+    @Command(desc = """
+            Create, send and record unique invites to a set of nations
+            The invite can be sent via discord direct message, mail, viewed from an embed, or command
+            If `allowCreation` is not enabled, only a single invite will be created per nation; invites may expire and no new invites are permitted.""")
     @RolePermission(Roles.ADMIN)
     public String sendInvite(@Me GuildDB db,
                              @Me User author,
@@ -2262,9 +2270,10 @@ public class UnsortedCommands {
                              @Switch("u") Integer maxUsesEach,
                              @Arg("Send the invite via discord direct message") @Switch("d") boolean sendDM,
                              @Switch("m") boolean sendMail,
-                             @Arg("Allow creating an invite when any nation matches `sendTo`, when they don't already have an invite, or theirs has expired\n" +
-                                     "Invites can be created by using viewing the announcement embed or running the announcement view command\n" +
-                                     "Defaults to false")
+                             @Arg("""
+                                     Allow creating an invite when any nation matches `sendTo`, when they don't already have an invite, or theirs has expired
+                                     Invites can be created by using viewing the announcement embed or running the announcement view command
+                                     Defaults to false""")
                              @Switch("c") boolean allowCreation,
                              @Switch("f") boolean force) throws IOException {
         DefaultGuildChannelUnion defaultChannel = inviteTo.getDefaultChannel();
@@ -2293,7 +2302,7 @@ public class UnsortedCommands {
 
         // dm user instructions find_announcement
         ApiKeyPool keys = (sendMail || sendDM) ? db.getMailKey() : null;
-        if ((sendMail || sendDM) && keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention() + "");
+        if ((sendMail || sendDM) && keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention());
         Set<Integer> aaIds = db.getAllianceIds();
 
         List<String> errors = new ArrayList<>();

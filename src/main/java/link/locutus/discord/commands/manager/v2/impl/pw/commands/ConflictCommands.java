@@ -283,9 +283,10 @@ public class ConflictCommands {
         return response.toString();
     }
 
-    @Command(desc = "Set the end date for a conflict\n" +
-            "Use a value of `-1` to specify no end date\n" +
-            "This does not push the data to the site")
+    @Command(desc = """
+            Set the end date for a conflict
+            Use a value of `-1` to specify no end date
+            This does not push the data to the site""")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String setConflictEnd(ConflictManager manager, @Me JSONObject command, Conflict conflict, @Timestamp long time, @Arg("Only set the end date for a single alliance") @Switch("a") DBAlliance alliance) {
@@ -307,9 +308,10 @@ public class ConflictCommands {
                 "\nNote: this does not recalculate conflict data";
     }
 
-    @Command(desc = "Set the start date for a conflict\n" +
-            "Use a value of `-1` to specify no start date (if prividing an alliance)\n" +
-            "This does not push the data to the site")
+    @Command(desc = """
+            Set the start date for a conflict
+            Use a value of `-1` to specify no start date (if prividing an alliance)
+            This does not push the data to the site""")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String setConflictStart(ConflictManager manager, @Me JSONObject command, Conflict conflict, @Timestamp long time, @Switch("a") DBAlliance alliance) {
@@ -376,8 +378,10 @@ public class ConflictCommands {
         }).count();
     }
 
-    @Command(desc = "Manually create an ongoing conflict between two coalitions\n" +
-            "Use `-1` for end date to specify no end date\n")
+    @Command(desc = """
+            Manually create an ongoing conflict between two coalitions
+            Use `-1` for end date to specify no end date
+            """)
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String addConflict(@Me GuildDB db, ConflictManager manager, @Me JSONObject command, @Me IMessageIO io, ConflictCategory category, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2, @Timestamp long start, @Timestamp long end, @Switch("n") String conflictName) throws IOException, ParseException {
@@ -701,9 +705,10 @@ public class ConflictCommands {
         return "Done!\nNote: this does not push the data to the site";
     }
 
-    @Command(desc = "Bulk import conflict data from multiple sources\n" +
-            "Including ctowned, wiki, graph data, alliance names or ALL\n" +
-            "This does not push the data to the site unless `all` is used")
+    @Command(desc = """
+            Bulk import conflict data from multiple sources
+            Including ctowned, wiki, graph data, alliance names or ALL
+            This does not push the data to the site unless `all` is used""")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String importConflictData(@Me IMessageIO io, @Me GuildDB db, ConflictManager manager,
@@ -756,9 +761,10 @@ public class ConflictCommands {
                 "See: " + CM.conflict.sync.website.cmd.toSlashMention();
     }
 
-    @Command(desc = "Configure the guilds and conflict ids that will be featured by this guild\n" +
-            "By default all conflicts are featured\n" +
-            "Specify either a set of conflicts, or a guild to feature all conflicts from that guild")
+    @Command(desc = """
+            Configure the guilds and conflict ids that will be featured by this guild
+            By default all conflicts are featured
+            Specify either a set of conflicts, or a guild to feature all conflicts from that guild""")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String featureConflicts(ConflictManager manager, @Me GuildDB db, @Default Set<Conflict> conflicts, @Default Guild guild) {
@@ -781,9 +787,10 @@ public class ConflictCommands {
         return StringMan.join(messages, "\n");
     }
 
-    @Command(desc = "Configure the guilds and conflict ids that will be featured by this guild\n" +
-            "By default all conflicts are featured\n" +
-            "Specify either a set of conflicts, or a guild to feature all conflicts from that guild")
+    @Command(desc = """
+            Configure the guilds and conflict ids that will be featured by this guild
+            By default all conflicts are featured
+            Specify either a set of conflicts, or a guild to feature all conflicts from that guild""")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String removeFeature(ConflictManager manager, @Me GuildDB db, @Default Set<Conflict> conflicts, @Default Guild guild) {

@@ -44,10 +44,11 @@ public class NationSheet extends Command implements Noformat {
 
     @Override
     public String desc() {
-        return "Create a nation sheet, with the following column placeholders\n" +
-                "<https://github.com/xdnw/locutus/wiki/nation_placeholders>\n" +
-                "Add `-s` to force update spies\n" +
-                "Add `snapshot:20/10/2022` to use a snapshot";
+        return """
+                Create a nation sheet, with the following column placeholders
+                <https://github.com/xdnw/locutus/wiki/nation_placeholders>
+                Add `-s` to force update spies
+                Add `snapshot:20/10/2022` to use a snapshot""";
     }
 
     @Override

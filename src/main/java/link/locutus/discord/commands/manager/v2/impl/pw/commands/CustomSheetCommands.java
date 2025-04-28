@@ -269,10 +269,11 @@ public class CustomSheetCommands {
 
     //- add_tab <tab-name> <selector> <template>
     @NoFormat
-    @Command(desc = "Add a tab to a custom sheet\n" +
-            "Tabs are named and are comprised of a selection alias (rows) and a sheet template (columns)\n" +
-            "You must create a selection alias and sheet template first\n" +
-            "Sheets must be generated/updated with the update command")
+    @Command(desc = """
+            Add a tab to a custom sheet
+            Tabs are named and are comprised of a selection alias (rows) and a sheet template (columns)
+            You must create a selection alias and sheet template first
+            Sheets must be generated/updated with the update command""")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
     public String addTab(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @CreateSheet CustomSheet sheet, String tabName, @CreateSheet SelectionAlias select, @CreateSheet SheetTemplate columns, @Switch("f") boolean force) {
         columns = columns.resolve(select.getType());
@@ -325,9 +326,10 @@ public class CustomSheetCommands {
                 "See: " + CM.sheet_custom.view.cmd.toSlashMention() + " | " + CM.sheet_custom.remove_tab.cmd.toSlashMention() + " | " + CM.sheet_custom.update.cmd.toSlashMention();
     }
 
-    @Command(desc = "Update the tabs in a custom sheet and return the url\n" +
-            "A sheet update may produce errors if a selection is no longer valid\n" +
-            "Tabs in the google sheet which aren't registered will be ignored")
+    @Command(desc = """
+            Update the tabs in a custom sheet and return the url
+            A sheet update may produce errors if a selection is no longer valid
+            Tabs in the google sheet which aren't registered will be ignored""")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
     public String updateSheet(CustomSheet sheet, ValueStore store) throws GeneralSecurityException, IOException {
         List<String> errors = sheet.update(store);
@@ -368,9 +370,10 @@ public class CustomSheetCommands {
         return sheet.toString();
     }
 
-    @Command(desc = "Generate or update a spreadsheet from a url\n" +
-            "Each tab must be a valid selection, prefixed by the type e.g. `nation:*`\n" +
-            "The first row must have placeholders in each column, such as `{nation}` `{cities}` `{score}`")
+    @Command(desc = """
+            Generate or update a spreadsheet from a url
+            Each tab must be a valid selection, prefixed by the type e.g. `nation:*`
+            The first row must have placeholders in each column, such as `{nation}` `{cities}` `{score}`""")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
     public String auto(ValueStore store, @Me GuildDB db, SpreadSheet sheet, @Switch("s") boolean saveSheet) throws GeneralSecurityException, IOException {
         CustomSheetManager manager = db.getSheetManager();
@@ -503,9 +506,10 @@ public class CustomSheetCommands {
         return response.toString();
     }
 
-    @Command(desc = "Reads a CSV file from a discord message attachment and updates the provided Google Sheet\n" +
-            "The sheet must be in a valid TSV or CSV format, with the header row as the first row\n" +
-            "Specify the index of the attachment if there are multiple attachments")
+    @Command(desc = """
+            Reads a CSV file from a discord message attachment and updates the provided Google Sheet
+            The sheet must be in a valid TSV or CSV format, with the header row as the first row
+            Specify the index of the attachment if there are multiple attachments""")
     public String fromFile(@Me IMessageIO io, @Me JSONObject command, Message message, SpreadSheet sheet, @Switch("i") Integer index) throws ExecutionException, InterruptedException {
         @Unmodifiable List<Message.Attachment> attachments = message.getAttachments();
         if (attachments.isEmpty()) {

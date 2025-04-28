@@ -147,7 +147,7 @@ public class CustomBounty {
                         }
                         // if attack types is not null and does not include ground or airstrike soldiers
                         if (allowedAttackTypes != null && !allowedAttackTypes.contains(AttackType.GROUND) && !allowedAttackTypes.contains(AttackType.AIRSTRIKE_SOLDIER)) {
-                            throw new IllegalArgumentException("`unitKills` with " + MilitaryUnit.SOLDIER + " is specified, but `allowedAttackTypes` does not allow for " + AttackType.GROUND + " or " + AttackType.AIRSTRIKE_SOLDIER + "");
+                            throw new IllegalArgumentException("`unitKills` with " + MilitaryUnit.SOLDIER + " is specified, but `allowedAttackTypes` does not allow for " + AttackType.GROUND + " or " + AttackType.AIRSTRIKE_SOLDIER);
                         }
                     }
                     case TANK -> {
@@ -157,7 +157,7 @@ public class CustomBounty {
                         }
                         // if attack types is not null and does not include ground or airstrike tanks
                         if (allowedAttackTypes != null && !allowedAttackTypes.contains(AttackType.GROUND) && !allowedAttackTypes.contains(AttackType.AIRSTRIKE_TANK)) {
-                            throw new IllegalArgumentException("`unitKills` with " + MilitaryUnit.SOLDIER + " is specified, but `allowedAttackTypes` does not allow for " + AttackType.GROUND + " or " + AttackType.AIRSTRIKE_TANK + "");
+                            throw new IllegalArgumentException("`unitKills` with " + MilitaryUnit.SOLDIER + " is specified, but `allowedAttackTypes` does not allow for " + AttackType.GROUND + " or " + AttackType.AIRSTRIKE_TANK);
                         }
                     }
                     case AIRCRAFT -> {
@@ -186,7 +186,7 @@ public class CustomBounty {
                         }
                         // if attack types is not null and does not include airstrike ships or naval
                         if (allowedAttackTypes != null && !allowedAttackTypes.contains(AttackType.AIRSTRIKE_SHIP) && !allowedAttackTypes.contains(AttackType.NAVAL)) {
-                            throw new IllegalArgumentException("`unitKills` with " + MilitaryUnit.SHIP + " is specified, but `allowedAttackTypes` does not allow for " + AttackType.AIRSTRIKE_SHIP + " or " + AttackType.NAVAL + "");
+                            throw new IllegalArgumentException("`unitKills` with " + MilitaryUnit.SHIP + " is specified, but `allowedAttackTypes` does not allow for " + AttackType.AIRSTRIKE_SHIP + " or " + AttackType.NAVAL);
                         }
 
                     }

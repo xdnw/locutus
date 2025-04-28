@@ -47,7 +47,7 @@ public class MailTask implements Callable<String> {
                 msgPost.put("body", message);
                 msgPost.put("sndmsg", "Send Message");
 
-                String url = "" + Settings.PNW_URL() + "/inbox/message/";
+                String url = Settings.PNW_URL() + "/inbox/message/";
                 String msgResponse = auth.readStringFromURL(priority ? PagePriority.MAIL_SEND_SINGLE : PagePriority.MAIL_SEND_BULK, url, msgPost);
                 if (msgResponse.contains("You have successfully sent a message.")) {
                     return "Message sent to " + nation.getNation() + "! (check your out folder)";

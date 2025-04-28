@@ -54,21 +54,22 @@ public class WarCostAB extends Command {
 
     @Override
     public String desc() {
-        return "Get the war cost between two entities.\n" +
-                "Add `-u` to exclude unit cost\n" +
-                "Add `-i` to exclude infra cost\n" +
-                "Add `-c` to exclude consumption\n" +
-                "Add `-l` to exclude loot\n" +
-                "Add `-b` to exclude buildings\n" +
-                "Add `-w` to list the wars (txt file)\n" +
-                "Add `-t` to list the war types\n" +
-                "Add `-s` to list war status\n" +
-                "Add `-o` to only include wars declared by coalition1\n" +
-                "Add `-d` to only include wars declared by coalition2\n" +
-                "Add e.g `attack_type:GROUND,VICTORY` to filter by attack type\n" +
-                "Add `war_type:RAID` to filter by war type\n" +
-                "Add `status:EXPIRED` to filter by war status\n" +
-                "Add `success:0` to filter by e.g. `utter failure`";
+        return """
+                Get the war cost between two entities.
+                Add `-u` to exclude unit cost
+                Add `-i` to exclude infra cost
+                Add `-c` to exclude consumption
+                Add `-l` to exclude loot
+                Add `-b` to exclude buildings
+                Add `-w` to list the wars (txt file)
+                Add `-t` to list the war types
+                Add `-s` to list war status
+                Add `-o` to only include wars declared by coalition1
+                Add `-d` to only include wars declared by coalition2
+                Add e.g `attack_type:GROUND,VICTORY` to filter by attack type
+                Add `war_type:RAID` to filter by war type
+                Add `status:EXPIRED` to filter by war status
+                Add `success:0` to filter by e.g. `utter failure`""";
     }
 
     @Override

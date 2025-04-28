@@ -50,15 +50,16 @@ public class Warchest extends Command {
 
     @Override
     public String desc() {
-        return "Determine how much to send to each member to meet their warchest requirements (per city)\n" +
-                "Add `-s` to skip checking stockpile\n" +
-                "add `-m` to convert to money\n" +
-                "Add `-b` to bypass checks\n" +
-                "Add e.g. `nation:blah` to specify a nation account\n" +
-                "Add e.g. `alliance:blah` to specify an alliance account\n" +
-                "Add e.g. `offshore:blah` to specify an offshore account\n" +
-                "Add e.g. `tax_id:blah` to specify a tax bracket\n" +
-                "add `-t` to use receivers tax bracket account";
+        return """
+                Determine how much to send to each member to meet their warchest requirements (per city)
+                Add `-s` to skip checking stockpile
+                add `-m` to convert to money
+                Add `-b` to bypass checks
+                Add e.g. `nation:blah` to specify a nation account
+                Add e.g. `alliance:blah` to specify an alliance account
+                Add e.g. `offshore:blah` to specify an offshore account
+                Add e.g. `tax_id:blah` to specify a tax bracket
+                add `-t` to use receivers tax bracket account""";
     }
 
     @Override

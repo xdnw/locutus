@@ -402,8 +402,8 @@ public class SpyBlitzGenerator {
 
             DBNation attacker = DiscordUtil.parseNation(row.get(0).toString(), true);
 
-            Spyop op1 = createOp(attacker, row.get(3) + "", "COVERT" + "", update);
-            Spyop op2 = createOp(attacker, row.get(6) + "", "COVERT" + "", update);
+            Spyop op1 = createOp(attacker, row.get(3) + "", "COVERT", update);
+            Spyop op2 = createOp(attacker, row.get(6) + "", "COVERT", update);
 
             if (op1 == null) {
                 warnings.accept("Operation is null " + attacker.getMarkdownUrl() + " | " + row.get(3) + " | " + row.get(6));
@@ -531,8 +531,8 @@ public class SpyBlitzGenerator {
 
             String[] targetSplit1 = row.get(SpySlot1Index).toString().split("( / )");
             String[] targetSplit2 = row.get(SpySlot2Index).toString().split("( / )");
-            Spyop op1 = createOp(attacker, targetSplit1[targetSplit1.length - 1] + "", row.get(OpType1Index) + "", row.get(AttSafety1Index) + "", update);
-            Spyop op2 = createOp(attacker, targetSplit2[targetSplit2.length - 1] + "", row.get(OpType2Index) + "", row.get(AttSafety2Index) + "", update);
+            Spyop op1 = createOp(attacker, targetSplit1[targetSplit1.length - 1], row.get(OpType1Index) + "", row.get(AttSafety1Index) + "", update);
+            Spyop op2 = createOp(attacker, targetSplit2[targetSplit2.length - 1], row.get(OpType2Index) + "", row.get(AttSafety2Index) + "", update);
 
             List<String> addWarning = null;
             if (op1 == null) {

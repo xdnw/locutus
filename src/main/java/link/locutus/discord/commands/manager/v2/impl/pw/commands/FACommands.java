@@ -323,7 +323,7 @@ public class FACommands {
         if (!me.equals(nation) && !Roles.FOREIGN_AFFAIRS.has(user, guild)) return "You do not have FOREIGN_AFFAIRS";
         Category category = db.getOrThrow(GuildKey.EMBASSY_CATEGORY);
         if (category == null) {
-            return "Embassies are disabled. To set it up, use " + GuildKey.EMBASSY_CATEGORY.getCommandMention() + "";
+            return "Embassies are disabled. To set it up, use " + GuildKey.EMBASSY_CATEGORY.getCommandMention();
         }
         Rank reqRank = GuildKey.AUTOROLE_ALLIANCE_RANK.getOrNull(db);
         if (reqRank == null) reqRank = Rank.MEMBER;
@@ -339,7 +339,7 @@ public class FACommands {
             db.addCoalition(nation.getAlliance_id(), Coalition.MASKEDALLIANCES);
             GuildDB.AutoRoleOption autoRoleValue = db.getOrNull(GuildKey.AUTOROLE_ALLIANCES);
             if (autoRoleValue == null || autoRoleValue == GuildDB.AutoRoleOption.FALSE) {
-                return "AutoRole is disabled. See " + GuildKey.AUTOROLE_ALLIANCES.getCommandMention() + "";
+                return "AutoRole is disabled. See " + GuildKey.AUTOROLE_ALLIANCES.getCommandMention();
             }
             db.getAutoRoleTask().syncDB();
             AutoRoleInfo task = db.getAutoRoleTask().autoRole(member, nation);
@@ -347,7 +347,7 @@ public class FACommands {
             aaRoles = DiscordUtil.getAARoles(guild.getRoles());
             role = aaRoles.get(nation.getAlliance_id());
             if (role == null) {
-                return "No alliance role found. Please try " + CM.role.autoassign.cmd.toSlashMention() + "";
+                return "No alliance role found. Please try " + CM.role.autoassign.cmd.toSlashMention();
             }
         }
 

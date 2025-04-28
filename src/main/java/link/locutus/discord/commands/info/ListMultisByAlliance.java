@@ -120,7 +120,7 @@ public class ListMultisByAlliance extends Command {
             List<Transaction2> transfers = allTransfers.getOrDefault(nationId, Collections.emptyList());
             for (Transaction2 transfer : transfers) {
                 if (transfer.banker_nation == nationId) {
-                    if (entry.getValue().contains(transfer.getReceiver())) {
+                    if (entry.getValue().contains((int) transfer.getReceiver())) {
                         sentBank = true;
                     }
                 } else {

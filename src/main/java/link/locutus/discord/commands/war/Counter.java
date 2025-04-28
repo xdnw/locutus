@@ -36,15 +36,16 @@ public class Counter extends Command {
 
     @Override
     public String desc() {
-        return "Get a list of nations to counter\n" +
-                "Add `-o` to ignore nations with 5 offensive slots\n" +
-                "Add `-w` to filter out weak attackers\n" +
-                "Add `-a` to only list active nations (past hour)\n" +
-                "Add `-d` to require discord\n" +
-                "Add `-p` to mention added nations\n" +
-                "Add `-s` to allow same alliance countering\n" +
-                "Add `-i` to include inactive nations\n" +
-                "Add `-m` to include applicants";
+        return """
+                Get a list of nations to counter
+                Add `-o` to ignore nations with 5 offensive slots
+                Add `-w` to filter out weak attackers
+                Add `-a` to only list active nations (past hour)
+                Add `-d` to require discord
+                Add `-p` to mention added nations
+                Add `-s` to allow same alliance countering
+                Add `-i` to include inactive nations
+                Add `-m` to include applicants""";
     }
 
     @Override
@@ -66,7 +67,7 @@ public class Counter extends Command {
         int defenderId;
 
         String arg0 = args.get(0);
-        if (!arg0.startsWith("" + Settings.PNW_URL() + "/nation/war/") || !arg0.contains("=")) {
+        if (!arg0.startsWith(Settings.PNW_URL() + "/nation/war/") || !arg0.contains("=")) {
             defenderId = 0;
             Integer counterId = DiscordUtil.parseNationId(arg0, true);
             if (counterId == null) {

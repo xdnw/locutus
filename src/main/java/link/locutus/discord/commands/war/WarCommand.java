@@ -58,16 +58,17 @@ public class WarCommand extends Command {
 
     @Override
     public String desc() {
-        return "Find a weaker war target that you can hit, who is in a specified alliance/coalition/none/*\n" +
-                "Defualts to `enemies` coalition\n" +
-                "Add `score:1234` to specify attacker score\n" +
-                "Add `-i` to include inactives\n" +
-                "Add `-a` to include applicants\n" +
-                "Add `-s` to include strong enemies\n" +
-                "Add `-p` to only include priority targets\n" +
-                "Add `-w` to only list weak enemies\n" +
-                "Add `-c` to only list enemies with less cities\n" +
-                "Add `-e` to prioritize easier targets";
+        return """
+                Find a weaker war target that you can hit, who is in a specified alliance/coalition/none/*
+                Defualts to `enemies` coalition
+                Add `score:1234` to specify attacker score
+                Add `-i` to include inactives
+                Add `-a` to include applicants
+                Add `-s` to include strong enemies
+                Add `-p` to only include priority targets
+                Add `-w` to only list weak enemies
+                Add `-c` to only list enemies with less cities
+                Add `-e` to prioritize easier targets""";
     }
 
     @Override

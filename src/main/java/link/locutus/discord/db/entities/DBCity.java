@@ -413,7 +413,7 @@ public abstract class DBCity implements ICity {
 
     @Command(desc = "Get city mmr")
     public String getMMR() {
-        return getBuilding(Buildings.BARRACKS) + "" + getBuilding(Buildings.FACTORY) + "" + getBuilding(Buildings.HANGAR) + "" + getBuilding(Buildings.DRYDOCK);
+        return getBuilding(Buildings.BARRACKS) + "" + getBuilding(Buildings.FACTORY) + getBuilding(Buildings.HANGAR) + getBuilding(Buildings.DRYDOCK);
     }
 
     public int[] getMMRArray() {

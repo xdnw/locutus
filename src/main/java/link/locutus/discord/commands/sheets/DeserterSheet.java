@@ -51,11 +51,12 @@ public class DeserterSheet extends Command {
 
     @Override
     public String desc() {
-        return "A sheet of all the nations that left an alliance in the specified timeframe.\n" +
-                "`currently-in` is optional and only checks those nations\n" +
-                "Add `-a` to remove inactive nations\n" +
-                "Add `-v` to remove vm nations\n" +
-                "Add `-n` to remove applicants (current)";
+        return """
+                A sheet of all the nations that left an alliance in the specified timeframe.
+                `currently-in` is optional and only checks those nations
+                Add `-a` to remove inactive nations
+                Add `-v` to remove vm nations
+                Add `-n` to remove applicants (current)""";
     }
 
     @Override

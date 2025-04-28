@@ -51,11 +51,12 @@ public class CounterSheet extends Command {
 
     @Override
     public String desc() {
-        return "Generate a sheet with a list of enemies / nations attacking. (Defaults to those attacking allies)\n" +
-                "Please still check the war history in case it is not valid to counter (and add a note to the note column indicating such)\n" +
-                "Add `-a` to filter out applicants\n" +
-                "Add `-i` to filter out inactive members\n" +
-                "Add `-e` to include enemies not attacking";
+        return """
+                Generate a sheet with a list of enemies / nations attacking. (Defaults to those attacking allies)
+                Please still check the war history in case it is not valid to counter (and add a note to the note column indicating such)
+                Add `-a` to filter out applicants
+                Add `-i` to filter out inactive members
+                Add `-e` to include enemies not attacking""";
     }
 
     @Override

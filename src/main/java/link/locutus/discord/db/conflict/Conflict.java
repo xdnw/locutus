@@ -617,9 +617,10 @@ public class Conflict {
         return turnStart;
     }
 
-    @Command(desc = "The turn the conflict ends\n" +
-            "Measured in 2h turns from unix epoch\n" +
-            "If the conflict is ongoing, this will be Long.MAX_VALUE")
+    @Command(desc = """
+            The turn the conflict ends
+            Measured in 2h turns from unix epoch
+            If the conflict is ongoing, this will be Long.MAX_VALUE""")
     public long getEndTurn() {
         return turnEnd;
     }

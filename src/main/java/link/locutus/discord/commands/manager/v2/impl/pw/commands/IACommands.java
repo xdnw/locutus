@@ -7,10 +7,7 @@ import com.politicsandwar.graphql.model.NationsQueryRequest;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.DepositType;
@@ -219,11 +216,12 @@ public class IACommands {
         return null;
     }
 
-    @Command(desc = "Sort the channels in a set of categories based on sorting rules in a spreadsheet\n" +
-            "The channels must be in the form `{nation}-{nation_id}`\n" +
-            "The sheet must have columns: `category` and `filter`\n" +
-            "If a nation matches multiple filters, it will prioritize its current category, then the next free category (max channels 50 per category)\n" +
-            "Add a channel filter to only sort channels for those nations")
+    @Command(desc = """
+            Sort the channels in a set of categories based on sorting rules in a spreadsheet
+            The channels must be in the form `{nation}-{nation_id}`
+            The sheet must have columns: `category` and `filter`
+            If a nation matches multiple filters, it will prioritize its current category, then the next free category (max channels 50 per category)
+            Add a channel filter to only sort channels for those nations""")
     public String sortChannelsSheetRules(@Me GuildDB db, @Me Guild guild, @Me User author, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
     SpreadSheet sheet,
      @Arg("Optional filter to only sort channels for those nations")
@@ -286,11 +284,12 @@ public class IACommands {
 
 
 
-    @Command(desc = "Sort the channels in a set of categories into new categories based on the category name\n" +
-            "The channels must be in the form `{nation}-{nation_id}`\n" +
-            "Receiving categories must resolve to a nation filter: <https://github.com/xdnw/locutus/wiki/Nation_placeholders>\n" +
-            "Set a category prefix to only send channels to categories starting with a specific word (e.g. `interview-`)\n" +
-            "Set a filter to only sort channels for those nations")
+    @Command(desc = """
+            Sort the channels in a set of categories into new categories based on the category name
+            The channels must be in the form `{nation}-{nation_id}`
+            Receiving categories must resolve to a nation filter: <https://github.com/xdnw/locutus/wiki/Nation_placeholders>
+            Set a category prefix to only send channels to categories starting with a specific word (e.g. `interview-`)
+            Set a filter to only sort channels for those nations""")
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
     public String sortChannelsName(@Me GuildDB db, @Me Guild guild, @Me User author, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
                                    @Arg("Categories to sort from")
@@ -350,10 +349,11 @@ public class IACommands {
         return null;
     }
 
-    @Command(desc = "Sort the channels in a set of categories into new categories based on a spreadsheet\n" +
-            "The channels must be in the form `{nation}-{nation_id}`\n" +
-            "The sheet must have columns: (`nation` or `leader`) and `category`\n" +
-            "Set a filter to only sort channels for those nations")
+    @Command(desc = """
+            Sort the channels in a set of categories into new categories based on a spreadsheet
+            The channels must be in the form `{nation}-{nation_id}`
+            The sheet must have columns: (`nation` or `leader`) and `category`
+            Set a filter to only sort channels for those nations""")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     public String sortChannelsSheet(@Me GuildDB db, @Me Guild guild, @Me IMessageIO io, @Me JSONObject command,
                                     @Arg("Categories to sort from")
@@ -638,7 +638,7 @@ public class IACommands {
         sheet.setHeader(header);
 
         for (DBNation nation : nations.getNations()) {
-            Double timezone = timezones.get(nation);
+            Double timezone = timezones.get(nation.getId());
             boolean isApi = timezone != null;
             if (timezone == null) {
                 timezone = -nation.getDc_turn() * 2d;
@@ -748,12 +748,21 @@ public class IACommands {
     public String listAssignableRoles(@Me GuildDB db, @Me Member member) {
         Map<Role, Set<Role>> assignable = db.getOrNull(GuildKey.ASSIGNABLE_ROLES);
         if (assignable == null || assignable.isEmpty()) {
-            return "No roles found. See " +  CM.self.create.cmd.toSlashMention() + "";
+            return "No roles found. See " +  CM.self.create.cmd.toSlashMention();
         }
-        assignable = new HashMap<>(assignable);
+        assignable = new Object2ObjectOpenHashMap<>(assignable);
         if (!Roles.ADMIN.has(member)) {
-            Set<Role> myRoles = new HashSet<>(member.getRoles());
-            assignable.entrySet().removeIf(f -> !myRoles.contains(f.getValue()));
+            Set<Role> myRoles = new ObjectOpenHashSet<>(member.getRoles());
+            assignable.entrySet().removeIf(f -> {
+                boolean contains = false;
+                for (Role role : f.getValue()) {
+                    if (myRoles.contains(role)) {
+                        contains = true;
+                        break;
+                    }
+                }
+                return !contains;
+            });
         }
 
         if (assignable.isEmpty()) return "You do not have permission to assign any roles";
@@ -781,7 +790,7 @@ public class IACommands {
         result.append(GuildKey.ASSIGNABLE_ROLES.set(db, user, assignable)).append("\n");
 
         result.append(StringMan.getString(requireRole) + " can now add/remove " + StringMan.getString(assignableRoles) + " via " + CM.self.add.cmd.toSlashMention() + " / " + CM.self.remove.cmd.toSlashMention() + "\n" +
-                "- To see a list of current mappings, use " + CM.settings.info.cmd.key(GuildKey.ASSIGNABLE_ROLES.name()) + "");
+                "- To see a list of current mappings, use " + CM.settings.info.cmd.key(GuildKey.ASSIGNABLE_ROLES.name()));
         return result.toString();
     }
 
@@ -811,7 +820,7 @@ public class IACommands {
         response.append("\n" + GuildKey.ASSIGNABLE_ROLES.set(db, user, assignable));
 
         return response.toString() + "\n" +
-                "- To see a list of current mappings, use " + GuildKey.ASSIGNABLE_ROLES.getCommandMention() + "";
+                "- To see a list of current mappings, use " + GuildKey.ASSIGNABLE_ROLES.getCommandMention();
     }
 
     @Command(desc = "Add discord role to a user\n" +
@@ -1286,9 +1295,10 @@ public class IACommands {
 
 
 
-    @Command(desc = "Reply to an in-game mail message\n" +
-            "Supports subject and body nation placeholders\n" +
-            "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
+    @Command(desc = """
+            Reply to an in-game mail message
+            Supports subject and body nation placeholders
+            See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>""")
     @RolePermission(Roles.MAIL)
     @IsAlliance
     public String reply(@Me DBNation me, @Me User author, @Arg("The nation you are replying to") DBNation receiver, @Arg("The url of the mail") String url, String message, @Arg("The account to reply with\nMust be the same account that received the mail") @Switch("s") DBNation sender) throws IOException {
@@ -1315,9 +1325,10 @@ public class IACommands {
         return "Mail: " + result;
     }
 
-    @Command(desc = "Read and display an in-game message for an id from a nation's account\n" +
-            "The nation must be your own or in the same alliance\n" +
-            "Login details via `{prefix}credentials login`", viewable = true)
+    @Command(desc = """
+            Read and display an in-game message for an id from a nation's account
+            The nation must be your own or in the same alliance
+            Login details via `{prefix}credentials login`""", viewable = true)
     @RolePermission(Roles.MAIL)
     @IsAlliance
     public String readMail(@Me DBNation me, @Me GuildDB db, int message_id, @Default DBNation account) throws Exception {
@@ -1339,10 +1350,11 @@ public class IACommands {
         return response.toString();
     }
 
-    @Command(desc = "Show ingame mail and optionally the responses\n" +
-            "Results are in a spreadsheet\n" +
-            "A search term can be specified to only show messages containing that in the subject line\n" +
-            "By default only unread messages are checked", viewable = true)
+    @Command(desc = """
+            Show ingame mail and optionally the responses
+            Results are in a spreadsheet
+            A search term can be specified to only show messages containing that in the subject line
+            By default only unread messages are checked""", viewable = true)
     @IsAlliance
     public String searchMail(@Me GuildDB db, @Me IMessageIO io,
                              @Me DBNation me,
@@ -1462,7 +1474,7 @@ public class IACommands {
             row.add(MarkupUtil.sheetUrl(nation.getNation(), PW.getUrl(nation.getNation_id(), false)));
             row.add(nation.getCities() + "");
             row.add(nation.getAvg_infra() + "");
-            row.add(nation.getMMRBuildingStr() + "");
+            row.add(nation.getMMRBuildingStr());
             row.add(nation.getSoldiers() + "");
             row.add(nation.getTanks() + "");
             row.add(nation.getAircraft() + "");
@@ -1507,12 +1519,13 @@ public class IACommands {
     }
 
 
-    @Command(desc = "Send in-game mail to a list of nations\n" +
-            "Supports subject and body nation placeholders\n" +
-            "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>\n" +
-            "Append the channel id to the subject to direct responses there:\n" +
-            "`Hello Nation/12345678910`\n" +
-            "(Note: DM Borg to setup mail responses)")
+    @Command(desc = """
+            Send in-game mail to a list of nations
+            Supports subject and body nation placeholders
+            See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>
+            Append the channel id to the subject to direct responses there:
+            `Hello Nation/12345678910`
+            (Note: DM Borg to setup mail responses)""")
     @NoFormat
     public static String mail(@Me DBNation me, @Me JSONObject command, @Me GuildDB db, @Me IMessageIO channel, @Me User author, Set<DBNation> nations, String subject, @TextArea String message, @Switch("f") boolean force, @Arg("Send from the api key registered to the guild") @Switch("l") boolean sendFromGuildAccount, @Arg("The api key to use to send the mail") @Switch("a") String apiKey) throws IOException {
         subject = MarkupUtil.transformURLIntoLinks(subject);
@@ -1541,7 +1554,7 @@ public class IACommands {
             if (sendFromGuildAccount) {
                 return "No api key found. Please use" + CM.settings.info.cmd.toSlashMention() + " with `" + GuildKey.API_KEY.name() + "`";
             } else {
-                return "No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention() + "";
+                return "No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention();
             }
         }
 
@@ -1594,11 +1607,12 @@ public class IACommands {
         return "Done sending mail:\n- " + String.join("\n- ", full);
     }
 
-    @Command(desc = "List or set your tax bracket.\n" +
-            "Notes:\n" +
-            "- Internal tax rate affects what portion of taxes are not included in `{prefix}deposits check` (typically used when 100/100 taxes)\n" +
-            "- Set the alliance internal tax rate with: `{prefix}settings key:TAX_BASE` (retroactive)\n" +
-            "- This command is not retroactive and overrides the alliance internal taxrate", aliases = {"SetBracket", "SetTaxes", "SetTaxRate", "SetTaxBracket"})
+    @Command(desc = """
+            List or set your tax bracket.
+            Notes:
+            - Internal tax rate affects what portion of taxes are not included in `{prefix}deposits check` (typically used when 100/100 taxes)
+            - Set the alliance internal tax rate with: `{prefix}settings key:TAX_BASE` (retroactive)
+            - This command is not retroactive and overrides the alliance internal taxrate""", aliases = {"SetBracket", "SetTaxes", "SetTaxRate", "SetTaxBracket"})
     @RolePermission(Roles.MEMBER)
     @IsAlliance
     public String setBracket(@Me GuildDB db, @Me User author, @Me DBNation me, @Filter("{guild_alliance_id}") Set<DBNation> nations, @Default TaxBracket bracket, @Default TaxRate internalTaxRate) throws IOException {
@@ -1922,10 +1936,11 @@ public class IACommands {
         return "Moved " + tc.getAsMention() + " to " + category.getName();
     }
 
-    @Command(desc = "Bulk send the result of a bot command to a list of nations in your alliance\n" +
-            "The command will run as each user\n" +
-            "Nations which are not registered or lack permission to use a command will result in an error\n" +
-            "It is recommended to review the output sheet before confirming and sending the results")
+    @Command(desc = """
+            Bulk send the result of a bot command to a list of nations in your alliance
+            The command will run as each user
+            Nations which are not registered or lack permission to use a command will result in an error
+            It is recommended to review the output sheet before confirming and sending the results""")
     @RolePermission(value=Roles.ADMIN)
     @IsAlliance
     @NoFormat
@@ -2051,9 +2066,10 @@ public class IACommands {
         return "Errors\n- " + StringMan.join(errorMsgs, "\n- ");
     }
 
-    @Command(desc = "Bulk send in-game mail from a google sheet\n" +
-            "Columns: `nation`, `subject`, `body`\n" +
-            "Other bulk mail commands forward to this command")
+    @Command(desc = """
+            Bulk send in-game mail from a google sheet
+            Columns: `nation`, `subject`, `body`
+            Other bulk mail commands forward to this command""")
     @HasApi
     @RolePermission(Roles.ADMIN)
     public String mailSheet(@Me GuildDB db, @Me JSONObject command, @Me IMessageIO io, @Me User author, SpreadSheet sheet, @Switch("f") boolean force, @Switch("d") boolean dm, @Switch("m") boolean skipMail) {
@@ -2135,7 +2151,7 @@ public class IACommands {
         }
 
         ApiKeyPool keys = db.getMailKey();
-        if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention() + "");
+        if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention());
 
         io.send("Sending to " + messageMap.size() + " nations in " + alliances.size() + " alliances. Please wait.");
         List<String> response = new ArrayList<>();
@@ -2440,9 +2456,10 @@ public class IACommands {
         return null;
     }
 
-    @Command(aliases = {"sortInterviews", "sortInterview"}, desc = "Sort the interview channels to an audit category\n" +
-            "An appropriate discord category must exist in the form: `interview-CATEGORY`\n" +
-            "Allowed categories: `INACTIVE,ENTRY,RAIDS,BANK,SPIES,BUILD,COUNTERS,TEST,ARCHIVE`")
+    @Command(aliases = {"sortInterviews", "sortInterview"}, desc = """
+            Sort the interview channels to an audit category
+            An appropriate discord category must exist in the form: `interview-CATEGORY`
+            Allowed categories: `INACTIVE,ENTRY,RAIDS,BANK,SPIES,BUILD,COUNTERS,TEST,ARCHIVE`""")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, any=true)
     public String sortInterviews(@Me GuildMessageChannel channel, @Me IMessageIO io, @Me GuildDB db, @Arg("Sort channels already in a category") @Default("true") boolean sortCategorized) {
         IACategory iaCat = db.getIACategory();
@@ -2464,7 +2481,7 @@ public class IACommands {
             Set<DBNation> allowedNations = DiscordUtil.parseNations(guild, author, me, filter, false, false);
 
             Set<Integer> aaIds = db.getAllianceIds();
-            if (aaIds.isEmpty()) return "No alliance set " + GuildKey.ALLIANCE_ID.getCommandMention() + "";
+            if (aaIds.isEmpty()) return "No alliance set " + GuildKey.ALLIANCE_ID.getCommandMention();
 
             IACategory cat = db.getIACategory();
             if (cat.getCategories().isEmpty()) return "No `interview` categories found";
@@ -2513,7 +2530,7 @@ public class IACommands {
                         User msgAuth = message.getAuthor();
                         if (msgAuth.isBot() || msgAuth.isSystem()) continue;
                         String content = DiscordUtil.trimContent(message.getContentRaw());
-                        if (content.startsWith(Settings.commandPrefix(true) + "") || content.startsWith(Settings.commandPrefix(false) + "")) continue;
+                        if (content.startsWith(Settings.commandPrefix(true)) || content.startsWith(Settings.commandPrefix(false))) continue;
 
                         long msgTime = message.getTimeCreated().toEpochSecond();
 
@@ -2610,9 +2627,9 @@ public class IACommands {
     public String viewInterview(@Me GuildDB db, IACategory category) {
         String message = db.getCopyPasta("interview", true);
         if (message == null) {
-            return "No message set. Set one with " + "" +  CM.interview.questions.set.cmd.toSlashMention();
+            return "No message set. Set one with " +  CM.interview.questions.set.cmd.toSlashMention();
         }
-        return "Interview questions:\n" + message + "";
+        return "Interview questions:\n" + message;
     }
 
     @Command(desc = "List nations and their interview progress", viewable = true)

@@ -580,9 +580,10 @@ public class DiscordCommands {
         }
     }
 
-    @Command(desc = "Create a discord modal for a bot command\n" +
-            "This will make a popup prompting for the command arguments you specify and submit any defaults you provide\n" +
-            "Note: This is intended to be used in conjuction with the card command")
+    @Command(desc = """
+            Create a discord modal for a bot command
+            This will make a popup prompting for the command arguments you specify and submit any defaults you provide
+            Note: This is intended to be used in conjuction with the card command""")
     public String modal(@Me IMessageIO io, ICommand command,
                         @Arg("A comma separated list of the command arguments to prompt for") String arguments,
                         @Arg("The default arguments and values you want to submit to the command\n" +
@@ -610,9 +611,10 @@ public class DiscordCommands {
         return "```\n" +text + "\n```\n";
     }
 
-    @Command(desc = "Shift the transfer note category flows for a nation.\n" +
-            "For adjusting whether amounts are internal, withdrawn or deposited.\n" +
-            "Does not change overall or note balance unless it is shifted to `#ignore`")
+    @Command(desc = """
+            Shift the transfer note category flows for a nation.
+            For adjusting whether amounts are internal, withdrawn or deposited.
+            Does not change overall or note balance unless it is shifted to `#ignore`""")
     @RolePermission(value = Roles.ECON)
     public String shiftFlow(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command, @Me User author,
                             DBNation nation,

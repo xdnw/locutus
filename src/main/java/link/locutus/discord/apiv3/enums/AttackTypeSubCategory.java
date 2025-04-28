@@ -27,11 +27,12 @@ public enum AttackTypeSubCategory {
     GROUND_NO_TANKS_MUNITIONS_USED_UNNECESSARY_INACTIVE("You performed a ground attack against an inactive enemy using munitions, but could have won and looted the same amount without it. https://cdn.discordapp.com/attachments/672286352959733779/716563558279806986/unknown.png"),
     GROUND_TANKS_USED_UNNECESSARY_INACTIVE("You performed a ground attack against an inactive enemy using tanks, when they had $0, but could have won an Immense Triumph without tanks."),
     AIRSTRIKE_SOLDIERS_NONE("You performed an airstrike against enemy soldiers when the enemy has none"),
-    AIRSTRIKE_SOLDIERS_SHOULD_USE_GROUND("You performed an airstrike against enemy ground forces when:\n" +
-            "- You already have vastly superior ground forces\n" +
-            "- All other enemies they are engaged in have more ground\n" +
-            "- You already have air control\n" +
-            "(It may be more efficient doing a ground attack instead)"),
+    AIRSTRIKE_SOLDIERS_SHOULD_USE_GROUND("""
+            You performed an airstrike against enemy ground forces when:
+            - You already have vastly superior ground forces
+            - All other enemies they are engaged in have more ground
+            - You already have air control
+            (It may be more efficient doing a ground attack instead)"""),
     AIRSTRIKE_TANKS_NONE("You performed an airstrike against enemy tanks when the enemy has none"),
     AIRSTRIKE_SHIP_NONE("You performed an airstrike against enemy ships when the enemy has none"),
     AIRSTRIKE_INACTIVE_NO_GROUND("You performed an airstrike against an inactive enemy, but could have won a ground battle using soldiers and no munitions."),

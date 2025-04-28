@@ -208,9 +208,10 @@ public class EmbedCommands {
         return null;
     }
 
-    @Command(desc = "Add a button to a discord embed from this bot which runs a command\n" +
-            "Supports legacy commands and user command syntax.\n" +
-            "Unlike `embed add button`, this does not parse and validate command input.")
+    @Command(desc = """
+            Add a button to a discord embed from this bot which runs a command
+            Supports legacy commands and user command syntax.
+            Unlike `embed add button`, this does not parse and validate command input.""")
     @NoFormat
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     public String addButtonRaw(@Me User user, @Me IMessageIO io, @Me JSONObject cmdJson,  @Me Guild guild, Message message, String label, CommandBehavior behavior, String command, @Switch("c") MessageChannel channel, @Switch("f") boolean force) {
@@ -253,9 +254,10 @@ public class EmbedCommands {
     @NoFormat
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     public String addButton(@Me User user, @Me IMessageIO io, @Me JSONObject cmdJson, @Me Guild guild, Message message, String label, CommandBehavior behavior, ICommand command,
-                            @Default @Arg("The arguments and values you want to submit to the command\n" +
-                                    "Example: `myarg1:myvalue1 myarg2:myvalue2`\n" +
-                                    "For placeholders: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
+                            @Default @Arg("""
+                                    The arguments and values you want to submit to the command
+                                    Example: `myarg1:myvalue1 myarg2:myvalue2`
+                                    For placeholders: <https://github.com/xdnw/locutus/wiki/nation_placeholders>""")
                             String arguments, @Switch("c") MessageChannel channel, @Switch("f") boolean force) {
         checkMessagePerms(user, guild, message);
         Set<String> validArguments = command.getUserParameterMap().keySet();
@@ -281,9 +283,10 @@ public class EmbedCommands {
     public String addModal(@Me User user, @Me IMessageIO io, @Me Guild guild, Message message, String label, CommandBehavior behavior, ICommand command,
                            @Arg("A comma separated list of the command arguments to prompt for\n" +
                                    "Arguments can be one of the named arguments for the command, or the name of any `{placeholder}` you have for `defaults`") String arguments,
-                           @Arg("The default arguments and values you want to submit to the command\n" +
-                                   "Example: `myarg1:myvalue1 myarg2:myvalue2`\n" +
-                                   "For placeholders: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
+                           @Arg("""
+                                   The default arguments and values you want to submit to the command
+                                   Example: `myarg1:myvalue1 myarg2:myvalue2`
+                                   For placeholders: <https://github.com/xdnw/locutus/wiki/nation_placeholders>""")
                            @Default String defaults, @Switch("c") MessageChannel channel) {
         checkMessagePerms(user, guild, message);
         if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
@@ -807,9 +810,10 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
 
     beige: war find ~enemies,#color=beige -i -a -b
      */
-    @Command(desc="Enemy war targets when you are winning\n" +
-            "Prioritizes down declares\n" +
-            "To find contestable range, see: strengthTierGraph")
+    @Command(desc= """
+            Enemy war targets when you are winning
+            Prioritizes down declares
+            To find contestable range, see: strengthTierGraph""")
     @RolePermission(Roles.ADMIN)
     public void warWinning(@Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel, @Default CommandBehavior behavior, @Switch("d") boolean resultsInDm) {
         if (behavior == null) behavior = CommandBehavior.UNPRESS;
@@ -1067,11 +1071,12 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
     }
 
 
-    @Command(desc="Generates sheets for a coalition war:" +
-            "- All enemies\n" +
-            "- Priority enemies\n" +
-            "- All allies\n" +
-            "- Underutilized allies")
+    @Command(desc= """
+            Generates sheets for a coalition war:\
+            - All enemies
+            - Priority enemies
+            - All allies
+            - Underutilized allies""")
     @RolePermission(Roles.ADMIN)
     public void allyEnemySheets(@Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel,
                                 @Default SpreadSheet allEnemiesSheet,

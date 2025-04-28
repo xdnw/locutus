@@ -122,7 +122,7 @@ public class CheckCities extends Command {
         boolean mail = flags.contains('m');
         ApiKeyPool keys = mail ? db.getMailKey() : null;
         if (mail && keys == null)
-            throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention() + "");
+            throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention());
 
         ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations, DBNation.class);
 

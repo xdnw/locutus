@@ -273,7 +273,7 @@ public class CommandManager {
                 if (!cmd.checkPermission(guild, msgUser)) {
                     if (noPermMsg) {
                         if (nation == null) {
-                            channel.sendMessage("Please use " + CM.register.cmd.toSlashMention() + "");
+                            channel.sendMessage("Please use " + CM.register.cmd.toSlashMention());
                             return;
                         }
                         if (guild != null) {
@@ -423,7 +423,7 @@ public class CommandManager {
         {
             Role registeredRole = Roles.REGISTERED.toRole2(msgGuild);
             if (registeredRole == null) {
-                channel.sendMessage("No registered role set, please have an admin use " + CM.role.setAlias.cmd.locutusRole(Roles.REGISTERED.name()).discordRole("").toSlashCommand() + "");
+                channel.sendMessage("No registered role set, please have an admin use " + CM.role.setAlias.cmd.locutusRole(Roles.REGISTERED.name()).discordRole("").toSlashCommand());
                 return true;
             } else {
                 assert member != null;

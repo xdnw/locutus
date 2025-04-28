@@ -323,9 +323,11 @@ public enum InterviewQuestion implements Question {
 //        }
 //    },
 
-    DEPOSIT_RESOURCES("Having unnecessary resources or $$ on your nation will attract raiders. It is important to safekeep so it wont get stolen when you lose a war. Visit the alliance bank page and store funds for safekeeping:\n" +
-            "https://{test}politicsandwar.com/alliance/id={guild.alliance_id}&display=bank\n\n" +
-            "*Note: deposit $1 if you don't need to safekeep*", true) {
+    DEPOSIT_RESOURCES("""
+            Having unnecessary resources or $$ on your nation will attract raiders. It is important to safekeep so it wont get stolen when you lose a war. Visit the alliance bank page and store funds for safekeeping:
+            https://{test}politicsandwar.com/alliance/id={guild.alliance_id}&display=bank
+            
+            *Note: deposit $1 if you don't need to safekeep*""", true) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             GuildDB db = Locutus.imp().getGuildDB(guild);
@@ -497,10 +499,12 @@ public enum InterviewQuestion implements Question {
         }
     },
 
-    QUIZ("While you are waiting for your raids to finish, we can checkout the guides in <#{guild.info_channel}>\n" +
-            "Please be encouraged to ask gov any questions you have about the game!\n\n" +
-            "You can take a quick quiz when you are ready:\n" +
-            "https://docs.google.com/forms/d/e/1FAIpQLSdnD6MnbGNqW5ldrdpSD6wS2YDpoxraM_vkkz4XQ2eBraFZrg/viewform?usp=sf_link", false) {
+    QUIZ("""
+            While you are waiting for your raids to finish, we can checkout the guides in <#{guild.info_channel}>
+            Please be encouraged to ask gov any questions you have about the game!
+            
+            You can take a quick quiz when you are ready:
+            https://docs.google.com/forms/d/e/1FAIpQLSdnD6MnbGNqW5ldrdpSD6wS2YDpoxraM_vkkz4XQ2eBraFZrg/viewform?usp=sf_link""", false) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             if (Roles.GRADUATED.has(author, guild)) return true;
@@ -549,7 +553,7 @@ public enum InterviewQuestion implements Question {
             "- " + CM.alerts.beige.beigeAlertRequiredStatus.cmd.toSlashMention() + "\n" +
             "- " + CM.alerts.beige.beigeAlertMode.cmd.toSlashMention() + "\n" +
             "- " + CM.alerts.beige.beigeAlertRequiredLoot.cmd.toSlashMention() + "\n" +
-            "- " + CM.alerts.beige.setBeigeAlertScoreLeeway.cmd.toSlashMention() + "", true) {
+            "- " + CM.alerts.beige.setBeigeAlertScoreLeeway.cmd.toSlashMention(), true) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             Set<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id());

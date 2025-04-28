@@ -49,9 +49,10 @@ public class IntelOp extends Command {
 
     @Override
     public String desc() {
-        return "Find nations to conduct intel ops on (sorted by infra days * inactive)\n" +
-                "Use `nation:Borg` to specify nation\n" +
-                "Use `score:1234` to specify score";
+        return """
+                Find nations to conduct intel ops on (sorted by infra days * inactive)
+                Use `nation:Borg` to specify nation
+                Use `score:1234` to specify score""";
     }
 
     private Map<Integer, Long> alreadySpied = new ConcurrentHashMap<>();
@@ -60,7 +61,7 @@ public class IntelOp extends Command {
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         String nationStr = DiscordUtil.parseArg(args, "nation");
         String scoreStr = DiscordUtil.parseArg(args, "score");
-        if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
+        if (me == null) return "Please use " + CM.register.cmd.toSlashMention();
         if (args.size() > 1) return usage(args.size(), 0, 1, channel);
 
         DBNation finalNation = nationStr == null ? me : PWBindings.nation(null, nationStr);

@@ -565,7 +565,7 @@ public class TradeManager {
             public Map<ResourceType, int[]> call() throws Exception {
                 Map<ResourceType, int[]> result = new EnumMap<ResourceType, int[]>(ResourceType.class);
 
-                String url = "" + Settings.PNW_URL() + "/nation/trade/history/";
+                String url = Settings.PNW_URL() + "/nation/trade/history/";
                 String html = auth.readStringFromURL(PagePriority.TRADE_HISTORY, url, Collections.emptyMap());
 
                 String var = "var histcatexplong =";

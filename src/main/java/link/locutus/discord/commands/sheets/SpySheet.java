@@ -61,12 +61,13 @@ public class SpySheet extends Command {
 
     @Override
     public String desc() {
-        return "Generate a spy blitz sheet.\n" +
-                "Add `-f` to force update\n" +
-                "Add `-s` to check slots\n" +
-                "Add e.g. `-9` to remove attackers with less than 9 spies\n" +
-                "Add `-c` to use the cache for a lot of low enemy spy counts\n" +
-                "Add `-k` to priotize kills instead of damage";
+        return """
+                Generate a spy blitz sheet.
+                Add `-f` to force update
+                Add `-s` to check slots
+                Add e.g. `-9` to remove attackers with less than 9 spies
+                Add `-c` to use the cache for a lot of low enemy spy counts
+                Add `-k` to priotize kills instead of damage""";
     }
 
     @Override

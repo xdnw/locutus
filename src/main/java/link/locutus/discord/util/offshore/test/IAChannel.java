@@ -128,7 +128,7 @@ public class IAChannel {
                             return senderNation;
                         } else if (content.contains(Settings.commandPrefix(true) + "checkup")) {
                             add += 8;
-                        } else if (content.contains(CM.register.cmd.toSlashMention() + "")) {
+                        } else if (content.contains(CM.register.cmd.toSlashMention())) {
                             add += 4;
                         }
                         numMessage.put(senderNation, numMessage.getOrDefault(senderNation, 0d) + factor * add);

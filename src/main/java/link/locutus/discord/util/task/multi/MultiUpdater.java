@@ -376,8 +376,8 @@ public class MultiUpdater {
             row.add(nation.getVm_turns() + "");
             row.add(nation.getAgeDays() + "");
             row.add(nation.getCities() + "");
-            row.add(nation.getDiscordString() + "");
-            row.add(nation.getUserDiscriminator() + "");
+            row.add(nation.getDiscordString());
+            row.add(nation.getUserDiscriminator());
             row.add(nation.isVerified() + "");
             row.add(nation.hasProvidedIdentity(cacheStore) + "");
             row.add(factor + "");

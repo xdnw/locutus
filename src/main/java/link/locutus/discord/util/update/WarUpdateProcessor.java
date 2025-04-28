@@ -925,11 +925,11 @@ public class WarUpdateProcessor {
             }
 
             if (current.getDefender_id() == Locutus.loader().getNationId()) {
-                String body = "" + Settings.PNW_URL() + "/alliance/id=" + Settings.INSTANCE.ALLIANCE_ID() + "&display=bank";
-                AlertUtil.displayTray("" + Settings.PNW_URL() + "/nation/war/timeline/war=" + current.warId, body);
+                String body = Settings.PNW_URL() + "/alliance/id=" + Settings.INSTANCE.ALLIANCE_ID() + "&display=bank";
+                AlertUtil.displayTray(Settings.PNW_URL() + "/nation/war/timeline/war=" + current.warId, body);
                 if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                     try {
-                        Desktop.getDesktop().browse(new URI("" + Settings.PNW_URL() + "/alliance/id=" + Settings.INSTANCE.ALLIANCE_ID() + "&display=bank"));
+                        Desktop.getDesktop().browse(new URI(Settings.PNW_URL() + "/alliance/id=" + Settings.INSTANCE.ALLIANCE_ID() + "&display=bank"));
                     } catch (IOException | URISyntaxException e) {
                         e.printStackTrace();
                     }

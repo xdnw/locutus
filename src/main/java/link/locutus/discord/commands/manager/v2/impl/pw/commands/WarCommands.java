@@ -225,7 +225,7 @@ public class WarCommands {
             if (reminders.contains(nation)) toRemove.add(nation);
         }
 
-        if (toRemove.isEmpty()) return "No nations selected for removal. For a list of your current reminders, use " + CM.alerts.beige.beigeReminders.cmd.toSlashMention() + "";
+        if (toRemove.isEmpty()) return "No nations selected for removal. For a list of your current reminders, use " + CM.alerts.beige.beigeReminders.cmd.toSlashMention();
 
         StringBuilder response = new StringBuilder();
         for (DBNation nation : toRemove) {
@@ -313,14 +313,15 @@ public class WarCommands {
                 "- " + CM.alerts.beige.beigeAlertRequiredStatus.cmd.toSlashMention() + "\n" +
                 "- " + CM.alerts.beige.beigeAlertMode.cmd.toSlashMention() + "\n" +
                 "- " + CM.alerts.beige.beigeAlertRequiredLoot.cmd.toSlashMention() + "\n" +
-                "- " + CM.alerts.beige.setBeigeAlertScoreLeeway.cmd.toSlashMention() + "");
+                "- " + CM.alerts.beige.setBeigeAlertScoreLeeway.cmd.toSlashMention());
 
         return response.toString();
     }
 
-    @Command(desc = "Find targets to raid\n" +
-            "Sorted by best nation loot\n" +
-            "Defaults to 7d inactive", viewable = true)
+    @Command(desc = """
+            Find targets to raid
+            Sorted by best nation loot
+            Defaults to 7d inactive""", viewable = true)
     @RolePermission(value = {Roles.MEMBER, Roles.APPLICANT}, any=true)
     public String raid(@Me DBNation me, @Me @Default GuildDB db, @Me @Default User user, @Me IMessageIO channel,
                        @Default Set<DBNation> targets,
@@ -1231,11 +1232,12 @@ public class WarCommands {
             if (nationNetValues.isEmpty()) {
                 String message;
                 if (onlyPriority) {
-                    message = "No targets found. Try " + CM.war.find.enemy.cmd.toSlashMention() + "";
+                    message = "No targets found. Try " + CM.war.find.enemy.cmd.toSlashMention();
                 } else {
-                    message = "No targets found:\n" +
-                            "- Add `-i` to include inactives\n" +
-                            "- Add `-a` to include applicants";
+                    message = """
+                            No targets found:
+                            - Add `-i` to include inactives
+                            - Add `-a` to include applicants""";
                 }
                 channel.send(message);
                 return;
@@ -1402,10 +1404,13 @@ public class WarCommands {
         }
     }
 
-    @Command(desc = "Find a high infrastructure target\n" +
-            "optional alliance and sorting (default: active nations, sorted by damage stimate).\n\t" +
-            "To see a list of coalitions, use `{prefix}coalition list`.\n\t" +
-            "Damage estimate is based on attacks you can perform (i.e. if you are stronger or have the project for missiles/nukes), and chance of success", viewable = true)
+    @Command(desc = """
+            Find a high infrastructure target
+            optional alliance and sorting (default: active nations, sorted by damage stimate).
+            \t\
+            To see a list of coalitions, use `{prefix}coalition list`.
+            \t\
+            Damage estimate is based on attacks you can perform (i.e. if you are stronger or have the project for missiles/nukes), and chance of success""", viewable = true)
     @RolePermission(Roles.MEMBER)
     public String damage(@Me IMessageIO channel, @Me DBNation me, @Me @Default User author, Set<DBNation> nations,
                          @Arg("Include targets which are applicants")
@@ -1444,7 +1449,7 @@ public class WarCommands {
 
         nations.removeIf(f -> f.getScore() <= minScore || f.getScore() >= maxScore);
 
-        if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
+        if (me == null) return "Please use " + CM.register.cmd.toSlashMention();
         double str = me.getGroundStrength(false, true);
         str = Math.max(str, me.getCities() * 15000);
         if (filterWeak) {
@@ -1567,10 +1572,11 @@ public class WarCommands {
         return cost;
     }
 
-    @Command(desc = "Find nations to do a spy op against the specified enemy\n" +
-                    "Op types: (INTEL,NUKE,MISSILE,SHIPS,AIRCRAFT,TANKS,SPIES,SOLDIER) or `*` (for all op types)\n" +
-                    "The alliance argument is optional\n" +
-                    "Use `success>80` to specify a cutoff for spyop success", viewable = true)
+    @Command(desc = """
+            Find nations to do a spy op against the specified enemy
+            Op types: (INTEL,NUKE,MISSILE,SHIPS,AIRCRAFT,TANKS,SPIES,SOLDIER) or `*` (for all op types)
+            The alliance argument is optional
+            Use `success>80` to specify a cutoff for spyop success""", viewable = true)
     @RolePermission(Roles.MEMBER)
     public String Counterspy(@Me IMessageIO channel, @Me GuildDB db,
                              @Arg("The enemy to spy")
@@ -1676,11 +1682,13 @@ public class WarCommands {
     }
 
     @Command(aliases = {"spyop", "spyops"},
-    desc = "List enemies and spy operation by the highest damage:\n" +
-            "Use `*` for the alliance to target enemies with active wars against allies\n" +
-            "Use `*` for op type to automatically find the best op type\n" +
-            "Use e.g. `80` as the `requiredSuccess` to only list operations above 80% success\n\n" +
-            "e.g. `{prefix}spy find target targets:enemies operations:spies`", viewable = true)
+    desc = """
+            List enemies and spy operation by the highest damage:
+            Use `*` for the alliance to target enemies with active wars against allies
+            Use `*` for op type to automatically find the best op type
+            Use e.g. `80` as the `requiredSuccess` to only list operations above 80% success
+            
+            e.g. `{prefix}spy find target targets:enemies operations:spies`""", viewable = true)
     @RolePermission(Roles.MEMBER)
     public String Spyops(@Me @Default User author, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me,
                          @Arg("The allowed targets")
@@ -1718,7 +1726,7 @@ public class WarCommands {
         double minSuccess = requiredSuccess > 0 ? requiredSuccess : 50;
 
         if (me == null) {
-            return "Please use " + CM.register.cmd.toSlashMention() + "";
+            return "Please use " + CM.register.cmd.toSlashMention();
         }
 
         boolean findOptimal = true;
@@ -2075,13 +2083,16 @@ public class WarCommands {
 
     }
 
-    @Command(desc = "Generate a list of raidable targets to gather intel on\n" +
-            "`<time>`- filters out nations we have loot intel on in that period\n" +
-            "`<attackers>`- The nations to assign to do the ops (i.e. your alliance link)\n" +
-            "`<ignore-topX>`- filter out top X alliances (e.g. due to DNR), in addition to the set `dnr` coalition\n\n" +
-            "Add `-l` to remove targets with loot history\n" +
-            "Add `-d` to list targets currently on the dnr\n\n" +
-            "e.g. `{prefix}sheets_milcom intelopsheet time:10d attacker:Rose dnrtopx:25`", viewable = true)
+    @Command(desc = """
+            Generate a list of raidable targets to gather intel on
+            `<time>`- filters out nations we have loot intel on in that period
+            `<attackers>`- The nations to assign to do the ops (i.e. your alliance link)
+            `<ignore-topX>`- filter out top X alliances (e.g. due to DNR), in addition to the set `dnr` coalition
+            
+            Add `-l` to remove targets with loot history
+            Add `-d` to list targets currently on the dnr
+            
+            e.g. `{prefix}sheets_milcom intelopsheet time:10d attacker:Rose dnrtopx:25`""", viewable = true)
     @RolePermission(Roles.MILCOM)
     public String IntelOpSheet(@Me IMessageIO io, @Me GuildDB db, @Timestamp long time, Set<DBNation> attackers,
                                @Arg("Exclude nations in the top X alliances (or direct allies)")
@@ -2562,11 +2573,12 @@ public class WarCommands {
         return null;
     }
 
-    @Command(desc = "Generate a sheet of nation login activity from a nation id over a timeframe\n" +
-            "The columns are the 7 days of the week and then turns of the day (12)\n" +
-            "Note: use the other activity sheet need info of a deleted nation\n" +
-            "Days represent the % of that day a nation logs in (UTC)\n" +
-            "Numbers represent the % of that turn a nation logs in", viewable = true)
+    @Command(desc = """
+            Generate a sheet of nation login activity from a nation id over a timeframe
+            The columns are the 7 days of the week and then turns of the day (12)
+            Note: use the other activity sheet need info of a deleted nation
+            Days represent the % of that day a nation logs in (UTC)
+            Numbers represent the % of that turn a nation logs in""", viewable = true)
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String ActivitySheetFromId(@Me IMessageIO io, @Me @Default GuildDB db, int nationId,
                                       @Arg("Date to start from")
@@ -2755,10 +2767,11 @@ public class WarCommands {
         return null;
     }
 
-    @Command(desc = "Generate a sheet of nation login activity from a nation id over a timeframe\n" +
-            "The columns are the 7 days of the week and then turns of the day (12)\n" +
-            "Days represent the % of that day a nation logs in (UTC)\n" +
-            "Numbers represent the % of that turn a nation logs in", viewable = true)
+    @Command(desc = """
+            Generate a sheet of nation login activity from a nation id over a timeframe
+            The columns are the 7 days of the week and then turns of the day (12)
+            Days represent the % of that day a nation logs in (UTC)
+            Numbers represent the % of that turn a nation logs in""", viewable = true)
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String ActivitySheet(@Me IMessageIO io, @Me @Default GuildDB db, Set<DBNation> nations,
                                 @Arg("Date to start from")
@@ -3319,9 +3332,10 @@ public class WarCommands {
     }
 
     @RolePermission(Roles.MILCOM)
-    @Command(desc = "Run checks on a spy blitz sheet.\n" +
-            "Checks that all nations are in range of their spy blitz targets and that they have no more than the provided number of offensive operations.\n" +
-            "Add `true` for the day-change argument to double the offensive op limit", viewable = true)
+    @Command(desc = """
+            Run checks on a spy blitz sheet.
+            Checks that all nations are in range of their spy blitz targets and that they have no more than the provided number of offensive operations.
+            Add `true` for the day-change argument to double the offensive op limit""", viewable = true)
     public String validateSpyBlitzSheet(@Me @Default GuildDB db, @Default SpreadSheet sheet,
                                         @Arg("If the sheet is for attacks at day change")
                                         @Default("false") boolean dayChange,
@@ -3588,18 +3602,19 @@ public class WarCommands {
         String date = TimeUtil.YYYY_MM_DD.format(ZonedDateTime.now());
         String subject = "Targets-" + date + "/" + channel.getIdLong();
 
-        String blurb = "BE ACTIVE ON DISCORD. Additional attack instructions may be in your war room\n" +
-                "\n" +
-                "This is an alliance war, not a counter. The goal is battlefield control:\n" +
-                "1. Try to raid wars just before day change (day change if possible)\n" +
-                "2. If you have ground control, further attacks with tanks kills aircraft\n" +
-                "3. If you have tanks and can get ground control, do ground attacks to kill planes\n" +
-                "4. Get air control to halve enemy tank strength\n" +
-                "5. You can rebuy units inbetween each attack\n" +
-                "6. Do not waste attacks destroying infra or minimal units\n" +
-                "7. Be efficient with your attacks and try NOT to get active enemies to 0 resistance\n" +
-                "8. You can buy more ships when enemy planes are weak, to avoid naval losses\n" +
-                "9. Some wars you may get beiged in, that is OKAY";
+        String blurb = """
+                BE ACTIVE ON DISCORD. Additional attack instructions may be in your war room
+                
+                This is an alliance war, not a counter. The goal is battlefield control:
+                1. Try to raid wars just before day change (day change if possible)
+                2. If you have ground control, further attacks with tanks kills aircraft
+                3. If you have tanks and can get ground control, do ground attacks to kill planes
+                4. Get air control to halve enemy tank strength
+                5. You can rebuy units inbetween each attack
+                6. Do not waste attacks destroying infra or minimal units
+                7. Be efficient with your attacks and try NOT to get active enemies to 0 resistance
+                8. You can buy more ships when enemy planes are weak, to avoid naval losses
+                9. Some wars you may get beiged in, that is OKAY""";
 
         long start = System.currentTimeMillis();
 
@@ -3681,9 +3696,12 @@ public class WarCommands {
                 }
 
                 mail.append(
-                        "- If the op doesn't require it (and it says >50%), you don't have to use more spies or covert\n" +
-                                "- Reply to this message with any spy reports you do against enemies (even if not these targets)\n" +
-                                "- Remember to buy spies every day :D\n\n");
+                        """
+                                - If the op doesn't require it (and it says >50%), you don't have to use more spies or covert
+                                - Reply to this message with any spy reports you do against enemies (even if not these targets)
+                                - Remember to buy spies every day :D
+                                
+                                """);
 
                 String baseUrl = Settings.PNW_URL() + "/nation/espionage/eid=";
                 for (int i = 0; i < mySpyOps.size(); i++) {
@@ -3806,11 +3824,12 @@ public class WarCommands {
     }
 
     @RolePermission(Roles.MILCOM)
-    @Command(desc="Run checks on nations in a blitz sheet\n" +
-            "- In range of their blitz targets" +
-            "- Still in the alliance" +
-            "- Have no more than the provided number of offensive wars\n" +
-            "Sheet columns: `nation`, `att1`, `att1`, `att3`", viewable = true)
+    @Command(desc= """
+            Run checks on nations in a blitz sheet
+            - In range of their blitz targets\
+            - Still in the alliance\
+            - Have no more than the provided number of offensive wars
+            Sheet columns: `nation`, `att1`, `att1`, `att3`""", viewable = true)
     public String ValidateBlitzSheet(SpreadSheet sheet,
                                      @Arg("Max wars per attacker")
                                      @Default("3") int maxWars,
@@ -3855,12 +3874,13 @@ public class WarCommands {
     }
 
 
-    @Command(desc = "Generates a a blitz sheet\n" +
-            "A blitz sheet contains a list of defenders (left column) and auto assigns attackers (right columns)\n" +
-            "Note: If the blitz sheet generated has a lot of city updeclares or unslotted enemies it is recommended to go through and remove low priority defenders\n" +
-            "- Low priority could be enemies without a recent offensive war, inactive, low military, or poor activity\n" +
-            "- Example defNations: `~enemies,#position>1,#active_m<4880,#dayssincelastoffensive>200,#dayssince3consecutivelogins>120,#aircraftpct<0.8,#tankpct<=0.6`" +
-            "Note: To avoid updeclares enable `onlyEasyTargets`", viewable = true)
+    @Command(desc = """
+            Generates a a blitz sheet
+            A blitz sheet contains a list of defenders (left column) and auto assigns attackers (right columns)
+            Note: If the blitz sheet generated has a lot of city updeclares or unslotted enemies it is recommended to go through and remove low priority defenders
+            - Low priority could be enemies without a recent offensive war, inactive, low military, or poor activity
+            - Example defNations: `~enemies,#position>1,#active_m<4880,#dayssincelastoffensive>200,#dayssince3consecutivelogins>120,#aircraftpct<0.8,#tankpct<=0.6`\
+            Note: To avoid updeclares enable `onlyEasyTargets`""", viewable = true)
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String blitzSheet(@Me IMessageIO io, @Me @Default User author, @Me @Default GuildDB db,
                              @Arg("Nations that should be used for the attackers\n" +
@@ -4063,12 +4083,13 @@ public class WarCommands {
 //    }
 
     @RolePermission(value = Roles.MILCOM)
-    @Command(desc = "Generate a sheet with a list of nations attacking `allies`\n" +
-            "(Defaults to those attacking allies)\n" +
-            "Please still check the war history in case it is not valid to counter (and add a note to the note column indicating such)\n" +
-            "Add `-a` to filter out applicants\n" +
-            "Add `-i` to filter out inactive members\n" +
-            "Add `-e` to include enemies not attacking", viewable = true)
+    @Command(desc = """
+            Generate a sheet with a list of nations attacking `allies`
+            (Defaults to those attacking allies)
+            Please still check the war history in case it is not valid to counter (and add a note to the note column indicating such)
+            Add `-a` to filter out applicants
+            Add `-i` to filter out inactive members
+            Add `-e` to include enemies not attacking""", viewable = true)
     public String counterSheet(@Me IMessageIO io, @Me GuildDB db,
                                @Arg("Only include these attackers")
                                @Default() Set<DBNation> enemyFilter,
@@ -4319,10 +4340,11 @@ public class WarCommands {
         return null;
     }
 
-    @Command(desc = "Calculate spies for a nation.\n" +
-            "Nation argument can be nation name, id, link, or discord tag\n" +
-            "If `spies-used` is provided, it will cap the odds at using that number of spies\n" +
-            "`safety` defaults to what has the best net. Options: quick, normal, covert", viewable = true)
+    @Command(desc = """
+            Calculate spies for a nation.
+            Nation argument can be nation name, id, link, or discord tag
+            If `spies-used` is provided, it will cap the odds at using that number of spies
+            `safety` defaults to what has the best net. Options: quick, normal, covert""", viewable = true)
     public String spies(@Me DBNation me, DBNation nation,
                         @Arg("Show odds for this spy count")
                         @Default("60") int spiesUsed,
@@ -4381,10 +4403,11 @@ public class WarCommands {
     }
 
     @RolePermission(value = {Roles.MEMBER, Roles.MILCOM}, any = true)
-    @Command(desc="Get a list of nations to counter a war\n" +
-            "Add `-o` to ignore nations with 5 offensive slots\n" +
-            "Add `-w` to filter out weak attackers\n" +
-            "Add `-a` to only list active nations (past hour)", viewable = true)
+    @Command(desc= """
+            Get a list of nations to counter a war
+            Add `-o` to ignore nations with 5 offensive slots
+            Add `-w` to filter out weak attackers
+            Add `-a` to only list active nations (past hour)""", viewable = true)
     public String counterWar(@Me DBNation me, @Me GuildDB db,
                              DBWar war,
                              @Arg("Nations to counter with\n" +
@@ -4593,10 +4616,11 @@ public class WarCommands {
     }
 
     @RolePermission(value = Roles.MILCOM)
-    @Command(desc = "Auto generate counters\n" +
-            "Add `-p` to ping users that are added\n" +
-            "Add `-a` to skip adding users\n" +
-            "Add `-m` to send standard counter messages")
+    @Command(desc = """
+            Auto generate counters
+            Add `-p` to ping users that are added
+            Add `-a` to skip adding users
+            Add `-m` to send standard counter messages""")
     public String autocounter(@Me IMessageIO channel, @Me JSONObject command, @Me WarCategory warCat, @Me DBNation me, @Me User author, @Me GuildDB db,
                               DBNation enemy,
                               @Arg("Nations to counter with\n" +
@@ -4667,11 +4691,12 @@ public class WarCommands {
     }
 
     @RolePermission(value = Roles.MILCOM)
-    @Command(desc = "Create a war room\n" +
-            "Add `-p` to ping users that are added\n" +
-            "Add `-a` to skip adding users\n" +
-            "Add `-f` to force create channels (if checks fail)\n" +
-            "Add `-m` to send standard counter messages")
+    @Command(desc = """
+            Create a war room
+            Add `-p` to ping users that are added
+            Add `-a` to skip adding users
+            Add `-f` to force create channels (if checks fail)
+            Add `-m` to send standard counter messages""")
     public String warroom(@Me IMessageIO channel, @Me JSONObject command, @Me WarCategory warCat, @Me DBNation me, @Me User author, @Me GuildDB db,
                           DBNation enemy,
                           @Arg("Nations to counter with\n" +

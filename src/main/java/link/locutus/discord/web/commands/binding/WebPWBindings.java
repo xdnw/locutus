@@ -345,37 +345,38 @@ public class WebPWBindings extends WebBindingHelper {
     @HtmlInput
     @Binding(types= CityBuild.class)
     public String CityBuild(ParameterData param) {
-        String hint = "{\n" +
-                "    \"infra_needed\": 1900,\n" +
-                "    \"imp_total\": 38,\n" +
-                "    \"imp_coalpower\": 0,\n" +
-                "    \"imp_oilpower\": 0,\n" +
-                "    \"imp_windpower\": 0,\n" +
-                "    \"imp_nuclearpower\": 1,\n" +
-                "    \"imp_coalmine\": 0,\n" +
-                "    \"imp_oilwell\": 10,\n" +
-                "    \"imp_uramine\": 0,\n" +
-                "    \"imp_leadmine\": 1,\n" +
-                "    \"imp_ironmine\": 0,\n" +
-                "    \"imp_bauxitemine\": 10,\n" +
-                "    \"imp_farm\": 0,\n" +
-                "    \"imp_gasrefinery\": 4,\n" +
-                "    \"imp_aluminumrefinery\": 5,\n" +
-                "    \"imp_munitionsfactory\": 0,\n" +
-                "    \"imp_steelmill\": 0,\n" +
-                "    \"imp_policestation\": 0,\n" +
-                "    \"imp_hospital\": 0,\n" +
-                "    \"imp_recyclingcenter\": 0,\n" +
-                "    \"imp_subway\": 0,\n" +
-                "    \"imp_supermarket\": 0,\n" +
-                "    \"imp_bank\": 0,\n" +
-                "    \"imp_mall\": 0,\n" +
-                "    \"imp_stadium\": 0,\n" +
-                "    \"imp_barracks\": 4,\n" +
-                "    \"imp_factory\": 0,\n" +
-                "    \"imp_hangars\": 0,\n" +
-                "    \"imp_drydock\": 3\n" +
-                "}";
+        String hint = """
+                {
+                    "infra_needed": 1900,
+                    "imp_total": 38,
+                    "imp_coalpower": 0,
+                    "imp_oilpower": 0,
+                    "imp_windpower": 0,
+                    "imp_nuclearpower": 1,
+                    "imp_coalmine": 0,
+                    "imp_oilwell": 10,
+                    "imp_uramine": 0,
+                    "imp_leadmine": 1,
+                    "imp_ironmine": 0,
+                    "imp_bauxitemine": 10,
+                    "imp_farm": 0,
+                    "imp_gasrefinery": 4,
+                    "imp_aluminumrefinery": 5,
+                    "imp_munitionsfactory": 0,
+                    "imp_steelmill": 0,
+                    "imp_policestation": 0,
+                    "imp_hospital": 0,
+                    "imp_recyclingcenter": 0,
+                    "imp_subway": 0,
+                    "imp_supermarket": 0,
+                    "imp_bank": 0,
+                    "imp_mall": 0,
+                    "imp_stadium": 0,
+                    "imp_barracks": 4,
+                    "imp_factory": 0,
+                    "imp_hangars": 0,
+                    "imp_drydock": 3
+                }""";
         String placeholder = "placeholder='" + hint + "'";
         return WebUtil.createInputWithClass("textarea", WebUtil.InputType.textarea, param, null, true, placeholder);
     }

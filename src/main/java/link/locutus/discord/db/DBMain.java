@@ -33,7 +33,7 @@ public abstract class DBMain implements Closeable {
 
     public DBMain(String name, boolean inMemory) throws SQLException, ClassNotFoundException {
         this.inMemory = inMemory;
-        File file = new File((Settings.INSTANCE.TEST ? "test" + File.separator : "") + "database", name + ".db");
+        File file = new File(Settings.INSTANCE.DATABASE.SQLITE.DIRECTORY, name + ".db");
         if (!file.getParentFile().exists()) {
             file.getParentFile().mkdirs();
         }
@@ -154,10 +154,11 @@ public abstract class DBMain implements Closeable {
         connectStr += dbLocation;
         connection = DriverManager.getConnection(connectStr);
         if (inMemory) {
-            connection.createStatement().execute("pragma journal_mode = WAL;\n" +
-                    "pragma synchronous = normal;\n" +
-                    "pragma temp_store = memory;\n" +
-                    "pragma mmap_size = 30000000000;");
+            connection.createStatement().execute("""
+                    pragma journal_mode = WAL;
+                    pragma synchronous = normal;
+                    pragma temp_store = memory;
+                    pragma mmap_size = 30000000000;""");
         }
         return connection;
     }

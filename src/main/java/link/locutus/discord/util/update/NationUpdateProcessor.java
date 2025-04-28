@@ -997,7 +997,7 @@ public class NationUpdateProcessor {
             StringBuilder body = new StringBuilder(previous.toEmbedString());
             String finalType = type;
             String finalBody = body.toString();
-            String title = "Detected " + finalType + ": " + previous.getNation() + " | " + "" + Settings.PNW_URL() + "/nation/id=" + previous.getNation_id() + " | " + previous.getAllianceName();
+            String title = "Detected " + finalType + ": " + previous.getNation() + " | " + Settings.PNW_URL() + "/nation/id=" + previous.getNation_id() + " | " + previous.getAllianceName();
             AlertUtil.forEachChannel(f -> true, GuildKey.DELETION_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
                 @Override
                 public void accept(MessageChannel channel, GuildDB db) {

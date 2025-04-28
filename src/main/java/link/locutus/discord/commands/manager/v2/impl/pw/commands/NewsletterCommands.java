@@ -90,7 +90,7 @@ public class NewsletterCommands {
     @IsGuild(value = {672217848311054346L, 672217848311054346L})
     public String channelAdd(@Me GuildDB db, @Me Member author, NewsletterManager manager, Newsletter newsletter, TextChannel channel) {
         if (!channel.canTalk(author)) {
-            throw new IllegalArgumentException("You cannot talk in channel " + channel.getAsMention() + "");
+            throw new IllegalArgumentException("You cannot talk in channel " + channel.getAsMention());
         }
         if (channel.getGuild().getIdLong() != db.getIdLong()) {
             throw new IllegalArgumentException("Channel " + channel.getAsMention() + " is not in " + db.getGuild());
@@ -188,9 +188,10 @@ public class NewsletterCommands {
     }
 
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.MAIL})
-    @Command(desc = "Compile and send a newsletter to the subscribed nations\n" +
-            "If no time period is specified, the newsletter will be compiled from the messages since the last compilation\n" +
-            "If there is no previous compilation, the newsletter creation date will be used")
+    @Command(desc = """
+            Compile and send a newsletter to the subscribed nations
+            If no time period is specified, the newsletter will be compiled from the messages since the last compilation
+            If there is no previous compilation, the newsletter creation date will be used""")
     @IsGuild(value = {672217848311054346L, 672217848311054346L})
     public String send(NewsletterManager manager, @Me DBNation me, @Me User author, @Me JSONObject command, @Me GuildDB db, @Me Guild guild, @Me IMessageIO io,
                        Newsletter newsletter, @Default @Timediff Long sendSince , @Switch("d") GoogleDoc document, @Switch("e") Long endDate) throws IOException, GeneralSecurityException {

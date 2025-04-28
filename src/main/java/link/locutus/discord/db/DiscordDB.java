@@ -653,13 +653,14 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
 
     public Map<Integer, BigInteger> getLatestUidByNation() {
         Map<Integer, BigInteger> latestUuidsMap = new HashMap<>();
-        String query = "SELECT t1.nation_id, t1.uuid\n" +
-                "FROM UUIDS t1\n" +
-                "INNER JOIN (\n" +
-                "    SELECT nation_id, MAX(date) AS max_date\n" +
-                "    FROM UUIDS\n" +
-                "    GROUP BY nation_id\n" +
-                ") t2 ON t1.nation_id = t2.nation_id AND t1.date = t2.max_date;";
+        String query = """
+                SELECT t1.nation_id, t1.uuid
+                FROM UUIDS t1
+                INNER JOIN (
+                    SELECT nation_id, MAX(date) AS max_date
+                    FROM UUIDS
+                    GROUP BY nation_id
+                ) t2 ON t1.nation_id = t2.nation_id AND t1.date = t2.max_date;""";
         try (PreparedStatement preparedStatement = prepareQuery(query);
              ResultSet resultSet = preparedStatement.executeQuery()) {
             int i = 0;

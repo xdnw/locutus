@@ -35,8 +35,7 @@ public class Interview extends QuestionCommand<InterviewQuestion> {
 
     @Override
     public String desc() {
-        return "Create a channel for IA to interview that user, or move the current interview channel\n" +
-                "";
+        return "Create a channel for IA to interview that user, or move the current interview channel\n";
     }
 
     @Override

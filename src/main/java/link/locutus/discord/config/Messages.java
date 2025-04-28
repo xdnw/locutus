@@ -8,10 +8,10 @@ public class Messages {
 
     public static String SUCCESS = "Success. You are now a registered user.";
 
-    public static String CITY_URL = "" + Settings.PNW_URL() + "/city/id=";
+    public static String CITY_URL = Settings.PNW_URL() + "/city/id=";
 
-    public static String NATION_URL = "" + Settings.PNW_URL() + "/nation/id=";
-    public static String ALLIANCE_URL = "" + Settings.PNW_URL() + "/alliance/id=";
+    public static String NATION_URL = Settings.PNW_URL() + "/nation/id=";
+    public static String ALLIANCE_URL = Settings.PNW_URL() + "/alliance/id=";
 
     public static String BLOCKADE_HELP = "A blockade prevents you from sending or receiving funds (via bank or trade)\n" +
             "It can end when:\n" +

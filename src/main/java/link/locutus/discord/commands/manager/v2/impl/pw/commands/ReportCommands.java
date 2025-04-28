@@ -89,13 +89,13 @@ public class ReportCommands {
             String reporterGuild = sheetUrl(getGuildName(report.reporterGuildId), getGuildUrl(report.reporterGuildId));
 
             column.set(0, report.reportId + "");
-            column.set(1, natUrl + "");
-            column.set(2, discordUrl + "");
+            column.set(1, natUrl);
+            column.set(2, discordUrl);
             column.set(3, report.type.name());
-            column.set(4, reporterNatUrl + "");
-            column.set(5, reporterDiscordUrl + "");
-            column.set(6, reporterAlliance + "");
-            column.set(7, reporterGuild + "");
+            column.set(4, reporterNatUrl);
+            column.set(5, reporterDiscordUrl);
+            column.set(6, reporterAlliance);
+            column.set(7, reporterGuild);
             column.set(8, report.message);
             column.set(9, StringMan.join(report.imageUrls, "\n"));
             column.set(10, report.forumUrl);
@@ -221,9 +221,10 @@ public class ReportCommands {
         return "Added " + reports.size() + " reports. See " + CM.report.sheet.generate.cmd.toSlashMention();
     }
 
-    @Command(desc = "Generate a google sheet of all loan information banks and alliances have submitted\n" +
-            "If no nations are provided, only the loans for this server are returned\n" +
-            "If no loan status is provided, all loans are returned", viewable = true)
+    @Command(desc = """
+            Generate a google sheet of all loan information banks and alliances have submitted
+            If no nations are provided, only the loans for this server are returned
+            If no loan status is provided, all loans are returned""", viewable = true)
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String getLoanSheet(@Me IMessageIO io, @Me GuildDB db, LoanManager manager, @Default Set<DBNation> nations, @Switch("s") SpreadSheet sheet, @Switch("l") Set<DBLoan.Status> loanStatus) throws GeneralSecurityException, IOException {
         List<DBLoan> loans;
@@ -274,15 +275,15 @@ public class ReportCommands {
             String loanerName = loan.loanerGuildOrAA > Integer.MAX_VALUE ? DiscordUtil.getGuildName(loan.loanerGuildOrAA) : PW.getName(loan.loanerGuildOrAA, true);
             String loanerUrl = loan.loanerGuildOrAA > Integer.MAX_VALUE ? DiscordUtil.getGuildUrl(loan.loanerGuildOrAA) : PW.getAllianceUrl((int) loan.loanerGuildOrAA);
             String loanerMarkup = sheetUrl(loanerName, loanerUrl);
-            header.set(1, loanerMarkup + "");
-            header.set(2, sheetUrl(PW.getName(loan.loanerNation, false), PW.getNationUrl(loan.loanerNation)) + "");
+            header.set(1, loanerMarkup);
+            header.set(2, sheetUrl(PW.getName(loan.loanerNation, false), PW.getNationUrl(loan.loanerNation)));
             String name = PW.getName(loan.nationOrAllianceId, loan.isAlliance);
             String url = loan.isAlliance ? PW.getAllianceUrl(loan.nationOrAllianceId) : PW.getNationUrl(loan.nationOrAllianceId);
             String receiverMarkup = sheetUrl(name, url);
-            header.set(3, receiverMarkup + "");
-            header.set(4, ResourceType.toString(loan.principal) + "");
-            header.set(4, ResourceType.toString(loan.paid) + "");
-            header.set(5, ResourceType.toString(loan.remaining) + "");
+            header.set(3, receiverMarkup);
+            header.set(4, ResourceType.toString(loan.principal));
+            header.set(4, ResourceType.toString(loan.paid));
+            header.set(5, ResourceType.toString(loan.remaining));
             header.set(6, loan.status.name());
             header.set(7, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(loan.dueDate)));
             header.set(8, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(loan.loanDate)));
@@ -585,9 +586,10 @@ public class ReportCommands {
 
     }
 
-    @Command(desc = "Import loan report data from a google sheet\n" +
-            "Expects the columns: Receiver, Principal, Remaining, Status, Due Date, Loan Date, Paid, Interest\n" +
-            "This is not affect member balances and is solely for sharing information with the public")
+    @Command(desc = """
+            Import loan report data from a google sheet
+            Expects the columns: Receiver, Principal, Remaining, Status, Due Date, Loan Date, Paid, Interest
+            This is not affect member balances and is solely for sharing information with the public""")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.ECON}, any = true)
     public String importLoans(LoanManager loanManager, @Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, SpreadSheet sheet, @Default DBLoan.Status defaultStatus, @Switch("o") boolean overwriteLoans, @Switch("m") boolean overwriteSameNation, @Switch("a") boolean addLoans) throws ParseException {
         List<List<Object>> rows = sheet.fetchAll(null);
@@ -1196,9 +1198,10 @@ public class ReportCommands {
         return "Deleted " + comments.size() + " comments";
     }
 
-    @Command(desc = "Ban a nation from submitting new reports\n" +
-            "Reports they have already submitted will remain\n" +
-            "Use the purge command to delete existing reports")
+    @Command(desc = """
+            Ban a nation from submitting new reports
+            Reports they have already submitted will remain
+            Use the purge command to delete existing reports""")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS}, root = true, any = true)
     public String ban(ReportManager reportManager, @Me IMessageIO io, @Me JSONObject command, DBNation nation, @Timestamp long timestamp, String reason, @Switch("f") boolean force) throws IOException {
         if (!force) {

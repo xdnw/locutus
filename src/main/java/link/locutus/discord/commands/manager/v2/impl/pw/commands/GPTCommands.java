@@ -171,11 +171,12 @@ public class GPTCommands {
         return builder.toString();
     }
 
-    @Command(desc = "Convert a public Google document (of document type) into a Google spreadsheet of facts.\n" +
-            "The output format will have a single column with a header row labeled \"facts.\" Each fact will be standalone and not order dependent.\n" +
-            "The information is extracted using the user's configured GPT provider.\n" +
-            "When the command is run, the document is added to the queue, and the user will be alerted when the conversion finishes.\n" +
-            "Users have the option to check the progress of the conversion using a command.")
+    @Command(desc = """
+            Convert a public Google document (of document type) into a Google spreadsheet of facts.
+            The output format will have a single column with a header row labeled "facts." Each fact will be standalone and not order dependent.
+            The information is extracted using the user's configured GPT provider.
+            When the command is run, the document is added to the queue, and the user will be alerted when the conversion finishes.
+            Users have the option to check the progress of the conversion using a command.""")
     @RolePermission(value = Roles.INTERNAL_AFFAIRS, root = true)
     public synchronized String generate_factsheet(PWGPTHandler gpt, @Me GuildDB db, @Me IMessageIO io, @Me User user, @Me JSONObject command, String googleDocumentUrl, String document_name, @Switch("f") boolean force) throws GeneralSecurityException, IOException {
         // if document name is not alphanumerical space under dash
@@ -255,10 +256,11 @@ public class GPTCommands {
                 CM.chat.dataset.list.cmd.toSlashMention() + " to view completed datasets.";
     }
 
-    @Command(desc = "This command provides a list of accessible embedding datasets used for prompting GPT.\n" +
-            "Embedding datasets consist of vectors representing text strings, allowing for comparison between different strings.\n" +
-            "See: <https://github.com/xdnw/locutus/wiki> or <https://politicsandwar.fandom.com/wiki/Politics_and_War_Wiki>\n" +
-            "To view a specific dataset see: /chat embedding view", viewable = true)
+    @Command(desc = """
+            This command provides a list of accessible embedding datasets used for prompting GPT.
+            Embedding datasets consist of vectors representing text strings, allowing for comparison between different strings.
+            See: <https://github.com/xdnw/locutus/wiki> or <https://politicsandwar.fandom.com/wiki/Politics_and_War_Wiki>
+            To view a specific dataset see: /chat embedding view""", viewable = true)
     @RolePermission(value = Roles.AI_COMMAND_ACCESS)
     public String list_documents(PWGPTHandler gpt, @Me IMessageIO io, @Me GuildDB db, @Switch("r") boolean listRoot) {
         Set<EmbeddingSource> sources = gpt.getSources(db.getGuild(), listRoot);
@@ -313,9 +315,10 @@ public class GPTCommands {
         return "Deleted document `" + source.source_name + "`";
     }
 
-    @Command(desc = "Save Google spreadsheet contents to a named embedding dataset.\n" +
-            "Requires two columns labeled \"fact\" or \"question\" and \"answer\" for vectors.\n" +
-            "Search finds nearest fact, or searches questions and returns corresponding answers if two columns.")
+    @Command(desc = """
+            Save Google spreadsheet contents to a named embedding dataset.
+            Requires two columns labeled "fact" or "question" and "answer" for vectors.
+            Search finds nearest fact, or searches questions and returns corresponding answers if two columns.""")
     @RolePermission(value = Roles.ADMIN)
     public String view_document(PWGPTHandler handler, @Me IMessageIO io, @Me GuildDB db, EmbeddingSource source, final @Switch("a") boolean getAnswers, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (source == handler.getSource(EmbeddingType.User_Input)) {
@@ -362,9 +365,10 @@ public class GPTCommands {
         return null;
     }
 
-    @Command(desc = "Save Google spreadsheet contents to a named embedding dataset.\n" +
-            "Requires two columns labeled \"fact\" or \"question\" and \"answer\" for vectors.\n" +
-            "Search finds nearest fact, or searches questions and returns corresponding answers if two columns.")
+    @Command(desc = """
+            Save Google spreadsheet contents to a named embedding dataset.
+            Requires two columns labeled "fact" or "question" and "answer" for vectors.
+            Search finds nearest fact, or searches questions and returns corresponding answers if two columns.""")
     @RolePermission(value = Roles.ADMIN)
     public String save_embeddings(PWGPTHandler gpt, @Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, SpreadSheet sheet, String document_name, @Switch("f") boolean force) {
         String originalName = document_name;
@@ -451,9 +455,10 @@ public class GPTCommands {
         return result.toString();
     }
 
-    @Command(desc = "Configure chat provider types used for conversations.\n" +
-            "Settings applies to all new messages.\n" +
-            "Use provider list command to view types.")
+    @Command(desc = """
+            Configure chat provider types used for conversations.
+            Settings applies to all new messages.
+            Use provider list command to view types.""")
     @RolePermission(Roles.AI_COMMAND_ACCESS)
     public String setChatProviders(PWGPTHandler pwGpt, @Me GuildDB db, @Me User user, @Me DBNation nation, Set<ProviderType> providerTypes) {
         Set<ProviderType> existing = pwGpt.getProviderManager().getProviderTypes(nation);
@@ -479,10 +484,11 @@ public class GPTCommands {
         return response.toString();
     }
 
-    @Command(desc = "Customize options for a chat provider.\n" +
-            "Defaults apply if not set.\n" +
-            "Configurations for all new messages.\n" +
-            "Refer to API docs for details: <https://platform.openai.com/docs/api-reference/chat/create>")
+    @Command(desc = """
+            Customize options for a chat provider.
+            Defaults apply if not set.
+            Configurations for all new messages.
+            Refer to API docs for details: <https://platform.openai.com/docs/api-reference/chat/create>""")
     @RolePermission(Roles.AI_COMMAND_ACCESS)
     public String chatProviderConfigure(PWGPTHandler pwGpt, @Me GuildDB db, @Me User user, @Me DBNation nation, GPTProvider provider, Map<String, String> options) {
         Map<String, Map<String, String>> config = pwGpt.getPlayerGPTConfig().setAndValidateOptions(nation, provider, options);
@@ -512,10 +518,11 @@ public class GPTCommands {
         return msg;
     }
 
-    @Command(desc = "Pause a chat provider.\n" +
-            "Other providers will not be paused.\n" +
-            "Halts document conversion using this provider.\n" +
-            "Providers may be resumed.")
+    @Command(desc = """
+            Pause a chat provider.
+            Other providers will not be paused.
+            Halts document conversion using this provider.
+            Providers may be resumed.""")
     @RolePermission(value = Roles.ADMIN)
     public String chatPause(@Me GuildDB db, @Me User user, GPTProvider provider) {
         if (!provider.checkAdminPermission(db, user, true)) {
@@ -694,9 +701,10 @@ public class GPTCommands {
         return body.toString();
     }
 
-    @Command(desc = "Bulk rename channels using a google sheet or AI generated emojis\n" +
-            "The sheet expects columns `id`, `name` and optionally `description`\n" +
-            "If you do not provide a sheet, emojis and descriptions will be generated from the channel names")
+    @Command(desc = """
+            Bulk rename channels using a google sheet or AI generated emojis
+            The sheet expects columns `id`, `name` and optionally `description`
+            If you do not provide a sheet, emojis and descriptions will be generated from the channel names""")
     @RolePermission(Roles.ADMIN)
     public void emojifyChannels(@Me JSONObject command, @Me GuildDB db, @Me Guild guild, @Me IMessageIO io, @Me User user, @Me DBNation me, @Default SpreadSheet sheet, @Switch("e") Set<Category> excludeCategories, @Switch("c") Set<Category> includeCategories, @Switch("f") boolean force, @Switch("j") boolean popCultureQuotes) throws GeneralSecurityException, IOException {
         if (sheet != null && (excludeCategories != null || includeCategories != null)) {

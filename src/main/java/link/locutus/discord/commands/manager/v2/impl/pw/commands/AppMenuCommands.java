@@ -261,8 +261,11 @@ public class AppMenuCommands {
         if (label2 == null) label2 = menu.lastPressedButton;
 
         if (label2 != null && label1.equals(label2)) {
-            menu.clearState().message().options(true).description("Cancelled reordering (pressed button twice)\n\n" +
-                    "Select an edit option.\nPress `cancel` to exit").cancel(true).queue(db.getGuild(), user, io);
+            menu.clearState().message().options(true).description("""
+                    Cancelled reordering (pressed button twice)
+                    
+                    Select an edit option.
+                    Press `cancel` to exit""").cancel(true).queue(db.getGuild(), user, io);
             return;
         }
         String command1 = menu.buttons.get(label1);

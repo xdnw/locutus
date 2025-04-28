@@ -384,7 +384,7 @@ public class GuildHandler {
                 if (user != null) {
                     type += " | " + user.getAsMention();
                 }
-                String title = type + ": " + current.getNation() + " | " + "" + Settings.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAllianceName();
+                String title = type + ": " + current.getNation() + " | " + Settings.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAllianceName();
                 AlertUtil.displayChannel(title, current.toString(), channel.getIdLong());
             }
         }
@@ -422,14 +422,14 @@ public class GuildHandler {
                 String title;
                 if (current.getVm_turns() == 0 && (current.active_m() < 2880 || (!current.isGray() && !current.isBeige()))) {
                     type = "ACTIVE NATION SET TO APPLICANT";
-                    title = type + ": " + current.getNation() + " | " + "" + Settings.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAllianceName();
+                    title = type + ": " + current.getNation() + " | " + Settings.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAllianceName();
                 } else {
                     if (current.getColor() == NationColor.GRAY) {
                         type = "INACTIVE GRAY NATION SET TO APPLICANT";
                     } else {
                         type = "INACTIVE TAXABLE NATION SET TO APPLICANT";
                     }
-                    title = type + ": " + current.getNation() + " | " + "" + Settings.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAllianceName();
+                    title = type + ": " + current.getNation() + " | " + Settings.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAllianceName();
                 }
                 String message = "**" + title + "**\n" + current.toString() + "\n";
                 RateLimitUtil.queueMessage(channel, message, true, 60);
@@ -535,7 +535,7 @@ public class GuildHandler {
                     if (user != null) {
                         type += " | " + user.getAsMention();
                     }
-                    String title = type + ": " + current.getNation() + " | " + "" + Settings.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAllianceName();
+                    String title = type + ": " + current.getNation() + " | " + Settings.PNW_URL() + "/nation/id=" + current.getNation_id() + " | " + current.getAllianceName();
 
                     String message = "**" + title + "**" + "\n" + current.toString() + "\n";
                     RateLimitUtil.queueMessage(channel, message, true, 60);
@@ -1935,7 +1935,7 @@ public class GuildHandler {
                                     int unraidable = 50000 * defender.getCities();
 
                                     if (attacker.getGroundStrength(true, false) > defender.getSoldiers() * 1.7_5) {
-                                        String bankUrl = "" + Settings.PNW_URL() + "/alliance/id=" + defender.getAlliance_id() + "&display=bank";
+                                        String bankUrl = Settings.PNW_URL() + "/alliance/id=" + defender.getAlliance_id() + "&display=bank";
                                         tips.add("Deposit your excess money in the bank or it will be stolen: " + bankUrl + " (only $" + MathMan.format(unraidable) + " is unraidable)");
                                     }
                                     Role faRole = Roles.FOREIGN_AFFAIRS.toRole(war.getDefender_aa(), db);
@@ -2111,13 +2111,14 @@ public class GuildHandler {
                     projects.contains(Projects.INTELLIGENCE_AGENCY)) {
             }
 
-            allowed.put(Projects.MISSILE_LAUNCH_PAD, new Grant.Requirement("Please get the following projects first:\n" +
-                    "- ARMS_STOCKPILE\n" +
-                    "- BAUXITEWORKS\n" +
-                    "- IRON_WORKS\n" +
-                    "- EMERGENCY_GASOLINE_RESERVE\n" +
-                    "- PROPAGANDA_BUREAU\n" +
-                    "- INTELLIGENCE_AGENCY", overrideSafe, f -> (projects.contains(Projects.ARMS_STOCKPILE) &&
+            allowed.put(Projects.MISSILE_LAUNCH_PAD, new Grant.Requirement("""
+                    Please get the following projects first:
+                    - ARMS_STOCKPILE
+                    - BAUXITEWORKS
+                    - IRON_WORKS
+                    - EMERGENCY_GASOLINE_RESERVE
+                    - PROPAGANDA_BUREAU
+                    - INTELLIGENCE_AGENCY""", overrideSafe, f -> (projects.contains(Projects.ARMS_STOCKPILE) &&
                     projects.contains(Projects.BAUXITEWORKS) &&
                     projects.contains(Projects.IRON_WORKS) &&
                     projects.contains(Projects.EMERGENCY_GASOLINE_RESERVE) &&
@@ -2145,29 +2146,37 @@ public class GuildHandler {
     }
 
     public String getBeigeCyclingInfo(Set<BeigeReason> allowedReasons, boolean isViolation) {
-        StringBuilder explanation = new StringBuilder("**What is beige?**\n" +
-                "A nation defeated gets 2 more days of being on the beige color. Beige protects from new war declarations. We want to have active enemies always in war, so they don't have the opportunity to build back up.\n" +
-                "\n" +
-                "**Tips for avoiding unnecessary attacks:**\n" +
-                "- Don't open with navals if they have units which are a threat. Ships can't attack planes, tanks or soldiers.\n" +
-                "- Dont naval if you already have them blockaded\n" +
-                "- Never airstrike infra, cash, or small amounts of units- wait for them to build more units\n" +
-                "- If they just have some soldiers and can't get a victory against you, don't spam ground attacks.\n" +
-                "- If the enemy only has soldiers (no tanks) and you have max planes. Airstriking soldiers kills more soldiers than a ground attack will.\n" +
-                "- Missiles/Nukes do NOT kill any units\n\n" +
-                "note: You can do some unnecessary attacks if the war is going to expire, or you need to beige them as part of a beige cycle\n\n");
+        StringBuilder explanation = new StringBuilder("""
+                **What is beige?**
+                A nation defeated gets 2 more days of being on the beige color. Beige protects from new war declarations. We want to have active enemies always in war, so they don't have the opportunity to build back up.
+                
+                **Tips for avoiding unnecessary attacks:**
+                - Don't open with navals if they have units which are a threat. Ships can't attack planes, tanks or soldiers.
+                - Dont naval if you already have them blockaded
+                - Never airstrike infra, cash, or small amounts of units- wait for them to build more units
+                - If they just have some soldiers and can't get a victory against you, don't spam ground attacks.
+                - If the enemy only has soldiers (no tanks) and you have max planes. Airstriking soldiers kills more soldiers than a ground attack will.
+                - Missiles/Nukes do NOT kill any units
+                
+                note: You can do some unnecessary attacks if the war is going to expire, or you need to beige them as part of a beige cycle
+                
+                """);
 
         if (allowedReasons.contains(BEIGE_CYCLE)) {
-            explanation.append("**What is beige cycling?**\n" +
-                    "Beige cycling is when we have a weakened enemy, and 3 strong nations declared on that enemy- then 1 nation defeats them, whilst the other two sit on them whilst they are on beige\n" +
-                    "When their 2 days of beige from the defeat ends, another nation declares on the enemies free slot and the next nation defeats the enemy.\n" +
-                    "\n" +
-                    "**Beige cycling checklist:**\n" +
-                    "1. Is the enemy military mostly weakened/gone?\n" +
-                    "2. Is the enemy not currently on beige?\n" +
-                    "3. Do they have 3 defensive wars, with the other two attackers having enough military?\n" +
-                    "4. Are you the first person to have declared?\n\n" +
-                    "Tip: Save your MAP. Avoid going below 40 resistance until you are GO for beiging them\n\n");
+            explanation.append("""
+                    **What is beige cycling?**
+                    Beige cycling is when we have a weakened enemy, and 3 strong nations declared on that enemy- then 1 nation defeats them, whilst the other two sit on them whilst they are on beige
+                    When their 2 days of beige from the defeat ends, another nation declares on the enemies free slot and the next nation defeats the enemy.
+                    
+                    **Beige cycling checklist:**
+                    1. Is the enemy military mostly weakened/gone?
+                    2. Is the enemy not currently on beige?
+                    3. Do they have 3 defensive wars, with the other two attackers having enough military?
+                    4. Are you the first person to have declared?
+                    
+                    Tip: Save your MAP. Avoid going below 40 resistance until you are GO for beiging them
+                    
+                    """);
         }
         if (!allowedReasons.isEmpty() && (allowedReasons.size() > 1 || !allowedReasons.contains(BEIGE_CYCLE))) {
             explanation.append("**Allowed beige reasons:**");
@@ -2175,8 +2184,11 @@ public class GuildHandler {
                 explanation.append("\n- " + allowedReason.name() +": " + allowedReason.getDescription());
             }
             if (isViolation) {
-                explanation.append("\n\n**note for members**: These are informational guidelines provided to be a war aid and in no way intended to shame anyone. This Bot isn't always correct, or necessarily accounting for the nuances of the situation. \n" +
-                        "Gov members are also just as capable of not knowing something or unnecessarily beiging by not paying attention.");
+                explanation.append("""
+                        
+                        
+                        **note for members**: These are informational guidelines provided to be a war aid and in no way intended to shame anyone. This Bot isn't always correct, or necessarily accounting for the nuances of the situation.\s
+                        Gov members are also just as capable of not knowing something or unnecessarily beiging by not paying attention.""");
             }
         }
         return explanation.toString();

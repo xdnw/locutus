@@ -471,7 +471,7 @@ public class TradeDB extends DBMainV2 {
                 String low = MathMan.format(Locutus.imp().getTradeManager().getLowAvg(getResource()));
                 String high = MathMan.format(Locutus.imp().getTradeManager().getHighAvg(getResource()));
                 if (compact) {
-                    ppuRange = "~" + low + "-" + high + "";
+                    ppuRange = "~" + low + "-" + high;
                 } else {
                     ppuRange = "Market Average (currently " + low + "-" + high + ")";
                 }
@@ -800,11 +800,12 @@ public class TradeDB extends DBMainV2 {
     }
 
     public Map<Long, Double> getAverage(long minDate, ResourceType type, int minQuantity, int min, int max) {
-        String query = "select\n" +
-                "trades.date,sum(ppu * quantity),sum(quantity)\n" +
-                "from TRADES WHERE trades.date > ? AND resource = ? AND ppu >= ? and ppu <= ? and quantity > ?\n" +
-                "group by date(datetime(trades.date/1000,'unixepoch'),'start of day')\n" +
-                "order by trades.date DESC";
+        String query = """
+                select
+                trades.date,sum(ppu * quantity),sum(quantity)
+                from TRADES WHERE trades.date > ? AND resource = ? AND ppu >= ? and ppu <= ? and quantity > ?
+                group by date(datetime(trades.date/1000,'unixepoch'),'start of day')
+                order by trades.date DESC""";
 
         Map<Long, Double> averages = new HashMap<>();
 

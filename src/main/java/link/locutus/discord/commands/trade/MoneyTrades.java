@@ -96,7 +96,7 @@ public class MoneyTrades extends Command {
                 response.append("\n**" + name);
                 if (client != null) response.append(" | " + client.getAllianceName());
                 response.append(":**\n");
-                String url = "" + Settings.PNW_URL() + "/nation/id=" + clientId;
+                String url = Settings.PNW_URL() + "/nation/id=" + clientId;
                 response.append("```" + Settings.commandPrefix(true) + "addbalance " + url + " " + ResourceType.toString(entry.getValue()) + " #deposit```");
             } else {
                 response.append('\n').append("```").append(name).append(" | ");

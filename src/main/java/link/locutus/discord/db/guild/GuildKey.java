@@ -251,9 +251,10 @@ public class GuildKey {
 
         @Override
         public String help() {
-            return "OpenAI API key\n" +
-                    "Used for chat responses and completion\n" +
-                    "Get a key from: <https://platform.openai.com/account/api-keys>";
+            return """
+                    OpenAI API key
+                    Used for chat responses and completion
+                    Get a key from: <https://platform.openai.com/account/api-keys>""";
         }
     }.setupRequirements(f -> f.requireValidAlliance());
 
@@ -380,9 +381,10 @@ public class GuildKey {
 
         @Override
         public String help() {
-            return "Enable GitHub Copilot for generating AI text responses\n" +
-                    "See: <https://github.com/features/copilot>\n" +
-                    "This is an alternative to an open ai key";
+            return """
+                    Enable GitHub Copilot for generating AI text responses
+                    See: <https://github.com/features/copilot>
+                    This is an alternative to an open ai key""";
         }
     }.requireValidAlliance();
 
@@ -1368,10 +1370,11 @@ public class GuildKey {
         }
         @Override
         public String help() {
-            return "The number of top alliances to include in the Do Not Raid (DNR) list\n" +
-                    "Members are not permitted to declare on members of these alliances or their direct allies\n" +
-                    "Results in the DNR will be excluded from commands, and will alert Foreign Affairs if violated\n" +
-                    "Defaults to `0`";
+            return """
+                    The number of top alliances to include in the Do Not Raid (DNR) list
+                    Members are not permitted to declare on members of these alliances or their direct allies
+                    Results in the DNR will be excluded from commands, and will alert Foreign Affairs if violated
+                    Defaults to `0`""";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
     public static GuildSetting<Boolean> AUTOROLE_ALLY_GOV = new GuildBooleanSetting(GuildSettingCategory.ROLE) {
@@ -1612,9 +1615,10 @@ public class GuildKey {
 
         @Override
         public String help() {
-            return "If set, all allowed resources will be converted to cash at the rates set, regardless of #cash being present as a note\n" +
-                    "This is performed when deposits are checked, and only to new deposits\n" +
-                    "Requires resource conversion to be enabled for the nation";
+            return """
+                    If set, all allowed resources will be converted to cash at the rates set, regardless of #cash being present as a note
+                    This is performed when deposits are checked, and only to new deposits
+                    Requires resource conversion to be enabled for the nation""";
         }
     }.setupRequirements(f -> f.requires(RESOURCE_CONVERSION));
 
@@ -1686,14 +1690,15 @@ public class GuildKey {
 
         @Override
         public String help() {
-            return "Set the rate (as a percent of market value) each resource converts to cash\n" +
-                    "Conversion rates can be set for different nations or roles. Use `*` to apply to everyone" +
-                    "In the form: `*:{FOOD=75, COAL=90, OIL=90, URANIUM=90, LEAD=90, IRON=90, BAUXITE=90, GASOLINE=80, MUNITIONS=80, STEEL=80, ALUMINUM=80}`\n" +
-                    "See: <https://github.com/xdnw/locutus/wiki/Nation_placeholders>\n" +
-                    "A value of 75 = 75%\n" +
-                    "Set to 0 to disable conversion for that resource\n" +
-                    "If no value is set for a resource it will default to 100% of weekly market average\n" +
-                    "**It is recommended to set both a default `*` and a specific value for each resource**";
+            return """
+                    Set the rate (as a percent of market value) each resource converts to cash
+                    Conversion rates can be set for different nations or roles. Use `*` to apply to everyone\
+                    In the form: `*:{FOOD=75, COAL=90, OIL=90, URANIUM=90, LEAD=90, IRON=90, BAUXITE=90, GASOLINE=80, MUNITIONS=80, STEEL=80, ALUMINUM=80}`
+                    See: <https://github.com/xdnw/locutus/wiki/Nation_placeholders>
+                    A value of 75 = 75%
+                    Set to 0 to disable conversion for that resource
+                    If no value is set for a resource it will default to 100% of weekly market average
+                    **It is recommended to set both a default `*` and a specific value for each resource**""";
         }
     }.setupRequirements(f -> f.requires(RESOURCE_CONVERSION));
 
@@ -1799,12 +1804,14 @@ public class GuildKey {
 
         @Override
         public String help() {
-            StringBuilder response = new StringBuilder("A list of city ranges to beige reasons that are permitted.\n" +
-                    "In the form:\n" +
-                    "```\n" +
-                    "c1-9:*\n" +
-                    "c10+:INACTIVE,VACATION_MODE,APPLICANT\n" +
-                    "```\n").append(" Options:\n");
+            StringBuilder response = new StringBuilder("""
+                    A list of city ranges to beige reasons that are permitted.
+                    In the form:
+                    ```
+                    c1-9:*
+                    c10+:INACTIVE,VACATION_MODE,APPLICANT
+                    ```
+                    """).append(" Options:\n");
             for (BeigeReason value : BeigeReason.values()) {
                 response.append("- " + value.name() + ": " + value.getDescription()).append("\n");
             }
@@ -1914,15 +1921,16 @@ public class GuildKey {
 
         @Override
         public String help() {
-            String response = "Set the required MMR based on nation criteria\n" +
-                    "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>\n" +
-                    "Accepts a list of filters to the required MMR.\n" +
-                    "In the form:\n" +
-                    "```\n" +
-                    "#cities<10:505X\n" +
-                    "#cities>=10:0250\n" +
-                    "```\n" +
-                    "Use `*` as the filter to match all nations.";
+            String response = """
+                    Set the required MMR based on nation criteria
+                    See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>
+                    Accepts a list of filters to the required MMR.
+                    In the form:
+                    ```
+                    #cities<10:505X
+                    #cities>=10:0250
+                    ```
+                    Use `*` as the filter to match all nations.""";
 
             return response;
         }
@@ -2183,11 +2191,14 @@ public class GuildKey {
 
         @Override
         public String help() {
-            return "The #channel for users to request resources in.\n" +
-                    "For multiple alliances, use the form:\n```\n" +
-                    "#defaultChannel\n" +
-                    "alliance1:#channel\n" +
-                    "```\n";
+            return """
+                    The #channel for users to request resources in.
+                    For multiple alliances, use the form:
+                    ```
+                    #defaultChannel
+                    alliance1:#channel
+                    ```
+                    """;
         }
     }.setupRequirements(f -> f.requiresCoalition(Coalition.OFFSHORE).requiresOffshore());
     public static GuildSetting<MessageChannel> GRANT_REQUEST_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BANK_INFO) {
@@ -2670,8 +2681,10 @@ public class GuildKey {
         }
         @Override
         public String help() {
-            return "A an additional filter to limit which nations are allowed for a war room.\n" +
-                    "War rooms are only created and maintained when attacker and defender match this filter\n";
+            return """
+                    A an additional filter to limit which nations are allowed for a war room.
+                    War rooms are only created and maintained when attacker and defender match this filter
+                    """;
         }
     }.setupRequirements(f -> f.requires(ENABLE_WAR_ROOMS));
 

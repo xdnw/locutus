@@ -32,7 +32,7 @@ public class PermissionBinding extends BindingHelper {
     @Binding(value = "Must be used in a guild registered to a valid in-game alliance")
     @IsAlliance
     public boolean checkAlliance(@Me GuildDB db, IsAlliance perm) {
-        if (!db.isValidAlliance()) throw new IllegalArgumentException(db.getGuild() + " is not a valid alliance. See: " + GuildKey.ALLIANCE_ID.getCommandMention() + "");
+        if (!db.isValidAlliance()) throw new IllegalArgumentException(db.getGuild() + " is not a valid alliance. See: " + GuildKey.ALLIANCE_ID.getCommandMention());
         return true;
     }
 
@@ -47,7 +47,7 @@ public class PermissionBinding extends BindingHelper {
     @Binding(value = "Must be used in a guild with a valid API_KEY configured")
     @HasApi
     public boolean hasApi(@Me GuildDB db, HasApi perm) {
-        if (db.getOrNull(GuildKey.API_KEY) == null) throw new IllegalArgumentException("No api key set: " + GuildKey.API_KEY.getCommandMention() + "");
+        if (db.getOrNull(GuildKey.API_KEY) == null) throw new IllegalArgumentException("No api key set: " + GuildKey.API_KEY.getCommandMention());
         return true;
     }
 
@@ -62,7 +62,7 @@ public class PermissionBinding extends BindingHelper {
             if (db.isValidAlliance()) {
                 response.append("\nNote: Use this alliance id to use the alliance bank for withdrawals (or to create an offshoring point for other alliances you control)");
             } else if (!db.hasAlliance()) {
-                response.append("\nNote: Set the alliance for this guild using: " + GuildKey.ALLIANCE_ID.getCommandMention() + "");
+                response.append("\nNote: Set the alliance for this guild using: " + GuildKey.ALLIANCE_ID.getCommandMention());
             }
             Set<String> publicOffshores = new HashSet<>();
             for (GuildDB otherDB : Locutus.imp().getGuildDatabases().values()) {
@@ -193,11 +193,12 @@ public class PermissionBinding extends BindingHelper {
         throw new IllegalCallerException("Denied by permission: " + nation.getNationUrlMarkup() + " | " + user.getAsMention());
     }
 
-    @Binding("Has the aliased roles on discord. \n" +
-            "`any` = has any of the roles. \n" +
-            "`root` = has role on bot's main guild. \n" +
-            "`guild` = has role on that guild. \n" +
-            "`alliance` = has role on alliance's guild."
+    @Binding("""
+            Has the aliased roles on discord.\s
+            `any` = has any of the roles.\s
+            `root` = has role on bot's main guild.\s
+            `guild` = has role on that guild.\s
+            `alliance` = has role on alliance's guild."""
             )
     @RolePermission
     public static boolean checkRole(@Me @Default Guild guild, RolePermission perm, @Me @Default User user) {

@@ -49,18 +49,20 @@ public class BlitzSheet extends Command {
 
     @Override
     public String desc() {
-        return "Generates a Blitz sheet.\n" +
-                "`attackers`: are the nations that should be used for the attackers (can be a google sheet)\n" +
-                "`defenders`: are the nations that should be used for the defenders\n" +
-                "`max-off`: How many offensive slots a nation can have (defaults to 3)\n" +
-                "`same-aa-priority`: Value between 0 and 1 to prioritize assigning a target to nations in the same AA\n" +
-                "`same-activity-priority`: Value between 0 and 1 to prioritize assigning targets to nations with similar activity patterns\n" +
-                "`turn`: The turn in the day (between 0 and 11) when you expect the blitz to happen\n" +
-                "`att-activity-threshold`: A value between 0 and 1 to filter out attackers below this level of daily activity (default: 0.5, which is 50%)\n" +
-                "`def-activity-threshold`: A value between 0 and 1 to filter out defenders below this level of activity (default: 0.1)\n" +
-                "`guilds`: A comma separated list of discord guilds (their id), to use to check nation activity/roles (nations must be registered)\n\n" +
-                "Add `-s` to process slotted enemies\n" +
-                "Add `-e` to only assign down declares";
+        return """
+                Generates a Blitz sheet.
+                `attackers`: are the nations that should be used for the attackers (can be a google sheet)
+                `defenders`: are the nations that should be used for the defenders
+                `max-off`: How many offensive slots a nation can have (defaults to 3)
+                `same-aa-priority`: Value between 0 and 1 to prioritize assigning a target to nations in the same AA
+                `same-activity-priority`: Value between 0 and 1 to prioritize assigning targets to nations with similar activity patterns
+                `turn`: The turn in the day (between 0 and 11) when you expect the blitz to happen
+                `att-activity-threshold`: A value between 0 and 1 to filter out attackers below this level of daily activity (default: 0.5, which is 50%)
+                `def-activity-threshold`: A value between 0 and 1 to filter out defenders below this level of activity (default: 0.1)
+                `guilds`: A comma separated list of discord guilds (their id), to use to check nation activity/roles (nations must be registered)
+                
+                Add `-s` to process slotted enemies
+                Add `-e` to only assign down declares""";
     }
 
     @Override

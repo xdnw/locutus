@@ -50,10 +50,11 @@ public class TaxBracketSheet extends Command {
 
     @Override
     public String desc() {
-        return "Generate a sheet of member tax brackets.\n" +
-                "Add `-a` to include applicants\n" +
-                "Add `-f` to force an update of deposits\n" +
-                "`note: internal tax rate is the TAX_BASE and determines what % of their taxes is excluded from deposits`";
+        return """
+                Generate a sheet of member tax brackets.
+                Add `-a` to include applicants
+                Add `-f` to force an update of deposits
+                `note: internal tax rate is the TAX_BASE and determines what % of their taxes is excluded from deposits`""";
     }
 
     @Override

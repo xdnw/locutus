@@ -37,15 +37,16 @@ public class WarCostByResourceSheet extends Command {
 
     @Override
     public String desc() {
-        return "Transfer sheet of warcost (for each nation) broken down by resource type.\n" +
-                "Add -c to exclude consumption cost\n" +
-                "Add -i to exclude infra cost\n" +
-                "Add -l to exclude loot cost\n" +
-                "Add -u to exclude unit cost\n" +
-                "Add -g to include gray inactive nations\n" +
-                "Add -d to include non fighting defensive wars\n" +
-                "Add -n to normalize it per city\n" +
-                "Add -w to normalize it per war";
+        return """
+                Transfer sheet of warcost (for each nation) broken down by resource type.
+                Add -c to exclude consumption cost
+                Add -i to exclude infra cost
+                Add -l to exclude loot cost
+                Add -u to exclude unit cost
+                Add -g to include gray inactive nations
+                Add -d to include non fighting defensive wars
+                Add -n to normalize it per city
+                Add -w to normalize it per war""";
     }
 
     @Override

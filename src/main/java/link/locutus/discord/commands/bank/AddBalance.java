@@ -54,7 +54,7 @@ public class AddBalance extends Command {
 
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
-        if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
+        if (me == null) return "Please use " + CM.register.cmd.toSlashMention();
 
         if (args.isEmpty()) return usage(args.size(), 4, channel);
         String note = null;

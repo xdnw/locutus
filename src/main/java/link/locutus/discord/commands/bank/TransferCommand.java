@@ -47,18 +47,20 @@ public class TransferCommand extends Command {
 
     @Override
     public String desc() {
-        return "withdraw from the alliance bank\n" +
-                "Use `-f` to bypass all checks\n" +
-                "Use `expire:60d` to have expiry\n" +
-                "Use `decay:60d` to have linear debt decay\n" +
-                "Use `-c` to convert cash\n" +
-                "Use `nation:Borg` to specify nation account\n" +
-                "Use `alliance:Rose` to specify alliance account\n" +
-                "Use `offshore:AllianceName` to specify offshore\n" +
-                "Use `tax_id:1234` to specify tax account\n" +
-                "Use `-t` to specify receiver's tax account\n" +
-                "Use `-o` to subtract their existing funds from the transfer amount\n" +
-                "Add `escrow=WHEN_BLOCKADED` or `escrow=ALWAYS` to escrow the transfer\n";
+        return """
+                withdraw from the alliance bank
+                Use `-f` to bypass all checks
+                Use `expire:60d` to have expiry
+                Use `decay:60d` to have linear debt decay
+                Use `-c` to convert cash
+                Use `nation:Borg` to specify nation account
+                Use `alliance:Rose` to specify alliance account
+                Use `offshore:AllianceName` to specify offshore
+                Use `tax_id:1234` to specify tax account
+                Use `-t` to specify receiver's tax account
+                Use `-o` to subtract their existing funds from the transfer amount
+                Add `escrow=WHEN_BLOCKADED` or `escrow=ALWAYS` to escrow the transfer
+                """;
     }
 
     @Override

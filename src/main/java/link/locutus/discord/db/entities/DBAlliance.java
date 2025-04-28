@@ -1096,7 +1096,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 
     @Command(desc = "Get the alliance's in-game link")
     public String getUrl() {
-        return "" + Settings.PNW_URL() + "/alliance/id=" + getAlliance_id();
+        return Settings.PNW_URL() + "/alliance/id=" + getAlliance_id();
     }
 
     public boolean exists() {
@@ -1976,53 +1976,57 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 
     //
 
-    @Command(desc = "The number of membership changes by reason\n" +
-            "Nations can have multiple membership changes over a duration\n" +
-            "- RECRUITED: 7d or less nation becomes member\n" +
-            "- JOINED: Nation >7d becomes member\n" +
-            "- LEFT: Nation is set to applicant, none, or leaves the alliance (does not include delete/vm)\n" +
-            "- DELETED: nation deletes\n" +
-            "- VM_LEFT: Nation goes into VM\n" +
-            "- VM_RETURNED: Nation leaves VM")
+    @Command(desc = """
+            The number of membership changes by reason
+            Nations can have multiple membership changes over a duration
+            - RECRUITED: 7d or less nation becomes member
+            - JOINED: Nation >7d becomes member
+            - LEFT: Nation is set to applicant, none, or leaves the alliance (does not include delete/vm)
+            - DELETED: nation deletes
+            - VM_LEFT: Nation goes into VM
+            - VM_RETURNED: Nation leaves VM""")
     public int getMembershipChangesByReason(ValueStore store, Set<MembershipChangeReason> reasons, @Timestamp long start, @Timestamp @Default Long end) {
         return getGrowthSummary(store, start, end)
                 .getReasonCounts(reasons::contains);
     }
 
-    @Command(desc = "The number of membership changes by reason\n" +
-            "Nations can have multiple membership changes over a duration\n" +
-            "- RECRUITED: 7d or less nation becomes member\n" +
-            "- JOINED: Nation >7d becomes member\n" +
-            "- LEFT: Nation is set to applicant, none, or leaves the alliance (does not include delete/vm)\n" +
-            "- DELETED: nation deletes\n" +
-            "- VM_LEFT: Nation goes into VM\n" +
-            "- VM_RETURNED: Nation leaves VM")
+    @Command(desc = """
+            The number of membership changes by reason
+            Nations can have multiple membership changes over a duration
+            - RECRUITED: 7d or less nation becomes member
+            - JOINED: Nation >7d becomes member
+            - LEFT: Nation is set to applicant, none, or leaves the alliance (does not include delete/vm)
+            - DELETED: nation deletes
+            - VM_LEFT: Nation goes into VM
+            - VM_RETURNED: Nation leaves VM""")
     public int getMembershipChangeAssetCount(ValueStore store, Set<MembershipChangeReason> reasons, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
         return getGrowthSummary(store, start, end)
                 .getAssetCounts(assets::contains, reasons::contains, false);
     }
 
-    @Command(desc = "The market value of the specified assets associated with the provided membership change reasons\n" +
-            "Nations can have multiple membership changes over a duration\n" +
-            "- RECRUITED: 7d or less nation becomes member\n" +
-            "- JOINED: Nation >7d becomes member\n" +
-            "- LEFT: Nation is set to applicant, none, or leaves the alliance (does not include delete/vm)\n" +
-            "- DELETED: nation deletes\n" +
-            "- VM_LEFT: Nation goes into VM\n" +
-            "- VM_RETURNED: Nation leaves VM")
+    @Command(desc = """
+            The market value of the specified assets associated with the provided membership change reasons
+            Nations can have multiple membership changes over a duration
+            - RECRUITED: 7d or less nation becomes member
+            - JOINED: Nation >7d becomes member
+            - LEFT: Nation is set to applicant, none, or leaves the alliance (does not include delete/vm)
+            - DELETED: nation deletes
+            - VM_LEFT: Nation goes into VM
+            - VM_RETURNED: Nation leaves VM""")
     public double getMembershipChangeAssetValue(ValueStore store, Set<MembershipChangeReason> reasons, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
         return getGrowthSummary(store, start, end)
                 .getSpendingValue(assets::contains, reasons::contains, false);
     }
 
-    @Command(desc = "The resource value of the specified assets associated with the provided membership change reasons\n" +
-            "Nations can have multiple membership changes over a duration\n" +
-            "- RECRUITED: 7d or less nation becomes member\n" +
-            "- JOINED: Nation >7d becomes member\n" +
-            "- LEFT: Nation is set to applicant, none, or leaves the alliance (does not include delete/vm)\n" +
-            "- DELETED: nation deletes\n" +
-            "- VM_LEFT: Nation goes into VM\n" +
-            "- VM_RETURNED: Nation leaves VM")
+    @Command(desc = """
+            The resource value of the specified assets associated with the provided membership change reasons
+            Nations can have multiple membership changes over a duration
+            - RECRUITED: 7d or less nation becomes member
+            - JOINED: Nation >7d becomes member
+            - LEFT: Nation is set to applicant, none, or leaves the alliance (does not include delete/vm)
+            - DELETED: nation deletes
+            - VM_LEFT: Nation goes into VM
+            - VM_RETURNED: Nation leaves VM""")
     public Map<ResourceType, Double> getMembershipChangeAssetRss(ValueStore store, Set<MembershipChangeReason> reasons, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
         return ResourceType.resourcesToMap(getGrowthSummary(store, start, end)
                 .getSpending(assets::contains, reasons::contains, false));

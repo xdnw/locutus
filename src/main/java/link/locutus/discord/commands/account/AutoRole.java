@@ -65,7 +65,7 @@ public class AutoRole extends Command {
             return UtilityCommands.autoroleall(db, channel, command, force);
         } else {
             DBNation nation = DiscordUtil.parseNation(args.get(0), true);
-            if (nation == null) return "That nation isn't registered: `" + args.get(0) + "` see:" + CM.register.cmd.toSlashMention() + "";
+            if (nation == null) return "That nation isn't registered: `" + args.get(0) + "` see:" + CM.register.cmd.toSlashMention();
             User user = nation.getUser();
             if (user == null) return "User is not registered.";
             Member member = db.getGuild().getMember(user);

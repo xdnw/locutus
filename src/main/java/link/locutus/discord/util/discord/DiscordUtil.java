@@ -213,7 +213,7 @@ public class DiscordUtil {
 
     public static String toRoleString(Map<Long, Role> roleMap) {
         List<String> sub = new ArrayList<>();
-        Role discordRole = roleMap.get(0);
+        Role discordRole = roleMap.get((long) 0L);
         if (discordRole != null) {
             sub.add("@" + discordRole.getName());
         }

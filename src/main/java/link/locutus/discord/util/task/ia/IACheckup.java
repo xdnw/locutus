@@ -594,14 +594,12 @@ public class IACheckup {
             }
             case SPY_COMMAND: {
                 if (nation.getMeta(NationMeta.INTERVIEW_SPIES) != null) return null;
-                String desc = "Try using the commands e.g.:\n" +
-                        "" + CM.nation.spies.cmd.nation(Settings.PNW_URL() + "/nation/id=6") + "\n";
+                String desc = "Try using the commands e.g.:\n" + CM.nation.spies.cmd.nation(Settings.PNW_URL() + "/nation/id=6") + "\n";
                 return new KeyValue<>(false, desc);
             }
             case LOOT_COMMAND: {
                 if (nation.getMeta(NationMeta.INTERVIEW_LOOT) != null) return null;
-                String desc = "Try using the commands e.g.:\n" +
-                        "" + CM.nation.loot.cmd.nationOrAlliance(Settings.PNW_URL() + "/nation/id=6").toSlashCommand() + "\n";
+                String desc = "Try using the commands e.g.:\n" + CM.nation.loot.cmd.nationOrAlliance(Settings.PNW_URL() + "/nation/id=6").toSlashCommand() + "\n";
                 return new KeyValue<>(false, desc);
             }
             case GENERATE_CITY_BUILDS: {
@@ -655,8 +653,7 @@ public class IACheckup {
                 Integer cityId = cities.keySet().iterator().next();
                 String cityUrl = PW.City.getCityUrl(cityId);
                 String mmrStr = StringMan.join(mmr, "");
-                response.append("The " + CM.city.optimalBuild.cmd.toSlashMention() + " command can be used to generate a build for a city. Let's try the command now, e.g.:\n" +
-                        "" + CM.city.optimalBuild.cmd.build(cityUrl).buildMMR(
+                response.append("The " + CM.city.optimalBuild.cmd.toSlashMention() + " command can be used to generate a build for a city. Let's try the command now, e.g.:\n" + CM.city.optimalBuild.cmd.build(cityUrl).buildMMR(
                                 mmrStr).infra(
                                 MathMan.format(maxInfra)).toSlashCommand());
                 return new KeyValue<>(false, response.toString());
@@ -678,10 +675,8 @@ public class IACheckup {
                 long diff = TimeUtil.getDay() - dayVal;
                 if (diff  <= 2) return null;
 
-                String desc ="During Peace time, you can find targets to gather intel on using:\n" +
-                        "" + CM.spy.find.intel.cmd.toSlashMention() + "\n" +
-                        "During wartime, you can find enemies to spy using:\n" +
-                        "" + CM.spy.find.target.cmd.targets("enemies").operations("*") + "\n\n" +
+                String desc = "During Peace time, you can find targets to gather intel on using:\n" + CM.spy.find.intel.cmd.toSlashMention() + "\n" +
+                        "During wartime, you can find enemies to spy using:\n" + CM.spy.find.target.cmd.targets("enemies").operations("*") + "\n\n" +
                         "(You should conduct a spy op every day)";
                 return new KeyValue<>(diff, desc);
             }
@@ -753,8 +748,7 @@ public class IACheckup {
 
     private Map.Entry<Object, String> planRaid(DBNation nation) {
         if (nation.getMeta(NationMeta.INTERVIEW_COUNTER) == null) {
-            String desc = "Raiding/warring is always better with friends. Find a good target. Use the command\n" +
-                    "" + CM.war.counter.nation.cmd.toSlashMention() + "\n" +
+            String desc = "Raiding/warring is always better with friends. Find a good target. Use the command\n" + CM.war.counter.nation.cmd.toSlashMention() + "\n" +
                     "And see who is online and in range to raid that person with you.";
             return new KeyValue<>(1, desc);
         }
@@ -764,7 +758,7 @@ public class IACheckup {
     private Map.Entry<Object, String> createWarRoom(DBNation nation) {
         if (nation.getMeta(NationMeta.INTERVIEW_WAR_ROOM) == null) {
             String desc = "War rooms are channels created to coordinate a war against an enemy target. They will be created automatically by the bot against active enemies.\n" +
-                    "To manually create a war room, use: " + CM.war.room.create.cmd.toSlashMention() + "";
+                    "To manually create a war room, use: " + CM.war.room.create.cmd.toSlashMention();
             return new KeyValue<>(1, desc);
         }
         return null;
@@ -1179,7 +1173,7 @@ public class IACheckup {
         StringBuilder resposnse = new StringBuilder("You have " + (5 - nation.getOff()) + " free offensive slots. ");
         if (hasEnemies && nation.getOff() < 3) {
             String warPriority = CM.war.find.enemy.cmd.onlyEasy("true").toSlashCommand(false);
-            resposnse.append("Please use " + warPriority+ " or " + CM.war.find.enemy.cmd.toSlashMention() + "");
+            resposnse.append("Please use " + warPriority+ " or " + CM.war.find.enemy.cmd.toSlashMention());
         } else hasEnemies = false;
         if (hasRaids) {
             if (hasEnemies) resposnse.append("Please use ");

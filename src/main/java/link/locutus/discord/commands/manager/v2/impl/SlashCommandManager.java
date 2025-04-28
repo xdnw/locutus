@@ -351,7 +351,7 @@ public class SlashCommandManager extends ListenerAdapter {
                     printSize(slash, builder, 0);
                     System.out.println(builder);
                     System.out.println(cmd);
-                    throw new IllegalArgumentException("Command " + cmd.getName() + " is too large: " + size + "");
+                    throw new IllegalArgumentException("Command " + cmd.getName() + " is too large: " + size);
                 }
             }
         }

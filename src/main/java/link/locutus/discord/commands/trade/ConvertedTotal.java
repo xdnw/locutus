@@ -42,10 +42,11 @@ public class ConvertedTotal extends Command {
 
     @Override
     public String desc() {
-        return "Get the total monetary value of the provided resources.\n" +
-                "Add `-n` to normalize the resources (i.e. remove negatives and multiply by a factor so it is worth the same amount)\n" +
-                "Add `-b` to use current market buy price (instead of average)\n" +
-                "Add `-s` to use current market sell price (instead of average)";
+        return """
+                Get the total monetary value of the provided resources.
+                Add `-n` to normalize the resources (i.e. remove negatives and multiply by a factor so it is worth the same amount)
+                Add `-b` to use current market buy price (instead of average)
+                Add `-s` to use current market sell price (instead of average)""";
     }
 
     @Override

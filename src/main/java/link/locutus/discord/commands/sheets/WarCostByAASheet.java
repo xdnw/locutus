@@ -35,9 +35,11 @@ public class WarCostByAASheet extends Command {
 
     @Override
     public String desc() {
-        return "Warcost (for each alliance) broken down\n" +
-                "Add -i to include inactives\n" +
-                "Add -a to include applicants\n";
+        return """
+                Warcost (for each alliance) broken down
+                Add -i to include inactives
+                Add -a to include applicants
+                """;
     }
 
     @Override

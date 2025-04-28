@@ -50,12 +50,13 @@ public class WarCostSheet extends Command {
 
     @Override
     public String desc() {
-        return "Warcost (for each nation) broken down by war type.\n" +
-                "Add -c to exclude consumption cost\n" +
-                "Add -i to exclude infra cost\n" +
-                "Add -l to exclude loot cost\n" +
-                "Add -u to exclude unit cost\n" +
-                "Add -n to normalize it per city";
+        return """
+                Warcost (for each nation) broken down by war type.
+                Add -c to exclude consumption cost
+                Add -i to exclude infra cost
+                Add -l to exclude loot cost
+                Add -u to exclude unit cost
+                Add -n to normalize it per city""";
     }
 
 

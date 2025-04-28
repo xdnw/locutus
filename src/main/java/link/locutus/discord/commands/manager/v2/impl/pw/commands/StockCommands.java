@@ -433,8 +433,8 @@ public class StockCommands {
 
         HashMap<ResourceType, Double> totalVolume = new LinkedHashMap<>();
         for (ResourceType type : ResourceType.values()) {
-            double in = inflows.getOrDefault(type, 0d);
-            double out = outflow.getOrDefault(type, 0d);
+            double in = inflows.getOrDefault(type.ordinal(), 0d);
+            double out = outflow.getOrDefault(type.ordinal(), 0d);
             double total = Math.abs(in) + Math.abs(out);
             if (total != 0) totalVolume.put(type, total);
         }

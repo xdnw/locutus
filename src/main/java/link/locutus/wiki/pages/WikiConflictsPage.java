@@ -31,9 +31,11 @@ public class WikiConflictsPage extends BotWikiGen {
                 "# Website Administration",
                 "!! ONLY AVAILABLE TO SITE MODERATORS !!",
                 "Note: Conflicts created within the bot may NOT be automatically pushed to the site. See the sync command below",
-                "Your browser may cache site data. To disable caching in chrome:\n\n" +
-                "1. Press `F12` or `Ctrl + Shift + i`. Press `Command + Option+i` if you’re using MacOS.\n" +
-                "2. When the console appears, click on the `Network` tab and then tick the `Disable Cache` checkbox",
+                """
+                        Your browser may cache site data. To disable caching in chrome:
+                        
+                        1. Press `F12` or `Ctrl + Shift + i`. Press `Command + Option+i` if you’re using MacOS.
+                        2. When the console appears, click on the `Network` tab and then tick the `Disable Cache` checkbox""",
                 "## Importing conflicts / Website sync",
                 "Use `*` for arguments accepting `Set<Conflict>` to specify ALL featured conflicts",
                 commandMarkdownSpoiler(CM.conflict.sync.wiki_page.cmd),

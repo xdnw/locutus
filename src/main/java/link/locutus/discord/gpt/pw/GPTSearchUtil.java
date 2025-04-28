@@ -222,7 +222,10 @@ public class GPTSearchUtil {
                     resultStr = String.join("\n", found);
                     resultStr += "\n\n" + footer;
                     if (error > 0) {
-                        resultStr += "\n\n" + "These results may not be accurate. Please try another query, or set `useGPT: False`";
+                        resultStr += """
+                                
+                                
+                                These results may not be accurate. Please try another query, or set `useGPT: False`""";
                     }
                     return resultStr;
                 } else {

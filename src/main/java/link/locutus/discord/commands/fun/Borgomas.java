@@ -48,7 +48,7 @@ public class Borgomas extends Command {
 
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
-        if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
+        if (me == null) return "Please use " + CM.register.cmd.toSlashMention();
 
         if (me.getMeta(NationMeta.BORGMAS) != null || received.put(me.getNation_id(), true) != null) {
             return "You've already opened your presents this year. Merry Borgmas!";

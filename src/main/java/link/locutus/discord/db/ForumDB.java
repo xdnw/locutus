@@ -416,7 +416,7 @@ public class ForumDB extends DBMain {
         if (ids.isEmpty()) return Collections.emptyMap();
         List<Integer> idsSorted = new ArrayList<>(ids);
         Collections.sort(idsSorted);
-        String sql = "SELECT * FROM FORUM_TOPICS WHERE `topic_id` IN " + StringMan.getString(idsSorted) + "";
+        String sql = "SELECT * FROM FORUM_TOPICS WHERE `topic_id` IN " + StringMan.getString(idsSorted);
         try (PreparedStatement stmt = prepareQuery(sql)) {
             try (ResultSet rs = stmt.executeQuery()) {
                 Map<Integer, DBTopic> map = new HashMap<>();

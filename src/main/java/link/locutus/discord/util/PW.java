@@ -477,7 +477,7 @@ public final class PW {
         }
 
         public static String getCityUrl(int cityId) {
-            return "" + Settings.PNW_URL() + "/city/id=" + cityId;
+            return Settings.PNW_URL() + "/city/id=" + cityId;
         }
     }
 
@@ -1058,7 +1058,7 @@ public final class PW {
         if (arg.equalsIgnoreCase("none")) {
             return 0;
         }
-        if (arg.startsWith(Settings.PNW_URL() + "/alliance/id=") || arg.startsWith(Settings.PNW_URL() + "//alliance/id=") || arg.startsWith("" + Settings.PNW_URL() + "/alliance/id=")) {
+        if (arg.startsWith(Settings.PNW_URL() + "/alliance/id=") || arg.startsWith(Settings.PNW_URL() + "//alliance/id=") || arg.startsWith(Settings.PNW_URL() + "/alliance/id=")) {
             String[] split = arg.split("=");
             if (split.length == 2) {
                 arg = split[1].replaceAll("/", "");
@@ -1277,11 +1277,11 @@ public final class PW {
     }
 
     public static String getNationUrl(int nationId) {
-        return "" + Settings.PNW_URL() + "/nation/id=" + nationId;
+        return Settings.PNW_URL() + "/nation/id=" + nationId;
     }
 
     public static String getAllianceUrl(int cityId) {
-        return "" + Settings.PNW_URL() + "/alliance/id=" + cityId;
+        return Settings.PNW_URL() + "/alliance/id=" + cityId;
     }
 
     public static String getTradeUrl(ResourceType type, boolean isBuy) {
@@ -1573,7 +1573,7 @@ public final class PW {
     }
 
     public static String getTaxUrl(int taxId) {
-        return String.format("" + Settings.PNW_URL() + "/index.php?id=15&tax_id=%s", taxId);
+        return String.format(Settings.PNW_URL() + "/index.php?id=15&tax_id=%s", taxId);
     }
 
 }

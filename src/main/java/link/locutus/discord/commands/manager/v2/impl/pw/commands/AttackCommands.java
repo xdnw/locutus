@@ -18,9 +18,10 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public class AttackCommands {
-    @Command(aliases = "groundsim", desc = "Simulate a ground attack with the given attacker and defender troops\n" +
-            "Halve the tank number if the opponent has air control\n" +
-            "Note: Use math via: `50/2`", viewable = true)
+    @Command(aliases = "groundsim", desc = """
+            Simulate a ground attack with the given attacker and defender troops
+            Halve the tank number if the opponent has air control
+            Note: Use math via: `50/2`""", viewable = true)
     public String groundSim(@Range(min = 0) int attSoldiersUnarmed, @Range(min = 0) int attSoldiers, @Range(min = 0) int attTanks, @Range(min = 0) int defSoldiersUnarmed, @Range(min = 0) int defSoldiers, @Range(min = 0) int defTanks) {
         if (attSoldiers != 0 && attSoldiersUnarmed != 0)
             return "You cannot attack with both armed and unarmed soldiers.";
@@ -49,7 +50,11 @@ public class AttackCommands {
         int reqUnarmedUF = (int) Math.ceil(defStr / 3.4);
         int reqArmedUF = (int) Math.ceil(defStr / (3.4 * 1.7_5));
 
-        response.append("\nNote:\n" + "- Tanks = 40x unarmed soldiers (22.86x armed) | Armed Soldiers = 1.75 Unarmed\n" + "- Guaranteed IT needs 3.4x enemy (").append(reqUnarmedIT).append(" unarmed, ").append(reqArmedIT).append(" armed)\n").append("- Guaranteed UF needs 0.29x enemy (").append(reqUnarmedUF).append(" unarmed, ").append(reqArmedUF).append(" armed)");
+        response.append("""
+                
+                Note:
+                - Tanks = 40x unarmed soldiers (22.86x armed) | Armed Soldiers = 1.75 Unarmed
+                - Guaranteed IT needs 3.4x enemy (""").append(reqUnarmedIT).append(" unarmed, ").append(reqArmedIT).append(" armed)\n").append("- Guaranteed UF needs 0.29x enemy (").append(reqUnarmedUF).append(" unarmed, ").append(reqArmedUF).append(" armed)");
 
         return response.toString();
     }

@@ -41,11 +41,12 @@ public class WarsByTier extends Command {
 
     @Override
     public String desc() {
-        return "Graph of total wars between two coalitions by city count\n" +
-                "Add -o to only include offensives\n" +
-                "Add -d to only include defensives\n" +
-                "Add `-a` to only include active wars\n" +
-                "Add `-j` to attach json/csv";
+        return """
+                Graph of total wars between two coalitions by city count
+                Add -o to only include offensives
+                Add -d to only include defensives
+                Add `-a` to only include active wars
+                Add `-j` to attach json/csv""";
     }
 
     @Override

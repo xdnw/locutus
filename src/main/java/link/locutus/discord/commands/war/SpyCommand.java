@@ -43,10 +43,11 @@ public class SpyCommand extends Command {
 
     @Override
     public String desc() {
-        return "Calculate spies for a nation.\n" +
-                "Nation argument can be nation name, id, link, or discord tag\n" +
-                "If `spies-used` is provided, it will cap the odds at using that number of spies\n" +
-                "`[safety]` defaults to what has the best net. Options: quick, normal, covert";
+        return """
+                Calculate spies for a nation.
+                Nation argument can be nation name, id, link, or discord tag
+                If `spies-used` is provided, it will cap the odds at using that number of spies
+                `[safety]` defaults to what has the best net. Options: quick, normal, covert""";
     }
 
     @Override
@@ -57,7 +58,7 @@ public class SpyCommand extends Command {
 
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
-        if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
+        if (me == null) return "Please use " + CM.register.cmd.toSlashMention();
         if (args.size() < 1 || args.size() > 3) {
             return "Usage: `" + Settings.commandPrefix(true) + "spy <nation-link> [num-used] [safety]`";
         }

@@ -95,7 +95,7 @@ public class ClearRoles extends Command {
                     }
                     for (Role role : roles) {
                         Set<Long> allowedAAIds = inverse.get(role);
-                        if (allowedAAIds != null && !allowedAAIds.contains(0) && !allowedAAIds.contains(nation.getAlliance_id())) {
+                        if (allowedAAIds != null && !allowedAAIds.contains((long) 0L) && !allowedAAIds.contains((long) nation.getAlliance_id())) {
                             response.append("\nRemove member from " + member.getEffectiveName());
                             RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role));
                         }

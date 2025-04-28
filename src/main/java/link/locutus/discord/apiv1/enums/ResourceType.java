@@ -1015,7 +1015,7 @@ public enum ResourceType {
             }
             url = String.format(url, name().toLowerCase());
         } else {
-            url = "" + Settings.PNW_URL() + "/index.php?id=90&display=world&resource1=%s&buysell=" + (isBuy ? "buy" : "sell") + "&ob=price&od=DEF";
+            url = Settings.PNW_URL() + "/index.php?id=90&display=world&resource1=%s&buysell=" + (isBuy ? "buy" : "sell") + "&ob=price&od=DEF";
             url = String.format(url, name().toLowerCase());
         }
         return url;

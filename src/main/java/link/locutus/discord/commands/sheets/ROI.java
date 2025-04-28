@@ -154,13 +154,13 @@ public class ROI extends Command {
 
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
         if (guildDb == null || !guildDb.hasAlliance()) {
-            return "Invalid guild. Please register your alliance id with: " + GuildKey.ALLIANCE_ID.getCommandMention() + "";
+            return "Invalid guild. Please register your alliance id with: " + GuildKey.ALLIANCE_ID.getCommandMention();
         }
 
         CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Fetching nations: ");
 
         Set<Integer> aaIds = guildDb.getAllianceIds();
-        if (aaIds.isEmpty()) return "Please use " + GuildKey.ALLIANCE_ID.getCommandMention() + "";
+        if (aaIds.isEmpty()) return "Please use " + GuildKey.ALLIANCE_ID.getCommandMention();
 
         List<ROIResult> roiMap = new ArrayList<>();
         boolean useSheet = false;

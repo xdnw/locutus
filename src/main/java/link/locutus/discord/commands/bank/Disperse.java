@@ -46,17 +46,19 @@ public class Disperse extends Command {
 
     @Override
     public String desc() {
-        return "Disburse funds.\n" +
-                "add `-d` to assume daily cash login bonus\n" +
-                "add `-c` to skip sending cash\n" +
-                "add `-m` to convert to money\n" +
-                "Add `-b` to bypass checks\n" +
-                "Add e.g. `nation:blah` to specify a nation account\n" +
-                "Add e.g. `alliance:blah` to specify an alliance account\n" +
-                "Add e.g. `offshore:blah` to specify an offshore account\n" +
-                "Add e.g. `tax_id:blah` to specify a tax bracket\n" +
-                "Use `-t` to specify receiver's tax account\n" +
-                "Add `escrow=WHEN_BLOCKADED` or `escrow=ALWAYS` to escrow the transfer\n";
+        return """
+                Disburse funds.
+                add `-d` to assume daily cash login bonus
+                add `-c` to skip sending cash
+                add `-m` to convert to money
+                Add `-b` to bypass checks
+                Add e.g. `nation:blah` to specify a nation account
+                Add e.g. `alliance:blah` to specify an alliance account
+                Add e.g. `offshore:blah` to specify an offshore account
+                Add e.g. `tax_id:blah` to specify a tax bracket
+                Use `-t` to specify receiver's tax account
+                Add `escrow=WHEN_BLOCKADED` or `escrow=ALWAYS` to escrow the transfer
+                """;
     }
 
     @Override
@@ -93,7 +95,7 @@ public class Disperse extends Command {
 
         if (args.size() != 3) return usage(args.size(), 3, channel);
         if (me == null) {
-            return "Please use " + CM.register.cmd.toSlashMention() + "";
+            return "Please use " + CM.register.cmd.toSlashMention();
         }
 
 

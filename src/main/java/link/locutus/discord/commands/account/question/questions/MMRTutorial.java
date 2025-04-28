@@ -10,12 +10,14 @@ import net.dv8tion.jda.api.entities.User;
 import java.io.IOException;
 
 public enum MMRTutorial implements Question {
-    START("MMR stands for minimum military requirement, and is the military buildings required in each city.\n" +
-            "Specified in the format: e.g. `mmr=0251` which is:\n" +
-            "0 barracks\n" +
-            "2 factories\n" +
-            "5 hangars\n" +
-            "1 drydock\n", false),
+    START("""
+            MMR stands for minimum military requirement, and is the military buildings required in each city.
+            Specified in the format: e.g. `mmr=0251` which is:
+            0 barracks
+            2 factories
+            5 hangars
+            1 drydock
+            """, false),
 
     DONE("That's all  for now. Check back later.", true) {
         @Override

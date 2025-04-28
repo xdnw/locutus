@@ -199,7 +199,7 @@ public class ExchangeCommands {
     public String owner(@Me IMessageIO io, @Me JSONObject command, StockDB db, @Me DBNation me, @Me Exchange exchange, DBNation newOwner, @Switch("f") boolean force) {
         if (!exchange.checkPermission(me, Rank.LEADER)) return "You are not the leader of: " + exchange.name;
         User user = newOwner.getUser();
-        if (user == null) return newOwner.getNation() + " has not used " + CM.register.cmd.toSlashMention() + "";
+        if (user == null) return newOwner.getNation() + " has not used " + CM.register.cmd.toSlashMention();
 
         if (!force) {
             String title = "Transfer ownership to: " + newOwner.getNation() + " | " + newOwner.getAllianceName();

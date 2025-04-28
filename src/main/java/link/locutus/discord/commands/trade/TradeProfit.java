@@ -44,9 +44,10 @@ public class TradeProfit extends Command {
 
     @Override
     public String desc() {
-        return "View an accumulation of all the net trades a nation made, grouped by nation.\n" +
-                "Add `-s` to view the result in sheet form\n" +
-                "Add `-o` to include outlier trades";
+        return """
+                View an accumulation of all the net trades a nation made, grouped by nation.
+                Add `-s` to view the result in sheet form
+                Add `-o` to include outlier trades""";
     }
 
     @Override

@@ -29,7 +29,7 @@ public class CounterGenerator {
             if (Roles.MEMBER.toRoles(db).isEmpty()) throw new IllegalArgumentException("No member role setup");
             for (Member member : Roles.MEMBER.getAll(db)) {
                 DBNation nation = DiscordUtil.getNation(member.getUser());
-                if (nation != null && (allies == null || allies.contains(nation))) {
+                if (nation != null && (allies == null || allies.contains(nation.getAlliance_id()))) {
                     nations.add(nation);
                 }
             }

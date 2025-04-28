@@ -1433,9 +1433,10 @@ public class UtilityCommands {
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public static void NationSheet(NationPlaceholders placeholders, @Me IMessageIO channel, @Me @Default DBNation me, @Me @Default User author, @Me @Default GuildDB db,
                                    NationList nations,
-                                   @Arg("A space separated list of columns to use in the sheet\n" +
-                                           "Can include NationAttribute as placeholders in columns\n" +
-                                           "All NationAttribute placeholders must be surrounded by {} e.g. {nation}")
+                                   @Arg("""
+                                           A space separated list of columns to use in the sheet
+                                           Can include NationAttribute as placeholders in columns
+                                           All NationAttribute placeholders must be surrounded by {} e.g. {nation}""")
                                    @TextArea List<String> columns,
                                    @Switch("t") @Timestamp Long snapshotTime,
                                    @Switch("e") boolean updateSpies, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException, URISyntaxException {
@@ -1493,13 +1494,14 @@ public class UtilityCommands {
         msg.send();
     }
 
-    @Command(desc = "Check if a nation shares networks with others\n" +
-            "Notes:\n" +
-            "- Sharing networks does not mean they are the same person (mobile networks, schools, public wifi, vpns, dynamic ips\n" +
-            "- A network not shared 'concurrently' or within a short timeframe may be a false positive\n" +
-            "- Having many networks, but only a few shared may be a sign of a VPN being used (there are legitimate reasons for using a VPN)\n" +
-            "- It is against game rules to use evidence to threaten or coerce others\n" +
-            "See: https://politicsandwar.com/rules/", viewable = true)
+    @Command(desc = """
+            Check if a nation shares networks with others
+            Notes:
+            - Sharing networks does not mean they are the same person (mobile networks, schools, public wifi, vpns, dynamic ips
+            - A network not shared 'concurrently' or within a short timeframe may be a false positive
+            - Having many networks, but only a few shared may be a sign of a VPN being used (there are legitimate reasons for using a VPN)
+            - It is against game rules to use evidence to threaten or coerce others
+            See: https://politicsandwar.com/rules/""", viewable = true)
     public String multi(@Me IMessageIO channel, @AllowDeleted DBNation nation) {
         MultiReport report = new MultiReport(nation.getNation_id());
         String result = report.toString();
@@ -1521,11 +1523,12 @@ public class UtilityCommands {
             msg.file(title + ".txt", result);
         }
 
-        String disclaimer = "```Disclaimer:\n" +
-                "- Sharing networks does not mean they are the same person (mobile networks, schools, public wifi, vpns, dynamic ips)\n" +
-                "- A network not shared 'concurrently' or within a short timeframe may be a false positive\n" +
-                "- Having many networks, but only a few shared may be a sign of a VPN being used (there are legitimate reasons for using a VPN)\n" +
-                "```";
+        String disclaimer = """
+                ```Disclaimer:
+                - Sharing networks does not mean they are the same person (mobile networks, schools, public wifi, vpns, dynamic ips)
+                - A network not shared 'concurrently' or within a short timeframe may be a false positive
+                - Having many networks, but only a few shared may be a sign of a VPN being used (there are legitimate reasons for using a VPN)
+                ```""";
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             disclaimer += ("\n**See also:** " + Settings.INSTANCE.WEB.FRONTEND_DOMAIN + "/#/multi_v2/" + nation.getId());
         }
@@ -1741,9 +1744,10 @@ public class UtilityCommands {
     }
 
     @Command(aliases = {"who", "pnw-who", "who", "pw-who", "pw-info", "how", "where", "when", "why", "whois"},
-            desc = "Get detailed information about a nation\n" +
-                    "Nation argument can be nation name, id, link, or discord tag\n" +
-                    "e.g. `{prefix}who @borg`", viewable = true)
+            desc = """
+                    Get detailed information about a nation
+                    Nation argument can be nation name, id, link, or discord tag
+                    e.g. `{prefix}who @borg`""", viewable = true)
     @UserCommand
     public static String who(@Me JSONObject command, @Me @Default Guild guild, @Me IMessageIO channel, @Me @Default User author, @Me @Default GuildDB db, @Me @Default DBNation me,
                       @Arg("The nations to get info about")
@@ -2135,7 +2139,7 @@ public class UtilityCommands {
         result.append("Total: `" + ResourceType.toString(total) + "`" +
                 "\nWorth: $" + MathMan.format(ResourceType.convertedTotal(total)));
         result.append("\n\nUse " + CM.transfer.bulk.cmd.toSlashMention());
-        result.append("\nOr press \uD83C\uDFE6 to run " + cmd.toSlashCommand() + "");
+        result.append("\nOr press \uD83C\uDFE6 to run " + cmd.toSlashCommand());
 
         String title = "Nation Interest";
         String emoji = "Confirm";
@@ -2159,11 +2163,11 @@ public class UtilityCommands {
         if (!dnr) {
             title = ("do NOT raid " + nation.getNation());
         }  else if (nation.getPosition() > 1 && nation.active_m() < 10000) {
-            title = ("You CAN raid " + nation.getNation() + " (however they are an active member of an alliance), see also: " + CM.alliance.stats.counterStats.cmd.toSlashMention() + "");
+            title = ("You CAN raid " + nation.getNation() + " (however they are an active member of an alliance), see also: " + CM.alliance.stats.counterStats.cmd.toSlashMention());
         } else if (nation.getPosition() > 1) {
-            title =  "You CAN raid " + nation.getNation() + " (however they are a member of an alliance), see also: " + CM.alliance.stats.counterStats.cmd.toSlashMention() + "";
+            title =  "You CAN raid " + nation.getNation() + " (however they are a member of an alliance), see also: " + CM.alliance.stats.counterStats.cmd.toSlashMention();
         } else if (nation.getAlliance_id() != 0) {
-            title =  "You CAN raid " + nation.getNation() + ", see also: " + CM.alliance.stats.counterStats.cmd.toSlashMention() + "";
+            title =  "You CAN raid " + nation.getNation() + ", see also: " + CM.alliance.stats.counterStats.cmd.toSlashMention();
         } else {
             title =  "You CAN raid " + nation.getNation();
         }
@@ -2703,10 +2707,11 @@ public class UtilityCommands {
     }
 
 
-    @Command(desc = "Add a watermark to a discord image\n" +
-            "Use \\n to add a new line\n" +
-            "Default color will be light gray if image is dark and dark gray if image is light\n" +
-            "Set `repeat: True` to repeat the watermark down the entire image", viewable = true)
+    @Command(desc = """
+            Add a watermark to a discord image
+            Use \\n to add a new line
+            Default color will be light gray if image is dark and dark gray if image is light
+            Set `repeat: True` to repeat the watermark down the entire image""", viewable = true)
     public String addWatermark(@Me IMessageIO io, String imageUrl, String watermarkText, @Default Color color, @Default("0.05") @Range(min = 0.01, max=1) double opacity, @Default("Arial") Font font, @Switch("r") boolean repeat) {
         float opacityF = (float) opacity;
         // remove anything after ? mark

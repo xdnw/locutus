@@ -41,7 +41,7 @@ public class MailReceivedEvent extends Event {
     }
 
     public String getUrl() {
-        String url = "" + Settings.PNW_URL() + "/inbox/message/id=" + mail.id;
+        String url = Settings.PNW_URL() + "/inbox/message/id=" + mail.id;
         return url;
     }
 

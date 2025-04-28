@@ -60,9 +60,10 @@ public class SyncTaxes extends Command {
 
     @Override
     public String desc() {
-        return "Use `sheet` as the first argument to update taxes via the tax sheet\n" +
-                "Use `auto` as the first argument to auto update taxes via api\n" +
-                "Use `legacy` as the first argument to update taxes via login";
+        return """
+                Use `sheet` as the first argument to update taxes via the tax sheet
+                Use `auto` as the first argument to auto update taxes via api
+                Use `legacy` as the first argument to update taxes via login""";
     }
 
     @Override

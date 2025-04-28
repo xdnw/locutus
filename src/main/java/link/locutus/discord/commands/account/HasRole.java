@@ -52,9 +52,7 @@ public class HasRole extends Command {
         for (Guild other : api.getGuilds()) {
             Member member = other.getMember(user);
             if (member == null) continue;
-
-            List<Role> roles = member.getRoles();
-            if (roles.contains(role)) {
+            if (role.has(user, guild)) {
                 guildIds.add(other.getIdLong());
             }
         }

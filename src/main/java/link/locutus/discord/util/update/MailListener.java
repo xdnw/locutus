@@ -168,9 +168,9 @@ public class MailListener {
             Set<Character> flags = new HashSet<>(Arrays.asList('s', 'r'));
             targets = cmd.run(null, nation.getUser(), nation, nation, db, args, flags);
         } else if (db == null) {
-            targets = "Your guild " + guild + " does not have this Bot setup. Use the command on discord instead:\n" + CM.spy.find.target.cmd.toSlashMention() +  "";
+            targets = "Your guild " + guild + " does not have this Bot setup. Use the command on discord instead:\n" + CM.spy.find.target.cmd.toSlashMention();
         } else {
-            targets = "Your guild " + guild + " does not have any enemies set. Use the command on discord instead:\n" + CM.spy.find.target.cmd.toSlashMention() + "";
+            targets = "Your guild " + guild + " does not have any enemies set. Use the command on discord instead:\n" + CM.spy.find.target.cmd.toSlashMention();
         }
         if (targets != null) {
             String reply = MarkupUtil.bbcodeToHTML(targets);

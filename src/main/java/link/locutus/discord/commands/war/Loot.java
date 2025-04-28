@@ -53,9 +53,10 @@ public class Loot extends Command {
 
     @Override
     public String desc() {
-        return "Get nation or bank loot history\n" +
-                "Add `score:1234` to specify looting score (for bank loot)\n" +
-                "Add `-p` to use pirate war policy";
+        return """
+                Get nation or bank loot history
+                Add `score:1234` to specify looting score (for bank loot)
+                Add `-p` to use pirate war policy""";
     }
 
     @Override

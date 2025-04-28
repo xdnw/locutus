@@ -52,9 +52,10 @@ public class MMRSheet extends Command {
 
     @Override
     public String desc() {
-        return "Generate a sheet of alliance/nation/city MMR\n" +
-                "Add `-f` to force an update\n" +
-                "Add `-c` to list it by cities";
+        return """
+                Generate a sheet of alliance/nation/city MMR
+                Add `-f` to force an update
+                Add `-c` to list it by cities""";
     }
 
 

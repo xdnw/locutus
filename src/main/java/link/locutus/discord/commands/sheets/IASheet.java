@@ -56,7 +56,7 @@ public class IASheet extends Command {
         GuildDB db = Locutus.imp().getGuildDB(guild);
         if (db == null) return "Not in guild";
         Set<Integer> aaIds = db.getAllianceIds();
-        if (aaIds.isEmpty()) return "Please use " + GuildKey.ALLIANCE_ID.getCommandMention() + "";
+        if (aaIds.isEmpty()) return "Please use " + GuildKey.ALLIANCE_ID.getCommandMention();
 
         if (args.size() != 1) return usage();
         List<DBNation> nations = new ArrayList<>(DiscordUtil.parseNations(guild, author, me, args.get(0), false, false));

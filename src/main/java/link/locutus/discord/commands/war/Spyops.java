@@ -137,7 +137,7 @@ public class Spyops extends Command {
             return usage(args.size(), 2, channel);
         }
         if (attacker == null) {
-            return "Please use " + CM.register.cmd.toSlashMention() + "";
+            return "Please use " + CM.register.cmd.toSlashMention();
         }
 
         SpyCount.Operation operation;

@@ -69,10 +69,11 @@ public class SheetBindings extends BindingHelper {
         return db.getSheetManager();
     }
 
-    @Binding(value = "A sheet template name that has been created in this guild\n" +
-            "Sheet templates are column formats for a sheet\n" +
-            "Templates, each with a selection can be used to generate multi-tabbed spreadsheets\n" +
-            "If the command supports it, you can specify a new template inline")
+    @Binding(value = """
+            A sheet template name that has been created in this guild
+            Sheet templates are column formats for a sheet
+            Templates, each with a selection can be used to generate multi-tabbed spreadsheets
+            If the command supports it, you can specify a new template inline""")
     public static SheetTemplate template(@Me GuildDB db, ParameterData data, CustomSheetManager manager, String name) {
         if (name.contains("{")) {
             if (data == null || data.getAnnotation(CreateSheet.class) == null) {
@@ -126,9 +127,10 @@ public class SheetBindings extends BindingHelper {
         throw new IllegalArgumentException("No selection alias found with name `" + name + "`. Options: " + StringMan.getString(options) + ". Or create one with `/selection_alias add <type> <name> <selection>`");
     }
 
-    @Binding(value = "A selection alias name that has been created in this guild\n" +
-            "Used to reference a list of nations or other entities that can be used in commands and sheets\n" +
-            "If the command supports it, you can specify a new selection alias inline e.g. `nation:*,#cities>10`")
+    @Binding(value = """
+            A selection alias name that has been created in this guild
+            Used to reference a list of nations or other entities that can be used in commands and sheets
+            If the command supports it, you can specify a new selection alias inline e.g. `nation:*,#cities>10`""")
     public static SelectionAlias selectionAlias(ParameterData data, CustomSheetManager manager, ValueStore store, String name) {
         boolean allowInline = data != null && data.getAnnotation(CreateSheet.class) != null;
         return selectionAlias(allowInline, manager, store, name);

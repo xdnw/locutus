@@ -90,7 +90,7 @@ public interface IAttack {
     int getWar_id();
     @Command
     default String toUrl() {
-        return "" + Settings.PNW_URL() + "/nation/war/timeline/war=" + getWar_id();
+        return Settings.PNW_URL() + "/nation/war/timeline/war=" + getWar_id();
     }
     @Command
     default int getResistance() {

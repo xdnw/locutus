@@ -1128,7 +1128,7 @@ public class OffshoreInstance {
                                 body.append("Transfer: " + ResourceType.toString(amount) + " | " + note + " | to:" + receiver.getTypePrefix() + receiver.getName());
                                 body.append("Limit set to $" + MathMan.format(withdrawLimit) + " (worth of $/rss)\n\n");
                                 body.append("To set the limit for a user: " + CM.bank.limits.setTransferLimit.cmd.toSlashMention() + "\n");
-                                body.append("To set the default " + GuildKey.BANKER_WITHDRAW_LIMIT.getCommandMention() + "");
+                                body.append("To set the default " + GuildKey.BANKER_WITHDRAW_LIMIT.getCommandMention());
 
                                 Role adminRole = Roles.ADMIN.toRole2(senderDB.getGuild());
 

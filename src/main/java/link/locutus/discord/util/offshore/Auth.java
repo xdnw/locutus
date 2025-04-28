@@ -112,7 +112,7 @@ public class Auth {
             userPass.put("password", this.getPassword());
             userPass.put("loginform", "Login");
             userPass.put("rememberme", "1");
-            String url = "" + Settings.PNW_URL() + "/login/";
+            String url = Settings.PNW_URL() + "/login/";
 
             String loginResult = FileUtil.get(FileUtil.readStringFromURL(PagePriority.LOGIN, url, userPass, this.getCookieManager()));
             if (!loginResult.contains("Login Successful")) {
@@ -123,7 +123,7 @@ public class Auth {
     }
 
     public String logout() throws IOException {
-        String logout = FileUtil.readStringFromURL(PagePriority.LOGOUT, "" + Settings.PNW_URL() + "/logout/");
+        String logout = FileUtil.readStringFromURL(PagePriority.LOGOUT, Settings.PNW_URL() + "/logout/");
         Document dom = Jsoup.parse(logout);
         clearCookies();
         return PW.getAlert(dom);
@@ -178,7 +178,7 @@ public class Auth {
 
     public synchronized ApiKeyPool.ApiKey fetchApiKey() {
         if (apiKey == null || apiKey.isEmpty()) {
-            String url = "" + Settings.PNW_URL() + "/";
+            String url = Settings.PNW_URL() + "/";
             apiKey = PW.withLogin(new Callable<String>() {
                 @Override
                 public String call() throws Exception {
@@ -235,7 +235,7 @@ public class Auth {
     public String createTrade(DBNation receiver, ResourceType resource, int amount, int ppu, boolean isBuy) {
         String leadername = receiver.getLeader();
         String leaderUrlEscape = URLEncoder.encode(leadername, StandardCharsets.UTF_8);
-        String url = "" + Settings.PNW_URL() + "/nation/trade/create";
+        String url = Settings.PNW_URL() + "/nation/trade/create";
         Map<String, String> post = new HashMap<>();
         post.put("resourceoffer", resource.name().toLowerCase());
         post.put("offeramount", "" + amount);
@@ -275,7 +275,7 @@ public class Auth {
         post.put("create_embargo", "");
         post.put("validation_token", "");
 
-        String url = "" + Settings.PNW_URL() + "/alliance/id=" + embargoFrom + "&display=embargoes";
+        String url = Settings.PNW_URL() + "/alliance/id=" + embargoFrom + "&display=embargoes";
         return PW.withLogin(new Callable<String>() {
             @Override
             public String call() throws Exception {
@@ -305,7 +305,7 @@ public class Auth {
         return PW.withLogin(new Callable<String>() {
             @Override
             public String call() throws Exception {
-                String url = "" + Settings.PNW_URL() + "/world/bounties";
+                String url = Settings.PNW_URL() + "/world/bounties";
 
                 String result = Auth.this.readStringFromURL(PagePriority.PLACE_BOUNTY, url, emptyMap());
                 Document dom = Jsoup.parse(result);
@@ -330,7 +330,7 @@ public class Auth {
         post.put("imp_import", build.toString());
         post.put("imp_import_execute", "Execute Operation");
 
-        String url = "" + Settings.PNW_URL() + "/city/improvements/import/id=" + cityId;
+        String url = Settings.PNW_URL() + "/city/improvements/import/id=" + cityId;
 
         return PW.withLogin(() -> {
             return readStringFromURL(PagePriority.IMPORT_BUILD, url, post);
@@ -339,7 +339,7 @@ public class Auth {
 
     public String modifyTreaty(int treatyId, boolean approve) {
         int aaId = getAllianceId();
-        String url = "" + Settings.PNW_URL() + "/alliance/id=" + aaId + "&display=acp#treaties";
+        String url = Settings.PNW_URL() + "/alliance/id=" + aaId + "&display=acp#treaties";
 
         Map<String, String> post = new HashMap<>();
         if (approve) post.put("approveTreatyId", "" + treatyId);
@@ -364,7 +364,7 @@ public class Auth {
         post.put("propose_treaty", "Propose Treaty");
 
         int aaId = getAllianceId();
-        String url = "" + Settings.PNW_URL() + "/alliance/id=" + aaId + "&display=acp#treaties";
+        String url = Settings.PNW_URL() + "/alliance/id=" + aaId + "&display=acp#treaties";
 
         return PW.withLogin(() -> {
             String html = Auth.this.readStringFromURL(PagePriority.MODIFY_TREATY_UNUSED, url, post);
@@ -375,7 +375,7 @@ public class Auth {
 
     public List<PendingTreaty> getTreaties() {
         int aaId = getAllianceId();
-        String url = "" + Settings.PNW_URL() + "/alliance/id=" + aaId + "&display=acp";
+        String url = Settings.PNW_URL() + "/alliance/id=" + aaId + "&display=acp";
         return PW.withLogin(() -> {
             List<PendingTreaty> result = new ArrayList<>();
             String html = Auth.this.readStringFromURL(PagePriority.GET_TREATIES_UNUSED, url, emptyMap());
@@ -428,12 +428,12 @@ public class Auth {
         Callable<String> task = new Callable<>() {
             @Override
             public String call() throws IOException {
-                String result = Auth.this.readStringFromURL(PagePriority.BANK_DEPOSIT, "" + Settings.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", emptyMap());
+                String result = Auth.this.readStringFromURL(PagePriority.BANK_DEPOSIT, Settings.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", emptyMap());
                 Document dom = Jsoup.parse(result);
                 String token = dom.select("input[name=token]").attr("value");
                 post.put("token", token);
 
-                result = Auth.this.readStringFromURL(PagePriority.TOKEN, "" + Settings.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", post);
+                result = Auth.this.readStringFromURL(PagePriority.TOKEN, Settings.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", post);
                 dom = Jsoup.parse(result);
                 String alert = PW.getAlert(dom);
                 if (alert.length() == 0) {
@@ -451,7 +451,7 @@ public class Auth {
 
     public String setRank(DBNation nation, DBAlliancePosition position) {
         return PW.withLogin(() -> {
-            String url = "" + Settings.PNW_URL() + "/alliance/id=" + getAllianceId() + "&display=acp#assign_positions";
+            String url = Settings.PNW_URL() + "/alliance/id=" + getAllianceId() + "&display=acp#assign_positions";
             String result = readStringFromURL(PagePriority.RANK_SET, url, Collections.emptyMap());
 
 
@@ -528,7 +528,7 @@ public class Auth {
             return cachedBrackets;
         }
         int aaId = getAllianceId();
-        String url = "" + Settings.PNW_URL() + "/alliance/id=" + aaId + "&display=taxes";
+        String url = Settings.PNW_URL() + "/alliance/id=" + aaId + "&display=taxes";
         return PW.withLogin(() -> {
             Map<Integer, TaxBracket> result = new HashMap<>();
             String html = Auth.this.readStringFromURL(PagePriority.GET_BRACKETS_UNUSED, url, emptyMap());
@@ -581,7 +581,7 @@ public class Auth {
                 while (moreTrades && (max-- > 0)) {
                     moreTrades = false;
 
-                    String url = "" + Settings.PNW_URL() + "/nation/trade/";
+                    String url = Settings.PNW_URL() + "/nation/trade/";
                     String html = Auth.this.readStringFromURL(PagePriority.BANK_TRADE, url, emptyMap());
                     Document dom = Jsoup.parse(html);
 
@@ -742,13 +742,13 @@ public class Auth {
         int fromBank = alliance.getAlliance_id();
 
         return PW.withLogin(() -> {
-            String result = readStringFromURL(PagePriority.BANK_DEPOSIT, "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", emptyMap());
+            String result = readStringFromURL(PagePriority.BANK_DEPOSIT, Settings.INSTANCE.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", emptyMap());
             Document dom = Jsoup.parse(result);
             String token = dom.select("input[name=token]").attr("value");
             post.put("token", token);
             StringBuilder response = new StringBuilder();
 
-            result = readStringFromURL(PagePriority.TOKEN, "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", post);
+            result = readStringFromURL(PagePriority.TOKEN, Settings.INSTANCE.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", post);
             dom = Jsoup.parse(result);
             for (Element element : dom.getElementsByClass("alert")) {
                 String text = element.text();
@@ -776,13 +776,13 @@ public class Auth {
         post.put("disband_confirm_3", "true");
 
         return PW.withLogin(() -> {
-            String result = readStringFromURL(PagePriority.BANK_DEPOSIT, "" + Settings.PNW_URL() + "/alliance/leave/id=" + aaId, emptyMap());
+            String result = readStringFromURL(PagePriority.BANK_DEPOSIT, Settings.PNW_URL() + "/alliance/leave/id=" + aaId, emptyMap());
             Document dom = Jsoup.parse(result);
             String token = dom.select("input[name=token]").attr("value");
             post.put("token", token);
             StringBuilder response = new StringBuilder();
 
-            result = readStringFromURL(PagePriority.TOKEN, "" + Settings.PNW_URL() + "/alliance/leave/id=" + aaId, post);
+            result = readStringFromURL(PagePriority.TOKEN, Settings.PNW_URL() + "/alliance/leave/id=" + aaId, post);
             dom = Jsoup.parse(result);
             for (Element element : dom.getElementsByClass("alert")) {
                 String text = element.text();
@@ -804,13 +804,13 @@ public class Auth {
         post.put("submit", "Apply");
         // /alliance/join/id=
         return PW.withLogin(() -> {
-            String result = readStringFromURL(PagePriority.BANK_DEPOSIT, "" + Settings.PNW_URL() + "/alliance/join/id=" + alliance.getId(), emptyMap());
+            String result = readStringFromURL(PagePriority.BANK_DEPOSIT, Settings.PNW_URL() + "/alliance/join/id=" + alliance.getId(), emptyMap());
             Document dom = Jsoup.parse(result);
             String token = dom.select("input[name=token]").attr("value");
             post.put("token", token);
             StringBuilder response = new StringBuilder();
 
-            result = readStringFromURL(PagePriority.TOKEN, "" + Settings.PNW_URL() + "/alliance/join/id=" + alliance.getId(), post);
+            result = readStringFromURL(PagePriority.TOKEN, Settings.PNW_URL() + "/alliance/join/id=" + alliance.getId(), post);
             dom = Jsoup.parse(result);
             for (Element element : dom.getElementsByClass("alert")) {
                 String text = element.text();
@@ -967,13 +967,13 @@ public class Auth {
         }
         if (total < 3000000) return null;
         return PW.withLogin(() -> {
-            String result = readStringFromURL(PagePriority.BANK_DEPOSIT, "" + Settings.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", emptyMap());
+            String result = readStringFromURL(PagePriority.BANK_DEPOSIT, Settings.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", emptyMap());
             Document dom = Jsoup.parse(result);
             String token = dom.select("input[name=token]").attr("value");
             post.put("token", token);
             StringBuilder response = new StringBuilder();
 
-            result = readStringFromURL(PagePriority.TOKEN, "" + Settings.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", post);
+            result = readStringFromURL(PagePriority.TOKEN, Settings.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", post);
             dom = Jsoup.parse(result);
             for (Element element : dom.getElementsByClass("alert")) {
                 String text = element.text();

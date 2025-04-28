@@ -46,16 +46,17 @@ public class DepositsSheet extends Command {
 
     @Override
     public String desc() {
-        return "Get a list of nations and their deposits.\n" +
-                "Add `-b` to use 0/0 as the tax base\n" +
-                "Add `-o` to not include any manual deposit offsets\n" +
-                "Add `-d` to not include deposits\n" +
-                "Add `-t` to not include taxes\n" +
-                "Add `-l` to not include loans\n" +
-                "Add `-g` to not include grants`\n" +
-                "Add `-f` to force an update\n" +
-                "Add `-p` to include all past members\n" +
-                "Add `-e` to exclude the escrow sheet";
+        return """
+                Get a list of nations and their deposits.
+                Add `-b` to use 0/0 as the tax base
+                Add `-o` to not include any manual deposit offsets
+                Add `-d` to not include deposits
+                Add `-t` to not include taxes
+                Add `-l` to not include loans
+                Add `-g` to not include grants`
+                Add `-f` to force an update
+                Add `-p` to include all past members
+                Add `-e` to exclude the escrow sheet""";
     }
 
     @Override

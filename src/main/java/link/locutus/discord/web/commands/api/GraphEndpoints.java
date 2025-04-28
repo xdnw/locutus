@@ -256,9 +256,10 @@ public class GraphEndpoints {
         return new StockpileValueByDay(stockpile1, stockpile2, numDays).toHtmlJson();
     }
 
-    @Command(desc = "Generate a graph of nation military strength by score between two coalitions\n" +
-            "1 tank = 1/32 aircraft for strength calculations\n" +
-            "Effective score range is limited to 1.75x with a linear reduction of strength up to 40% to account for up-declares", aliases = {"strengthTierGraph"}, viewable = true)
+    @Command(desc = """
+            Generate a graph of nation military strength by score between two coalitions
+            1 tank = 1/32 aircraft for strength calculations
+            Effective score range is limited to 1.75x with a linear reduction of strength up to 40% to account for up-declares""", aliases = {"strengthTierGraph"}, viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph strengthTierGraph(@Me @Default GuildDB db,
                                       NationList coalition1,

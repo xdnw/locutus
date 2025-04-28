@@ -258,17 +258,17 @@ public class PlayerSettingCommands {
                     url = name;
                 } else {
                     String type = sub.type == BankDB.BankSubType.NATION ? "nation" : "alliance";
-                    url = "" + Settings.PNW_URL() + "/" + type + "/id=" + sub.allianceOrNation;
+                    url = Settings.PNW_URL() + "/" + type + "/id=" + sub.allianceOrNation;
                 }
             } else if (sub.type == BankDB.BankSubType.NATION) {
                 DBNation nation = Locutus.imp().getNationDB().getNationById(sub.allianceOrNation);
-                url = "" + Settings.PNW_URL() + "/nation/id=" + sub.allianceOrNation;
+                url = Settings.PNW_URL() + "/nation/id=" + sub.allianceOrNation;
                 name = String.format("[%s](%s)",
                         nation == null ? sub.allianceOrNation : nation.getNation(), url);
             } else {
                 String aaName = Locutus.imp().getNationDB().getAllianceName(sub.allianceOrNation);
                 if (aaName == null) aaName = sub.allianceOrNation + "";
-                url = "" + Settings.PNW_URL() + "/alliance/id=" + sub.allianceOrNation;
+                url = Settings.PNW_URL() + "/alliance/id=" + sub.allianceOrNation;
                 name = String.format("[%s](%s)",
                         aaName, url);
             }

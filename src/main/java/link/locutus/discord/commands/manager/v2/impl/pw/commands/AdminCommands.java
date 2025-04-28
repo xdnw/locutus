@@ -1187,9 +1187,10 @@ public class AdminCommands {
                            NationList sendTo,
                            @Arg("The subject used for sending an in-game mail if a discord direct message fails") String subject,
                            @Arg("The message you want to send") @TextArea String announcement,
-                           @Arg("Lines of replacement words or phrases, separated by `|` for each variation\n" +
-                                   "Add multiple lines for each replacement you want\n" +
-                                   "You can use \\n for newline for discord slash commands") @TextArea String replacements,
+                           @Arg("""
+                                   Lines of replacement words or phrases, separated by `|` for each variation
+                                   Add multiple lines for each replacement you want
+                                   You can use \\n for newline for discord slash commands""") @TextArea String replacements,
                            @Arg("The channel to post the announcement to (must be same server)") @Switch("c") MessageChannel channel,
                            @Arg("The text to post in the channel below the hidden announcement (e.g. mentions)") @Switch("b") String bottomText,
                            @Arg("The required number of differences between each message") @Switch("v") @Default("0") Integer requiredVariation,
@@ -1207,7 +1208,7 @@ public class AdminCommands {
         }
 
         ApiKeyPool keys = (sendMail || sendDM) ? db.getMailKey() : null;
-        if ((sendMail || sendDM) && keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention() + "");
+        if ((sendMail || sendDM) && keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention());
         Set<Integer> aaIds = db.getAllianceIds();
         if (sendMail || sendDM) {
             GPTUtil.checkThrowModeration(announcement + "\n" + replacements);
@@ -1371,12 +1372,13 @@ public class AdminCommands {
 //        }
 //    }
 
-    @Command(desc = "Add or remove a role from a set of members on discord based on a spreadsheet\n" +
-            "By default only roles will be added, specify `removeRoles` to remove roles from users not assigned the role in the sheet\n" +
-            "Specify `listMissing` to list nations that are not assigned a role in the sheet\n" +
-            "Columns:\n" +
-            "- `nation`, `leader`, `user`, `member` (at least one)\n" +
-            "- `role`, `role1`, `roleN` (multiple, or use comma separated values in one cell)")
+    @Command(desc = """
+            Add or remove a role from a set of members on discord based on a spreadsheet
+            By default only roles will be added, specify `removeRoles` to remove roles from users not assigned the role in the sheet
+            Specify `listMissing` to list nations that are not assigned a role in the sheet
+            Columns:
+            - `nation`, `leader`, `user`, `member` (at least one)
+            - `role`, `role1`, `roleN` (multiple, or use comma separated values in one cell)""")
     @RolePermission(value = Roles.ADMIN)
     public String maskSheet(@Me IMessageIO io, @Me GuildDB db, @Me Guild guild, @Me JSONObject command,
                             SpreadSheet sheet,
@@ -1693,9 +1695,10 @@ public class AdminCommands {
         return null;
     }
 
-    @Command(desc = "Edit an attribute of your in-game alliance\n" +
-            "Attributes match the in-game fields and are case sensitive\n" +
-            "Run the command without arguments to get a list of attributes"
+    @Command(desc = """
+            Edit an attribute of your in-game alliance
+            Attributes match the in-game fields and are case sensitive
+            Run the command without arguments to get a list of attributes"""
     )
     @RolePermission(Roles.ADMIN)
     public String editAlliance(@Me GuildDB db, DBAlliance alliance, @Default String attribute, @Default @TextArea String value) throws Exception {
@@ -1833,8 +1836,10 @@ public class AdminCommands {
             if (!unregisteredRoles.isEmpty()) {
                 response.append("**Unregistered Roles**:\n" + StringMan.join(unregisteredRoles, "\n") + "\n");
             }
-            response.append("Provide a value for `locutusRole` for specific role information.\n" +
-                    "Provide a value for `discordRole` to register a role.\n");
+            response.append("""
+                    Provide a value for `locutusRole` for specific role information.
+                    Provide a value for `discordRole` to register a role.
+                    """);
 
             return response.toString();
         }
@@ -1869,7 +1874,7 @@ public class AdminCommands {
         }
 
         if (removeRole) {
-            throw new IllegalArgumentException("Cannot remove role alias with this command. Use " + CM.role.unregister.cmd.locutusRole(locutusRole.name()).toSlashCommand() + "");
+            throw new IllegalArgumentException("Cannot remove role alias with this command. Use " + CM.role.unregister.cmd.locutusRole(locutusRole.name()).toSlashCommand());
         }
 
 
@@ -1877,7 +1882,7 @@ public class AdminCommands {
         String allianceStr = alliance == null ? "*" : alliance.getName() + "/" + aaId;
         db.addRole(locutusRole, discordRole, aaId);
         return "Added role alias: " + locutusRole.name().toLowerCase() + " to " + discordRole.getName() + " for alliance " + allianceStr + "\n" +
-                "To unregister, use " + CM.role.unregister.cmd.locutusRole(locutusRole.name()).toSlashCommand() + "";
+                "To unregister, use " + CM.role.unregister.cmd.locutusRole(locutusRole.name()).toSlashCommand();
     }
 
     public String printApiStats(ApiKeyPool keys) {
@@ -2294,9 +2299,10 @@ public class AdminCommands {
 //    }
 
 
-    @Command(desc = "Fetch and update nations from the API\n" +
-            "If no nations are specified, then all will be fetched\n" +
-            "Note: This does not update cities")
+    @Command(desc = """
+            Fetch and update nations from the API
+            If no nations are specified, then all will be fetched
+            Note: This does not update cities""")
     public String syncNations(NationDB db, @Default Set<DBNation> nations, @Switch("d") boolean dirtyNations) throws IOException, ParseException {
         if (dirtyNations) {
             db.updateDirtyNations(Event::post, Integer.MAX_VALUE);
@@ -2317,9 +2323,10 @@ public class AdminCommands {
         return "Updated " + updatedIds.size() + " nations. " + events.size() + " changes detected";
     }
 
-    @Command(desc = "Fetch and update bank records\n" +
-            "If no alliance is specified, only public bank records are fetched\n" +
-            "Alliance records are restricted by API limitations, typically 14 days, regardless of the timestamp specified")
+    @Command(desc = """
+            Fetch and update bank records
+            If no alliance is specified, only public bank records are fetched
+            Alliance records are restricted by API limitations, typically 14 days, regardless of the timestamp specified""")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncBanks(@Me GuildDB db, @Me IMessageIO channel, @Default DBAlliance alliance, @Default @Timestamp Long timestamp) throws IOException, ParseException {
         if (alliance != null) {
@@ -2389,7 +2396,7 @@ public class AdminCommands {
         StringBuilder result = new StringBuilder();
         for (Map.Entry<DBNation, Rank> entry : registered.entrySet()) {
             result.append(entry.getKey().getNation() + "- " + entry.getValue());
-            String error = errors.get(entry.getValue());
+            String error = errors.get(entry.getKey());
             if (error != null) {
                 result.append(": Could not validate: " + error);
             }
@@ -2813,10 +2820,11 @@ public class AdminCommands {
         return "Done!";
     }
 
-    @Command(desc = "Global toggles for conditional message settings\n" +
-            "setMeta = If nation meta is set so that multiple messages cannot be sent to the same person, or to older nations\n" +
-            "sendMessages = If message sending is enabled\n" +
-            "run = Force send the messages now to applicable nations")
+    @Command(desc = """
+            Global toggles for conditional message settings
+            setMeta = If nation meta is set so that multiple messages cannot be sent to the same person, or to older nations
+            sendMessages = If message sending is enabled
+            run = Force send the messages now to applicable nations""")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String conditionalMessageSettings(boolean setMeta, boolean sendMessages, boolean run) {
         GuildCustomMessageHandler messageHandler = Locutus.imp().getMessageHandler();
@@ -2829,9 +2837,10 @@ public class AdminCommands {
     }
 
 
-    @Command(desc = "Returns a list of forum profiles and their respective nation id / discord tag\n" +
-            "Deprecated because it is an unauthenticated list, anyone can set their discord or nation on the forums\n" +
-            "Information purposes only")
+    @Command(desc = """
+            Returns a list of forum profiles and their respective nation id / discord tag
+            Deprecated because it is an unauthenticated list, anyone can set their discord or nation on the forums
+            Information purposes only""")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncForumProfiles(@Me GuildDB guildDB, @Me IMessageIO io, @Default SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {

@@ -104,7 +104,7 @@ public class MailTargets extends Command {
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
         ApiKeyPool keys = db.getMailKey();
-        if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention() + "");
+        if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention());
 
         String header = "";
         if (args.size() >= 4) {
@@ -125,18 +125,19 @@ public class MailTargets extends Command {
         String date = TimeUtil.YYYY_MM_DD.format(ZonedDateTime.now());
         String subject = "Targets-" + date + "/" + channel.getIdLong();
 
-        String blurb = "BE ACTIVE ON DISCORD. Additional attack instructions may be in your war room\n" +
-                "\n" +
-                "This is an alliance war, not a counter. The goal is battlefield control:\n" +
-                "1. Try to declare wars just before day change (day change if possible)\n" +
-                "2. If you have ground control, further attacks with tanks kills aircraft\n" +
-                "3. If you have tanks and can get ground control, do ground attacks to kill planes\n" +
-                "4. Get air control to halve enemy tank strength\n" +
-                "5. You can rebuy units inbetween each attack\n" +
-                "6. Do not waste attacks destroying infra or minimal units\n" +
-                "7. Be efficient with your attacks and try NOT to get active enemies to 0 resistance\n" +
-                "8. You can buy more ships when enemy planes are weak, to avoid naval losses\n" +
-                "9. Some wars you may get beiged in, that is OKAY";
+        String blurb = """
+                BE ACTIVE ON DISCORD. Additional attack instructions may be in your war room
+                
+                This is an alliance war, not a counter. The goal is battlefield control:
+                1. Try to declare wars just before day change (day change if possible)
+                2. If you have ground control, further attacks with tanks kills aircraft
+                3. If you have tanks and can get ground control, do ground attacks to kill planes
+                4. Get air control to halve enemy tank strength
+                5. You can rebuy units inbetween each attack
+                6. Do not waste attacks destroying infra or minimal units
+                7. Be efficient with your attacks and try NOT to get active enemies to 0 resistance
+                8. You can buy more ships when enemy planes are weak, to avoid naval losses
+                9. Some wars you may get beiged in, that is OKAY""";
 
         long start = System.currentTimeMillis();
 
@@ -218,9 +219,12 @@ public class MailTargets extends Command {
                 }
 
                 mail.append(
-                        "- If the op doesn't require it (and it says >50%), you don't have to use more spies or covert\n" +
-                        "- Reply to this message with any spy reports you do against enemies (even if not these targets)\n" +
-                        "- Remember to buy spies every day\n\n");
+                        """
+                                - If the op doesn't require it (and it says >50%), you don't have to use more spies or covert
+                                - Reply to this message with any spy reports you do against enemies (even if not these targets)
+                                - Remember to buy spies every day
+                                
+                                """);
 
                 String baseUrl = Settings.PNW_URL() + "/nation/espionage/eid=";
                 for (int i = 0; i < mySpyOps.size(); i++) {

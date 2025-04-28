@@ -39,7 +39,7 @@ public class EditAllianceTask implements Callable<String> {
         return PW.withLogin(new Callable<String>() {
             @Override
             public String call() throws Exception {
-                String result = auth.readStringFromURL(PagePriority.ALLIANCE_EDIT, "" + Settings.PNW_URL() + "/alliance/edit/id=" + allianceId, Collections.emptyMap());
+                String result = auth.readStringFromURL(PagePriority.ALLIANCE_EDIT, Settings.PNW_URL() + "/alliance/edit/id=" + allianceId, Collections.emptyMap());
                 Document dom = Jsoup.parse(result);
 
                 String flag = dom.select("select[name=flag]").select("option:matches(Current)").attr("value");
@@ -98,7 +98,7 @@ public class EditAllianceTask implements Callable<String> {
 
                 StringBuilder response = new StringBuilder();
 
-                result = auth.readStringFromURL(PagePriority.TOKEN, "" + Settings.PNW_URL() + "/alliance/edit/id=" + allianceId, post);
+                result = auth.readStringFromURL(PagePriority.TOKEN, Settings.PNW_URL() + "/alliance/edit/id=" + allianceId, post);
                 dom = Jsoup.parse(result);
                 for (Element element : dom.getElementsByClass("alert")) {
                     response.append('\n').append(element.text());

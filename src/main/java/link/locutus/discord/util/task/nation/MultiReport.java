@@ -336,7 +336,7 @@ public class MultiReport {
             List<Transaction2> transfers = trimTransfers(Locutus.imp().getBankDB().getNationTransfers(nationId, 0));
             for (Transaction2 transfer : transfers) {
                 if (transfer.banker_nation == nationId) {
-                    if (multis.contains(transfer.getReceiver())) {
+                    if (multis.contains((int) transfer.getReceiver())) {
                         sentBank = true;
                         illegalTransfers.computeIfAbsent((int) transfer.getReceiver(), f -> new HashSet<>()).add(transfer);
                     }

@@ -146,10 +146,11 @@ public abstract class DBMainV3 implements Closeable {
         connectStr += dbLocation;
         connection = DriverManager.getConnection(connectStr);
         if (inMemory) {
-            connection.createStatement().execute("pragma journal_mode = WAL;\n" +
-                    "pragma synchronous = normal;\n" +
-                    "pragma temp_store = memory;\n" +
-                    "pragma mmap_size = 30000000000;");
+            connection.createStatement().execute("""
+                    pragma journal_mode = WAL;
+                    pragma synchronous = normal;
+                    pragma temp_store = memory;
+                    pragma mmap_size = 30000000000;""");
         }
         this.ctx = DSL.using(connection, SQLDialect.SQLITE, new org.jooq.conf.Settings()
                 .withExecuteLogging(false)

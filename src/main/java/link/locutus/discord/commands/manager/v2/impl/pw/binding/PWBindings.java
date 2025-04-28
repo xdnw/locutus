@@ -382,16 +382,17 @@ public class PWBindings extends BindingHelper {
         return filterToMMR;
     }
 
-    @Binding(value = "Auto assign roles based on conditions\n" +
-            "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>\n" +
-            "Accepts a list of filters to a role.\n" +
-            "In the form:\n" +
-            "```\n" +
-            "#cities<10:@someRole\n" +
-            "#cities>=10:@otherRole\n" +
-            "```\n" +
-            "Use `*` as the filter to match all nations.\n" +
-            "Only alliance members can be given role")
+    @Binding(value = """
+            Auto assign roles based on conditions
+            See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>
+            Accepts a list of filters to a role.
+            In the form:
+            ```
+            #cities<10:@someRole
+            #cities>=10:@otherRole
+            ```
+            Use `*` as the filter to match all nations.
+            Only alliance members can be given role""")
     public Map<NationFilter, Role> conditionalRole(@Me GuildDB db, String input, @Default @Me User author, @Default @Me DBNation nation) {
         Map<NationFilter, Role> filterToRole = new LinkedHashMap<>();
         for (String line : input.split("\n")) {
@@ -1393,9 +1394,10 @@ public class PWBindings extends BindingHelper {
         return emum(Rank.class, rank);
     }
 
-    @Binding(value = "An in-game position\n" +
-            "When there is overlap from multiple alliances registered to the guild, the alliance id must be specified\n" +
-    "In the form: `<alliance>:<position>` such as `1234:Member`")
+    @Binding(value = """
+            An in-game position
+            When there is overlap from multiple alliances registered to the guild, the alliance id must be specified
+            In the form: `<alliance>:<position>` such as `1234:Member`""")
     public static DBAlliancePosition position(@Me GuildDB db, @Default @Me DBNation nation, String name) {
         AllianceList alliances = db.getAllianceList();
         if (alliances == null || alliances.isEmpty()) throw new IllegalArgumentException("No alliances are set. See: " + CM.settings.info.cmd.toSlashMention() + " with key " + GuildKey.ALLIANCE_ID.name());
@@ -1553,7 +1555,7 @@ public class PWBindings extends BindingHelper {
     @Binding
     public WarCategory warChannelBinding(@Me GuildDB db) {
         WarCategory warChannel = db.getWarChannel(true);
-        if (warChannel == null) throw new IllegalArgumentException("War channels are not enabled. " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(db, true) + "");
+        if (warChannel == null) throw new IllegalArgumentException("War channels are not enabled. " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(db, true));
         return warChannel;
     }
 
@@ -1579,9 +1581,10 @@ public class PWBindings extends BindingHelper {
         return StringMan.parseUpper(NationMeta.BeigeAlertRequiredStatus.class, input);
     }
 
-    @Binding(value = "A completed nation attribute that accepts no arguments and returns a number\n" +
-            "To get the attribute for an attribute with arguments, you must provide a value in brackets\n" +
-            "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>", examples = {"score", "ships", "land", "getCitiesSince(5d)"},
+    @Binding(value = """
+            A completed nation attribute that accepts no arguments and returns a number
+            To get the attribute for an attribute with arguments, you must provide a value in brackets
+            See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>""", examples = {"score", "ships", "land", "getCitiesSince(5d)"},
     webType = "TypedFunction<DBNation,Double>")
     public NationAttributeDouble nationMetricDouble(ValueStore store, String input) {
         NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
@@ -1593,9 +1596,10 @@ public class PWBindings extends BindingHelper {
         return metric;
     }
 
-    @Binding(value = "A completed nation attribute that accepts no arguments, returns an object, typically a string, number, boolean or enum\n" +
-            "To get the attribute for an attribute with arguments, you must provide a value in brackets\n" +
-            "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>", examples = {"color", "war_policy", "continent", "city(1)"})
+    @Binding(value = """
+            A completed nation attribute that accepts no arguments, returns an object, typically a string, number, boolean or enum
+            To get the attribute for an attribute with arguments, you must provide a value in brackets
+            See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>""", examples = {"color", "war_policy", "continent", "city(1)"})
     public NationAttribute nationMetric(ValueStore store, String input) {
         NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
         NationAttribute metric = placeholders.getMetric(store, input, false);

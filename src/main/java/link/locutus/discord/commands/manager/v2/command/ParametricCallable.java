@@ -295,8 +295,8 @@ public class ParametricCallable implements ICommand {
     public String simpleDesc() {
         String desc = descMethod.get();
         if (desc != null && desc.indexOf('{') > 0) {
-            desc = desc.replace("{legacy_prefix}", Settings.commandPrefix(true) + "");
-            desc = desc.replace("{prefix}", Settings.commandPrefix(false) + "");
+            desc = desc.replace("{legacy_prefix}", Settings.commandPrefix(true));
+            desc = desc.replace("{prefix}", Settings.commandPrefix(false));
 
             Pattern pattern = Pattern.compile("(\\{/[^}]+})");
             Matcher matcher = pattern.matcher(desc);

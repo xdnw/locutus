@@ -52,7 +52,7 @@ public class TransferResources extends Command {
             }
         }
 
-        if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
+        if (me == null) return "Please use " + CM.register.cmd.toSlashMention();
         if (me.isGray() && !flags.contains('f')) {
             String title = "Please set your color off gray";
             String body = "<" + Settings.PNW_URL() + "/nation/edit/>\n" +

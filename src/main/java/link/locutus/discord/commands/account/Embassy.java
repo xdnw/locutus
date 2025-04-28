@@ -43,12 +43,12 @@ public class Embassy extends Command {
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (me == null) {
-            return "Please use " + CM.register.cmd.toSlashMention() + "";
+            return "Please use " + CM.register.cmd.toSlashMention();
         }
         GuildDB db = Locutus.imp().getGuildDB(guild);
         Category category = db.getOrThrow(GuildKey.EMBASSY_CATEGORY);
         if (category == null) {
-            return "Embassies are disabled. To set it up, use " + GuildKey.EMBASSY_CATEGORY.getCommandMention() + "";
+            return "Embassies are disabled. To set it up, use " + GuildKey.EMBASSY_CATEGORY.getCommandMention();
         }
         DBNation nation = me;
         if (args.size() == 1 && args.get(0).equalsIgnoreCase("*")) {
@@ -78,7 +78,7 @@ public class Embassy extends Command {
         }
         String aaName = aa.getName();
 
-        Role role = DiscordUtil.getAARoles(guild.getRoles()).get(aa);
+        Role role = DiscordUtil.getAARoles(guild.getRoles()).get(aa.getAlliance_id());
         if (role == null) {
             return "No role found (try using " + CM.role.autoassign.cmd.toSlashMention() + " ?)";
         }

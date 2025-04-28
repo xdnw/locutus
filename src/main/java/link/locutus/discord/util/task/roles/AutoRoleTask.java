@@ -330,8 +330,8 @@ public class AutoRoleTask implements IAutoRoleTask {
                                     Role thisRole = thisDiscordRoles[i];
 
                                     Map<Long, Role> allyRoleMap = allyDiscordRoles[i];
-                                    Role role1 = allyRoleMap.get(0);
-                                    Role role2 = allyRoleMap.get(nation.getAlliance_id());
+                                    Role role1 = allyRoleMap.get((long) 0L);
+                                    Role role2 = allyRoleMap.get((long) nation.getAlliance_id());
                                     boolean has = (role1 != null && allyRoles.contains(role1)) || (role2 != null && allyRoles.contains(role2));
                                     if (has) {
                                         memberRoles.computeIfAbsent(member, f -> new ArrayList<>()).add(thisRole);
@@ -500,7 +500,7 @@ public class AutoRoleTask implements IAutoRoleTask {
         }
         if (nation != null) {
             if (registeredRole == null) {
-                info.logError(member, "No registered role exists. Please create one on discord, then use " + CM.role.setAlias.cmd.locutusRole(Roles.REGISTERED.name()).discordRole(null) + "");
+                info.logError(member, "No registered role exists. Please create one on discord, then use " + CM.role.setAlias.cmd.locutusRole(Roles.REGISTERED.name()).discordRole(null));
             } else {
                 info.logError(member, "Not registered. See: " + CM.register.cmd.toSlashMention());
             }

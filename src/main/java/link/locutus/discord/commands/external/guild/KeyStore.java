@@ -30,7 +30,7 @@ public class KeyStore extends Command implements Noformat {
 
     @Override
     public String help() {
-        return "" + Settings.commandPrefix(true) + "KeyStore <key> <value>";
+        return Settings.commandPrefix(true) + "KeyStore <key> <value>";
     }
 
     @Override
@@ -52,7 +52,7 @@ public class KeyStore extends Command implements Noformat {
     }
 
     public String onCommand(IMessageIO io, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
+        if (me == null) return "Please use " + CM.register.cmd.toSlashMention();
 
         GuildSetting setting = null;
         if (args.size() > 0) {

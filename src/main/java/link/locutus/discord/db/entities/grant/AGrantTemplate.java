@@ -83,7 +83,7 @@ public abstract class AGrantTemplate<T> {
         String filterString = nationFilter.getFilter();
         if (filterString.contains("#")) {
             result.append(" | ");
-            result.append("" + filterString + "");
+            result.append(filterString);
         }
 
         if (fromBracket > 0) {

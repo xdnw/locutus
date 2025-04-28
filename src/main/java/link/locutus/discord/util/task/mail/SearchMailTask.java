@@ -30,7 +30,7 @@ public class SearchMailTask implements Callable<List<Mail>> {
 
     public SearchMailTask(Auth auth, String query, boolean checkUnread, boolean checkRead, boolean readContent, BiConsumer<Mail, List<String>> onEach) {
         if (query == null || query.isEmpty()) {
-            this.url = "" + Settings.PNW_URL() + "/index.php?id=16&backpage=%3C%3C&maximum=100&minimum=0&od=DESC&searchTerm=";
+            this.url = Settings.PNW_URL() + "/index.php?id=16&backpage=%3C%3C&maximum=100&minimum=0&od=DESC&searchTerm=";
         } else {
             this.url = Settings.PNW_URL() + "/index.php?id=16&backpage=%3C%3C&maximum=15000&minimum=0&od=DESC&searchTerm=" + URLEncoder.encode(query);
         }

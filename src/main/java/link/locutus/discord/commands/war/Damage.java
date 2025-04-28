@@ -95,7 +95,7 @@ public class Damage extends Command {
         nations.removeIf(f -> f.getScore() <= minScore || f.getScore() >= maxScore);
 
         me = DiscordUtil.getNation(author);
-        if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
+        if (me == null) return "Please use " + CM.register.cmd.toSlashMention();
         double str = me.getGroundStrength(false, true);
         str = Math.max(str, me.getCities() * 15000);
         if (filterWeak) {

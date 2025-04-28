@@ -42,7 +42,7 @@ public class MyLoot extends Command {
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1) return usage(args.size(), 1, channel);
         if (!MathMan.isInteger(args.get(0))) return usage(args.get(0) + " is not a valid number of days", channel);
-        if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
+        if (me == null) return "Please use " + CM.register.cmd.toSlashMention();
         return parent.onCommand(guild, channel, author, me, fullCommandRaw, new ArrayList<>(Arrays.asList(me.getUrl(), "*", args.get(0))), flags);
     }
 }

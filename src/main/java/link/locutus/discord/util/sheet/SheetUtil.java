@@ -41,7 +41,7 @@ public class SheetUtil {
     }
 
     public static String getRange(int x, int y) {
-        return getLetter(x) + "" + (y + 1);
+        return getLetter(x) + (y + 1);
     }
 
     public static String getRange(int x1, int y1, int x2, int y2) {

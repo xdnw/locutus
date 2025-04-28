@@ -8,6 +8,8 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -71,6 +73,7 @@ public interface NationList extends NationFilter {
         }
     }
 
+    @Command
     default double[] getAverageMMRUnit() {
         double[] total = getTotalMMRUnit();
         double num = total[4];
@@ -82,9 +85,9 @@ public interface NationList extends NationFilter {
         };
     }
 
-
-    default double[] getAverageMMR(boolean update) {
-        double[] total = getTotalMMR(update);
+    @Command
+    default double[] getAverageMMR(@Default Boolean update) {
+        double[] total = getTotalMMR(update == Boolean.TRUE);
         double num = total[4];
         return new double[] {total[0] / num, total[1] / num, total[2] / num, total[3] / num};
     }

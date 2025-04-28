@@ -266,7 +266,7 @@ public class WarCard {
             }
         }
 
-        String warUrl = "" + Settings.PNW_URL() + "/nation/war/timeline/war=" + warId;
+        String warUrl = Settings.PNW_URL() + "/nation/war/timeline/war=" + warId;
         String warReason = this.warReason == null ? "Click here" : this.warReason;
         description.append("Link: [\"" + warReason + "\"\n](" + warUrl + ")");
 
@@ -444,7 +444,7 @@ public class WarCard {
     }
 
     public IMessageBuilder embed(IMessageBuilder builder, boolean addReactions, boolean condense, boolean send) {
-        String warUrl = "" + Settings.PNW_URL() + "/nation/war/timeline/war=" + warId;
+        String warUrl = Settings.PNW_URL() + "/nation/war/timeline/war=" + warId;
         CommandRef cmd = CM.war.card.cmd.warId(warId + "");
         CommandRef counter = CM.war.counter.url.cmd.war(warUrl);
         CommandRef counterSpy = CM.spy.counter.cmd.enemy(war.getAttacker_id() + "").operations("*");

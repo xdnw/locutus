@@ -321,7 +321,7 @@ public class LeavingBeigeAlert {
                 "**These nations are leaving beige or VM next turn**" +
                 " (Next turn in " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff) + ")\n\n" +
                 "`note: Default day change is 5 minutes, turn change is 30s`\n" +
-                "To disable automatic alerts, go to your alliance server and use " + CM.alerts.beige.beigeAlertMode.cmd.mode(NationMeta.BeigeAlertMode.NO_ALERTS.name()).toSlashCommand() + "";
+                "To disable automatic alerts, go to your alliance server and use " + CM.alerts.beige.beigeAlertMode.cmd.mode(NationMeta.BeigeAlertMode.NO_ALERTS.name()).toSlashCommand();
 
         for (Map.Entry<DBNation, Map<DBNation, Boolean>> entry : nationTargets.entrySet()) {
             DBNation attacker = entry.getKey();

@@ -903,9 +903,10 @@ public class StatCommands {
 //
 //    }
 
-    @Command(desc = "Generate a graph of nation military strength by score between two coalitions\n" +
-            "1 tank = 1/32 aircraft for strength calculations\n" +
-            "Effective score range is limited to 1.75x with a linear reduction of strength up to 40% to account for up-declares", aliases = {"strengthTierGraph"}, viewable = true)
+    @Command(desc = """
+            Generate a graph of nation military strength by score between two coalitions
+            1 tank = 1/32 aircraft for strength calculations
+            Effective score range is limited to 1.75x with a linear reduction of strength up to 40% to account for up-declares""", aliases = {"strengthTierGraph"}, viewable = true)
     public String strengthTierGraph(@Me @Default GuildDB db, @Me IMessageIO channel, @Me JSONObject command,
                                     NationList coalition1,
                                     NationList coalition2,
@@ -1431,9 +1432,10 @@ public class StatCommands {
         msg.send();
     }
 
-    @Command(desc = "Create a google sheet of nations, grouped by alliance, with the specified columns\n" +
-            "Prefix a column with `avg:` to force an average\n" +
-            "Prefix a column with `total:` to force a total", viewable = true)
+    @Command(desc = """
+            Create a google sheet of nations, grouped by alliance, with the specified columns
+            Prefix a column with `avg:` to force an average
+            Prefix a column with `total:` to force a total""", viewable = true)
     @NoFormat
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String allianceNationsSheet(NationPlaceholders placeholders, AlliancePlaceholders aaPlaceholders, ValueStore store, @Me IMessageIO channel,
@@ -1469,7 +1471,7 @@ public class StatCommands {
                 if (arg.equalsIgnoreCase("{nations}")) {
                     arg = list.getNations().size() + "";
                 } else if (arg.equalsIgnoreCase("{alliance}")) {
-                    arg = alliance.getName() + "";
+                    arg = alliance.getName();
                 } else {
                     boolean total = true;
                     if (arg.startsWith("avg:")) {
@@ -1705,12 +1707,13 @@ public class StatCommands {
     }
 
     @Command(aliases = {"WarCostByAllianceSheet", "WarCostByAASheet", "WarCostByAlliance", "WarCostByAA"},
-            desc = "War cost (for each alliance) broken down\n" +
-                    "Damage columns:\n" +
-                    "- net damage (unit, infrastructure, loot, consumption, total)\n" +
-                    "- losses (unit, infrastructure, consumption, total)\n" +
-                    "- damage inflicted (unit, infrastructure, consumption, total)\n" +
-                    "- net resources (money, gasoline, munitions, aluminum, steel)", viewable = true)
+            desc = """
+                    War cost (for each alliance) broken down
+                    Damage columns:
+                    - net damage (unit, infrastructure, loot, consumption, total)
+                    - losses (unit, infrastructure, consumption, total)
+                    - damage inflicted (unit, infrastructure, consumption, total)
+                    - net resources (money, gasoline, munitions, aluminum, steel)""", viewable = true)
     public static String WarCostByAllianceSheet(@Me IMessageIO channel, @Me @Default GuildDB guildDb,
                                          Set<DBNation> nations,
                                          @Timestamp long time,
@@ -1832,12 +1835,13 @@ public class StatCommands {
         return null;
     }
 
-    @Command(desc = "War cost (for each nation) broken down by war type\n" +
-            "The sheet is divided into groups for:\n" +
-            "- Raids: Attacking nations which do not fight back\n" +
-            "- Defenses: Attacked by a nation and fighting back\n" +
-            "- Offenses: Attacking a nation which fights back\n" +
-            "- Wars: Combination of defensive and offensive wars (not raids)", viewable = true)
+    @Command(desc = """
+            War cost (for each nation) broken down by war type
+            The sheet is divided into groups for:
+            - Raids: Attacking nations which do not fight back
+            - Defenses: Attacked by a nation and fighting back
+            - Offenses: Attacking a nation which fights back
+            - Wars: Combination of defensive and offensive wars (not raids)""", viewable = true)
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String WarCostSheet(@Me IMessageIO channel, @Me @Default GuildDB db, Set<NationOrAlliance> attackers, Set<NationOrAlliance> defenders, @Timestamp long time, @Default @Timestamp Long endTime,
                                @Switch("c") boolean excludeConsumption,

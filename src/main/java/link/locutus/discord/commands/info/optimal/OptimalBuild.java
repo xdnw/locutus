@@ -122,7 +122,7 @@ public class OptimalBuild extends Command {
 
     public String onCommand(IMessageIO io, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         if (me == null) {
-            return "Please use " + CM.register.cmd.toSlashMention() + "";
+            return "Please use " + CM.register.cmd.toSlashMention();
         }
         Integer days = null;
         if (args.size() >= 2 && MathMan.isInteger(args.get(0))) {
@@ -590,7 +590,7 @@ public class OptimalBuild extends Command {
         me.setMeta(NationMeta.INTERVIEW_OPTIMALBUILD, (byte) 1);
 
         if (flags.contains('p')) {
-            return title + "\n" + result.toString() + "";
+            return title + "\n" + result.toString();
         }
         io.create().embed(title, result.toString()).commandButton(command, emoji).send();
 //        DiscordUtil.createEmbedCommand(channel, title, result.toString(), emoji, command);

@@ -35,7 +35,7 @@ public class EditNationTask implements Callable<String> {
         return PW.withLogin(new Callable<String>() {
             @Override
             public String call() throws Exception {
-                String result = auth.readStringFromURL(PagePriority.NATION_EDIT, "" + Settings.PNW_URL() + "/nation/edit", Collections.emptyMap());
+                String result = auth.readStringFromURL(PagePriority.NATION_EDIT, Settings.PNW_URL() + "/nation/edit", Collections.emptyMap());
                 Document dom = Jsoup.parse(result);
 
                 String nattitle = dom.select("input[name=nattitle]").attr("value");
@@ -81,7 +81,7 @@ public class EditNationTask implements Callable<String> {
 
                 StringBuilder response = new StringBuilder();
 
-                result = auth.readStringFromURL(PagePriority.TOKEN, "" + Settings.PNW_URL() + "/nation/edit", post);
+                result = auth.readStringFromURL(PagePriority.TOKEN, Settings.PNW_URL() + "/nation/edit", post);
                 dom = Jsoup.parse(result);
                 for (Element element : dom.getElementsByClass("alert")) {
                     response.append('\n').append(element.text());

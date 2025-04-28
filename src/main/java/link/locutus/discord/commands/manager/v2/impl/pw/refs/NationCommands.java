@@ -849,6 +849,11 @@ public class NationCommands {
             public static final getId cmd = new getId();
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getInactiveTurns")
+        public static class getInactiveTurns extends CommandRef {
+            public static final getInactiveTurns cmd = new getInactiveTurns();
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getInfra")
         public static class getInfra extends CommandRef {
             public static final getInfra cmd = new getInfra();

@@ -401,10 +401,10 @@ public class PWGPTHandler {
             if (excludeTypes != null && excludeTypes.contains(type)) {
                 continue;
             }
-            if (excludeSources != null && excludeSources.contains(source)) {
+            if (excludeSources != null && excludeSources.contains(source.source_id)) {
                 continue;
             }
-            if (addSources != null && !addSources.contains(source)) {
+            if (addSources != null && !addSources.contains(source.source_id)) {
                 continue;
             }
             sources.add(source);
