@@ -29,14 +29,11 @@ import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.docs.v1.Docs;
 import com.google.api.services.docs.v1.DocsScopes;
-import com.google.api.services.docs.v1.model.Body;
-import com.google.api.services.docs.v1.model.Document;
 import com.google.api.services.docs.v1.model.ParagraphElement;
 import com.google.api.services.docs.v1.model.StructuralElement;
 import com.google.api.services.docs.v1.model.TableCell;
 import com.google.api.services.docs.v1.model.TableRow;
 import com.google.api.services.docs.v1.model.TextRun;
-import link.locutus.discord.Logg;
 import link.locutus.discord.util.MarkupUtil;
 
 import java.io.FileInputStream;

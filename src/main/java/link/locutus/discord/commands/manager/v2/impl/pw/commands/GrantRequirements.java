@@ -9,7 +9,6 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.MMRMatcher;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.util.MathMan;

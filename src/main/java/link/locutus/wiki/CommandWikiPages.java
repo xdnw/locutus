@@ -1,7 +1,6 @@
 package link.locutus.wiki;
 
 import link.locutus.discord.commands.manager.v2.binding.Key;
-import link.locutus.discord.commands.manager.v2.binding.MethodParser;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Autocomplete;
@@ -20,12 +19,8 @@ import link.locutus.discord.db.guild.GuildSettingCategory;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
-import net.dv8tion.jda.api.entities.channel.concrete.Category;
-import retrofit2.http.HEAD;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Array;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.*;

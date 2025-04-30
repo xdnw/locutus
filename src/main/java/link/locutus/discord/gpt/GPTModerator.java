@@ -1,31 +1,21 @@
 package link.locutus.discord.gpt;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.knuddels.jtokkit.api.ModelType;
 import com.theokanning.openai.moderation.ModerationCategories;
 import com.theokanning.openai.moderation.ModerationCategoryScores;
 import com.theokanning.openai.service.OpenAiService;
 import com.theokanning.openai.moderation.Moderation;
 import com.theokanning.openai.moderation.ModerationRequest;
-import link.locutus.discord.config.Settings;
-import link.locutus.discord.util.FileUtil;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.io.PagePriority;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.IOException;
 import java.lang.reflect.Field;
-import java.net.HttpURLConnection;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
 
 public class GPTModerator implements IModerator{
     private final OpenAiService service;

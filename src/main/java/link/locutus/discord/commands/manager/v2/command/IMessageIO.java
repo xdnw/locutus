@@ -9,7 +9,6 @@ import org.json.JSONObject;
 import javax.annotation.CheckReturnValue;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 public interface IMessageIO {
     IMessageBuilder getMessage();

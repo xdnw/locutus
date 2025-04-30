@@ -3,24 +3,16 @@ package link.locutus.discord.db.entities.menu;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
-import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.web.WebUtil;
-import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.*;
-
-import static link.locutus.discord.commands.manager.v2.impl.pw.commands.AppMenuCommands.USER_MENU_STATE;
 
 public class MenuManager {
     private final GuildDB db;

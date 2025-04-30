@@ -1,55 +1,21 @@
 package link.locutus.discord.web.commands.api;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
-import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
-import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
-import link.locutus.discord.commands.manager.v2.table.TimeFormat;
-import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
-import link.locutus.discord.commands.manager.v2.table.imp.*;
-import link.locutus.discord.commands.rankings.SphereGenerator;
-import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.NationDB;
-import link.locutus.discord.db.entities.*;
-import link.locutus.discord.db.entities.metric.AllianceMetric;
-import link.locutus.discord.db.entities.metric.AllianceMetricMode;
-import link.locutus.discord.db.entities.metric.OrbisMetric;
-import link.locutus.discord.pnw.NationList;
-import link.locutus.discord.pnw.NationOrAlliance;
-import link.locutus.discord.pnw.SimpleNationList;
-import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.io.PagePriority;
-import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.web.commands.ReturnType;
 import link.locutus.discord.web.commands.binding.value_types.*;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
 
-import java.io.IOException;
 import java.lang.reflect.Type;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.*;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 public class StatEndpoints {
     // EntityTable custom

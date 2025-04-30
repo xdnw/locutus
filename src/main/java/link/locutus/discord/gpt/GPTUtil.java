@@ -5,14 +5,11 @@ import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingRegistry;
 import com.knuddels.jtokkit.api.ModelType;
 import com.theokanning.openai.moderation.Moderation;
-import com.theokanning.openai.moderation.ModerationRequest;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.StringMan;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;

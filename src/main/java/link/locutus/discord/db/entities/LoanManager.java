@@ -11,7 +11,6 @@ import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;

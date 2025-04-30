@@ -2,7 +2,6 @@ package link.locutus.discord.commands.manager.v2.table.imp;
 
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
-import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.util.TimeUtil;

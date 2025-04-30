@@ -1,7 +1,6 @@
 package link.locutus.discord.util.scheduler;
 
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 @FunctionalInterface
 public interface ThrowingBiConsumer<T, V> extends BiConsumer<T, V> {

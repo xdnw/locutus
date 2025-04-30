@@ -2,7 +2,6 @@ package link.locutus.discord.db.entities.newsletter;
 
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.util.discord.DiscordUtil;
-import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 
 import java.util.Set;
 

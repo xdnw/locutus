@@ -3,7 +3,6 @@ package link.locutus.discord.db.entities;
 import com.google.common.hash.Hashing;
 import com.google.gson.JsonElement;
 import com.politicsandwar.graphql.model.Bankrec;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.apiv1.entities.BankRecord;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.config.Settings;

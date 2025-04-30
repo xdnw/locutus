@@ -2,7 +2,6 @@ package link.locutus.discord.db.entities.city;
 
 import com.politicsandwar.graphql.model.City;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;

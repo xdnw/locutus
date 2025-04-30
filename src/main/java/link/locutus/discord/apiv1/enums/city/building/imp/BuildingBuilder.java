@@ -1,17 +1,8 @@
 package link.locutus.discord.apiv1.enums.city.building.imp;
 
-import link.locutus.discord.apiv1.domains.Nation;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.building.*;
-import link.locutus.discord.apiv1.enums.city.project.Project;
-
-import java.util.EnumMap;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.function.IntFunction;
-import java.util.function.Predicate;
-import java.util.function.ToIntFunction;
 
 public class BuildingBuilder {
     private final String name;

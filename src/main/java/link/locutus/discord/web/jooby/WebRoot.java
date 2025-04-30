@@ -25,7 +25,6 @@ import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.web.jooby.handler.SseMessageOutput;
 import link.locutus.discord.web.jooby.handler.SseHandler2;
 import org.jetbrains.annotations.NotNull;
-import org.json.JSONObject;
 
 import java.io.File;
 import java.nio.file.Path;

@@ -6,7 +6,6 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import org.jooq.meta.derby.sys.Sys;
 
 import java.util.Locale;
 import java.util.Set;

@@ -1,6 +1,5 @@
 package link.locutus.discord.pnw.json;
 
-import com.google.gson.Gson;
 import link.locutus.discord.web.WebUtil;
 
 public class CityBuildRange {

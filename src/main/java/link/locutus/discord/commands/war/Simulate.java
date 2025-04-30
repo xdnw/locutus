@@ -8,16 +8,12 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.battle.sim.SimulatedWar;
 import link.locutus.discord.util.battle.sim.SimulatedWarNode;
 import link.locutus.discord.util.battle.sim.WarNation;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.ArrayList;
 import java.util.List;

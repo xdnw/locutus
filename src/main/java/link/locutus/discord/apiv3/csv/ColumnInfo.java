@@ -1,7 +1,5 @@
 package link.locutus.discord.apiv3.csv;
 
-import de.siegmar.fastcsv.reader.CsvRow;
-import link.locutus.discord.apiv3.csv.column.BooleanColumn;
 import link.locutus.discord.apiv3.csv.header.DataHeader;
 
 import java.io.DataInputStream;

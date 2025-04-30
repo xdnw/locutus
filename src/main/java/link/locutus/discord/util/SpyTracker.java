@@ -4,6 +4,7 @@ import com.politicsandwar.graphql.model.Bounty;
 import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationResponseProjection;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
@@ -213,9 +214,21 @@ public class SpyTracker {
     public synchronized long removeMatchingAttacks() {
         long cutoff = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(20);
         long requiredProximityMs = TimeUnit.SECONDS.toMillis(1);
-        AttackQuery query = Locutus.imp().getWarDb().queryAttacks().withAllWars().afterDate(cutoff);
 
-        Map<Integer, List<AbstractCursor>> attacksByNation = new HashMap<>();
+        Set<Integer> nationIds = new IntOpenHashSet();
+        for (SpyActivity activity : queue) {
+            nationIds.add(activity.nationId);
+        }
+        AttackQuery query = Locutus.imp().getWarDb().queryAttacks().withWarMap(f -> f.getWars(
+                Collections.emptySet(),
+                nationIds,
+                Collections.emptySet(),
+                Collections.emptySet(),
+                cutoff,
+                Long.MAX_VALUE
+        )).appendPreliminaryFilter(f -> f.getDate() >= cutoff);
+
+        Map<Integer, List<AbstractCursor>> attacksByNation = new Int2ObjectOpenHashMap<>();
 
         long[] latestAttackMs = {0};
         query.iterateAttacks((war, attack) -> {
@@ -225,6 +238,7 @@ public class SpyTracker {
             attacksByNation.computeIfAbsent(attack.getAttacker_id(), k -> new ObjectArrayList<>()).add(attack);
             attacksByNation.computeIfAbsent(attack.getDefender_id(), k -> new ObjectArrayList<>()).add(attack);
         });
+
         Iterator<SpyActivity> iter = queue.iterator();
         while (iter.hasNext()) {
             SpyActivity activity = iter.next();

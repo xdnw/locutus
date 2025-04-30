@@ -27,8 +27,6 @@ import net.dv8tion.jda.api.entities.User;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-import static link.locutus.discord.apiv1.enums.ResourceType.convertedTotal;
-
 public class BankPages {
 
 //    @Command

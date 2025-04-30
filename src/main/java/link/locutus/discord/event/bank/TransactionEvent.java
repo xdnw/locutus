@@ -3,7 +3,6 @@ package link.locutus.discord.event.bank;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.event.Event;
 import link.locutus.discord.event.guild.GuildScopeEvent;
 
 public class TransactionEvent extends GuildScopeEvent {

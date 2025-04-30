@@ -1,7 +1,5 @@
 package link.locutus.discord.commands.manager.v2.command;
 
-import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.util.math.ArrayUtil;
 
 import java.util.*;

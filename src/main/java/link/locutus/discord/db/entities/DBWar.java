@@ -23,7 +23,6 @@ import link.locutus.discord.apiv1.domains.subdomains.SWarContainer;
 
 import java.util.*;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 public class DBWar {

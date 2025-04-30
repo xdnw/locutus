@@ -13,7 +13,6 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.io.PagePriority;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.emoji.RichCustomEmoji;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.ArrayList;
 import java.util.List;

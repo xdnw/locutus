@@ -1,11 +1,9 @@
 package link.locutus.discord.web.builder;
 
-import gg.jte.Content;
 import gg.jte.generated.precompiled.JtemainGenerated;
 import gg.jte.generated.precompiled.data.JtealertGenerated;
 import gg.jte.generated.precompiled.data.JtespoilerGenerated;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
-import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 
 import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.ArrayList;

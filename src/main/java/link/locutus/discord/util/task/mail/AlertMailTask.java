@@ -1,39 +1,11 @@
 package link.locutus.discord.util.task.mail;
 
-import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
-import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.commands.war.Spyops;
-import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.event.mail.MailReceivedEvent;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
-import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
-import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.SpyCount;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
 import link.locutus.discord.util.offshore.Auth;
-import link.locutus.discord.util.task.MailRespondTask;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
-import net.dv8tion.jda.api.entities.User;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.function.BiConsumer;
 
 public class AlertMailTask extends CaughtRunnable implements BiConsumer<Mail, List<String>> {

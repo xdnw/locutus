@@ -53,7 +53,6 @@ import java.util.stream.Collectors;
 import static link.locutus.discord.apiv1.enums.ResourceType.subtract;
 import static link.locutus.discord.db.guild.GuildKey.REPORT_ALERT_CHANNEL;
 import static link.locutus.discord.util.MarkupUtil.sheetUrl;
-import static link.locutus.discord.apiv1.enums.ResourceType.add;
 import static link.locutus.discord.util.PW.getAllianceUrl;
 import static link.locutus.discord.util.PW.getName;
 import static link.locutus.discord.util.PW.getNationUrl;

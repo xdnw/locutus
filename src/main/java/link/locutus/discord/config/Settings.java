@@ -2,7 +2,6 @@ package link.locutus.discord.config;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.yaml.Config;
-import link.locutus.discord.network.ProxyHandler;
 
 import java.io.File;
 import java.util.*;

@@ -1,24 +1,15 @@
 package link.locutus.discord.web.commands;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
-import link.locutus.discord.web.WebUtil;
-import link.locutus.discord.web.jooby.JteUtil;
-import link.locutus.discord.web.jooby.WebRoot;
 import link.locutus.discord.web.jooby.handler.IMessageOutput;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.utils.data.DataObject;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 
 public class WebIO implements IMessageIO {
     private final IMessageOutput sse;

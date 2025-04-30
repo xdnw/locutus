@@ -12,7 +12,6 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.List;
 import java.util.Locale;

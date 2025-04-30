@@ -3,10 +3,7 @@ package link.locutus.discord.web.commands.binding.value_types;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 public class WebOptions {
     public @Nullable List<Integer> key_numeric;

@@ -3,7 +3,6 @@ package link.locutus.discord.db.handlers;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.SuccessType;
@@ -13,7 +12,6 @@ import link.locutus.discord.event.Event;
 import link.locutus.discord.event.nation.NationBlockadedEvent;
 import link.locutus.discord.event.nation.NationUnblockadedEvent;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.math.ArrayUtil;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;

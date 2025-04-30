@@ -8,7 +8,6 @@ import link.locutus.discord.apiv3.csv.header.NationHeader;
 import link.locutus.discord.apiv3.csv.header.NationHeaderReader;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.scheduler.TriConsumer;
 
 import java.util.List;
 import java.util.Map;

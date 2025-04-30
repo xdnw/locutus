@@ -6,9 +6,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.sheet.DriveFile;
-import link.locutus.discord.util.sheet.GoogleDoc;
 import net.dv8tion.jda.api.entities.Invite;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.unions.DefaultGuildChannelUnion;
 import net.dv8tion.jda.api.requests.restaction.InviteAction;
 

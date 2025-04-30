@@ -1,7 +1,5 @@
 package link.locutus.discord.commands.manager.v2.command.shrink;
 
-import link.locutus.discord.commands.manager.v2.command.CommandCallable;
-
 public class ShrinkHolder implements IShrink {
     private IShrink holder;
 

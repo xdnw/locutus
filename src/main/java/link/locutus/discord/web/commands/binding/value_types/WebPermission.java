@@ -1,7 +1,5 @@
 package link.locutus.discord.web.commands.binding.value_types;
 
-import java.util.List;
-
 public class WebPermission {
     public String message;
     public boolean success;

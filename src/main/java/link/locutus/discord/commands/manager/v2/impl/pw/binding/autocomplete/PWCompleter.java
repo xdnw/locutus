@@ -27,7 +27,6 @@ import link.locutus.discord.db.ReportManager;
 import link.locutus.discord.db.conflict.Conflict;
 import link.locutus.discord.db.conflict.ConflictManager;
 import link.locutus.discord.db.entities.*;
-import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.grant.AGrantTemplate;
 import link.locutus.discord.db.entities.grant.GrantTemplateManager;
 import link.locutus.discord.db.entities.metric.AllianceMetric;

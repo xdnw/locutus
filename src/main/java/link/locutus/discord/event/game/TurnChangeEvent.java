@@ -4,7 +4,6 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.event.Event;
 import link.locutus.discord.event.guild.GuildScopeEvent;
 import link.locutus.discord.pnw.AllianceList;
 

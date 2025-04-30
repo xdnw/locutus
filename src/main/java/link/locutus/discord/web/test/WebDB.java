@@ -1,15 +1,8 @@
 package link.locutus.discord.web.test;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.DBMain;
 import link.locutus.discord.db.DBMainV3;
-import link.locutus.discord.web.commands.binding.AuthBindings;
 import link.locutus.discord.web.commands.binding.DBAuthRecord;
-import org.jooq.DSLContext;
-import org.jooq.SQLDialect;
-import org.jooq.impl.DSL;
 
 import javax.annotation.Nullable;
 import java.sql.SQLException;

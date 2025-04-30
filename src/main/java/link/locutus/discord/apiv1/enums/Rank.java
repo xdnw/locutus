@@ -3,9 +3,6 @@ package link.locutus.discord.apiv1.enums;
 import com.politicsandwar.graphql.model.AlliancePositionEnum;
 import com.politicsandwar.graphql.model.DefaultAlliancePosition;
 
-import java.util.HashMap;
-import java.util.Map;
-
 public enum Rank {
     LEADER("leader", 5),
     HEIR("heir", 4),

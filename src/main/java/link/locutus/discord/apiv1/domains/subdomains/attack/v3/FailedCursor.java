@@ -1,15 +1,12 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
-import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.Research;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.db.entities.DBWar;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.function.Function;
 
 public abstract class FailedCursor extends AbstractCursor {
     @Override

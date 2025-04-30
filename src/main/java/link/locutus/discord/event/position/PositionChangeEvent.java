@@ -2,7 +2,6 @@ package link.locutus.discord.event.position;
 
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliancePosition;
-import link.locutus.discord.event.Event;
 import link.locutus.discord.event.guild.GuildScopeEvent;
 
 public class PositionChangeEvent extends GuildScopeEvent {

@@ -12,7 +12,6 @@ import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.ImageUtil;
 import link.locutus.discord.util.PW;
 import com.google.common.eventbus.Subscribe;
-import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.io.IOException;

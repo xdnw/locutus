@@ -6,9 +6,7 @@ import link.locutus.discord.db.entities.DBNation;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class TurnTierGraphData extends TierGraphData {
     public void update(Set<DBNation> nations) {

@@ -1,12 +1,10 @@
 package link.locutus.discord.event.trade;
 
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.TradeSubscription;
 import link.locutus.discord.event.Event;
 
 import java.util.List;
-import java.util.Map;
 
 public class BulkTradeSubscriptionEvent extends Event {
     private final List<TradeSubscription> subscriptions;

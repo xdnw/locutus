@@ -1,9 +1,7 @@
 package link.locutus.discord.config.yaml.file;
 
-import it.unimi.dsi.fastutil.io.BinIO;
 import it.unimi.dsi.fastutil.io.FastBufferedInputStream;
 import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
-import link.locutus.discord.Logg;
 import link.locutus.discord.config.yaml.Configuration;
 import link.locutus.discord.config.yaml.InvalidConfigurationException;
 import link.locutus.discord.config.yaml.MemoryConfiguration;

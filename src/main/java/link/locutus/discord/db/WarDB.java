@@ -64,10 +64,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
+import java.util.function.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -2509,35 +2506,86 @@ public class WarDB extends DBMainV2 {
         nations.addAll(coal1Nations);
         nations.addAll(coal2Nations);
 
+        Predicate<DBWar> datePredicate;
+        if (start <= 0 && end >= Long.MAX_VALUE) {
+            datePredicate = f -> true;
+        } else if (start <= 0) {
+            datePredicate = f -> f.getDate() < end;
+        } else if (end >= Long.MAX_VALUE) {
+            datePredicate = f -> f.getDate() > start;
+        } else {
+            datePredicate = f -> f.getDate() > start && f.getDate() < end;
+        }
+
         Predicate<DBWar> isAllowed;
         if (coal1Alliances.isEmpty() && coal1Nations.isEmpty()) {
+            Predicate<DBWar> testParticipant;
+            if (coal2Alliances.isEmpty()) {
+                testParticipant = f -> coal2Nations.contains(f.getAttacker_id()) || coal2Nations.contains(f.getDefender_id());
+            } else if (coal2Nations.isEmpty()) {
+                testParticipant = f -> coal2Alliances.contains(f.getAttacker_aa()) || coal2Alliances.contains(f.getDefender_aa());
+            } else {
+                testParticipant = f -> coal2Alliances.contains(f.getAttacker_aa()) || coal2Alliances.contains(f.getDefender_aa()) || coal2Nations.contains(f.getAttacker_id()) || coal2Nations.contains(f.getDefender_id());
+            }
             isAllowed = new Predicate<DBWar>() {
                 @Override
                 public boolean test(DBWar war) {
-                    if (war.getDate() < start || war.getDate() > end) return false;
-                    return coal2Alliances.contains(war.getAttacker_aa()) || coal2Nations.contains(war.getAttacker_id()) || coal2Alliances.contains(war.getDefender_aa()) || coal2Nations.contains(war.getDefender_id());
+                    if (!datePredicate.test(war)) return false;
+                    return testParticipant.test(war);
                 }
             };
         } else if (coal2Alliances.isEmpty() && coal2Nations.isEmpty()) {
+            Predicate<DBWar> testParticipant;
+            if (coal1Alliances.isEmpty()) {
+                testParticipant = f -> coal1Nations.contains(f.getAttacker_id()) || coal1Nations.contains(f.getDefender_id());
+            } else if (coal1Nations.isEmpty()) {
+                testParticipant = f -> coal1Alliances.contains(f.getAttacker_aa()) || coal1Alliances.contains(f.getDefender_aa());
+            } else {
+                testParticipant = f -> coal1Alliances.contains(f.getAttacker_aa()) || coal1Alliances.contains(f.getDefender_aa()) || coal1Nations.contains(f.getAttacker_id()) || coal1Nations.contains(f.getDefender_id());
+            }
             isAllowed = new Predicate<DBWar>() {
                 @Override
                 public boolean test(DBWar war) {
-                    if (war.getDate() < start || war.getDate() > end) return false;
-                    return coal1Alliances.contains(war.getAttacker_aa()) || coal1Nations.contains(war.getAttacker_id()) || coal1Alliances.contains(war.getDefender_aa()) || coal1Nations.contains(war.getDefender_id());
+                    if (!datePredicate.test(war)) return false;
+                    return testParticipant.test(war);
                 }
             };
         } else {
             isAllowed = new Predicate<DBWar>() {
+                final Predicate<DBWar> isAttackerCoal1 = createEntityPredicate(coal1Alliances, coal1Nations, true, false);
+                final Predicate<DBWar> isDefenderCoal1 = createEntityPredicate(coal1Alliances, coal1Nations, false, false);
+                final Predicate<DBWar> isAttackerCoal2 = createEntityPredicate(coal2Alliances, coal2Nations, true, false);
+                final Predicate<DBWar> isDefenderCoal2 = createEntityPredicate(coal2Alliances, coal2Nations, false, false);
+
                 @Override
                 public boolean test(DBWar war) {
-                    if (war.getDate() < start || war.getDate() > end) return false;
-                    return ((coal1Alliances.contains(war.getAttacker_aa()) || coal1Nations.contains(war.getAttacker_id())) && (coal2Alliances.contains(war.getDefender_aa()) || coal2Nations.contains(war.getDefender_id()))) ||
-                            ((coal1Alliances.contains(war.getDefender_aa()) || coal1Nations.contains(war.getDefender_id())) && (coal2Alliances.contains(war.getAttacker_aa()) || coal2Nations.contains(war.getAttacker_id())));
+                    if (!datePredicate.test(war)) return false;
+                    return (isAttackerCoal1.test(war) && isDefenderCoal2.test(war)) ||
+                            (isDefenderCoal1.test(war) && isAttackerCoal2.test(war));
                 }
             };
         }
 
         return getWarsForNationOrAlliance(nations.isEmpty() ? null : nations::contains, alliances.isEmpty() ? null : alliances::contains, isAllowed);
+    }
+
+    private Predicate<DBWar> createEntityPredicate(Collection<Integer> alliances, Collection<Integer> nations,
+                                                   boolean isAttacker, boolean defaultResult) {
+        ToIntFunction<DBWar> getNation = isAttacker ? DBWar::getAttacker_id : DBWar::getDefender_id;
+        ToIntFunction<DBWar> getAlliance = isAttacker ? DBWar::getAttacker_aa : DBWar::getDefender_aa;
+        if (alliances.isEmpty() && nations.isEmpty()) {
+            return war -> defaultResult;
+        } else if (alliances.isEmpty()) {
+            return war -> nations.contains(getNation.applyAsInt(war));
+        } else if (nations.isEmpty()) {
+            return war -> alliances.contains(getAlliance.applyAsInt(war));
+        } else {
+            return war -> {
+                if (alliances.contains(getAlliance.applyAsInt(war))) return true;
+                if (nations.contains(getNation.applyAsInt(war))) return true;
+                return false;
+            };
+        }
     }
 //
 //    private String generateWarQuery(String prefix, Collection<Integer> coal1Alliances, Collection<Integer> coal1Nations, Collection<Integer> coal2Alliances, Collection<Integer> coal2Nations, long start, long end, boolean union) {
@@ -3267,7 +3315,7 @@ public class WarDB extends DBMainV2 {
     }
 
     public void iterateAttacks(long cuttoffMs, AttackType type, BiConsumer<DBWar, AbstractCursor> forEachAttack) {
-        queryAttacks().withAllWars().afterDate(cuttoffMs).withType(type).iterateAttacks(forEachAttack);
+        queryAttacks().withWars(cuttoffMs, Long.MAX_VALUE).appendPreliminaryFilter(f -> f.getDate() >= cuttoffMs).withType(type).iterateAttacks(forEachAttack);
     }
 
     public void iterateAttacksByWars(Collection<DBWar> wars, BiConsumer<DBWar, AbstractCursor> forEachAttack) {

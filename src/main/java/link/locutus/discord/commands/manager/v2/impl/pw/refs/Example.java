@@ -1,8 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.refs;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 
-import java.util.Map;
-
 public class Example {
     private final CommandRef ref;
     private final String label;

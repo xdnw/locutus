@@ -2,7 +2,6 @@ package link.locutus.discord.commands.manager.v2.table.imp;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.db.TradeDB;

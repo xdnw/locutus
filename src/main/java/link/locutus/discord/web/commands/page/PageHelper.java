@@ -2,14 +2,12 @@ package link.locutus.discord.web.commands.page;
 
 import io.javalin.http.Context;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
-import link.locutus.discord.util.MarkupUtil;
 import gg.jte.generated.precompiled.auth.JteredirectGenerated;
 import gg.jte.generated.precompiled.auth.JteredirectjsGenerated;
 import link.locutus.discord.web.commands.binding.value_types.WebSuccess;
 
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.Map;
 
 public class PageHelper {
     public static String redirect(WebStore ws, Context context, String url, boolean useJs) {

@@ -97,10 +97,6 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static link.locutus.discord.web.WebUtil.createInput;
-import static link.locutus.discord.web.WebUtil.generateSearchableDropdown;
-import static link.locutus.discord.web.WebUtil.wrapLabel;
-
 public class WebPWBindings extends WebBindingHelper {
 
 

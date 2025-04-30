@@ -1,10 +1,8 @@
 package link.locutus.discord.db.entities.metric;
 
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv3.csv.header.CityHeader;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.header.CityHeaderReader;
-import link.locutus.discord.apiv3.csv.header.NationHeader;
 import link.locutus.discord.apiv3.csv.header.NationHeaderReader;
 
 import java.util.LinkedHashMap;

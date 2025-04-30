@@ -4,7 +4,6 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv3.csv.column.*;
 import link.locutus.discord.apiv3.csv.file.Dictionary;
 import link.locutus.discord.db.entities.DBCity;
-import link.locutus.discord.db.entities.city.SimpleDBCity;
 import link.locutus.discord.util.TimeUtil;
 
 import java.text.ParseException;

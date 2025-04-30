@@ -7,8 +7,6 @@ import jakarta.servlet.ServletOutputStream;
 import java.io.IOException;
 import java.util.Map;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
 public class SseMessageOutput implements IMessageOutput {
     public final Context ctx;
 

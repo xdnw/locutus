@@ -1,11 +1,9 @@
 package link.locutus.discord.commands.manager.v2.command;
 
-import com.google.gson.JsonObject;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
-import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.StringMan;
 
 import java.io.File;
@@ -14,11 +12,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.file.Files;
-import java.nio.file.OpenOption;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 public interface CommandCallable {
     CommandCallable clone(CommandCallable parent, List<String> aliases);

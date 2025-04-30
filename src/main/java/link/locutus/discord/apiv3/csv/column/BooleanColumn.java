@@ -3,7 +3,6 @@ package link.locutus.discord.apiv3.csv.column;
 import link.locutus.discord.apiv3.csv.ColumnInfo;
 import link.locutus.discord.apiv3.csv.header.DataHeader;
 
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.function.BiConsumer;

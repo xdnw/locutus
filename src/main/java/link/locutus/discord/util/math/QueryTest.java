@@ -1,14 +1,5 @@
 package link.locutus.discord.util.math;
 
-import link.locutus.discord.util.StringMan;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-
 public class QueryTest<T> {
 
 //    private record ParseResult(List<Predicate<T>> predicates, List<T> numbers, AtomicBoolean hadNonFilter) {

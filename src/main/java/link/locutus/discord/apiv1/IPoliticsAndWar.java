@@ -2,22 +2,6 @@ package link.locutus.discord.apiv1;
 
 import link.locutus.discord.apiv1.domains.*;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.domains.AllCities;
-import link.locutus.discord.apiv1.domains.Alliance;
-import link.locutus.discord.apiv1.domains.AllianceMembers;
-import link.locutus.discord.apiv1.domains.Alliances;
-import link.locutus.discord.apiv1.domains.Applicants;
-import link.locutus.discord.apiv1.domains.Bank;
-import link.locutus.discord.apiv1.domains.City;
-import link.locutus.discord.apiv1.domains.Members;
-import link.locutus.discord.apiv1.domains.Nation;
-import link.locutus.discord.apiv1.domains.NationMilitary;
-import link.locutus.discord.apiv1.domains.Nations;
-import link.locutus.discord.apiv1.domains.TradeHistory;
-import link.locutus.discord.apiv1.domains.TradePrice;
-import link.locutus.discord.apiv1.domains.War;
-import link.locutus.discord.apiv1.domains.WarAttacks;
-import link.locutus.discord.apiv1.domains.Wars;
 
 import java.io.IOException;
 

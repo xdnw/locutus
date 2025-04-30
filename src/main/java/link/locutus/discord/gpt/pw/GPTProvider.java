@@ -9,7 +9,6 @@ import net.dv8tion.jda.api.entities.User;
 import java.io.Closeable;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 
 public abstract class GPTProvider implements Closeable {
     private final IText2Text text2Text;

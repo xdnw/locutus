@@ -72,8 +72,6 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static graphql.Assert.assertTrue;
-
 public class DiscordUtil {
     public static String getSupportServer() {
         return "https://discord.gg/" + Settings.INSTANCE.SUPPORT_INVITE;

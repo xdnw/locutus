@@ -49,10 +49,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import static link.locutus.discord.commands.war.WarCatReason.getActiveReason;
 import static link.locutus.discord.commands.war.WarCatReason.*;
 import static link.locutus.discord.commands.war.WarRoomUtil.getRangeFromCategory;
-import static link.locutus.discord.util.MathMan.max;
 
 public class WarCategory {
     private final GuildDB db;

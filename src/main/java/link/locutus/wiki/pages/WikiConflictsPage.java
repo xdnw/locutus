@@ -3,10 +3,6 @@ package link.locutus.wiki.pages;
 import link.locutus.wiki.BotWikiGen;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MarkupUtil;
 
 public class WikiConflictsPage extends BotWikiGen {
     public WikiConflictsPage(CommandManager2 manager) {

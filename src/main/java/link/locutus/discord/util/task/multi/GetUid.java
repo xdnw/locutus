@@ -1,7 +1,5 @@
 package link.locutus.discord.util.task.multi;
 
-import link.locutus.discord.Locutus;
-import link.locutus.discord.Logg;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.FileUtil;
@@ -10,7 +8,6 @@ import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.update.NationUpdateProcessor;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
-import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.math.BigInteger;

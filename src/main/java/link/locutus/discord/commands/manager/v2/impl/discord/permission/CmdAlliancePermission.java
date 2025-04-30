@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.impl.discord.permission;
 
-import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 

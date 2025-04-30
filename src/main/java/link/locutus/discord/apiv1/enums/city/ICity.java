@@ -1,6 +1,5 @@
 package link.locutus.discord.apiv1.enums.city;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.city.building.Building;

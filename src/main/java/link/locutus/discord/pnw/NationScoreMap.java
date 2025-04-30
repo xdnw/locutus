@@ -3,13 +3,11 @@ package link.locutus.discord.pnw;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.scheduler.KeyValue;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;

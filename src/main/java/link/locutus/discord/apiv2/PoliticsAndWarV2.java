@@ -1,6 +1,5 @@
 package link.locutus.discord.apiv2;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
@@ -16,7 +15,6 @@ import link.locutus.discord.apiv1.entities.ApiRecord;
 import link.locutus.discord.apiv1.entities.BankRecord;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.queries.*;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.FileUtil;

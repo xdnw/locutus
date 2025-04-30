@@ -2,7 +2,6 @@ package link.locutus.discord.event;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
-import link.locutus.discord.util.AlertUtil;
 
 public class Event {
     private long time;

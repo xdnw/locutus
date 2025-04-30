@@ -1,8 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.discord.permission;
 
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.guild.GuildSetting;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

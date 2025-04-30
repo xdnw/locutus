@@ -1,9 +1,7 @@
 package link.locutus.discord.network;
 
-import link.locutus.discord.config.Settings;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
 
 import java.io.IOException;
 import java.net.*;

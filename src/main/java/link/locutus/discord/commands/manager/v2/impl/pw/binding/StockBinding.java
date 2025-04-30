@@ -1,7 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 
 import com.google.common.reflect.TypeToken;
-import com.google.gson.Gson;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;

@@ -19,7 +19,6 @@ import com.pusher.client.connection.ConnectionState;
 import com.pusher.client.connection.ConnectionStateChange;
 import com.pusher.client.util.HttpChannelAuthorizer;
 import com.pusher.client.util.HttpUserAuthenticator;
-import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.AlertUtil;

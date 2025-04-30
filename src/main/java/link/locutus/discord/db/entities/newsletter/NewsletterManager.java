@@ -1,6 +1,5 @@
 package link.locutus.discord.db.entities.newsletter;
 
-import it.unimi.dsi.fastutil.ints.IntOpenCustomHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.db.GuildDB;

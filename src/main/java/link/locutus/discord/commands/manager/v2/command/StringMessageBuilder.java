@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.command;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Guild;

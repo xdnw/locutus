@@ -10,7 +10,6 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 
-import java.io.IOException;
 import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;

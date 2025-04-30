@@ -8,9 +8,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationList;
-import link.locutus.discord.util.PW;
 
-import java.util.Collection;
 import java.util.Locale;
 import java.util.Set;
 

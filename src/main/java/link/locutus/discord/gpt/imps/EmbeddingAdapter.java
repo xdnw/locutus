@@ -3,14 +3,12 @@ package link.locutus.discord.gpt.imps;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.GptHandler;
-import link.locutus.discord.gpt.IEmbeddingDatabase;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 
 public abstract class EmbeddingAdapter<T> implements IEmbeddingAdapter<T> {
 

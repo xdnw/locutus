@@ -4,7 +4,6 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
-import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
@@ -12,7 +11,6 @@ import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.web.commands.binding.value_types.GraphType;
 
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 

@@ -3,8 +3,6 @@ package link.locutus.discord.config.yaml;
 import link.locutus.discord.Logg;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.config.yaml.file.YamlConfiguration;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;

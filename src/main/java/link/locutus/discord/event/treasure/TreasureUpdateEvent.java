@@ -1,9 +1,7 @@
 package link.locutus.discord.event.treasure;
 
-import link.locutus.discord.Locutus;
 import link.locutus.discord.db.entities.DBTreasure;
 import link.locutus.discord.event.Event;
-import link.locutus.discord.event.guild.GuildScopeEvent;
 
 public class TreasureUpdateEvent extends Event {
     private final DBTreasure previous;

@@ -1,6 +1,5 @@
 package link.locutus.discord.gpt.pw;
 
-import com.google.gson.Gson;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.wiki.game.PWWikiUtil;
@@ -10,7 +9,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;

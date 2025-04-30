@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.compliance;
 
-import com.google.gson.JsonObject;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.Command;

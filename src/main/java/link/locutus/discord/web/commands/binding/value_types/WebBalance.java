@@ -1,6 +1,5 @@
 package link.locutus.discord.web.commands.binding.value_types;
 
-import link.locutus.discord.apiv1.enums.DepositType;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.Map;

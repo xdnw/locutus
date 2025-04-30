@@ -1,6 +1,5 @@
 package link.locutus.discord.web.commands.api;
 
-import com.google.gson.JsonArray;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -13,7 +12,6 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.web.commands.ReturnType;
 import link.locutus.discord.web.commands.binding.value_types.GraphType;
-import link.locutus.discord.web.commands.binding.value_types.TradePriceByDayJson;
 import link.locutus.discord.web.commands.binding.value_types.WebGraph;
 
 import java.util.*;

@@ -18,14 +18,11 @@ import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
-import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
-import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.gpt.ModerationResult;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.util.MarkupUtil;
-import net.dv8tion.jda.api.entities.User;
 
 import java.io.IOException;
 import java.lang.reflect.Method;

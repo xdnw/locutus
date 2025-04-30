@@ -3,7 +3,6 @@ package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.util.PW;
 
 import java.util.Map;
 

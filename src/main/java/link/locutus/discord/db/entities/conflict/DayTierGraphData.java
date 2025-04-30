@@ -1,7 +1,6 @@
 package link.locutus.discord.db.entities.conflict;
 
 import it.unimi.dsi.fastutil.bytes.Byte2IntOpenHashMap;
-import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.db.entities.DBNation;
 

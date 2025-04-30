@@ -12,7 +12,6 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.*;
-import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.metric.OrbisMetric;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;

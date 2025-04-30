@@ -9,8 +9,6 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.PlaceholderTy
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CustomSheet;
-import link.locutus.discord.db.entities.MMRDouble;
-import link.locutus.discord.db.entities.MMRMatcher;
 import link.locutus.discord.db.entities.SelectionAlias;
 import link.locutus.discord.db.entities.SheetTemplate;
 import link.locutus.discord.db.guild.SheetKey;
@@ -20,7 +18,6 @@ import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 

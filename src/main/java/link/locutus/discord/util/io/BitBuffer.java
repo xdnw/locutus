@@ -1,6 +1,5 @@
 package link.locutus.discord.util.io;
 
-import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 
 public class BitBuffer {

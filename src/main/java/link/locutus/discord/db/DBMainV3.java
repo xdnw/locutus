@@ -1,7 +1,6 @@
 package link.locutus.discord.db;
 
 
-import com.ptsmods.mysqlw.Database;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.AlertUtil;
 import org.jetbrains.annotations.NotNull;
@@ -22,10 +21,7 @@ import org.jooq.impl.DSL;
 
 import java.io.Closeable;
 import java.io.File;
-import java.io.IOException;
 import java.sql.*;
-import java.util.Collection;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;

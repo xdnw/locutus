@@ -1,9 +1,5 @@
 package link.locutus.discord.gpt.imps;
 
-import com.theokanning.openai.completion.chat.ChatCompletionChoice;
-import com.theokanning.openai.completion.chat.ChatCompletionRequest;
-import com.theokanning.openai.completion.chat.ChatCompletionResult;
-import com.theokanning.openai.completion.chat.ChatMessage;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.gpt.ISummarizer;
 

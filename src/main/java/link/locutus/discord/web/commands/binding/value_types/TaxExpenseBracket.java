@@ -1,6 +1,5 @@
 package link.locutus.discord.web.commands.binding.value_types;
 
-import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.WebTaxBracket;
 
 import java.util.List;

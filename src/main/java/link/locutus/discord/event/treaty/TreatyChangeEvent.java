@@ -1,9 +1,7 @@
 package link.locutus.discord.event.treaty;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Treaty;
-import link.locutus.discord.event.Event;
 import link.locutus.discord.event.guild.GuildScopeEvent;
 
 public class TreatyChangeEvent extends GuildScopeEvent {

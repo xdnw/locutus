@@ -6,7 +6,6 @@ import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 public class PoliticsAndWarBuilder {
 

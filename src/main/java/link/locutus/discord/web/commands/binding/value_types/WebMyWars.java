@@ -1,7 +1,6 @@
 package link.locutus.discord.web.commands.binding.value_types;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;

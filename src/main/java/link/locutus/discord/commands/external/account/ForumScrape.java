@@ -14,7 +14,6 @@ import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.io.PagePriority;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 

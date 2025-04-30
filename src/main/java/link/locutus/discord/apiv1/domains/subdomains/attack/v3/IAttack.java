@@ -8,13 +8,11 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.util.PW;
 import link.locutus.discord.util.update.WarUpdateProcessor;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 
 public interface IAttack {
     @Command

@@ -9,9 +9,6 @@ import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholder
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.gpt.GPTUtil;
-import link.locutus.discord.gpt.GptHandler;
-import link.locutus.discord.gpt.ModerationResult;
-import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;

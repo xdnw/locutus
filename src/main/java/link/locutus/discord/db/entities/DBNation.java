@@ -42,7 +42,6 @@ import link.locutus.discord.db.entities.nation.DBNationSetter;
 import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
-import link.locutus.discord.event.nation.NationRegisterEvent;
 import link.locutus.discord.event.nation.*;
 import link.locutus.discord.pnw.*;
 import link.locutus.discord.user.Roles;

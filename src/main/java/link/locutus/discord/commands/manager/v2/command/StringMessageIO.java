@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.command;
 
-import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 

@@ -4,7 +4,6 @@ import link.locutus.discord.apiv3.csv.ColumnInfo;
 import link.locutus.discord.apiv3.csv.header.DataHeader;
 import link.locutus.discord.db.entities.DBCity;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.function.Function;
 

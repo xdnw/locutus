@@ -1,7 +1,5 @@
 package link.locutus.discord.util.scheduler;
 
-import java.util.function.Consumer;
-
 @FunctionalInterface
 public interface ThrowingTriConsumer<A, B, C> extends TriConsumer<A, B, C> {
 

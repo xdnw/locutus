@@ -1,14 +1,11 @@
 package link.locutus.discord.apiv3.csv.file;
 
 import it.unimi.dsi.fastutil.io.FastBufferedInputStream;
-import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import link.locutus.discord.util.IOUtil;
-import link.locutus.discord.util.StringMan;
 import net.jpountz.lz4.LZ4BlockInputStream;
 import net.jpountz.lz4.LZ4BlockOutputStream;
 
 import java.io.*;
-import java.util.*;
 
 public class Dictionary {
     private final File file;

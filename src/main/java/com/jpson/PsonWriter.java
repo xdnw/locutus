@@ -1,18 +1,11 @@
 package com.jpson;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
 
 import com.jpson.internal.*;
-import link.locutus.discord.config.Settings;
-import link.locutus.discord.web.jooby.AwsManager;
-import link.locutus.discord.web.jooby.JteUtil;
 
 /**
  * A low-level PSON writer.

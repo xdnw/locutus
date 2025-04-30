@@ -1,20 +1,12 @@
 package link.locutus.discord.gpt;
 
-import com.theokanning.openai.embedding.Embedding;
-import com.theokanning.openai.embedding.EmbeddingRequest;
-import com.theokanning.openai.embedding.EmbeddingResult;
-import link.locutus.discord.db.AEmbeddingDatabase;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
 import link.locutus.discord.gpt.imps.DocumentChunk;
 import link.locutus.discord.gpt.imps.EmbeddingInfo;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.scheduler.TriConsumer;
 
-import javax.annotation.Nullable;
-import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;

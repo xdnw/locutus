@@ -27,7 +27,6 @@ import link.locutus.discord.db.entities.conflict.ConflictMetric;
 import link.locutus.discord.db.handlers.AttackQuery;
 import link.locutus.discord.event.game.TurnChangeEvent;
 import link.locutus.discord.event.war.AttackEvent;
-import link.locutus.discord.event.war.WarCreateEvent;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;

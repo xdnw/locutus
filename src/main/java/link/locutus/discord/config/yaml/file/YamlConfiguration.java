@@ -1,6 +1,5 @@
 package link.locutus.discord.config.yaml.file;
 
-import link.locutus.discord.Logg;
 import link.locutus.discord.config.yaml.Configuration;
 import link.locutus.discord.config.yaml.ConfigurationSection;
 import link.locutus.discord.config.yaml.InvalidConfigurationException;

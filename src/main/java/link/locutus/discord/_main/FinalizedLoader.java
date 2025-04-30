@@ -11,8 +11,6 @@ import link.locutus.discord.util.trade.TradeManager;
 import net.dv8tion.jda.api.JDA;
 
 import java.sql.SQLException;
-import java.util.concurrent.Future;
-import java.util.function.Supplier;
 
 public class FinalizedLoader implements ILoader {
     private volatile BaseballDB baseBallDB;

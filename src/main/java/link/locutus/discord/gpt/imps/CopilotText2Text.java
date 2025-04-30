@@ -3,7 +3,6 @@ package link.locutus.discord.gpt.imps;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.knuddels.jtokkit.api.ModelType;
 import link.locutus.discord.gpt.GPTUtil;
-import link.locutus.discord.gpt.ISummarizer;
 import link.locutus.discord.gpt.copilot.CopilotApi;
 import link.locutus.discord.gpt.copilot.CopilotAuthentication;
 import link.locutus.discord.gpt.copilot.CopilotConfiguration;

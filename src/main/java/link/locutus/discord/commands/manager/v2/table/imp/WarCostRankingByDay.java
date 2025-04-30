@@ -2,14 +2,10 @@ package link.locutus.discord.commands.manager.v2.table.imp;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import link.locutus.discord.apiv1.enums.*;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
 import link.locutus.discord.db.entities.AttackCost;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.WarParser;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.pnw.NationOrAlliance;

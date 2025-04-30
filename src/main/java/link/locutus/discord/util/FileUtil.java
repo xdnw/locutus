@@ -1,50 +1,36 @@
 package link.locutus.discord.util;
 
-import link.locutus.discord.Logg;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.network.IProxy;
 import link.locutus.discord.network.PassthroughProxy;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.io.PageRequestQueue;
-import link.locutus.discord.util.offshore.Auth;
 import org.eclipse.jetty.util.UrlEncoded;
 import org.jsoup.Connection;
-import org.jsoup.Jsoup;
-import org.springframework.web.client.HttpClientErrorException;
+
 import java.nio.channels.Channels;
 
-import javax.net.ssl.HttpsURLConnection;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.CookieManager;
 import java.net.HttpCookie;
 import java.net.HttpURLConnection;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
-import java.net.URLDecoder;
-import java.net.URLEncoder;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.StringJoiner;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 

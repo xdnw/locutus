@@ -1,15 +1,10 @@
 package link.locutus.discord.util.search;
 
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Logg;
-import link.locutus.discord.apiv1.enums.city.JavaCity;
 import it.unimi.dsi.fastutil.PriorityQueue;
-import it.unimi.dsi.fastutil.objects.ObjectArrayFIFOQueue;
 import it.unimi.dsi.fastutil.objects.ObjectHeapPriorityQueue;
-import link.locutus.discord.db.entities.CityNode;
 import link.locutus.discord.util.MathMan;
 
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.*;
 

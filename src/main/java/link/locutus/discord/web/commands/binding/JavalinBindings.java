@@ -1,20 +1,14 @@
 package link.locutus.discord.web.commands.binding;
 
 import com.google.common.reflect.TypeToken;
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import io.javalin.http.Context;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.web.WebUtil;
-import net.dv8tion.jda.api.entities.Guild;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.MutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.List;
 import java.util.Map;

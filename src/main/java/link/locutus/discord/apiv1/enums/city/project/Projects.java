@@ -1,6 +1,5 @@
 package link.locutus.discord.apiv1.enums.city.project;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.apiv1.enums.ResourceType;

@@ -12,7 +12,6 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
-import link.locutus.discord.commands.manager.v2.table.TimeDualNumericTable;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
 import link.locutus.discord.db.entities.AttackCost;
@@ -25,7 +24,6 @@ import link.locutus.discord.web.commands.binding.value_types.GraphType;
 
 import java.util.*;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 
 public class WarCostByDay extends SimpleTable<AttackCost> {
     private final long min;

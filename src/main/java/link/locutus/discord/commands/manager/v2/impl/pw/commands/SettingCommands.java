@@ -20,7 +20,6 @@ import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
-import org.springframework.context.annotation.Role;
 
 import java.util.LinkedHashMap;
 import java.util.List;

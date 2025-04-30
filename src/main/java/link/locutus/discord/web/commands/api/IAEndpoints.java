@@ -13,7 +13,6 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.db.entities.announce.AnnounceType;
 import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.db.guild.GuildKey;

@@ -21,9 +21,6 @@ import net.dv8tion.jda.api.entities.User;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static link.locutus.discord.apiv1.enums.ResourceType.convertedTotal;
-import static link.locutus.discord.apiv1.enums.ResourceType.toString;
-
 public class DepositsSheet extends Command {
     public DepositsSheet() {
         super("DepositsSheet", "DepositSheet", CommandCategory.ECON, CommandCategory.GAME_INFO_AND_TOOLS, CommandCategory.GOV);

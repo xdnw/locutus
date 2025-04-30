@@ -1,9 +1,7 @@
 package link.locutus.discord.event.nation;
 
-import link.locutus.discord.Locutus;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.event.Event;
 import link.locutus.discord.event.guild.GuildScopeEvent;
 
 public class NationChangeEvent2 extends GuildScopeEvent {

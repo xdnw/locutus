@@ -7,8 +7,6 @@ import ai.djl.repository.zoo.Criteria;
 import ai.djl.repository.zoo.ModelNotFoundException;
 import ai.djl.repository.zoo.ZooModel;
 import ai.djl.translate.TranslateException;
-import ai.djl.util.Platform;
-import link.locutus.discord.Logg;
 import link.locutus.discord.db.AEmbeddingDatabase;
 import link.locutus.discord.gpt.pw.GptDatabase;
 

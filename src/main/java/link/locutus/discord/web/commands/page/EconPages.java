@@ -1,6 +1,5 @@
 package link.locutus.discord.web.commands.page;
 
-import gg.jte.generated.precompiled.auth.JtepickerGenerated;
 import gg.jte.generated.precompiled.guild.econ.JtetaxexpensesGenerated;
 import gg.jte.generated.precompiled.guild.econ.JtetaxexpensesbyturnGenerated;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
@@ -12,7 +11,6 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TaxDeposit;
 import link.locutus.discord.db.entities.TaxBracket;
@@ -20,7 +18,6 @@ import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.entities.TaxRecordCategorizer2;

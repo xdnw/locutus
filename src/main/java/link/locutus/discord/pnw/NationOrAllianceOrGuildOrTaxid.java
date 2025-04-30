@@ -8,11 +8,8 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.PW;
 import link.locutus.discord.util.discord.DiscordUtil;
-import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Role;
 
 import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.HashSet;

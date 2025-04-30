@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.binding;
 
-import com.google.gson.JsonObject;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;

@@ -4,9 +4,6 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.scheduler.TriFunction;
 
-import java.util.Arrays;
-import java.util.function.BiFunction;
-
 public enum WarCostStat {
     WAR_VALUE,
     SOLDIER(MilitaryUnit.SOLDIER),

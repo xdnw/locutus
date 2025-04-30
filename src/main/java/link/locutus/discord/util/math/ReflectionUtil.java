@@ -5,7 +5,6 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.Collection;
 
 public class ReflectionUtil {
     public static Class getClassType(Type type) {

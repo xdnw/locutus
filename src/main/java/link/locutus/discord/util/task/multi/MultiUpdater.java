@@ -1,36 +1,25 @@
 package link.locutus.discord.util.task.multi;
 
-import com.politicsandwar.graphql.model.Nation;
 import it.unimi.dsi.fastutil.ints.*;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv3.csv.DataDumpParser;
-import link.locutus.discord.apiv3.csv.file.NationsFile;
-import link.locutus.discord.apiv3.csv.header.NationHeaderReader;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.network.ProxyHandler;
-import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Auth;
-import link.locutus.discord.util.scheduler.ThrowingConsumer;
 
 import java.io.IOException;
 import java.math.BigInteger;
 import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class MultiUpdater {

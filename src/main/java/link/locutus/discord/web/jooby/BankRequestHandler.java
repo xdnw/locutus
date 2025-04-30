@@ -2,7 +2,6 @@ package link.locutus.discord.web.jooby;
 
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.pnw.NationOrAlliance;
-import link.locutus.discord.util.PW;
 import link.locutus.discord.web.WebUtil;
 import org.json.JSONObject;
 

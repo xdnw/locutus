@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.command;
 
-import com.google.gson.JsonObject;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -9,7 +8,6 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.scheduler.TriFunction;
-import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.binding.value_types.WebOptions;
 import net.dv8tion.jda.api.entities.User;
 

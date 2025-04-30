@@ -13,7 +13,6 @@ import link.locutus.discord.event.position.PositionChangePermissionEvent;
 import link.locutus.discord.event.position.PositionChangeRankEvent;
 import link.locutus.discord.util.MathMan;
 
-import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.Consumer;
 

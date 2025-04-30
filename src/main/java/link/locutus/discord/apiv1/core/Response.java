@@ -3,10 +3,7 @@ package link.locutus.discord.apiv1.core;
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import link.locutus.discord.apiv1.PoliticsAndWarAPIException;
-import link.locutus.discord.apiv1.domains.Alliances;
 import link.locutus.discord.apiv1.domains.Entity;
-import link.locutus.discord.apiv1.domains.Nations;
-import link.locutus.discord.apiv1.domains.Wars;
 import link.locutus.discord.web.WebUtil;
 
 import java.lang.reflect.Type;

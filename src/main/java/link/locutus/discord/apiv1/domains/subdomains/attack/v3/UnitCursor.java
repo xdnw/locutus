@@ -1,20 +1,13 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
 import com.politicsandwar.graphql.model.WarAttack;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
-import link.locutus.discord.apiv1.enums.city.building.Building;
-import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.util.PW;
 import link.locutus.discord.util.io.BitBuffer;
-
-import java.util.HashMap;
-import java.util.Map;
 
 public abstract class UnitCursor extends DamageCursor {
     private int att_mun_used_cents;

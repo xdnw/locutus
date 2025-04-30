@@ -1,12 +1,10 @@
 package link.locutus.discord.apiv1.enums.city.project;
 
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
-import link.locutus.discord.apiv1.domains.Nation;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.entities.DBNation;
 
 import java.util.*;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 

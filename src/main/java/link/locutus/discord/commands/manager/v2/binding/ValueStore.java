@@ -3,7 +3,6 @@ package link.locutus.discord.commands.manager.v2.binding;
 import io.javalin.http.RedirectResponse;
 
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 
 public interface ValueStore<T> {

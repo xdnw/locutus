@@ -19,23 +19,19 @@ import link.locutus.discord.event.nation.NationChangeActiveEvent;
 import link.locutus.discord.event.nation.NationChangeAllianceEvent;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
-import java.util.stream.Stream;
 
 public class GuildCustomMessageHandler implements Runnable {
     private boolean sendEnabled;

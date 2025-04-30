@@ -1,7 +1,5 @@
 package link.locutus.discord.util.scheduler;
 
-import java.util.function.BiFunction;
-
 @FunctionalInterface
 public interface ThrowingTriFunction<I, I2, I3, O> extends TriFunction<I, I2, I3, O> {
 

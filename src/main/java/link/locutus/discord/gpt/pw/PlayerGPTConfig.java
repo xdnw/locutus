@@ -1,6 +1,5 @@
 package link.locutus.discord.gpt.pw;
 
-import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationMeta;

@@ -7,8 +7,6 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.util.AlertUtil;
-import link.locutus.discord.util.RateLimitUtil;
-import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 
 import java.util.*;
 

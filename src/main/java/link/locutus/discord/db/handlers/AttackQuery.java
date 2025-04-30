@@ -2,28 +2,26 @@ package link.locutus.discord.db.handlers;
 
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.math.ArrayUtil;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.*;
-import java.util.stream.Collectors;
 
 public class AttackQuery {
 
     private final WarDB warDb;
+
+    public Predicate<DBWar> warFilter;
     public ObjectOpenHashSet<DBWar> wars;
+
     public Predicate<AttackType> attackTypeFilter;
     public Predicate<AbstractCursor> preliminaryFilter;
     public Predicate<AbstractCursor> attackFilter;

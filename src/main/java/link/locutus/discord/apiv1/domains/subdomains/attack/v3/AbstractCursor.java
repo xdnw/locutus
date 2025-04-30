@@ -11,7 +11,6 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.io.BitBuffer;
 import link.locutus.discord.util.math.ArrayUtil;
 
-import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
 

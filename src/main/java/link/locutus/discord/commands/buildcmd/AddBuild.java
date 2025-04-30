@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.buildcmd;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
@@ -18,7 +17,6 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.List;
 import java.util.Locale;

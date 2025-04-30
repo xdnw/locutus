@@ -8,12 +8,10 @@ import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.csv.column.*;
 import link.locutus.discord.apiv3.csv.file.Dictionary;
-import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.TimeUtil;
 
 import java.text.ParseException;
-import java.util.function.Predicate;
 
 public class NationHeader extends DataHeader<DBNation> {
 

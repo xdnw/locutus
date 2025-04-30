@@ -1,8 +1,6 @@
 package link.locutus.discord;
 
 import com.google.common.eventbus.AsyncEventBus;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord._main.*;
@@ -35,7 +33,6 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.handlers.GuildCustomMessageHandler;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.game.TurnChangeEvent;
-import link.locutus.discord.network.IProxy;
 import link.locutus.discord.network.ProxyHandler;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.*;
@@ -59,7 +56,6 @@ import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.SelfUser;
-import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
@@ -89,7 +85,6 @@ import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.ItemComponent;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
-import net.dv8tion.jda.api.interactions.modals.ModalInteraction;
 import net.dv8tion.jda.api.interactions.modals.ModalMapping;
 import org.jetbrains.annotations.NotNull;
 
