@@ -788,7 +788,7 @@ public class StringMan {
             }
             return arr;
         } else if (obj instanceof Collection<?>) {
-            List<Object> arr = new ObjectArrayList();
+            List<Object> arr = new ObjectArrayList<>();
             for (Object element : (Collection<?>) obj) {
                 arr.add(toSerializable(element));
             }

@@ -56,7 +56,7 @@ public class HelpCommand extends Command {
             Set<Command> cmds = new ObjectLinkedOpenHashSet<>(manager.getCommandMap().values());
             cmds.removeIf(cmd -> {
                 try {
-                    return !cmd.checkPermission(guild != null ? guild : null, author);
+                    return !cmd.checkPermission(guild, author);
                 } catch (Throwable e) {
                     return true;
                 }
@@ -90,7 +90,7 @@ public class HelpCommand extends Command {
                 Set<Command> commands = new ObjectLinkedOpenHashSet<>(manager.getCommandMap().values());
                 for (Command command : commands) {
                     try {
-                        if (!command.checkPermission(guild != null ? guild : null, author))
+                        if (!command.checkPermission(guild, author))
                             continue;
                         if (command.getCategories().containsAll(requiredCategories)) {
                             if (command.desc() == null) throw new IllegalArgumentException("Command: " + command.getAliases().get(0) + " returns null for description");

@@ -51,7 +51,7 @@ public class ProviderManager {
         rollingFile.addAttribute("fileName", "rolling.log");
         rollingFile.addAttribute("filePattern", "rolling-%d{MM-dd-yy}.log.gz");
 
-        ComponentBuilder triggeringPolicies = builder.newComponent("Policies")
+        ComponentBuilder<?> triggeringPolicies = builder.newComponent("Policies")
                 .addComponent(builder.newComponent("CronTriggeringPolicy")
                         .addAttribute("schedule", "0 0 0 * * ?"))
                 .addComponent(builder.newComponent("SizeBasedTriggeringPolicy")

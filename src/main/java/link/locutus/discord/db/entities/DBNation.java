@@ -2528,7 +2528,7 @@ public abstract class DBNation implements NationOrAlliance {
     A map of resource projects, and whether they are producing it
      */
     public Map<Project, Boolean> resourcesProducedProjects() {
-        Map<Project, Boolean> manufacturing = new LinkedHashMap();
+        Map<Project, Boolean> manufacturing = new LinkedHashMap<>();
         for (Map.Entry<Integer, JavaCity> entry : getCityMap(false).entrySet()) {
             JavaCity city = entry.getValue();
             if (city.getBuilding(Buildings.GAS_REFINERY) > 0)

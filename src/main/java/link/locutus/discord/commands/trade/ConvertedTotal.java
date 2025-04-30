@@ -67,7 +67,7 @@ public class ConvertedTotal extends Command {
             while (iter.hasNext()) {
                 Map.Entry<ResourceType, Double> entry = iter.next();
                 if (entry.getValue() < 0) {
-                    negativeTotal += Locutus.imp().getTradeManager().getHigh(entry.getKey()) * entry.getValue().doubleValue() * -1;
+                    negativeTotal += Locutus.imp().getTradeManager().getHigh(entry.getKey()) * entry.getValue() * -1;
                     iter.remove();
                 }
             }

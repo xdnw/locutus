@@ -76,7 +76,7 @@ public class MenuManager {
         try (PreparedStatement stmt = db.getConnection().prepareStatement(query)) {
             stmt.setString(1, nameLower);
             try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
+                if (rs.next()) {
                     return new AppMenu(rs);
                 }
             }

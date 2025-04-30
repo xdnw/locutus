@@ -52,7 +52,7 @@ public class GPTCompleter extends BindingHelper {
 
     public GPTCompleter() {
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, ProviderType.class).getType(), Autocomplete.class);
+            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, ProviderType.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     return StringMan.autocompleteCommaEnum(ProviderType.class, input.toString(), OptionData.MAX_CHOICES);
@@ -60,7 +60,7 @@ public class GPTCompleter extends BindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, EmbeddingSource.class).getType(), Autocomplete.class);
+            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, EmbeddingSource.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     PWGPTHandler handler = Locutus.imp().getCommandManager().getV2().getPwgptHandler();

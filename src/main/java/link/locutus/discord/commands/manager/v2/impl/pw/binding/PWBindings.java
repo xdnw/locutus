@@ -572,7 +572,7 @@ public class PWBindings extends BindingHelper {
                 throw new IllegalArgumentException("Invalid deposit type (duplicate): `" + input + "`");
             }
             if (split.length == 2) {
-                long num = Long.valueOf(split[1]);
+                long num = Long.parseLong(split[1]);
                 if (tmp == DepositType.CITY) {
                     city = num;
                 } else {

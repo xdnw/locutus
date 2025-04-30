@@ -52,7 +52,7 @@ public enum DepositType {
             }
             if (value == null || value.isEmpty()) return null;
             Project project = Projects.get(value);
-            return project != null ? project : null;
+            return project;
         }
     },
     INFRA(GRANT, "Go to your city <https://{test}politicsandwar.com/cities/> and purchase the desired infrastructure",

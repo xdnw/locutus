@@ -13,7 +13,7 @@ public class LocalValueStore<T> extends DelegateValueStore<T> {
     }
 
     @Override
-    public <V extends T> Parser<V> get(Key<V> key) {
+    public <V> Parser<V> get(Key<V> key) {
         if (key.getType() == ValueStore.class) {
             return new ProviderParser<>((Key) key, this);
         }

@@ -50,7 +50,7 @@ public class MarkupUtil {
 
     public static String formatQuotedTimestamps(String input) {
         Matcher m = MENTIONED_TIMESTAMP.matcher(input);
-            StringBuffer sb = new StringBuffer();
+            StringBuilder sb = new StringBuilder();
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss 'UTC'");
             dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
             String url = "https://www.epochconverter.com/countdown?q="; // Plus the time in either millis or seconds
@@ -68,7 +68,7 @@ public class MarkupUtil {
 
     public static String formatQuotedCommands(String input) {
         Matcher m = QUOTED_COMMAND.matcher(input);
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         while(m.find()) {
             String found = m.group(1);
             List<String> split = StringMan.split(found, ' ');
@@ -90,7 +90,7 @@ public class MarkupUtil {
 
     public static String formatMentionedCommands(String input) {
         Matcher m = MENTIONED_COMMAND.matcher(input);
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         while(m.find()) {
             String found = m.group(1);
             List<String> split = StringMan.split(found, ' ');
@@ -111,7 +111,7 @@ public class MarkupUtil {
 
     public static String formatMentionedRoles(String input, Guild guild) {
         Matcher m = MENTIONED_ROLE.matcher(input);
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         while(m.find()) {
             String found = m.group(1);
             Long id = Long.parseLong(found);
@@ -140,7 +140,7 @@ public class MarkupUtil {
 
     public static String formatMentionedChannels(String input, Guild guild) {
         Matcher m = MENTIONED_CHANNEL.matcher(input);
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         while(m.find()) {
             String found = m.group(1);
             Long id = Long.parseLong(found);
@@ -169,7 +169,7 @@ public class MarkupUtil {
 
     public static String formatMentionedUsers(String input) {
         Matcher m = MENTIONED_USER.matcher(input);
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         while(m.find()) {
             String found = m.group(1);
             Long id = Long.parseLong(found);
@@ -346,7 +346,7 @@ public class MarkupUtil {
         String urlValidationRegex = "\\b((https?|ftp):\\/\\/)?[-a-zA-Z0-9@:%._\\+~#=]{2,256}\\.[A-Za-z]{2,6}\\b(\\/[-a-zA-Z0-9@:%_\\+.~#?&//=]*)*(?:\\/|\\b)";
         Pattern p = Pattern.compile(urlValidationRegex);
         Matcher m = p.matcher(text);
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         while(m.find()){
             String found =m.group(0);
             if (m.start() > 0 && text.charAt(m.start() - 1) != '"') {
@@ -361,7 +361,7 @@ public class MarkupUtil {
         String urlValidationRegex = "\\b((https?|ftp):\\/\\/)?[-a-zA-Z0-9@:%._\\+~#=]{2,256}\\.[A-Za-z]{2,6}\\b(\\/[-a-zA-Z0-9@:%_\\+.~#?&//=]*)*(?:\\/|\\b)";
         Pattern p = Pattern.compile(urlValidationRegex);
         Matcher m = p.matcher(text);
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         while(m.find()){
             int start = m.start();
             int end = m.end();

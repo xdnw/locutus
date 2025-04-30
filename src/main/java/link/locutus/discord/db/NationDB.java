@@ -2830,7 +2830,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         String select = "SELECT MAX(date) FROM banned_nations";
         try (PreparedStatement stmt = getConnection().prepareStatement(select)) {
             ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
+            if (rs.next()) {
                 return rs.getLong(1);
             }
         } catch (SQLException e) {
@@ -3936,7 +3936,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         try (PreparedStatement stmt = prepareQuery("select * FROM NATION_LOOT3 WHERE id = ? ORDER BY `date` DESC LIMIT 1")) {
             stmt.setInt(1, nationId);
             try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
+                if (rs.next()) {
                     return new LootEntry(rs);
                 }
             }
@@ -4018,7 +4018,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             stmt.setInt(1, nationId);
             stmt.setLong(2, turn);
             try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
+                if (rs.next()) {
                     return rs.getLong("turn");
                 }
             }
@@ -4564,7 +4564,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             stmt.setLong(3, time);
 
             try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
+                if (rs.next()) {
                     return rs.getInt("amount");
                 }
             }
@@ -4668,7 +4668,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             stmt.setInt(1, nationId);
             stmt.setInt(2, currentAA);
             try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
+                if (rs.next()) {
                     return new AllianceChange(rs);
                 }
             }
@@ -4685,7 +4685,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             stmt.setInt(1, nation.getNation_id());
             stmt.setInt(2, nation.getAlliance_id());
             try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
+                if (rs.next()) {
                     return rs.getLong("date");
                 }
             }
@@ -4701,7 +4701,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         try (PreparedStatement stmt = prepareQuery("select * FROM KICKS2 WHERE nation = ? " + (snapshotDate != null ? "AND DATE < " + snapshotDate : "") + " AND (from_rank > 3 OR from_aa != to_aa) ORDER BY date DESC LIMIT 1")) {
             stmt.setInt(1, nation.getNation_id());
             try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
+                if (rs.next()) {
                     return rs.getLong("date");
                 }
             }

@@ -307,7 +307,7 @@ public class PageHandler implements Handler {
                 }
 
                 if (cmd instanceof ParametricCallable) {
-                    LocalValueStore locals = stack.getStore();
+                    LocalValueStore<?> locals = stack.getStore();
                     Map<String, Object> fullCmdStr = parseQueryMap(queryMap, null);
                     locals.addProvider(Key.of(JSONObject.class, Me.class), new JSONObject(fullCmdStr).put("", cmd.getFullPath()));
                     locals.addProvider(Key.of(IMessageIO.class, Me.class), io);
@@ -667,7 +667,7 @@ public class PageHandler implements Handler {
         return call;
     }
 
-    public LocalValueStore setupLocals(LocalValueStore<Object> locals, Context ctx) {
+    public LocalValueStore setupLocals(LocalValueStore<?> locals, Context ctx) {
         WebStore ws;
         if (locals == null) {
             locals = new LocalValueStore<>(store);

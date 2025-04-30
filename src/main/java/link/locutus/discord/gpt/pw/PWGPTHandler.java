@@ -222,7 +222,7 @@ public class PWGPTHandler {
 
     private void registerArgumentBindings() {
         EmbeddingSource source = sourceMap.get(EmbeddingType.Argument);
-        ValueStore store = this.cmdManager.getStore();
+        ValueStore<Object> store = this.cmdManager.getStore();
         Map<Key, Parser> parsers = store.getParsers();
 
         Map<Key, Parser> consumeParsers = new HashMap<>();

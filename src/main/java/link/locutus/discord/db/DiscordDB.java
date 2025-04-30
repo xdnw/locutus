@@ -568,7 +568,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         try (PreparedStatement stmt = prepareQuery("select * FROM " + table + " WHERE `discordid` = ?")) {
             stmt.setLong(1, nationId);
             try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
+                if (rs.next()) {
                     String secretStr = Settings.INSTANCE.CLIENT_SECRET;
                     if (secretStr == null || secretStr.isEmpty()) secretStr = Settings.INSTANCE.BOT_TOKEN;
                     byte[] secret = secretStr.getBytes(StandardCharsets.ISO_8859_1);

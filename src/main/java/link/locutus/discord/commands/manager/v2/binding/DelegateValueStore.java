@@ -14,12 +14,12 @@ public class DelegateValueStore<T> implements ValueStore<T> {
     }
 
     @Override
-    public <V extends T> Parser<V> addParser(Key<V> key, Parser<V> parser) {
+    public <V> Parser<V> addParser(Key<V> key, Parser<V> parser) {
         return parent.addParser(key, parser);
     }
 
     @Override
-    public <V extends T> Parser<V> get(Key<V> key) {
+    public <V> Parser<V> get(Key<V> key) {
         if (key.getType() == ValueStore.class) {
             return new ProviderParser<>((Key) key, this);
         }

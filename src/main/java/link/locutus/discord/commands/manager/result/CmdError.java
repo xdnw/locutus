@@ -1,7 +1,5 @@
 package link.locutus.discord.commands.manager.result;
 
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
-
 public class CmdError extends CmdResult {
 
     public CmdError(Throwable e) {
@@ -13,10 +11,5 @@ public class CmdError extends CmdResult {
         } else {
             message(e.getClass().getSimpleName() + ": " + e.getMessage());
         }
-    }
-
-    @Override
-    public void build(MessageReceivedEvent event) {
-
     }
 }

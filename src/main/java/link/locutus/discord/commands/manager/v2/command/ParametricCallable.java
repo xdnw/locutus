@@ -445,7 +445,7 @@ public class ParametricCallable implements ICommand {
         ValueStore<?> store = stack.getStore();
         validatePermissions(store, stack.getPermissionHandler());
 
-        ValueStore locals = store;
+        ValueStore<?> locals = store;
         locals.addProvider(Key.of(ParametricCallable.class, Me.class), this);
 
         Map<ParameterData, Map.Entry<String, Object>> argumentMap = new LinkedHashMap<>();
@@ -539,7 +539,7 @@ public class ParametricCallable implements ICommand {
 
     public Object call(Object instance, ValueStore store, Object[] paramVals) {
         try {
-            Object callOn = isStatic ? null : (instance == null || !method.getDeclaringClass().isInstance(instance) ? this.object : instance);
+            Object callOn = isStatic ? null : (!method.getDeclaringClass().isInstance(instance) ? this.object : instance);
             return method.invoke(callOn, paramVals);
         } catch (IllegalArgumentException e) {
             e.printStackTrace();

@@ -826,9 +826,7 @@ public class BankCommands {
             if (from.getAlliance_id() == to.getAlliance_id()) continue;
             Map<ResourceType, Double> resources = sendAmount != null ? sendAmount : from.getStockpile(true);
             Map<ResourceType, Double> stockpile = sendAmount != null ? from.getStockpile(true) : new Object2DoubleOpenHashMap<>(resources);
-            Iterator<Map.Entry<ResourceType, Double>> iterator = resources.entrySet().iterator();
-            while (iterator.hasNext()) {
-                Map.Entry<ResourceType, Double> sendAmt = iterator.next();
+            for (Map.Entry<ResourceType, Double> sendAmt : resources.entrySet()) {
                 ResourceType type = sendAmt.getKey();
                 double amt = sendAmt.getValue();
                 double stockpileAmt = stockpile.getOrDefault(type, 0d);

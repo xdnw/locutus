@@ -360,7 +360,7 @@ public class CustomSheetManager {
                 String tabName = rs.getString("tab");
                 String selector = rs.getString("selector");
                 String template = rs.getString("template");
-                SelectionAlias selectionAlias = getSelectionAlias(selector, true);
+                SelectionAlias<Object> selectionAlias = getSelectionAlias(selector, true);
                 SheetTemplate sheetTemplate = getSheetTemplate(template);
                 if (sheetTemplate != null && selectionAlias != null) sheetTemplate.resolve(selectionAlias.getType());
                 tabs.put(tabName, new KeyValue<>(selectionAlias, sheetTemplate));

@@ -51,9 +51,9 @@ public class TradeEndpoints {
         }
 
         WebGraph result = new WebGraph();
-        List<List<Object>> data = new ObjectArrayList<>();
+        List<List<?>> data = new ObjectArrayList<>();
 
-        List timestampsJson = new LongArrayList();
+        List<Long> timestampsJson = new LongArrayList();
         for (long day = minDay; day <= maxDay; day++) {
             long time = TimeUtil.getTimeFromDay(day);
             timestampsJson.add(time / 1000L);
@@ -62,9 +62,9 @@ public class TradeEndpoints {
         data.add(timestampsJson);
         for (ResourceType type : resources) {
             Map<Long, Double> avgByDay = avgByRss.get(type);
-            List rssData = new DoubleArrayList();
+            List<Long> rssData = new LongArrayList();
             for (long day = minDay; day <= maxDay; day++) {
-                Double price = avgByDay.getOrDefault(day, 0d);
+                Long price = avgByDay.getOrDefault(day, 0d).longValue();
                 rssData.add(price);
             }
             data.add(rssData);

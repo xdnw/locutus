@@ -2417,9 +2417,9 @@ public class PlaceholdersMap {
 
                             long endTime = json.has("endTime") ? PrimitiveBindings.timestamp(json.getString("endTime")) : Long.MAX_VALUE;
 
-                            boolean excludeOffset = json.has("excludeOffset") ? json.getBoolean("excludeOffset") : false;
-                            boolean excludeTaxes = json.has("excludeTaxes") ? json.getBoolean("excludeTaxes") : false;
-                            boolean includeFullTaxes = json.has("includeFullTaxes") ? json.getBoolean("includeFullTaxes") : false;
+                            boolean excludeOffset = json.has("excludeOffset") && json.getBoolean("excludeOffset");
+                            boolean excludeTaxes = json.has("excludeTaxes") && json.getBoolean("excludeTaxes");
+                            boolean includeFullTaxes = json.has("includeFullTaxes") && json.getBoolean("includeFullTaxes");
 
                             Predicate<Transaction2> combinedFilter = transactionFilter;
                             if (startTime > 0) {

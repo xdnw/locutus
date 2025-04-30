@@ -4246,7 +4246,7 @@ public class WarCommands {
 
                 active_m = Math.min(active_m, defender.active_m());
 
-                if (aaIds.contains(Integer.valueOf(war.getDefender_aa()))) {
+                if (aaIds.contains(war.getDefender_aa())) {
                     action = Math.min(action, 0);
                 } else if (protectorates.contains(war.getDefender_aa())) {
                     action = Math.min(action, 1);

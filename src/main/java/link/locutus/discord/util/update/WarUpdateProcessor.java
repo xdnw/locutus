@@ -406,11 +406,12 @@ public class WarUpdateProcessor {
         int attSoldiers = -1;
         int defSoldiers = -1;
         switch (root.getAttack_type()) {
-            case FORTIFY:
+            case FORTIFY: {
                 AbstractCursor prior = root.getPriorAttack(true, false);
                 if (prior != null && prior.getAttack_type() == FORTIFY) return AttackTypeSubCategory.DOUBLE_FORTIFY;
                 return AttackTypeSubCategory.FORTIFY;
-            case GROUND:
+            }
+            case GROUND: {
                 attTanks = (int) (root.getAtt_gas_used() * 100);
                 defTanks = (int) (root.getDef_gas_used() * 100);
                 attSoldiers = (int) ((root.getAtt_mun_used() - root.getAtt_gas_used()) * 5000);
@@ -419,10 +420,10 @@ public class WarUpdateProcessor {
                 int defTankStr = defTanks * 40;
                 int attTankStr = attTanks * 40;
                 if (attSoldiers == 0 && root.getAttcas1() != 0) {
-                    attSoldiers = (int) ((22 * ((root.getDefcas1() / 0.3125) - ((attTankStr * 0.7 + 1)/7.33)) - 1) / 0.7);
+                    attSoldiers = (int) ((22 * ((root.getDefcas1() / 0.3125) - ((attTankStr * 0.7 + 1) / 7.33)) - 1) / 0.7);
                 }
-                if(defSoldiers == 0 && root.getDefcas1() != 0) {
-                    defSoldiers = (int) ((22 * ((root.getAttcas1() / 0.3125) - ((defTankStr * 0.7 + 1)/7.33)) - 1) / 0.7);
+                if (defSoldiers == 0 && root.getDefcas1() != 0) {
+                    defSoldiers = (int) ((22 * ((root.getAttcas1() / 0.3125) - ((defTankStr * 0.7 + 1) / 7.33)) - 1) / 0.7);
                 }
                 if (root.getAtt_mun_used() == 0) {
                     return AttackTypeSubCategory.GROUND_NO_MUNITIONS_NO_TANKS;
@@ -462,6 +463,7 @@ public class WarUpdateProcessor {
                     }
                     return AttackTypeSubCategory.GROUND_NO_TANKS_MUNITIONS_USED_NECESSARY;
                 }
+            }
             case VICTORY:
                 return null;
             case A_LOOT:
@@ -472,7 +474,7 @@ public class WarUpdateProcessor {
                 return AttackTypeSubCategory.AIRSTRIKE_MONEY;
             case AIRSTRIKE_SHIP:
             case AIRSTRIKE_SOLDIER:
-            case AIRSTRIKE_TANK:
+            case AIRSTRIKE_TANK: {
                 int attAir = (int) (root.getAtt_gas_used() * 4);
                 if (attAir <= 3) {
                     return AttackTypeSubCategory.AIRSTRIKE_3_PLANE;
@@ -480,11 +482,9 @@ public class WarUpdateProcessor {
                 if (root.getDefcas2() == 0) {
                     if (root.getAttack_type() == AIRSTRIKE_SOLDIER) {
                         return AttackTypeSubCategory.AIRSTRIKE_SOLDIERS_NONE;
-                    }
-                    else if (root.getAttack_type() == AIRSTRIKE_TANK) {
+                    } else if (root.getAttack_type() == AIRSTRIKE_TANK) {
                         return AttackTypeSubCategory.AIRSTRIKE_TANKS_NONE;
-                    }
-                    else if (root.getAttack_type() == AIRSTRIKE_SHIP) {
+                    } else if (root.getAttack_type() == AIRSTRIKE_SHIP) {
                         return AttackTypeSubCategory.AIRSTRIKE_SHIP_NONE;
                     }
                 }
@@ -507,11 +507,12 @@ public class WarUpdateProcessor {
                 for (int i = attacks.size() - 1; i >= 0; i--) {
                     AbstractCursor attack = attacks.get(i);
                     switch (attack.getAttack_type()) {
-                        case AIRSTRIKE_AIRCRAFT, AIRSTRIKE_INFRA, AIRSTRIKE_MONEY, AIRSTRIKE_SHIP, AIRSTRIKE_SOLDIER, AIRSTRIKE_TANK:
-                        if (attack.getSuccess() == SuccessType.IMMENSE_TRIUMPH) {
-                            hasAC = attack.getAttacker_id() == root.getAttacker_id();
-                            break;
-                        }
+                        case AIRSTRIKE_AIRCRAFT, AIRSTRIKE_INFRA, AIRSTRIKE_MONEY, AIRSTRIKE_SHIP, AIRSTRIKE_SOLDIER,
+                             AIRSTRIKE_TANK:
+                            if (attack.getSuccess() == SuccessType.IMMENSE_TRIUMPH) {
+                                hasAC = attack.getAttacker_id() == root.getAttacker_id();
+                                break;
+                            }
                     }
                 }
                 if (hasAC) {
@@ -532,8 +533,9 @@ public class WarUpdateProcessor {
                     return AttackTypeSubCategory.AIRSTRIKE_INACTIVE_NO_SHIP;
                 }
                 return AttackTypeSubCategory.AIRSTRIKE_UNIT;
-            case AIRSTRIKE_AIRCRAFT:
-                attAir = (int) (root.getAtt_gas_used() * 4);
+            }
+            case AIRSTRIKE_AIRCRAFT: {
+                int attAir = (int) (root.getAtt_gas_used() * 4);
                 int defAir = (int) (root.getDef_gas_used() * 4);
                 if (attAir <= 3) {
                     return AttackTypeSubCategory.AIRSTRIKE_3_PLANE;
@@ -569,7 +571,8 @@ public class WarUpdateProcessor {
                     }
                 }
                 return AttackTypeSubCategory.AIRSTRIKE_UNIT;
-            case NAVAL:
+            }
+            case NAVAL: {
                 int attShips = (int) (root.getAtt_gas_used() / MilitaryUnit.SHIP.getConsumption()[ResourceType.GASOLINE.ordinal()]);
                 if (root.getDefcas1() == 0) {
                     if (attShips <= 2) {
@@ -578,6 +581,7 @@ public class WarUpdateProcessor {
                     return AttackTypeSubCategory.NAVAL_MAX_VS_NONE;
                 }
                 return AttackTypeSubCategory.NAVY_KILL_UNITS;
+            }
             case PEACE:
                 return null;
             case MISSILE:
@@ -1122,7 +1126,7 @@ public class WarUpdateProcessor {
 
             long lastWarTurn = lastWarBuf == null ? 0 : lastWarBuf.getLong();
             double lastWarRatio = previousPctBuf == null ? 0 : previousPctBuf.getDouble();
-            boolean lastWarring = warringBuf == null ? false : warringBuf.get() == 1;
+            boolean lastWarring = warringBuf != null && warringBuf.get() == 1;
 
             double currentRatio = warRatio.getOrDefault(alliance, 0d);
             boolean warring = isAtWar.getOrDefault(alliance, false);

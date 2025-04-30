@@ -104,7 +104,7 @@ public class CommandManager2 {
                     optionsData.computeIfAbsent(option.getName(), k -> option.toJson());
                     continue;
                 }
-                Key optionsKey = Key.of(t);
+                Key<Object> optionsKey = Key.of(t);
                 optionParser = htmlOptionsStore.get(optionsKey);
                 if (optionParser != null) {
                     WebOption option = (WebOption) optionParser.apply(htmlOptionsStore, null);

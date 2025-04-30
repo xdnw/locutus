@@ -265,7 +265,7 @@ public class GrowthSummary {
     }
 
     public static class AllianceGrowthSummary {
-        public Map<Integer, MembershipChangeReason> initialState = new Int2ObjectOpenHashMap();
+        public Map<Integer, MembershipChangeReason> initialState = new Int2ObjectOpenHashMap<>();
         public Map<Integer, MembershipChangeReason> finalState = new Int2ObjectOpenHashMap<>();
 
         public Map<Integer, Map<GrowthAsset, Integer>> lastCount = new Int2ObjectOpenHashMap<>();

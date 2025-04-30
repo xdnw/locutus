@@ -841,7 +841,7 @@ public class NationUpdateProcessor {
                     long startTurn = endTurn - 120;
                     List<String> coalitions = joinedAlliances.stream().map(DBAlliance::getName).collect(Collectors.toList());
                     List<Set<DBAlliance>> alliances = joinedAlliances.stream().map(Collections::singleton).toList();
-                    SimpleTable table = new MultiCoalitionMetricGraph(AllianceMetric.MEMBERS, startTurn, endTurn, coalitions, alliances.toArray(new Set[0]));
+                    SimpleTable<Void> table = new MultiCoalitionMetricGraph(AllianceMetric.MEMBERS, startTurn, endTurn, coalitions, alliances.toArray(new Set[0]));
                     try {
                         graphData = table.write(TimeFormat.TURN_TO_DATE, AllianceMetric.MEMBERS.getFormat(), GraphType.LINE, table.getOrigin());
                     } catch (IOException e) {

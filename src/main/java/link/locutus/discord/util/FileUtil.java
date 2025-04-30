@@ -119,7 +119,7 @@ public final class FileUtil {
             if (http.getResponseCode() == 429) {
                 Integer retryAfter = null;
                 String retry = http.getHeaderField("Retry-After");
-                if (retry != null && MathMan.isInteger(retry)) {
+                if (MathMan.isInteger(retry)) {
                     retryAfter = Integer.parseInt(retry);
                 }
                 if (retryAfter == null) {
