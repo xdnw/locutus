@@ -1355,19 +1355,19 @@ public class OffshoreInstance {
                         ")"};
                 allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
                 if (allowedIds.isEmpty()) {
-                    return new KeyValue(null, new TransferResult(TransferStatus.INSUFFICIENT_FUNDS, receiver, amount, depositType.toString()).addMessage(msg));
+                    return new KeyValue<>(null, new TransferResult(TransferStatus.INSUFFICIENT_FUNDS, receiver, amount, depositType.toString()).addMessage(msg));
                 }
                 reqMsg.append(StringMan.join(msg, "\n") + "\n");
             } else if (myDepoValue < txValue) {
                 String msg = nationAccount.getNation() + "'s deposits are worth $" + MathMan.format(myDepoValue) + "(market max) but you requested to withdraw $" + MathMan.format(txValue) + " worth of resources";
                 allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
                 if (allowedIds.isEmpty()) {
-                    return new KeyValue(null, new TransferResult(TransferStatus.INSUFFICIENT_FUNDS, receiver, amount, depositType.toString()).addMessage(msg));
+                    return new KeyValue<>(null, new TransferResult(TransferStatus.INSUFFICIENT_FUNDS, receiver, amount, depositType.toString()).addMessage(msg));
                 }
                 reqMsg.append(msg + "\n");
             }
         }
-        return new KeyValue(myDeposits, null);
+        return new KeyValue<>(myDeposits, null);
     }
 
     private Map.Entry<Map<NationOrAllianceOrGuild, double[]>, double[]> checkDeposits(GuildDB senderDB, Predicate<Integer> allowedAlliances, double[] amount, boolean update) {

@@ -341,7 +341,7 @@ public class ROI extends Command {
             DBNation nation = nations.get(0);
 
             Set<Project> projects = nation.getProjects();
-            Map<ResourceBuilding, Boolean> manufacturing = new LinkedHashMap();
+            Map<ResourceBuilding, Boolean> manufacturing = new LinkedHashMap<>();
             for (Map.Entry<Integer, JavaCity> entry : nation.getCityMap(false).entrySet()) {
                 JavaCity city = entry.getValue();
                 if (city.getBuilding(Buildings.GAS_REFINERY) > 0 && !projects.contains(Projects.EMERGENCY_GASOLINE_RESERVE))

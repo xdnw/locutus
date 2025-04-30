@@ -236,7 +236,7 @@ public class LoanManager {
         try (PreparedStatement stmt = db.prepareQuery("select * FROM LOANS where loan_id = ?")) {
             stmt.setInt(1, loanId);
             try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
+                if (rs.next()) {
                     return new DBLoan(rs);
                 }
             }

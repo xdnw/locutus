@@ -12,19 +12,17 @@ import link.locutus.discord.util.scheduler.ThrowingConsumer;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.Types;
+
 import link.locutus.discord.util.scheduler.KeyValue;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Predicate;
 
 public class CustomSheetManager {
     private final GuildDB db;
@@ -362,7 +360,7 @@ public class CustomSheetManager {
                 String tabName = rs.getString("tab");
                 String selector = rs.getString("selector");
                 String template = rs.getString("template");
-                SelectionAlias selectionAlias = getSelectionAlias(selector, true);
+                SelectionAlias<Object> selectionAlias = getSelectionAlias(selector, true);
                 SheetTemplate sheetTemplate = getSheetTemplate(template);
                 if (sheetTemplate != null && selectionAlias != null) sheetTemplate.resolve(selectionAlias.getType());
                 tabs.put(tabName, new KeyValue<>(selectionAlias, sheetTemplate));

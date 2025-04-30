@@ -31,7 +31,6 @@ import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.math.LazyMathEntity;
 import link.locutus.discord.util.math.ReflectionUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
-import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.lang3.StringEscapeUtils;
@@ -202,7 +201,7 @@ public abstract class Placeholders<T, M> extends BindingHelper {
     public SelectionAlias getOrCreateSelection(GuildDB db, String selection, String modifier, boolean save, AtomicBoolean createdFlag) {
         outer:
         for (Map.Entry<String, SelectionAlias<T>> entry : db.getSheetManager().getSelectionAliases(getType()).entrySet()) {
-            SelectionAlias alias = entry.getValue();
+            SelectionAlias<T> alias = entry.getValue();
             if (alias.getSelection().equalsIgnoreCase(selection)) {
                 return alias;
             }
@@ -655,7 +654,7 @@ public abstract class Placeholders<T, M> extends BindingHelper {
         if (s instanceof Number n) {
             return n;
         }
-        if (param != null && ((Class) param.getType()).isAssignableFrom(s.getClass())) {
+        if (param != null && ((Class<?>) param.getType()).isAssignableFrom(s.getClass())) {
             return s;
         }
         if (s instanceof String str) {
@@ -783,13 +782,13 @@ public abstract class Placeholders<T, M> extends BindingHelper {
                     }
                 }
             }
-            TypedFunction function = format(store, command, actualArguments);
+            TypedFunction<T, ?> function = format(store, command, actualArguments);
             if (previousFunc == null) {
                 previousFunc = function;
             } else if (function.isResolved()) {
                 previousFunc = ResolvedFunction.createConstant(function.getType(), function.applyCached(null), functionContent);
             } else if (previousFunc.isResolved()) {
-                Object value = previousFunc.applyCached(null);
+                T value = (T) previousFunc.applyCached(null);
                 previousFunc = ResolvedFunction.createConstant(function.getType(), function.applyCached(value), functionContent);
             } else {
                 previousFunc = TypedFunction.createParent(function.getType(), previousFunc.andThen(function), functionContent, previousFunc);

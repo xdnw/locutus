@@ -2,7 +2,6 @@ package link.locutus.discord.db.entities.grant;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -620,7 +619,7 @@ public abstract class AGrantTemplate<T> {
     public static <K> K parse(GuildDB db, DBNation receiver, String value, Class<K> parsedType) {
         if (value == null) return null;
         CommandManager2 cmdManager = Locutus.imp().getCommandManager().getV2();
-        LocalValueStore store = new LocalValueStore<>(cmdManager.getStore());
+        LocalValueStore<Object> store = new LocalValueStore<>(cmdManager.getStore());
         store.addProvider(Key.of(DBNation.class, Me.class), receiver);
         store.addProvider(Key.of(GuildDB.class, Me.class), db);
         return (K) store.get(Key.of(parsedType)).apply(store, value);

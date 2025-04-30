@@ -260,7 +260,7 @@ public class AppMenuCommands {
         String initialLabel2 = label2;
         if (label2 == null) label2 = menu.lastPressedButton;
 
-        if (label2 != null && label1.equals(label2)) {
+        if (label1.equals(label2)) {
             menu.clearState().message().options(true).description("""
                     Cancelled reordering (pressed button twice)
                     

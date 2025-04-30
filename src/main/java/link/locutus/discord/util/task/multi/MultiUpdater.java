@@ -234,7 +234,7 @@ public class MultiUpdater {
         return weight;
     }
 
-    private final ArrayDeque<Map.Entry<DBNation, Double>> queue = new ArrayDeque();
+    private final ArrayDeque<Map.Entry<DBNation, Double>> queue = new ArrayDeque<>();
 
     public void updateQueue() {
         if (queue.isEmpty()) {

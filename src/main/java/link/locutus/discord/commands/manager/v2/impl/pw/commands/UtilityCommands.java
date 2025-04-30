@@ -1131,7 +1131,7 @@ public class UtilityCommands {
             response.append("Revenue (" + revenueTurns + " turns @" + MathMan.format(revenueFactor) + "x, worth: $" + MathMan.format(ResourceType.convertedTotal(revenue)) + ") ```" + ResourceType.toString(revenue) + "``` ");
             ResourceType.add(total, revenue);
         }
-        boolean perScore = nationScore == 1 ? true : false;
+        boolean perScore = nationScore == 1;
         response.append("Total Loot " + (perScore ? "Per Score" : "") + " (worth: $" + MathMan.format(ResourceType.convertedTotal(total)) + "): ```" + ResourceType.toString(total) + "``` ");
         if (!extraInfo.isEmpty()) response.append("\n`notes:`\n`- " + StringMan.join(extraInfo, "`\n`- ") +"`");
 

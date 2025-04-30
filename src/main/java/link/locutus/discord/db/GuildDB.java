@@ -675,7 +675,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             stmt.setLong(1, userId);
             stmt.setInt(2, key.ordinal());
             try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
+                if (rs.next()) {
                     return ByteBuffer.wrap(rs.getBytes("meta"));
                 }
             }
@@ -1673,7 +1673,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                         for (Integer aaId : guildAAIds) allowedIds.add(aaId.longValue());
                         return allowedIds;
                     } else if (guildAAIds.contains(entry.getKey().intValue())) {
-                        allowedIds.add(entry.getKey().longValue());
+                        allowedIds.add(entry.getKey());
                     }
                 }
             }

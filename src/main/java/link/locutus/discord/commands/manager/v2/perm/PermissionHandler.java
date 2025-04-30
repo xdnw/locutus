@@ -6,7 +6,7 @@ import java.lang.annotation.Annotation;
 
 public class PermissionHandler extends SimpleValueStore {
     public void validate(ValueStore store, Annotation annotation) {
-        Key key = Key.of(boolean.class, annotation);
+        Key<Object> key = Key.of(boolean.class, annotation);
         Parser parser = get(key);
         if (parser != null) {
             LocalValueStore locals = new LocalValueStore<>(store);

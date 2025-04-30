@@ -593,7 +593,7 @@ public class TradeCommands {
             while (iter.hasNext()) {
                 Map.Entry<ResourceType, Double> entry = iter.next();
                 if (entry.getValue() < 0) {
-                    negativeTotal += Locutus.imp().getTradeManager().getHigh(entry.getKey()) * entry.getValue().doubleValue() * -1;
+                    negativeTotal += Locutus.imp().getTradeManager().getHigh(entry.getKey()) * entry.getValue() * -1;
                     iter.remove();
                 }
             }
@@ -638,8 +638,8 @@ public class TradeCommands {
                               @Switch("p") boolean usePercent) {
         String refreshEmoji = "Refresh";
 
-        Map<ResourceType, Double> low = trader.getLow().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));
-        Map<ResourceType, Double> high = trader.getHigh().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));
+        Map<ResourceType, Double> low = trader.getLow().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue()));
+        Map<ResourceType, Double> high = trader.getHigh().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue()));
         List<ResourceType> resources = new ArrayList<>(ResourceType.valuesList);
         resources.remove(ResourceType.MONEY);
 
@@ -671,8 +671,8 @@ public class TradeCommands {
 
     @Command(desc = "Get the current top buy and sell price of each resource", viewable = true)
     public String tradePrice(@Me JSONObject command, @Me IMessageIO channel, TradeManager manager) {
-        Map<ResourceType, Double> low = manager.getLow().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));
-        Map<ResourceType, Double> high = manager.getHigh().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));
+        Map<ResourceType, Double> low = manager.getLow().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue()));
+        Map<ResourceType, Double> high = manager.getHigh().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue()));
 
         String lowKey = "Low";
         String highKey = "High";

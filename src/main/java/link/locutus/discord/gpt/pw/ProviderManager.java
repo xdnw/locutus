@@ -31,7 +31,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -52,7 +51,7 @@ public class ProviderManager {
         rollingFile.addAttribute("fileName", "rolling.log");
         rollingFile.addAttribute("filePattern", "rolling-%d{MM-dd-yy}.log.gz");
 
-        ComponentBuilder triggeringPolicies = builder.newComponent("Policies")
+        ComponentBuilder<?> triggeringPolicies = builder.newComponent("Policies")
                 .addComponent(builder.newComponent("CronTriggeringPolicy")
                         .addAttribute("schedule", "0 0 0 * * ?"))
                 .addComponent(builder.newComponent("SizeBasedTriggeringPolicy")

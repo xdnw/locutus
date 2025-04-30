@@ -1,11 +1,7 @@
 package link.locutus.discord.commands.manager.v2.command;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import gg.jte.generated.precompiled.command.JteparametriccallableGenerated;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
@@ -39,7 +35,6 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 public class ParametricCallable implements ICommand {
 
@@ -450,7 +445,7 @@ public class ParametricCallable implements ICommand {
         ValueStore<?> store = stack.getStore();
         validatePermissions(store, stack.getPermissionHandler());
 
-        ValueStore locals = store;
+        ValueStore<?> locals = store;
         locals.addProvider(Key.of(ParametricCallable.class, Me.class), this);
 
         Map<ParameterData, Map.Entry<String, Object>> argumentMap = new LinkedHashMap<>();
@@ -544,7 +539,7 @@ public class ParametricCallable implements ICommand {
 
     public Object call(Object instance, ValueStore store, Object[] paramVals) {
         try {
-            Object callOn = isStatic ? null : (instance == null || !method.getDeclaringClass().isInstance(instance) ? this.object : instance);
+            Object callOn = isStatic ? null : (!method.getDeclaringClass().isInstance(instance) ? this.object : instance);
             return method.invoke(callOn, paramVals);
         } catch (IllegalArgumentException e) {
             e.printStackTrace();

@@ -110,7 +110,7 @@ public class AuthBindings extends WebBindingHelper {
         String guildCookieId = PageHandler.CookieType.GUILD_ID.getCookieId();
         String guildStr = context.cookie(guildCookieId);
         String message = null;
-        if (guildStr != null && MathMan.isInteger(guildStr)) {
+        if (MathMan.isInteger(guildStr)) {
             long id = Long.parseLong(guildStr);
             Guild guild = Locutus.imp().getDiscordApi().getGuildById(id);
             if (guild == null) {

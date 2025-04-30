@@ -471,7 +471,7 @@ public class SpyTracker {
         }
     }
 
-    public class SpyAlert {
+    public static class SpyAlert {
         public final List<SpyActivity> exact = new ArrayList<>();
         public final List<SpyActivity> close = new ArrayList<>();
         public final List<Map.Entry<DBNation, Long>> online = new ArrayList<>();

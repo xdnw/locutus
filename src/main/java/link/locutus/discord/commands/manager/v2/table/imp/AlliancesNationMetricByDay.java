@@ -81,7 +81,7 @@ public class AlliancesNationMetricByDay extends SimpleTable<Void> {
                 if (allianceId == 0 || !allianceIdsSet.contains(allianceId)) continue;
                 if (!includeApps && nation.getPositionEnum().id <= Rank.APPLICANT.id) continue;
 
-                double value = metric.apply(nation).doubleValue();
+                double value = metric.apply(nation);
                 buffer[allianceIndex.get(allianceId)] = value;
 
                 switch (mode) {

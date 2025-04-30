@@ -166,7 +166,7 @@ public class CustomSheet {
                                     t.printStackTrace();
                                     String column = columns.get(i);
                                     String elemStr = ph.getName(o);
-                                    errors.add("[Tab: `" + tabName + "`,Column:`" + column + "`,Elem:`" + elemStr + "`] " + StringMan.stripApiKey(throwable.getMessage()));
+                                    errors.add("[Tab: `" + tabName + "`,Column:`" + column + "`,Elem:`" + elemStr + "`] " + StringMan.stripApiKey(t.getMessage()));
                                 }
                             }
                         }

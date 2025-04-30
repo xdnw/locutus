@@ -4,9 +4,7 @@ import ai.djl.MalformedModelException;
 import ai.djl.repository.zoo.ModelNotFoundException;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
-import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import link.locutus.discord.Logg;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -224,7 +222,7 @@ public class PWGPTHandler {
 
     private void registerArgumentBindings() {
         EmbeddingSource source = sourceMap.get(EmbeddingType.Argument);
-        ValueStore store = this.cmdManager.getStore();
+        ValueStore<Object> store = this.cmdManager.getStore();
         Map<Key, Parser> parsers = store.getParsers();
 
         Map<Key, Parser> consumeParsers = new HashMap<>();

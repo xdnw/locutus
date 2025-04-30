@@ -1,10 +1,8 @@
 package link.locutus.discord.commands.manager.v2.binding;
 
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
 
 public class LocalValueStore<T> extends DelegateValueStore<T> {
     private final ValueStore<T> global;
@@ -15,7 +13,7 @@ public class LocalValueStore<T> extends DelegateValueStore<T> {
     }
 
     @Override
-    public <V extends T> Parser<V> get(Key<V> key) {
+    public <V> Parser<V> get(Key<V> key) {
         if (key.getType() == ValueStore.class) {
             return new ProviderParser<>((Key) key, this);
         }

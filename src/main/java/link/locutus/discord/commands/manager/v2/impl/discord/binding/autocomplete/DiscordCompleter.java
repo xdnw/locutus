@@ -42,7 +42,7 @@ public class DiscordCompleter extends BindingHelper {
         try {
             {
                 Type type = getClass().getDeclaredField("MEMBERS_KEY").getGenericType();
-                Key key = Key.of(type, Autocomplete.class);
+                Key<Object> key = Key.of(type, Autocomplete.class);
                 addBinding(store -> store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     Guild guild = (Guild) valueStore.getProvided(Key.of(Guild.class, Me.class));
 
@@ -52,7 +52,7 @@ public class DiscordCompleter extends BindingHelper {
             }
             {
                 Type type = getClass().getDeclaredField("ROLES_KEY").getGenericType();
-                Key key = Key.of(type, Autocomplete.class);
+                Key<Object> key = Key.of(type, Autocomplete.class);
                 addBinding(store -> store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     Guild guild = (Guild) valueStore.getProvided(Key.of(Guild.class, Me.class));
 
@@ -62,7 +62,7 @@ public class DiscordCompleter extends BindingHelper {
             }
             {
                 Type type = getClass().getDeclaredField("PROJECTS_KEY").getGenericType();
-                Key key = Key.of(type, Autocomplete.class);
+                Key<Object> key = Key.of(type, Autocomplete.class);
                 addBinding(store -> store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
 
                     List<Project> options = Arrays.asList(Projects.values);

@@ -282,7 +282,7 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
     @Override
     public Set<DBNation> parseSet(ValueStore store2, String input, NationModifier modifier) {
         INationSnapshot snapshot = getSnapshot(modifier);
-        return parseSet(store2, input, snapshot, modifier == null ? false : modifier.allow_deleted);
+        return parseSet(store2, input, snapshot, modifier != null && modifier.allow_deleted);
     }
 
     public Set<DBNation> parseSet(ValueStore store2, String input, INationSnapshot snapshot, boolean allowDeleted) {

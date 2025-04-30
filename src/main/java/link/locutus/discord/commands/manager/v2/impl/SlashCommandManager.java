@@ -45,25 +45,19 @@ import net.dv8tion.jda.api.events.interaction.command.*;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.AutoCompleteQuery;
 import net.dv8tion.jda.api.interactions.InteractionHook;
-import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.Command.Choice;
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.*;
-import net.dv8tion.jda.api.utils.WidgetUtil;
 import net.dv8tion.jda.api.utils.data.SerializableData;
-import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
-import javax.security.auth.login.LoginException;
 import java.lang.reflect.Type;
-import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 public class SlashCommandManager extends ListenerAdapter {
@@ -610,7 +604,7 @@ public class SlashCommandManager extends ListenerAdapter {
                         if (values.length <= OptionData.MAX_CHOICES) {
                             isEnumChoice = true;
                             for (Object value : values) {
-                                String name = ((Enum) value).name();
+                                String name = ((Enum<?>) value).name();
                                 option.addChoice(name, name);
                             }
                         }
@@ -624,7 +618,7 @@ public class SlashCommandManager extends ListenerAdapter {
                 }
 
                 if (!isEnumChoice) {
-                    Parser binding = param.getBinding();
+                    Parser<?> binding = param.getBinding();
 
                     Key<Object> emptyKey = Key.of(String.class);
                     if (!binding.getKey().equals(emptyKey)) {
@@ -802,7 +796,7 @@ public class SlashCommandManager extends ListenerAdapter {
             public void run() {
                 try {
                     boolean autoParse = true;
-                    Parser binding = param.getBinding();
+                    Parser<?> binding = param.getBinding();
                     Key key = binding.getKey();
                     Key parserKey = key.append(Autoparse.class);
                     Parser parser = manager.getStore().get(parserKey);
@@ -837,7 +831,7 @@ public class SlashCommandManager extends ListenerAdapter {
                         binding.apply(stack);
                     } else {
                         Object result = parser.apply(stack);
-                        if (!(result instanceof List) || ((List) result).isEmpty()) {
+                        if (!(result instanceof List) || ((List<?>) result).isEmpty()) {
                             long diff = System.currentTimeMillis() - (startNanos / 1_000_000);
                             Logg.text("[Autocomplete]" + user + " | No results for `" + option.getValue() + "` at `" + path + "` took " + diff + "ms");
                             return;

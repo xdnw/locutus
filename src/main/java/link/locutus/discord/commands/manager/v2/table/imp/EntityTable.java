@@ -26,7 +26,7 @@ public class EntityTable<T> extends SimpleTable<Void> {
 
         public static <T> EntityTable<T> create(String title, Set<Attribute<T, Double>> metrics, Collection<T> coalition, Attribute<T, Double> groupBy, boolean total) {
             Set<T> nations = new HashSet<>(coalition);
-            return new EntityTable(title, metrics, nations, groupBy, total);
+            return new EntityTable<>(title, metrics, nations, groupBy, total);
         }
 
     public EntityTable(String title, Set<Attribute<T, Double>> metrics, Collection<T> coalition, Attribute<T, Double> groupBy, boolean total) {

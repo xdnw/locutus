@@ -1,6 +1,5 @@
 package link.locutus.discord.web.commands.api;
 
-import com.google.gson.JsonArray;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -13,7 +12,6 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.web.commands.ReturnType;
 import link.locutus.discord.web.commands.binding.value_types.GraphType;
-import link.locutus.discord.web.commands.binding.value_types.TradePriceByDayJson;
 import link.locutus.discord.web.commands.binding.value_types.WebGraph;
 
 import java.util.*;
@@ -53,9 +51,9 @@ public class TradeEndpoints {
         }
 
         WebGraph result = new WebGraph();
-        List<List<Object>> data = new ObjectArrayList<>();
+        List<List<?>> data = new ObjectArrayList<>();
 
-        List timestampsJson = new LongArrayList();
+        List<Long> timestampsJson = new LongArrayList();
         for (long day = minDay; day <= maxDay; day++) {
             long time = TimeUtil.getTimeFromDay(day);
             timestampsJson.add(time / 1000L);
@@ -64,9 +62,9 @@ public class TradeEndpoints {
         data.add(timestampsJson);
         for (ResourceType type : resources) {
             Map<Long, Double> avgByDay = avgByRss.get(type);
-            List rssData = new DoubleArrayList();
+            List<Long> rssData = new LongArrayList();
             for (long day = minDay; day <= maxDay; day++) {
-                Double price = avgByDay.getOrDefault(day, 0d);
+                Long price = avgByDay.getOrDefault(day, 0d).longValue();
                 rssData.add(price);
             }
             data.add(rssData);

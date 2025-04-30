@@ -6,37 +6,32 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
+import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.FunctionProviderParser;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.AllianceDepositLimit;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
-import link.locutus.discord.commands.manager.v2.binding.annotation.PlaceholderType;
-import link.locutus.discord.commands.manager.v2.binding.annotation.ReportPerms;
-import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.NationDepositLimit;
-import link.locutus.discord.commands.manager.v2.binding.annotation.RegisteredRole;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.MathOperation;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
+import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
+import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.NationDepositLimit;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.conflict.Conflict;
-import link.locutus.discord.db.conflict.ConflictManager;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.ReportManager;
+import link.locutus.discord.db.conflict.Conflict;
+import link.locutus.discord.db.conflict.ConflictManager;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.db.entities.grant.AGrantTemplate;
@@ -47,28 +42,17 @@ import link.locutus.discord.db.entities.metric.OrbisMetric;
 import link.locutus.discord.db.entities.newsletter.Newsletter;
 import link.locutus.discord.db.entities.newsletter.NewsletterManager;
 import link.locutus.discord.db.entities.sheet.CustomSheetManager;
-import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.gpt.imps.EmbeddingType;
 import link.locutus.discord.gpt.imps.ProviderType;
 import link.locutus.discord.gpt.pw.GPTProvider;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
-import link.locutus.discord.pnw.AllianceList;
-import link.locutus.discord.pnw.BeigeReason;
-import link.locutus.discord.pnw.CityRanges;
-import link.locutus.discord.pnw.GuildOrAlliance;
-import link.locutus.discord.pnw.NationList;
-import link.locutus.discord.pnw.NationOrAlliance;
-import link.locutus.discord.pnw.NationOrAllianceOrGuild;
-import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
+import link.locutus.discord.pnw.*;
 import link.locutus.discord.pnw.json.CityBuild;
-import link.locutus.discord.util.AutoAuditType;
-import link.locutus.discord.util.StringMan;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.SpyCount;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.sheet.GoogleDoc;
@@ -77,29 +61,24 @@ import link.locutus.discord.util.sheet.templates.TransferSheet;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.HtmlInput;
-import link.locutus.discord.apiv1.enums.city.project.Project;
-import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
-import java.awt.Color;
+import java.awt.*;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
-import static link.locutus.discord.web.WebUtil.createInput;
-import static link.locutus.discord.web.WebUtil.generateSearchableDropdown;
-import static link.locutus.discord.web.WebUtil.wrapLabel;
 
 public class WebPWBindings extends WebBindingHelper {
 
@@ -581,7 +560,7 @@ public class WebPWBindings extends WebBindingHelper {
     public WebPWBindings() {
 
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, Member.class).getType(), HtmlInput.class);
+            Key<String> key = Key.of(TypeToken.getParameterized(Set.class, Member.class).getType(), HtmlInput.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
                     Guild guild = (Guild) valueStore.getProvided(Key.of(Guild.class, Me.class));
@@ -593,7 +572,7 @@ public class WebPWBindings extends WebBindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, DBNation.class).getType(), HtmlInput.class);
+            Key<String> key = Key.of(TypeToken.getParameterized(Set.class, DBNation.class).getType(), HtmlInput.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
                     ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
@@ -602,7 +581,7 @@ public class WebPWBindings extends WebBindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, NationOrAlliance.class).getType(), HtmlInput.class);
+            Key<String> key = Key.of(TypeToken.getParameterized(Set.class, NationOrAlliance.class).getType(), HtmlInput.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
                     ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
@@ -611,7 +590,7 @@ public class WebPWBindings extends WebBindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, NationOrAllianceOrGuild.class).getType(), HtmlInput.class);
+            Key<String> key = Key.of(TypeToken.getParameterized(Set.class, NationOrAllianceOrGuild.class).getType(), HtmlInput.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
                     ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
@@ -621,7 +600,7 @@ public class WebPWBindings extends WebBindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, NationOrAllianceOrGuildOrTaxid.class).getType(), HtmlInput.class);
+            Key<String> key = Key.of(TypeToken.getParameterized(Set.class, NationOrAllianceOrGuildOrTaxid.class).getType(), HtmlInput.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
                     ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
@@ -632,7 +611,7 @@ public class WebPWBindings extends WebBindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, WarStatus.class).getType(), HtmlInput.class);
+            Key<String> key = Key.of(TypeToken.getParameterized(Set.class, WarStatus.class).getType(), HtmlInput.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
                     ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
@@ -642,7 +621,7 @@ public class WebPWBindings extends WebBindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, WarType.class).getType(), HtmlInput.class);
+            Key<String> key = Key.of(TypeToken.getParameterized(Set.class, WarType.class).getType(), HtmlInput.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
                     return multipleSelectEmum(WarType.class, valueStore);
@@ -650,7 +629,7 @@ public class WebPWBindings extends WebBindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, AttackType.class).getType(), HtmlInput.class);
+            Key<String> key = Key.of(TypeToken.getParameterized(Set.class, AttackType.class).getType(), HtmlInput.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
                     return multipleSelectEmum(AttackType.class, valueStore);
@@ -658,7 +637,7 @@ public class WebPWBindings extends WebBindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, IACheckup.AuditType.class).getType(), HtmlInput.class);
+            Key<String> key = Key.of(TypeToken.getParameterized(Set.class, IACheckup.AuditType.class).getType(), HtmlInput.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
                     return multipleSelectEmum(IACheckup.AuditType.class, valueStore);
@@ -666,7 +645,7 @@ public class WebPWBindings extends WebBindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, Continent.class).getType(), HtmlInput.class);
+            Key<String> key = Key.of(TypeToken.getParameterized(Set.class, Continent.class).getType(), HtmlInput.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
                     return multipleSelectEmum(Continent.class, valueStore);
@@ -674,7 +653,7 @@ public class WebPWBindings extends WebBindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, Role.class).getType(), HtmlInput.class);
+            Key<String> key = Key.of(TypeToken.getParameterized(Set.class, Role.class).getType(), HtmlInput.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
                     ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
@@ -699,7 +678,7 @@ public class WebPWBindings extends WebBindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, AllianceMetric.class).getType(), HtmlInput.class);
+            Key<String> key = Key.of(TypeToken.getParameterized(Set.class, AllianceMetric.class).getType(), HtmlInput.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
                     ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
@@ -710,7 +689,7 @@ public class WebPWBindings extends WebBindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, Project.class).getType(), HtmlInput.class);
+            Key<String> key = Key.of(TypeToken.getParameterized(Set.class, Project.class).getType(), HtmlInput.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
                     ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
@@ -721,7 +700,7 @@ public class WebPWBindings extends WebBindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, NationAttributeDouble.class).getType(), HtmlInput.class);
+            Key<String> key = Key.of(TypeToken.getParameterized(Set.class, NationAttributeDouble.class).getType(), HtmlInput.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
                     ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
@@ -738,7 +717,7 @@ public class WebPWBindings extends WebBindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, DBAlliance.class).getType(), HtmlInput.class);
+            Key<String> key = Key.of(TypeToken.getParameterized(Set.class, DBAlliance.class).getType(), HtmlInput.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
                     ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
@@ -748,7 +727,7 @@ public class WebPWBindings extends WebBindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, ResourceType.class).getType(), HtmlInput.class);
+            Key<String> key = Key.of(TypeToken.getParameterized(Set.class, ResourceType.class).getType(), HtmlInput.class);
             addBinding(rootStore -> {
                 rootStore.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) store -> {
                     ParameterData param = (ParameterData) store.getProvided(ParameterData.class);
@@ -758,7 +737,7 @@ public class WebPWBindings extends WebBindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, SpyCount.Operation.class).getType(), HtmlInput.class);
+            Key<String> key = Key.of(TypeToken.getParameterized(Set.class, SpyCount.Operation.class).getType(), HtmlInput.class);
             addBinding(rootStore -> {
                 rootStore.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) store -> {
                     ParameterData param = (ParameterData) store.getProvided(ParameterData.class);
@@ -772,15 +751,15 @@ public class WebPWBindings extends WebBindingHelper {
             Type type = TypeToken.getParameterized(Map.class, ResourceType.class, Double.class).getType();
             {
                 {
-                    Key key = Key.of(type, HtmlInput.class);
+                    Key<String> key = Key.of(type, HtmlInput.class);
                     addBinding(rootStore -> {
                         rootStore.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) store -> getBankInput(store)));
                     });
-                    Key key2 = Key.of(type, NationDepositLimit.class, HtmlInput.class);
+                    Key<String> key2 = Key.of(type, NationDepositLimit.class, HtmlInput.class);
                     addBinding(rootStore -> {
                         rootStore.addParser(key2, new FunctionProviderParser<>(key2, (Function<ValueStore, String>) store -> getBankInput(store)));
                     });
-                    Key key3 = Key.of(type, AllianceDepositLimit.class, HtmlInput.class);
+                    Key<String> key3 = Key.of(type, AllianceDepositLimit.class, HtmlInput.class);
                     addBinding(rootStore -> {
                         rootStore.addParser(key3, new FunctionProviderParser<>(key3, (Function<ValueStore, String>) store -> getBankInput(store)));
                     });
@@ -792,7 +771,7 @@ public class WebPWBindings extends WebBindingHelper {
             Type type = TypeToken.getParameterized(Map.class, MilitaryUnit.class, Long.class).getType();
             {
                 {
-                    Key key = Key.of(type, HtmlInput.class);
+                    Key<String> key = Key.of(type, HtmlInput.class);
                     ArrayList<MilitaryUnit> types = new ArrayList<>(Arrays.asList(MilitaryUnit.values()));
                     types.removeIf(f -> f.getName() == null);
 

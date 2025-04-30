@@ -618,7 +618,7 @@ public class PWCompleter extends BindingHelper {
 
     {
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, Category.class).getType(), Autocomplete.class);
+            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, Category.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     Guild guild = (Guild) valueStore.getProvided(Key.of(Guild.class, Me.class));
@@ -634,7 +634,7 @@ public class PWCompleter extends BindingHelper {
         }
 
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, DBAlliance.class).getType(), Autocomplete.class);
+            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, DBAlliance.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     List<DBAlliance> options = new ArrayList<>(Locutus.imp().getNationDB().getAlliances());
@@ -645,7 +645,7 @@ public class PWCompleter extends BindingHelper {
         }
 
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, Project.class).getType(), Autocomplete.class);
+            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, Project.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     List<Project> options = Arrays.asList(Projects.values);
@@ -656,7 +656,7 @@ public class PWCompleter extends BindingHelper {
         }
 
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, Building.class).getType(), Autocomplete.class);
+            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, Building.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     List<Building> options = Arrays.asList(Buildings.values());
@@ -667,7 +667,7 @@ public class PWCompleter extends BindingHelper {
         }
 
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, Roles.class).getType(), Autocomplete.class);
+            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, Roles.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     return StringMan.autocompleteCommaEnum(Roles.class, input.toString(), OptionData.MAX_CHOICES);
@@ -676,7 +676,7 @@ public class PWCompleter extends BindingHelper {
         }
 
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, DBLoan.Status.class).getType(), Autocomplete.class);
+            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, DBLoan.Status.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     return StringMan.autocompleteCommaEnum(DBLoan.Status.class, input.toString(), OptionData.MAX_CHOICES);
@@ -685,7 +685,7 @@ public class PWCompleter extends BindingHelper {
         }
 
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, BeigeReason.class).getType(), Autocomplete.class);
+            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, BeigeReason.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     return StringMan.autocompleteCommaEnum(BeigeReason.class, input.toString(), OptionData.MAX_CHOICES);
@@ -693,7 +693,7 @@ public class PWCompleter extends BindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, AutoAuditType.class).getType(), Autocomplete.class);
+            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, AutoAuditType.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     return StringMan.autocompleteCommaEnum(AutoAuditType.class, input.toString(), OptionData.MAX_CHOICES);
@@ -701,7 +701,7 @@ public class PWCompleter extends BindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, IACheckup.AuditType.class).getType(), Autocomplete.class);
+            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, IACheckup.AuditType.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     return StringMan.autocompleteCommaEnum(IACheckup.AuditType.class, input.toString(), OptionData.MAX_CHOICES);
@@ -709,7 +709,7 @@ public class PWCompleter extends BindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, SpyCount.Operation.class).getType(), Autocomplete.class);
+            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, SpyCount.Operation.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     return StringMan.autocompleteCommaEnum(SpyCount.Operation.class, input.toString(), OptionData.MAX_CHOICES);
@@ -717,7 +717,7 @@ public class PWCompleter extends BindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, IACheckup.AuditType.class).getType(), Autocomplete.class);
+            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, IACheckup.AuditType.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     return StringMan.autocompleteCommaEnum(IACheckup.AuditType.class, input.toString(), OptionData.MAX_CHOICES);
@@ -725,7 +725,7 @@ public class PWCompleter extends BindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, Continent.class).getType(), Autocomplete.class);
+            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, Continent.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     return StringMan.autocompleteCommaEnum(Continent.class, input.toString(), OptionData.MAX_CHOICES);
@@ -733,7 +733,7 @@ public class PWCompleter extends BindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, WarStatus.class).getType(), Autocomplete.class);
+            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, WarStatus.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     return StringMan.autocompleteCommaEnum(WarStatus.class, input.toString(), OptionData.MAX_CHOICES);
@@ -741,7 +741,7 @@ public class PWCompleter extends BindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, WarType.class).getType(), Autocomplete.class);
+            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, WarType.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     return StringMan.autocompleteCommaEnum(WarType.class, input.toString(), OptionData.MAX_CHOICES);
@@ -749,7 +749,7 @@ public class PWCompleter extends BindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, AttackType.class).getType(), Autocomplete.class);
+            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, AttackType.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     return StringMan.autocompleteCommaEnum(AttackType.class, input.toString(), OptionData.MAX_CHOICES);
@@ -757,7 +757,7 @@ public class PWCompleter extends BindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, MilitaryUnit.class).getType(), Autocomplete.class);
+            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, MilitaryUnit.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     return StringMan.autocompleteCommaEnum(MilitaryUnit.class, input.toString(), OptionData.MAX_CHOICES);
@@ -765,7 +765,7 @@ public class PWCompleter extends BindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Set.class, OrbisMetric.class).getType(), Autocomplete.class);
+            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, OrbisMetric.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     return StringMan.autocompleteCommaEnum(OrbisMetric.class, input.toString(), OptionData.MAX_CHOICES);
@@ -773,7 +773,7 @@ public class PWCompleter extends BindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(List.class, ResourceType.class).getType(), Autocomplete.class);
+            Key<Object> key = Key.of(TypeToken.getParameterized(List.class, ResourceType.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     List<ResourceType> options = new ArrayList<>(ResourceType.valuesList);
@@ -782,7 +782,7 @@ public class PWCompleter extends BindingHelper {
             });
         }
         {
-            Key key = Key.of(TypeToken.getParameterized(Map.class, MilitaryUnit.class, Long.class).getType(), Autocomplete.class);
+            Key<Object> key = Key.of(TypeToken.getParameterized(Map.class, MilitaryUnit.class, Long.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     List<String> options = Arrays.asList(MilitaryUnit.values).stream().map(Enum::name).collect(Collectors.toList());
@@ -793,7 +793,7 @@ public class PWCompleter extends BindingHelper {
         {
             Type type = TypeToken.getParameterized(Map.class, ResourceType.class, Double.class).getType();
             Consumer<ValueStore<?>> binding = store -> {
-                Key key = Key.of(type, Autocomplete.class);
+                Key<Object> key = Key.of(type, Autocomplete.class);
                 FunctionConsumerParser parser = new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     List<String> options = ResourceType.valuesList.stream().map(Enum::name).collect(Collectors.toList());
                     return StringMan.completeMap(options, null, input.toString());

@@ -15,7 +15,6 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
-import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
@@ -1385,7 +1384,7 @@ public class StatCommands {
         long turnEnd = end == null ? TimeUtil.getTurn() : TimeUtil.getTurn(end);
         Set<DBAlliance>[] coalitions = alliances.stream().map(Collections::singleton).toList().toArray(new Set[0]);
         List<String> coalitionNames = alliances.stream().map(DBAlliance::getName).collect(Collectors.toList());
-        TimeNumericTable table = MultiCoalitionMetricGraph.create(metric, turnStart, turnEnd, coalitionNames, coalitions);
+        TimeNumericTable<Void> table = MultiCoalitionMetricGraph.create(metric, turnStart, turnEnd, coalitionNames, coalitions);
         IMessageBuilder msg = table.writeMsg(channel.create(), TimeFormat.TURN_TO_DATE, metric.getFormat(), GraphType.LINE, turnStart, attachJson, attachCsv, attach_sheet ? db : null, SheetKey.ALLIANCE_METRIC_TURN);
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.metric_compare_by_turn.cmd.getName(), command));
@@ -1424,7 +1423,7 @@ public class StatCommands {
                                     @Switch("c") boolean attachCsv, @Switch("s") boolean attach_sheet) throws IOException {
         long turnStart = TimeUtil.getTurn(start);
         long turnEnd = end == null ? TimeUtil.getTurn() : TimeUtil.getTurn(end);
-        TimeNumericTable table = MultiCoalitionMetricGraph.create(metric, turnStart, turnEnd, null, coalition1, coalition2);
+        TimeNumericTable<Void> table = MultiCoalitionMetricGraph.create(metric, turnStart, turnEnd, null, coalition1, coalition2);
         IMessageBuilder msg = table.writeMsg(channel.create(), TimeFormat.TURN_TO_DATE, metric.getFormat(), GraphType.LINE, turnStart, attachJson, attachCsv, attach_sheet ? db : null, SheetKey.ALLIANCE_METRIC_AB);
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.allianceMetricAB.cmd.getName(), command));
@@ -1542,7 +1541,7 @@ public class StatCommands {
         long turnStart = TimeUtil.getTurn(start);
         long turnEnd = end == null ? TimeUtil.getTurn() : TimeUtil.getTurn(end);
         List<String> coalitionNames = List.of(metric.name());
-        TimeNumericTable table = MultiCoalitionMetricGraph.create(metric, turnStart, turnEnd, coalitionNames, coalition);
+        TimeNumericTable<Void> table = MultiCoalitionMetricGraph.create(metric, turnStart, turnEnd, coalitionNames, coalition);
         IMessageBuilder msg = table.writeMsg(channel.create(), TimeFormat.TURN_TO_DATE, metric.getFormat(), GraphType.LINE, turnStart, attachJson, attachCsv, attach_sheet ? db : null, SheetKey.ALLIANCE_METRICS_TURN);
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
             msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.allianceMetricByTurn.cmd.getName(), command));

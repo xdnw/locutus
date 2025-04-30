@@ -54,8 +54,8 @@ public class TradePriceCmd extends Command {
         TradeManager trader = Locutus.imp().getTradeManager();
         String refreshEmoji = "Refresh";
 
-        Map<ResourceType, Double> low = trader.getLow().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));
-        Map<ResourceType, Double> high = trader.getHigh().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));
+        Map<ResourceType, Double> low = trader.getLow().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue()));
+        Map<ResourceType, Double> high = trader.getHigh().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue()));
 
         String lowKey;
         String highKey;
@@ -88,8 +88,8 @@ public class TradePriceCmd extends Command {
                     high.put(type, Double.NaN);
                     continue;
                 }
-                double lowAvgVal = avg.getKey().getOrDefault(type, 0d).doubleValue();
-                double highAvgVal = avg.getValue().getOrDefault(type, 0d).doubleValue();
+                double lowAvgVal = avg.getKey().getOrDefault(type, 0d);
+                double highAvgVal = avg.getValue().getOrDefault(type, 0d);
                 double lowVal = low.getOrDefault(type, 0d);
                 double highVal = high.getOrDefault(type, 0d);
 
