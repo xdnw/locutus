@@ -123,7 +123,7 @@ public class PnwPusherShardManager {
                     for (Nation nation : nations) {
                         nation.setGross_national_income(null);
                     }
-                    nationDB.updateNations(nations, events, ts, "Pusher create");
+                    nationDB.updateNations(nations, events, ts);
                 });
             });
             root.subscribeBuilder(Locutus.loader().getApiKey(), Nation.class, PnwPusherEvent.DELETE).build(nations -> {
@@ -136,7 +136,7 @@ public class PnwPusherShardManager {
                         for (Nation nation : nations) {
                             nation.setGross_national_income(null);
                         }
-                        Locutus.imp().getNationDB().updateNations(nations, f, -1, "Pusher Update");
+                        Locutus.imp().getNationDB().updateNations(nations, f, -1);
                     });
                 } catch (Throwable e) {
                     e.printStackTrace();
