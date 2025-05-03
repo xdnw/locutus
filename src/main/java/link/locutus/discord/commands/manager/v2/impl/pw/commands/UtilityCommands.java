@@ -2006,7 +2006,6 @@ public class UtilityCommands {
             int pages = (nations.size() + perpage - 1) / perpage;
             title += "(" + (page + 1) + "/" + pages + ")";
 
-            System.out.println("Create paginate " + command);
             channel.create().paginate(title, command, page, perpage, nationList).send();
         }
         if (listInfo) {

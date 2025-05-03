@@ -239,7 +239,6 @@ public interface IMessageBuilder {
     @CheckReturnValue
     @Deprecated
     default IMessageBuilder paginate(String title, String command, Integer page, int perPage, List<IShrink> results, String footer, boolean inline) {
-        System.out.println("Paginate " + command);
         if (results.isEmpty()) {
             System.out.println("Results are empty.");
             return this;

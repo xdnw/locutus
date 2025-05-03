@@ -23,6 +23,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.web.WebUtil;
 import org.json.JSONObject;
 
 import java.io.IOException;
