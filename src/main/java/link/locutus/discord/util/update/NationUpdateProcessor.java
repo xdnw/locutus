@@ -3,8 +3,10 @@ package link.locutus.discord.util.update;
 import com.google.common.eventbus.Subscribe;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
@@ -97,7 +99,8 @@ public class NationUpdateProcessor {
 
         Set<Integer> online = new IntOpenHashSet();
         Set<Long> checkedUser = new LongOpenHashSet();
-        for (Guild guild : Locutus.imp().getDiscordApi().getGuilds()) {
+        for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
+            Guild guild = db.getGuild();
             for (Member member : guild.getMemberCache()) {
                 long userId = member.getIdLong();
                 if (checkedUser.contains(userId)) continue;
@@ -793,8 +796,8 @@ public class NationUpdateProcessor {
         double scoreDrop = 0;
         long now = System.currentTimeMillis();
         long cutoff = now - TimeUnit.DAYS.toMillis(1);
-        List<AllianceChange> removes = new ArrayList<>(alliance.getRankChanges(cutoff));
-        Map<Integer, AllianceChange> changesByNation = new LinkedHashMap<>();
+        List<AllianceChange> removes = alliance.getDepartures(cutoff);
+        Map<Integer, AllianceChange> changesByNation = new Int2ObjectOpenHashMap<>();
         for (AllianceChange change : removes) {
             changesByNation.put(change.getNationId(), change);
         }

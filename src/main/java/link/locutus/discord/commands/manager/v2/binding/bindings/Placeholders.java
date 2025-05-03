@@ -791,7 +791,7 @@ public abstract class Placeholders<T, M> extends BindingHelper {
                 T value = (T) previousFunc.applyCached(null);
                 previousFunc = ResolvedFunction.createConstant(function.getType(), function.applyCached(value), functionContent);
             } else {
-                previousFunc = TypedFunction.createParent(function.getType(), previousFunc.andThen(function), functionContent, previousFunc);
+                previousFunc = TypedFunction.createParent(function.getType(), previousFunc.andThen((Function) function), functionContent, previousFunc);
             }
         }
         return previousFunc;

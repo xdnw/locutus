@@ -327,10 +327,10 @@ public class AuthBindings extends WebBindingHelper {
         if (((record == null || record.getNationId() == null) && requireNation) || isLoginPage) {
             requireNation |= queryMap.containsKey("nation") || queryMap.containsKey("alliance");
             String nationStr = StringMan.join(queryMap.getOrDefault("nation", new ArrayList<>()), ",");
-            Integer nationIdFilter = null;
+            DBNation nation = null;
             if (!nationStr.isEmpty()) {
                 try {
-                    nationIdFilter = DiscordUtil.parseNationId(nationStr, true);
+                    nation = DiscordUtil.parseNation(nationStr, false, true);
                 } catch (IllegalArgumentException e) {
                     errors.add(e.getMessage());
                 }
@@ -340,17 +340,12 @@ public class AuthBindings extends WebBindingHelper {
             if (!errorsStr.isEmpty()) {
                 errors.addAll(Arrays.asList(errorsStr.split("\n")));
             }
-            if (nationIdFilter != null) {
-                DBNation nation = DBNation.getById(nationIdFilter);
-                if (nation != null) {
-                    try {
-                        String mailUrl = WebUtil.mailLogin(nation, isBackend, false);
-                        throw new RedirectResponse(HttpStatus.SEE_OTHER, mailUrl);
-                    } catch (IllegalArgumentException e) {
-                        errors.add(e.getMessage());
-                    }
-                } else {
-                    errors.add("Could not find nation with id: " + nationIdFilter);
+            if (nation != null) {
+                try {
+                    String mailUrl = WebUtil.mailLogin(nation, isBackend, false);
+                    throw new RedirectResponse(HttpStatus.SEE_OTHER, mailUrl);
+                } catch (IllegalArgumentException e) {
+                    errors.add(e.getMessage());
                 }
             }
 

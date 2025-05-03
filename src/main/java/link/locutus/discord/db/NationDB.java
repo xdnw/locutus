@@ -1314,11 +1314,14 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
 
         if (cityIds.isEmpty()) return false;
+        Set<Integer> newCityIds = null;
 
         int pad = 500 - (cityIds.size() % 500);
         if (pad != 500) {
             if (pad <= 10) {
-                cityIds.addAll(getNewCityIds(pad, new IntOpenHashSet(cityIds)));
+                List<Integer> newCityIdsList = getMostOutdatedCities(pad, new IntOpenHashSet(cityIds));
+                cityIds.addAll(newCityIdsList);
+                newCityIds = new IntOpenHashSet(newCityIdsList);
             } else {
                 cityIds.addAll(getMostOutdatedCities(pad - 10, new IntOpenHashSet(cityIds)));
             }
@@ -1333,6 +1336,13 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             List<City> cities = v3.fetchCitiesWithInfo(priority, r -> r.setId(toFetch), true);
             deletedCities.addAll(toFetch);
             for (City city : cities) deletedCities.remove(city.getId());
+            if (newCityIds != null) {
+                for (City city : cities) {
+                    if (newCityIds.contains(city.getId())) {
+                        lastNewCityFetched = Math.max(lastNewCityFetched, city.getId());
+                    }
+                }
+            }
             updateCities(cities, eventConsumer);
         }
         if (!deletedCities.isEmpty()) {
@@ -1350,23 +1360,19 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
     private List<Integer> getNewCityIds(int amt, Set<Integer> ignoreIds) {
         Set<Integer> cityIds = new IntOpenHashSet(ignoreIds);
-        int[] maxIds = new int[1];
-        synchronized (citiesByNation) {
-            for (Object cityMap : citiesByNation.values()) {
-                ArrayUtil.iterateElements(SimpleDBCity.class, cityMap, (city) -> {
-                    maxIds[0] = Math.max(city.getId(), maxIds[0]);
-                    cityIds.add(city.getId());
-                });
+        if (lastNewCityFetched == 0) {
+            synchronized (citiesByNation) {
+                for (Object cityMap : citiesByNation.values()) {
+                    ArrayUtil.iterateElements(SimpleDBCity.class, cityMap, (city) -> {
+                        lastNewCityFetched = Math.max(city.getId(), lastNewCityFetched);
+                    });
+                }
             }
         }
-        if (lastNewCityFetched == 0) {
-            lastNewCityFetched = maxIds[0];
-        } else {
-            lastNewCityFetched = Math.min(maxIds[0], lastNewCityFetched);
-        }
         List<Integer> newIds = new IntArrayList();
+        int start = lastNewCityFetched + 1;
         while (newIds.size() < amt) {
-            int id = ++lastNewCityFetched;
+            int id = start++;
             if (cityIds.contains(id)) continue;
             newIds.add(id);
         }
@@ -1378,16 +1384,27 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         List<Integer> newIds = getNewCityIds(500, Collections.emptySet());
         Collections.sort(newIds);
         List<City> cities = v3.fetchCitiesWithInfo(false, r -> r.setId(newIds), true);
+        for (City city : cities) {
+            lastNewCityFetched = Math.max(lastNewCityFetched, city.getId());
+        }
         updateCities(cities, eventConsumer);
     }
 
     public void updateNewAndOutdatedCities(int amtNew, Consumer<Event> eventConsumer) {
         PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
         List<Integer> newIds = getNewCityIds(amtNew, Collections.emptySet());
-        List<Integer> outdatedIds = getMostOutdatedCities(amtNew, Collections.emptySet());
+        Set<Integer> newSet = new IntOpenHashSet(newIds);
+        List<Integer> outdatedIds = getMostOutdatedCities(PoliticsAndWarV3.CITIES_PER_PAGE - amtNew, newSet);
         newIds.addAll(outdatedIds);
         Collections.sort(newIds);
         List<City> cities = v3.fetchCitiesWithInfo(false, r -> r.setId(newIds), true);
+        if (!newSet.isEmpty()) {
+            for (City city : cities) {
+                if (newSet.contains(city.getId())) {
+                    lastNewCityFetched = Math.max(lastNewCityFetched, city.getId());
+                }
+            }
+        }
         updateCities(cities, eventConsumer);
     }
 
@@ -2600,7 +2617,13 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         String kicks = "CREATE TABLE IF NOT EXISTS `KICKS2` (`nation` INT NOT NULL, `from_aa` INT NOT NULL, `from_rank` INT NOT NULL, `to_aa` INT NOT NULL, `to_rank` INT NOT NULL, `date` BIGINT NOT NULL)";
         executeStmt(kicks);
         executeStmt("CREATE INDEX IF NOT EXISTS index_kicks2_nation ON KICKS2 (nation);");
-        executeStmt("CREATE INDEX IF NOT EXISTS index_kicks2_from_aa ON KICKS2 (from_aa,to_aa,date);");
+//        executeStmt("CREATE INDEX IF NOT EXISTS index_kicks2_from_aa ON KICKS2 (from_aa,to_aa,date);");
+        // delete the above index, if it exists
+        executeStmt("DROP INDEX IF EXISTS index_kicks2_from_aa");
+//        CREATE INDEX IF NOT EXISTS index_kicks2_from_aa_date ON KICKS2 (from_aa, date);
+//        CREATE INDEX IF NOT EXISTS index_kicks2_to_aa_date ON KICKS2 (to_aa, date);
+        executeStmt("CREATE INDEX IF NOT EXISTS index_kicks2_from_aa_date ON KICKS2 (from_aa, date);");
+        executeStmt("CREATE INDEX IF NOT EXISTS index_kicks2_to_aa_date ON KICKS2 (to_aa, date);");
     }
 
     public void importKicks() throws IOException, ParseException {
@@ -4766,7 +4789,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         if (alliances.isEmpty()) return Collections.emptyMap();
         if (alliances.size() == 1) {
             int alliance = alliances.iterator().next();
-            List<AllianceChange> result = getRemovesByAlliance(alliance, cutoff);
+            List<AllianceChange> result = getRankChangesByAA(alliance, cutoff);
             return Collections.singletonMap(alliance, result);
         } else {
             Map<Integer, List<AllianceChange>> resultsByAA = new Int2ObjectOpenHashMap<>();
@@ -4799,17 +4822,56 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
     }
 
-    public List<AllianceChange> getRemovesByAlliance(int allianceId) {
-        return getRemovesByAlliance(allianceId, 0L);
+    public List<AllianceChange> getRankChangesByAA(int allianceId) {
+        return getRankChangesByAA(allianceId, 0L);
     }
 
-    public List<AllianceChange> getRemovesByAlliance(int allianceId, long cutoff) {
+    public List<AllianceChange> getRankChangesByAA(int allianceId, long cutoff) {
         List<AllianceChange> list = new ObjectArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM KICKS2 WHERE (from_aa = ? OR to_aa = ?) " + (cutoff > 0 ? "AND date > ? " : "") + "ORDER BY date DESC")) {
-            stmt.setInt(1, allianceId);
-            stmt.setInt(2, allianceId);
+        String query = cutoff > 0
+                ? "SELECT * FROM KICKS2 WHERE from_aa = ? AND date > ? " +
+                "UNION " +
+                "SELECT * FROM KICKS2 WHERE to_aa = ? AND date > ? " +
+                "ORDER BY date DESC"
+                : "SELECT * FROM KICKS2 WHERE from_aa = ? " +
+                "UNION " +
+                "SELECT * FROM KICKS2 WHERE to_aa = ? " +
+                "ORDER BY date DESC";
+
+        try (PreparedStatement stmt = getConnection().prepareStatement(query)) {
             if (cutoff > 0) {
-                stmt.setLong(3, cutoff);
+                stmt.setInt(1, allianceId);
+                stmt.setLong(2, cutoff);
+                stmt.setInt(3, allianceId);
+                stmt.setLong(4, cutoff);
+            } else {
+                stmt.setInt(1, allianceId);
+                stmt.setInt(2, allianceId);
+            }
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    AllianceChange change = new AllianceChange(rs);
+                    list.add(change);
+                }
+            }
+            return list;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
+    public List<AllianceChange> getDeparturesAA(int allianceId, long cutoff) {
+        List<AllianceChange> list = new ObjectArrayList<>();
+        String query = cutoff > 0
+                ? "SELECT * FROM KICKS2 WHERE from_aa = ? AND date > ? ORDER BY date DESC"
+                : "SELECT * FROM KICKS2 WHERE from_aa = ? ORDER BY date DESC";
+        try (PreparedStatement stmt = getConnection().prepareStatement(query)) {
+            if (cutoff > 0) {
+                stmt.setInt(1, allianceId);
+                stmt.setLong(2, cutoff);
+            } else {
+                stmt.setInt(1, allianceId);
             }
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {

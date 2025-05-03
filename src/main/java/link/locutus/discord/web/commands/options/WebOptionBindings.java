@@ -70,7 +70,7 @@ public class WebOptionBindings extends BindingHelper {
     public WebOption getGuild() {
         return new WebOption(Guild.class).setQueryMap((guild, user, nation) -> {
             WebOptions data = new WebOptions(false).withIcon().withText().withSubtext();
-            for (Guild g : Locutus.imp().getDiscordApi().getGuilds()) {
+            for (Guild g : Locutus.imp().getDiscordApi().getCachedGuilds()) {
                 data.addWithIcon(g.getId(), g.getName(), g.getDescription(), g.getIconUrl());
             }
             return data;

@@ -23,6 +23,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.*;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
@@ -363,9 +364,9 @@ public class PlaceholdersMap {
         if (aaId != null) {
             return Set.of(DBAlliance.getOrCreate(aaId));
         }
-        Integer nationId = DiscordUtil.parseNationId(input, false);
-        if (nationId != null) {
-            return Set.of(DBNation.getOrCreate(nationId));
+        DBNation argNation = DiscordUtil.parseNation(input, true, false);
+        if (argNation != null) {
+            return Set.of(argNation);
         }
         if (input.contains("tax_id=")) {
             int taxId = PW.parseTaxId(input);
@@ -682,7 +683,7 @@ public class PlaceholdersMap {
                     if (input.equalsIgnoreCase("*")) return f -> true;
                     if (SpreadSheet.isSheet(input)) {
                         Set<Integer> sheet = SpreadSheet.parseSheet(input, List.of("bans"), true,
-                                (type, str) -> DiscordUtil.parseNationId(str, true));
+                                (type, str) -> DiscordUtil.parseNation(str, true, true).getId());
                         return f -> sheet.contains(f.getNation_id());
                     }
                     if (MathMan.isInteger(input)) {
@@ -1009,8 +1010,9 @@ public class PlaceholdersMap {
         if (id != null) {
             return f -> f.getUserId() == id;
         }
-        Integer nationId = DiscordUtil.parseNationId(input, false);
-        if (nationId != null) {
+        DBNation argNation = DiscordUtil.parseNation(input, true, false);
+        if (argNation != null) {
+            int nationId = argNation.getId();
             return f -> {
                 DBNation nation = f.getNation();
                 if (nation != null) {
@@ -1441,7 +1443,7 @@ public class PlaceholdersMap {
                             switch (type) {
                                 case 0 -> ids.add(Integer.parseInt(str));
                                 case 1 -> taxIds.add(Integer.parseInt(str));
-                                case 2 -> nations.add(DiscordUtil.parseNationId(str, true));
+                                case 2 -> nations.add(DiscordUtil.parseNation(str, true, true).getId());
                             }
                             return null;
                         });
@@ -1471,7 +1473,7 @@ public class PlaceholdersMap {
                     switch (type) {
                         case 0 -> ids.add(Integer.parseInt(str));
                         case 1 -> taxIds.add(Integer.parseInt(str));
-                        case 2 -> nations.add(DiscordUtil.parseNationId(str, true));
+                        case 2 -> nations.add(DiscordUtil.parseNation(str, true, true).getId());
                     }
                     return null;
                 });

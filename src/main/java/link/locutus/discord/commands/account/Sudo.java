@@ -61,11 +61,10 @@ public class Sudo extends Command implements Noformat {
 
         DBNation nation;
         if (user == null) {
-            Integer nationId = DiscordUtil.parseNationId(arg0, true);
-            if (nationId == null) {
+            nation = DiscordUtil.parseNation(arg0, true);
+            if (nation == null) {
                 return "Invalid nation: `" + arg0 + "`";
             }
-            nation = Locutus.imp().getNationDB().getNationById(nationId);
         } else {
             nation = DiscordUtil.getNation(user);
             if (nation == null) {

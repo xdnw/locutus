@@ -47,7 +47,7 @@ public class HasRole extends Command {
 
         List<Long> guildIds = new ArrayList<>();
         GuildShardManager api = Locutus.imp().getDiscordApi();
-        for (Guild other : api.getGuilds()) {
+        for (Guild other : api.getCachedGuilds()) {
             Member member = other.getMember(user);
             if (member == null) continue;
             if (role.has(user, guild)) {

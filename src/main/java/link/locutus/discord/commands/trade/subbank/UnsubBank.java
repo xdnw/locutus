@@ -52,15 +52,15 @@ public class UnsubBank extends Command {
             db.unsubscribe(author, 0, BankDB.BankSubType.ALL);
             db.unsubscribeAll(author.getIdLong());
         } else {
-            Integer nationId = DiscordUtil.parseNationId(args.get(0), false);
-            if (nationId == null || args.get(0).contains("/alliance/")) {
+            DBNation nation = DiscordUtil.parseNation(args.get(0), true, false);
+            if (nation == null || args.get(0).contains("/alliance/")) {
                 Integer allianceId = PW.parseAllianceId(args.get(0));
                 if (allianceId == null) {
                     return "Invalid nation or alliance: `" + args.get(0) + "`";
                 }
                 db.unsubscribe(author, allianceId, BankDB.BankSubType.ALLIANCE);
             } else {
-                db.unsubscribe(author, nationId, BankDB.BankSubType.NATION);
+                db.unsubscribe(author, nation.getId(), BankDB.BankSubType.NATION);
             }
         }
         return "Unsubscribed from `" + args.get(0) + "`" + " alerts";

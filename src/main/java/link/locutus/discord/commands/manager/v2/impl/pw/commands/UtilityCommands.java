@@ -707,6 +707,7 @@ public class UtilityCommands {
         naps.put(1740182400000L, "<https://forum.politicsandwar.com/index.php?/topic/47732-peace-in-their-time/>");
         naps.put(1746921600000L, "<https://forum.politicsandwar.com/index.php?/topic/48689-peace-double-down/>");
         naps.put(1755129600000L, "<https://forum.politicsandwar.com/index.php?/topic/49670-peace-quit-monkeyin%E2%80%99-around/>");
+        naps.put(1754697600000L, "<https://forum.politicsandwar.com/index.php?/topic/49931-doe-peace-introducing%E2%80%A6-tulip/>");
 
         long turn = TimeUtil.getTurn();
         int skippedExpired = 0;
@@ -2005,6 +2006,7 @@ public class UtilityCommands {
             int pages = (nations.size() + perpage - 1) / perpage;
             title += "(" + (page + 1) + "/" + pages + ")";
 
+            System.out.println("Create paginate " + command);
             channel.create().paginate(title, command, page, perpage, nationList).send();
         }
         if (listInfo) {

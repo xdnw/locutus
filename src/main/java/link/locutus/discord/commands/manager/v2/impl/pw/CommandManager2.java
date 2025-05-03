@@ -862,13 +862,15 @@ public class CommandManager2 {
         Runnable task = () -> {
             try {
                 if (fullCmdStr.startsWith("{")) {
+                    System.out.println("Full: " + fullCmdStr);
                     JSONObject json = new JSONObject(fullCmdStr);
+                    System.out.println("JSON " + json);
                     Map<String, Object> arguments = json.toMap();
+                    System.out.println("Map " + arguments);
                     Map<String, String> stringArguments = new HashMap<>();
                     for (Map.Entry<String, Object> entry : arguments.entrySet()) {
                         stringArguments.put(entry.getKey(), entry.getValue().toString());
                     }
-
                     String pathStr = arguments.remove("").toString();
                     run(existingLocals, io, pathStr, stringArguments, async);
                     return;

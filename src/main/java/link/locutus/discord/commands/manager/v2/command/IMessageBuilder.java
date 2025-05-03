@@ -239,6 +239,7 @@ public interface IMessageBuilder {
     @CheckReturnValue
     @Deprecated
     default IMessageBuilder paginate(String title, String command, Integer page, int perPage, List<IShrink> results, String footer, boolean inline) {
+        System.out.println("Paginate " + command);
         if (results.isEmpty()) {
             System.out.println("Results are empty.");
             return this;
@@ -271,7 +272,6 @@ public interface IMessageBuilder {
         } else if (command.charAt(0) == '{') {
             JSONObject json = new JSONObject(command, JSONObject.getNames(command));
             Map<String, Object> arguments = json.toMap();
-
             previousPageCmd = new JSONObject(arguments).put("page", page - 1).toString();
             nextPageCmd = new JSONObject(arguments).put("page", page + 1).toString();
         } else {
@@ -291,7 +291,7 @@ public interface IMessageBuilder {
             reactions.put("Next \u27A1\uFE0F", prefix + nextPageCmd);
         }
         if (footer != null) builder.setFooter(footer);
-        builder.shrinkDefault();
+        builder = builder.shrinkDefault();
 
         clearEmbeds();
         embed(builder);

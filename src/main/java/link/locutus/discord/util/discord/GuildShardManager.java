@@ -1,6 +1,8 @@
 package link.locutus.discord.util.discord;
 
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import link.locutus.discord.Locutus;
+import link.locutus.discord.db.GuildDB;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
@@ -88,6 +90,17 @@ public class GuildShardManager {
         Set<Guild> guilds = new ObjectLinkedOpenHashSet<>();
         for (JDA jda : instances) {
             guilds.addAll(jda.getGuilds());
+        }
+        return guilds;
+    }
+
+    public Collection<Guild> getCachedGuilds() {
+        Collection<GuildDB> dbs = Locutus.imp().getGuildDatabases().values();
+        Set<Guild> guilds = new ObjectLinkedOpenHashSet<>(dbs.size());
+        for (GuildDB db : dbs) {
+            Guild guild = db.getGuild();
+            if (guild.isDetached()) continue;
+            guilds.add(guild);
         }
         return guilds;
     }

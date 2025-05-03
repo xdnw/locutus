@@ -108,13 +108,12 @@ public class Damage extends Command {
         Map<Integer, Double> damageEstByNation = new HashMap<>();
         Map<Integer, Double> avgInfraByNation = new HashMap<>();
 
-        Set<Integer> nationIds = nations.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
         Map<Integer, List<Double>> cityInfraByNation = new HashMap<>();
 
         {
             for (DBNation nation : nations) {
                 Collection<JavaCity> cities = nation.getCityMap(false, false, false).values();
-                List<Double> allInfra = cities.stream().map(f -> f.getInfra()).collect(Collectors.toList());
+                List<Double> allInfra = cities.stream().map(JavaCity::getInfra).collect(Collectors.toList());
                 double max = Collections.max(allInfra);
                 double average = allInfra.stream().mapToDouble(f -> f).average().orElse(0);
                 avgInfraByNation.put(nation.getNation_id(), average);
@@ -168,8 +167,6 @@ public class Damage extends Command {
             if (nation.getShips() <= 1 && me.getShips() > 1) numCities += 0.3;
             if (nation.getCities() <= me.getCities() * 0.5) numCities++;
             if (nation.active_m() > 10000) numCities++;
-
-            List<Double> cityInfra = new ArrayList<>();
 
             double cost = damageEstByNation.getOrDefault(nation.getNation_id(), 0d);
             String moneyStr = "$" + MathMan.format(cost);

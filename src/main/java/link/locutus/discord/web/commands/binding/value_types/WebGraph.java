@@ -17,5 +17,5 @@ public class WebGraph {
     public String y;
     public String[] labels;
 
-    public List<List<?>> data;
+    public List<List<Object>> data;
 }

@@ -170,7 +170,7 @@ public abstract class TimeNumericTable<T> {
             Row row = data.getRow(i);
             for (int j = 0; j < row.size(); j++) {
                 Number val = (Number) row.get(j);
-                graph.data.get(j).add(val);
+                graph.data.get(j).add((Object) val);
             }
         }
         return graph;

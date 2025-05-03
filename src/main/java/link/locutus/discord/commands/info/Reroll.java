@@ -48,11 +48,7 @@ public class Reroll extends Command {
         }
 
         String arg0 = args.get(0);
-        Integer id = DiscordUtil.parseNationId(arg0, true);
-        if (id == null) {
-            return "Invalid nation`" + arg0 + "`";
-        }
-        me = Locutus.imp().getNationDB().getNationById(id);
+        me = DiscordUtil.parseNation(arg0, true);
         if (me == null) {
             return "Invalid nation`" + arg0 + "`" + ". (Out of " + Settings.commandPrefix(true) + "sync ?)";
         }
@@ -62,7 +58,7 @@ public class Reroll extends Command {
             int otherId = entry.getKey();
             DBNation otherNation = entry.getValue();
 
-            if (otherId > id && otherNation.getAgeDays() > me.getAgeDays() && Math.abs(otherNation.getDate() - me.getDate()) > TimeUnit.DAYS.toMillis(3)) {
+            if (otherId > me.getId() && otherNation.getAgeDays() > me.getAgeDays() && Math.abs(otherNation.getDate() - me.getDate()) > TimeUnit.DAYS.toMillis(3)) {
                 return me.getNation() + "/" + me.getNation_id() + " is a reroll.";
             }
         }

@@ -1130,11 +1130,15 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     public List<AllianceChange> getRankChanges() {
-        return Locutus.imp().getNationDB().getRemovesByAlliance(allianceId);
+        return Locutus.imp().getNationDB().getRankChangesByAA(allianceId);
     }
 
     public List<AllianceChange> getRankChanges(long timeStart) {
-        return Locutus.imp().getNationDB().getRemovesByAlliance(allianceId, timeStart);
+        return Locutus.imp().getNationDB().getRankChangesByAA(allianceId, timeStart);
+    }
+
+    public List<AllianceChange> getDepartures(long timeStart) {
+        return Locutus.imp().getNationDB().getDeparturesAA(allianceId, timeStart);
     }
 
     public Set<DBWar> getActiveWars() {

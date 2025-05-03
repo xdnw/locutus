@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
 public class AlliancePages {
     @Command
     public Object allianceLeaves(WebStore ws, int allianceId, @Switch("a") boolean includeInactive, @Switch("v") boolean includeVM, @Switch("m") boolean include) {
-        List<AllianceChange> removes = Locutus.imp().getNationDB().getRemovesByAlliance(allianceId);
+        List<AllianceChange> removes = Locutus.imp().getNationDB().getRankChangesByAA(allianceId);
 
         String title = "Rank changes for " + MarkupUtil.htmlUrl(PW.getName(allianceId, true), PW.getUrl(allianceId, true));
         List<String> header = Arrays.asList("time", "nation", "position", "now-alliance", "now-position", "now-activity");

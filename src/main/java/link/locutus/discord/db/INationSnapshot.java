@@ -2,6 +2,8 @@ package link.locutus.discord.db;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.nation.DBNationData;
+import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.User;
@@ -9,6 +11,14 @@ import net.dv8tion.jda.api.entities.User;
 import java.util.Set;
 
 public interface INationSnapshot {
+    default DBNation getNationById(int id, boolean allowDeleted) {
+        DBNation nation = getNationById(id);
+        if (nation == null && allowDeleted) {
+            nation = new SimpleDBNation(new DBNationData());
+            nation.edit().setNation_id(id);
+        }
+        return nation;
+    }
     DBNation getNationById(int id);
 
     default DBNation getNationByUser(User user) {

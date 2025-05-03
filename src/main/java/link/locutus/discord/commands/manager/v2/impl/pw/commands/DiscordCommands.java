@@ -428,7 +428,7 @@ public class DiscordCommands {
     }
 
     @Command(desc = "Register your discord user with your Politics And War nation.")
-    public String register(@Me GuildDB db, @Me User user, /* @Default("%user%")  */ DBNation nation) throws IOException {
+    public String register(@Me GuildDB db, @Me User user, /* @Default("%user%")  */ @AllowDeleted DBNation nation) throws IOException {
         boolean notRegistered = DiscordUtil.getUserByNationId(nation.getNation_id()) == null;
         String fullDiscriminator = DiscordUtil.getFullUsername(user);
 

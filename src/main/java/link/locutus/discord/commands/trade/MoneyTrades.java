@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.trade;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -51,10 +52,8 @@ public class MoneyTrades extends Command {
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 2) return usage(args.size(), 2, channel);
-        Integer nationId = DiscordUtil.parseNationId(args.get(0), true);
-        if (nationId == null) {
-            return "invalid nation `" + args.get(0) + "`";
-        }
+        DBNation nation = DiscordUtil.parseNation(args.get(0), true, true);
+        int nationId = nation.getId();
         long timeDiff = TimeUtil.timeToSec(args.get(1)) * 1000L;
         if (timeDiff == 0) return "Invalid time: `" + args.get(1) + "`";
         long cuttOff = System.currentTimeMillis() - timeDiff;
@@ -63,9 +62,9 @@ public class MoneyTrades extends Command {
             Locutus.imp().runEventsAsync(Locutus.imp().getTradeManager()::updateTradeList);
         }
 
-        Map<Integer, Map<ResourceType, Long>> netInflows = new HashMap<>();
+        Map<Integer, Map<ResourceType, Long>> netInflows = new Int2ObjectOpenHashMap<>();
 
-        List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(nationId, cuttOff);
+        List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(nation.getId(), cuttOff);
         for ( DBTrade offer : trades) {
             if (offer.getResource() == ResourceType.CREDITS) continue;
             int max = offer.getResource() == ResourceType.FOOD ? 1000 : 10000;

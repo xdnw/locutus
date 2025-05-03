@@ -48,6 +48,10 @@ import java.util.concurrent.CompletableFuture;
 public class WebUtil {
     public static final Gson GSON = new Gson();
 
+    public static JSONObject json(Object map) {
+        return new JSONObject(map, JSONObject.getNames(map));
+    }
+
     public static <T> String generateSearchableDropdown(ParameterData param, Collection<T> objects, QuadConsumer<T, JsonArray, JsonArray, JsonArray> consumeObjectNamesValueSubtext) {
         return generateSearchableDropdown(param, objects, consumeObjectNamesValueSubtext, null);
     }

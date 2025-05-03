@@ -1,6 +1,7 @@
 package link.locutus.discord.util.task.war;
 
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.io.PagePriority;
@@ -39,9 +40,9 @@ public class GetActiveWars implements Callable<Collection<Map.Entry<Integer, Int
             if (columns.get(3).text().contains("Active War")) {
                 String attackerStr = columns.get(1).getElementsByTag("a").get(0).attr("href");
                 String defenderStr = columns.get(2).getElementsByTag("a").get(0).attr("href");
-                Integer attacker = DiscordUtil.parseNationId(attackerStr, true);
-                Integer defender = DiscordUtil.parseNationId(defenderStr, true);
-                wars.add(new KeyValue<>(attacker, defender));
+                DBNation attacker = DiscordUtil.parseNation(attackerStr, true, true);
+                DBNation defender = DiscordUtil.parseNation(defenderStr, true, true);
+                wars.add(new KeyValue<>(attacker.getId(), defender.getId()));
             }
         }
         return wars;

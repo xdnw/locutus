@@ -97,11 +97,7 @@ public class GetBuild extends Command {
             return "Invalid nation, Are you sure you are registered?" + author.getAsMention();
         }
 
-        Integer id = DiscordUtil.parseNationId(args.get(0), true);
-        if (id == null) {
-            return "Not found: `" + Settings.commandPrefix(true) + "pnw-who <user>`";
-        }
-        DBNation nation = Locutus.imp().getNationDB().getNationById(id);
+        DBNation nation = DiscordUtil.parseNation(args.get(0), true);
         if (nation == null) {
             return "Nation not found: `" + args.get(0) + "`";
         }

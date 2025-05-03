@@ -47,23 +47,23 @@ public class Multi extends Command {
         if (args.isEmpty()) {
             return usage(args.size(), 1, channel);
         }
-        Integer nationId = DiscordUtil.parseNationId(args.get(0), true);
-        if (nationId == null) {
+        DBNation nation = DiscordUtil.parseNation(args.get(0), true, true);
+        if (nation == null) {
             return "Invalid nation: `" + args.get(0) + "`";
         }
-        MultiReport report = new MultiReport(nationId);
+        MultiReport report = new MultiReport(nation.getId());
         String result = report.toString();
 
-        String title = PW.getName(nationId, false) + " multi report";
+        String title = nation.getName() + " multi report";
         IMessageBuilder msg = channel.create();
         boolean attachFile = true;
         if (result.length() + title.length() > MessageEmbed.EMBED_MAX_LENGTH_BOT || result.length() > MessageEmbed.DESCRIPTION_MAX_LENGTH) {
             String condensed = report.toString(true);
             if (condensed.length() + title.length() <= MessageEmbed.EMBED_MAX_LENGTH_BOT && condensed.length() <= MessageEmbed.DESCRIPTION_MAX_LENGTH) {
-                msg.embed( PW.getName(nationId, false), condensed);
+                msg.embed( nation.getName(), condensed);
             }
         } else {
-            msg.embed( PW.getName(nationId, false), result);
+            msg.embed( nation.getName(), result);
             attachFile = false;
         }
 
@@ -78,7 +78,7 @@ public class Multi extends Command {
             - Having many networks, but only a few shared may be a sign of a VPN being used (there are legitimate reasons for using a VPN)```""");
 
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
-            msg.append("\n**See also:** " + Settings.INSTANCE.WEB.FRONTEND_DOMAIN + "/#/multi_v2/" + nationId);
+            msg.append("\n**See also:** " + Settings.INSTANCE.WEB.FRONTEND_DOMAIN + "/#/multi_v2/" + nation.getId());
         }
 
         msg.send();

@@ -65,7 +65,7 @@ public class Inflows extends Command {
         long cutoffMs = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
 
         String arg0 = args.get(0);
-        Integer nationId = DiscordUtil.parseNationId(arg0, false);
+        DBNation argNation = DiscordUtil.parseNation(arg0, true, false);
 
         List<Transaction2> allTransfers = new ArrayList<>();
 
@@ -79,7 +79,7 @@ public class Inflows extends Command {
 
         Function<Integer, String> aaNameFunc = i -> Locutus.imp().getNationDB().getAllianceName(i);
 
-        if (nationId == null || arg0.contains("/alliance/") || arg0.charAt(0) == '~') {
+        if (argNation == null || arg0.contains("/alliance/") || arg0.charAt(0) == '~') {
             if (arg0.charAt(0) == '~') {
                 arg0 = args.get(0).substring(1);
                 self = Locutus.imp().getGuildDB(guild).getCoalition(arg0);
@@ -97,14 +97,13 @@ public class Inflows extends Command {
                 allTransfers.addAll(Locutus.imp().getBankDB().getAllianceTransfers(allianceId, cutoffMs));
             }
         } else {
-            self = Collections.singleton(nationId);
+            self = Collections.singleton(argNation.getId());
 
-            DBNation nation = Locutus.imp().getNationDB().getNationById(nationId);
-            selfName = nation == null ? Integer.toString(nationId) : nation.getNation();
+            selfName = argNation.getNation();
 
-            allTransfers.addAll(Locutus.imp().getBankDB().getNationTransfers(nationId, cutoffMs));
+            allTransfers.addAll(Locutus.imp().getBankDB().getNationTransfers(argNation.getId(), cutoffMs));
 
-            List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(nationId, cutoffMs);
+            List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(argNation.getId(), cutoffMs);
             for (DBTrade offer : trades) {
                 int per = offer.getPpu();
                 ResourceType type = offer.getResource();

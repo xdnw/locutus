@@ -84,11 +84,7 @@ public class SimulatedWarNode {
                         throw new IllegalArgumentException("Invalid raid type " + type + ". expected either: RAID, ORDINARY, ATTRITION");
                 }
             case 2:
-                Integer attackerId = DiscordUtil.parseNationId(args[1], true);
-                if (attackerId == null) {
-                    throw new IllegalArgumentException("Invalid attacker: " + args[1]);
-                }
-                attacker = Locutus.imp().getNationDB().getNationById(attackerId);
+                attacker = DiscordUtil.parseNation(args[1], true);
                 // attacker
                 // defender
             case 1:
@@ -105,12 +101,7 @@ public class SimulatedWarNode {
                     if (attacker == null) {
                         attacker = attackerDefault;
                     }
-                    Integer defenderId = DiscordUtil.parseNationId(args[0], true);
-                    if (defenderId == null) {
-                        throw new IllegalArgumentException( "Invalid defender or war link: " + args[0]);
-                    }
-                    defender = Locutus.imp().getNationDB().getNationById(defenderId);
-
+                    defender = DiscordUtil.parseNation(args[0], true);
                     return new SimulatedWarNode(new WarNation(attacker), new WarNation(defender), type, 60, true);
                 }
         }

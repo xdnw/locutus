@@ -66,13 +66,13 @@ public class BankAlerts extends Command {
 
         BankDB.BankSubType isNation;
         Set<Integer> ids;
-        Integer nationId = DiscordUtil.parseNationId(args.get(0), false);
+        DBNation nation = DiscordUtil.parseNation(args.get(0), true, false);
         if (args.get(0).equalsIgnoreCase("*")) {
             isNation = BankDB.BankSubType.ALL;
             ids = Collections.singleton(0);
-        } else if (nationId != null && !args.get(0).contains("/alliance/")) {
+        } else if (nation != null && !args.get(0).contains("/alliance/")) {
             isNation = BankDB.BankSubType.NATION;
-            ids = Collections.singleton(nationId);
+            ids = Collections.singleton(nation.getId());
         } else {
             isNation = BankDB.BankSubType.ALLIANCE;
             ids = DiscordUtil.parseAllianceIds(guild, args.get(0));
