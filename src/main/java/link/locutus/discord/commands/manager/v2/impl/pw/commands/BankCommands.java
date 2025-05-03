@@ -4730,12 +4730,12 @@ public class BankCommands {
                         }
                     }
 
-                    JSONObject newAccountCmd = new JSONObject(command, JSONObject.getNames(command)).put("force", "true");
+                    JSONObject newAccountCmd = WebUtil.json(command).put("force", "true");
 
                     IMessageBuilder msg = io.create().embed(title, body.toString());
                     msg = msg.commandButton(newAccountCmd.put("newAccount", true), "New");
                     if (hasAdmin) {
-                        JSONObject importAccountCmd = new JSONObject(command, JSONObject.getNames(command)).put("force", "true");
+                        JSONObject importAccountCmd = WebUtil.json(command).put("force", "true");
                         msg = msg.commandButton(importAccountCmd.put("importAccount", true), "Import");
                     }
                     msg.send();

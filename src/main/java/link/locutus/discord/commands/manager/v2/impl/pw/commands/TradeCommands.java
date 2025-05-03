@@ -1252,7 +1252,7 @@ public class TradeCommands {
             TradeMarginByDay table = new TradeMarginByDay(filtered, new HashSet<>(Arrays.asList(types)), percent);
             IMessageBuilder msg = table.writeMsg(channel.create(), attachJson, attachCsv, attach_sheet ? db : null, SheetKey.TRADE_MARGIN_DAY);
             if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
-                JSONObject commandRss = new JSONObject(command, JSONObject.getNames(command));;
+                JSONObject commandRss = WebUtil.json(command);
                 @NotNull String rssStr = Arrays.stream(types).map(ResourceType::name).collect(Collectors.joining(","));
                 commandRss.put("resources", rssStr);
                 msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.tradeMarginByDay.cmd.getName(), commandRss));
@@ -1301,7 +1301,7 @@ public class TradeCommands {
             RssTradeByDay graph = new RssTradeByDay(title, offers, type);
             IMessageBuilder msg = graph.writeMsg(channel.create(), attachJson, attachCsv, db, key);
             if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
-                JSONObject commandForRss = new JSONObject(command, JSONObject.getNames(command));
+                JSONObject commandForRss = WebUtil.json(command);
                 commandForRss.remove("resources");
                 commandForRss.put("resource", type.name());
                 msg.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + ref.getName(), commandForRss));

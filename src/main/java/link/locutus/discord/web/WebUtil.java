@@ -25,6 +25,7 @@ import link.locutus.discord.util.task.mail.SearchMailTask;
 import link.locutus.discord.web.commands.binding.DBAuthRecord;
 import link.locutus.discord.web.jooby.WebRoot;
 import org.apache.http.client.utils.URIBuilder;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
 
@@ -39,17 +40,27 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.SecureRandom;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 public class WebUtil {
     public static final Gson GSON = new Gson();
 
-    public static JSONObject json(Object map) {
-        return new JSONObject(map, JSONObject.getNames(map));
+    public static JSONObject json(JSONObject obj) {
+        JSONObject result = new JSONObject();
+        Iterator<String> iter = obj.keys();
+        while (iter.hasNext()) {
+            String key = iter.next();
+            Object value = obj.get(key);
+            if (value instanceof JSONObject) {
+                result.put(key, json((JSONObject) value));
+            } else if (value instanceof JSONArray) {
+                result.put(key, ((JSONArray) value).toList());
+            } else {
+                result.put(key, value);
+            }
+        }
+        return result;
     }
 
     public static <T> String generateSearchableDropdown(ParameterData param, Collection<T> objects, QuadConsumer<T, JsonArray, JsonArray, JsonArray> consumeObjectNamesValueSubtext) {
