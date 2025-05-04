@@ -93,13 +93,13 @@ public class DepositSheetTask implements Callable<NationBalanceRow> {
         Map<DepositType, double[]> deposits = PW.sumNationTransactions(nation, db, tracked, transactions, includeExpired, includeIgnored, f -> true);
         double[] buffer = ResourceType.getBuffer();
 
-        row.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
-        row.set(1, nation.getCities());
-        row.set(2, nation.getAgeDays());
-        row.set(3, String.format("%.2f", ResourceType.convertedTotal(deposits.getOrDefault(DepositType.DEPOSIT, buffer))));
-        row.set(4, String.format("%.2f", ResourceType.convertedTotal(deposits.getOrDefault(DepositType.TAX, buffer))));
-        row.set(5, String.format("%.2f", ResourceType.convertedTotal(deposits.getOrDefault(DepositType.LOAN, buffer))));
-        row.set(6, String.format("%.2f", ResourceType.convertedTotal(deposits.getOrDefault(DepositType.GRANT, buffer))));
+        row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
+        row.add(nation.getCities());
+        row.add(nation.getAgeDays());
+        row.add(String.format("%.2f", ResourceType.convertedTotal(deposits.getOrDefault(DepositType.DEPOSIT, buffer))));
+        row.add(String.format("%.2f", ResourceType.convertedTotal(deposits.getOrDefault(DepositType.TAX, buffer))));
+        row.add(String.format("%.2f", ResourceType.convertedTotal(deposits.getOrDefault(DepositType.LOAN, buffer))));
+        row.add(String.format("%.2f", ResourceType.convertedTotal(deposits.getOrDefault(DepositType.GRANT, buffer))));
         double[] total = ResourceType.getBuffer();
         for (Map.Entry<DepositType, double[]> entry : deposits.entrySet()) {
             switch (entry.getKey()) {
@@ -119,7 +119,7 @@ public class DepositSheetTask implements Callable<NationBalanceRow> {
             double[] value = entry.getValue();
             total = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, total, value);
         }
-        row.set(7, String.format("%.2f", ResourceType.convertedTotal(total)));
+        row.add(String.format("%.2f", ResourceType.convertedTotal(total)));
         long lastDeposit = 0;
         long lastSelfWithdrawal = 0;
         for (Map.Entry<Integer, Transaction2> entry : transactions) {
@@ -132,25 +132,24 @@ public class DepositSheetTask implements Callable<NationBalanceRow> {
             }
         }
         if (lastDeposit == 0) {
-            row.set(8, "NEVER");
+            row.add("NEVER");
         } else {
             long days = TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - lastDeposit);
-            row.set(8, days);
+            row.add(days);
         }
         if (lastSelfWithdrawal == 0) {
-            row.set(9, "NEVER");
+            row.add("NEVER");
         } else {
             long days = TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - lastSelfWithdrawal);
-            row.set(9, days);
+            row.add(days);
         }
-        row.set(10, ResourceType.toString(internal));
-        row.set(11, ResourceType.toString(withdrawal));
-        row.set(12, ResourceType.toString(deposit));
+        row.add(ResourceType.toString(internal));
+        row.add(ResourceType.toString(withdrawal));
+        row.add(ResourceType.toString(deposit));
 
-        int i = 13;
         for (ResourceType type : ResourceType.values) {
             if (type == ResourceType.CREDITS) continue;
-            row.set((i++), MathMan.format(total[type.ordinal()]));
+            row.add(MathMan.format(total[type.ordinal()]));
         }
         double[] normalized = PW.normalize(total);
         // --- End of logic from original loop body ---
