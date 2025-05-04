@@ -17,6 +17,7 @@ import link.locutus.discord.util.math.ArrayUtil;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.RecursiveTask;
 import java.util.concurrent.TimeUnit;
@@ -24,7 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 
-public class DepositSheetTask extends RecursiveTask<NationBalanceRow> {
+public class DepositSheetTask extends Callable<NationBalanceRow> {
 
     private final DBNation nation;
     private final GuildDB db;
@@ -76,7 +77,7 @@ public class DepositSheetTask extends RecursiveTask<NationBalanceRow> {
     }
 
     @Override
-    protected NationBalanceRow compute() {
+    public NationBalanceRow call() {
         // --- Logic from the original loop body ---
         List<Object> row = new ObjectArrayList<>(rowSize);
 

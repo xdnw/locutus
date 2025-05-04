@@ -2606,7 +2606,7 @@ public class BankCommands {
 
         try {
             Set<Long> finalTracked = tracked;
-            List<DepositSheetTask> tasks = nations.stream()
+            List<Callable<NationBalanceRow>> tasks = nations.stream()
                     .map(nation -> new DepositSheetTask(
                             nation, db, finalTracked, useTaxBase, useOffset, updateBulk, force,
                             useFlowNote, includeExpired, includeIgnored, header.size(),
@@ -2623,17 +2623,17 @@ public class BankCommands {
             for (NationBalanceRow result : results) {
                 // Add row to sheet (synchronized)
                 synchronized (sheet) {
-                    sheet.addRow(result.row);
+                    sheet.addRow(result.row());
                 }
 
                 // Accumulate totals (thread-safe)
-                if (ResourceType.convertedTotal(result.normalized) > 0) {
-                    for(int i = 0; i < result.normalized.length; i++) {
-                        aaTotalPositiveAccumulator[i].accumulate(result.normalized[i]); // Use accumulate
+                if (ResourceType.convertedTotal(result.normalized()) > 0) {
+                    for(int i = 0; i < result.normalized().length; i++) {
+                        aaTotalPositiveAccumulator[i].accumulate(result.normalized()[i]); // Use accumulate
                     }
                 }
-                for(int i = 0; i < result.total.length; i++) {
-                    aaTotalNetAccumulator[i].accumulate(result.total[i]); // Use accumulate
+                for(int i = 0; i < result.total().length; i++) {
+                    aaTotalNetAccumulator[i].accumulate(result.total()[i]); // Use accumulate
                 }
             }
 
