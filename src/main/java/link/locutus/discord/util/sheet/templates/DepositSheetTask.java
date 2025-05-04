@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 
-public class DepositSheetTask extends Callable<NationBalanceRow> {
+public class DepositSheetTask implements Callable<NationBalanceRow> {
 
     private final DBNation nation;
     private final GuildDB db;

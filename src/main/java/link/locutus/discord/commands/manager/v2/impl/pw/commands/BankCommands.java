@@ -2615,9 +2615,20 @@ public class BankCommands {
                     .collect(Collectors.toList());
 
             // Invoke all tasks and wait for completion
-            List<NationBalanceRow> results = pool.invokeAll(tasks).stream()
-                    .map(ForkJoinTask::join) // Get results, exceptions are thrown here if any task failed
-                    .collect(Collectors.toList());
+            List<NationBalanceRow> results = null;
+            try {
+                results = pool.invokeAll(tasks).stream()
+                        .map(task -> {
+                            try {
+                                return task.get();
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
+                        })
+                        .toList();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
 
             // Process results (add rows to sheet and accumulate totals)
             for (NationBalanceRow result : results) {
