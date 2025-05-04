@@ -351,6 +351,8 @@ public class UnsortedCommands {
                                   @Arg("Include the potential revenue of untaxable nations\n" +
                                           "Assumes 100/100)")
                                   @Switch("u") boolean includeUntaxable) throws GeneralSecurityException, IOException {
+        CompletableFuture<IMessageBuilder> msgFuture = (io.sendMessage("Updating research. Please wait..."));
+
         Set<TaxBracket> brackets = new HashSet<>();
         Set<Integer> aaIds = db.getAllianceIds(true);
         Set<Integer> alliancesUpdated = new IntOpenHashSet();
@@ -408,8 +410,13 @@ public class UnsortedCommands {
 
         sheet.setHeader(header);
 
+        long start = System.currentTimeMillis();
         boolean includeUnknownRate = false;
         for (TaxBracket bracket : brackets) {
+            if (start + 10000 < System.currentTimeMillis()) {
+                start = System.currentTimeMillis();
+                io.updateOptionally(msgFuture, "Loading tax bracket records... " + bracket.toString());
+            }
             header.clear();
             if (bracket.rssRate < 0 || bracket.moneyRate < 0) {
                 includeUnknownRate = true;

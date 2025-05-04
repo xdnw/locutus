@@ -413,6 +413,24 @@ public class ArrayUtil {
         return result;
     }
 
+    public static double[] toDoubleArrayCents(byte[] array) {
+        int len = array.length / 8;
+        double[] result = new double[len];
+        for (int i = 0; i < len; i++) {
+            int base = i * 8;
+            long value = ((long)(array[base]   & 0xFF) << 56)
+                    | ((long)(array[base+1] & 0xFF) << 48)
+                    | ((long)(array[base+2] & 0xFF) << 40)
+                    | ((long)(array[base+3] & 0xFF) << 32)
+                    | ((long)(array[base+4] & 0xFF) << 24)
+                    | ((long)(array[base+5] & 0xFF) << 16)
+                    | ((long)(array[base+6] & 0xFF) <<  8)
+                    |  (long)(array[base+7] & 0xFF);
+            result[i] = value / 100d;
+        }
+        return result;
+    }
+
     public static float[] toFloatArray(byte[] array) {
         DataInputStream is = new DataInputStream(new ByteArrayInputStream(array));
         int len = array.length / 4;

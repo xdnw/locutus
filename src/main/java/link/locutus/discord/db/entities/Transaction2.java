@@ -325,7 +325,7 @@ public class Transaction2 {
         resources = new double[ResourceType.values.length];
         for (ResourceType type : ResourceType.values) {
             if (type == ResourceType.CREDITS) continue;
-            resources[type.ordinal()] = rs.getLong(type.name()) / 100d;
+            resources[type.ordinal()] = rs.getLong(type.name()) * 0.01d;
         }
     }
 

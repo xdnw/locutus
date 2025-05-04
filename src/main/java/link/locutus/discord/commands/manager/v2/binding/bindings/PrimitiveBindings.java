@@ -214,6 +214,21 @@ public class PrimitiveBindings extends BindingHelper {
                 throw new IllegalArgumentException("Invalid date: `" + argument + "`: " + e.getMessage());
             }
         }
+        if (argument.contains("/") || argument.contains(".")) {
+            String[] split = argument.split("[/.]");
+            if (split.length == 3) {
+                String full = split[0] + "/" + split[1] + "/" + split[2];
+                long time;
+                if (split[2].length() == 2) {
+                    time = TimeUtil.parseDate(TimeUtil.DD_MM_YY, full, false);
+                } else {
+                    time = TimeUtil.parseDate(TimeUtil.DD_MM_YYYY, full, false);
+                }
+                return System.currentTimeMillis() - time;
+            } else {
+                throw new IllegalArgumentException("Invalid time format: " + argument);
+            }
+        }
         return TimeUtil.timeToSec(argument) * 1000;
     }
 

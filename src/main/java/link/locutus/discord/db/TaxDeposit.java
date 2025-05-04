@@ -177,10 +177,8 @@ public class TaxDeposit {
         if (date > 1656153134000L && date < 1657449182000L) {
             date = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(date));
         }
-
-        long[] cents = ArrayUtil.toLongArray(rs.getResources());
-        double[] deposit = new double[cents.length];
-        for (int i = 0; i < cents.length; i++) deposit[i] = cents[i] / 100d;
+        byte[] bytes = rs.getResources();
+        double[] deposit = ArrayUtil.toDoubleArrayCents(bytes);
 
         int alliance = rs.getAlliance();
         int nation = rs.getNation();

@@ -52,6 +52,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.example.jooq.bank.Tables.LOOT_DIFF_BY_TAX_ID;
 import static org.example.jooq.bank.Tables.SUBSCRIPTIONS;
@@ -120,18 +121,12 @@ public class BankDB extends DBMainV3 {
 
     @Override
     public void createTables() {
-        ctx().createTableIfNotExists(TRANSACTIONS_2).columns(TRANSACTIONS_2.fields()).primaryKey(TRANSACTIONS_2.getPrimaryKey().getFields()).execute();
-        for (Index index : TRANSACTIONS_2.getIndexes()) ctx().createIndex(index);
-        ctx().createTableIfNotExists(SUBSCRIPTIONS).columns(SUBSCRIPTIONS.fields()).primaryKey(SUBSCRIPTIONS.getPrimaryKey().getFields()).execute();
-        for (Index index : SUBSCRIPTIONS.getIndexes()) ctx().createIndex(index);
-        ctx().createTableIfNotExists(TAX_BRACKETS).columns(TAX_BRACKETS.fields()).primaryKey(TAX_BRACKETS.getPrimaryKey().getFields()).execute();
-        for (Index index : TAX_BRACKETS.getIndexes()) ctx().createIndex(index);
-        ctx().createTableIfNotExists(LOOT_DIFF_BY_TAX_ID).columns(LOOT_DIFF_BY_TAX_ID.fields()).primaryKey(LOOT_DIFF_BY_TAX_ID.getPrimaryKey().getFields()).execute();
-        for (Index index : LOOT_DIFF_BY_TAX_ID.getIndexes()) ctx().createIndex(index);
-        ctx().createTableIfNotExists(TAX_ESTIMATE).columns(TAX_ESTIMATE.fields()).primaryKey(TAX_ESTIMATE.getPrimaryKey().getFields()).execute();
-        for (Index index : TAX_ESTIMATE.getIndexes()) ctx().createIndex(index);
-        ctx().createTableIfNotExists(TAX_DEPOSITS_DATE).columns(TAX_DEPOSITS_DATE.fields()).primaryKey(TAX_DEPOSITS_DATE.getPrimaryKey().getFields()).execute();
-        for (Index index : TAX_DEPOSITS_DATE.getIndexes()) ctx().createIndex(index);
+        createTableWithIndexes(TRANSACTIONS_2);
+        createTableWithIndexes(SUBSCRIPTIONS);
+        createTableWithIndexes(TAX_BRACKETS);
+        createTableWithIndexes(LOOT_DIFF_BY_TAX_ID);
+        createTableWithIndexes(TAX_ESTIMATE);
+        createTableWithIndexes(TAX_DEPOSITS_DATE);
     }
 
     public Transaction2 getLatestTransaction() {
@@ -676,35 +671,39 @@ public class BankDB extends DBMainV3 {
     }
 
     public List<TaxDeposit> getTaxesByBracket(int tax_id) {
-        List<TaxDeposit> list = new ArrayList<>();
+        List<TaxDeposit> list = new ObjectArrayList<>();
         ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.TAX_ID.eq(tax_id)).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
         return list;
     }
 
     public List<TaxDeposit> getTaxesByBracket(int tax_id, long afterDate) {
-        List<TaxDeposit> list = new ArrayList<>();
+        List<TaxDeposit> list = new ObjectArrayList<>();
         ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.TAX_ID.eq(tax_id).and(TAX_DEPOSITS_DATE.DATE.ge(afterDate))).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
         return list;
     }
 
     public List<TaxDeposit> getTaxesPaid(int nation) {
-        List<TaxDeposit> list = new ArrayList<>();
-        ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.NATION.eq(nation)).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
+        List<TaxDeposit> list = new ObjectArrayList<>();
+        try (Stream<TaxDepositsDateRecord> stream = ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.NATION.eq(nation)).stream()) {
+            stream.forEach(rs -> list.add(TaxDeposit.of(rs)));
+        }
         return list;
     }
 
     public List<TaxDeposit> getTaxesByAA(int alliance) {
-        List<TaxDeposit> list = new ArrayList<>();
-        ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.ALLIANCE.eq(alliance)).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
+        List<TaxDeposit> list = new ObjectArrayList<>();
+        try (Stream<TaxDepositsDateRecord> stream = ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.ALLIANCE.eq(alliance)).stream()) {
+            stream.forEach(rs -> list.add(TaxDeposit.of(rs)));
+        }
         return list;
     }
 
     public List<TaxDeposit> getTaxesByAA(Set<Integer> allianceIds) {
-        if (allianceIds.isEmpty()) return new ArrayList<>();
+        if (allianceIds.isEmpty()) return new ObjectArrayList<>();
         if (allianceIds.size() == 1) {
             return getTaxesByAA(allianceIds.iterator().next());
         }
-        List<TaxDeposit> list = new ArrayList<>();
+        List<TaxDeposit> list = new ObjectArrayList<>();
         ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.ALLIANCE.in(allianceIds)).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
         return list;
     }

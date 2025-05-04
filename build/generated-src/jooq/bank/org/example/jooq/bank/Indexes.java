@@ -31,5 +31,6 @@ public class Indexes {
     public static final Index INDEX_SENDER_RECEIVER_ID = Internal.createIndex(DSL.name("index_sender_receiver_id"), Transactions_2.TRANSACTIONS_2, new OrderField[] { Transactions_2.TRANSACTIONS_2.RECEIVER_ID, Transactions_2.TRANSACTIONS_2.SENDER_ID }, false);
     public static final Index INDEX_SENDER_TYPE = Internal.createIndex(DSL.name("index_sender_type"), Transactions_2.TRANSACTIONS_2, new OrderField[] { Transactions_2.TRANSACTIONS_2.SENDER_TYPE }, false);
     public static final Index INDEX_TAX_DEPOSITS_NATION = Internal.createIndex(DSL.name("index_tax_deposits_nation"), TaxDepositsDate.TAX_DEPOSITS_DATE, new OrderField[] { TaxDepositsDate.TAX_DEPOSITS_DATE.NATION }, false);
+    public static final Index INDEX_TAX_DEPOSITS_TAX_ID = Internal.createIndex(DSL.name("index_tax_deposits_tax_id"), TaxDepositsDate.TAX_DEPOSITS_DATE, new OrderField[] { TaxDepositsDate.TAX_DEPOSITS_DATE.TAX_ID }, false);
     public static final Index INDEX_TX_DATETIME = Internal.createIndex(DSL.name("index_tx_datetime"), Transactions_2.TRANSACTIONS_2, new OrderField[] { Transactions_2.TRANSACTIONS_2.TX_DATETIME }, false);
 }

@@ -2657,9 +2657,7 @@ public class AdminCommands {
                 }
                 i++;
             }
-            if (msg != null && msg.getId() > 0) {
-                io.delete(msg.getId());
-            }
+            if (msg != null && msg.getId() > 0) io.delete(msg.getId());
             return hasSameNetworkAsBan(io, author, nations, listExpired, onlySameAlliance, onlySimilarTime, sortByAgeDays, sortByLogin, false);
         }
 

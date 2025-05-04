@@ -57,6 +57,8 @@ import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
+import link.locutus.discord.util.sheet.templates.DepositSheetTask;
+import link.locutus.discord.util.sheet.templates.NationBalanceRow;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -94,11 +96,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.DoubleAccumulator;
+import java.util.function.DoubleBinaryOperator;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -2570,7 +2572,7 @@ public class BankCommands {
         }
         Set<Long> tracked = null;
         if (offshores != null) {
-            tracked = new ObjectLinkedOpenHashSet<>();
+            tracked = new LongOpenHashSet();
             for (DBAlliance aa : offshores) tracked.add((long) aa.getAlliance_id());
             tracked = PW.expandCoalition(tracked);
         }
@@ -2582,93 +2584,70 @@ public class BankCommands {
         if (updateBulk) {
             Locutus.imp().runEventsAsync(events -> Locutus.imp().getBankDB().updateBankRecs(false, events));
         }
+        IMessageBuilder updateMsg = null;
+        final AtomicLong last = new AtomicLong(System.currentTimeMillis());
 
-        long last = System.currentTimeMillis();
-        for (DBNation nation : nations) {
-            if (System.currentTimeMillis() - last > 5000) {
-                IMessageBuilder tmp = msgFuture.getNow(null);
-                if (tmp != null) msgFuture = tmp.clear().append("calculating for: " + nation.getNation()).send();
-                last = System.currentTimeMillis();
-            }
+        ForkJoinPool pool = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
+        AtomicInteger processedCount = new AtomicInteger(0);
+        int totalNationsCount = nations.size();
+        AtomicLong lastUpdateTimestamp = new AtomicLong(System.currentTimeMillis()); // For progress updates
 
-            List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, tracked, useTaxBase, useOffset, (updateBulk && !force) ? -1 : 0L, 0L, false);
-            List<Map.Entry<Integer, Transaction2>> flowTransfers = transactions;
-            if (useFlowNote != null) {
-                flowTransfers = flowTransfers.stream().filter(f -> f.getValue().getNoteMap().containsKey(useFlowNote)).toList();
-            }
-            double[] internal = FlowType.INTERNAL.getTotal(flowTransfers, nation.getId());
-            double[] withdrawal = FlowType.WITHDRAWAL.getTotal(flowTransfers, nation.getId());
-            double[] deposit = FlowType.DEPOSIT.getTotal(flowTransfers, nation.getId());
+        // Use thread-safe accumulators for totals
+        DoubleAccumulator[] aaTotalPositiveAccumulator = new DoubleAccumulator[ResourceType.values().length];
+        DoubleAccumulator[] aaTotalNetAccumulator = new DoubleAccumulator[ResourceType.values().length];
+        DoubleBinaryOperator sum = Double::sum; // Or (x, y) -> x + y
+        double identity = 0.0;
 
-            Map<DepositType, double[]> deposits = PW.sumNationTransactions(nation, db, tracked, transactions, includeExpired, includeIgnored, f -> true);
-            double[] buffer = ResourceType.getBuffer();
-
-            header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
-            header.set(1, nation.getCities());
-            header.set(2, nation.getAgeDays());
-            header.set(3, String.format("%.2f", ResourceType.convertedTotal(deposits.getOrDefault(DepositType.DEPOSIT, buffer))));
-            header.set(4, String.format("%.2f", ResourceType.convertedTotal(deposits.getOrDefault(DepositType.TAX, buffer))));
-            header.set(5, String.format("%.2f", ResourceType.convertedTotal(deposits.getOrDefault(DepositType.LOAN, buffer))));
-            header.set(6, String.format("%.2f", ResourceType.convertedTotal(deposits.getOrDefault(DepositType.GRANT, buffer))));
-            double[] total = ResourceType.getBuffer();
-            for (Map.Entry<DepositType, double[]> entry : deposits.entrySet()) {
-                switch (entry.getKey()) {
-                    case GRANT:
-                        if (noGrants) continue;
-                        break;
-                    case LOAN:
-                        if (noLoans) continue;
-                        break;
-                    case TAX:
-                        if (noTaxes) continue;
-                        break;
-                    case DEPOSIT:
-                        if (noDeposits) continue;
-                        break;
-                }
-                double[] value = entry.getValue();
-                total = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, total, value);
-            }
-            header.set(7, String.format("%.2f", ResourceType.convertedTotal(total)));
-            long lastDeposit = 0;
-            long lastSelfWithdrawal = 0;
-            for (Map.Entry<Integer, Transaction2> entry : transactions) {
-                Transaction2 transaction = entry.getValue();
-                if (transaction.sender_id == nation.getNation_id()) {
-                    lastDeposit = Math.max(transaction.tx_datetime, lastDeposit);
-                }
-                if (transaction.isSelfWithdrawal(nation)) {
-                    lastSelfWithdrawal = Math.max(transaction.tx_datetime, lastSelfWithdrawal);
-                }
-            }
-            if (lastDeposit == 0) {
-                header.set(8, "NEVER");
-            } else {
-                long days = TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - lastDeposit);
-                header.set(8, days);
-            }
-            if (lastSelfWithdrawal == 0) {
-                header.set(9, "NEVER");
-            } else {
-                long days = TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - lastSelfWithdrawal);
-                header.set(9, days);
-            }
-            header.set(10, ResourceType.toString(internal));
-            header.set(11, ResourceType.toString(withdrawal));
-            header.set(12, ResourceType.toString(deposit));
-
-            int i = 13;
-            for (ResourceType type : ResourceType.values) {
-                if (type == ResourceType.CREDITS) continue;
-                header.set((i++), MathMan.format(total[type.ordinal()]));
-            }
-            double[] normalized = PW.normalize(total);
-            if (ResourceType.convertedTotal(normalized) > 0) {
-                aaTotalPositive = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, aaTotalPositive, normalized);
-            }
-            aaTotalNet = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, aaTotalNet, total);
-            sheet.addRow(header);
+        for (int i = 0; i < ResourceType.values().length; i++) {
+            aaTotalPositiveAccumulator[i] = new DoubleAccumulator(sum, identity);
+            aaTotalNetAccumulator[i] = new DoubleAccumulator(sum, identity);
         }
+
+
+        try {
+            Set<Long> finalTracked = tracked;
+            List<DepositSheetTask> tasks = nations.stream()
+                    .map(nation -> new DepositSheetTask(
+                            nation, db, finalTracked, useTaxBase, useOffset, updateBulk, force,
+                            useFlowNote, includeExpired, includeIgnored, header.size(),
+                            noGrants, noLoans, noTaxes, noDeposits,
+                            processedCount, totalNationsCount, channel, msgFuture, lastUpdateTimestamp))
+                    .collect(Collectors.toList());
+
+            // Invoke all tasks and wait for completion
+            List<NationBalanceRow> results = pool.invokeAll(tasks).stream()
+                    .map(ForkJoinTask::join) // Get results, exceptions are thrown here if any task failed
+                    .collect(Collectors.toList());
+
+            // Process results (add rows to sheet and accumulate totals)
+            for (NationBalanceRow result : results) {
+                // Add row to sheet (synchronized)
+                synchronized (sheet) {
+                    sheet.addRow(result.row);
+                }
+
+                // Accumulate totals (thread-safe)
+                if (ResourceType.convertedTotal(result.normalized) > 0) {
+                    for(int i = 0; i < result.normalized.length; i++) {
+                        aaTotalPositiveAccumulator[i].accumulate(result.normalized[i]); // Use accumulate
+                    }
+                }
+                for(int i = 0; i < result.total.length; i++) {
+                    aaTotalNetAccumulator[i].accumulate(result.total[i]); // Use accumulate
+                }
+            }
+
+            // Finalize totals after all tasks are complete
+            for (int i = 0; i < ResourceType.values().length; i++) {
+                aaTotalPositive[i] = aaTotalPositiveAccumulator[i].get();
+                aaTotalNet[i] = aaTotalNetAccumulator[i].get();
+            }
+
+
+        } finally {
+            pool.shutdown(); // Always shut down the pool
+        }
+        if (updateMsg != null && updateMsg.getId() > 0) channel.delete(updateMsg.getId());
 
         StringBuilder footer = new StringBuilder();
 

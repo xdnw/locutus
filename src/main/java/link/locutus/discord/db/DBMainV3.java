@@ -4,19 +4,8 @@ package link.locutus.discord.db;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.AlertUtil;
 import org.jetbrains.annotations.NotNull;
-import org.jooq.Condition;
-import org.jooq.DSLContext;
-import org.jooq.GroupField;
+import org.jooq.*;
 import org.jooq.Record;
-import org.jooq.Result;
-import org.jooq.SQLDialect;
-import org.jooq.SelectConnectByStep;
-import org.jooq.SelectForUpdateStep;
-import org.jooq.SelectHavingStep;
-import org.jooq.SelectJoinStep;
-import org.jooq.SelectLimitStep;
-import org.jooq.SortField;
-import org.jooq.TableLike;
 import org.jooq.impl.DSL;
 
 import java.io.Closeable;
@@ -47,6 +36,21 @@ public abstract class DBMainV3 implements Closeable {
             throw new IllegalArgumentException("Either SQLite OR MySQL must be enabled. (not both, or none)");
         }
         init();
+    }
+
+    protected void createTableWithIndexes(Table<?> table) {
+        ctx()
+                .createTableIfNotExists(table)
+                .columns(table.fields())
+                .primaryKey(table.getPrimaryKey().getFields())
+                .execute();
+
+        for (Index idx : table.getIndexes()) {
+            ctx()
+                    .createIndexIfNotExists(idx.getName())
+                    .on(table, idx.getFields().toArray(new SortField<?>[0]))
+                    .execute();
+        }
     }
 
     public boolean tableExists(String tableName) throws SQLException {

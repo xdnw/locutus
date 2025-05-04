@@ -137,7 +137,7 @@ public class TaxDepositsDate extends TableImpl<TaxDepositsDateRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.INDEX_TAX_DEPOSITS_NATION);
+        return Arrays.asList(Indexes.INDEX_TAX_DEPOSITS_NATION, Indexes.INDEX_TAX_DEPOSITS_TAX_ID);
     }
 
     @Override
