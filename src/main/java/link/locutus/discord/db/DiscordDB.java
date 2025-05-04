@@ -5,6 +5,7 @@ import com.politicsandwar.graphql.model.NationsQueryRequest;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
@@ -873,14 +874,19 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
 
     public Map<Long, PNWUser> getRegisteredUsers() {
         updateUserCache();
-        return userCache;
+        synchronized (userCache2) {
+            return new Long2ObjectOpenHashMap<>(userCache2);
+        }
     }
 
     public void addUser(PNWUser user) {
         if (user.getDiscordId() == Settings.INSTANCE.ADMIN_USER_ID || user.getNationId() == Settings.INSTANCE.NATION_ID) return;
         updateUserCache();
-        userCache.put(user.getDiscordId(), user);
-        PNWUser existing = userNationCache.put(user.getNationId(), user);
+        PNWUser existing;
+        synchronized (userCache2) {
+            userCache2.put(user.getDiscordId(), user);
+            existing = userNationCache2.put(user.getNationId(), user);
+        }
         if (existing != null && existing.getDiscordId() == user.getDiscordId() && user.getNationId() == existing.getNationId()) return;
 
         update("INSERT OR REPLACE INTO `USERS`(`nation_id`, `discord_id`, `discord_name`, `date_updated`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
@@ -892,13 +898,22 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
     }
 
     public void addUsers(Collection<PNWUser> users) {
-        List<PNWUser> usersFiltered = users.stream().filter(f -> f.getDiscordId() != Settings.INSTANCE.ADMIN_USER_ID && f.getNationId() != Settings.INSTANCE.NATION_ID).collect(Collectors.toList());
         updateUserCache();
-        // remove if it matches the cache value
-        usersFiltered.removeIf(f -> {
-            PNWUser existing = userNationCache.get(f.getNationId());
-            return existing != null && existing.getDiscordId() == f.getDiscordId();
-        });
+
+        List<PNWUser> usersFiltered = new ObjectArrayList<>(users.size());
+        synchronized (userCache2) {
+            for (PNWUser user : users) {
+                if (user.getDiscordId() == Settings.INSTANCE.ADMIN_USER_ID || user.getNationId() == Settings.INSTANCE.NATION_ID) {
+                    continue;
+                }
+                PNWUser existing = userNationCache2.get(user.getNationId());
+                if (existing != null && existing.getDiscordId() == user.getDiscordId()) {
+                    continue;
+                }
+                usersFiltered.add(user);
+            }
+        }
+
         if (usersFiltered.isEmpty()) return;
         executeBatch(usersFiltered, "INSERT OR REPLACE INTO `USERS`(`nation_id`, `discord_id`, `discord_name`, `date_updated`) VALUES(?, ?, ?, ?)", new ThrowingBiConsumer<PNWUser, PreparedStatement>() {
             @Override
@@ -913,7 +928,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
 
     public Map<Long, PNWUser> getCachedUsers() {
         updateUserCache();
-        return Collections.unmodifiableMap(userCache);
+        return Collections.unmodifiableMap(Long2ObjectMaps.synchronize(userCache2, userCache2));
     }
 
     private List<PNWUser> getUsersRaw() {
@@ -951,7 +966,9 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
             return new PNWUser(nationId, Settings.INSTANCE.ADMIN_USER_ID, user == null ? null : DiscordUtil.getFullUsername(user));
         }
         updateUserCache();
-        return userNationCache.get(nationId);
+        synchronized (userCache2) {
+            return userNationCache2.get(nationId);
+        }
     }
 
     public PNWUser getUserFromDiscordId(long discordId) {
@@ -960,7 +977,9 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
             return new PNWUser(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.ADMIN_USER_ID, user == null ? null : DiscordUtil.getFullUsername(user));
         }
         updateUserCache();
-        return userCache.get(discordId);
+        synchronized (userCache2) {
+            return userCache2.get(discordId);
+        }
     }
 
     public Integer getNationId(long userId) {
@@ -968,29 +987,30 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
             return Settings.INSTANCE.NATION_ID;
         }
         updateUserCache();
-        PNWUser user = userCache.get(userId);
+        PNWUser user;
+        synchronized (userCache2) {
+            user = userCache2.get(userId);
+        }
         if (user == null) return null;
         return user.getNationId();
     }
 
-    private ConcurrentHashMap<Long, PNWUser> userCache = new ConcurrentHashMap<>();
-    private ConcurrentHashMap<Integer, PNWUser> userNationCache = new ConcurrentHashMap<>();
+    private final Long2ObjectOpenHashMap<PNWUser> userCache2 = new Long2ObjectOpenHashMap<>();
+    private final Int2ObjectOpenHashMap<PNWUser> userNationCache2 = new Int2ObjectOpenHashMap<>();
 
     public void updateUserCache() {
-        if (!userCache.isEmpty()) return;
-        synchronized (this) {
-            if (!userCache.isEmpty()) return;
+        if (!userCache2.isEmpty()) return;
+        synchronized (userCache2) {
+            if (!userCache2.isEmpty()) return;
+
             List<PNWUser> users = getUsersRaw();
             for (PNWUser user : users) {
                 long id = user.getDiscordId();
-                userCache.put(user.getDiscordId(), user);
-                PNWUser existing = userNationCache.put(user.getNationId(), user);
+                userCache2.put(user.getDiscordId(), user);
+                PNWUser existing = userNationCache2.put(user.getNationId(), user);
                 if (existing != null && existing.getDiscordId() != id) {
                     if (existing.getDiscordId() > id) {
-                        userNationCache.put(user.getNationId(), existing);
-//                        unregister(null, id);
-                    } else {
-//                        unregister(null, existing.getDiscordId());
+                        userNationCache2.put(user.getNationId(), existing);
                     }
                 }
             }
@@ -999,8 +1019,6 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
 
     public PNWUser getUser(User user) {
         return getCachedUsers().get(user.getIdLong());
-//        return getUser(user.getIdLong(), user.getName(), DiscordUtil.getFullUsername(user));
-//        return getUser(user.getIdLong(), null, null);
     }
 
     public PNWUser getUser(Long discordId, String name, String nameWithDesc) {
@@ -1035,11 +1053,21 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
 
     public void unregister(Integer nationId, Long discordId) {
         if (nationId == null && discordId == null) throw new IllegalArgumentException("A nation id or discord id must be provided");
-        if (discordId != null) userCache.remove(discordId);
+        if (discordId != null) {
+            synchronized (userCache2) {
+                userCache2.remove((long) discordId);
+            }
+        }
         if (nationId != null) {
-            PNWUser user = userNationCache.remove(nationId);
+            PNWUser user;
+            synchronized (userCache2) {
+                user = userNationCache2.remove((int) nationId);
+            }
             if (user != null) {
-                userCache.remove(discordId = user.getDiscordId());
+                discordId = user.getDiscordId();
+                synchronized (userCache2) {
+                    userCache2.remove((long) discordId);
+                }
             }
         }
         if (discordId != null) {

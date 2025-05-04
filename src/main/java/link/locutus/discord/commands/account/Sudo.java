@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
@@ -52,7 +53,7 @@ public class Sudo extends Command implements Noformat {
 
         String command = content.substring(start + 1);
 
-        User user = DiscordUtil.getMention(arg0);
+        User user = DiscordBindings.user(null, arg0);
 
         Command cmd = Locutus.imp().getCommandManager().getCommandMap().get(args.get(1).substring(1).toLowerCase());
         if (cmd == null) {

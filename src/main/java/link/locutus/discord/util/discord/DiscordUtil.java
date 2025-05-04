@@ -753,31 +753,6 @@ public class DiscordUtil {
         return null;
     }
 
-    public static User getMention(String arg) {
-        if (arg.charAt(0) == '<' && arg.charAt(arg.length() - 1) == '>') {
-            arg = arg.substring(1, arg.length() - 1);
-        }
-        if (arg.charAt(0) == '@') {
-            String idStr = arg.substring(1);
-            if (idStr.charAt(0) == '!') idStr = idStr.substring(1);
-            if (MathMan.isInteger(idStr)) {
-                long discordId = Long.parseLong(idStr);
-                return Locutus.imp().getDiscordApi().getUserById(discordId);
-            }
-        }
-        if (MathMan.isInteger(arg)) {
-            User user = Locutus.imp().getDiscordApi().getUserById(Long.parseLong(arg));
-            if (user != null) return user;
-        }
-        String[] split = arg.split("#");
-        if (split.length == 2) {
-            return Locutus.imp().getDiscordApi().getUserByTag(split[0], split[1]);
-        }
-        if (split[0].isEmpty()) return null;
-        List<User> users = Locutus.imp().getDiscordApi().getUsersByName(split[0], true);
-        return users.size() == 1 ? users.get(0) : null;
-    }
-
     private final static Map<Long, DBNation> temp = new ConcurrentHashMap<>();
 
     public static DBNation getNation(MessageReceivedEvent event) {
@@ -1026,7 +1001,7 @@ public class DiscordUtil {
                 }
             }
             if (throwError) {
-                throw new IllegalArgumentException("No discord user found for: `" + arg + "`");
+                throw new IllegalArgumentException("No registered discord user found for: `" + arg + "` (are you sure they are registered?)");
             }
             return null;
         }

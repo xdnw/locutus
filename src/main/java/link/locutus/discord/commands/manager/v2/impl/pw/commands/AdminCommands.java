@@ -1410,7 +1410,6 @@ public class AdminCommands {
         if (removeAll) {
             Set<String> parsed = new ObjectLinkedOpenHashSet<>();
             for (Map.Entry<String, List<Object>> entry : roles.entrySet()) {
-                String columnName = entry.getKey();
                 List<Object> roleValues = entry.getValue();
                 if (roleValues == null || roleValues.isEmpty()) {
                     continue;

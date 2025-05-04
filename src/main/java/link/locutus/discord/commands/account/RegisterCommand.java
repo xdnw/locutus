@@ -5,6 +5,8 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
@@ -69,7 +71,7 @@ public class RegisterCommand extends Command {
             }
         }
         if (args.size() == 2 && args.get(0).contains("<@") && args.get(0).contains(">")) {
-            User mention = DiscordUtil.getMention(args.get(0));
+            User mention = DiscordBindings.user(null, args.get(0));
             int index = 1;
             if (mention == null) {
                 mention = author;

@@ -1,5 +1,7 @@
 package link.locutus.discord.util.discord;
 
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.GuildDB;
@@ -9,12 +11,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -55,9 +52,17 @@ public class GuildShardManager {
         return get((jda) -> jda.getUserByTag(username, descriminator));
     }
 
+    private final Map<String, Long> userIdCache = new Object2LongOpenHashMap<>();
+    private long userIdCacheLastUpdated;
 
-    public List<User> getUsersByName(String username, boolean ignoreCase) {
-        List<User> users = new ArrayList<>();
+    public List<User> getUsersByName(String username, boolean ignoreCase) { // , boolean checkUnregistered, boolean checkCached
+        // todo use stringman hash for key instead of string for userIdCache so it can be long -> long for lower mem usage
+//        if (onlyRegistered) {
+//        }
+//        if (userIdCache.isEmpty()) {
+//            // load
+//        }
+        List<User> users = new ObjectArrayList<>();
         for (JDA jda : instances) {
             List<User> toAdd = jda.getUsersByName(username, ignoreCase);
             if (!toAdd.isEmpty()) {
