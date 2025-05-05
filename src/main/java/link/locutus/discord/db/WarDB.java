@@ -828,7 +828,7 @@ public class WarDB extends DBMainV2 {
         BiFunction<DBWar, byte[], AbstractCursor> loader = createLoader(attackTypeFilter, preliminaryFilter);
 
         BiConsumer<DBWar, List<byte[]>> onEachWarAdapter;
-        if (preliminaryFilter != null) {
+        if (attackTypeFilter != null || preliminaryFilter != null) {
             onEachWarAdapter = (war, bytes) -> {
                 List<AbstractCursor> adapted = FluentIterable.from(bytes)
                         .transform(input -> loader.apply(war, input))

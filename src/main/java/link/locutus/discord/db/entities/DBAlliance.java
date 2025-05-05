@@ -1504,10 +1504,13 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         return new HashSet<>(Locutus.imp().getNationDB().getPositions(allianceId));
     }
 
-    public List<TaxDeposit> updateTaxes() {
-        return updateTaxes(null);
-    }
-    public List<TaxDeposit> updateTaxes(Long afterDate) {
+    /**
+     *
+     * @param afterDate  use null for default update (on turn change)
+     * @param saveTaxes
+     * @return
+     */
+    public List<TaxDeposit> updateTaxes(Long afterDate, boolean saveTaxes) {
         long oldestApiFetchDate = getDateCreated() - TimeUnit.HOURS.toMillis(2);
 
         GuildDB db = Locutus.imp().getGuildDBByAA(allianceId);
@@ -1533,8 +1536,8 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 
         Map<Integer, com.politicsandwar.graphql.model.TaxBracket> taxRates = api.fetchTaxBrackets(getAlliance_id(), false);
 
-        List<TaxDeposit> taxes = new ArrayList<>();
-        Map<Integer, TaxRate> internalTaxRateCache = new HashMap<>();
+        List<TaxDeposit> taxes = new ObjectArrayList<>();
+        Map<Integer, TaxRate> internalTaxRateCache = new Int2ObjectOpenHashMap<>();
         for (Bankrec bankrec : bankRecs) {
             int nationId = bankrec.getSender_id();
             TaxRate internal = internalTaxRateCache.get(nationId);
@@ -1562,7 +1565,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
             taxes.add(taxRecord);
 
         }
-        Locutus.imp().getBankDB().addTaxDeposits(taxes);
+        if (saveTaxes) Locutus.imp().getBankDB().addTaxDeposits(taxes);
         return taxes;
     }
 

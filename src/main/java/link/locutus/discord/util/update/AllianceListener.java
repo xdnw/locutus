@@ -1,6 +1,7 @@
 package link.locutus.discord.util.update;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -14,6 +15,7 @@ import link.locutus.discord.commands.manager.v2.table.imp.CoalitionMetricsGraph;
 import link.locutus.discord.commands.manager.v2.table.imp.MultiCoalitionMetricGraph;
 import link.locutus.discord.commands.manager.v2.table.imp.SimpleTable;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.TaxDeposit;
 import link.locutus.discord.db.entities.AllianceChange;
 import link.locutus.discord.db.entities.AllianceMeta;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
@@ -134,15 +136,17 @@ public class AllianceListener {
         }
 
         { // Update tax records
+            List<TaxDeposit> taxes = new ObjectArrayList<>();
             for (DBAlliance alliance : Locutus.imp().getNationDB().getAlliances()) {
                 // Only update taxes if alliance has locutus taxable nations
                 if (alliance.getNations(DBNation::isTaxable).isEmpty()) continue;
                 try {
-                    alliance.updateTaxes();
+                    taxes.addAll(alliance.updateTaxes(null, false));
                 } catch (Throwable ignore) {
                     ignore.printStackTrace();
                 }
             }
+            Locutus.imp().getBankDB().addTaxDeposits(taxes);
         }
     }
 

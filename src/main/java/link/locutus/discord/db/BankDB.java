@@ -32,6 +32,7 @@ import org.jooq.*;
 import org.jooq.Record;
 import org.jooq.impl.DSL;
 
+import java.io.IOException;
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 import java.nio.ByteBuffer;
@@ -762,8 +763,10 @@ public class BankDB extends DBMainV3 {
         ctx().deleteFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.ALLIANCE.eq(allianceId).and(TAX_DEPOSITS_DATE.DATE.eq(date))).execute();
     }
 
-    public synchronized int[] addTaxDeposits(Collection<TaxDeposit> records) {
-        List<Query> queries = new ArrayList<>();
+    public synchronized void addTaxDeposits(Collection<TaxDeposit> records) {
+        if (records.isEmpty()) return;
+
+        List<TaxDepositsDateRecord> dbRecords = new ObjectArrayList<>(records.size());
         for (TaxDeposit record : records) {
             @NotNull TaxDepositsDateRecord dbRecord = ctx().newRecord(TAX_DEPOSITS_DATE);
             dbRecord.setAlliance(record.allianceId);
@@ -777,22 +780,34 @@ public class BankDB extends DBMainV3 {
 
             double[] deposit = record.resources;
             long[] depositCents = new long[deposit.length];
-            for (int i = 0; i < deposit.length; i++) depositCents[i] = (long) (deposit[i] * 100);
+            for (int i = 0; i < deposit.length; i++) {
+                depositCents[i] = (long) (deposit[i] * 100);
+            }
             byte[] depositBytes = ArrayUtil.toByteArray(depositCents);
-
             dbRecord.setResources(depositBytes);
 
             short internalPair = MathMan.pairByte(record.internalMoneyRate, record.internalResourceRate);
             dbRecord.setInternalTaxrate((int) internalPair);
             dbRecord.setTaxId(record.tax_id);
 
-            Query query = ctx().insertInto(TAX_DEPOSITS_DATE).set(dbRecord).onDuplicateKeyIgnore();
-            queries.add(query);
+            dbRecords.add(dbRecord);
         }
-        if (queries.size() == 1) {
-            return new int[]{queries.get(0).execute()};
+        if (dbRecords.size() != 1 || true) {
+            try {
+                ctx().loadInto(TAX_DEPOSITS_DATE)
+                        .onDuplicateKeyIgnore()
+                        .loadRecords(dbRecords)
+                        .fields(TAX_DEPOSITS_DATE.ALLIANCE, TAX_DEPOSITS_DATE.DATE, TAX_DEPOSITS_DATE.ID, TAX_DEPOSITS_DATE.NATION, TAX_DEPOSITS_DATE.MONEYRATE, TAX_DEPOSITS_DATE.RESOUCERATE, TAX_DEPOSITS_DATE.RESOURCES, TAX_DEPOSITS_DATE.INTERNAL_TAXRATE, TAX_DEPOSITS_DATE.TAX_ID)
+                        .execute();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         } else {
-            return ctx().batch(queries).execute();
+            TaxDepositsDateRecord record = dbRecords.get(0);
+            ctx().insertInto(TAX_DEPOSITS_DATE)
+                    .set(record)
+                    .onDuplicateKeyIgnore()
+                    .execute();
         }
     }
 

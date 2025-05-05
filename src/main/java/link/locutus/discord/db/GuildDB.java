@@ -2,9 +2,11 @@ package link.locutus.discord.db;
 
 import com.google.common.eventbus.AsyncEventBus;
 import com.google.common.eventbus.EventBus;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArraySet;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
@@ -629,7 +631,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
     public Map<Integer, TaxRate> getInternalTaxRates() {
-        Map<Integer, TaxRate> taxRates = new HashMap<>();
+        Map<Integer, TaxRate> taxRates = new Int2ObjectOpenHashMap<>();
         Map<Long, ByteBuffer> metaMap = getAllMeta(NationMeta.TAX_RATE);
         for (Map.Entry<Long, ByteBuffer> entry : metaMap.entrySet()) {
             ByteBuffer buf = entry.getValue();
@@ -646,8 +648,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         if (delegate != null) {
             return delegate.getAllMeta(key);
         }
-        Map<Long, ByteBuffer> results = new HashMap<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM NATION_META where AND key = ?")) {
+        Map<Long, ByteBuffer> results = new Long2ObjectOpenHashMap<>();
+        try (PreparedStatement stmt = prepareQuery("select * FROM NATION_META where key = ?")) {
             stmt.setInt(1, key.ordinal());
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {

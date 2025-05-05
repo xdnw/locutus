@@ -2,6 +2,7 @@ package link.locutus.discord.pnw;
 
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -114,12 +115,13 @@ public class AllianceList {
 
 
     public List<TaxDeposit> updateTaxes(Long startDate) {
-        List<TaxDeposit> deposits = new ArrayList<>();
+        List<TaxDeposit> deposits = new ObjectArrayList<>();
         for (DBAlliance alliance : getAlliances()) {
-            List<TaxDeposit> taxRecs = alliance.updateTaxes(startDate);
+            List<TaxDeposit> taxRecs = alliance.updateTaxes(startDate, false);
             if (taxRecs == null) throw new IllegalStateException("Failed to update taxes for " + alliance.getMarkdownUrl() + ". Are you sure the API_KEY set has the scope `" + AlliancePermission.TAX_BRACKETS.name() + "`");
             deposits.addAll(taxRecs);
         }
+        Locutus.imp().getBankDB().addTaxDeposits(deposits);
         return deposits;
     }
 
