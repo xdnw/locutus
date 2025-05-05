@@ -69,7 +69,7 @@ public class Counter extends Command {
         String arg0 = args.get(0);
         if (!arg0.startsWith(Settings.PNW_URL() + "/nation/war/") || !arg0.contains("=")) {
             defenderId = 0;
-            counter = DiscordUtil.parseNation(arg0, true);
+            counter = DiscordUtil.parseNation(arg0, true, guild);
         } else {
             int warId = Integer.parseInt(arg0.split("=")[1].replaceAll("/", ""));
             DBWar war = Locutus.imp().getWarDb().getWar(warId);

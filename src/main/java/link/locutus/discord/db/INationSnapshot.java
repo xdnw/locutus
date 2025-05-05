@@ -6,6 +6,7 @@ import link.locutus.discord.db.entities.nation.DBNationData;
 import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.discord.DiscordUtil;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
 import java.util.Set;
@@ -48,8 +49,8 @@ public interface INationSnapshot {
         return nation;
     }
 
-    default DBNation getNationByInput(String input, boolean allowDeleted, boolean throwError) {
-        return DiscordUtil.parseNation(this, input, true, false, throwError);
+    default DBNation getNationByInput(String input, boolean allowDeleted, boolean throwError, Guild guildOrNull) {
+        return DiscordUtil.parseNation(this, input, allowDeleted, false, throwError, guildOrNull);
     }
 
     Set<DBNation> getAllNations();

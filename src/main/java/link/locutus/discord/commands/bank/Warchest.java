@@ -74,7 +74,7 @@ public class Warchest extends Command {
 
         String nationAccountStr = DiscordUtil.parseArg(args, "nation");
         if (nationAccountStr != null) {
-            nationAccount = PWBindings.nation(author, nationAccountStr);
+            nationAccount = PWBindings.nation(author, guild, nationAccountStr);
         }
 
         String allianceAccountStr = DiscordUtil.parseArg(args, "alliance");

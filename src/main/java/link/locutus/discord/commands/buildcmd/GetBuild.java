@@ -97,7 +97,7 @@ public class GetBuild extends Command {
             return "Invalid nation, Are you sure you are registered?" + author.getAsMention();
         }
 
-        DBNation nation = DiscordUtil.parseNation(args.get(0), true);
+        DBNation nation = DiscordUtil.parseNation(args.get(0), true, guild);
         if (nation == null) {
             return "Nation not found: `" + args.get(0) + "`";
         }

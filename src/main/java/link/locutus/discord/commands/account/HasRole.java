@@ -42,7 +42,7 @@ public class HasRole extends Command {
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 2) return usage(args.size(), 2, channel);
-        User user = DiscordBindings.user(author, args.get(0));
+        User user = DiscordBindings.user(author, guild, args.get(0));
         Roles role = Roles.valueOf(args.get(1).toUpperCase());
 
         List<Long> guildIds = new ArrayList<>();

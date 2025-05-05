@@ -74,7 +74,7 @@ public class Spyops extends Command {
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         String nationStr = DiscordUtil.parseArg(args, "nation");
-        DBNation finalNation = nationStr == null ? me : PWBindings.nation(null, nationStr);
+        DBNation finalNation = nationStr == null ? me : PWBindings.nation(null, guild, nationStr);
 
         if (flags.contains('d')) {
             channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel()));

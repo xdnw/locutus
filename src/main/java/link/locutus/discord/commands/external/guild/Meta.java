@@ -44,7 +44,7 @@ public class Meta extends Command {
             return usage(args.size(), 2, channel);
         }
 
-        DBNation nation = DiscordUtil.parseNation(args.get(0), true);
+        DBNation nation = DiscordUtil.parseNation(args.get(0), true, guild);
         if (nation == null) return "Invalid nation: `" + args.get(0) + "`";
 
         NationMeta meta;

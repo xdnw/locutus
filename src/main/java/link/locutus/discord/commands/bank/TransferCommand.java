@@ -91,7 +91,7 @@ public class TransferCommand extends Command {
 
         String nationAccountStr = DiscordUtil.parseArg(args, "nation");
         if (nationAccountStr != null) {
-            nationAccount = PWBindings.nation(author, nationAccountStr);
+            nationAccount = PWBindings.nation(author, guild, nationAccountStr);
         }
 
         String allianceAccountStr = DiscordUtil.parseArg(args, "alliance");
@@ -111,7 +111,7 @@ public class TransferCommand extends Command {
         }
 
         if (args.size() < 3) return usage();
-        NationOrAlliance receiver = PWBindings.nationOrAlliance(args.get(0));
+        NationOrAlliance receiver = PWBindings.nationOrAlliance(args.get(0), guild);
         String rssStr = args.size() > 3 ? args.get(1) + " " + args.get(2) : args.get(1);
         Map<ResourceType, Double> transfer = ResourceType.parseResources(rssStr);
         String noteStr = args.get(args.size() - 1);

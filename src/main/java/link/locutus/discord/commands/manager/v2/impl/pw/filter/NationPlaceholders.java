@@ -338,7 +338,7 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
                         default -> null;
                     }, (type, input) -> {
                         return switch (type) {
-                            case 0 -> snapshot.getNationByInput(input, allowDeleted, true);
+                            case 0 -> snapshot.getNationByInput(input, allowDeleted, true, guild);
                             case 1 -> snapshot.getNationByLeader(input);
                             default -> null;
                         };
@@ -353,7 +353,7 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
             Role role = DiscordUtil.getRole(guild, name);
             return getByRole(guild, name, role, snapshot);
         } else if (nameLower.startsWith("<@") || nameLower.startsWith("<!@")) {
-            User user = DiscordUtil.getUser(nameLower);
+            User user = DiscordUtil.getUser(nameLower, guild);
             if (user != null) {
                 DBNation nation = snapshot.getNationByUser(user);
                 if (nation == null) {
@@ -393,7 +393,7 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
         DBNation nation = null;
         if (!containsAA) {
             try {
-                nation = snapshot.getNationByInput(name, allowDeleted, true);
+                nation = snapshot.getNationByInput(name, allowDeleted, true, guild);
             } catch (IllegalArgumentException e) {
                 errMsg = "\n" + e.getMessage();
             }
@@ -447,7 +447,7 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
                         default -> null;
                     }, (type, input) -> {
                         return switch (type) {
-                            case 0 -> snapshot.getNationByInput(input, true, true);
+                            case 0 -> snapshot.getNationByInput(input, true, true, guild);
                             case 1 -> snapshot.getNationByLeader(input);
                             default -> null;
                         };
@@ -470,7 +470,7 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
         DBNation nation = null;
         if (!containsAA) {
             try {
-                nation = snapshot.getNationByInput(name, true, true);
+                nation = snapshot.getNationByInput(name, true, true, guild);
             } catch (IllegalArgumentException e) {
                 errMsg = "\n" + e.getMessage();
             }

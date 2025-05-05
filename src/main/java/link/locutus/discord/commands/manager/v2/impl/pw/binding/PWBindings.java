@@ -279,7 +279,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding
-    public static DBBan ban(String input) {
+    public static DBBan ban(@Me @Default Guild guild, String input) {
         if (MathMan.isInteger(input)) {
             DBBan ban = Locutus.imp().getNationDB().getBanById(Integer.parseInt(input));
             if (ban == null) {
@@ -287,7 +287,7 @@ public class PWBindings extends BindingHelper {
             }
             return ban;
         }
-        DBNation nation = nation(null, input);
+        DBNation nation = nation(null, guild, input);
         List<DBBan> bans = Locutus.imp().getNationDB().getBansForNation(nation.getId());
         if (bans.isEmpty()) {
             throw new IllegalArgumentException("No bans found for nation `" + nation.getName() + "`");
@@ -618,14 +618,14 @@ public class PWBindings extends BindingHelper {
         return war;
     }
 
-    public static DBNation nation(@Default @Me User selfUser, String input) {
-        return nation(selfUser, input, null);
+    public static DBNation nation(@Default @Me User selfUser, @Me @Default Guild guild, String input) {
+        return nation(selfUser, guild, input, null);
     }
 
     @Binding(value = "nation id, name or url", examples = {"Borg", "<@664156861033086987>", "Danzek", "189573", "https://politicsandwar.com/nation/id=189573"})
-    public static DBNation nation(@Default @Me User selfUser, String input, @Default ParameterData data) {
+    public static DBNation nation(@Default @Me User selfUser, @Me @Default Guild guild, String input, @Default ParameterData data) {
         boolean allowDeleted = data != null && data.getAnnotation(AllowDeleted.class) != null;
-        DBNation nation = DiscordUtil.parseNation(input, allowDeleted);
+        DBNation nation = DiscordUtil.parseNation(input, allowDeleted, guild);
         if (nation == null) {
             if (selfUser != null && (input.equalsIgnoreCase("%user%") || input.equalsIgnoreCase("{usermention}"))) {
                 if (allowDeleted) {
@@ -663,17 +663,17 @@ public class PWBindings extends BindingHelper {
         return MMRDouble.fromString(input);
     }
 
-    public static NationOrAlliance nationOrAlliance(String input) {
-        return nationOrAlliance(input, null);
+    public static NationOrAlliance nationOrAlliance(String input, Guild guildOrNull) {
+        return nationOrAlliance(input, null, guildOrNull);
     }
 
     @Binding(value = "A nation or alliance name, url or id. Prefix with `AA:` or `nation:` to avoid ambiguity if there exists both by the same name or id",
             examples = {"Borg", "https://politicsandwar.com/alliance/id=1234", "aa:1234"})
-    public static NationOrAlliance nationOrAlliance(String input, @Default ParameterData data) {
-        return nationOrAlliance(data, input, false);
+    public static NationOrAlliance nationOrAlliance(String input, @Default ParameterData data, @Me @Default Guild guild) {
+        return nationOrAlliance(data, input, false, guild);
     }
 
-    public static NationOrAlliance nationOrAlliance(ParameterData data, String input, boolean forceAllowDeleted) {
+    public static NationOrAlliance nationOrAlliance(ParameterData data, String input, boolean forceAllowDeleted, Guild guild) {
         String lower = input.toLowerCase();
         if (lower.startsWith("aa:") || lower.startsWith("alliance:")) {
             return alliance(data, input.split(":", 2)[1]);
@@ -683,7 +683,7 @@ public class PWBindings extends BindingHelper {
         }
         String errMsg = null;
         try {
-            DBNation nation = DiscordUtil.parseNation(input, forceAllowDeleted || (data != null && data.getAnnotation(AllowDeleted.class) != null), true);
+            DBNation nation = DiscordUtil.parseNation(input, forceAllowDeleted || (data != null && data.getAnnotation(AllowDeleted.class) != null), true, guild);
             if (nation != null) {
                 if (nation.isValid()) {
                     Locutus.imp().getNationDB().markNationDirty(nation.getNation_id());
@@ -760,7 +760,7 @@ public class PWBindings extends BindingHelper {
         }
         boolean allowDeleted = data != null && data.getAnnotation(AllowDeleted.class) != null;
         try {
-            return nationOrAlliance(data, input, allowDeleted);
+            return nationOrAlliance(data, input, allowDeleted, selfDb == null ? null : selfDb.getGuild());
         } catch (IllegalArgumentException ignore) {
             if (includeTaxId && !input.startsWith("#") && input.contains("tax_id")) {
                 int taxId = PW.parseTaxId(input);

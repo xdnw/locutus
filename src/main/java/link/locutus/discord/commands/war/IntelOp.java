@@ -64,7 +64,7 @@ public class IntelOp extends Command {
         if (me == null) return "Please use " + CM.register.cmd.toSlashMention();
         if (args.size() > 1) return usage(args.size(), 0, 1, channel);
 
-        DBNation finalNation = nationStr == null ? me : PWBindings.nation(null, nationStr);
+        DBNation finalNation = nationStr == null ? me : PWBindings.nation(null, guild, nationStr);
         double score = scoreStr == null ? finalNation.getScore() : PrimitiveBindings.Double(scoreStr);
 
         GuildDB db = Locutus.imp().getGuildDB(guild);

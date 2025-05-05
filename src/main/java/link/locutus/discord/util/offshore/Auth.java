@@ -616,8 +616,8 @@ public class Auth {
 
                         String senderUrl = columns.get(1).getElementsByTag("a").first().attr("href");
                         String receiverUrl = columns.get(2).getElementsByTag("a").first().attr("href");
-                        DBNation seller = DiscordUtil.parseNation(senderUrl, false);
-                        DBNation buyer = DiscordUtil.parseNation(receiverUrl, false);
+                        DBNation seller = DiscordUtil.parseNation(senderUrl, false, null);
+                        DBNation buyer = DiscordUtil.parseNation(receiverUrl, false, null);
 
                         if (columns.get(6).text().toLowerCase().contains("accepted")) continue;
 

@@ -187,7 +187,7 @@ public class CounterSheet extends Command {
                 String nationName = cell + "";
                 if (nationName.isEmpty()) continue;
 
-                DBNation nation = DiscordUtil.parseNation(nationName, false);
+                DBNation nation = DiscordUtil.parseNation(nationName, false, guild);
                 if (nation != null) {
                     notes.put(nation.getNation_id(), note.toString());
                 }

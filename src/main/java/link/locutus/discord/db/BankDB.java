@@ -792,7 +792,7 @@ public class BankDB extends DBMainV3 {
 
             dbRecords.add(dbRecord);
         }
-        if (dbRecords.size() != 1 || true) {
+        if (dbRecords.size() != 1) {
             try {
                 ctx().loadInto(TAX_DEPOSITS_DATE)
                         .onDuplicateKeyIgnore()

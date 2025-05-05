@@ -48,7 +48,7 @@ public class Reroll extends Command {
         }
 
         String arg0 = args.get(0);
-        me = DiscordUtil.parseNation(arg0, true);
+        me = DiscordUtil.parseNation(arg0, true, guild);
         if (me == null) {
             return "Invalid nation`" + arg0 + "`" + ". (Out of " + Settings.commandPrefix(true) + "sync ?)";
         }

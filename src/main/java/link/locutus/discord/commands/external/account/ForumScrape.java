@@ -60,13 +60,17 @@ public class ForumScrape extends Command {
                     String[] split = discordId.split("#");
                     User user = null;
                     if (split.length == 2) {
-                        user = Locutus.imp().getDiscordApi().getUserByTag(split[0], split[1]);
+                        Long userId;
+                        for (PNWUser dbUser : Locutus.imp().getDiscordDB().getRegisteredUsers().values()) {
+                            if (dbUser.getDiscordName() != null && dbUser.getDiscordName().equalsIgnoreCase(discordId)) {
+                                userId = dbUser.getDiscordId();
+                                user = Locutus.imp().getDiscordApi().getUserById(userId);
+                                break;
+                            }
+                        }
                     }
                     if (user == null && !discordId.contains("#")) {
-                        List<User> users = Locutus.imp().getDiscordApi().getUsersByName(discordId, true);
-                        if (users.size() == 1) {
-                            user = users.get(0);
-                        }
+                        user = Locutus.imp().getDiscordApi().getUserByName(discordId, true, guild);
                     }
                     if (user != null) {
                         PNWUser pnwUser = new PNWUser(nationId, user.getIdLong(), discordId);

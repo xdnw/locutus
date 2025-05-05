@@ -52,7 +52,7 @@ public class LeftAA extends Command {
         if (args.isEmpty()) {
             return usage(args.size(), 1, channel);
         }
-        NationOrAlliance target = PWBindings.nationOrAlliance(args.get(0));
+        NationOrAlliance target = PWBindings.nationOrAlliance(args.get(0), guild);
         long time = 0;
         if (args.size() >= 2) {
             time = PrimitiveBindings.timestamp(args.get(1));

@@ -53,7 +53,7 @@ public class Sudo extends Command implements Noformat {
 
         String command = content.substring(start + 1);
 
-        User user = DiscordBindings.user(null, arg0);
+        User user = DiscordBindings.user(null, guild, arg0);
 
         Command cmd = Locutus.imp().getCommandManager().getCommandMap().get(args.get(1).substring(1).toLowerCase());
         if (cmd == null) {
@@ -62,7 +62,7 @@ public class Sudo extends Command implements Noformat {
 
         DBNation nation;
         if (user == null) {
-            nation = DiscordUtil.parseNation(arg0, true);
+            nation = DiscordUtil.parseNation(arg0, true, guild);
             if (nation == null) {
                 return "Invalid nation: `" + arg0 + "`";
             }

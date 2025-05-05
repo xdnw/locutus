@@ -67,7 +67,7 @@ public class WarInfo extends Command {
         }
         Integer warId = MathMan.parseInt(arg0);
         if (warId == null || Locutus.imp().getWarDb().getWar(warId) == null) {
-            DBNation nation = DiscordUtil.parseNation(args.get(0), nationErrors);
+            DBNation nation = DiscordUtil.parseNation(args.get(0), nationErrors, guild);
             if (nation == null) return "Invalid warId: " + warId;
             Set<DBWar> wars = nation.getActiveWars();
             String title = wars.size() + " wars";

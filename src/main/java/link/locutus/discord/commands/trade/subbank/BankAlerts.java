@@ -66,7 +66,7 @@ public class BankAlerts extends Command {
 
         BankDB.BankSubType isNation;
         Set<Integer> ids;
-        DBNation nation = DiscordUtil.parseNation(args.get(0), true, false);
+        DBNation nation = DiscordUtil.parseNation(args.get(0), true, false, guild);
         if (args.get(0).equalsIgnoreCase("*")) {
             isNation = BankDB.BankSubType.ALL;
             ids = Collections.singleton(0);

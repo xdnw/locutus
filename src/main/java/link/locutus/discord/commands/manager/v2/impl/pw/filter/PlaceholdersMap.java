@@ -326,6 +326,7 @@ public class PlaceholdersMap {
 
     private Set<NationOrAlliance> nationOrAlliancesSingle(ValueStore store, String input, boolean allowStar) {
         GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), false);
+        Guild guild = db == null ? null : db.getGuild();
         DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
         if (input.equalsIgnoreCase("*") && allowStar) {
             return new ObjectOpenHashSet<>(Locutus.imp().getNationDB().getAllNations());
@@ -364,7 +365,7 @@ public class PlaceholdersMap {
         if (aaId != null) {
             return Set.of(DBAlliance.getOrCreate(aaId));
         }
-        DBNation argNation = DiscordUtil.parseNation(input, true, false);
+        DBNation argNation = DiscordUtil.parseNation(input, true, false, guild);
         if (argNation != null) {
             return Set.of(argNation);
         }
@@ -488,10 +489,11 @@ public class PlaceholdersMap {
                 Set<NationOrAlliance> selection = getSelection(this, store, input, true);
                 if (selection != null) return selection;
                 if (SpreadSheet.isSheet(input)) {
+                    Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
                     return SpreadSheet.parseSheet(input, List.of("nation", "alliance"), true, (type, str) -> {
                         switch (type) {
                             case 0:
-                                return PWBindings.nation(null, str);
+                                return PWBindings.nation(null, guild, str);
                             case 1:
                                 return PWBindings.alliance(str);
                         }
@@ -675,15 +677,17 @@ public class PlaceholdersMap {
                     if (input.equalsIgnoreCase("*")) {
                         return new HashSet<>(Locutus.imp().getNationDB().getBansByNation().values());
                     }
+                    Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
                     if (SpreadSheet.isSheet(input)) {
-                        return SpreadSheet.parseSheet(input, List.of("bans"), true, (type, str) -> PWBindings.ban(str));
+                        return SpreadSheet.parseSheet(input, List.of("bans"), true, (type, str) -> PWBindings.ban(guild, str));
                     }
-                    return Set.of(PWBindings.ban(input));
+                    return Set.of(PWBindings.ban(guild, input));
                 }, (ThrowingTriFunction<Placeholders<DBBan, Void>, ValueStore, String, Predicate<DBBan>>) (inst, store, input) -> {
                     if (input.equalsIgnoreCase("*")) return f -> true;
                     if (SpreadSheet.isSheet(input)) {
+                        Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
                         Set<Integer> sheet = SpreadSheet.parseSheet(input, List.of("bans"), true,
-                                (type, str) -> DiscordUtil.parseNation(str, true, true).getId());
+                                (type, str) -> DiscordUtil.parseNation(str, true, true, guild).getId());
                         return f -> sheet.contains(f.getNation_id());
                     }
                     if (MathMan.isInteger(input)) {
@@ -920,7 +924,7 @@ public class PlaceholdersMap {
             return members.stream().map(UserWrapper::new).collect(Collectors.toSet());
         }
         // user id / mention
-        User user = DiscordUtil.getUser(input);
+        User user = DiscordUtil.getUser(input, guild);
         if (user != null) {
             return new ObjectLinkedOpenHashSet<>(List.of(new UserWrapper(guild, user)));
         }
@@ -929,7 +933,7 @@ public class PlaceholdersMap {
         if (role != null) {
             return guild.getMembersWithRoles(role).stream().map(UserWrapper::new).collect(Collectors.toSet());
         }
-        NationOrAlliance natOrAA = PWBindings.nationOrAlliance(input);
+        NationOrAlliance natOrAA = PWBindings.nationOrAlliance(input, guild);
         if (natOrAA.isNation()) {
             user = natOrAA.asNation().getUser();
             if (user == null) {
@@ -1010,7 +1014,7 @@ public class PlaceholdersMap {
         if (id != null) {
             return f -> f.getUserId() == id;
         }
-        DBNation argNation = DiscordUtil.parseNation(input, true, false);
+        DBNation argNation = DiscordUtil.parseNation(input, true, false, guild);
         if (argNation != null) {
             int nationId = argNation.getId();
             return f -> {
@@ -1435,6 +1439,7 @@ public class PlaceholdersMap {
                         }
                         return getTaxes(store, null, null, null, aaIds);
                     }
+                    Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
                     if (SpreadSheet.isSheet(input)) {
                         Set<Integer> ids = new IntOpenHashSet();
                         Set<Integer> taxIds = new IntOpenHashSet();
@@ -1443,7 +1448,7 @@ public class PlaceholdersMap {
                             switch (type) {
                                 case 0 -> ids.add(Integer.parseInt(str));
                                 case 1 -> taxIds.add(Integer.parseInt(str));
-                                case 2 -> nations.add(DiscordUtil.parseNation(str, true, true).getId());
+                                case 2 -> nations.add(DiscordUtil.parseNation(str, true, true, guild).getId());
                             }
                             return null;
                         });
@@ -1456,7 +1461,6 @@ public class PlaceholdersMap {
                         int id = Integer.parseInt(input.substring(input.indexOf('=') + 1));
                         return getTaxes(store, null, Set.of(id), null, null);
                     }
-                    Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
                     User author = (User) store.getProvided(Key.of(User.class, Me.class), false);
                     DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
                     Set<DBNation> nations = PWBindings.nations(null, guild, input, author, me);
@@ -1466,6 +1470,7 @@ public class PlaceholdersMap {
                 }, (ThrowingTriFunction<Placeholders<TaxDeposit, Void>, ValueStore, String, Predicate<TaxDeposit>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
             if (SpreadSheet.isSheet(input)) {
+                Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
                 Set<Integer> ids = new IntOpenHashSet();
                 Set<Integer> taxIds = new IntOpenHashSet();
                 Set<Integer> nations = new IntOpenHashSet();
@@ -1473,7 +1478,7 @@ public class PlaceholdersMap {
                     switch (type) {
                         case 0 -> ids.add(Integer.parseInt(str));
                         case 1 -> taxIds.add(Integer.parseInt(str));
-                        case 2 -> nations.add(DiscordUtil.parseNation(str, true, true).getId());
+                        case 2 -> nations.add(DiscordUtil.parseNation(str, true, true, guild).getId());
                     }
                     return null;
                 });
@@ -1778,12 +1783,13 @@ public class PlaceholdersMap {
                         Set<Integer> warIds = new IntOpenHashSet();
                         Set<Integer> nationIds = new IntOpenHashSet();
                         Set<Integer> allianceIds = new IntOpenHashSet();
+                        Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
                         SpreadSheet.parseSheet(input, List.of("id", "war_id", "nation", "leader", "alliance"), true, (type, str) -> {
                             switch (type) {
                                 case 0 -> attackIds.add(Integer.parseInt(str));
                                 case 1 -> warIds.add(Integer.parseInt(str));
                                 case 2 -> {
-                                    DBNation nation = DiscordUtil.parseNation(str, true);
+                                    DBNation nation = DiscordUtil.parseNation(str, true, guild);
                                     if (nation == null) throw new IllegalArgumentException("Invalid nation: `" + str + "`");
                                     nationIds.add(nation.getId());
                                 }
@@ -1818,6 +1824,7 @@ public class PlaceholdersMap {
                 }, (ThrowingTriFunction<Placeholders<IAttack, Void>, ValueStore, String, Predicate<IAttack>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
             if (SpreadSheet.isSheet(input)) {
+                Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
                 Set<Integer> attackIds = new IntOpenHashSet();
                 Set<Integer> warIds = new IntOpenHashSet();
                 Set<Integer> nationIds = new IntOpenHashSet();
@@ -1827,7 +1834,7 @@ public class PlaceholdersMap {
                         case 0 -> attackIds.add(Integer.parseInt(str));
                         case 1 -> warIds.add(Integer.parseInt(str));
                         case 2 -> {
-                            DBNation nation = DiscordUtil.parseNation(str, true);
+                            DBNation nation = DiscordUtil.parseNation(str, true, guild);
                             if (nation == null) throw new IllegalArgumentException("Invalid nation: `" + str + "`");
                             nationIds.add(nation.getId());
                         }
@@ -1962,6 +1969,7 @@ public class PlaceholdersMap {
                     Set<DBWar> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     if (SpreadSheet.isSheet(input)) {
+                        Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
                         Set<Integer> warIds = new IntOpenHashSet();
                         Set<Integer> nationIds = new IntOpenHashSet();
                         Set<Integer> allianceIds = new IntOpenHashSet();
@@ -1969,7 +1977,7 @@ public class PlaceholdersMap {
                             switch (type) {
                                 case 0, 1 -> warIds.add(Integer.parseInt(str));
                                 case 2 -> {
-                                    DBNation nation = DiscordUtil.parseNation(str, true);
+                                    DBNation nation = DiscordUtil.parseNation(str, true, guild);
                                     if (nation == null) throw new IllegalArgumentException("Invalid nation: `" + str + "`");
                                     nationIds.add(nation.getId());
                                 }

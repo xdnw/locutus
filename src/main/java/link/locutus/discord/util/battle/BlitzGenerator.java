@@ -205,7 +205,7 @@ public class BlitzGenerator {
             if (cell == null || cell.toString().isEmpty()) continue;
             String nationStr = cell.toString();
             if (nationStr.contains(" / ")) nationStr = nationStr.split(" / ")[0];
-            DBNation nation = DiscordUtil.parseNation(nationStr, false, useLeader);
+            DBNation nation = DiscordUtil.parseNation(nationStr, false, useLeader, null);
 
             DBNation attacker = isReverse ? nation : null;
             DBNation defender = !isReverse ? nation : null;
@@ -245,7 +245,7 @@ public class BlitzGenerator {
                         DBNation attackerMutable = finalAttacker;
                         Object cell = row.get(j);
                         if (cell == null || cell.toString().isEmpty()) return;
-                        DBNation other = DiscordUtil.parseNation(cell.toString().split("\\|")[0], false, finalUseLeader);
+                        DBNation other = DiscordUtil.parseNation(cell.toString().split("\\|")[0], false, finalUseLeader, null);
 
                         if (finalIsReverse) {
                             defenderMutable = other;
@@ -284,7 +284,7 @@ public class BlitzGenerator {
                 for (Integer j : targetsIndexesRoseFormat) {
                     cell = row.get(j);
                     if (cell == null || cell.toString().isEmpty()) continue;
-                    DBNation other = DiscordUtil.parseNation(cell.toString().split(" / ")[0], false, useLeader);
+                    DBNation other = DiscordUtil.parseNation(cell.toString().split(" / ")[0], false, useLeader, null);
                     if (isReverse) {
                         defender = other;
                     } else {

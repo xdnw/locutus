@@ -61,7 +61,7 @@ public class SetBracket extends Command {
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.isEmpty() || args.size() > 3) return usage(args.size(), 1, 3, channel);
 
-        DBNation nation = PWBindings.nation(author, args.get(0));
+        DBNation nation = PWBindings.nation(author, guild, args.get(0));
         GuildDB db = Locutus.imp().getGuildDB(guild);
         boolean isGov = Roles.ECON_STAFF.has(author, guild) || Roles.INTERNAL_AFFAIRS.has(author, guild);
         if (!isGov) {

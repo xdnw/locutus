@@ -1459,9 +1459,9 @@ public class AdminCommands {
             User user = null;
             try {
                 if (userStr != null) {
-                    user = DiscordBindings.user(null, userStr);
+                    user = DiscordBindings.user(null, db.getGuild(), userStr);
                 } else if (nationStr != null) {
-                    DBNation nation = PWBindings.nation(null, nationStr);
+                    DBNation nation = PWBindings.nation(null, db.getGuild(), nationStr);
                     if (nation != null) {
                         user = nation.getUser();
                         if (user == null) {
@@ -2865,19 +2865,21 @@ public class AdminCommands {
                 int nationId = Integer.parseInt(dom.select("strong:matches(Nation ID)").first().parent().nextElementSibling().text());
                 String discordId = dom.select("strong:matches(Discord Name)").first().parent().nextElementSibling().text();
 
-//                if (Locutus.imp().getDiscordDB().getUserFromNationId(nationId) != null) continue;
-
                 if (nationId != 0) {
                     String[] split = discordId.split("#");
                     User user = null;
                     if (split.length == 2) {
-                        user = Locutus.imp().getDiscordApi().getUserByTag(split[0], split[1]);
+                        Long userId;
+                        for (PNWUser dbUser : Locutus.imp().getDiscordDB().getRegisteredUsers().values()) {
+                            if (dbUser.getDiscordName() != null && dbUser.getDiscordName().equalsIgnoreCase(discordId)) {
+                                userId = dbUser.getDiscordId();
+                                user = Locutus.imp().getDiscordApi().getUserById(userId);
+                                break;
+                            }
+                        }
                     }
                     if (user == null && !discordId.contains("#")) {
-                        List<User> users = Locutus.imp().getDiscordApi().getUsersByName(discordId, true);
-                        if (users.size() == 1) {
-                            user = users.get(0);
-                        }
+                        user = Locutus.imp().getDiscordApi().getUserByName(discordId, true, guildDB.getGuild());
                     }
 
                     header.set(0, i + "");

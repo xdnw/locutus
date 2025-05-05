@@ -61,7 +61,7 @@ public class Loot extends Command {
             return "Please use " + CM.register.cmd.toSlashMention();
         }
 
-        NationOrAlliance nationOrAlliance = PWBindings.nationOrAlliance(args.get(0));
+        NationOrAlliance nationOrAlliance = PWBindings.nationOrAlliance(args.get(0), guild);
         return UtilityCommands.loot(channel, me, nationOrAlliance, score, flags.contains('p'));
     }
 }

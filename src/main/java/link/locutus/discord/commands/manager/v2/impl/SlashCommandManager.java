@@ -25,6 +25,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.discord.GuildShardManager;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.Channel;
@@ -42,6 +43,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.entities.sticker.Sticker;
 import net.dv8tion.jda.api.events.interaction.command.*;
+import net.dv8tion.jda.api.events.user.update.UserUpdateNameEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.AutoCompleteQuery;
 import net.dv8tion.jda.api.interactions.InteractionHook;
@@ -758,7 +760,7 @@ public class SlashCommandManager extends ListenerAdapter {
     public void onCommandAutoCompleteInteraction(@Nonnull CommandAutoCompleteInteractionEvent event) {
         CommandManager2 manager = getCommands();
         long startNanos = System.nanoTime();
-        User user = event.getUser();
+        User user = GuildShardManager.updateUserName(event.getUser());
         userIdToAutoCompleteTimeNs.put(user.getIdLong(), startNanos);
 
         String path = event.getFullCommandName().replaceAll("/", " ");
@@ -813,7 +815,7 @@ public class SlashCommandManager extends ListenerAdapter {
                     }
 
                     LocalValueStore<Object> locals = new LocalValueStore<>(manager.getStore());
-                    locals.addProvider(Key.of(User.class, Me.class), event.getUser());
+                    locals.addProvider(Key.of(User.class, Me.class), user);
                     if (event.isFromGuild()) {
                         locals.addProvider(Key.of(Guild.class, Me.class), event.getGuild());
                     }
@@ -875,7 +877,8 @@ public class SlashCommandManager extends ListenerAdapter {
     public void onSlashCommandInteraction(@NotNull SlashCommandInteractionEvent event) {
         try {
             long start = System.currentTimeMillis();
-            userIdToAutoCompleteTimeNs.put(event.getUser().getIdLong(), System.nanoTime());
+            User user = GuildShardManager.updateUserName(event.getUser());
+            userIdToAutoCompleteTimeNs.put(user.getIdLong(), System.nanoTime());
 
             MessageChannel channel = event.getChannel();
             InteractionHook hook = event.getHook();
@@ -904,7 +907,7 @@ public class SlashCommandManager extends ListenerAdapter {
                 io.setIsModal(event);
             }
             Guild guild = event.isFromGuild() ? event.getGuild() : null;
-            Locutus.imp().getCommandManager().getV2().run(guild, channel, event.getUser(), null, io, path, combined, true);
+            Locutus.imp().getCommandManager().getV2().run(guild, channel, user, null, io, path, combined, true);
             long end = System.currentTimeMillis();
             if (end - start > 15) {
                 Logg.text("[Slash Command] Slash interaction `" + path + "` | `" + combined + "` took " + (end - start) + "ms");
@@ -923,6 +926,11 @@ public class SlashCommandManager extends ListenerAdapter {
         handleContext(event, event.getTarget(), event.getTarget().getAsMention(), null, true);
     }
 
+    @Override
+    public void onUserUpdateName(@NotNull UserUpdateNameEvent event) {
+        GuildShardManager.updateUserName(event.getUser());
+    }
+
     public <T extends ISnowflake> void handleContext(GenericContextInteractionEvent event, T target, String mention, Supplier<String> getMsg, boolean isUser) {
         String path = event.getFullCommandName().replace("/", " ").toLowerCase(Locale.ROOT);
         MessageChannel channel = event.getMessageChannel();
@@ -933,7 +941,7 @@ public class SlashCommandManager extends ListenerAdapter {
         RateLimitUtil.complete(event.deferReply(true));
         hook.setEphemeral(true);
 
-        User user = event.getUser();
+        User user = GuildShardManager.updateUserName(event.getUser());
 
         String fullCmdStr;
         if (guild == null) {

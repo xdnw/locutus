@@ -52,7 +52,7 @@ public class UnsubBank extends Command {
             db.unsubscribe(author, 0, BankDB.BankSubType.ALL);
             db.unsubscribeAll(author.getIdLong());
         } else {
-            DBNation nation = DiscordUtil.parseNation(args.get(0), true, false);
+            DBNation nation = DiscordUtil.parseNation(args.get(0), true, false, guild);
             if (nation == null || args.get(0).contains("/alliance/")) {
                 Integer allianceId = PW.parseAllianceId(args.get(0));
                 if (allianceId == null) {

@@ -208,7 +208,7 @@ public class WebRoot {
                 String nationId = context.queryParam("nation");
                 if (nationId != null) {
                     try {
-                        DBNation nation = DiscordUtil.parseNation(nationId, true);
+                        DBNation nation = DiscordUtil.parseNation(nationId, true, null);
                         PNWUser user = nation == null ? null : nation.getDBUser();
                         if (user == null) {
                             context.result(nationId + "\t-1\t");

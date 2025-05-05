@@ -65,7 +65,7 @@ public class Inflows extends Command {
         long cutoffMs = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
 
         String arg0 = args.get(0);
-        DBNation argNation = DiscordUtil.parseNation(arg0, true, false);
+        DBNation argNation = DiscordUtil.parseNation(arg0, true, false, guild);
 
         List<Transaction2> allTransfers = new ArrayList<>();
 

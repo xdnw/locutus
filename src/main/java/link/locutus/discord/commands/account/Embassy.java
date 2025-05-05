@@ -68,7 +68,7 @@ public class Embassy extends Command {
             }
             return "Done!";
         } else if (args.size() == 1) {
-            nation = PWBindings.nation(author, args.get(0));
+            nation = PWBindings.nation(author, guild, args.get(0));
             if (!me.equals(nation) && !Roles.FOREIGN_AFFAIRS.has(author, guild)) return "You do not have FOREIGN_AFFAIRS";
         }
 

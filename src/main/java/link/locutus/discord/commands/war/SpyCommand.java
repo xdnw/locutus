@@ -63,7 +63,7 @@ public class SpyCommand extends Command {
             return "Usage: `" + Settings.commandPrefix(true) + "spy <nation-link> [num-used] [safety]`";
         }
 
-        DBNation nation = PWBindings.nation(null, args.get(0));
+        DBNation nation = PWBindings.nation(null, guild, args.get(0));
         if (nation == null) {
             return "invalid user/nation: `" + args.get(0) + "`";
         }

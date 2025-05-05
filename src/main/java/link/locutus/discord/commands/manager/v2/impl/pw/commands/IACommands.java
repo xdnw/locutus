@@ -384,7 +384,7 @@ public class IACommands {
             Category category = null;
             try {
                 if (nationStr != null && !nationStr.isEmpty()) {
-                    nation = PWBindings.nation(null, nationStr);
+                    nation = PWBindings.nation(null, db.getGuild(), nationStr);
                 } else if (leaderStr != null && !leaderStr.isEmpty()) {
                     nation = Locutus.imp().getNationDB().getNationByLeader(leaderStr);
                     if (nation == null) {
@@ -2105,7 +2105,7 @@ public class IACommands {
             String nationNameStr = nationNameObj.toString();
             if (nationNameStr.isEmpty()) continue;
 
-            DBNation nation = DiscordUtil.parseNation(nationNameStr, true);
+            DBNation nation = DiscordUtil.parseNation(nationNameStr, true, db.getGuild());
             if (nation == null) return "Invalid nation: `" + nationNameStr + "`";
 
             Object subjectObj = subjects.get(i);

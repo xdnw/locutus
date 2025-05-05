@@ -84,7 +84,7 @@ public class SimulatedWarNode {
                         throw new IllegalArgumentException("Invalid raid type " + type + ". expected either: RAID, ORDINARY, ATTRITION");
                 }
             case 2:
-                attacker = DiscordUtil.parseNation(args[1], true);
+                attacker = DiscordUtil.parseNation(args[1], true, null);
                 // attacker
                 // defender
             case 1:
@@ -101,7 +101,7 @@ public class SimulatedWarNode {
                     if (attacker == null) {
                         attacker = attackerDefault;
                     }
-                    defender = DiscordUtil.parseNation(args[0], true);
+                    defender = DiscordUtil.parseNation(args[0], true, null);
                     return new SimulatedWarNode(new WarNation(attacker), new WarNation(defender), type, 60, true);
                 }
         }

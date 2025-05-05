@@ -330,7 +330,7 @@ public class AuthBindings extends WebBindingHelper {
             DBNation nation = null;
             if (!nationStr.isEmpty()) {
                 try {
-                    nation = DiscordUtil.parseNation(nationStr, false, true);
+                    nation = DiscordUtil.parseNation(nationStr, false, true, null);
                 } catch (IllegalArgumentException e) {
                     errors.add(e.getMessage());
                 }

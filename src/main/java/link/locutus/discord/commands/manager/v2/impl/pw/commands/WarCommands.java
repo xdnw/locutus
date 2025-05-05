@@ -4210,7 +4210,7 @@ public class WarCommands {
                 String nationName = cell + "";
                 if (nationName.isEmpty()) continue;
 
-                DBNation nation = DiscordUtil.parseNation(nationName, false);
+                DBNation nation = DiscordUtil.parseNation(nationName, false, db.getGuild());
                 if (nation != null) {
                     notes.put(nation.getNation_id(), note.toString());
                 }

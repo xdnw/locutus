@@ -71,14 +71,14 @@ public class RegisterCommand extends Command {
             }
         }
         if (args.size() == 2 && args.get(0).contains("<@") && args.get(0).contains(">")) {
-            User mention = DiscordBindings.user(null, args.get(0));
+            User mention = DiscordBindings.user(null, guild, args.get(0));
             int index = 1;
             if (mention == null) {
                 mention = author;
                 index = 0;
             }
             String nationLink = String.join(" ", args.subList(index, args.size()));
-            DBNation nation = DiscordUtil.parseNation(nationLink, true, true);
+            DBNation nation = DiscordUtil.parseNation(nationLink, true, true, guild);
             if (nation == null) {
                 return "Invalid nation: ``" + nationLink + "`" + "`";
             }
@@ -143,7 +143,7 @@ public class RegisterCommand extends Command {
             return "";
         }
 
-        DBNation nation = DiscordUtil.parseNation(nationName, true, true);
+        DBNation nation = DiscordUtil.parseNation(nationName, true, true, guild);
         if (nation == null) {
             return "Must be an nation id or link: ``" + nationName + "`" + "`";
         }

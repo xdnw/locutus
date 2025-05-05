@@ -1,12 +1,16 @@
 package link.locutus.discord.util.discord;
 
+import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.pnw.PNWUser;
+import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
@@ -48,28 +52,107 @@ public class GuildShardManager {
         return get((jda) -> jda.getUserById(id));
     }
 
-    public User getUserByTag(String username, String descriminator) {
-        return get((jda) -> jda.getUserByTag(username, descriminator));
+    private static final Map<Long, Long> userIdCache = new Long2LongOpenHashMap();
+    private volatile boolean initialized = false;
+
+    public static Member updateUserName(Member member) {
+        if (member == null) return null;
+        User user = member.getUser();
+        if (user.isBot() || user.isSystem()) return member;
+        String name = user.getName();
+        long hash = StringMan.hash(name);
+
+        String globalName = user.getGlobalName();
+        long globalHash = globalName == null ? 0 : StringMan.hash(globalName.toLowerCase(Locale.ROOT));
+
+        String nickName = member.getNickname();
+        long nickHash = nickName == null ? 0 : StringMan.hash(nickName.toLowerCase(Locale.ROOT));
+
+        synchronized (userIdCache) {
+            userIdCache.put(hash, member.getIdLong());
+            if (nickHash != 0) userIdCache.putIfAbsent(nickHash, member.getIdLong());
+            if (globalHash != 0) userIdCache.putIfAbsent(globalHash, member.getIdLong());
+        }
+        return member;
     }
 
-    private final Map<String, Long> userIdCache = new Object2LongOpenHashMap<>();
-    private long userIdCacheLastUpdated;
+    public static User updateUserName(User user) {
+        if (user == null || user.isBot() || user.isSystem()) return user;
+        String name = user.getName();
+        long hash = StringMan.hash(name);
 
-    public List<User> getUsersByName(String username, boolean ignoreCase) { // , boolean checkUnregistered, boolean checkCached
-        // todo use stringman hash for key instead of string for userIdCache so it can be long -> long for lower mem usage
-//        if (onlyRegistered) {
-//        }
-//        if (userIdCache.isEmpty()) {
-//            // load
-//        }
-        List<User> users = new ObjectArrayList<>();
-        for (JDA jda : instances) {
-            List<User> toAdd = jda.getUsersByName(username, ignoreCase);
-            if (!toAdd.isEmpty()) {
-                users.addAll(toAdd);
+        String globalName = user.getGlobalName();
+        long globalHash = globalName == null ? 0 : StringMan.hash(globalName.toLowerCase(Locale.ROOT));
+
+        synchronized (userIdCache) {
+            userIdCache.put(hash, user.getIdLong());
+            if (globalHash != 0) userIdCache.putIfAbsent(globalHash, user.getIdLong());
+        }
+        return user;
+    }
+
+    public User getUserByName(String searchName, boolean forceCheckRegistered, Guild checkGuild) {
+        String usernameLower = searchName.toLowerCase();
+        long searchHash = StringMan.hash(usernameLower);
+        long foundId;
+        synchronized (userIdCache) {
+            foundId = userIdCache.getOrDefault(searchHash, 0L);
+        }
+
+        if (foundId != 0) {
+            return getUserById(foundId);
+        }
+
+        if (checkGuild != null) {
+            for (Member member : checkGuild.getMembers()) {
+                User user = member.getUser();
+                String otherName = user.getName();
+                long otherHash = StringMan.hash(otherName);
+
+                String globalName = user.getGlobalName();
+                long globalHash = globalName == null ? 0 : StringMan.hash(globalName.toLowerCase(Locale.ROOT));
+
+                String nickName = member.getNickname();
+                long nickHash = nickName == null ? 0 : StringMan.hash(nickName.toLowerCase(Locale.ROOT));
+
+                synchronized (userIdCache) {
+                    userIdCache.put(otherHash, member.getIdLong());
+                    if (nickHash != 0) userIdCache.putIfAbsent(nickHash, member.getIdLong());
+                    if (globalHash != 0) userIdCache.putIfAbsent(globalHash, member.getIdLong());
+                }
+                if (otherHash == searchHash) {
+                    return user;
+                }
+                if (nickHash == searchHash) {
+                    return user;
+                }
+                if (globalHash == searchHash) {
+                    return user;
+                }
             }
         }
-        return users;
+
+        if (forceCheckRegistered && !initialized) {
+            synchronized (userIdCache) {
+                if (!initialized) {
+                    initialized = true;
+                    for (Map.Entry<Long, PNWUser> entry : Locutus.imp().getDiscordDB().getRegisteredUsers().entrySet()) {
+                        long userId = entry.getKey();
+                        PNWUser pnwUser = entry.getValue();
+                        String userName = pnwUser.getDiscordName();
+                        if (userName == null || userName.isEmpty()) continue;
+                        userName = userName.split("#")[0];
+                        long hash = StringMan.hash(userName.toLowerCase(Locale.ROOT));
+                        userIdCache.putIfAbsent(hash, userId);
+                    }
+                }
+                foundId = userIdCache.getOrDefault(searchHash, 0L);
+            }
+            if (foundId != 0) {
+                return getUserById(foundId);
+            }
+        }
+        return null;
     }
 
     public Guild getGuildById(long id) {

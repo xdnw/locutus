@@ -64,7 +64,7 @@ public class Bank extends Command {
             return "No alliance set for this server. See: " + CM.settings.info.cmd.toSlashMention() + " with key: " + GuildKey.ALLIANCE_ID.name();
 
         Integer alliance;
-        DBNation nation = DiscordUtil.parseNation(args.get(0), false);
+        DBNation nation = DiscordUtil.parseNation(args.get(0), false, guild);
         if (nation != null && !args.get(0).contains("/alliance/")) {
             alliance = nation.getAlliance_id();
             if (!db.isAllianceId(alliance)) {

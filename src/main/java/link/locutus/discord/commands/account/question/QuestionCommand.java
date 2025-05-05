@@ -48,7 +48,7 @@ public class QuestionCommand<T extends Question> extends Command {
         Iterator<String> iter = args.iterator();
         while (iter.hasNext()) {
             String next = iter.next();
-            User user = DiscordUtil.getUser(next);
+            User user = DiscordUtil.getUser(next, guild);
             if (user != null) {
                 iter.remove();
                 author = user;

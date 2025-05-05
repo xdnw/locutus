@@ -4,6 +4,7 @@ import com.google.common.reflect.TypeToken;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.stock.Exchange;
 import link.locutus.discord.commands.stock.ExchangeCategory;
@@ -79,8 +80,8 @@ public class StockBinding extends BindingHelper {
     }
 
     @Binding
-    public NationOrExchange nationOrExchange(StockDB db, String input) {
+    public NationOrExchange nationOrExchange(@Me @Default Guild guild, StockDB db, String input) {
         if (input.charAt(0) == '*') return new NationOrExchange(exchange(db, input.substring(1)));
-        return new NationOrExchange(DiscordUtil.parseNation(input, true));
+        return new NationOrExchange(DiscordUtil.parseNation(input, true, guild));
     }
 }

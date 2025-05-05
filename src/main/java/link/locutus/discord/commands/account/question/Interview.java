@@ -53,7 +53,7 @@ public class Interview extends QuestionCommand<InterviewQuestion> {
             return "No categories found starting with: `interview`";
         }
 
-        User user = DiscordUtil.getUser(args.get(0));
+        User user = DiscordUtil.getUser(args.get(0), guild);
         MessageChannel dChannel;
         if (user == null) {
             DiscordChannelIO cio = (channel instanceof DiscordChannelIO tmp) ? tmp : null;
@@ -79,7 +79,7 @@ public class Interview extends QuestionCommand<InterviewQuestion> {
                 return "No category found for: `" + arg0 + "`";
             }
 
-            DBNation nation = DiscordUtil.parseNation(args.get(0), true);
+            DBNation nation = DiscordUtil.parseNation(args.get(0), true, guild);
             if (nation != null) {
                 user = nation.getUser();
             }

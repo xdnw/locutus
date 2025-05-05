@@ -64,7 +64,7 @@ public class AutoRole extends Command {
             JSONObject command = CM.role.autoassign.cmd.force(force + "").toJson();
             return UtilityCommands.autoroleall(db, channel, command, force);
         } else {
-            DBNation nation = DiscordUtil.parseNation(args.get(0), true);
+            DBNation nation = DiscordUtil.parseNation(args.get(0), true, guild);
             if (nation == null) return "That nation isn't registered: `" + args.get(0) + "` see:" + CM.register.cmd.toSlashMention();
             User user = nation.getUser();
             if (user == null) return "User is not registered.";

@@ -97,7 +97,7 @@ public class CounterSpy extends Command {
             }
             enemy = counter;
         } else {
-            enemy = DiscordUtil.parseNation(args.get(0), true);
+            enemy = DiscordUtil.parseNation(args.get(0), true, guild);
         }
 
         if (enemy == null) return "Invalid enemy: `" + args.get(1) + "`";

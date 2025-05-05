@@ -274,8 +274,11 @@ public final class Locutus extends ListenerAdapter {
                         }
                         Guild guild = db.getGuild();
                         Logg.text("Loading members for " + guild);
-                        guild.loadMembers().onSuccess(f -> {
-                            Logg.text("Loaded " + f.size() + " members for " + guild);
+                        guild.loadMembers().onSuccess(members -> {
+                            for (Member member : members) {
+                                GuildShardManager.updateUserName(member);
+                            }
+                            Logg.text("Loaded " + members.size() + " members for " + guild);
                             queueFunc[0].run();
                         }).onError(f -> {
                             Logg.text("Failed to load members for " + guild);
@@ -900,7 +903,8 @@ public final class Locutus extends ListenerAdapter {
         executor.submit(new Runnable() {
             @Override
             public void run() {
-                DiscordBan discordBan = new DiscordBan(event.getUser().getIdLong(), event.getGuild().getIdLong(), System.currentTimeMillis(), "");
+                User user = GuildShardManager.updateUserName(event.getUser());
+                DiscordBan discordBan = new DiscordBan(user.getIdLong(), event.getGuild().getIdLong(), System.currentTimeMillis(), "");
                 getDiscordDB().addBans(List.of(discordBan));
             }
         });
@@ -909,7 +913,11 @@ public final class Locutus extends ListenerAdapter {
     @Override
     public void onGuildJoin(@Nonnull GuildJoinEvent event) {
         manager.put(event.getGuild().getIdLong(), event.getJDA());
-        event.getGuild().loadMembers();
+        event.getGuild().loadMembers().onSuccess(members -> {
+             for (Member member : members) {
+                 GuildShardManager.updateUserName(member);
+             }
+        });
         if (Settings.INSTANCE.TEST && getSlashCommands() instanceof SlashCommandManager slash) {
             slash.register(event.getGuild());
         }
@@ -917,7 +925,11 @@ public final class Locutus extends ListenerAdapter {
 
     @Override
     public void onGuildAvailable(@NotNull GuildAvailableEvent event) {
-        event.getGuild().loadMembers();
+        event.getGuild().loadMembers().onSuccess(members -> {
+            for (Member member : members) {
+                GuildShardManager.updateUserName(member);
+            }
+        });
     }
 
     @Override
@@ -936,8 +948,9 @@ public final class Locutus extends ListenerAdapter {
                 Guild guild = event.getGuild();
                 GuildDB db = getGuildDB(guild);
 
-                DBNation nation = DiscordUtil.getNation(event.getUser());
-                AutoRoleInfo task = db.getAutoRoleTask().autoRole(event.getMember(), nation);
+                Member member = GuildShardManager.updateUserName(event.getMember());
+                DBNation nation = DiscordUtil.getNation(member.getIdLong());
+                AutoRoleInfo task = db.getAutoRoleTask().autoRole(member, nation);
                 task.execute();
                 db.getHandler().onGuildMemberJoin(event);
 
@@ -952,6 +965,7 @@ public final class Locutus extends ListenerAdapter {
     public void onModalInteraction(@NotNull ModalInteractionEvent event) {
         try {
             String id = event.getModalId();
+            User user = GuildShardManager.updateUserName(event.getUser());
             InteractionHook hook = event.getHook();
             List<ModalMapping> values = event.getValues();
 
@@ -999,7 +1013,7 @@ public final class Locutus extends ListenerAdapter {
             String path = pair[1];
             boolean ephemeral = getSlashCommands().isEphemeral(path);
             event.deferReply(ephemeral).queue();
-            Locutus.imp().getCommandManager().getV2().run(guild, event.getChannel(), event.getUser(), event.getMessage(), io, path, args, true);
+            Locutus.imp().getCommandManager().getV2().run(guild, event.getChannel(), user, event.getMessage(), io, path, args, true);
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -1022,8 +1036,7 @@ public final class Locutus extends ListenerAdapter {
                 return;
             }
 
-
-            User user = event.getUser();
+            User user = GuildShardManager.updateUserName(event.getUser());
             Locutus.imp().getNationDB().markNationDirtyByUser(user.getIdLong());
 
             Guild guild = event.isFromGuild() ? event.getGuild() : message.isFromGuild() ? message.getGuild() : null;
@@ -1184,7 +1197,7 @@ public final class Locutus extends ListenerAdapter {
             }
 
             long start = System.currentTimeMillis();
-            User author = event.getAuthor();
+            User author = GuildShardManager.updateUserName(event.getAuthor());
 
             // Cache locutus messages to reduce lookups from message reactions
             if (author.isSystem() || author.isBot()) {

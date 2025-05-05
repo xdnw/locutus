@@ -146,11 +146,11 @@ public class WarRoomCmd extends Command {
 
             return "Created " + channels.size() + " for " + targets.size() + " targets";
         }
-        DBNation target = DiscordUtil.parseNation(arg, true);
+        DBNation target = DiscordUtil.parseNation(arg, true, guild);
         if (target == null) return "Invalid target: `" + args.get(0) + "`";
         Set<DBNation> attackers = new ObjectLinkedOpenHashSet<>();
         for (int i = 1; i < args.size(); i++) {
-            DBNation attacker = DiscordUtil.parseNation(args.get(i), true);
+            DBNation attacker = DiscordUtil.parseNation(args.get(i), true, guild);
             if (attacker == null) {
                 return "Invalid attacker: `" + args.get(i) + "`. Maybe try using the nation id or the link.";
             }

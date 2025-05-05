@@ -806,19 +806,19 @@ public class DiscordUtil {
         return  Locutus.imp().getDiscordDB().getUserFromNationId(nation.getNation_id());
     }
 
-    public static DBNation parseNation(String arg, boolean throwError) {
-        return parseNation(arg, false, throwError);
+    public static DBNation parseNation(String arg, boolean throwError, Guild guildOrNull) {
+        return parseNation(arg, false, throwError, guildOrNull);
     }
 
-    public static DBNation parseNation(String arg, boolean allowDeleted, boolean throwError) {
-        return parseNation(arg, allowDeleted, false, throwError);
+    public static DBNation parseNation(String arg, boolean allowDeleted, boolean throwError, Guild guildOrNull) {
+        return parseNation(arg, allowDeleted, false, throwError, guildOrNull);
     }
 
-    public static DBNation parseNation(String arg, boolean allowDeleted, boolean useLeader, boolean throwError) {
-        return parseNation(Locutus.imp().getNationDB(), arg, allowDeleted, useLeader, throwError);
+    public static DBNation parseNation(String arg, boolean allowDeleted, boolean useLeader, boolean throwError, Guild guildOrNull) {
+        return parseNation(Locutus.imp().getNationDB(), arg, allowDeleted, useLeader, throwError, guildOrNull);
     }
 
-    public static DBNation parseNation(INationSnapshot snapshot, String arg, boolean allowDeleted, boolean useLeader, boolean throwError) {
+    public static DBNation parseNation(INationSnapshot snapshot, String arg, boolean allowDeleted, boolean useLeader, boolean throwError, Guild guildOrNull) {
         String argLower = arg.toLowerCase();
         if (argLower.contains("/alliance/") || argLower.startsWith("aa:") || argLower.startsWith("alliance:")) return null;
         if (arg.startsWith("leader:")) {
@@ -832,7 +832,7 @@ public class DiscordUtil {
                 throw new IllegalArgumentException("Nation not found matching leader name: `" + arg + "`");
             }
         }
-        DBNation nation = parseNation(snapshot, arg, allowDeleted, throwError);
+        DBNation nation = parseNation(snapshot, arg, allowDeleted, throwError, guildOrNull);
         if (nation != null) {
             return nation;
         }
@@ -908,7 +908,7 @@ public class DiscordUtil {
         return null;
     }
 
-    public static DBNation parseNation(INationSnapshot snapshot, String arg, boolean allowDeleted, boolean throwError) {
+    public static DBNation parseNation(INationSnapshot snapshot, String arg, boolean allowDeleted, boolean throwError, Guild guildOrNull) {
         if (arg.isEmpty()) {
             if (throwError) {
                 throw new IllegalArgumentException("Empty text provided for nation: `" + arg + "`");
@@ -991,13 +991,12 @@ public class DiscordUtil {
                 }
                 return null;
             }
-            List<User> discUsers = Locutus.imp().getDiscordApi().getUsersByName(arg, true);
-            if (discUsers != null && !discUsers.isEmpty()) {
-                User user = discUsers.get(0);
-                DBNation nation = snapshot.getNationByUser(user);
+            User discUser = Locutus.imp().getDiscordApi().getUserByName(arg, true, guildOrNull);
+            if (discUser != null) {
+                DBNation nation = snapshot.getNationByUser(discUser);
                 if (nation != null) return nation;
                 if (throwError) {
-                    throw new IllegalArgumentException("User: `" + user + "` is not registered to a nation. See: " + CM.register.cmd.toSlashMention());
+                    throw new IllegalArgumentException("User: `" + discUser + "` is not registered to a nation. See: " + CM.register.cmd.toSlashMention());
                 }
             }
             if (throwError) {
@@ -1062,9 +1061,9 @@ public class DiscordUtil {
             return null;
         }
         if (checkUser && arg.matches("([a-zA-Z0-9_.]{2,32})")) {
-            List<User> discordUsers = Locutus.imp().getDiscordApi().getUsersByName(arg, true);
-            if (discordUsers != null && !discordUsers.isEmpty()) {
-                nation = snapshot.getNationByUser(discordUsers.get(0));
+            User discordUser = Locutus.imp().getDiscordApi().getUserByName(arg, true, guildOrNull);
+            if (discordUser != null) {
+                nation = snapshot.getNationByUser(discordUser);
                 if (nation != null) return nation;
             }
             if (throwError) {
@@ -1090,26 +1089,18 @@ public class DiscordUtil {
         if (MathMan.isInteger(arg)) {
             return Long.parseLong(arg);
         }
-        if (arg.contains("#")) {
-            String[] split = arg.split("#");
-            if (split.length != 2) {
-                return null;
-            }
-            User user = Locutus.imp().getDiscordApi().getUserByTag(split[0], split[1]);
-            return user != null ? user.getIdLong() : null;
-        }
-        User user = Locutus.imp().getDiscordApi().getUserByTag(arg, "");
+        User user = Locutus.imp().getDiscordApi().getUserByName(arg, true, guild);
         if (user != null) {
             return user.getIdLong();
         }
-        DBNation nation = parseNation(arg, false);
+        DBNation nation = parseNation(arg, false, guild);
         if (nation != null) {
             return nation.getUserId();
         }
         return null;
     }
 
-    public static User getUser(String arg) {
+    public static User getUser(String arg, Guild guildOrNull) {
         if (arg.charAt(0) == '<' && arg.charAt(arg.length() - 1) == '>') {
             arg = arg.substring(1, arg.length() - 1);
         }
@@ -1122,7 +1113,7 @@ public class DiscordUtil {
         if (MathMan.isInteger(arg)) {
             return Locutus.imp().getDiscordApi().getUserById(Long.parseLong(arg));
         }
-        DBNation nation = parseNation(arg, false);
+        DBNation nation = parseNation(arg, false, guildOrNull);
         if (nation != null) {
             return nation.getUser();
         }
@@ -1753,30 +1744,30 @@ public class DiscordUtil {
     }
 
     public static String getFullUsername(User user) {
-        return user.getName() + getDiscriminator(user);
+        return user.getName();
     }
 
-    public static String getDiscriminator(User user) {
-        if (user instanceof UserImpl impl) {
-            short number = impl.getDiscriminatorInt();
-            if (number > 999) {
-                return "#" + number;
-            } else if (number > 99) {
-                return "#0" + number;
-            } else if (number > 9) {
-                return "#00" + number;
-            } else if (number > 0) {
-                return "#000" + number;
-            } else {
-                return "";
-            }
-        }
-        String discriminator = user.getDiscriminator();
-        if (discriminator.length() != 4 || discriminator.equals("0000")) {
-            return "";
-        }
-        return "#" + discriminator;
-    }
+//    public static String getDiscriminator(User user) {
+//        if (user instanceof UserImpl impl) {
+//            short number = impl.getDiscriminatorInt();
+//            if (number > 999) {
+//                return "#" + number;
+//            } else if (number > 99) {
+//                return "#0" + number;
+//            } else if (number > 9) {
+//                return "#00" + number;
+//            } else if (number > 0) {
+//                return "#000" + number;
+//            } else {
+//                return "";
+//            }
+//        }
+//        String discriminator = user.getDiscriminator();
+//        if (discriminator.length() != 4 || discriminator.equals("0000")) {
+//            return "";
+//        }
+//        return "#" + discriminator;
+//    }
 
     public static long getMessageGuild(String url) {
         int index = url.indexOf("channels/");

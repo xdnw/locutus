@@ -129,7 +129,7 @@ public class GrantCmd extends Command {
 
         String nationAccountStr = DiscordUtil.parseArg(args, "nation");
         if (nationAccountStr != null) {
-            nationAccount = PWBindings.nation(author, nationAccountStr);
+            nationAccount = PWBindings.nation(author, guild, nationAccountStr);
         }
 
         String allianceAccountStr = DiscordUtil.parseArg(args, "alliance");
@@ -204,7 +204,7 @@ public class GrantCmd extends Command {
         }
         if (num <= 0) return "Invalid positive number: " + num;
 
-        me = DiscordUtil.parseNation(args.get(0), false);
+        me = DiscordUtil.parseNation(args.get(0), false, guild);
         String typeArg = args.get(1);
         if (me == null) {
             Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, false);

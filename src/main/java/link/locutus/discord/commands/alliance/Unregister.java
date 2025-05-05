@@ -42,7 +42,7 @@ public class Unregister extends Command {
         String errMsg = null;
         DBNation nation = null;
         try {
-             nation = DiscordUtil.parseNation(arg0, true);
+             nation = DiscordUtil.parseNation(arg0, true, guild);
         } catch (IllegalArgumentException e) {
             errMsg = e.getMessage();
         }
@@ -58,7 +58,7 @@ public class Unregister extends Command {
             Locutus.imp().getDiscordDB().deleteApiKeyPairByNation(nation.getNation_id());
         } else {
             try {
-                User user = DiscordBindings.user(author, arg0);
+                User user = DiscordBindings.user(author, guild, arg0);
                 Locutus.imp().getDiscordDB().unregister(null, user.getIdLong());
             } catch (IllegalArgumentException e) {
                 return "No user or nation found:\n" +

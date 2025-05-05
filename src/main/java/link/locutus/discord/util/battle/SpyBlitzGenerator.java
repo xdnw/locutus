@@ -400,7 +400,7 @@ public class SpyBlitzGenerator {
             List<Object> row = rows.get(i);
             if (row.size() < 7) continue;
 
-            DBNation attacker = DiscordUtil.parseNation(row.get(0).toString(), true);
+            DBNation attacker = DiscordUtil.parseNation(row.get(0).toString(), true, null);
 
             Spyop op1 = createOp(attacker, row.get(3) + "", "COVERT", update);
             Spyop op2 = createOp(attacker, row.get(6) + "", "COVERT", update);
@@ -519,7 +519,7 @@ public class SpyBlitzGenerator {
             String nationName = leaderName[leaderName.length - 1];
             DBNation attacker = null;
             try {
-                attacker = DiscordUtil.parseNation(nationName, true);
+                attacker = DiscordUtil.parseNation(nationName, true, null);
             } catch (IllegalArgumentException e) {
                 warnings.accept("Attacker is null (row:" + row.get(nationIndex) + "): " + e.getMessage());
                 continue;
@@ -569,7 +569,7 @@ public class SpyBlitzGenerator {
             List<Object> row = rows.get(i);
             if (row.size() < 5) continue;
 
-            DBNation attacker = DiscordUtil.parseNation(row.get(0).toString().split("\"")[1], true);
+            DBNation attacker = DiscordUtil.parseNation(row.get(0).toString().split("\"")[1], true, null);
 
             Spyop op1 = createOp(attacker, row.get(1) + "", row.get(2) + "", update);
             Spyop op2 = createOp(attacker, row.get(3) + "", row.get(4) + "", update);
@@ -600,7 +600,7 @@ public class SpyBlitzGenerator {
     }
 
     private static Spyop createOp(DBNation att, String targetStr, String type, String safetyStr, Set<DBNation> update) {
-        DBNation target = DiscordUtil.parseNation(targetStr, false);
+        DBNation target = DiscordUtil.parseNation(targetStr, false, null);
         if (target == null) return null;
 
         SpyCount.Operation op;
@@ -746,7 +746,7 @@ public class SpyBlitzGenerator {
 
             String nationStr = cell.toString();
             if (nationStr.contains(" / ")) nationStr = nationStr.split(" / ")[0];
-            DBNation nation = DiscordUtil.parseNation(nationStr, false);
+            DBNation nation = DiscordUtil.parseNation(nationStr, false, null);
 
             DBNation attacker = isReverse ? nation : null;
             DBNation defender = !isReverse ? nation : null;
@@ -765,7 +765,7 @@ public class SpyBlitzGenerator {
                     String cellStr = cell.toString();
                     String[] split = cellStr.split("\\|");
 
-                    DBNation other = DiscordUtil.parseNation(split[0], false);
+                    DBNation other = DiscordUtil.parseNation(split[0], false, null);
                     if (other == null) continue;
                     if (isReverse) {
                         defender = other;
@@ -794,7 +794,7 @@ public class SpyBlitzGenerator {
                 for (Integer j : targetsIndexesRoseFormat) {
                     cell = row.get(j);
                     if (cell == null || cell.toString().isEmpty()) continue;
-                    DBNation other = DiscordUtil.parseNation(cell.toString().split(" / ")[0], false);
+                    DBNation other = DiscordUtil.parseNation(cell.toString().split(" / ")[0], false, null);
 
                     if (other == null) continue;
                     if (isReverse) {

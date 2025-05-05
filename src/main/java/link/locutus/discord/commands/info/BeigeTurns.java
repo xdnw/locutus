@@ -39,7 +39,7 @@ public class BeigeTurns extends Command {
         if (args.size() != 1) {
             return usage(args.size(), 1, channel);
         }
-        DBNation nation = DiscordUtil.parseNation(args.get(0), true);
+        DBNation nation = DiscordUtil.parseNation(args.get(0), true, guild);
         return nation.getBeigeTurns() + " turns";
     }
 }

@@ -67,7 +67,7 @@ public class Score extends Command {
         Iterator<String> iterator = args.iterator();
         while (iterator.hasNext()) {
             String next = iterator.next();
-            DBNation nationArg = DiscordUtil.parseNation(next, false);
+            DBNation nationArg = DiscordUtil.parseNation(next, false, guild);
             if (nationArg != null) {
                 nation = nationArg.copy();
                 iterator.remove();

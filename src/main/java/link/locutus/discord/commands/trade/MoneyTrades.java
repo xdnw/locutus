@@ -52,7 +52,7 @@ public class MoneyTrades extends Command {
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 2) return usage(args.size(), 2, channel);
-        DBNation nation = DiscordUtil.parseNation(args.get(0), true, true);
+        DBNation nation = DiscordUtil.parseNation(args.get(0), true, true, guild);
         int nationId = nation.getId();
         long timeDiff = TimeUtil.timeToSec(args.get(1)) * 1000L;
         if (timeDiff == 0) return "Invalid time: `" + args.get(1) + "`";

@@ -1598,7 +1598,7 @@ public class UtilityCommands {
             DBNation nation;
             if (nationStr != null) {
                 try {
-                    nation = PWBindings.nation(null, nationStr);
+                    nation = PWBindings.nation(null, db.getGuild(), nationStr);
                 } catch (IllegalArgumentException e) {
                     errors.add("[Row:" + (i + 2) + "] Nation not found: `" + nationStr + "`");
                     continue;

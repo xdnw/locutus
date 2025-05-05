@@ -45,7 +45,7 @@ public class Dm extends Command {
         String body = content.substring(content.indexOf(' ', content.indexOf(args.get(0)) + args.get(0).length()) + 1);
         List<User> mentions = new ArrayList<>();
 
-        User user = DiscordBindings.user(null, args.get(0));
+        User user = DiscordBindings.user(null, guild, args.get(0));
         if (user != null) {
             mentions.add(user);
         } else {

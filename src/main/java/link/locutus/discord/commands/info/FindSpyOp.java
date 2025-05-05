@@ -50,7 +50,7 @@ public class FindSpyOp extends Command {
 
         DBNation defender;
         if (args.size() == 3) {
-            defender = DiscordUtil.parseNation(args.get(2), true);
+            defender = DiscordUtil.parseNation(args.get(2), true, guild);
         } else if (args.size() == 2) {
             defender = me;
         } else return usage(args.size(), 2, 3, channel);
