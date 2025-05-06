@@ -2023,7 +2023,14 @@ public class BankCommands {
             if (errorMsg != null) return errorMsg;
         }
 
+        CompletableFuture<IMessageBuilder> msgFuture = io.send("Please wait...");
+        long start = System.currentTimeMillis();
+
         for (DBNation nation : nations.getNations()) {
+            if (start + 5000 < System.currentTimeMillis()) {
+                start = System.currentTimeMillis();
+                io.updateOptionally(msgFuture, "Resetting deposits for " + nation.getMarkdownUrl());
+            }
             Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, force ? 0L : -1L, 0, true);
 
             double[] deposits = depoByType.get(DepositType.DEPOSIT);
