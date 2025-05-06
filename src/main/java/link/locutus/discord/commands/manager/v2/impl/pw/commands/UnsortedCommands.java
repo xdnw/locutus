@@ -1474,6 +1474,7 @@ public class UnsortedCommands {
             String dateStr = TimeUtil.format(TimeUtil.MMDDYYYY_HH_MM_A, new Date(timestamp));
             body.append(dateStr + " | " + dcStr + "\n");
         }
+        body.append("\n\n**Guess**: turn " + nation.getDc_turn());
         channel.create().embed(title, body.toString()).send();
         return null;
     }

@@ -688,13 +688,13 @@ public final class Locutus extends ListenerAdapter {
 //                }
 //            }, Settings.INSTANCE.TASKS.ALL_CITIES_SECONDS, TimeUnit.SECONDS);
 
-            if (Settings.INSTANCE.TASKS.FETCH_SPIES_INTERVAL_SECONDS > 0) {
-                if (Settings.USE_V2) return;
-                SpyUpdater spyUpdate = new SpyUpdater();
-                taskTrack.addTask("Spy Tracker", () -> {
-                    spyUpdate.run();
-                }, Settings.INSTANCE.TASKS.FETCH_SPIES_INTERVAL_SECONDS, TimeUnit.SECONDS);
-            }
+//            if (Settings.INSTANCE.TASKS.FETCH_SPIES_INTERVAL_SECONDS > 0) {
+//                if (Settings.USE_V2) return;
+//                SpyUpdater spyUpdate = new SpyUpdater();
+//                taskTrack.addTask("Spy Tracker", () -> {
+//                    spyUpdate.run();
+//                }, Settings.INSTANCE.TASKS.FETCH_SPIES_INTERVAL_SECONDS, TimeUnit.SECONDS);
+//            }
 
             taskTrack.addTask("All War/Attack", () -> {
                 if (fifteenMinSkipper.shouldSkip()) return;
@@ -791,10 +791,10 @@ public final class Locutus extends ListenerAdapter {
                 nation.processTurnChange(lastTurn, currentTurn, Event::post);
             }
 
-            if (Settings.INSTANCE.TASKS.TURN_TASKS.MAP_FULL_ALERT) {
-                // See also  the war update processor has some commented out code for MAPS (near the audit stuff)
-                new MapFullTask().run();
-            }
+//            if (Settings.INSTANCE.TASKS.TURN_TASKS.MAP_FULL_ALERT) {
+//                // See also  the war update processor has some commented out code for MAPS (near the audit stuff)
+//                new MapFullTask().run();
+//            }
 
             {
                 if (!Settings.USE_V2) {

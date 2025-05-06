@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.command;
 
 import gg.jte.generated.precompiled.command.JtecommandgroupGenerated;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Logg;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
@@ -406,9 +407,12 @@ public class CommandGroup implements ICommandGroup {
             if (callable == null) {
                 throw new IllegalStateException("Method " + methodInfo.method() + " in " + methodInfo.clazz().getName() + " is not a valid @Command");
             }
-            Set<String> userParamsLower = new HashSet<>();
+            Set<String> userParamsLower = new ObjectOpenHashSet<>();
+            Set<String> uniqueUserParamsLower = new ObjectOpenHashSet<>();
             for (Map.Entry<String, ParameterData> entry : callable.getUserParameterMap().entrySet()) {
-                userParamsLower.add(entry.getKey().toLowerCase(Locale.ROOT));
+                String argLower = entry.getKey().toLowerCase(Locale.ROOT);
+                userParamsLower.add(argLower);
+                uniqueUserParamsLower.add(argLower);
                 Arg arg = entry.getValue().getAnnotation(Arg.class);
                 if (arg != null && arg.aliases() != null) {
                     for (String alias : arg.aliases()) {
@@ -427,14 +431,14 @@ public class CommandGroup implements ICommandGroup {
                         argsPresent.add(method.getName().toLowerCase(Locale.ROOT));
                     }
                 }
-                for (String arg : userParamsLower) {
+                for (String arg : uniqueUserParamsLower) {
                     if (!argsPresent.contains(arg)) {
-                        System.out.println("Missing method for " + methodInfo.clazz().getSimpleName() + " | " + methodInfo.method() + " | " + methodInfo.field() + " | " + clazz.getSimpleName() + " | " + arg);
+                        System.out.println("Missing parameter for " + methodInfo.clazz().getSimpleName() + "#" + methodInfo.method() + " | " + methodInfo.field() + "/" + clazz.getSimpleName() + " | " + arg + " not in " + argsPresent);
                     }
                 }
                 for (String arg : argsPresent) {
                     if (!userParamsLower.contains(arg)) {
-                        System.out.println("Missing parameter (2) for " + methodInfo.clazz().getSimpleName() + " | " + methodInfo.method() + " | " + methodInfo.field() + " | " + clazz.getSimpleName() + " | " + arg);
+                        System.out.println("Missing parameter (2) for " + methodInfo.clazz().getSimpleName() + "#" + methodInfo.method() + " | " + methodInfo.field() + "/" + clazz.getSimpleName() + " | " + arg + " not in " + argsPresent);
                     }
                 }
             } catch (IllegalAccessException | NoSuchFieldException e) {

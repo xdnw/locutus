@@ -168,6 +168,9 @@ public class PreLoader implements ILoader {
         } else {
             this.adminUserId = CompletableFuture.completedFuture(() -> Settings.INSTANCE.ADMIN_USER_ID);
         }
+        if (Settings.INSTANCE.CONVERSION_SECRET.equalsIgnoreCase("TODO") || Settings.INSTANCE.CONVERSION_SECRET.equalsIgnoreCase("some-keyword")) {
+            Settings.INSTANCE.CONVERSION_SECRET = UUID.randomUUID().toString();
+        }
         this.apiV2 = add("PW-API V2", () -> {
             List<String> pool = new ArrayList<>();
             pool.addAll(Settings.INSTANCE.API_KEY_POOL);

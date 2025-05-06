@@ -48,7 +48,7 @@ public class Settings extends Config {
             "Set to 0 to disable (default 0)"})
     public long FORUM_FEED_SERVER = 0;
 
-    @Comment("Your P&W username (optional, but recommended)")
+    @Comment("Your P&W username you use to login (optional, but recommended)")
     public String USERNAME = "";
     @Comment("Your P&W password (optional, but recommended)")
     public String PASSWORD = "";
@@ -58,27 +58,27 @@ public class Settings extends Config {
             "Open a ticket in the Politics And Programming server to obtain a key"})
     public String ACCESS_KEY = "";
 
-    @Comment("Your api key (generated if username/password is set)")
+    @Comment("Your api key (generated at startup if username/password is set)")
     public String API_KEY_PRIMARY = "";
 
     @Comment({"A list of api keys the bot can use for general requests (optional)"})
     public List<String> API_KEY_POOL = Arrays.asList();
 
-    @Comment({"The discord id of the bot (generated)",
+    @Comment({"The discord id of the bot (generated at startup)",
             "Found in the General Information section of the Discord Developer Portal"})
     public long APPLICATION_ID = 0;
 
-    @Comment("The discord user id of the admin user. (generated)")
+    @Comment("The discord user id of the admin user. (generated at startup)")
     public long ADMIN_USER_ID = -1;
 
-    @Comment("The nation id of the admin. (generated from login or api key)")
+    @Comment("The nation id of the admin. (generated at startup from login or api key)")
     public int NATION_ID = 0; // generated
 
-    @Comment("The discord invite CODE of the support sever")
+    @Comment("The discord invite CODE of the support sever (defaults to the Locutus server)")
     public String SUPPORT_INVITE = "cUuskPDrB7";
 
-    @Comment("")
-    public String CONVERSION_SECRET = "TODO";
+    @Comment({"A passcode used for generating secure bank transfer notes for #cash conversion (generated randomly on startup)"})
+    public String CONVERSION_SECRET = "some-keyword";
 
     ////////////////////////////////////////////////////////////////////////////
 
@@ -122,7 +122,7 @@ public class Settings extends Config {
         public boolean DISCORD_BOT = true;
         @Comment("If message commands e.g. `!who` is enabled")
         public boolean MESSAGE_COMMANDS = true;
-        @Comment("If slash `/` commands are enabled (WIP)")
+        @Comment("If slash `/` commands are enabled")
         public boolean SLASH_COMMANDS = true;
         @Comment({"If bot admin only slash commands are registered with discord",
         "If false, you can still use them by mentioning the bot"})
@@ -133,7 +133,7 @@ public class Settings extends Config {
         public boolean WEB = false;
 
         @Comment({"Should databases be initialized on startup",
-                "false = they are initialized as needed (I havent done much optimization here, so thats probably shortly after startup anyway, lol)"})
+                "false = they are initialized as needed (not optimized, so that is probably shortly after startup anyway, lol)"})
         public boolean CREATE_DATABASES_ON_STARTUP = true;
 
         @Comment({"Should any repeating tasks be enabled",
@@ -241,10 +241,10 @@ public class Settings extends Config {
                 "Requires FORUM_FEED_SERVER to be enabled"})
         public int FORUM_UPDATE_INTERVAL_SECONDS = 0;
 
-        @Comment({"Fetches spies in the background via webscrape (default: disabled)",
-                "If disabled, spies will be fetched when needed",
-                "*Requires setting the `trackspies` coalition in the root server"})
-        public int FETCH_SPIES_INTERVAL_SECONDS = 0;
+//        @Comment({"Fetches spies in the background via webscrape (default: disabled)",
+//                "If disabled, spies will be fetched when needed",
+//                "*Requires setting the `trackspies` coalition in the root server"})
+//        public int FETCH_SPIES_INTERVAL_SECONDS = 0;
 
         @Comment("Fetches discord ids (default: 15 minutes)")
         public int NATION_DISCORD_SECONDS = 15 * 60;
@@ -252,8 +252,9 @@ public class Settings extends Config {
         @Comment("Fetches alliance treaties (default: 60 minutes)")
         public int TREATY_UPDATE_SECONDS = 60 * 60;
 
-        @Comment({"Fetches all bank records at invterval (default: disabled)",
-                "If disabled, bank records will be fetched when needed"})
+        @Comment({"Fetches all bank records at interval (default: disabled)",
+                "If disabled, bank records will be fetched when needed",
+                "Enabling this for the first time will take a LONG while to fetch all the initial bank records in the game, but will result in faster bank updates afterwards"})
         public int BANK_RECORDS_INTERVAL_SECONDS = 0;
 
         @Comment({"If network UIDs are fetched automatically (for multi checking) (disabled by default, since it is slow and uses web scraping)"})
@@ -271,7 +272,7 @@ public class Settings extends Config {
         @Comment({"Fetch ingame mail of an authenticated nation and post it to a channel",
                 "Set the values to 0 to disable",
                 "Copy the default block for multiple users",
-                "The tasks will fail if a user is not authenticated (user/pass)"})
+                "The tasks will fail if a user is not authenticated (/credentials login)"})
         @BlockName("default")
         public static class MAIL extends ConfigBlock {
             public int NATION_ID = 189573;
@@ -281,8 +282,8 @@ public class Settings extends Config {
 
         public static class TURN_TASKS {
             public boolean ALLIANCE_METRICS = true;
-            @Comment("TODO: Not finished")
-            public boolean MAP_FULL_ALERT = true;
+//            @Comment("TODO: Not finished")
+//            public boolean MAP_FULL_ALERT = true;
 //
 //            @Comment({"Fetches spies in the background via the api (default: false)",
 //                    "If disabled, spies will be fetched when needed",
@@ -292,9 +293,8 @@ public class Settings extends Config {
     }
 
     @Comment({
-            "Proxy settings (Not implemented, work in progress)",
-            "- Bot commands can perform alliance administration actions",
-            "- A proxy can aid multiple alliances performing actions concurrently"
+            "Proxy settings",
+            "- The proxy is used only for multi checking so that those requests do not impact the bots normal requests",
     })
     public static class PROXY {
         public String USER = "username@example.com";
@@ -533,7 +533,7 @@ public class Settings extends Config {
         @Comment("The url/ip/hostname for the backend")
         public String BACKEND_DOMAIN = "https://api.locutus.link";
 
-        @Comment({"The url/ip/hostname for the front-end web interface",
+        @Comment({"The url/ip/hostname for the front-end web interface: (source: https://github.com/xdnw/lc_cmd_react )",
         "The frontend is not hosted by the bot, or configured here, and is external, and available on GitHub Pages",
         "If the frontend has a nonstandard port, it should be included here",
         "For testing/development, you may set it to localhost"})
@@ -541,8 +541,9 @@ public class Settings extends Config {
 
         @Comment({"File location of the ssl certificate",
         "- Locutus expects a privkey.pem and a fullchain.pem in the directory",
-        "- You can get a free certificate from e.g. https://zerossl.com/ or https://letsencrypt.org/",
-        "- Set to empty string to not use an ssl certificate",
+                "- You can get a free certificate from e.g. https://zerossl.com/ or https://letsencrypt.org/",
+                "- If you use a cloudflare tunnel and enable edge SSL, you would leave this blank",
+                "- Set to empty string to not use an ssl certificate",
         })
         public String CERT_PATH = "C:/Certbot/live/locutus.link/fullchain.pem";
 
