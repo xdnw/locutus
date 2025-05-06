@@ -20,6 +20,7 @@ import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
+import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -290,16 +291,19 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     public synchronized IACategory getIACategory() {
         return getIACategory(false, true, false);
     }
+
     public synchronized IACategory getIACategory(boolean create, boolean allowDelegate, boolean throwError) {
         GuildDB delegate = allowDelegate ? getDelegateServer() : null;
         if (delegate != null && delegate.iaCat != null) {
             return delegate.iaCat;
         }
         if (this.iaCat == null) {
-            boolean hasInterview = false;
-            for (Category category : guild.getCategories()) {
-                if (category.getName().toLowerCase().startsWith("interview")) {
-                    hasInterview = true;
+            boolean hasInterview = GuildKey.INTERVIEW_CATEGORY.getOrNull(this) != null;
+            if (!hasInterview) {
+                for (Category category : guild.getCategories()) {
+                    if (category.getName().toLowerCase().startsWith("interview")) {
+                        hasInterview = true;
+                    }
                 }
             }
 
@@ -317,7 +321,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             this.iaCat.load();
         }
         if (iaCat == null && throwError) {
-            throw new IllegalStateException("No `interview` category found");
+            throw new IllegalStateException("No `interview` category found. Create a discord category with the name `interview` or set a custom category via " + GuildKey.INTERVIEW_CATEGORY.getCommandMention());
         }
         return this.iaCat;
     }

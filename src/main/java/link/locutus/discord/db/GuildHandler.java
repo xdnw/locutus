@@ -342,7 +342,14 @@ public class GuildHandler {
         GuildMessageChannel channel = event.getGuildChannel();
         if (!(channel instanceof ICategorizableChannel)) return;
         Category category = ((ICategorizableChannel) channel).getParentCategory();
-        if (category == null || !category.getName().toLowerCase().startsWith("interview")) return;
+        if (category == null) return;
+        if (!category.getName().toLowerCase().startsWith("interview")) {
+            Category interviewCategory = GuildKey.INTERVIEW_CATEGORY.getOrNull(db);
+            if (interviewCategory == null || category.getIdLong() != interviewCategory.getIdLong()) {
+                return;
+            }
+        }
+
         if (!db.isWhitelisted()) return;
 
         long date = event.getMessage().getTimeCreated().toInstant().toEpochMilli();

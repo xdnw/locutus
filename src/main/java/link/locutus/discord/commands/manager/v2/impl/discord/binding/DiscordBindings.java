@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.discord.binding;
 
 import cn.easyproject.easyocr.ImageType;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
@@ -15,6 +16,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.menu.AppMenu;
 import link.locutus.discord.db.entities.menu.MenuState;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -140,7 +142,7 @@ public class DiscordBindings extends BindingHelper {
     }
 
     @Binding(value = "A discord category name or mention", examples = "category-name")
-    public static Category category(@Me Guild guild, String category, @Default ParameterData param) {
+    public static Category category(@Me Guild guild, @Me GuildDB db, String category, @Default ParameterData param) {
         if (guild == null) throw new IllegalArgumentException("Event did not happen inside a guild.");
         if (category.charAt(0) == '<' && category.charAt(category.length() - 1) == '>') {
             category = category.substring(1, category.length() - 1);
@@ -151,8 +153,17 @@ public class DiscordBindings extends BindingHelper {
         List<Category> categories = guild.getCategoriesByName(category, true);
         Filter filter = param == null ? null : param.getAnnotation(Filter.class);
         if (filter != null) {
-            categories = new ArrayList<>(categories);
-            categories.removeIf(f -> !f.getName().toLowerCase().matches(filter.value()));
+            String filterStr = filter.value();
+            categories = new ObjectArrayList<>(categories);
+
+            Category interviewCategory = filterStr.equalsIgnoreCase("interview.*") ? GuildKey.INTERVIEW_CATEGORY.getOrNull(db) : null;
+
+            categories.removeIf(f -> {
+                if (interviewCategory != null && f.getIdLong() == interviewCategory.getIdLong()) {
+                    return false;
+                }
+                return !f.getName().toLowerCase().matches(filterStr);
+            });
         }
         if (categories.isEmpty()) {
             if (MathMan.isInteger(category)) {

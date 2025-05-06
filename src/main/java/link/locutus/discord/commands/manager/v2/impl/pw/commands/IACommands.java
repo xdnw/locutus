@@ -1928,7 +1928,7 @@ public class IACommands {
 
     @Command(desc = "Set the discord category for an interview channel", aliases = {"iacat", "interviewcat", "interviewcategory"})
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, any=true)
-    public String iaCat(@Me IMessageIO channel, @Filter("interview.") Category category) {
+    public String iaCat(@Me IMessageIO channel, @Filter("interview.*") Category category) {
         if (!(channel instanceof ICategorizableChannel)) return "This channel cannot be categorized";
         ICategorizableChannel tc = ((ICategorizableChannel) channel);
         RateLimitUtil.queue(tc.getManager().setParent(category));

@@ -7,6 +7,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationMeta;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -50,7 +51,7 @@ public class Interview extends QuestionCommand<InterviewQuestion> {
             throw new IllegalArgumentException("No interview category found.");
         }
         if (iaCat.getCategories().isEmpty()) {
-            return "No categories found starting with: `interview`";
+            return "No categories found starting with: `interview` or set via " + GuildKey.INTERVIEW_CATEGORY.getCommandMention();
         }
 
         User user = DiscordUtil.getUser(args.get(0), guild);

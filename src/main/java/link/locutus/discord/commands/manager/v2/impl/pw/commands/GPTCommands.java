@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.wiki.game.PWWikiUtil;
 import com.vdurmont.emoji.EmojiParser;
 import link.locutus.discord.Locutus;
@@ -734,9 +735,11 @@ public class GPTCommands {
             // skip vc
             channels.removeIf(channel -> channel.getType() == ChannelType.VOICE);
             // skip warcat (channel category lower contains)
+            Category interviewCat = GuildKey.INTERVIEW_CATEGORY.getOrNull(db);
             channels.removeIf(channel -> {
                 Category cat = channel.getParentCategory();
                 if (cat == null) return false;
+                if (interviewCat != null && interviewCat.getIdLong() == cat.getIdLong()) return true;
                 String name = cat.getName().toLowerCase(Locale.ROOT);
                 return name.contains("warcat") || name.contains("interview") || name.contains("archive");
             });

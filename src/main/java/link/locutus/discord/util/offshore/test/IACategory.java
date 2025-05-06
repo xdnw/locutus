@@ -310,7 +310,7 @@ public class IACategory {
     private void fetchChannels() {
         channelMap.clear();
 
-        List<Category> categories = guild.getCategories().stream().filter(f -> f.getName().toLowerCase().startsWith("interview")).collect(Collectors.toList());
+        List<Category> categories = guild.getCategories().stream().filter(f -> f.getName().toLowerCase().startsWith("interview")).toList();
 
         for (Category category : categories) {
             String name = category.getName().toLowerCase();
@@ -325,6 +325,10 @@ public class IACategory {
                     activeCategories.add(category);
                 }
             }
+        }
+        Category interviewCategory = GuildKey.INTERVIEW_CATEGORY.getOrNull(db);
+        if (interviewCategory != null && !interviewCategory.getName().toLowerCase().startsWith("interview")) {
+            activeCategories.add(interviewCategory);
         }
     }
 

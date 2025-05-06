@@ -2121,6 +2121,20 @@ public class GuildKey {
             return "The name or id of the CATEGORY you would like " + CM.channel.close.current.cmd.toSlashMention() + " to move channels to";
         }
     }.setupRequirements(f -> f.requireValidAlliance().requires(INTERVIEW_PENDING_ALERTS));
+
+    public static GuildSetting<Category> INTERVIEW_CATEGORY = new GuildCategorySetting(GuildSettingCategory.INTERVIEW) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String INTERVIEW_CATEGORY(@Me GuildDB db, @Me User user, Category category) {
+            return INTERVIEW_CATEGORY.setAndValidate(db, user, category);
+        }
+        @Override
+        public String help() {
+            return "The name or id of the CATEGORY you would like to use for new interviews";
+        }
+    }.setupRequirements(f -> f.requireValidAlliance());
+
     public static GuildSetting<Map<Long, MessageChannel>> RESOURCE_REQUEST_CHANNEL = new GuildSetting<Map<Long, MessageChannel>>(GuildSettingCategory.BANK_ACCESS, Map.class, Long.class, MessageChannel.class) {
 
         @NoFormat

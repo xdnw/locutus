@@ -190,11 +190,7 @@ public class CheckCities extends Command {
         }
 
         if (flags.contains('c')) {
-            if (db.getGuild().getCategoriesByName("interview", true).isEmpty()) {
-                return "No `interview` category";
-            }
-
-            IACategory category = db.getIACategory();
+            IACategory category = db.getIACategory(false, true, true);
             if (category.isValid()) {
                 category.update(auditResults);
             }
