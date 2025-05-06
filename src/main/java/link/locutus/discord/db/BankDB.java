@@ -797,7 +797,17 @@ public class BankDB extends DBMainV3 {
                 ctx().loadInto(TAX_DEPOSITS_DATE)
                         .onDuplicateKeyIgnore()
                         .loadRecords(dbRecords)
-                        .fields(TAX_DEPOSITS_DATE.ALLIANCE, TAX_DEPOSITS_DATE.DATE, TAX_DEPOSITS_DATE.ID, TAX_DEPOSITS_DATE.NATION, TAX_DEPOSITS_DATE.MONEYRATE, TAX_DEPOSITS_DATE.RESOUCERATE, TAX_DEPOSITS_DATE.RESOURCES, TAX_DEPOSITS_DATE.INTERNAL_TAXRATE, TAX_DEPOSITS_DATE.TAX_ID)
+                        .fields(
+                                TAX_DEPOSITS_DATE.TAX_ID,
+                                TAX_DEPOSITS_DATE.ALLIANCE,
+                                TAX_DEPOSITS_DATE.DATE,
+                                TAX_DEPOSITS_DATE.ID,
+                                TAX_DEPOSITS_DATE.NATION,
+                                TAX_DEPOSITS_DATE.MONEYRATE,
+                                TAX_DEPOSITS_DATE.RESOUCERATE,
+                                TAX_DEPOSITS_DATE.RESOURCES,
+                                TAX_DEPOSITS_DATE.INTERNAL_TAXRATE
+                        )
                         .execute();
             } catch (IOException e) {
                 throw new RuntimeException(e);
