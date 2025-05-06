@@ -2702,7 +2702,12 @@ public class BankCommands {
         double[] aaDeposits;
         if (offshore != null && offshore.getGuildDB() != db) {
             type = "offshored";
-            aaDeposits = offshore.getDeposits(db);
+            try {
+                aaDeposits = offshore.getDeposits(db);
+            } catch (RuntimeException e) {
+                aaDeposits = null;
+                footer.append("Failed to check offshore balance (ensure you api key can view stockpile): " + e.getMessage());
+            }
         } else if (db.isValidAlliance()){
             type = "bank stockpile";
             aaDeposits = ResourceType.resourcesToArray(db.getAllianceList().getStockpile());

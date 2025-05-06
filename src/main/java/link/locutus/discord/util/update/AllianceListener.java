@@ -141,7 +141,10 @@ public class AllianceListener {
                 // Only update taxes if alliance has locutus taxable nations
                 if (alliance.getNations(DBNation::isTaxable).isEmpty()) continue;
                 try {
-                    taxes.addAll(alliance.updateTaxes(null, false));
+                    List<TaxDeposit> recs = alliance.updateTaxes(null, false);
+                    if (recs != null) {
+                        taxes.addAll(recs);
+                    }
                 } catch (Throwable ignore) {
                     ignore.printStackTrace();
                 }
