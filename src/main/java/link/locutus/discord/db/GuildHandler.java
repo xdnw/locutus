@@ -352,7 +352,7 @@ public class GuildHandler {
 
         if (!db.isWhitelisted()) return;
 
-        long date = event.getMessage().getTimeCreated().toInstant().toEpochMilli();
+//        long date = event.getMessage().getTimeCreated().toInstant().toEpochMilli();
         db.addInterviewMessage(event.getMessage(), false);
     }
 

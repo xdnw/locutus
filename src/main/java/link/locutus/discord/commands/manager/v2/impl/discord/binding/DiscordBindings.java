@@ -123,10 +123,10 @@ public class DiscordBindings extends BindingHelper {
     }
 
     @Binding(examples = "interview,warcat,public", value = "A comma separated list of discord categories")
-    public static Set<Category> categories(@Me Guild guild, String input) {
+    public static Set<Category> categories(@Me Guild guild, @Me GuildDB db, String input) {
         Set<Category> categories = new ObjectLinkedOpenHashSet<>();
         for (String arg : input.split(",")) {
-            categories.add(category(guild, arg, null));
+            categories.add(category(guild, db, arg, null));
         }
         return categories;
     }

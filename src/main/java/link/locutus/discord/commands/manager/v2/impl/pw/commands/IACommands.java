@@ -246,7 +246,7 @@ public class IACommands {
                 errors.add("[Row:" + (i + 2) + "] Missing category");
                 continue;
             }
-            Category cat = DiscordBindings.category(guild, categoryStr, null);
+            Category cat = DiscordBindings.category(guild, db, categoryStr, null);
             if (cat == null) {
                 errors.add("[Row:" + (i + 2) + "] Category not found: `" + categoryStr + "`");
                 continue;
@@ -394,7 +394,7 @@ public class IACommands {
                 Object categoryObj = categories.size() < i ? null : categories.get(i);
                 String categoryStr = categoryObj == null ? null : categoryObj.toString();
                 if (categoryStr != null && !categoryStr.isEmpty()) {
-                    category = DiscordBindings.category(guild, categoryStr, null);
+                    category = DiscordBindings.category(guild, db, categoryStr, null);
                 }
             } catch (IllegalArgumentException e) {
                 errors.add("[Row:" + (i + 2) + "] " + e.getMessage());
