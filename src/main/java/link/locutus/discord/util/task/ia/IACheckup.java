@@ -625,7 +625,7 @@ public class IACheckup {
                 StringBuilder response = new StringBuilder();
 
                 if (inefficientAmount) {
-                    response.append("Infrastructure is cheapest when purchased in multiples of 100");
+                    response.append("Infrastructure is cheapest when purchased in multiples of 100\n");
                 }
 
                 if (infraLevels.size() > 1) {
@@ -1180,7 +1180,7 @@ public class IACheckup {
             String cmd = "https://www.locutus.link/#/raid/" + nation.getId();
             resposnse.append(cmd);
         }
-        resposnse.append("for some juicy targets");
+        resposnse.append(" for some juicy targets");
         return new KeyValue<>(targets.size(), resposnse.toString());
     }
 

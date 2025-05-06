@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -1310,12 +1311,13 @@ public class TradeCommands {
         }
     }
 
-    @Command(desc = "List nations who have bought and sold the most of a resource over a period", viewable = true)
+    @Command(desc = "List nations who have bought and sold the most of a resource over a period\n" +
+            "Amounts are net transfers", viewable = true)
     public String findTrader(@Me IMessageIO channel, @Me JSONObject command, TradeManager manager, link.locutus.discord.db.TradeDB db,
                              ResourceType type,
                              @Arg("Date to start from")
                              @Timestamp long cutoff,
-                             @Default @ArgChoice(value = {"SOLD", "BOUGHT"}) String buyOrSell,
+                             @ArgChoice(value = {"SOLD", "BOUGHT"}) String buyOrSell,
                              @Arg("Group rankings by each nation's current alliance")
                              @Switch("a") boolean groupByAlliance,
                              @Arg("Include trades done outside of standard market prices")
@@ -1338,7 +1340,7 @@ public class TradeCommands {
         Map<Integer, double[]> inflows = manager.inflows(transfers, groupByAlliance);
         Map<Integer, double[]> ppu = manager.ppuByNation(offers, groupByAlliance);
 
-        Map<Integer, Double> newMap = new HashMap<>();
+        Map<Integer, Double> newMap = new Int2DoubleOpenHashMap();
         for (Map.Entry<Integer, double[]> entry : inflows.entrySet()) {
             double value = entry.getValue()[type.ordinal()];
             if (value != 0 && Math.signum(value) == findsign) {

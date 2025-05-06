@@ -255,18 +255,23 @@ public class IACategory {
         }
         RateLimitUtil.complete(channel.upsertPermissionOverride(member).grant(Permission.VIEW_CHANNEL));
 
+        StringBuilder mentions = new StringBuilder(user.getAsMention());
+
         Role interviewer = Roles.INTERVIEWER.toRole(user, db);
         if (interviewer != null) {
             RateLimitUtil.queue(channel.upsertPermissionOverride(interviewer).grant(Permission.VIEW_CHANNEL));
+            mentions.append(interviewer.getAsMention());
         }
         Role iaRole = Roles.INTERNAL_AFFAIRS_STAFF.toRole(user, db);
         if (iaRole != null && interviewer == null) {
             RateLimitUtil.queue(channel.upsertPermissionOverride(iaRole).grant(Permission.VIEW_CHANNEL));
+            mentions.append(iaRole.getAsMention());
         }
 
         Role iaRole2 = Roles.INTERNAL_AFFAIRS.toRole(user, db);
         if (iaRole2 != null && interviewer == null && iaRole2 != iaRole) {
             RateLimitUtil.queue(channel.upsertPermissionOverride(iaRole2).grant(Permission.VIEW_CHANNEL));
+            mentions.append(iaRole2.getAsMention());
         }
 
         RateLimitUtil.queue(channel.upsertPermissionOverride(guild.getRolesByName("@everyone", false).get(0)).deny(Permission.VIEW_CHANNEL));
@@ -286,7 +291,7 @@ public class IACategory {
             msg.embed(title, body);
         }
 
-        msg.append(user.getAsMention()).send();
+        msg.append(mentions.toString()).send();
 
         return channel;
     }
