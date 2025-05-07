@@ -1506,7 +1506,7 @@ public final class PW {
         }
         Map<E, V> result = WebUtil.GSON.fromJson(arg, type);
         if (result.containsKey(null)) {
-            throw new IllegalArgumentException("Invalid resource type specified in map: `" + arg + "`");
+            throw new IllegalArgumentException("Invalid type specified in map: `" + arg + "`. Options: " + StringMan.join(enumClass.getEnumConstants(), ", ") + " or `{}`");
         }
         if (sign != 1) {
             for (Map.Entry<E, V> entry : result.entrySet()) {

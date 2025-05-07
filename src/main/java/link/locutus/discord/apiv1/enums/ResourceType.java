@@ -84,6 +84,10 @@ public enum ResourceType {
         return new CachedSupplier<>(() -> convertedTotal(amount));
     }
 
+    public static Supplier<Double> convertedCostLazy(ResourceType type, double amt) {
+        return new CachedSupplier<>(() -> convertedTotal(type, amt));
+    }
+
     private static final Type RESOURCE_TYPE = new TypeToken<Map<ResourceType, Double>>() {}.getType();
     private static final Gson RESOURCE_GSON = new GsonBuilder()
             .registerTypeAdapter(RESOURCE_TYPE, new DoubleDeserializer())

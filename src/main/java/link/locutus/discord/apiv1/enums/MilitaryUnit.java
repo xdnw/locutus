@@ -1,5 +1,6 @@
 package link.locutus.discord.apiv1.enums;
 
+import it.unimi.dsi.fastutil.ints.Int2DoubleFunction;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
@@ -11,13 +12,12 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.scheduler.TriConsumer;
 
 import java.util.Collection;
 import java.util.EnumMap;
 import java.util.Map;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
+import java.util.function.*;
 
 import static link.locutus.discord.apiv1.enums.ResourceType.*;
 
@@ -121,12 +121,10 @@ public enum MilitaryUnit {
     private Supplier<Double> costReductionConverted;
     private Supplier<Double> costReductionSalvageConverted;
 
-    private double[] upkeepPeaceReduction;
-    private double[] upkeepWarReduction;
-
-    private ResourceType[] upkeepReductionRss;
-    private Supplier<Double> upkeepPeaceReductionConverted;
-    private Supplier<Double> upkeepWarReductionConverted;
+    private TriConsumer<Integer, Integer, double[]> warUpkeepRed;
+    private TriConsumer<Integer, Integer, double[]> peaceUpkeepRed;
+    private Int2DoubleFunction warUpkeepRedConv;
+    private Int2DoubleFunction peaceUpkeepRedConv;
 
     MilitaryUnit(String name, String emoji, double score, double[] cost, double[] peacetimeUpkeep, double multiplyWartimeUpkeep, double[] consumption) {
         this.name = name;
@@ -155,22 +153,23 @@ public enum MilitaryUnit {
         this.consumeRss = resourcesToMap(consumption).keySet().toArray(new ResourceType[0]);
     }
 
-    public void setResearch(Research research, double[] costReduction, double[] upkeepPeaceReduction, double[] upkeepWarReduction) {
-        this.costReducer = costReduction == null ? null : research;
-        this.upkeepReducer = upkeepPeaceReduction == null ? null : research;
+    public void setResearch(Research research, double[] costReduction, TriConsumer<Integer, Integer, double[]> warUpkeepRed, TriConsumer<Integer, Integer, double[]> peaceUpkeepRed, Int2DoubleFunction warUpkeepRedConv, Int2DoubleFunction peaceUpkeepRedConv) {
+        this.costReducer = research;
+        this.upkeepReducer = research;
+
         this.costReduction = costReduction;
         this.costReductionRss = ResourceType.getTypes(costReduction);
+
         this.costReductionConverted = ResourceType.convertedCostLazy(costReduction);
         double[] costReductionSalvage = ResourceType.getBuffer();
         costReductionSalvage[ALUMINUM.ordinal()] = costReduction[ALUMINUM.ordinal()] * 0.05;
         costReductionSalvage[STEEL.ordinal()] = costReduction[STEEL.ordinal()] * 0.05;
         this.costReductionSalvageConverted = ResourceType.convertedCostLazy(costReductionSalvage);
 
-        this.upkeepPeaceReduction = upkeepPeaceReduction;
-        this.upkeepWarReduction = upkeepWarReduction;
-        this.upkeepReductionRss = ResourceType.getTypes(upkeepPeaceReduction);
-        this.upkeepPeaceReductionConverted = ResourceType.convertedCostLazy(upkeepPeaceReduction);
-        this.upkeepWarReductionConverted = ResourceType.convertedCostLazy(upkeepWarReduction);
+        this.warUpkeepRed = warUpkeepRed;
+        this.peaceUpkeepRed = peaceUpkeepRed;
+        this.warUpkeepRedConv = warUpkeepRedConv;
+        this.peaceUpkeepRedConv = peaceUpkeepRedConv;
     }
 
     @Command(desc = "Get the emoji for this unit")
@@ -297,19 +296,22 @@ public enum MilitaryUnit {
             }
             return buffer;
         }
+        int level = upkeepReducer.getLevel(researchBits);
+        TriConsumer<Integer, Integer, double[]> upkeepReduction;
         double[] baseUpkeep;
-        double[] upkeepReduction;
         if (war) {
             baseUpkeep = upkeepWar;
-            upkeepReduction = upkeepWarReduction;
+            upkeepReduction = warUpkeepRed;
         } else {
             baseUpkeep = upkeepPeace;
-            upkeepReduction = upkeepPeaceReduction;
+            upkeepReduction = peaceUpkeepRed;
         }
-        int level = upkeepReducer.getLevel(researchBits);
         for (ResourceType type : upkeepRss) {
-            double costPer = baseUpkeep[type.ordinal()] - upkeepReduction[type.ordinal()] * level;
+            double costPer = baseUpkeep[type.ordinal()];
             buffer[type.ordinal()] += costPer * amt * factor;
+        }
+        if (level != 0) {
+            upkeepReduction.accept(level, amt, buffer);
         }
         return buffer;
     }
@@ -324,18 +326,21 @@ public enum MilitaryUnit {
             return buffer;
         }
         double[] baseUpkeep;
-        double[] upkeepReduction;
+        TriConsumer<Integer, Integer, double[]> upkeepReduction;
         if (war) {
             baseUpkeep = upkeepWar;
-            upkeepReduction = upkeepWarReduction;
+            upkeepReduction = warUpkeepRed;
         } else {
             baseUpkeep = upkeepPeace;
-            upkeepReduction = upkeepPeaceReduction;
+            upkeepReduction = peaceUpkeepRed;
         }
         int level = research.apply(upkeepReducer);
         for (ResourceType type : upkeepRss) {
-            double costPer = baseUpkeep[type.ordinal()] - upkeepReduction[type.ordinal()] * level;
+            double costPer = baseUpkeep[type.ordinal()];
             buffer[type.ordinal()] += costPer * amt * factor;
+        }
+        if (level != 0) {
+            upkeepReduction.accept(level, amt, buffer);
         }
         return buffer;
     }

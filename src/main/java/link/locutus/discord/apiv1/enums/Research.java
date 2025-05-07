@@ -1,13 +1,17 @@
 package link.locutus.discord.apiv1.enums;
 
 import com.politicsandwar.graphql.model.MilitaryResearch;
+import it.unimi.dsi.fastutil.ints.Int2DoubleFunction;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.scheduler.TriConsumer;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
 import java.util.*;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public enum Research {
@@ -17,12 +21,68 @@ public enum Research {
             MilitaryUnit.SOLDIER, Map.of(ResourceType.MONEY, 0.1, ResourceType.STEEL, 0.01),
             MilitaryUnit.TANK, Map.of(ResourceType.MONEY, 1.0, ResourceType.STEEL, 0.01)
     ), Map.of(
-            MilitaryUnit.SOLDIER, Map.of(ResourceType.MONEY, 0.02, ResourceType.FOOD, 10.0),
+            MilitaryUnit.SOLDIER, Map.of(ResourceType.MONEY, 0.02),
             MilitaryUnit.TANK, Map.of(ResourceType.MONEY, 1.0)
     ), Map.of(
-            MilitaryUnit.SOLDIER, Map.of(ResourceType.MONEY, 0.03, ResourceType.FOOD, 15.0),
+            MilitaryUnit.SOLDIER, Map.of(ResourceType.MONEY, 0.03),
             MilitaryUnit.TANK, Map.of(ResourceType.MONEY, 1.5)
-    )),
+    )) {
+        @Override
+        protected TriConsumer<Integer, Integer, double[]> applyUpkeepReduction(MilitaryUnit unit, boolean war) {
+            if (unit == MilitaryUnit.SOLDIER) {
+                if (war) {
+                    double[] food = new double[20];
+                    for (int i = 1; i < food.length; i++) {
+                        food[i - 1] = (1d/500d) - (1d/(500d + i * 15d));
+                    }
+                    return (level, amt, rss) -> {
+                        rss[ResourceType.MONEY.ordinal()] -= 0.03 * level * amt;
+                        rss[ResourceType.FOOD.ordinal()] -= food[level - 1] * amt;
+                    };
+                } else {
+                    double[] food = new double[20];
+                    for (int i = 1; i < food.length; i++) {
+                        food[i - 1] = (1d/750d) - (1d/(750d + i * 10d));
+                    }
+                    return (level, amt, rss) -> {
+                        rss[ResourceType.MONEY.ordinal()] -= 0.02 * level * amt;
+                        rss[ResourceType.FOOD.ordinal()] -= food[level - 1] * amt;
+                    };
+                }
+
+            }
+            return super.applyUpkeepReduction(unit, war);
+        }
+
+        @Override
+        protected Int2DoubleFunction applyUpkeepReductionConverted(MilitaryUnit unit, boolean war) {
+            Supplier<Double> foodValue = ResourceType.convertedCostLazy(ResourceType.FOOD, 1d);
+            if (unit == MilitaryUnit.SOLDIER) {
+                if (war) {
+                    double[] food = new double[20];
+                    for (int i = 1; i < food.length; i++) {
+                        food[i - 1] = (1d/500d) - (1d/(500d + i * 15d));
+                    }
+                    return level -> {
+                        double total = -0.03 * level;
+                        total -= foodValue.get() * food[level - 1];
+                        return total;
+                    };
+                } else {
+                    double[] food = new double[20];
+                    for (int i = 1; i < food.length; i++) {
+                        food[i - 1] = (1d/750d) - (1d/(750d + i * 10d));
+                    }
+                    return level -> {
+                        double total = -0.02 * level;
+                        total -= foodValue.get() * food[level - 1];
+                        return total;
+                    };
+                }
+            }
+            return super.applyUpkeepReductionConverted(unit, war);
+        }
+    },
     // Decrease plane cost by $50 and 0.2 Aluminium, Reduce plane upkeep cost by $15 at peace, and $10 at war
     AIR_COST(ResearchGroup.AIR, null, Map.of(
             MilitaryUnit.AIRCRAFT, Map.of(ResourceType.MONEY, 50.0, ResourceType.ALUMINUM, 0.2)
@@ -52,6 +112,12 @@ public enum Research {
     public static final Function<Research, Integer> ZERO = r -> 0;
 
     private final ResearchGroup group;
+    private final Map<MilitaryUnit, Integer> capacityIncrease;
+    private final Map<MilitaryUnit, Map<ResourceType, Double>> costDecrease;
+    private final Map<MilitaryUnit, Map<ResourceType, Double>> upkeepPeaceDecrease;
+    private final Map<MilitaryUnit, Map<ResourceType, Double>> upkeepWarDecrease;
+
+    // 1 Food per +10	1 Food per +15
 
     Research(ResearchGroup group,
              Map<MilitaryUnit, Integer> capacityIncrease,
@@ -59,16 +125,49 @@ public enum Research {
              Map<MilitaryUnit, Map<ResourceType, Double>> upkeepPeaceDecrease,
                 Map<MilitaryUnit, Map<ResourceType, Double>> upkeepWarDecrease) {
         this.group = group;
+        this.capacityIncrease = capacityIncrease;
+        this.costDecrease = costDecrease;
+        this.upkeepPeaceDecrease = upkeepPeaceDecrease;
+        this.upkeepWarDecrease = upkeepWarDecrease;
+
         if (costDecrease != null) {
             for (Map.Entry<MilitaryUnit, Map<ResourceType, Double>> entry : costDecrease.entrySet()) {
                 double[] costDecreaseArr = ResourceType.resourcesToArray(entry.getValue());
-                double[] upkeepPeaceDecreaseArr = ResourceType.resourcesToArray(upkeepPeaceDecrease.get(entry.getKey()));
-                double[] upkeepWarDecreaseArr = ResourceType.resourcesToArray(upkeepWarDecrease.get(entry.getKey()));
-
                 MilitaryUnit unit = entry.getKey();
-                unit.setResearch(this, costDecreaseArr, upkeepPeaceDecreaseArr, upkeepWarDecreaseArr);
+
+                TriConsumer<Integer, Integer, double[]> upkeepWar = applyUpkeepReduction(unit, true);
+                TriConsumer<Integer, Integer, double[]> upkeepPeace = applyUpkeepReduction(unit, false);
+                Int2DoubleFunction upkeepWarConverted = applyUpkeepReductionConverted(unit, true);
+                Int2DoubleFunction upkeepPeaceConverted = applyUpkeepReductionConverted(unit, false);
+
+                unit.setResearch(this, costDecreaseArr, upkeepWar, upkeepPeace, upkeepWarConverted, upkeepPeaceConverted);
             }
         }
+    }
+
+    protected TriConsumer<Integer, Integer, double[]> applyUpkeepReduction(MilitaryUnit unit, boolean war) {
+        Map<ResourceType, Double> upkeep = war ? upkeepWarDecrease.get(unit) : upkeepPeaceDecrease.get(unit);
+        if (upkeep == null) return null;
+
+        double[] upkeepArr = ResourceType.resourcesToArray(upkeep);
+        ResourceType[] resources = upkeep.keySet().toArray(new ResourceType[0]);
+        return (level, amt,arr) -> {
+            for (ResourceType resource : resources) {
+                int index = resource.ordinal();
+                arr[index] -= upkeepArr[index] * level * amt;
+            }
+        };
+    }
+
+    protected Int2DoubleFunction applyUpkeepReductionConverted(MilitaryUnit unit, boolean war) {
+        Map<ResourceType, Double> upkeep = war ? upkeepWarDecrease.get(unit) : upkeepPeaceDecrease.get(unit);
+        if (upkeep == null) return null;
+        double[] upkeepArr = ResourceType.resourcesToArray(upkeep);
+
+        Supplier<Double> converted = ResourceType.convertedCostLazy(upkeepArr);
+        return level -> {
+            return -(converted.get() * level);
+        };
     }
 
     public static double costFactor(boolean militaryDoctrine) {
@@ -212,6 +311,4 @@ public enum Research {
         }
         return bits;
     }
-
-
 }

@@ -80,11 +80,8 @@ public class ResearchCommands {
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String researchSheet(
             @Me IMessageIO io, @Me @Default GuildDB db,
-            Set<DBNation> nations, @Switch("u") boolean update, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+            Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.RESEARCH_SHEET);
-        if (update && nations.size() > 300) {
-            throw new IllegalArgumentException("Too many nations to update");
-        }
 
         List<String> header = new ArrayList<>(Arrays.asList(
                 "nation",
@@ -106,9 +103,6 @@ public class ResearchCommands {
             if (start + 10000 < System.currentTimeMillis()) {
                 start = System.currentTimeMillis();
                 io.updateOptionally(msgFuture, "Updating research for " + nation.getMarkdownUrl());
-            }
-            if (update) {
-                nation.updateResearch();
             }
             List<Object> row = new ArrayList<>();
             row.add(nation.getSheetUrl());
