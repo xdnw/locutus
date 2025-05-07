@@ -195,18 +195,28 @@ public enum Research {
             cost[ResourceType.MONEY.ordinal()] += (600_000 * (totalUpgrades + i) + (45_000 * Math.pow((totalUpgrades + i), 1.75) * (totalUpgrades + i) / 20d)) * factor;
 
             int treeCost = (int) (100 * (treeUpgrades + i) +
-                                (Math.round((treeUpgrades + i) / 5d) * 500) +
-                                (Math.round((treeUpgrades + i) / 10d) * 1000) +
-                                (Math.round((treeUpgrades + i) / 20d) * 1000));
+                    (Math.round((treeUpgrades + i) / 5d) * 500) +
+                    (Math.round((treeUpgrades + i) / 10d) * 1000) +
+                    (Math.round((treeUpgrades + i) / 20d) * 2000));
             cost[ResourceType.GASOLINE.ordinal()] += treeCost * factor;
             cost[ResourceType.MUNITIONS.ordinal()] += treeCost * factor;
             cost[ResourceType.STEEL.ordinal()] += treeCost * factor;
-            cost[ResourceType.ALUMINUM.ordinal()] += 4 * treeCost * factor;
+
+            int aluTreeCost = (int) (400 * (treeUpgrades + i) +
+                    (Math.round((treeUpgrades + i) / 5d) * 1000) +
+                    (Math.round((treeUpgrades + i) / 10d) * 2000) +
+                    (Math.round((treeUpgrades + i) / 20d) * 4000));
+
+            cost[ResourceType.ALUMINUM.ordinal()] += aluTreeCost * factor;
 
             // Individual cost
             cost[ResourceType.FOOD.ordinal()] += (startLevel + i) * 10000 * factor;
         }
         return ResourceType.resourcesToMap(cost);
+    }
+
+    public static void main(String[] args) {
+
     }
 
     @Command(desc = "Name of research")
