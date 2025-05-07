@@ -9,7 +9,6 @@ import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
 import java.util.*;
-import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -140,7 +139,14 @@ public enum Research {
                 Int2DoubleFunction upkeepWarConverted = applyUpkeepReductionConverted(unit, true);
                 Int2DoubleFunction upkeepPeaceConverted = applyUpkeepReductionConverted(unit, false);
 
-                unit.setResearch(this, costDecreaseArr, upkeepWar, upkeepPeace, upkeepWarConverted, upkeepPeaceConverted);
+                unit.setCostResearch(this, costDecreaseArr, upkeepWar, upkeepPeace, upkeepWarConverted, upkeepPeaceConverted);
+            }
+        }
+        if (capacityIncrease != null) {
+            for (Map.Entry<MilitaryUnit, Integer> entry : capacityIncrease.entrySet()) {
+                MilitaryUnit unit = entry.getKey();
+                int capacity = entry.getValue();
+                unit.setCapacityResearch(this, capacity);
             }
         }
     }

@@ -1066,6 +1066,7 @@ public class WarUpdateProcessor {
             int max = 0;
 
             int planes = 0;
+            int maxPlanes = 0;
             int cities = 0;
             Set<Integer> numAttacking = new IntOpenHashSet();
 
@@ -1087,6 +1088,7 @@ public class WarUpdateProcessor {
 
                 planes += attacker.getAircraft();
                 cities += attacker.getCities();
+                maxPlanes += MilitaryUnit.AIRCRAFT.getMaxMMRCap(attacker.getCities(), attacker.getResearchBits(), attacker::hasProject);
                 numAttacking.add(attacker.getNation_id());
             }
             if (max >= 6 && numAttacking.size() > 1) {
@@ -1095,7 +1097,7 @@ public class WarUpdateProcessor {
                 for (Map.Entry<Integer, Integer> warEntry : notableByAA.entrySet()) {
                     body.append("- " + warEntry.getValue() + " unprovoked wars from " + PW.getMarkdownUrl(warEntry.getKey(), true) + "\n");
                 }
-                double planePct = planes * 100d / MilitaryUnit.AIRCRAFT.getMaxMMRCap(cities, f -> false);
+                double planePct = planes * 100d / maxPlanes;
                 body.append("\nPlane % of Attackers: " + MathMan.format(planePct) + " (" + numAttacking.size() + " nations)\n");
                 warInfo.put(alliance, body.toString());
                 isAtWar.put(alliance, true);

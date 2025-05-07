@@ -125,6 +125,8 @@ public enum MilitaryUnit {
     private TriConsumer<Integer, Integer, double[]> peaceUpkeepRed;
     private Int2DoubleFunction warUpkeepRedConv;
     private Int2DoubleFunction peaceUpkeepRedConv;
+    private Research capacityResearch;
+    private int capacityAmount;
 
     MilitaryUnit(String name, String emoji, double score, double[] cost, double[] peacetimeUpkeep, double multiplyWartimeUpkeep, double[] consumption) {
         this.name = name;
@@ -153,7 +155,12 @@ public enum MilitaryUnit {
         this.consumeRss = resourcesToMap(consumption).keySet().toArray(new ResourceType[0]);
     }
 
-    public void setResearch(Research research, double[] costReduction, TriConsumer<Integer, Integer, double[]> warUpkeepRed, TriConsumer<Integer, Integer, double[]> peaceUpkeepRed, Int2DoubleFunction warUpkeepRedConv, Int2DoubleFunction peaceUpkeepRedConv) {
+    public void setCapacityResearch(Research research, int capacity) {
+        this.capacityResearch = research;
+        this.capacityAmount = capacity;
+    }
+
+    public void setCostResearch(Research research, double[] costReduction, TriConsumer<Integer, Integer, double[]> warUpkeepRed, TriConsumer<Integer, Integer, double[]> peaceUpkeepRed, Int2DoubleFunction warUpkeepRedConv, Int2DoubleFunction peaceUpkeepRedConv) {
         this.costReducer = research;
         this.upkeepReducer = research;
 
@@ -217,7 +224,8 @@ public enum MilitaryUnit {
     }
 
     public int getCap(DBNation nation, boolean update) {
-        return getCap(() -> nation.getCityMap(update).values(), nation::hasProject);
+        int researchBits = nation.getResearchBits();
+        return getCap(() -> nation.getCityMap(update).values(), nation::hasProject, researchBits);
     }
 
     /**
@@ -226,7 +234,7 @@ public enum MilitaryUnit {
      * @param hasProject
      * @return
      */
-    public int getMaxMMRCap(int numCities, Predicate<Project> hasProject) {
+    public int getMaxMMRCap(int numCities, int research, Predicate<Project> hasProject) {
         switch (this) {
             case MONEY,INFRASTRUCTURE:
                 return Integer.MAX_VALUE;
@@ -236,7 +244,14 @@ public enum MilitaryUnit {
             case SHIP:
                 MilitaryBuilding building = getBuilding();
                 if (building == null) throw new IllegalArgumentException("Unknown building: " + this);
-                return building.getUnitCap() * building.cap(hasProject) * numCities;
+                int cap = building.getUnitCap() * building.cap(hasProject) * numCities;
+                if (this.capacityResearch != null) {
+                    int level = this.capacityResearch.getLevel(research);
+                    if (level > 0) {
+                        cap += this.capacityAmount * level;
+                    }
+                }
+                return cap;
             case MISSILE:
             case NUKE:
                 return Integer.MAX_VALUE;
@@ -247,7 +262,7 @@ public enum MilitaryUnit {
         }
     }
 
-    public int getCap(Supplier<Collection<JavaCity>> citiesSupplier, Predicate<Project> hasProject) {
+    public int getCap(Supplier<Collection<JavaCity>> citiesSupplier, Predicate<Project> hasProject, int researchBits) {
         switch (this) {
             case MONEY,INFRASTRUCTURE:
                 return Integer.MAX_VALUE;
@@ -270,6 +285,12 @@ public enum MilitaryUnit {
                 int cap = building.cap(hasProject) * amt;
                 if (cap > 0 && building.getCitizensPerUnit() > 0) {
                     cap = (int) Math.min(pop / building.getCitizensPerUnit(), cap);
+                }
+                if (this.capacityResearch != null) {
+                    int level = this.capacityResearch.getLevel(researchBits);
+                    if (level > 0) {
+                        cap += this.capacityAmount * level;
+                    }
                 }
                 return cap;
             case MISSILE:

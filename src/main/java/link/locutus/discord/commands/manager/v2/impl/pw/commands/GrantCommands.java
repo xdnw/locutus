@@ -532,7 +532,7 @@ public class GrantCommands {
                             cost.add(unit.getCost(amount, receiver::getResearch));
                             return;
                         }
-                        int maxUnits = unit.getMaxMMRCap(cities, receiver::hasProject);
+                        int maxUnits = unit.getMaxMMRCap(cities, receiver.getResearchBits(), receiver::hasProject);
                         cost.add(PW.multiply(unit.getConsumption(), amount * maxUnits));
                     });
                     if (cost.isEmpty()) {

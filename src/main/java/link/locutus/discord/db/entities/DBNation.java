@@ -4290,7 +4290,7 @@ public abstract class DBNation implements NationOrAlliance {
 
     @Command
     public int getUnitCap(MilitaryUnit unit, @Switch("c") boolean checkBuildingsAndPop) {
-        int result = checkBuildingsAndPop ? unit.getCap(this, false) : unit.getMaxMMRCap(data()._cities(), this::hasProject);
+        int result = checkBuildingsAndPop ? unit.getCap(this, false) : unit.getMaxMMRCap(data()._cities(), getResearchBits(), this::hasProject);
         return result;
     }
 
