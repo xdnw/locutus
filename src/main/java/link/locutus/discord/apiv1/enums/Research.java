@@ -25,7 +25,7 @@ public enum Research {
             MilitaryUnit.TANK, Map.of(ResourceType.MONEY, 2.0)
     ), Map.of(
             MilitaryUnit.SOLDIER, Map.of(ResourceType.MONEY, 0.06),
-            MilitaryUnit.TANK, Map.of(ResourceType.MONEY, 3)
+            MilitaryUnit.TANK, Map.of(ResourceType.MONEY, 3.0)
     )) {
         @Override
         protected TriConsumer<Integer, Integer, double[]> applyUpkeepReduction(MilitaryUnit unit, boolean war) {
