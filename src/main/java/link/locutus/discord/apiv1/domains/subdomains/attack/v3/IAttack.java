@@ -112,6 +112,9 @@ public interface IAttack {
                 damage = 12;
                 break;
             case NAVAL:
+            case NAVAL_INFRA:
+            case NAVAL_GROUND:
+            case NAVAL_AIR:
                 damage = 14;
                 break;
             case MISSILE:

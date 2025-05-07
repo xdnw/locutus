@@ -31,6 +31,7 @@ public enum AttackType {
     NAVAL_INFRA(4, 14, MilitaryUnit.SHIP),
     NAVAL_AIR(4, 14, MilitaryUnit.SHIP),
     NAVAL_GROUND(4, 14, MilitaryUnit.SHIP),
+
     ;
 
     @Override
@@ -63,7 +64,14 @@ public enum AttackType {
             case NUKEFAIL:
                 return NUKE;
             case NAVAL:
+            case NAVALVSHIPS:
                 return NAVAL;
+            case NAVALVAIR:
+                return NAVAL_AIR;
+            case NAVALVGROUND:
+                return NAVAL_GROUND;
+            case NAVALVINFRA:
+                return NAVAL_INFRA;
             case FORTIFY:
                 return FORTIFY;
             case PEACE:

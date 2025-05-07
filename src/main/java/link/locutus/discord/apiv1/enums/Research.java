@@ -92,7 +92,7 @@ public enum Research {
         double[] cost = ResourceType.getBuffer();
 
         for (int i = 1; i < numUpgrades + 1; i++) {
-            cost[ResourceType.MONEY.ordinal()] += (1000000 * (totalUpgrades + i) + (75000 * Math.pow((totalUpgrades + i), 1.75) * (totalUpgrades + i) / 20d)) * factor;
+            cost[ResourceType.MONEY.ordinal()] += (600_000 * (totalUpgrades + i) + (45_000 * Math.pow((totalUpgrades + i), 1.75) * (totalUpgrades + i) / 20d)) * factor;
 
             int treeCost = (int) (100 * (treeUpgrades + i) +
                                 (Math.round((treeUpgrades + i) / 5d) * 500) +

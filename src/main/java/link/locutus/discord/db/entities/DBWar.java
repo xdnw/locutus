@@ -363,35 +363,16 @@ public class DBWar {
             }
             long lastTurn = turnMap[0];
             long turn = TimeUtil.getTurn(attack.getDate());
-            int mapUsed;
-            switch (attack.getAttack_type()) {
-                case FORTIFY:
-                    if (attack.getAttacker_id() == getAttacker_id()) {
-                        fortified = true;
-                    }
-                case GROUND:
-                    mapUsed = 3;
-                    break;
-
-                case AIRSTRIKE_INFRA:
-                case AIRSTRIKE_SOLDIER:
-                case AIRSTRIKE_TANK:
-                case AIRSTRIKE_MONEY:
-                case AIRSTRIKE_SHIP:
-                case AIRSTRIKE_AIRCRAFT:
-                case NAVAL:
-                    mapUsed = 4;
-                    break;
-                case MISSILE:
-                    mapUsed = 8;
-                    break;
-                case NUKE:
-                    mapUsed = 12;
-                    break;
-                case PEACE:
-                    continue;
-                default:
-                    break outer;
+            AttackType type = attack.getAttack_type();
+            int mapUsed = type.getMapUsed();
+            if (type == AttackType.FORTIFY && attack.getAttacker_id() == getDefender_id()) {
+                fortified = true;
+            }
+            if (type == AttackType.PEACE) {
+                continue;
+            }
+            if (type == AttackType.VICTORY || type == AttackType.A_LOOT) {
+                break outer;
             }
             turnMap[1] += (turn - lastTurn);
             if (turnMap[1] > 12) {

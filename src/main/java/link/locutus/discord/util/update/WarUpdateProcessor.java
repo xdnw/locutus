@@ -797,6 +797,10 @@ public class WarUpdateProcessor {
                 }
                 break;
             }
+            case NAVAL_AIR:
+            case NAVAL_GROUND:
+//                break;
+            case NAVAL_INFRA:
             case NAVAL:
                 int defShips = (int) (root.getDef_gas_used() / MilitaryUnit.SHIP.getConsumption()[ResourceType.GASOLINE.ordinal()]);
                 if (defender.getShips() == 0 && defShips == 0 && root.getDefcas1() == 0) {

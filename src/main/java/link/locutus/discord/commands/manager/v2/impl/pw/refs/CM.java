@@ -2322,30 +2322,6 @@ public class CM {
 
             }
         }
-        @AutoRegister(clazz=link.locutus.discord._test.command.CustomCommands.class,method="buyInfra")
-        public static class buyInfra extends CommandRef {
-            public static final buyInfra cmd = new buyInfra();
-        public buyInfra upTo(String value) {
-            return set("upTo", value);
-        }
-
-        public buyInfra force(String value) {
-            return set("force", value);
-        }
-
-        }
-        @AutoRegister(clazz=link.locutus.discord._test.command.CustomCommands.class,method="buyLand")
-        public static class buyLand extends CommandRef {
-            public static final buyLand cmd = new buyLand();
-        public buyLand upTo(String value) {
-            return set("upTo", value);
-        }
-
-        public buyLand force(String value) {
-            return set("force", value);
-        }
-
-        }
         public static class channel{
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="channelMembers")
             public static class channelMembers extends CommandRef {
@@ -6598,34 +6574,6 @@ public class CM {
 
             }
         }
-        @AutoRegister(clazz=link.locutus.discord._test.command.CustomCommands.class,method="loadAttacks")
-        public static class loadAttacks extends CommandRef {
-            public static final loadAttacks cmd = new loadAttacks();
-        public loadAttacks naval(String value) {
-            return set("naval", value);
-        }
-
-        public loadAttacks nations(String value) {
-            return set("nations", value);
-        }
-
-        public loadAttacks allowMunitions(String value) {
-            return set("allowMunitions", value);
-        }
-
-        public loadAttacks allowGas(String value) {
-            return set("allowGas", value);
-        }
-
-        public loadAttacks attackAtPeace(String value) {
-            return set("attackAtPeace", value);
-        }
-
-        public loadAttacks rebuy(String value) {
-            return set("rebuy", value);
-        }
-
-        }
         public static class mail{
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="mailCommandOutput")
             public static class command extends CommandRef {
@@ -8528,14 +8476,6 @@ public class CM {
             }
 
             }
-        }
-        @AutoRegister(clazz=link.locutus.discord._test.command.CustomCommands.class,method="safekeep")
-        public static class safekeep extends CommandRef {
-            public static final safekeep cmd = new safekeep();
-        public safekeep warchest(String value) {
-            return set("warchest", value);
-        }
-
         }
         public static class selection_alias{
             public static class add{
@@ -16385,11 +16325,6 @@ public class CM {
             }
 
             }
-        }
-        @AutoRegister(clazz=link.locutus.discord._test.command.CustomCommands.class,method="tradeAverageCodes")
-        public static class tradeAverageCodes extends CommandRef {
-            public static final tradeAverageCodes cmd = new tradeAverageCodes();
-
         }
         public static class transfer{
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="transferBulk")

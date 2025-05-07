@@ -153,10 +153,28 @@ public enum WarCostByDayMode {
             };
         }
     },
-    NAVAL(true) {
+    NAVAL_SHIP(true) {
         @Override
         public BiFunction<AttackCost, Boolean, Double> apply() {
             return forAttackType(AttackType.NAVAL);
+        }
+    },
+    NAVAL_AIR(true) {
+        @Override
+        public BiFunction<AttackCost, Boolean, Double> apply() {
+            return forAttackType(AttackType.NAVAL_AIR);
+        }
+    },
+    NAVAL_GROUND(true) {
+        @Override
+        public BiFunction<AttackCost, Boolean, Double> apply() {
+            return forAttackType(AttackType.NAVAL_GROUND);
+        }
+    },
+    NAVAL_INFRA(true) {
+        @Override
+        public BiFunction<AttackCost, Boolean, Double> apply() {
+            return forAttackType(AttackType.NAVAL_INFRA);
         }
     },
     MISSILE_SUCCESS(true) {

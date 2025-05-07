@@ -6383,7 +6383,7 @@ public abstract class DBNation implements NationOrAlliance {
     @Command(desc = "The modifier for infra damage")
     public double infraAttackModifier(AttackType type) {
         boolean isGroundAirOrNaval = switch (type) {
-            case GROUND, AIRSTRIKE_INFRA, AIRSTRIKE_SOLDIER, AIRSTRIKE_TANK, AIRSTRIKE_MONEY, AIRSTRIKE_SHIP, AIRSTRIKE_AIRCRAFT, NAVAL -> true;
+            case GROUND, AIRSTRIKE_INFRA, AIRSTRIKE_SOLDIER, AIRSTRIKE_TANK, AIRSTRIKE_MONEY, AIRSTRIKE_SHIP, AIRSTRIKE_AIRCRAFT, NAVAL, NAVAL_GROUND, NAVAL_AIR, NAVAL_INFRA -> true;
             default -> false;
         };
         return switch (getWarPolicy()) {
@@ -6402,7 +6402,7 @@ public abstract class DBNation implements NationOrAlliance {
     @Command(desc = "The modifier for infra damage")
     public double infraDefendModifier(AttackType type) {
         boolean isGroundAirOrNaval = switch (type) {
-            case GROUND, AIRSTRIKE_INFRA, AIRSTRIKE_SOLDIER, AIRSTRIKE_TANK, AIRSTRIKE_MONEY, AIRSTRIKE_SHIP, AIRSTRIKE_AIRCRAFT, NAVAL -> true;
+            case GROUND, AIRSTRIKE_INFRA, AIRSTRIKE_SOLDIER, AIRSTRIKE_TANK, AIRSTRIKE_MONEY, AIRSTRIKE_SHIP, AIRSTRIKE_AIRCRAFT, NAVAL, NAVAL_GROUND, NAVAL_AIR, NAVAL_INFRA -> true;
             default -> false;
         };
         return switch (getWarPolicy()) {

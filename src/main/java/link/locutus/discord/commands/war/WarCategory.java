@@ -454,6 +454,9 @@ public class WarCategory {
             case GROUND:
                 showCasualties = true;
                 showLoot = true;
+            case NAVAL_INFRA:
+            case NAVAL_GROUND:
+            case NAVAL_AIR:
             case NAVAL:
                 message = name1 + " issued a " + attack.getAttack_type() + " attack against " + name2;
                 showInfra = true;
