@@ -1,10 +1,7 @@
 package link.locutus.discord.db.entities;
 
 import com.google.gson.JsonSyntaxException;
-import com.politicsandwar.graphql.model.ApiKeyDetails;
-import com.politicsandwar.graphql.model.Bankrec;
-import com.politicsandwar.graphql.model.Nation;
-import com.politicsandwar.graphql.model.Trade;
+import com.politicsandwar.graphql.model.*;
 import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
@@ -13,6 +10,10 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.DomesticPolicy;
+import link.locutus.discord.apiv1.enums.WarPolicy;
+import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.city.building.PowerBuilding;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -1040,6 +1041,21 @@ public abstract class DBNation implements NationOrAlliance {
 
     public boolean updateNationInfo(DBNation copyOriginal, com.politicsandwar.graphql.model.Nation nation, Consumer<Event> eventConsumer) {
         boolean dirty = false;
+        Double discount = nation.getCities_discount();
+        if (discount != null && Math.round(this.getCityRefund() * 100) != Math.round(discount * 100)) {
+            this.edit().setCostReduction(discount);
+            dirty = true;
+        }
+
+        MilitaryResearch apiResearch = nation.getMilitary_research();
+        if (apiResearch != null) {
+            int researchBits = Research.toBits(apiResearch);
+            if (this.getResearchBits() != researchBits) {
+                this.edit().setResearchBits(researchBits);
+                dirty = true;
+            }
+        }
+
         if (nation.getWars_won() != null && this.data()._warsWon() != nation.getWars_won()) {
             this.edit().setWars_won(nation.getWars_won());
             dirty = true;

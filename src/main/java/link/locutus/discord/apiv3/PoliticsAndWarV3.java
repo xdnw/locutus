@@ -1248,6 +1248,14 @@ public class PoliticsAndWarV3 {
 //    }
 
     public List<Nation> fetchNationsWithInfo(boolean priority, Consumer<NationsQueryRequest> filter, Predicate<Nation> nationResults) {
+        MilitaryResearchResponseProjection milResearch = new MilitaryResearchResponseProjection();
+        milResearch.ground_capacity();
+        milResearch.ground_cost();
+        milResearch.air_capacity();
+        milResearch.air_cost();
+        milResearch.naval_capacity();
+        milResearch.naval_cost();
+
         return fetchNations(priority, NATIONS_PER_PAGE, filter, new Consumer<NationResponseProjection>() {
             @Override
             public void accept(NationResponseProjection projection) {
@@ -1300,6 +1308,10 @@ public class PoliticsAndWarV3 {
                 projection.wars_lost();
 
                 projection.spies();
+
+                projection.cities_discount();
+
+                projection.military_research(milResearch);
 
             }
         }, f -> PoliticsAndWarV3.ErrorResponse.THROW, nationResults);

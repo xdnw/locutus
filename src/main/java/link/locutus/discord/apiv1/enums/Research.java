@@ -1,5 +1,6 @@
 package link.locutus.discord.apiv1.enums;
 
+import com.politicsandwar.graphql.model.MilitaryResearch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.util.PW;
 import org.jsoup.nodes.Document;
@@ -191,6 +192,17 @@ public enum Research {
             byGroup.put(r.getGroup(), treeUpgrades + endValue - startValue);
         }
         return cost;
+    }
+
+    public static int toBits(MilitaryResearch apiResearch) {
+        int bits = 0;
+        bits += apiResearch.getGround_capacity() << (GROUND_CAPACITY.ordinal() * 5);
+        bits += apiResearch.getGround_cost() << (GROUND_COST.ordinal() * 5);
+        bits += apiResearch.getAir_capacity() << (AIR_CAPACITY.ordinal() * 5);
+        bits += apiResearch.getAir_cost() << (AIR_COST.ordinal() * 5);
+        bits += apiResearch.getNaval_capacity() << (NAVAL_CAPACITY.ordinal() * 5);
+        bits += apiResearch.getNaval_cost() << (NAVAL_COST.ordinal() * 5);
+        return bits;
     }
 
     public static int toBits(Map<Research, Integer> levels) {
