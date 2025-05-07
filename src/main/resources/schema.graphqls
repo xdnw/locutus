@@ -1006,6 +1006,10 @@ type Nation {
     edited_since: DateTime
     orderBy: [NationBulletinRepliesOrderByOrderByClause!]
   ): [BulletinReply]
+
+  # The total City Discount the nation has left
+  cities_discount: Float
+  military_research: MilitaryResearch
 }
 
 enum AlliancePositionEnum {
@@ -2181,6 +2185,10 @@ enum AttackType {
   NUKE
   NUKEFAIL
   NAVAL
+  NAVALVSHIPS
+  NAVALVINFRA
+  NAVALVGROUND
+  NAVALVAIR
   FORTIFY
   PEACE
   VICTORY
@@ -2219,16 +2227,16 @@ enum AllianceBulletinsOrderByColumn {
 
 type Bulletin {
   # ID of the bulletin
-  id: ID!
+  id: Int!
 
   # ID of the nation that posted the bulletin
-  nation_id: ID!
+  nation_id: Int!
 
   # Nation that posted the bulletin
   nation: Nation
 
   # ID of the alliance the bulletin was posted to, null if type is 1
-  alliance_id: ID
+  alliance_id: Int
 
   # Alliance the bulletin was posted to, null if type is 1
   alliance: Alliance
@@ -2320,19 +2328,19 @@ type PaginatorInfo {
 
 type BulletinReply {
   # ID of the reply
-  id: ID!
+  id: Int!
 
   # Date that the reply was posted
   date: DateTimeAuto!
 
   # ID of the nation posting the reply
-  nation_id: ID!
+  nation_id: Int!
 
   # Nation posting the reply
   nation: Nation
 
   # ID of the bulleting replied to
-  bulletin_id: ID!
+  bulletin_id: Int!
 
   # Bulletin that was replied to
   bulletin: Bulletin
@@ -3041,6 +3049,15 @@ enum NationBulletinRepliesOrderByColumn {
   BULLETIN_ID
 }
 
+type MilitaryResearch {
+  ground_capacity: Int
+  ground_cost: Int
+  air_capacity: Int
+  air_cost: Int
+  naval_capacity: Int
+  naval_cost: Int
+}
+
 type ApiKeyPermissions {
   nation_view_resources: Boolean
   nation_deposit_to_bank: Boolean
@@ -3362,14 +3379,13 @@ input QueryTradesOrderByOrderByClause {
   order: SortOrder!
 }
 
-# Allowed column names for Query.trades.orderBy.
 enum QueryTradesOrderByColumn {
   ID
   DATE
   DATE_ACCEPTED
   OFFER_RESOURCE
   OFFER_AMOUNT
-  RETURN_AMOUNT @deprecated(reason: "Use PRICE instead.")
+#  RETURN_AMOUNT @deprecated(reason: "Use PRICE instead.")
   PRICE
 }
 
