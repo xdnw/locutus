@@ -21,11 +21,11 @@ public enum Research {
             MilitaryUnit.SOLDIER, Map.of(ResourceType.MONEY, 0.1, ResourceType.STEEL, 0.01),
             MilitaryUnit.TANK, Map.of(ResourceType.MONEY, 1.0, ResourceType.STEEL, 0.01)
     ), Map.of(
-            MilitaryUnit.SOLDIER, Map.of(ResourceType.MONEY, 0.02),
-            MilitaryUnit.TANK, Map.of(ResourceType.MONEY, 1.0)
+            MilitaryUnit.SOLDIER, Map.of(ResourceType.MONEY, 0.04),
+            MilitaryUnit.TANK, Map.of(ResourceType.MONEY, 2.0)
     ), Map.of(
-            MilitaryUnit.SOLDIER, Map.of(ResourceType.MONEY, 0.03),
-            MilitaryUnit.TANK, Map.of(ResourceType.MONEY, 1.5)
+            MilitaryUnit.SOLDIER, Map.of(ResourceType.MONEY, 0.06),
+            MilitaryUnit.TANK, Map.of(ResourceType.MONEY, 3)
     )) {
         @Override
         protected TriConsumer<Integer, Integer, double[]> applyUpkeepReduction(MilitaryUnit unit, boolean war) {
@@ -33,7 +33,7 @@ public enum Research {
                 if (war) {
                     double[] food = new double[20];
                     for (int i = 1; i < food.length; i++) {
-                        food[i - 1] = (1d/500d) - (1d/(500d + i * 15d));
+                        food[i - 1] = (1d/500d) - (1d/(500d + i * 30d));
                     }
                     return (level, amt, rss) -> {
                         rss[ResourceType.MONEY.ordinal()] -= 0.03 * level * amt;
@@ -42,7 +42,7 @@ public enum Research {
                 } else {
                     double[] food = new double[20];
                     for (int i = 1; i < food.length; i++) {
-                        food[i - 1] = (1d/750d) - (1d/(750d + i * 10d));
+                        food[i - 1] = (1d/750d) - (1d/(750d + i * 20d));
                     }
                     return (level, amt, rss) -> {
                         rss[ResourceType.MONEY.ordinal()] -= 0.02 * level * amt;
@@ -87,17 +87,17 @@ public enum Research {
     AIR_COST(ResearchGroup.AIR, null, Map.of(
             MilitaryUnit.AIRCRAFT, Map.of(ResourceType.MONEY, 50.0, ResourceType.ALUMINUM, 0.2)
     ), Map.of(
-            MilitaryUnit.AIRCRAFT, Map.of(ResourceType.MONEY, 15.0)
+            MilitaryUnit.AIRCRAFT, Map.of(ResourceType.MONEY, 30.0)
     ), Map.of(
-            MilitaryUnit.AIRCRAFT, Map.of(ResourceType.MONEY, 10.0)
+            MilitaryUnit.AIRCRAFT, Map.of(ResourceType.MONEY, 20.0)
     )),
     // Decrease ship cost by $500 and 500 Steel, Reduce ship upkeep cost by $30 at peace, and $50 at war
     NAVAL_COST(ResearchGroup.NAVAL, null, Map.of(
             MilitaryUnit.SHIP, Map.of(ResourceType.MONEY, 500.0, ResourceType.STEEL, 500.0)
     ), Map.of(
-            MilitaryUnit.SHIP, Map.of(ResourceType.MONEY, 30.0)
+            MilitaryUnit.SHIP, Map.of(ResourceType.MONEY, 60.0)
     ), Map.of(
-            MilitaryUnit.SHIP, Map.of(ResourceType.MONEY, 50.0)
+            MilitaryUnit.SHIP, Map.of(ResourceType.MONEY, 100.0)
     )),
     // Increase max soldier count by 3000 and max tank count by 250
     GROUND_CAPACITY(ResearchGroup.GROUND, Map.of(MilitaryUnit.SOLDIER, 3000, MilitaryUnit.TANK, 250), null, null, null),
