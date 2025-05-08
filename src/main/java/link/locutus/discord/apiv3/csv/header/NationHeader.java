@@ -136,6 +136,8 @@ public class NationHeader extends DataHeader<DBNation> {
     public final ProjectColumn surveillance_network_np = new ProjectColumn(this, Projects.SURVEILLANCE_NETWORK);
     public final ProjectColumn guiding_satellite_np = new ProjectColumn(this, Projects.GUIDING_SATELLITE);
     public final ProjectColumn nuclear_launch_facility_np = new ProjectColumn(this, Projects.NUCLEAR_LAUNCH_FACILITY);
+    public final ProjectColumn military_research_np = new ProjectColumn(this, Projects.MILITARY_RESEARCH_CENTER);
+    public final ProjectColumn military_doctrine_np = new ProjectColumn(this, Projects.MILITARY_DOCTRINE);
 
     public NationHeader(Dictionary dict) {
         super(dict);

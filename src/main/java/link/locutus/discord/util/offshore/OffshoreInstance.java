@@ -1834,6 +1834,9 @@ public class OffshoreInstance {
 //            return KeyValue.of(TransferStatus.SUCCESS, msg);
             return new TransferResult(TransferStatus.SUCCESS, receiver, amount, note).addMessage(msg);
         }
+        if (msg.contains("This API key does not allow you to withdraw resources from an alliance bank.")) {
+            return new TransferResult(TransferStatus.INVALID_API_KEY, receiver, amount, note).addMessage(msg);
+        }
         if (msg.contains("You can't send funds to this nation because they are in Vacation Mode") || msg.contains("You can't withdraw resources to a nation in vacation mode")) {
 //            return KeyValue.of(TransferStatus.VACATION_MODE, msg);
             return new TransferResult(TransferStatus.VACATION_MODE, receiver, amount, note).addMessage(msg);

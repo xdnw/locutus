@@ -128,6 +128,8 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
                 set(header, f -> f.surveillance_network_np);
                 set(header, f -> f.guiding_satellite_np);
                 set(header, f -> f.nuclear_launch_facility_np);
+                set(header, f -> f.military_research_np);
+                set(header, f -> f.military_doctrine_np);
                 for (int i = 0; i < byProject.length; i++) {
                     if (byProject[i] == null) {
                         byProject[i] = f -> null;
