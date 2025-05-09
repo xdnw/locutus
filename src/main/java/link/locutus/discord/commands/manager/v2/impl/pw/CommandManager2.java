@@ -296,7 +296,7 @@ public class CommandManager2 {
         getCommands().registerMethod(new ResearchCommands(), List.of("research"), "researchCost", "cost");
         getCommands().registerMethod(new ResearchCommands(), List.of("research"), "getResearch", "view_nation");
         getCommands().registerMethod(new ResearchCommands(), List.of("research"), "researchSheet", "sheet");
-        getCommands().registerMethod(new AdminCommands(), List.of("research"), "researchCityTable", "table");
+        getCommands().registerMethod(new ResearchCommands(), List.of("research"), "researchCityTable", "table");
 
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "debug"), "newOffshore", "new_offshore");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "bot"), "upsertCommands", "update_commands");
