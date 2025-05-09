@@ -349,7 +349,7 @@ public enum Research {
         int i = 0;
         int max = allowed.size() * MAX_LEVEL;
         Map<Research, Integer> lastResearch = Collections.emptyMap();
-        while (i <= max) {
+        while (i < max) {
             levels[i % allowed.size()]++;
             Map<Research, Integer> map = new Object2IntOpenHashMap<>();
             for (int j = 0; j < levels.length; j++) {
