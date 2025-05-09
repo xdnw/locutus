@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.apiv1.enums.Research;
 import link.locutus.discord.apiv1.enums.ResearchGroup;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -17,6 +18,8 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PW;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.sheet.SpreadSheet;
 
 import java.io.IOException;
@@ -127,5 +130,48 @@ public class ResearchCommands {
 
         sheet.attach(io.create(), "research").send();
         return null;
+    }
+
+    @Command(desc = "Generate a sheet of the max research level buyable for each city cost")
+    public void researchCityTable(@Me IMessageIO io, @Me @Default GuildDB db, Set<Research> research, @Default("100") Double percent_of_city_cost, @Switch("s") SpreadSheet sheet,
+                                  @Switch("g") boolean gov_support_agency,
+                                  @Switch("b") boolean domestic_affairs,
+                                  @Switch("d") boolean military_doctrine) throws GeneralSecurityException, IOException {
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, SheetKey.RESEARCH_CITY);
+        }
+        percent_of_city_cost *= 0.01;
+
+        List<String> header = new ArrayList<>(Arrays.asList(
+                "cities",
+                "city_cost",
+                "research_level",
+                "research_cost"
+        ));
+        sheet.setHeader(header);
+        List<Research> researchList = new ObjectArrayList<>(research);
+
+        double costFactor = military_doctrine ? 0.95 : 1;
+        for (int cities = 1; cities < 70; cities++) {
+            double cityCost = PW.City.cityCost(cities - 1, cities, true, false, false, false, gov_support_agency, domestic_affairs);
+            double maxCost = cityCost * percent_of_city_cost;
+            Map<Research, Integer> levels = Research.findLevels(researchList, maxCost, costFactor);
+            Map<ResourceType, Double> cost = Research.cost(Collections.emptyMap(), levels, costFactor);//.get(0, 0, 0, level, costFactor);
+            double costConverted = ResourceType.convertedTotal(cost);
+
+            header.set(0, String.valueOf(cities));
+            header.set(1, (MathMan.format(cityCost)));
+            header.set(2, StringMan.getString(levels));
+            header.set(3, String.valueOf(costConverted));
+            sheet.addRow(header);
+
+            if (!levels.isEmpty() && levels.values().stream().allMatch(f -> f == Research.MAX_LEVEL)) {
+                break;
+            }
+        }
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
+
+        sheet.attach(io.create(), "research_city").send();
     }
 }

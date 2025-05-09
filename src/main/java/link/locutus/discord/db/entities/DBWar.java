@@ -23,6 +23,7 @@ import link.locutus.discord.apiv1.domains.subdomains.SWarContainer;
 
 import java.util.*;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 public class DBWar {
@@ -252,10 +253,10 @@ public class DBWar {
     }
 
     public IShrink getWarInfoEmbed(boolean isAttacker) {
-        return getWarInfoEmbed(isAttacker, true);
+        return getWarInfoEmbed(isAttacker, true, null);
     }
 
-    public IShrink getWarInfoEmbed(boolean isAttacker, boolean title) {
+    public IShrink getWarInfoEmbed(boolean isAttacker, boolean title, Consumer<Double> outputLootValue) {
         IShrink body = EmptyShrink.EMPTY;
 
         DBNation enemy = getNation(!isAttacker);
@@ -267,8 +268,11 @@ public class DBWar {
             body = body.append(typeStr);
             body = body.append(IShrink.of(enemy.getNation(), enemy.getMarkdownUrl()))
                     .append(IShrink.of("|", " | ")).append(IShrink.of(enemy.getAllianceName(), enemy.getAllianceUrlMarkup())).append(":");
-            { // loot
+            {
                 double lootValue = enemy.lootTotal();
+                if (outputLootValue != null) {
+                    outputLootValue.accept(lootValue);
+                }
                 body = body.append(IShrink.of("", "$" + MathMan.format((int) lootValue)));
             }
         }

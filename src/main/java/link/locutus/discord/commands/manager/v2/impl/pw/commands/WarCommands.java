@@ -383,7 +383,7 @@ public class WarCommands {
             String title = (war.isAttacker(nation) ? "Off" : "Def") + ": " + enemy.getNation() + " | " + enemy.getAllianceName();
             EmbedShrink embed = new EmbedShrink().title(title);
             embed.append(war.toUrl()).append("\n");
-            IShrink info = war.getWarInfoEmbed(war.isAttacker(nation), true);
+            IShrink info = war.getWarInfoEmbed(war.isAttacker(nation), true, null);
             embed.append(info);
             embed.append("\nBeige:");
 

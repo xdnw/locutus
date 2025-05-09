@@ -88,6 +88,7 @@ public enum SheetKey {
     TRADE_VOLUME_DAY,
     NTH_LOOT_SCORE_RANGE,
     RESEARCH_SHEET,
+    RESEARCH_CITY,
 
 
 

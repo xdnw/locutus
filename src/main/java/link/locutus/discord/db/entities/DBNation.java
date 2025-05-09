@@ -5333,16 +5333,18 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     public IShrink getWarInfoEmbed(DBWar war) {
-        return war.getWarInfoEmbed(war.isAttacker(this), true);
+        return war.getWarInfoEmbed(war.isAttacker(this), true, null);
     }
 
     public IShrink getWarInfoEmbed() {
         IShrink body = EmptyShrink.EMPTY;
         Set<DBWar> wars = this.getActiveWars();
 
+        double[] total = {0d};
         for (DBWar war : wars) {
-            body = body.append(getWarInfoEmbed(war));
+            body = body.append(war.getWarInfoEmbed(war.isAttacker(this), true, f -> total[0] += f));
         }
+        if (!wars.isEmpty()) body.append(IShrink.of("", "-# total loot: `~$" + MathMan.format(total[0]) + "`\n"));
         body = body.append(this.getNationUrlMarkup());
         if (getAlliance_id() != 0) {
             body = body.append(IShrink.of("", " | " + getAllianceUrlMarkup()));

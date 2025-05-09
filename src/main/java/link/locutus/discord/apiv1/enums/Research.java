@@ -2,6 +2,7 @@ package link.locutus.discord.apiv1.enums;
 
 import com.politicsandwar.graphql.model.MilitaryResearch;
 import it.unimi.dsi.fastutil.ints.Int2DoubleFunction;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.scheduler.TriConsumer;
@@ -14,6 +15,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public enum Research {
+
     // Decrease soldier cost by $0.1 and tank cost by $1 and 0.01 Steel, Reduce Soldier upkeep cost by $0.02 at peace, and $0.03 at war,
     // Increase the number of soldiers each ton of food feeds by 10 at peace, and 15 at war. It also reduces Tank upkeep by $1 at peace, and $1.5 at war
     GROUND_COST(ResearchGroup.GROUND, null, Map.of(
@@ -107,6 +109,8 @@ public enum Research {
 
     ;
 
+    public static final int MAX_LEVEL = 20;
+
     public static final Research[] values = values();
     public static final Function<Research, Integer> ZERO = r -> 0;
 
@@ -191,7 +195,7 @@ public enum Research {
 
     @Command
     public Map<ResourceType, Double> getCost(int treeUpgrades, int totalUpgrades, int startLevel, int endLevel, double factor) {
-        if (endLevel > 20) throw new IllegalArgumentException("End level cannot be greater than 20");
+        if (endLevel > MAX_LEVEL) throw new IllegalArgumentException("End level cannot be greater than " + MAX_LEVEL);
         if (startLevel < 0) throw new IllegalArgumentException("Start level cannot be less than 0");
 
         int numUpgrades = endLevel - startLevel;
@@ -326,5 +330,39 @@ public enum Research {
             bits |= entry.getValue() << (entry.getKey().ordinal() * 5);
         }
         return bits;
+    }
+
+    public int findLevel(double maxCost, double costFactor) {
+        for (int i = 20; i > 0; i--) {
+            Map<ResourceType, Double> cost = getCost(0, 0, 0, i, costFactor);
+            double totalCost = ResourceType.convertedTotal(cost);
+            if (totalCost <= maxCost) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    public static Map<Research, Integer> findLevels(List<Research> allowed, double maxCost, double costFactor) {
+        if (allowed.isEmpty()) return Collections.emptyMap();
+        int[] levels = new int[allowed.size()];
+        int i = 0;
+        int max = allowed.size() * MAX_LEVEL;
+        Map<Research, Integer> lastResearch = Collections.emptyMap();
+        while (i <= max) {
+            levels[i % allowed.size()]++;
+            Map<Research, Integer> map = new Object2IntOpenHashMap<>();
+            for (int j = 0; j < levels.length; j++) {
+                map.put(allowed.get(j), levels[j]);
+            }
+            Map<ResourceType, Double> cost = Research.cost(Collections.emptyMap(), map, costFactor);
+            double costConverted = ResourceType.convertedTotal(cost);
+            if (costConverted > maxCost) {
+                break;
+            }
+            lastResearch = map;
+            i++;
+        }
+        return lastResearch;
     }
 }
