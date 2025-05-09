@@ -1,0 +1,1 @@
+java -jar build\libs\shadowJar-Locutus-1.0-SNAPSHOT-all.jar

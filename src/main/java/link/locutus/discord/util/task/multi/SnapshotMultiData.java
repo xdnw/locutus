@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.file.NationsFile;
@@ -82,7 +83,7 @@ public class SnapshotMultiData {
         snapshot.withNationFile(lastDay, new ThrowingConsumer<NationsFile>() {
             @Override
             public void acceptThrows(NationsFile file) throws IOException {
-                System.out.println("Load snapshot: " + file.getDay());
+                Logg.info("Load snapshot: " + file.getDay());
                 file.reader().required(header -> List.of(
                         header.nation_id,
                         header.continent,

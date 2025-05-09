@@ -9,6 +9,7 @@ import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -2100,7 +2101,7 @@ public class BankCommands {
                             ResourceType.add(totalExpire, tx.resources);
                             if (force) db.addBalance(now, nation, me.getNation_id(), noteCopy, tx.resources);
                         } else {
-                            System.out.println("Invalid sign for deposits reset " + sign);
+                            Logg.error("Invalid sign for deposits reset " + sign);
                         }
                     }
                 }

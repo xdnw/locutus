@@ -231,7 +231,7 @@ public class DataUtil {
                     int nationId = r.header.nation_id.get();
                     int cities = r.header.cities.get();
                     cityCountsByDay.computeIfAbsent(day, k -> new Int2ObjectOpenHashMap<>()).put(nationId, (byte) cities);
-                }, null, f -> System.out.println("backCalculateCityCounts @ day=" + f));
+                }, null, f -> Logg.text("backCalculateCityCounts @ day=" + f));
         return cityCountsByDay;
     }
 

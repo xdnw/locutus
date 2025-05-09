@@ -1912,7 +1912,7 @@ public class AdminCommands {
     @RolePermission(value = Roles.ADMIN, root = true)
     public String apiUsageStats(@Me DBAlliance alliance) {
         ApiKeyPool keys = alliance.getApiKeys();
-        System.out.println(printApiStats(keys));
+        Logg.info(printApiStats(keys));
         return "Done! (see console)";
     }
 

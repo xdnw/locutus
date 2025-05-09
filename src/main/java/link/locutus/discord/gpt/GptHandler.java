@@ -6,6 +6,7 @@ import com.knuddels.jtokkit.api.ModelType;
 import com.theokanning.openai.service.OpenAiService;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
+import link.locutus.discord.Logg;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.copilot.CopilotDeviceAuthenticationData;
@@ -117,7 +118,7 @@ public class GptHandler {
                 if (hashesSet.add(hash)) {
                     float[] vector = embeddingDatabase.getOrCreateEmbedding(hash, description, expandedDescription == null ? null : () -> expandedDescription, source, true, moderateFunc);
                 } else {
-                    System.out.println("Skipping duplicate description: ```\n" + description + "\n```");
+                    Logg.info("Skipping duplicate description: ```\n" + description + "\n```");
                 }
                 hashes.add(hash);
             }

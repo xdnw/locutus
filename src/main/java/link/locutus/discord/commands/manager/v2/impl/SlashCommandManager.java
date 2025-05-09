@@ -321,9 +321,9 @@ public class SlashCommandManager extends ListenerAdapter {
                 }
                 toRegister.add(cmd);
             } catch (Throwable e) {
-                System.out.println("Slash command error: " + id + " | " + callable.getFullPath());
+                Logg.error("Slash command error: " + id + " | " + callable.getFullPath());
                 if (callable instanceof ParametricCallable parametric) {
-                    System.out.println(parametric.getMethod().getName() + " | " + parametric.getMethod().getDeclaringClass());
+                    Logg.error(parametric.getMethod().getName() + " | " + parametric.getMethod().getDeclaringClass());
                 }
                 throw e;
             }
@@ -345,8 +345,8 @@ public class SlashCommandManager extends ListenerAdapter {
                 if (size > 8000) {
                     StringBuilder builder = new StringBuilder();
                     printSize(slash, builder, 0);
-                    System.out.println(builder);
-                    System.out.println(cmd);
+                    Logg.error(builder);
+                    Logg.error(cmd);
                     throw new IllegalArgumentException("Command " + cmd.getName() + " is too large: " + size);
                 }
             }
@@ -559,9 +559,9 @@ public class SlashCommandManager extends ListenerAdapter {
                     ((SubcommandData) current).addOptions(options);
                 }
             } catch (Throwable e) {
-                System.out.println("Error creating command: " + fullPath);
+                Logg.error("Error creating command: " + fullPath);
                 for (OptionData option : options) {
-                    System.out.println("- option " + option.getName() + " | " + option.getType() + " | " + option.getDescription());
+                    Logg.error("- option " + option.getName() + " | " + option.getType() + " | " + option.getDescription());
                 }
                 e.printStackTrace();
                 throw e;
@@ -958,7 +958,7 @@ public class SlashCommandManager extends ListenerAdapter {
                 menu.targetContent = getMsg.get();
             }
             fullCmdStr = menu.buttons.get(path.toLowerCase(Locale.ROOT));
-            System.out.println("Get path " + path + " | " + fullCmdStr + " | " + menu.buttons);
+            Logg.info("Modal interaction at " + path + " | " + fullCmdStr + " | " + menu.buttons);
             if ((path.equalsIgnoreCase("...more") && fullCmdStr == null) || "...more".equalsIgnoreCase(fullCmdStr)) {
                 fullCmdStr = menu.formatCommand(guild, user, CM.menu.open.cmd.menu(isUser ? "user" : "message").toCommandArgs());
             } else if (fullCmdStr == null) {

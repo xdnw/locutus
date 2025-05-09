@@ -264,10 +264,10 @@ public class PoliticsAndWarV3 {
                                 long seconds = duration.get("seconds").getAsLong();
                                 sleepMs = Math.min(60_000, seconds * 1000);
                             } else {
-                                System.out.println("Unknown duration: " + duration);
+                                Logg.error("Unknown duration for API response: " + duration);
                             }
                         } else {
-                            System.out.println("Unknown duration2: " + obj);
+                            Logg.error("Unknown duration for API response (2): " + obj);
                         }
 
                         rateLimitSnapshot.setRateLimit(sleepMs);

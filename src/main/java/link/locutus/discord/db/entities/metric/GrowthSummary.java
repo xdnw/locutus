@@ -7,6 +7,7 @@ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
@@ -145,7 +146,7 @@ public class GrowthSummary {
         long diff = System.nanoTime() - start;
 
         long diffMs = diff / 1000000;
-        System.out.println("GrowthSummary: Consume + Get: " + diffMs + "ms");
+        Logg.info("GrowthSummary task: Consume + Get: " + diffMs + "ms");
 
         return this;
     }

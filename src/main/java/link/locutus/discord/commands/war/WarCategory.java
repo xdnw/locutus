@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
@@ -380,7 +381,7 @@ public class WarCategory {
                 if (room != null) {
                     deleteRoom(room, "Nation not found");
                 } else {
-                    System.out.println("Delete channel (nation not found): " + channel.getName() + " | " + channel.getIdLong());
+                    Logg.info("Delete channel (nation not found): " + channel.getName() + " | " + channel.getIdLong());
                     DiscordUtil.deleteChannelSafe(channel);
                 }
             }

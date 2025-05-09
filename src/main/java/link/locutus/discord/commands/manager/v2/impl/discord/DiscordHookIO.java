@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.discord;
 
+import link.locutus.discord.Logg;
 import link.locutus.discord.commands.manager.v2.command.AModalBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -130,7 +131,7 @@ public class DiscordHookIO implements IMessageIO {
                 return new DiscordMessageBuilder(this, responseMsgs);
             });
         } else {
-            System.out.println("Unsupported message builder: " + builder.getClass().getName());
+            Logg.error("Unsupported message builder: " + builder.getClass().getName());
             throw new IllegalArgumentException("Only DiscordMessageBuilder is supported.");
         }
     }

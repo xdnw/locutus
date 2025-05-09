@@ -1,6 +1,7 @@
 package link.locutus.discord.network;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import link.locutus.discord.Logg;
 import link.locutus.discord.config.Settings;
 
 import java.util.*;
@@ -22,7 +23,7 @@ public class ProxyHandler {
 
         ProxyHandler handler = new ProxyHandler();
         for (String host : hosts) {
-            System.out.println("Adding proxy: " + type + "://" + "<redacted>" + ":" + "<redacted>" + "@" + host + ":" + port);
+            Logg.info("Adding proxy: " + type + "://" + "<redacted>" + ":" + "<redacted>" + "@" + host + ":" + port);
             switch (type.toLowerCase(Locale.ROOT)) {
                 case "socks" -> {
                     handler.proxies.add(new SocksProxy(host, port, user, pass));

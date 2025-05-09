@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
@@ -137,7 +138,7 @@ public class MultiResult {
                     Element row = netRows.get(i);
                     Elements cols = row.select("td");
                     if (cols.size() != 8) {
-                        System.out.println("Incorrect size " + cols.size());
+                        Logg.info("Multi check. Incorrect size " + cols.size());
                         continue;
                     }
 

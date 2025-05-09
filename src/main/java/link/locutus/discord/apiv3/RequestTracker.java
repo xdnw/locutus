@@ -114,7 +114,7 @@ public class RequestTracker {
             }
             isRateLimited = true;
             retryAfter = e.getRetryAfter();
-            System.out.println("Retry After (1): " + retryAfter + " | " + e.getMessage());
+            Logg.error("API requests are being rate limited. Will Retry After (1): " + retryAfter + " | " + e.getMessage());
         } catch (HttpClientErrorException.TooManyRequests e) {
             if (depth > 3) {
                 task.completeExceptionally(strip(e));
@@ -140,7 +140,7 @@ public class RequestTracker {
                             if (diff > 60000) {
                                 diff = 60000;
                             } else if (diff < 0) {
-                                System.out.println("Invalid diff " + diff + " | " + reset + " for " + task.getUrl() + " | " + resetStr + " | " + now);
+                                Logg.error("API is being rate limited, however no recognized `Retry-After` was returned. debug info: " + diff + " | " + reset + " for " + task.getUrl() + " | " + resetStr + " | " + now);
                                 diff = 4000;
                             }
                             retryAfter = (int) ((diff + 999L) / 1000L);
@@ -148,9 +148,9 @@ public class RequestTracker {
                     }
                 }
             }
-            System.out.println("Retry After (2): " + retryAfter + " | " + headers);
+            Logg.error("API requests are being rate limited. Will Retry After (2): " + retryAfter + " | " + headers);
         } catch (Throwable e) {
-            System.out.println("Error " + e.getMessage() + " on " + task.getUrl());
+            Logg.error("API request: " + e.getMessage() + " on " + task.getUrl());
             task.completeExceptionally(strip(e));
             throw e;
         }

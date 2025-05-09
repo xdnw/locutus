@@ -1208,7 +1208,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
 
         if (changed + newCity > 500) {
-            System.out.println("Marking " + changed + " cities changed and " + newCity + " cities new");
+            Logg.info("Marking " + changed + " cities changed and " + newCity + " cities new");
         }
 
         if (!citiesToDeleteToNationId.isEmpty()) {
@@ -1299,7 +1299,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
         int dirtyNationCities = estimateCities(dirtyCityNations);
         if (dirtyCities.size() > 15000 || dirtyNationCities > 15000) {
-            System.out.println("Marking cities as outdated " + dirtyCities.size() + " " + dirtyNationCities);
+            Logg.info("Marking cities as outdated " + dirtyCities.size() + " " + dirtyNationCities);
         }
 
         if (!dirtyCities.isEmpty()) {
@@ -2145,7 +2145,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 }
             }
         }
-        System.out.println("Marked " + markedForScore + " cities for score and " + markedForCity + " for city count");
+        Logg.info("Marked " + markedForScore + " cities for score and " + markedForCity + " for city count");
     }
 
     private final Set<Integer> updateTimer = Collections.synchronizedSet(new IntOpenHashSet());
@@ -2193,7 +2193,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
         int added = dirtyNations.size() - originalSize;
         if (added > 1000) {
-            System.out.println("Added " + added + " nations to outdated list");
+            Logg.info("Added " + added + " nations to outdated list");
         }
     }
 

@@ -2,6 +2,7 @@ package link.locutus.discord.web.jooby.adapter;
 
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
@@ -405,7 +406,7 @@ public class TsEndpointGenerator {
                     typeName += "_Web";
                 }
             } else {
-                System.out.println("INVALID TYPE: " + typeName + " for field " + fieldName);
+                Logg.error("INVALID TYPE: " + typeName + " for field " + fieldName);
                 continue;
             }
 
@@ -423,7 +424,7 @@ public class TsEndpointGenerator {
         String tag = "{imports}";
         javaClass.replace(javaClass.indexOf(tag), javaClass.indexOf(tag) + tag.length(), StringMan.join(importsToAdd, "\n"));
 
-        System.out.println(javaClass);
+        Logg.info(javaClass);
         // save to file
         Files.write(output.toPath(), javaClass.toString().getBytes());
     }

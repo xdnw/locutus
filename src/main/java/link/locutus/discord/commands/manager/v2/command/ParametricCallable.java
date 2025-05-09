@@ -4,6 +4,7 @@ import gg.jte.generated.precompiled.command.JteparametriccallableGenerated;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
@@ -543,7 +544,7 @@ public class ParametricCallable implements ICommand {
             return method.invoke(callOn, paramVals);
         } catch (IllegalArgumentException e) {
             e.printStackTrace();
-            System.out.println("Error running " +
+            Logg.error("Error running " +
                     method.getDeclaringClass().getSimpleName() + "#" + method.getName() + "\n" + e.getMessage());
             throw new CommandUsageException(this, e.getMessage());
         } catch (IllegalAccessException | InvocationTargetException e) {

@@ -3,6 +3,7 @@ package link.locutus.discord.util.task.multi;
 import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
@@ -289,7 +290,7 @@ public class MultiUpdater {
                 lastUpdated.put(toUpdate.getNation_id(), System.currentTimeMillis());
                 report.update(auth);
                 lastUpdated.put(toUpdate.getNation_id(), System.currentTimeMillis());
-                System.out.println("Updated Multi Buster: #" + updated + " | Remaining: #" + queue.size());
+                Logg.info("Updated Multi Buster: #" + updated + " | Remaining: #" + queue.size());
                 return true;
             } catch (Throwable e) {
                 failCount.merge(toUpdate.getNation_id(), 1, Integer::sum);
@@ -346,7 +347,7 @@ public class MultiUpdater {
             double days = ((double) getRecommendedInterval(nation) / oneDay);
             updatesPerDay += 1d / days;
         }
-        System.out.println("Updates per day: " + updatesPerDay + " | " + nations.size());
+        Logg.info("Multi check. Updates per day: " + updatesPerDay + " | " + nations.size());
         ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations, DBNation.class);
 
         for (Map.Entry<DBNation, Double> entry : getQueue()) {

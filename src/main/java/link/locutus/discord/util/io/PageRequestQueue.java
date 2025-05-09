@@ -1,5 +1,6 @@
 package link.locutus.discord.util.io;
 
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv3.RequestTracker;
 
 import java.net.URI;
@@ -134,7 +135,7 @@ public class PageRequestQueue {
             int minuteCount = tracker.getDomainRequestsSince(task.getUrl(), oneMinute);
             long timeEnd = System.currentTimeMillis() - timeStart;
             if (timeEnd > 0) {
-                System.out.println("Took " + timeEnd + "ms to get minute count for " + task.getUrl());
+                Logg.info("Took " + timeEnd + "ms to get minute count for " + task.getUrl());
             }
 //            double fiveCount = tracker.getDomainRequestsSince(task.getUrl(), fiveMinutes) / 5d;
             double maxCount = minuteCount;//Math.max(minuteCount, fiveCount);

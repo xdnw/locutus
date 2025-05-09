@@ -10,6 +10,7 @@ import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -431,7 +432,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
                     addApiKey(natId, keyStats.getKey());
                     return natId;
                 } else {
-                    System.out.println("No nation found for api key. Invalid nation id " + keyStats);
+                    Logg.info("No nation found for api key. Invalid nation id " + keyStats);
                 }
             }
         }

@@ -2,6 +2,7 @@ package link.locutus.discord.db.entities;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.SuccessType;
@@ -263,7 +264,7 @@ public class WarParser {
         Map<Long, AttackCost> warCostByDay = new LinkedHashMap<>();
         getAttacks().accept((war, attack) -> {
             if (attack.getDate() > System.currentTimeMillis()) {
-                System.out.println("attack id:" + attack.getWar_attack_id() + " is in future");
+                Logg.info("attack id:" + attack.getWar_attack_id() + " is in future");
             }
             long turn = TimeUtil.getTurn(attack.getDate());
             long day = turn / 12;

@@ -7,6 +7,7 @@ import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import link.locutus.discord.Logg;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
@@ -591,7 +592,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         for (EmbeddingSource source : allowedTypes) {
             Set<Long> hashes = textHashBySource.get(source.source_id);
             if (hashes == null || hashes.isEmpty()) {
-                System.out.println("No hashes for " + source.source_name + " | " + source.source_id);
+                Logg.info("No hashes for " + source.source_name + " | " + source.source_id);
                 continue;
             }
             for (long hash : hashes) {

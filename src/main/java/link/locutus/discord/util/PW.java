@@ -11,6 +11,7 @@ import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.DepositType;
@@ -461,7 +462,7 @@ public final class PW {
         public static double nextCityCost(int currentCity, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency, boolean bureauOfDomesticAffairs) {
             if (CITY_AVERAGE == -1) {
                 CITY_AVERAGE = Locutus.imp().getDiscordDB().getCityAverage(40.8216);
-                System.out.println("Loaded City Average: " + CITY_AVERAGE);
+                Logg.info("Loaded City Average: " + CITY_AVERAGE);
             }
             double top20AverageQuarter = CITY_AVERAGE * 0.25;
             double cost = Math.max(Math.pow(currentCity + 1, 2) * 100000, 100000 * Math.pow((currentCity + 1) - (top20AverageQuarter), 3) + 150000 * ((currentCity + 1) - (top20AverageQuarter)) + 75000);
@@ -613,7 +614,7 @@ public final class PW {
         }
         long diff = System.currentTimeMillis() - start;
         if (diff > 50) {
-            System.out.println("Summed " + transactionsEntries.size() + " transactions in " + diff + "ms");
+            Logg.info("Summed " + transactionsEntries.size() + " transactions in " + diff + "ms");
         }
         return result;
     }

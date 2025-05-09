@@ -105,7 +105,7 @@ public class Auth {
         if (!force && loggedIn) return;
         synchronized (this)
         {
-            System.out.println("Logging in to " + this.getUsername());
+            Logg.info("Logging in to " + this.getUsername());
             Map<String, String> userPass = new HashMap<>();
             userPass.put("email", this.getUsername());
             userPass.put("password", this.getPassword());
@@ -487,7 +487,7 @@ public class Auth {
                 }
                 String alert = PW.getAlert(dom);
                 if (alert == null || alert.isEmpty()) {
-                    System.out.println(":||REmove no alert found setrank " + result);;
+                    Logg.info("No alert found setrank " + result);;
                 }
                 throw new IllegalArgumentException("No token found: " + PW.getAlert(dom));
             }

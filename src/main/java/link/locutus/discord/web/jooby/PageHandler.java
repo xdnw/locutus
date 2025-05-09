@@ -8,6 +8,7 @@ import io.javalin.http.*;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
@@ -179,7 +180,7 @@ public class PageHandler implements Handler {
         // print missing
         if (!missingKeys.isEmpty()) {
             for (Key missingKey : missingKeys) {
-                System.out.println("Missing: " + missingKey);
+                Logg.info("Missing: " + missingKey);
             }
         }
 
@@ -238,7 +239,7 @@ public class PageHandler implements Handler {
                     result.put(option.getName(), option);
                 }
             } catch (Throwable e) {
-                System.out.println("Error: " + optionParser);
+                Logg.error("Error: " + optionParser);
                 e.printStackTrace();
             }
         }
@@ -589,7 +590,7 @@ public class PageHandler implements Handler {
                 }
             }
         } catch (Throwable e) {
-            System.out.println("Throwable " + e.getMessage());
+            Logg.error("Throwable " + e.getMessage());
             handleErrors(e, ws, ctx, isApi);
         }
     }

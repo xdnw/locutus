@@ -75,7 +75,6 @@ public class EmbedShrink implements IShrink {
         if (description != null) all.add(description);
         if (footer != null) all.add(footer);
         for (ShrinkableField field : fields) {
-            if (field.name == null || field.value == null) System.out.println("Field is null");
             all.add(field.name);
             all.add(field.value);
         }

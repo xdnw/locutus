@@ -433,12 +433,12 @@ public class CommandGroup implements ICommandGroup {
                 }
                 for (String arg : uniqueUserParamsLower) {
                     if (!argsPresent.contains(arg)) {
-                        System.out.println("Missing parameter for " + methodInfo.clazz().getSimpleName() + "#" + methodInfo.method() + " | " + methodInfo.field() + "/" + clazz.getSimpleName() + " | " + arg + " not in " + argsPresent);
+                        Logg.text("Missing parameter for " + methodInfo.clazz().getSimpleName() + "#" + methodInfo.method() + " | " + methodInfo.field() + "/" + clazz.getSimpleName() + " | " + arg + " not in " + argsPresent);
                     }
                 }
                 for (String arg : argsPresent) {
                     if (!userParamsLower.contains(arg)) {
-                        System.out.println("Missing parameter (2) for " + methodInfo.clazz().getSimpleName() + "#" + methodInfo.method() + " | " + methodInfo.field() + "/" + clazz.getSimpleName() + " | " + arg + " not in " + argsPresent);
+                        Logg.text("Missing parameter (2) for " + methodInfo.clazz().getSimpleName() + "#" + methodInfo.method() + " | " + methodInfo.field() + "/" + clazz.getSimpleName() + " | " + arg + " not in " + argsPresent);
                     }
                 }
             } catch (IllegalAccessException | NoSuchFieldException e) {
@@ -492,7 +492,7 @@ public class CommandGroup implements ICommandGroup {
             if (throwError) {
                 throw new IllegalStateException(sb.toString());
             } else {
-                System.out.println(sb.toString());
+                Logg.error(sb.toString());
             }
         }
 

@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.binding;
 
+import link.locutus.discord.Logg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
@@ -84,7 +85,7 @@ public interface Parser<T> {
         if (printExamples) {
             Binding binding = key.getBinding();
             if (binding == null) {
-                System.out.println("No binding: " + key);
+                Logg.text("No binding: " + key);
             }
             if (binding.examples() != null && binding.examples().length > 0) {
                 result.append("Examples:\n");

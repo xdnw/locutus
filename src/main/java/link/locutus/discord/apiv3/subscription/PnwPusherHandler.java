@@ -96,7 +96,7 @@ public class PnwPusherHandler {
         type.bind(channel, model, event, bulk, listener, new BiConsumer<String, Exception>() {
             @Override
             public void accept(String s, Exception e) {
-                System.out.println("Error " + s);
+                Logg.error("Error " + s);
                 e.printStackTrace();
                 AlertUtil.error(s, e);
             }

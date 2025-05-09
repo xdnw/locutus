@@ -272,9 +272,9 @@ public abstract class Placeholders<T, M> extends BindingHelper {
         Parser existing = store.get(key);
         if (existing != null) {
             if (existing instanceof MethodParser<?> mp) {
-                Logg.text("Existing: " + mp.getMethod().getDeclaringClass().getSimpleName() + " | " + mp.getMethod().getName());
+                Logg.text("Duplicate placeholder name: " + mp.getMethod().getDeclaringClass().getSimpleName() + " | " + mp.getMethod().getName());
             } else {
-                Logg.text("Existing: " + key);
+                Logg.text("Duplicate placeholder type: " + key.toSimpleString());
             }
             return;
         }
@@ -425,7 +425,6 @@ public abstract class Placeholders<T, M> extends BindingHelper {
             if (input.contains("%guild_alliances%")) {
                 Supplier<GuildDB> dbLazy = ArrayUtil.memorize(() -> (GuildDB) store2.getProvided(Key.of(GuildDB.class, Me.class), false));
                 GuildDB db = dbLazy.get();
-                System.out.println("DB = " + db + " | " + input.contains("%guild_alliances%") + " | " + input + " | " + (GuildDB) store2.getProvided(Key.of(GuildDB.class, Me.class), false));
                 if (db != null) {
                     String value = db.getAllianceIds(true).stream().map(f -> "AA:" + f).collect(Collectors.joining(","));
                     input = input.replace("%guild_alliances%", value);

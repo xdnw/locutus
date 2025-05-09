@@ -2,6 +2,7 @@ package link.locutus.discord.db;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.db.entities.DBComment;
 import link.locutus.discord.db.entities.DBTopic;
 import link.locutus.discord.util.RateLimitUtil;
@@ -374,7 +375,7 @@ public class ForumDB extends DBMain {
         String profilePrefix = "https://forum.politicsandwar.com/index.php?/profile/";
         Element profileLink = elems.select("a[href^='" + profilePrefix + "']").last();
         if (profileLink == null) {
-            System.out.println("No profile link found for " + url);
+            Logg.info("No profile link found for " + url);
             return null;
         }
         String[] profileSplit = profileLink.attr("href").replace(profilePrefix, "").split("/")[0].split("-", 2);

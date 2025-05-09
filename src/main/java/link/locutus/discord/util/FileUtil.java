@@ -1,5 +1,6 @@
 package link.locutus.discord.util;
 
+import link.locutus.discord.Logg;
 import link.locutus.discord.network.IProxy;
 import link.locutus.discord.network.PassthroughProxy;
 import link.locutus.discord.util.io.PagePriority;
@@ -135,7 +136,7 @@ public final class FileUtil {
                         retryAfter = (int) ((diff + 999L) / 1000L);
                     }
                 }
-                if (retryAfter == null) System.out.println("Headers for retry-after " + http.getHeaderFields());
+                if (retryAfter == null) Logg.info("Headers for retry-after " + http.getHeaderFields());
                 throw new TooManyRequests("Too many requests", retryAfter);
             }
         }

@@ -6,6 +6,7 @@ import com.theokanning.openai.moderation.ModerationCategoryScores;
 import com.theokanning.openai.service.OpenAiService;
 import com.theokanning.openai.moderation.Moderation;
 import com.theokanning.openai.moderation.ModerationRequest;
+import link.locutus.discord.Logg;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -90,7 +91,7 @@ public class GPTModerator implements IModerator{
     public JSONObject checkModeration(List<String> inputs) {
         List<Moderation> all = new ArrayList<>();
         for (String input : inputs) {
-            System.out.println("Moderating: " + input);
+            Logg.info("Moderating: " + input);
             List<Moderation> moderations = checkModeration(input);
             all.addAll(moderations);
         }

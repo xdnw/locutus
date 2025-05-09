@@ -252,7 +252,7 @@ public class WebRoot {
         });
 
         this.app.get("/page/*", ctx -> {
-            System.out.println("Handle page " + ctx.path());
+            Logg.info("Handle page request " + ctx.path());
             long start = System.currentTimeMillis();
             pageHandler.handle(ctx);
             long diff = System.currentTimeMillis() - start;

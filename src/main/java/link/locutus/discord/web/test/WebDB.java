@@ -24,7 +24,6 @@ public class WebDB extends DBMainV3 {
     }
 
     public DBAuthRecord get(UUID uuid) {
-        System.out.println("GET " + uuid + " | " + authByUUID.keySet());
         return authByUUID.get(uuid);
     }
 
@@ -55,7 +54,6 @@ public class WebDB extends DBMainV3 {
             UUID uuid = new UUID(big, small);
             long timestamp = row.get("TIMESTAMP", Long.class);
             DBAuthRecord record = new DBAuthRecord(userId == null ? 0 : userId, nationId == null ? 0 : nationId, uuid, timestamp);
-            System.out.println("Loaded " + record + " | " + uuid);
             this.authByUUID.put(uuid, record);
             if (userId != null) {
                 this.authByUserId.put(userId, record);

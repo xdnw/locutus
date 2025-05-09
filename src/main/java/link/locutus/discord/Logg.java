@@ -17,7 +17,15 @@ public class Logg {
     }
     private static final boolean DEBUG = true;
 
+    public static void info(Object obj) {
+        text(obj);
+    }
+
     public static void text(Object obj) {
+        LOGGER.info(obj);
+    }
+
+    public static void error(Object obj) {
         LOGGER.error(obj);
     }
 

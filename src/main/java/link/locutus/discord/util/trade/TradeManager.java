@@ -6,6 +6,7 @@ import it.unimi.dsi.fastutil.longs.Long2LongLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -1029,7 +1030,7 @@ public class TradeManager {
             if (cityAvg != null && Math.round(cityAvg * 10000) != Math.round(PW.City.CITY_AVERAGE * 10000)) {
                 Locutus.imp().getDiscordDB().setCityAverage(cityAvg);
                 PW.City.CITY_AVERAGE = cityAvg;
-                System.out.println("City average updated: " + cityAvg);
+                Logg.info("City average updated: " + cityAvg);
             }
         } catch (RuntimeException ignore) {
             ignore.printStackTrace();

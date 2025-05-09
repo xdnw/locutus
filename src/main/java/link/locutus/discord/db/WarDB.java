@@ -93,7 +93,7 @@ public class WarDB extends DBMainV2 {
     }
 
     public void importVictoryAttacksFromExternalDB(String filePath) throws SQLException {
-        System.out.println("Importing attacks from external db");
+        Logg.info("Importing attacks from external db");
         // load from the external db
         Database otherDb = Database.connect(new File(filePath));
         List<AttackEntry> toAdd = new ObjectArrayList<>();
@@ -122,7 +122,7 @@ public class WarDB extends DBMainV2 {
 //        if (latestId > 0) {
 //            resaveVictoryAttacks(latestId);
 //        }
-        System.out.println("Done importing attacks");
+        Logg.info("Done importing attacks");
     }
 
     private void resaveVictoryAttacks(int sinceId) {
@@ -133,7 +133,7 @@ public class WarDB extends DBMainV2 {
 
         int[] saved = {0};
         PoliticsAndWarV3 api = new PoliticsAndWarV3("https://api.politicsandwar.com", ApiKeyPool.builder().addKey(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.API_KEY_PRIMARY).build());
-        System.out.println("STARTING ATTACKS");
+        Logg.info("Starting resave victory attacks");
         api.fetchAttacks(ATTACKS_PER_PAGE, new Consumer<WarattacksQueryRequest>() {
             @Override
             public void accept(WarattacksQueryRequest request) {
@@ -183,13 +183,13 @@ public class WarDB extends DBMainV2 {
 
         // Only run if it hasn't been done before
         if (!alreadyRun) {
-            System.out.println("Running victory attacks reserialization...");
+            Logg.info("Running victory attacks reserialization...");
             reserializedVictoryAttacks();
 
             // Mark as complete
             update("INSERT OR REPLACE INTO war_metadata (key, value) VALUES (?, ?)",
                     "victory_attacks_reserialized", "true");
-            System.out.println("Victory attacks reserialization completed");
+            Logg.info("Victory attacks reserialization completed");
         }
     }
 
@@ -197,7 +197,6 @@ public class WarDB extends DBMainV2 {
         AttackCursorFactory loader = new AttackCursorFactory(this);
         DBWar dummy = new DBWar(0, 2, 1, 0, 0, WarType.RAID, WarStatus.ATTACKER_VICTORY, 0, 0, 0, 0);
 
-        System.out.println(":||Remove Loading attacks");
         List<AttackEntry> toSave = new ArrayList<>();
         String query = "SELECT * FROM `attacks3`";
 
@@ -220,7 +219,7 @@ public class WarDB extends DBMainV2 {
                     byte[] newData = loader.toBytes(cursor);
                     AbstractCursor validate = loader.load(dummy, newData, true);
                     if (Math.round(validate.getInfra_destroyed_value() * 100) != Math.round(cursor.getInfra_destroyed_value() * 100)) {
-                        System.out.println("Infra destroyed value mismatch " + validate.getInfra_destroyed_value() + " | " + cursor.getInfra_destroyed_value());
+                        Logg.info("Infra destroyed value mismatch " + validate.getInfra_destroyed_value() + " | " + cursor.getInfra_destroyed_value());
                         System.exit(0);
                     }
                     toSave.add(new AttackEntry(cursor.getWar_attack_id(), warId, attackerId, defenderId, cursor.getDate(), newData));
@@ -229,11 +228,9 @@ public class WarDB extends DBMainV2 {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-        System.out.println("Total damage : " + MathMan.format(total));
+        Logg.info("Total damage : " + MathMan.format(total));
 
-        System.out.println(":||Remove Saving attacks " + toSave.size());
         saveAttacksDb(toSave);
-        System.out.println(":||Remove Done saving attacks");
 
     }
 

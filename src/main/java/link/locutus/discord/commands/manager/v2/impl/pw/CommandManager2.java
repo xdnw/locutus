@@ -4,6 +4,7 @@ import ai.djl.MalformedModelException;
 import ai.djl.repository.zoo.ModelNotFoundException;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.commands.manager.v2.binding.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
@@ -86,14 +87,13 @@ public class CommandManager2 {
             keysData.put(key.toSimpleString(), typeJson);
             Parser optionParser = htmlOptionsStore.get(key);
             if (optionParser != null) {
-                System.out.println("Found options for " + key.toSimpleString());
                 WebOption option = (WebOption) optionParser.apply(store, null);
                 optionsData.computeIfAbsent(option.getName(), k -> option.toJson());
                 continue;
             }
             List<Class> components = WebOption.getComponentClasses(key.getType());
             if (components.isEmpty()) {
-                System.out.println("No components for " + key.toSimpleString());
+                Logg.info("Web: No components for " + key.toSimpleString());
                 continue;
             }
             for (Class t : components) {
@@ -114,7 +114,7 @@ public class CommandManager2 {
                         optionsData.computeIfAbsent(option.getName(), k -> option.toJson());
                     }
                 } else {
-                    System.out.println("No options for " + name + " | " + key.toSimpleString());
+                    Logg.info("No options for " + name + " | " + key.toSimpleString());
                 }
             }
         }
@@ -680,7 +680,11 @@ public class CommandManager2 {
 
             this.commands.registerMethod(gptCommands, List.of("help"), "find_command2", "find_command");
 
-            pwgptHandler.registerDefaults();
+            try {
+                pwgptHandler.registerDefaults();
+            } catch (Throwable e) {
+                Logg.text("Cannot register AI commands: " + e.getMessage());
+            }
         }
 
 
@@ -719,7 +723,7 @@ public class CommandManager2 {
 //            }
         }
         if (!missing.isEmpty()) {
-            System.out.println("Missing methods for placeholders:\n- " + String.join("\n- ", missing));
+            Logg.info("Missing methods for placeholders:\n- " + String.join("\n- ", missing));
         }
 
         commands.checkUnregisteredMethods(false);
@@ -928,7 +932,7 @@ public class CommandManager2 {
                             Map<ParameterData, Map.Entry<String, Object>> map = parametric.parseArgumentsToMap(stack);
                             Object[] parsed = parametric.argumentMapToArray(map);
                             User user = (User) locals.getProvided(Key.of(User.class, Me.class), false);
-                            System.out.println("User `" + user + "`: " + fullCmdStr);
+                            Logg.info("User `" + user + "`: " + fullCmdStr);
                             return parametric.call(null, locals, parsed);
                         } catch (RuntimeException e) {
                             Throwable e2 = e;
@@ -958,7 +962,7 @@ public class CommandManager2 {
             try {
                 CommandCallable callable = commands.get(Arrays.asList(path.split(" ")));
                 if (callable == null) {
-                    System.out.println("No cmd found for " + path);
+                    Logg.info("User attempted invalid command: " + path);
                     io.create().append("No command found for " + path).send();
                     return;
                 }
@@ -992,7 +996,7 @@ public class CommandManager2 {
                                 }
                             }
                             Object[] parsed = parametric.parseArgumentMap(finalArguments, finalLocals, validators, permisser);
-                            System.out.println("User `" + user + "` execute command " + parametric.getFullPath() + " with args " + finalArguments);
+                            Logg.info("User `" + user + "` execute command " + parametric.getFullPath() + " with args " + finalArguments);
                             return parametric.call(null, finalLocals, parsed);
                         } catch (RuntimeException e) {
                             Throwable e2 = e;
@@ -1005,7 +1009,7 @@ public class CommandManager2 {
                 } else if (callable instanceof CommandGroup group) {
                     handleCall(io, group, finalLocals);
                 } else {
-                    System.out.println("Invalid command class " + callable.getClass());
+                    Logg.error("Invalid command class " + callable.getClass());
                     throw new IllegalArgumentException("Invalid command class " + callable.getClass());
                 }
             } catch (Throwable e) {

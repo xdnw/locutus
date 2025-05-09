@@ -6,6 +6,7 @@ import de.vandermeer.asciitable.AT_Context;
 import de.vandermeer.asciitable.AsciiTable;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
 import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -240,7 +241,7 @@ public interface IMessageBuilder {
     @Deprecated
     default IMessageBuilder paginate(String title, String command, Integer page, int perPage, List<IShrink> results, String footer, boolean inline) {
         if (results.isEmpty()) {
-            System.out.println("Results are empty.");
+            Logg.text("Results are empty.");
             return this;
         }
 
