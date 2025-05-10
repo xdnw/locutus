@@ -2038,6 +2038,19 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requireValidAlliance());
 
+    public static GuildSetting<Boolean> MAIL_DEMOTED_MEMBERS = new GuildBooleanSetting(GuildSettingCategory.AUDIT) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String MAIL_DEMOTED_MEMBERS(@Me GuildDB db, @Me User user, boolean enabled) {
+            return MAIL_DEMOTED_MEMBERS.setAndValidate(db, user, enabled);
+        }
+        @Override
+        public String help() {
+            return "If demoted applicants should be sent an ingame mail with instructions on how to re-join the discord";
+        }
+    }.setupRequirements(f -> f.requireValidAlliance().requires(MEMBER_LEAVE_ALERT_CHANNEL));
+
     public static GuildSetting<Boolean> MAIL_NEW_APPLICANTS = new GuildBooleanSetting(GuildSettingCategory.RECRUIT) {
         @Override
         public String help() {

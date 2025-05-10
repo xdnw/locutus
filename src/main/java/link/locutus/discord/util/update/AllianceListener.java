@@ -3,6 +3,7 @@ package link.locutus.discord.util.update;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -26,6 +27,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.alliance.AllianceCreateEvent;
 import link.locutus.discord.event.game.TurnChangeEvent;
+import link.locutus.discord.event.nation.NationChangePositionEvent;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
@@ -39,6 +41,7 @@ import com.google.common.eventbus.Subscribe;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.util.scheduler.CaughtTask;
 import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.io.IOException;
@@ -65,6 +68,48 @@ public class AllianceListener {
             }
         }, 15, TimeUnit.SECONDS);
     }
+
+
+    @Subscribe
+    public void nationChangePositionEvent(NationChangePositionEvent event) {
+        DBNation previous = event.getPrevious();
+        DBNation current = event.getCurrent();
+        DBAlliance aa = previous.getAlliance();
+        if (aa == null) return;
+        if (previous.getAlliance_id() != current.getAlliance_id()) return;
+        if (current.getPositionEnum() != Rank.APPLICANT) return;
+        if (current.getVm_turns() > 0) return;
+        String invite = aa.getDiscord_link();
+        if (invite == null || invite.isEmpty()) return;
+        GuildDB db = aa.getGuildDB();
+        if (db == null) return;
+        if (GuildKey.MAIL_DEMOTED_MEMBERS.getOrNull(db) != Boolean.TRUE) return;
+
+        ApiKeyPool mailKey = db.getMailKey();
+        if (mailKey == null) return;
+        MessageChannel channel = GuildKey.MEMBER_LEAVE_ALERT_CHANNEL.get(db);
+        String suffix = channel == null ? "" : "/" + channel.getIdLong();
+        String subject = "Removed for inactivity" + suffix;
+
+        User user = current.getUser();
+
+        String body;
+        if (user != null) {
+            body = "Hop on discord and let us know and we can add you back as a member. Also, remember to change your nation color off gray\n" +
+                    "(you can do this by visiting https://politicsandwar.com/nation/edit/ )";
+        } else {
+            body = "To become a member of the alliance:\n" +
+                    "1. <a href=\"" + invite + "\">" + invite + "</a> Click here to join our discord.\n" +
+                    "2. Do a quick interview\n" +
+                    "3. A staff member can help you get your nation setup";
+        }
+        try {
+            current.sendMail(mailKey, subject, body, false);
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+    }
+
     @Subscribe
     public void onTurnChange(TurnChangeEvent event) {
 

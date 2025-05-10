@@ -322,6 +322,25 @@ public class GuildHandler {
             msg.append("^ " + interviewerRole.getAsMention());
         }
         msg.send();
+
+        {
+            IACategory iaCat = getDb().getIACategory();
+            if (iaCat.getCategories().isEmpty()) {
+                System.out.println("Not creating channel, no category");
+                return false;
+            }
+
+            try {
+                GuildMessageChannel channel = iaCat.getOrCreate(author, true);
+                if (alertChannel != null) {
+                    RateLimitUtil.queue(alertChannel.sendMessage("Created interview channel: " + channel.getAsMention()));
+                }
+            } catch (IllegalArgumentException e) {
+                if (alertChannel != null) {
+                    RateLimitUtil.queue(alertChannel.sendMessage("Failed to create interview channel: " + e.getMessage()));
+                }
+            }
+        }
         return true;
     }
 
