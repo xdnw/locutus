@@ -155,8 +155,22 @@ public class PWBindings extends BindingHelper {
         return metric;
     }
 
+    private static String stripPrefix(String input) {
+        if (input.startsWith(Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX)) {
+            return input.substring(Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX.length());
+        } else {
+            for (String prefix : Settings.INSTANCE.DISCORD.COMMAND.ALTERNATE_COMMAND_PREFIX) {
+                if (input.startsWith(prefix)) {
+                    return input.substring(prefix.length());
+                }
+            }
+        }
+        return input;
+    }
+
     @Binding(value = "A discord slash command reference for the bot")
     public static ICommand slashCommand(String input) {
+        input = stripPrefix(input);
         List<String> split = StringMan.split(input, ' ');
         CommandCallable command = Locutus.imp().getCommandManager().getV2().getCallable(split);
         if (command == null) throw new IllegalArgumentException("No command found for `" + input + "`");

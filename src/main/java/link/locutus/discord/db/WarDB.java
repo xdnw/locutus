@@ -18,6 +18,7 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AttackCursorFactory;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors.ALootCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors.GroundCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors.VictoryCursor;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -674,6 +675,8 @@ public class WarDB extends DBMainV2 {
     }
 
     public WarDB load() {
+        if (System.currentTimeMillis() < 1747716591000L) fixAttacks(); // TODO FIXME :||remove
+
         loadWars(Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_TURNS);
         if (Settings.INSTANCE.TASKS.LOAD_ACTIVE_ATTACKS) {
             importLegacyAttacks();
@@ -888,17 +891,17 @@ public class WarDB extends DBMainV2 {
                 whereClause = " WHERE `war_id` = " + warIdsFetch.get(0);
             } else if (warIdsFetch.size() > 100000) {
                 Set<Integer> warIdsSet = new ObjectOpenHashSet<>(warIdsFetch);
-                String query = "SELECT * FROM `attacks3` ORDER BY `war_id` ASC, `id` ASC;";
+                String query = "SELECT war_id, data FROM `attacks3` ORDER BY `war_id` ASC, `id` ASC;";
                 try (PreparedStatement stmt = prepareQuery(query)) {
                     try (ResultSet rs = stmt.executeQuery()) {
                         while (rs.next()) {
-                            int warId = rs.getInt("war_id");
+                            int warId = rs.getInt(1);
                             if (!warIdsSet.contains(warId)) continue;
                             DBWar war = getWar(warId);
                             if (war == null) {
                                 continue;
                             }
-                            byte[] data = applyAdminFix(warId, rs.getBytes("data"));
+                            byte[] data = rs.getBytes(2);
                             addAttack.accept(war, data);
                         }
                     }
@@ -911,16 +914,16 @@ public class WarDB extends DBMainV2 {
                 Collections.sort(warIdsFetch);
                 whereClause = " WHERE `war_id` IN " + StringMan.getString(warIdsFetch);
             }
-            String query = "SELECT * FROM `attacks3` " + whereClause + " ORDER BY `war_id` ASC, `id` ASC;";
+            String query = "SELECT war_id, data FROM `attacks3` " + whereClause + " ORDER BY `war_id` ASC, `id` ASC;";
             try (PreparedStatement stmt = prepareQuery(query)) {
                 try (ResultSet rs = stmt.executeQuery()) {
                     while (rs.next()) {
-                        int warId = rs.getInt("war_id");
+                        int warId = rs.getInt(1);
                         DBWar war = getWar(warId);
                         if (war == null) {
                             continue;
                         }
-                        byte[] data = applyAdminFix(warId, rs.getBytes("data"));
+                        byte[] data = rs.getBytes(2);
                         addAttack.accept(war, data);
                     }
                 }
@@ -962,17 +965,17 @@ public class WarDB extends DBMainV2 {
                 whereClause = " WHERE `war_id` = " + warIdsFetch.get(0);
             } else if (warIdsFetch.size() > 100000) {
                 Set<Integer> warIdsSet = new ObjectOpenHashSet<>(warIdsFetch);
-                String query = "SELECT * FROM `attacks3` ORDER BY `id` ASC";
+                String query = "SELECT war_id, data FROM `attacks3` ORDER BY `id` ASC";
                 try (PreparedStatement stmt = prepareQuery(query)) {
                     try (ResultSet rs = stmt.executeQuery()) {
                         while (rs.next()) {
-                            int warId = rs.getInt("war_id");
+                            int warId = rs.getInt(1);
                             if (!warIdsSet.contains(warId)) continue;
                             DBWar war = getWar(warId);
                             if (war == null) {
                                 continue;
                             }
-                            byte[] data = applyAdminFix(warId, rs.getBytes("data"));
+                            byte[] data = rs.getBytes(2);
                             AbstractCursor cursor = loader.apply(war, data);
                         }
                     }
@@ -984,16 +987,16 @@ public class WarDB extends DBMainV2 {
                 Collections.sort(warIdsFetch);
                 whereClause = " WHERE `war_id` IN " + StringMan.getString(warIdsFetch);
             }
-            String query = "SELECT * FROM `attacks3` " + whereClause + " ORDER BY `id` ASC";
+            String query = "SELECT war_id, data FROM `attacks3` " + whereClause + " ORDER BY `id` ASC";
             try (PreparedStatement stmt = prepareQuery(query)) {
                 try (ResultSet rs = stmt.executeQuery()) {
                     while (rs.next()) {
-                        int warId = rs.getInt("war_id");
+                        int warId = rs.getInt(1);
                         DBWar war = getWar(warId);
                         if (war == null) {
                             continue;
                         }
-                        byte[] data = applyAdminFix(warId, rs.getBytes("data"));
+                        byte[] data = rs.getBytes(2);
                         AbstractCursor cursor = loader.apply(war, data);
                     }
                 }
@@ -1003,12 +1006,12 @@ public class WarDB extends DBMainV2 {
         }
     }
 
-    public Set<IAttack> getAttacksById(Set<Integer> ids) {
+    public Set<AbstractCursor> getAttacksById(Set<Integer> ids) {
         if (ids.isEmpty()) return Collections.emptySet();
         List<Integer> idsSorted = new IntArrayList(ids);
         Collections.sort(idsSorted);
-        Set<IAttack> attacks = new ObjectOpenHashSet<>();
-        String query = "SELECT * FROM `attacks3` WHERE `id` ";
+        Set<AbstractCursor> attacks = new ObjectOpenHashSet<>();
+        String query = "SELECT war_id, data FROM `attacks3` WHERE `id` ";
         if (ids.size() == 1) {
             query += " = " + idsSorted.get(0);
         } else {
@@ -1017,12 +1020,12 @@ public class WarDB extends DBMainV2 {
         try (PreparedStatement stmt = prepareQuery(query)) {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    int warId = rs.getInt("war_id");
+                    int warId = rs.getInt(1);
                     DBWar war = getWar(warId);
                     if (war == null) {
                         continue;
                     }
-                    byte[] data = applyAdminFix(warId, rs.getBytes("data"));
+                    byte[] data = rs.getBytes(2);
                     attacks.add(attackCursorFactory.load(war, data, true));
                 }
             }
@@ -1052,11 +1055,11 @@ public class WarDB extends DBMainV2 {
             attacks = attacksByWarId2.get(war.warId);
         }
         if (loadInactive && attacks == null && !Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS && !war.isActive()) {
-            String query = "SELECT * FROM `attacks3` WHERE `war_id` = " + war.warId;
+            String query = "SELECT data FROM `attacks3` WHERE `war_id` = " + war.warId;
             try (PreparedStatement stmt = prepareQuery(query)) {
                 try (ResultSet rs = stmt.executeQuery()) {
                     while (rs.next()) {
-                        byte[] attack = applyAdminFix(war.warId, rs.getBytes("data"));
+                        byte[] attack = rs.getBytes(1);
                         adapter.accept(attack);
                     }
                 }
@@ -2698,7 +2701,7 @@ public class WarDB extends DBMainV2 {
         synchronized (attacksByWarId2) {
             for (AbstractCursor attack : values) {
                 // AttackEntry(int id, int war_id, int attacker_id, int defender_id, long date, byte[] data) {
-                toSave.add(new AttackEntry(attack.getWar_attack_id(), attack.getWar_id(), attack.getAttacker_id(), attack.getDefender_id(), attack.getDate(), attackCursorFactory.toBytes(attack)));
+                toSave.add(AttackEntry.of(attack, attackCursorFactory));
                 List<byte[]> attacks = attacksByWarId2.get(attack.getWar_id());
 
                 Set<Integer> attackIds = attackIdsByWarId.get(attack.getWar_id());
@@ -2977,7 +2980,7 @@ public class WarDB extends DBMainV2 {
                 while (rs.next()) {
                     int warId = rs.getInt(1);
                     if (!warsById.contains(new DBWar.DBWarKey(warId))) continue;
-                    byte[] bytes = applyAdminFix(warId, rs.getBytes(2));
+                    byte[] bytes = rs.getBytes(2);
                     warIds.add(warId);
                     attacks.add(bytes);
                     numAttacksByWarId.addTo(warId, 1);
@@ -2996,95 +2999,183 @@ public class WarDB extends DBMainV2 {
         Logg.text("Loaded " + attacks.size() + " attacks " + attacksByWarId2.containsKey(2114621));
     }
 
-    private byte[] addLoot(int warId, byte[] data, double[] loot) {
-        DBWar war = getWar(warId);
-        if (war != null) {
-            boolean modified = false;
-            AbstractCursor attack = attackCursorFactory.load(war, data, true);
-            if (attack instanceof ALootCursor aLoot && aLoot.looted != null) {
-                aLoot.looted = ResourceType.add(aLoot.looted, loot);
-                modified = true;
-            } else if (attack instanceof VictoryCursor victory && victory.looted != null) {
-                victory.looted = ResourceType.add(victory.looted, loot);
-                modified = true;
-            } else {
-                Logg.text("Unable to add loot to attack in war " + warId + " - " + attack.getClass().getSimpleName() + ": " + ResourceType.toString(loot));
-            }
-            if (modified) {
-                Logg.text("Added loot to attack in war " + warId + ": " + ResourceType.toString(loot));
-                return attackCursorFactory.toBytes(attack);
-            }
-            if (!modified) {
-                Logg.text("Unable to find attack in war " + warId);
-            }
-        } else {
-            Logg.text("Unable to find war " + warId);
-        }
-        return data;
+    private boolean fixAttack(int attackId, Consumer<AbstractCursor> onEach) {
+        Set<AbstractCursor> attacks = getAttacksById(Set.of(attackId));
+        if (attacks.isEmpty()) return false;
+        AbstractCursor attack = attacks.iterator().next();
+        onEach.accept(attack);
+        saveAttacksDb(List.of(AttackEntry.of(attack, attackCursorFactory)));
+        return true;
     }
 
-    private final byte[] applyAdminFix(int warId, byte[] data) {
-        switch (warId) {
-            case 2114621: {
-                int attackId = attackCursorFactory.getId(data);
-                if (attackId == 24412523) {
-                    double[] addLoot = ResourceType.getBuffer();
-                    addLoot[ResourceType.MONEY.ordinal()] = 14_778_120_852.20;
-                    addLoot[ResourceType.FOOD.ordinal()] = 11_159_408.43;
-                    addLoot[ResourceType.COAL.ordinal()] = 110_354.05;
-                    addLoot[ResourceType.OIL.ordinal()] = 122_216.34;
-                    addLoot[ResourceType.URANIUM.ordinal()] = 191_876.88;
-                    addLoot[ResourceType.LEAD.ordinal()] = 124_750.57;
-                    addLoot[ResourceType.IRON.ordinal()] = 143_982.64;
-                    addLoot[ResourceType.BAUXITE.ordinal()] = 117_833.70;
-                    addLoot[ResourceType.GASOLINE.ordinal()] = 172_996.36;
-                    addLoot[ResourceType.MUNITIONS.ordinal()] = 221_376.84;
-                    addLoot[ResourceType.STEEL.ordinal()] = 231_940.75;
-                    addLoot[ResourceType.ALUMINUM.ordinal()] = 359_765.25;
-                    return addLoot(warId, data, addLoot);
-                }
-                }
-            case 2114734: { // 24413762
-                int attackId = attackCursorFactory.getId(data);
-                if (attackId == 24413762) {
-                    double[] addLoot = ResourceType.getBuffer();
-                    addLoot[ResourceType.MONEY.ordinal()] = 738_906_042.61;
-                    addLoot[ResourceType.FOOD.ordinal()] = 557_970.42;
-                    addLoot[ResourceType.COAL.ordinal()] = 5_517.70;
-                    addLoot[ResourceType.OIL.ordinal()] = 6_110.82;
-                    addLoot[ResourceType.URANIUM.ordinal()] = 9_593.84;
-                    addLoot[ResourceType.LEAD.ordinal()] = 6_237.53;
-                    addLoot[ResourceType.IRON.ordinal()] = 7_199.13;
-                    addLoot[ResourceType.BAUXITE.ordinal()] = 5_891.69;
-                    addLoot[ResourceType.GASOLINE.ordinal()] = 8_649.82;
-                    addLoot[ResourceType.MUNITIONS.ordinal()] = 11_068.84;
-                    addLoot[ResourceType.STEEL.ordinal()] = 11_597.04;
-                    addLoot[ResourceType.ALUMINUM.ordinal()] = 17_988.26;
-                    return addLoot(warId, data, addLoot);
+    private void fixAttacks() {
+        fixAttack(26532048, new Consumer<AbstractCursor>() {
+            @Override
+            public void accept(AbstractCursor attack) {
+                if (attack instanceof GroundCursor gc) {
+                    gc.setDefcas3(0);
                 }
             }
-            case 2114618: {//24412909
-                int attackId = attackCursorFactory.getId(data);
-                if (attackId == 24412909) {
-                    double[] addLoot = ResourceType.getBuffer();
-                    addLoot[ResourceType.MONEY.ordinal()] = 701_960_740.48;
-                    addLoot[ResourceType.FOOD.ordinal()] = 530_071.90;
-                    addLoot[ResourceType.COAL.ordinal()] = 5_241.82;
-                    addLoot[ResourceType.OIL.ordinal()] = 5_805.28;
-                    addLoot[ResourceType.URANIUM.ordinal()] = 9_114.15;
-                    addLoot[ResourceType.LEAD.ordinal()] = 5_925.65;
-                    addLoot[ResourceType.IRON.ordinal()] = 6_839.18;
-                    addLoot[ResourceType.BAUXITE.ordinal()] = 5_597.10;
-                    addLoot[ResourceType.GASOLINE.ordinal()] = 8_217.33;
-                    addLoot[ResourceType.MUNITIONS.ordinal()] = 10_515.40;
-                    addLoot[ResourceType.STEEL.ordinal()] = 11_017.19;
-                    addLoot[ResourceType.ALUMINUM.ordinal()] = 17_088.85;
-                    return addLoot(warId, data, addLoot);
-                }
-            }
-        }
-        return data;
+        });
+        fixAttack(24412523, f -> {
+            double[] addLoot = ResourceType.getBuffer();
+            addLoot[ResourceType.MONEY.ordinal()] = 14_778_120_852.20;
+            addLoot[ResourceType.FOOD.ordinal()] = 11_159_408.43;
+            addLoot[ResourceType.COAL.ordinal()] = 110_354.05;
+            addLoot[ResourceType.OIL.ordinal()] = 122_216.34;
+            addLoot[ResourceType.URANIUM.ordinal()] = 191_876.88;
+            addLoot[ResourceType.LEAD.ordinal()] = 124_750.57;
+            addLoot[ResourceType.IRON.ordinal()] = 143_982.64;
+            addLoot[ResourceType.BAUXITE.ordinal()] = 117_833.70;
+            addLoot[ResourceType.GASOLINE.ordinal()] = 172_996.36;
+            addLoot[ResourceType.MUNITIONS.ordinal()] = 221_376.84;
+            addLoot[ResourceType.STEEL.ordinal()] = 231_940.75;
+            addLoot[ResourceType.ALUMINUM.ordinal()] = 359_765.25;
+            addLoot(f, addLoot);
+        });
+        fixAttack(24413762, f -> {
+            double[] addLoot = ResourceType.getBuffer();
+            addLoot[ResourceType.MONEY.ordinal()] = 738_906_042.61;
+            addLoot[ResourceType.FOOD.ordinal()] = 557_970.42;
+            addLoot[ResourceType.COAL.ordinal()] = 5_517.70;
+            addLoot[ResourceType.OIL.ordinal()] = 6_110.82;
+            addLoot[ResourceType.URANIUM.ordinal()] = 9_593.84;
+            addLoot[ResourceType.LEAD.ordinal()] = 6_237.53;
+            addLoot[ResourceType.IRON.ordinal()] = 7_199.13;
+            addLoot[ResourceType.BAUXITE.ordinal()] = 5_891.69;
+            addLoot[ResourceType.GASOLINE.ordinal()] = 8_649.82;
+            addLoot[ResourceType.MUNITIONS.ordinal()] = 11_068.84;
+            addLoot[ResourceType.STEEL.ordinal()] = 11_597.04;
+            addLoot[ResourceType.ALUMINUM.ordinal()] = 17_988.26;
+            addLoot(f, addLoot);
+        });
+        fixAttack(24412909, f -> {
+            double[] addLoot = ResourceType.getBuffer();
+            addLoot[ResourceType.MONEY.ordinal()] = 701_960_740.48;
+            addLoot[ResourceType.FOOD.ordinal()] = 530_071.90;
+            addLoot[ResourceType.COAL.ordinal()] = 5_241.82;
+            addLoot[ResourceType.OIL.ordinal()] = 5_805.28;
+            addLoot[ResourceType.URANIUM.ordinal()] = 9_114.15;
+            addLoot[ResourceType.LEAD.ordinal()] = 5_925.65;
+            addLoot[ResourceType.IRON.ordinal()] = 6_839.18;
+            addLoot[ResourceType.BAUXITE.ordinal()] = 5_597.10;
+            addLoot[ResourceType.GASOLINE.ordinal()] = 8_217.33;
+            addLoot[ResourceType.MUNITIONS.ordinal()] = 10_515.40;
+            addLoot[ResourceType.STEEL.ordinal()] = 11_017.19;
+            addLoot[ResourceType.ALUMINUM.ordinal()] = 17_088.85;
+            addLoot(f, addLoot);
+        });
     }
+
+    private void addLoot(AbstractCursor attack, double[] loot) {
+        if (attack instanceof ALootCursor aLoot && aLoot.looted != null) {
+            aLoot.looted = ResourceType.add(aLoot.looted, loot);
+        }
+    }
+
+//    private byte[] addLoot(int warId, byte[] data, double[] loot) {
+//        DBWar war = getWar(warId);
+//        if (war != null) {
+//            boolean modified = false;
+//            AbstractCursor attack = attackCursorFactory.load(war, data, true);
+//            if (attack instanceof ALootCursor aLoot && aLoot.looted != null) {
+//                aLoot.looted = ResourceType.add(aLoot.looted, loot);
+//                modified = true;
+//            } else if (attack instanceof VictoryCursor victory && victory.looted != null) {
+//                victory.looted = ResourceType.add(victory.looted, loot);
+//                modified = true;
+//            } else {
+//                Logg.text("Unable to add loot to attack in war " + warId + " - " + attack.getClass().getSimpleName() + ": " + ResourceType.toString(loot));
+//            }
+//            if (modified) {
+//                Logg.text("Added loot to attack in war " + warId + ": " + ResourceType.toString(loot));
+//                return attackCursorFactory.toBytes(attack);
+//            }
+//            if (!modified) {
+//                Logg.text("Unable to find attack in war " + warId);
+//            }
+//        } else {
+//            Logg.text("Unable to find war " + warId);
+//        }
+//        return data;
+//    }
+
+//    private final byte[] applyAdminFix(int warId, byte[] data) {
+//        switch (warId) {
+//            case 2296963: {
+//                int attackId = attackCursorFactory.getId(data);
+//                if (attackId == 26532048) {
+//                    DBWar war = getWar(warId);
+//                    if (war != null) {
+//                        boolean modified = false;
+//                        AbstractCursor attack = attackCursorFactory.load(war, data, true);
+//                        if (attack instanceof GroundCursor gc && gc.getDefcas3() != 0) {
+//                            gc.setDefcas3(0);
+//                        }
+//                    }
+//                }
+//                break;
+//            }
+//            case 2114621: {
+//                int attackId = attackCursorFactory.getId(data);
+//                if (attackId == 24412523) {
+//                    double[] addLoot = ResourceType.getBuffer();
+//                    addLoot[ResourceType.MONEY.ordinal()] = 14_778_120_852.20;
+//                    addLoot[ResourceType.FOOD.ordinal()] = 11_159_408.43;
+//                    addLoot[ResourceType.COAL.ordinal()] = 110_354.05;
+//                    addLoot[ResourceType.OIL.ordinal()] = 122_216.34;
+//                    addLoot[ResourceType.URANIUM.ordinal()] = 191_876.88;
+//                    addLoot[ResourceType.LEAD.ordinal()] = 124_750.57;
+//                    addLoot[ResourceType.IRON.ordinal()] = 143_982.64;
+//                    addLoot[ResourceType.BAUXITE.ordinal()] = 117_833.70;
+//                    addLoot[ResourceType.GASOLINE.ordinal()] = 172_996.36;
+//                    addLoot[ResourceType.MUNITIONS.ordinal()] = 221_376.84;
+//                    addLoot[ResourceType.STEEL.ordinal()] = 231_940.75;
+//                    addLoot[ResourceType.ALUMINUM.ordinal()] = 359_765.25;
+//                    return addLoot(warId, data, addLoot);
+//                }
+//            }
+//            case 2114734: { // 24413762
+//                int attackId = attackCursorFactory.getId(data);
+//                if (attackId == 24413762) {
+//                    double[] addLoot = ResourceType.getBuffer();
+//                    addLoot[ResourceType.MONEY.ordinal()] = 738_906_042.61;
+//                    addLoot[ResourceType.FOOD.ordinal()] = 557_970.42;
+//                    addLoot[ResourceType.COAL.ordinal()] = 5_517.70;
+//                    addLoot[ResourceType.OIL.ordinal()] = 6_110.82;
+//                    addLoot[ResourceType.URANIUM.ordinal()] = 9_593.84;
+//                    addLoot[ResourceType.LEAD.ordinal()] = 6_237.53;
+//                    addLoot[ResourceType.IRON.ordinal()] = 7_199.13;
+//                    addLoot[ResourceType.BAUXITE.ordinal()] = 5_891.69;
+//                    addLoot[ResourceType.GASOLINE.ordinal()] = 8_649.82;
+//                    addLoot[ResourceType.MUNITIONS.ordinal()] = 11_068.84;
+//                    addLoot[ResourceType.STEEL.ordinal()] = 11_597.04;
+//                    addLoot[ResourceType.ALUMINUM.ordinal()] = 17_988.26;
+//                    return addLoot(warId, data, addLoot);
+//                }
+//            }
+//            case 2114618: {//24412909
+//                int attackId = attackCursorFactory.getId(data);
+//                if (attackId == 24412909) {
+//                    double[] addLoot = ResourceType.getBuffer();
+//                    addLoot[ResourceType.MONEY.ordinal()] = 701_960_740.48;
+//                    addLoot[ResourceType.FOOD.ordinal()] = 530_071.90;
+//                    addLoot[ResourceType.COAL.ordinal()] = 5_241.82;
+//                    addLoot[ResourceType.OIL.ordinal()] = 5_805.28;
+//                    addLoot[ResourceType.URANIUM.ordinal()] = 9_114.15;
+//                    addLoot[ResourceType.LEAD.ordinal()] = 5_925.65;
+//                    addLoot[ResourceType.IRON.ordinal()] = 6_839.18;
+//                    addLoot[ResourceType.BAUXITE.ordinal()] = 5_597.10;
+//                    addLoot[ResourceType.GASOLINE.ordinal()] = 8_217.33;
+//                    addLoot[ResourceType.MUNITIONS.ordinal()] = 10_515.40;
+//                    addLoot[ResourceType.STEEL.ordinal()] = 11_017.19;
+//                    addLoot[ResourceType.ALUMINUM.ordinal()] = 17_088.85;
+//                    return addLoot(warId, data, addLoot);
+//                }
+//            }
+//        }
+//        return data;
+//    }
 
 //    public Map<Integer, List<AbstractCursor>> getAttacksByNationGroupWar2(int nationId, long startDate) {
 //        Map<Integer, List<AbstractCursor>> result = new Int2ObjectOpenHashMap<>();

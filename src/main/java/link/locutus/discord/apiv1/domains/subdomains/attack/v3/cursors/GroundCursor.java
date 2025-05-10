@@ -19,6 +19,10 @@ public class GroundCursor extends UnitCursor {
     private int defcas3;
     private long money_looted_cents;
 
+    public void setDefcas3(int defcas3) {
+        this.defcas3 = defcas3;
+    }
+
     @Override
     public double[] addAttLosses(double[] buffer, DBWar war) {
         double[] value = super.addAttLosses(buffer, war);

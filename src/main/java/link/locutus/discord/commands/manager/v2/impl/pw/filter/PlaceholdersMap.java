@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.Continent;
@@ -1810,7 +1811,7 @@ public class PlaceholdersMap {
                     }
                     if (MathMan.isInteger(input)) {
                         int id = Integer.parseInt(input);
-                        Set<IAttack> attacks = Locutus.imp().getWarDb().getAttacksById(Set.of(id));
+                        Set attacks = Locutus.imp().getWarDb().getAttacksById(Set.of(id));
                         return attacks;
                     }
                     if (input.contains("/war/id=")) {

@@ -1695,7 +1695,7 @@ public class WarCommands {
                          @Default("40") @Range(min=0,max=100) int requiredSuccess,
                          @Arg("Return results as a discord direct message")
                          @Switch("d") boolean directMesssage,
-                         @Arg("Sort by unit kills instead of damage")
+                         @Arg("Prioritize by unit kills (including spies) instead of net damage")
                          @Switch("k") boolean prioritizeKills,
                          @Arg("The nation doing the spy operation\n" +
                                  "Defaults to your nation")
