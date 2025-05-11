@@ -290,12 +290,11 @@ public class DBWar {
     }
 
     public List<AbstractCursor> getAttacks3(boolean loadInactive) {
-        List<AbstractCursor>[] attacksFinal = new List[]{null};
+        List<AbstractCursor>[] attacksFinal = new List[]{Collections.EMPTY_LIST};
         Locutus.imp().getWarDb().iterateAttackList(Collections.singleton(this), null, null, (war, attacks) -> {
             attacksFinal[0] = attacks;
         }, loadInactive);
-        List<AbstractCursor> result = attacksFinal[0];
-        return result == null ? Collections.emptyList() : result;
+        return attacksFinal[0];
     }
 
     public List<AbstractCursor> getAttacks3(Collection<AbstractCursor> attacks) {

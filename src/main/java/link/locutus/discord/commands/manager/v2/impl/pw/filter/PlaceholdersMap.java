@@ -1741,7 +1741,6 @@ public class PlaceholdersMap {
     }
 
     private Set<IAttack> getAttacks(Set<Integer> attackIds, Set<Integer> warIds, Set<Integer> nationIds, Set<Integer> alliances) {
-        // TODO FIXME optimize this
         Set<IAttack> attacks = new ObjectOpenHashSet<>();
         if (warIds != null && !warIds.isEmpty()) {
             Set<DBWar> wars = Locutus.imp().getWarDb().getWarsById(warIds);

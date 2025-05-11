@@ -21,13 +21,15 @@ public interface IAttack {
     int getAttacker_id();
     @Command
     int getDefender_id();
+
+    @Command
+    default int getId() {
+        return getWar_attack_id();
+    }
     @Command
     int getWar_attack_id();
     @Command
     long getDate();
-    // skip war
-    // skip attacker
-    // skip defender
     @Command
     AttackType getAttack_type();
     @Command

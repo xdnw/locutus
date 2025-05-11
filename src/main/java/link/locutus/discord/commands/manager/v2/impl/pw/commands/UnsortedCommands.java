@@ -2290,8 +2290,8 @@ public class UnsortedCommands {
                             .append("`\n");
                 }
                 if (!userIds.isEmpty()) {
-                    listByAudit.append("- User IDs: `")
-                            .append(StringMan.join(userIds, ","))
+                    listByAudit.append("- User IDs: `<@")
+                            .append(StringMan.join(userIds, ">,<@"))
                             .append("`\n");
                 }
                 listByAudit.append("\n");
@@ -2304,8 +2304,8 @@ public class UnsortedCommands {
                     .append(StringMan.join(unregisteredNationIds, ","))
                     .append("`\n");
         }
-        if (listByAudit.length() > 0) {
-            msg.file("ids_by_audit.txt", listByAudit.toString());
+        if (!listByAudit.isEmpty()) {
+            msg = msg.file("ids_by_audit.txt", listByAudit.toString());
         }
 
         msg.send();
