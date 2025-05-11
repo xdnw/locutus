@@ -2281,7 +2281,6 @@ public class UnsortedCommands {
             }
 
             if (!nationIds.isEmpty() || !userIds.isEmpty()){
-                // header
                 listByAudit.append("**")
                         .append(type.name())
                         .append("**\n");
