@@ -675,9 +675,8 @@ public class WarDB extends DBMainV2 {
     }
 
     public WarDB load() {
-        if (System.currentTimeMillis() < 1747716591000L) fixAttacks(); // TODO FIXME :||remove
-
         loadWars(Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_TURNS);
+        fixAttacks();
         if (Settings.INSTANCE.TASKS.LOAD_ACTIVE_ATTACKS) {
             importLegacyAttacks();
             loadAttacks(Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS, Settings.INSTANCE.TASKS.LOAD_ACTIVE_ATTACKS);
