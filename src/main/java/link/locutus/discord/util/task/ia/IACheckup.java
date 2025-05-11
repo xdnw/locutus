@@ -1175,8 +1175,9 @@ public class IACheckup {
             resposnse.append("Please use " + warPriority+ " or " + CM.war.find.enemy.cmd.toSlashMention());
         } else hasEnemies = false;
         if (hasRaids) {
-            if (hasEnemies) resposnse.append("Please use ");
-            else resposnse.append("or ");
+            if (!hasEnemies) resposnse.append("Please use " );
+            else resposnse.append(". For raiding: ");
+            resposnse.append(CM.war.find.raid.cmd.toSlashMention() + " or ");
             String cmd = "https://www.locutus.link/#/raid/" + nation.getId();
             resposnse.append(cmd);
         }

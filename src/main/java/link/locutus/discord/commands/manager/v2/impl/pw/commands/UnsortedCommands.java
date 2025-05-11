@@ -2292,7 +2292,7 @@ public class UnsortedCommands {
                 if (!userIds.isEmpty()) {
                     listByAudit.append("- User IDs: `<@")
                             .append(StringMan.join(userIds, ">,<@"))
-                            .append("`\n");
+                            .append(">  `\n");
                 }
                 listByAudit.append("\n");
             }
