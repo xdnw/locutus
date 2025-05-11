@@ -2,9 +2,13 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import it.unimi.dsi.fastutil.ints.Int2BooleanOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -2168,6 +2172,7 @@ public class UnsortedCommands {
         Map<IACheckup.AuditType, Integer> failedCount = new LinkedHashMap<>();
         Map<IACheckup.AuditSeverity, Integer> failedBySeverity = new LinkedHashMap<>();
         Map<IACheckup.AuditSeverity, Integer> nationBySeverity = new LinkedHashMap<>();
+        Map<IACheckup.AuditType, Set<DBNation>> failedNations = new Object2ObjectOpenHashMap<>();
 
         for (Map.Entry<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> entry : auditResults.entrySet()) {
             DBNation nation = entry.getKey();
@@ -2206,6 +2211,7 @@ public class UnsortedCommands {
                 if (value == null || value.getValue() == null) {
                     header.set(i, "");
                 } else {
+                    failedNations.computeIfAbsent(audit, k -> new ObjectOpenHashSet<>()).add(nation);
                     if (highest == null || highest.ordinal() < audit.severity.ordinal()) {
                         highest = audit.severity;
                     }
@@ -2253,6 +2259,56 @@ public class UnsortedCommands {
         for (IACheckup.AuditType audit : includeAudits) {
             msg.append("- " + audit.name() + "[" + audit.infoType + "]: " + audit.description + "\n");
         }
+
+        // Map<IACheckup.AuditType, Set<DBNation>> failedNations = new Object2ObjectOpenHashMap<>();
+        Set<Integer> unregisteredNationIds = new IntOpenHashSet();
+        StringBuilder listByAudit = new StringBuilder();
+        for (Map.Entry<IACheckup.AuditType, Set<DBNation>> entry : failedNations.entrySet()) {
+            IACheckup.AuditType type = entry.getKey();
+            Set<DBNation> auditNations = entry.getValue();
+
+            List<Integer> nationIds = new IntArrayList();
+            List<Long> userIds = new LongArrayList();
+
+            for (DBNation nation : auditNations) {
+                nationIds.add(nation.getNation_id());
+                Long userId = nation.getUserId();
+                if (userId != null) {
+                    userIds.add(userId);
+                } else {
+                    unregisteredNationIds.add(nation.getNation_id());
+                }
+            }
+
+            if (!nationIds.isEmpty() || !userIds.isEmpty()){
+                // header
+                listByAudit.append("**")
+                        .append(type.name())
+                        .append("**\n");
+                if (!nationIds.isEmpty()) {
+                    listByAudit.append("- Nation IDs: `")
+                            .append(StringMan.join(nationIds, ","))
+                            .append("`\n");
+                }
+                if (!userIds.isEmpty()) {
+                    listByAudit.append("- User IDs: `")
+                            .append(StringMan.join(userIds, ","))
+                            .append("`\n");
+                }
+                listByAudit.append("\n");
+            }
+        }
+
+        if (!unregisteredNationIds.isEmpty()) {
+            listByAudit
+                    .append("\n**Unregistered Nation IDs:** `")
+                    .append(StringMan.join(unregisteredNationIds, ","))
+                    .append("`\n");
+        }
+        if (listByAudit.length() > 0) {
+            msg.file("ids_by_audit.txt", listByAudit.toString());
+        }
+
         msg.send();
     }
 
