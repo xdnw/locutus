@@ -292,7 +292,7 @@ public class DBWar {
     public List<AbstractCursor> getAttacks3(boolean loadInactive) {
         List<AbstractCursor>[] attacksFinal = new List[]{Collections.EMPTY_LIST};
         Locutus.imp().getWarDb().iterateAttackList(Collections.singleton(this), null, null, (war, attacks) -> {
-            attacksFinal[0] = attacks;
+            attacksFinal[0] = new ObjectArrayList<>(attacks);
         }, loadInactive);
         return attacksFinal[0];
     }
