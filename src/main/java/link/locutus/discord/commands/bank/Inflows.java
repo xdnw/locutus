@@ -122,7 +122,7 @@ public class Inflows extends Command {
         Map<Integer, List<Transaction2>> nationOutflow = new Int2ObjectOpenHashMap<>();
 
         for (Transaction2 transfer : allTransfers) {
-            if (transfer.note != null && transfer.note.contains("'s nation and captured.")) continue;
+            if (transfer.isLootTransfer()) continue;
             int sender = (int) transfer.getSender();
             int receiver = (int) transfer.getReceiver();
 

@@ -9,6 +9,7 @@ import com.politicsandwar.graphql.model.GameInfo;
 import it.unimi.dsi.fastutil.bytes.ByteOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
@@ -858,13 +859,17 @@ public final class PW {
                 {
                     // set hash
                     String hash = getHash.get();
-                    String note = record.note;
-                    note = note.replaceAll("#cash[^ ]+", "#cash=" + MathMan.format(cashValue));
-                    note += " #" + hash;
-                    record.note = note;
+
+//                    Map<DepositType, Object> copy = new Object2DoubleOpenHashMap<>(notes3);
+//                    copy.put(DepositType.CASH, cashValue);
+//                    String note = record.note;
+//                    note = note.replaceAll("#cash[^ ]+", "#cash=" + MathMan.format(cashValue));
+//                    note += " #" + hash;
+//                    record.note = note;
+                    record.setValidHash();
 
                     if (record.isInternal()) {
-                        guildDB.updateNote(record.original_id, record.note);
+                        guildDB.addTransaction(record.original_id, record.note);
                     } else {
                         Locutus.imp().getBankDB().addTransaction(record, false);
                     }

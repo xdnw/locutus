@@ -183,9 +183,8 @@ public class WarCostAB extends Command {
 
         String totalStr = ResourceType.toString(total);
 
-        String note = "#counter=" + warUrl.warId;
-        List<Transaction2> transactions = db.getTransactionsByNote(note, false);
-        if (!transactions.isEmpty()) {
+        Transaction2 tx = db.getCounterTransfer(warUrl.warId, nation.getId());
+        if (tx != null) {
             io.send("Already reimbursed:\n" + totalStr +" to " + warUrl.toUrl());
             return;
         }
@@ -194,6 +193,7 @@ public class WarCostAB extends Command {
         String body = "Type: " + type + "\n" + "Amt: " + totalStr;
 
         String reimburseEmoji = "Reimburse";
+        String note = "#counter=" + warUrl.warId;
         String cmd = Settings.commandPrefix(true) + "addbalance " + nation.getUrl() + " " + totalStr + " \"" + note + "\"";
 
         String infoEmoji = "War Info";

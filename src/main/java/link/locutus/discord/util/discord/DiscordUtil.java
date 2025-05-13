@@ -3,7 +3,9 @@ package link.locutus.discord.util.discord;
 import club.minnced.discord.webhook.WebhookClient;
 import club.minnced.discord.webhook.WebhookClientBuilder;
 import club.minnced.discord.webhook.send.WebhookEmbed;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
@@ -714,21 +716,32 @@ public class DiscordUtil {
         return allianceRoles;
     }
 
+    private final static Map<Long, Integer> aaRolesCache = new Long2IntOpenHashMap();
+
     public static Map<Integer, Role> getAARoles(Collection<Role> roles) {
         Map<Integer, Role> allianceRoles = null;
         for (Role role : roles) {
+            Integer cachedId;
+            synchronized (aaRolesCache) {
+                cachedId = aaRolesCache.get(role.getIdLong());
+            }
+            if (cached != null) {
+                if (allianceRoles == null) allianceRoles = new Int2ObjectOpenHashMap<>();
+                allianceRoles.put(cached, role);
+                continue;
+            }
+
             if (role.getName().startsWith("AA ")) {
                 String[] split = role.getName().split(" ");
                 if (split.length < 2) continue;
                 String idStr = split[1];
                 if (!MathMan.isInteger(idStr)) continue;
                 int id = Integer.parseInt(idStr);
-                if (allianceRoles == null) {
-                    allianceRoles = new HashMap<>();
+                synchronized (aaRolesCache) {
+                    aaRolesCache.put(role.getIdLong(), id);
                 }
+                if (allianceRoles == null) allianceRoles = new Int2ObjectOpenHashMap<>();
                 allianceRoles.put(id, role);
-            } else {
-
             }
         }
         return allianceRoles == null ? Collections.emptyMap() : allianceRoles;

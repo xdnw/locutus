@@ -4075,7 +4075,7 @@ public abstract class DBNation implements NationOrAlliance {
 
             // add balance to guilddb
             long tx_datetime = System.currentTimeMillis();
-            String note = "#deposit";
+            Map<DepositType, Object> note = Map.of(DepositType.DEPOSIT, null);
 
             response.append("\nAdding deposits:");
 

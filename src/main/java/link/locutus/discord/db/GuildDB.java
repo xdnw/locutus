@@ -20,7 +20,6 @@ import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
-import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -46,6 +45,7 @@ import link.locutus.discord.pnw.json.CityBuildRange;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.io.BitBuffer;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.TransferResult;
 import link.locutus.discord.util.offshore.test.IACategory;
@@ -70,6 +70,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -181,7 +182,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             }
             tableToColumn.put("GRANTS_SENT", "date");
         }
-        tableToColumn.put("INTERNAL_TRANSACTIONS2", "tx_datetime");
+        tableToColumn.put("INTERNAL_TRANSACTIONS3", "tx_datetime");
         tableToColumn.put("NATION_META", "date_updated");
         tableToColumn.put("ROLES2", "date_updated");
         tableToColumn.put("INFO", "date_updated");
@@ -790,11 +791,24 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         executeBatch(transactions, query, (ThrowingBiConsumer<Transaction2, PreparedStatement>) Transaction2::setNoID);
     }
 
+    public void replaceTransaction(Transaction2 tx) {
+        GuildDB delegate = getDelegateServer();
+        if (delegate != null) {
+            delegate.replaceTransaction(tx);
+            return;
+        }
+        String sql = tx.createInternalInsert("INTERNAL_TRANSACTIONS3", true, false);
+        update(sql, (ThrowingConsumer<PreparedStatement>) tx::setInternal);
+    }
+
     public void addTransaction(Transaction2 tx) {
         GuildDB delegate = getDelegateServer();
         if (delegate != null) {
             delegate.addTransaction(tx);
             return;
+        }
+        if (tx.sender_id == tx.receiver_id && tx.sender_type == tx.receiver_type) {
+            throw new IllegalArgumentException("Sender and receiver cannot be the same.");
         }
         String sql = tx.createInsert("INTERNAL_TRANSACTIONS2", false, false);
         update(sql, (ThrowingConsumer<PreparedStatement>) tx::setNoID);
@@ -809,20 +823,20 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         }
     }
 
-    public void updateNote(int id, String note) {
-        GuildDB delegate = getDelegateServer();
-        if (delegate != null) {
-            delegate.updateNote(id, note);
-            return;
-        }
-        update("UPDATE INTERNAL_TRANSACTIONS2 set note = ? where tx_id = ?", new ThrowingConsumer<PreparedStatement>() {
-            @Override
-            public void acceptThrows(PreparedStatement stmt) throws Exception {
-                stmt.setString(1, note);
-                stmt.setInt(2, id);
-            }
-        });
-    }
+//    public void updateNote(int id, String note) {
+//        GuildDB delegate = getDelegateServer();
+//        if (delegate != null) {
+//            delegate.updateNote(id, note);
+//            return;
+//        }
+//        update("UPDATE INTERNAL_TRANSACTIONS2 set note = ? where tx_id = ?", new ThrowingConsumer<PreparedStatement>() {
+//            @Override
+//            public void acceptThrows(PreparedStatement stmt) throws Exception {
+//                stmt.setString(1, note);
+//                stmt.setInt(2, id);
+//            }
+//        });
+//    }
 
     public List<GuildSetting> listInaccessibleChannelKeys() {
         List<GuildSetting> inaccessible = new ArrayList<>();
@@ -869,39 +883,14 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         executeStmt(query);
     }
 
-    public List<Transaction2> getTransactionsByNote(String note, boolean fuzzy) {
-        GuildDB delegate = getDelegateServer();
-        if (delegate != null) {
-            return delegate.getTransactionsByNote(note, fuzzy);
-        }
-        List<Transaction2> list = new ArrayList<>();
-        String query;
-        if (fuzzy) {
-            query = "select * FROM INTERNAL_TRANSACTIONS2 WHERE lower(note) like ?";
-            note = ("%" + note + "%").toLowerCase();
-        } else {
-            query = "select * FROM INTERNAL_TRANSACTIONS2 WHERE note = ?";
-        }
-        try (PreparedStatement stmt = prepareQuery(query)) {
-            stmt.setString(1, note);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    list.add(new Transaction2(rs));
-                }
-            }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
     public List<Transaction2> getTransactionsById(long senderOrReceiverId, int type) {
         GuildDB delegate = getDelegateServer();
         if (delegate != null) return delegate.getTransactionsById(senderOrReceiverId, type);
         List<Transaction2> list = new ObjectArrayList<>();
 
-        String query = "select * FROM INTERNAL_TRANSACTIONS2 WHERE ((sender_id = ? AND sender_TYPE = ?) OR (receiver_id = ? AND receiver_type = ?))";
+        String query =
+                "SELECT * FROM INTERNAL_TRANSACTIONS2 WHERE (sender_id = ? AND sender_type = ?) or " +
+                        "(receiver_id = ? AND receiver_type = ?)";
 
         query(query, new ThrowingConsumer<PreparedStatement>() {
             @Override
@@ -913,9 +902,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             }
         }, (ThrowingConsumer<ResultSet>) rs -> {
             while (rs.next()) {
-                list.add(new Transaction2(rs));
+                list.add(Transaction2.ofInternalLegacy(rs));
             }
         });
+        System.out.println("SIZE " + list.size());
         return list;
     }
 
@@ -943,7 +933,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     public void deleteTransactionsByIds(Set<Integer> ids, int type) {
         GuildDB delegate = getDelegateServer();
         if (delegate != null) delegate.deleteTransactionsByIds(ids, type);
-        StringBuilder query = new StringBuilder("DELETE FROM INTERNAL_TRANSACTIONS2 WHERE " +
+        StringBuilder query = new StringBuilder("DELETE FROM INTERNAL_TRANSACTIONS3 WHERE " +
                 "(sender_id IN " + StringMan.getString(ids) + " and sender_type = ?) OR " +
                 "(receiver_id IN " + StringMan.getString(ids) + " and receiver_type = ?)");
         update(query.toString(), new ThrowingConsumer<PreparedStatement>() {
@@ -960,12 +950,13 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         if (delegate != null) {
             return delegate.getTransactions(minDateMs, desc);
         }
+        BitBuffer buffer = Transaction2.createBuffer();
         List<Transaction2> list = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM INTERNAL_TRANSACTIONS2 WHERE tx_datetime > ? ORDER BY tx_id " + (desc ? "DESC" : "ASC"))) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM INTERNAL_TRANSACTIONS3 WHERE tx_datetime > ? ORDER BY tx_id " + (desc ? "DESC" : "ASC"))) {
             stmt.setLong(1, minDateMs);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    list.add(new Transaction2(rs));
+                    list.add(Transaction2.ofInternal(rs, buffer));
                 }
             }
             return list;
@@ -975,26 +966,84 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         }
     }
 
+    private void importInternal() {
+        GuildDB delegate = getDelegateServer();
+        if (delegate != null) {
+            delegate.importInternal();
+            return;
+        }
+        try {
+            if (tableExists("INTERNAL_TRANSACTIONS2")) {
+                // delete everything from INTERNAL_TRANSACTIONS3 (where it will be imported to)
+                executeStmt("DELETE FROM INTERNAL_TRANSACTIONS3");
+
+                List<Transaction2> transactions = new ObjectArrayList<>();
+                try (PreparedStatement stmt = prepareQuery("SELECT * FROM INTERNAL_TRANSACTIONS2")) {
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        while (rs.next()) {
+                            Transaction2 tx = Transaction2.ofInternalLegacy(rs);
+                            transactions.add(tx);
+                        }
+                    }
+                }
+                addTransactions(transactions);
+                List<Transaction2> importedList = getTransactions(0L, false);
+                if (importedList.size() != transactions.size()) {
+                    throw new IllegalStateException("Imported transactions do not match original transactions. " +
+                            "Original: " + transactions.size() + ", Imported: " + importedList.size());
+                }
+                for (int i = 0; i < transactions.size(); i++) {
+                    Transaction2 original = transactions.get(i);
+                    Transaction2 imported = importedList.get(i);
+                    if (!original.equalsDeep(imported)) {
+                        throw new IllegalStateException("Imported transaction does not match original transaction. " +
+                                "Original: " + original + ", Imported: " + imported);
+                    }
+                }
+                executeStmt("DROP TABLE INTERNAL_TRANSACTIONS");
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
     @Override
     public void createTables() {
         {
-            StringBuilder query = new StringBuilder("CREATE TABLE IF NOT EXISTS `INTERNAL_TRANSACTIONS2` (" +
+//            StringBuilder query = new StringBuilder("CREATE TABLE IF NOT EXISTS `INTERNAL_TRANSACTIONS2` (" +
+//                    "`tx_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
+//                    "tx_datetime BIGINT NOT NULL, " +
+//                    "sender_id BIGINT NOT NULL, " +
+//                    "sender_type INT NOT NULL, " +
+//                    "receiver_id BIGINT NOT NULL, " +
+//                    "receiver_type INT NOT NULL, " +
+//                    "banker_nation_id INT NOT NULL, " +
+//                    "note varchar");
+//
+//            for (ResourceType type : ResourceType.values) {
+//                if (type == ResourceType.CREDITS) continue;
+//                query.append(", " + type.name() + " BIGINT NOT NULL");
+//            }
+//            query.append(")");
+//
+//            executeStmt(query.toString());
+        }
+        {
+            // INTERNAL_TRANSACTIONS2
+            // like the above, but no note or resources, with a byte[] `data` column
+            String create = "CREATE TABLE IF NOT EXISTS `INTERNAL_TRANSACTIONS3` (" +
                     "`tx_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                    "tx_datetime BIGINT NOT NULL, " +
-                    "sender_id BIGINT NOT NULL, " +
-                    "sender_type INT NOT NULL, " +
-                    "receiver_id BIGINT NOT NULL, " +
-                    "receiver_type INT NOT NULL, " +
-                    "banker_nation_id INT NOT NULL, " +
-                    "note varchar");
+                    "`tx_datetime` BIGINT NOT NULL, " +
+                    "`sender_id` BIGINT NOT NULL, " +
+                    "`sender_type` INT NOT NULL, " +
+                    "`receiver_id` BIGINT NOT NULL, " +
+                    "`receiver_type` INT NOT NULL, " +
+                    "`banker_nation_id` INT NOT NULL, " +
+                    "`data` BLOB NOT NULL)";
+            executeStmt(create);
 
-            for (ResourceType type : ResourceType.values) {
-                if (type == ResourceType.CREDITS) continue;
-                query.append(", " + type.name() + " BIGINT NOT NULL");
-            }
-            query.append(")");
-
-            executeStmt(query.toString());
+            importInternal();
         }
         {
             String query = "CREATE TABLE IF NOT EXISTS `ANNOUNCEMENTS2` (`ann_id` INTEGER PRIMARY KEY AUTOINCREMENT, `type` INTEGER NOT NULL, `sender` BIGINT NOT NULL, `active` BOOLEAN NOT NULL, `title` VARCHAR NOT NULL, `content` VARCHAR NOT NULL, `replacements` VARCHAR NOT NULL, `filter` VARCHAR NOT NULL, `date` BIGINT NOT NULL, `allow_creation` BOOLEAN NOT NULL)";
@@ -1922,53 +1971,55 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return ammountEach;
     }
 
-    public void addBalanceTaxId(long tx_datetime, int taxId, int banker, String note, double[] amount) {
+    public void addBalanceTaxId(long tx_datetime, int taxId, int banker, Map<DepositType, Object> note, double[] amount) {
         addTransfer(tx_datetime, taxId, 4, 0, 0, banker, note, amount);
     }
 
-    public void addBalanceTaxId(long tx_datetime, int taxId, int nation, int banker, String note, double[] amount) {
+    public void addBalanceTaxId(long tx_datetime, int taxId, int nation, int banker, Map<DepositType, Object> note, double[] amount) {
         addTransfer(tx_datetime, taxId, 4, nation, 1, banker, note, amount);
     }
 
-    public void subBalance(long tx_datetime, NationOrAlliance account, int banker, String note, double[] amount) {
+    public void subBalance(long tx_datetime, NationOrAlliance account, int banker, Map<DepositType, Object> note, double[] amount) {
         double[] copy = ResourceType.getBuffer();
         for (int i = 0; i < copy.length; i++) copy[i] = -amount[i];
         addBalance(tx_datetime, account, banker, note, copy);
     }
 
-    public void addBalance(long tx_datetime, NationOrAlliance account, int banker, String note, double[] amount) {
+    public void addBalance(long tx_datetime, NationOrAlliance account, int banker, Map<DepositType, Object> note, double[] amount) {
         addTransfer(tx_datetime, account, 0, 0, banker, note, amount);
     }
 
-    public void subtractBalance(long tx_datetime, NationOrAlliance account, int banker, String note, double[] amount) {
+    public void subtractBalance(long tx_datetime, NationOrAlliance account, int banker, Map<DepositType, Object> note, double[] amount) {
         addTransfer(tx_datetime, 0, 0, account, banker, note, amount);
     }
 
-    public void addBalance(long tx_datetime, long accountId, int type, int banker, String note, double[] amount) {
+    public void addBalance(long tx_datetime, long accountId, int type, int banker, Map<DepositType, Object> note, double[] amount) {
         addTransfer(tx_datetime, accountId, type, 0, 0, banker, note, amount);
     }
 
-    public void subtractBalance(long tx_datetime, long accountId, int type, int banker, String note, double[] amount) {
+    public void subtractBalance(long tx_datetime, long accountId, int type, int banker, Map<DepositType, Object> note, double[] amount) {
         addTransfer(tx_datetime, 0, 0, accountId, type, banker, note, amount);
     }
 
-    public void addTransfer(long tx_datetime, NationOrAlliance sender, long receiver_id, int receiver_type, int banker, String note, double[] amount) {
+    public void addTransfer(long tx_datetime, NationOrAlliance sender, long receiver_id, int receiver_type, int banker, Map<DepositType, Object> note, double[] amount) {
         Map.Entry<Long, Integer> idType = sender.getTransferIdAndType();
         addTransfer(tx_datetime, idType.getKey(), idType.getValue(), receiver_id, receiver_type, banker, note, amount);
     }
 
-    public void addTransfer(long tx_datetime, NationOrAlliance sender, NationOrAlliance receiver2, int banker, String note, double[] amount) {
+    public void addTransfer(long tx_datetime, NationOrAlliance sender, NationOrAlliance receiver2, int banker, Map<DepositType, Object> note, double[] amount) {
         Map.Entry<Long, Integer> idType = sender.getTransferIdAndType();
         addTransfer(tx_datetime, idType.getKey(), idType.getValue(), receiver2, banker, note, amount);
     }
 
-    public void addTransfer(long tx_datetime, long sender_id, int sender_type, NationOrAlliance receiver, int banker, String note, double[] amount) {
+    public void addTransfer(long tx_datetime, long sender_id, int sender_type, NationOrAlliance receiver, int banker, Map<DepositType, Object> note, double[] amount) {
         Map.Entry<Long, Integer> idType = receiver.getTransferIdAndType();
         addTransfer(tx_datetime, sender_id, sender_type, idType.getKey(), idType.getValue(), banker, note, amount);
     }
 
-    public void addTransfer(long tx_datetime, long sender_id, int sender_type, long receiver_id, int receiver_type, int banker, String note, double[] amount) {
-        Transaction2 tx = new Transaction2(0, tx_datetime, sender_id, sender_type, receiver_id, receiver_type, banker, note, amount);
+    public void addTransfer(long tx_datetime, long sender_id, int sender_type, long receiver_id, int receiver_type, int banker, Map<DepositType, Object> note, double[] amount) {
+        Transaction2 tx = new Transaction2(0, tx_datetime, sender_id, sender_type, receiver_id, receiver_type, banker, null, amount);
+        tx.setNoteMap(note);
+        tx.setValidHash(true);
         addTransaction(tx);
     }
 
@@ -2474,6 +2525,25 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         if (faServer != null && faServer.getIdLong() != getIdLong()) return faServer.getCoalitionNames();
         loadCoalitions();
         return new ObjectLinkedOpenHashSet<>(coalitionName2Id.keySet());
+    }
+
+    public Transaction2 getCounterTransfer(int warId, int nationId) {
+        String query = "SELECT * FROM INTERNAL_TRANSACTIONS3 WHERE sender_id = ? AND sender_type = 1 AND receiver_id = 0 AND receiver_type = 0";
+        try (PreparedStatement stmt = prepareQuery(query)) {
+            stmt.setInt(1, nationId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Transaction2 tx = Transaction2.ofInternal(rs);
+                    Object counterValue = tx.getNoteMap().get(DepositType.COUNTER);
+                    if (counterValue instanceof Number n && n.intValue() == warId) {
+                        return tx;
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return null;
     }
 
     public enum AutoNickOption {

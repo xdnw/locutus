@@ -400,8 +400,12 @@ public class ArrayUtil {
     }
 
     public static double[] toDoubleArray(byte[] array) {
-        DataInputStream is = new DataInputStream(new ByteArrayInputStream(array));
         int len = array.length / 8;
+        return toDoubleArray(array, len);
+    }
+
+    public static double[] toDoubleArray(byte[] array, int len) {
+        DataInputStream is = new DataInputStream(new ByteArrayInputStream(array));
         double[] result = new double[len];
         for (int i = 0; i < len; i++) {
             try {

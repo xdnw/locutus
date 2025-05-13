@@ -240,7 +240,7 @@ public abstract class DBMain implements Closeable {
     public boolean query(String sql, Consumer<PreparedStatement> withStmt, Consumer<ResultSet> rsq) {
         {
             try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
-                stmt.setFetchSize(10000);
+                stmt.setFetchSize(1000);
                 if (withStmt != null) withStmt.accept(stmt);
                 ResultSet rs = stmt.executeQuery();
                 rsq.accept(rs);

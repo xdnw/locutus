@@ -4,10 +4,7 @@ import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import it.unimi.dsi.fastutil.objects.Object2DoubleLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -2063,10 +2060,13 @@ public class BankCommands {
                 List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, true, true, -1, 0, true);
                 for (Map.Entry<Integer, Transaction2> entry : transactions) {
                     Transaction2 tx = entry.getValue();
-                    if (tx.note == null || (tx.receiver_id != nation.getNation_id() && tx.sender_id != nation.getNation_id()) || (!tx.note.contains("#expire") && !tx.note.contains("#decay")))
-                        continue;
-                    if (tx.sender_id == tx.receiver_id) continue;
                     Map<DepositType, Object> noteMap = tx.getNoteMap();
+                    if (noteMap.isEmpty() || (tx.receiver_id != nation.getNation_id() && tx.sender_id != nation.getNation_id()) ||
+                            (!noteMap.containsKey(DepositType.EXPIRE) && !noteMap.containsKey(DepositType.DECAY))) {
+                        continue;
+                    }
+                    if (tx.sender_id == tx.receiver_id) continue;
+
                     Object expire3 = noteMap.get(DepositType.EXPIRE);
                     Object decay3 = noteMap.get(DepositType.DECAY);
                     long expireEpoch = Long.MAX_VALUE;
@@ -2079,16 +2079,13 @@ public class BankCommands {
                     }
                     expireEpoch = Math.min(expireEpoch, decayEpoch);
                     if (expireEpoch > now) {
-                        String noteCopy = tx.note.toLowerCase(Locale.ROOT)
-                                .replaceAll("#expire=[a-zA-Z0-9:]+", "")
-                                .replaceAll("#decay=[a-zA-Z0-9:]+", "");
+                        Map<DepositType, Object> noteCopy = new Object2ObjectOpenHashMap<>(noteMap);
                         if (expire3 instanceof Number) {
-                            noteCopy += " #expire=" + "timestamp:" + expireEpoch;
+                            noteCopy.put(DepositType.EXPIRE, expireEpoch);
                         }
                         if (decay3 instanceof Number) {
-                            noteCopy += " #decay=" + "timestamp:" + decayEpoch;
+                            noteCopy.put(DepositType.DECAY, decayEpoch);
                         }
-                        noteCopy = noteCopy.trim();
 
                         tx.tx_datetime = System.currentTimeMillis();
                         int sign = entry.getKey();

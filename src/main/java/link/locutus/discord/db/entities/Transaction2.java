@@ -15,11 +15,15 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.util.io.BitBuffer;
+import link.locutus.discord.util.math.ArrayUtil;
 import org.example.jooq.bank.tables.records.Transactions_2Record;
 import org.jsoup.nodes.Element;
 import org.jsoup.parser.Parser;
 import org.jsoup.select.Elements;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -60,10 +64,59 @@ public class Transaction2 {
     public int receiver_type;
     public int banker_nation;
     public double[] resources;
-    public String note;
-
+    private String note;
     private Map<DepositType, Object> parsed;
     private boolean validHash;
+
+    public static Transaction2 ofInternalLegacy(ResultSet rs) throws SQLException {
+        int tx_id = rs.getInt(1);
+        long tx_datetime = rs.getLong(2);
+        long sender_id = rs.getLong(3);
+        int sender_type = rs.getInt(4);
+        long receiver_id = rs.getLong(5);
+        int receiver_type = rs.getInt(6);
+        int banker_nation = rs.getInt(7);
+        String note = rs.getString(8);
+
+        int i = 9;
+        double[] resources = ResourceType.getBuffer();
+        for (ResourceType type : ResourceType.values) {
+            if (type == ResourceType.CREDITS) continue;
+            resources[type.ordinal()] = rs.getLong(i) * 0.01d;
+            i++;
+        }
+        return new Transaction2(tx_id, tx_datetime, sender_id, sender_type, receiver_id, receiver_type, banker_nation, note, resources);
+    }
+
+    public static BitBuffer createBuffer() {
+        return new BitBuffer(ByteBuffer.wrap(new byte[1024]).order(ByteOrder.LITTLE_ENDIAN));
+    }
+
+    public static Transaction2 ofInternal(ResultSet rs, BitBuffer buffer) throws SQLException {
+        int tx_id = rs.getInt(1);
+        long tx_datetime = rs.getLong(2);
+        long sender_id = rs.getLong(3);
+        int sender_type = rs.getInt(4);
+        long receiver_id = rs.getLong(5);
+        int receiver_type = rs.getInt(6);
+        int banker_nation = rs.getInt(7);
+        byte[] data = rs.getBytes(8);
+
+        buffer.setBytes(data);
+
+        double[] resources = ResourceType.getBuffer();
+        for (ResourceType type : ResourceType.values) {
+            if (type == ResourceType.CREDITS) continue;
+            resources[type.ordinal()] = buffer.readDouble();
+        }
+
+        Transaction2 tx = new Transaction2(tx_id, tx_datetime, sender_id, sender_type, receiver_id, receiver_type, banker_nation, null, resources);
+        tx.parsed = DepositType.readMap(buffer);
+        if (tx.parsed != null && tx.parsed.containsKey(DepositType.CASH) && tx.receiver_type != 1) {
+            tx.validHash = buffer.readBit();
+        }
+        return tx;
+    }
 
     public Transaction2(int tx_id, long tx_datetime, long sender_id, int sender_type, long receiver_id, int receiver_type, int banker_nation, String note, double[] resources) {
         this.tx_id = tx_id;
@@ -75,6 +128,10 @@ public class Transaction2 {
         this.banker_nation = banker_nation;
         this.note = note;
         this.resources = resources;
+    }
+
+    public boolean isLootTransfer() {
+        return note != null && note.contains("'s nation and captured.");
     }
 
     private static final Pattern MD5_HASH = Pattern.compile("#([a-fA-F0-9]{32})");
@@ -473,6 +530,50 @@ public class Transaction2 {
         return sql.toString();
     }
 
+    public String createInternalInsert(String table, boolean id, boolean ignore) {
+        StringBuilder sql = new StringBuilder("INSERT " + (id ? "OR " + (ignore ? "IGNORE" : "REPLACE") + " " : "") + "INTO `" + table + "` (" + (id ? "tx_id, " : "") + "tx_datetime, sender_id, sender_type, receiver_id, receiver_type, banker_nation_id, data");
+        int fieldCount = id ? 8 : 7;
+        sql.append(") VALUES(" + StringMan.repeat("?,", fieldCount - 1) + "?);");
+        return sql.toString();
+    }
+
+    private byte[] toResourceNoteBytes(BitBuffer buffer) {
+        buffer.reset();
+        for (ResourceType type : ResourceType.values) {
+            if (type == ResourceType.CREDITS) continue;
+            buffer.writeDouble(resources[type.ordinal()]);
+        }
+        Map<DepositType, Object> noteMap = getNoteMap();
+        DepositType.serialize(noteMap, buffer);
+        if (noteMap.containsKey(DepositType.CASH) && receiver_type != 1) {
+            buffer.writeBit(validHash);
+        }
+
+        byte[] data = buffer.getWrittenBytes();
+        return data;
+    }
+
+    public void setInternal(PreparedStatement stmt, BitBuffer buffer) throws SQLException {
+        stmt.setInt(1, tx_id);
+        stmt.setLong(2, tx_datetime);
+        stmt.setLong(3, sender_id);
+        stmt.setInt(4, sender_type);
+        stmt.setLong(5, receiver_id);
+        stmt.setInt(6, receiver_type);
+        stmt.setInt(7, banker_nation);
+        stmt.setBytes(8, toResourceNoteBytes(buffer));
+    }
+
+    public void setInternalNoId(PreparedStatement stmt, BitBuffer buffer) throws SQLException {
+        stmt.setLong(1, tx_datetime);
+        stmt.setLong(2, sender_id);
+        stmt.setInt(3, sender_type);
+        stmt.setLong(4, receiver_id);
+        stmt.setInt(5, receiver_type);
+        stmt.setInt(6, banker_nation);
+        stmt.setBytes(7, toResourceNoteBytes(buffer));
+    }
+
     public void set(PreparedStatement stmt) throws SQLException {
         stmt.setInt(1, tx_id);
         stmt.setLong(2, tx_datetime);
@@ -602,5 +703,22 @@ public class Transaction2 {
 
     public boolean isInternal() {
         return tx_id == -1 && original_id != -1;
+    }
+
+    public boolean equalsDeep(Transaction2 imported) {
+        if (tx_id != imported.tx_id) return false;
+        if (tx_datetime != imported.tx_datetime) return false;
+        if (sender_id != imported.sender_id) return false;
+        if (sender_type != imported.sender_type) return false;
+        if (receiver_id != imported.receiver_id) return false;
+        if (receiver_type != imported.receiver_type) return false;
+        if (banker_nation != imported.banker_nation) return false;
+        if (!Objects.equals(getNoteMap(), imported.getNoteMap())) return false;
+        if (!ResourceType.equals(this.resources, imported.resources)) return false;
+        return true;
+    }
+
+    public void setNoteMap(Map<DepositType, Object> note) {
+        this.parsed = note;
     }
 }

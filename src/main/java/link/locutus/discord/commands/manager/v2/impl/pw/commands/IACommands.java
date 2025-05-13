@@ -1268,12 +1268,12 @@ public class IACommands {
     public String incentiveRanking(@Me GuildDB db, @Me IMessageIO io, @Me JSONObject command, @Timestamp long timestamp) {
         List<Transaction2> transactions = db.getTransactions(timestamp, false);
 
-        Map<String, Map<DBNation, Integer>> incentivesByGov = new HashMap<>();
+        Map<NationMeta, Map<DBNation, Integer>> incentivesByGov = new Object2ObjectOpenHashMap<>();
 
         for (Transaction2 transaction : transactions) {
             if (transaction.note == null || !transaction.note.contains("#incentive")) continue;
             Map<DepositType, Object> noteMap = transaction.getNoteMap();
-            String incentive = (String) noteMap.get(DepositType.INCENTIVE);
+            NationMeta incentive = (NationMeta) noteMap.get(DepositType.INCENTIVE);
             DBNation gov = DBNation.getById((int) transaction.sender_id);
 
             if (gov != null) {
@@ -1282,8 +1282,8 @@ public class IACommands {
             }
         }
 
-        for (Map.Entry<String, Map<DBNation, Integer>> entry : incentivesByGov.entrySet()) {
-            String title = entry.getKey();
+        for (Map.Entry<NationMeta, Map<DBNation, Integer>> entry : incentivesByGov.entrySet()) {
+            String title = entry.getKey().name();
             new SummedMapRankBuilder<>(entry.getValue())
                     .sort()
                     .nameKeys(f -> f.toShrink())
