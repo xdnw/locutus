@@ -103,10 +103,8 @@ public class AutoRoleTask implements IAutoRoleTask {
             setAllianceMask(roleOpt);
         }
 
-        initRegisteredRole = false;
         List<Role> roles = db.getGuild().getRoles();
         this.allianceRoles = new ConcurrentHashMap<>(DiscordUtil.getAARoles(roles));
-        nationAACache.clear();
         this.cityRoleMap = new ConcurrentHashMap<>(DiscordUtil.getCityRoles(roles));
         this.cityRoles = new HashSet<>();
         for (Set<Role> value : cityRoleMap.values()) cityRoles.addAll(value);
@@ -432,9 +430,6 @@ public class AutoRoleTask implements IAutoRoleTask {
         return info;
     }
 
-    private boolean initRegisteredRole = false;
-    private final Map<Integer, Integer> nationAACache = new HashMap<>();
-
     @Override
     public synchronized AutoRoleInfo autoRole(Member member, DBNation nation) {
         AutoRoleInfo info = new AutoRoleInfo(db, "");
@@ -484,7 +479,6 @@ public class AutoRoleTask implements IAutoRoleTask {
     }
 
     public synchronized void autoRole(AutoRoleInfo info, Member member, DBNation nation, boolean autoAll) {
-        initRegisteredRole = true;
         this.registeredRole = Roles.REGISTERED.toRole2(guild);
 
         try {
@@ -591,14 +585,13 @@ public class AutoRoleTask implements IAutoRoleTask {
                 alliance_id = 0;
             }
 
-            Integer currentAARole = nationAACache.get(nation.getNation_id());
-            if (currentAARole != null && currentAARole.equals(alliance_id) && autoAll) {
-                return;
-            } else {
-                nationAACache.put(nation.getNation_id(), alliance_id);
-            }
-
             Map<Integer, Role> myRoles = DiscordUtil.getAARoles(member.getRoles());
+            if (myRoles.size() == 1) {
+                int aaRole = myRoles.keySet().iterator().next();
+                if (aaRole == alliance_id) return;
+            } else if (myRoles.isEmpty() && alliance_id == 0) {
+                return;
+            }
 
             if (alliance_id == 0) {
                 for (Map.Entry<Integer, Role> entry : myRoles.entrySet()) {
@@ -618,7 +611,7 @@ public class AutoRoleTask implements IAutoRoleTask {
                 if (role == null) {
                     String roleName = "AA " + alliance_id + " " + nation.getAllianceName();
                     List<Role> roles = guild.getRolesByName(roleName, false);
-                    if (roles.size() == 1) role = roles.get(0);
+                    if (roles.size() > 0) role = roles.get(0);
                     if (role == null) {
                         AutoRoleInfo.RoleOrCreate roleAdd = info.createRole(null, roleName, position, info.supplyColor(alliance_id, allianceRoles.values()));
                         info.addRoleToMember(member, roleAdd);
@@ -628,8 +621,6 @@ public class AutoRoleTask implements IAutoRoleTask {
                     info.addRoleToMember(member, role);
                 } else {
                     // (position, guild, alliance_id, nation.getAllianceName())
-
-
                 }
             }
         }
