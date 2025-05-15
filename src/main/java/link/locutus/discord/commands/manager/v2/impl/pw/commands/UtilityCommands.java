@@ -2780,6 +2780,7 @@ public class UtilityCommands {
                 jc.setMMR(mmrFinal);
                 jc.setAge(origin.getAgeDays());
                 jc.setNuke_turn(0);
+                jc.setLand(origin.getLand());
 
                 double profit = jc.profitConvertedCached(continentFinal, rads, hasProject, 100, grossModifier);
                 if (profit > bestValue) {
