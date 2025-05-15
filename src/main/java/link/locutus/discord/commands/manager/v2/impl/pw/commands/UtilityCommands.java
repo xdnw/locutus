@@ -35,6 +35,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.city.SimpleDBCity;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.nation.DBNationData;
 import link.locutus.discord.db.entities.nation.SimpleDBNation;
@@ -2722,6 +2723,79 @@ public class UtilityCommands {
         return null;
     }
 
+//    @Command(desc = "Calculate the ROI of various projects for your set of cities and infra")
+//    public String projectROI(@Me IMessageIO channel, @Me @Default GuildDB db,
+//                           DBNation nation,
+//
+//                             @Switch("p") Set<Project> projects,
+//                             @Switch("c") Continent continent,
+//                             @Switch("r") Double rads,
+//                             @Switch("m") MMRInt mmr) {
+//        // TODO infra projects by 2 rebuilds per year?
+//    }
+
+
+
+    @Command(desc = "Find the best build from existing builds people have")
+    public String findExistingBuild(@Me IMessageIO io,
+                            DBCity city,
+                            @Range(min=600,max=3000) int infraLevel,
+                            @Switch("c") Continent continent,
+                            @Switch("r") Double rads,
+                            @Switch("p") Set<Project> forceProjects,
+                            @Switch("d") boolean openMarkets,
+                            @Switch("m") MMRInt mmr,
+                            @Switch("l") Double land) {
+        DBCity origin = new SimpleDBCity(city);
+        MMRInt mmrFinal = mmr != null ? mmr : origin.getMMRInt();
+        int infraNoMil = infraLevel - mmrFinal.getNumBuildings() * 50;
+
+        DBNation originNation = origin.getNation();
+        Continent continentFinal = continent != null ? continent : originNation.getContinent();
+        Predicate<Project> hasProject = forceProjects != null ? f -> forceProjects.contains(f) : f -> false;
+        if (originNation != null) hasProject = hasProject.or(originNation::hasProject);
+        hasProject = Projects.optimize(hasProject);
+
+        double grossModifier = DBNation.getGrossModifier(false,
+                openMarkets || (originNation != null && originNation.getDomesticPolicy() == DomesticPolicy.OPEN_MARKETS),
+                hasProject.test(Projects.GOVERNMENT_SUPPORT_AGENCY),
+                hasProject.test(Projects.BUREAU_OF_DOMESTIC_AFFAIRS));
+
+
+        double bestValue = Double.MIN_VALUE;
+        JavaCity best = null;
+        for (DBCity other : Locutus.imp().getNationDB().getCities()) {
+            int otherInfra = other.getRequiredInfraWithoutMilitary();
+            if (otherInfra == infraNoMil) {
+                JavaCity jc = other.toJavaCity(hasProject);
+                jc.setInfra(infraLevel);
+                jc.setMMR(mmrFinal);
+                jc.setAge(origin.getAgeDays());
+                jc.setNuke_turn(0);
+
+                double profit = jc.profitConvertedCached(continentFinal, rads, hasProject, 100, grossModifier);
+                if (profit > bestValue) {
+                    bestValue = profit;
+                    best = jc;
+                }
+            }
+        }
+
+        if (best == null) {
+            return "No build found matching: `" + infraLevel + "` infra, `" + mmrFinal.getNumBuildings() + "` buildings";
+        }
+        String title = "~$" + MathMan.format(bestValue) + " profit";
+        StringBuilder body = new StringBuilder();
+        body.append("```\n" + best.toJson(true) + "\n```");
+        body.append("\nDisease: ").append(MathMan.format(best.calcDisease(hasProject)));
+        body.append("\nPollution: ").append(MathMan.format(best.calcPollution(hasProject)));
+        body.append("\nCrime: ").append(MathMan.format(best.calcCrime(hasProject)));
+        body.append("\nCommerce: ").append(MathMan.format(best.calcCommerce(hasProject)) + "/" + MathMan.format(best.getMaxCommerce(hasProject)));
+        body.append("\nPopulation: ").append(MathMan.format(best.calcPopulation(hasProject)));
+
+        io.create().embed(title, body.toString()).send();
+        return null;
+    }
     @Command(desc = "Calculate how many days it takes to ROI on the last improvement slot for a specified infra level", viewable = true)
     public String infraROI(DBCity city, @Range(min=600,max=3000) int infraLevel,
                            @Switch("c") Continent continent,
@@ -2763,8 +2837,8 @@ public class UtilityCommands {
         if (optimal2 == null) {
             return "Cannot generate optimal city build";
         }
-        double revenue1 = optimal1.profitConverted2(continent, rads, hasProject, numCities, grossModifier);
-        double revenue2 = optimal2.profitConverted2(continent, rads, hasProject, numCities, grossModifier);
+        double revenue1 = optimal1.profitConvertedCached(continent, rads, hasProject, numCities, grossModifier);
+        double revenue2 = optimal2.profitConvertedCached(continent, rads, hasProject, numCities, grossModifier);
         double profit = revenue1 - revenue2;
         if (profit <= 0) return "No ROI for `" + infraLevel + "`";
         double cost = nation.infraCost(infraLevel - 50, infraLevel);
@@ -2813,8 +2887,8 @@ public class UtilityCommands {
         if (optimal2 == null) {
             return "Cannot generate optimal city build";
         }
-        double revenue1 = optimal1.profitConverted2(continent, rads, hasProject, numCities, grossModifier);
-        double revenue2 = optimal2.profitConverted2(continent, rads, hasProject, numCities, grossModifier);
+        double revenue1 = optimal1.profitConvertedCached(continent, rads, hasProject, numCities, grossModifier);
+        double revenue2 = optimal2.profitConvertedCached(continent, rads, hasProject, numCities, grossModifier);
         double profit = revenue1 - revenue2;
         if (profit <= 0) return "No ROI for `" + MathMan.format(landLevel) + "`";
         double cost = nation.landCost(landLevel - 50, landLevel);

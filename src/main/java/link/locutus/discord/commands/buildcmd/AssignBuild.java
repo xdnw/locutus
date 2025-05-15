@@ -66,7 +66,7 @@ public class AssignBuild extends Command {
         Map<Integer, JavaCity> from = me.getCityMap(true);
         String instructions = to.instructions(from, totalArr, true, true);
         String emoji = "Grant";
-        String command = Settings.commandPrefix(true) + "grant {usermention} " + to.toJson();
+        String command = Settings.commandPrefix(true) + "grant {usermention} " + to.toJson(false);
         io.create().embed("Build", instructions).commandButton(command, emoji).send();
         return null;
     }

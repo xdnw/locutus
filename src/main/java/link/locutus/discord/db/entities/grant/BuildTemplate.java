@@ -90,7 +90,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         StringBuilder message = new StringBuilder();
 
         if(build != null)
-            message.append("build: ```json\n" + new JavaCity().fromBytes(build).toJson() + "\n```\n");
+            message.append("build: ```json\n" + new JavaCity().fromBytes(build).toJson(false) + "\n```\n");
 
         message.append("Only New Cities: `" + onlyNewCities + "`\n");
         if (mmr != null) {
@@ -113,7 +113,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     @Override
     public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String repeatable) {
         return CM.grant_template.create.build.cmd.name(name).allowedRecipients(allowedRecipients).build(
-                build != null ? JavaCity.fromBytes(build).toJson() : null).mmr(
+                build != null ? JavaCity.fromBytes(build).toJson(false) : null).mmr(
                 mmr == null ? null : mmr.toString()).only_new_cities(
                 onlyNewCities ? "true" : null).allow_after_days(
                 allow_switch_after_days > 0 ? allow_switch_after_days + "" : null).allow_after_offensive(

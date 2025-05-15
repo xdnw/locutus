@@ -397,7 +397,7 @@ public class JavaCity implements ICity {
     }
 
     public CityBuild toCityBuild() {
-        return CityBuild.of(toJson());
+        return CityBuild.of(toJson(false));
     }
 
     public JavaCity(City city) {
@@ -689,7 +689,7 @@ public class JavaCity implements ICity {
         return powered;
     }
 
-    public double profitConverted2(Continent continent, double rads, Predicate<Project> hasProject, int numCities, double grossModifier) {
+    private double profitConverted2(Continent continent, double rads, Predicate<Project> hasProject, int numCities, double grossModifier) {
         return PW.City.profitConverted(continent, rads, hasProject, numCities, grossModifier, this);
     }
 

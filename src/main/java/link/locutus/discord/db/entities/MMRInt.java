@@ -26,4 +26,12 @@ public class MMRInt extends MMRDouble{
         }
         return new MMRInt(mmr);
     }
+
+    public int getNumBuildings() {
+        int total = 0;
+        for (double v : this.mmr) {
+            total += (int) v;
+        }
+        return total;
+    }
 }

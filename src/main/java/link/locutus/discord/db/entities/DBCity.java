@@ -414,10 +414,6 @@ public abstract class DBCity implements ICity {
         return getBuilding(Buildings.BARRACKS) + "" + getBuilding(Buildings.FACTORY) + getBuilding(Buildings.HANGAR) + getBuilding(Buildings.DRYDOCK);
     }
 
-    public int[] getMMRArray() {
-        return new int[]{getBuilding(Buildings.BARRACKS), getBuilding(Buildings.FACTORY), getBuilding(Buildings.HANGAR), getBuilding(Buildings.DRYDOCK)};
-    }
-
     @Command(desc = "Get city infrastructure")
     public double getInfra() {
         return getInfra_cents() * 0.01;
@@ -507,6 +503,17 @@ public abstract class DBCity implements ICity {
     public int getRequiredInfra() {
         return getNumBuildings() * 50;
     }
+
+    @Command(desc = "Get the required infrastructure level for the number of buildings without military buildings")
+    public int getRequiredInfraWithoutMilitary() {
+        int numBuildings = getNumBuildings();
+        numBuildings -= getBuilding(Buildings.BARRACKS);
+        numBuildings -= getBuilding(Buildings.FACTORY);
+        numBuildings -= getBuilding(Buildings.HANGAR);
+        numBuildings -= getBuilding(Buildings.DRYDOCK);
+        return numBuildings * 50;
+    }
+
     @Command(desc = "Get the resource cost of buildings in the city")
     public Map<ResourceType, Double> getBuildingCost() {
         double[] costArr = ResourceType.getBuffer();

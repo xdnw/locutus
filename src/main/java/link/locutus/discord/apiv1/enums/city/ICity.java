@@ -1,5 +1,6 @@
 package link.locutus.discord.apiv1.enums.city;
 
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -7,6 +8,8 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.db.entities.MMRInt;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.web.WebUtil;
 
@@ -80,7 +83,7 @@ public interface ICity {
     }
 
     @Command(desc = "The city build json")
-    default String toJson() {
+    default String toJson(@Default Boolean pretty) {
         JsonObject object = new JsonObject();
 
         Map<String, String> json = new HashMap<>();
@@ -98,6 +101,9 @@ public interface ICity {
             json.put(building.nameSnakeCase(), amt + "");
         }
 
+        if (pretty == Boolean.TRUE) {
+            return new GsonBuilder().setPrettyPrinting().create().toJson(json);
+        }
         return WebUtil.GSON.toJson(json);
     }
 
@@ -152,5 +158,13 @@ public interface ICity {
             }
         }
         return true;
+    }
+
+    default int[] getMMRArray() {
+        return new int[]{getBuilding(Buildings.BARRACKS), getBuilding(Buildings.FACTORY), getBuilding(Buildings.HANGAR), getBuilding(Buildings.DRYDOCK)};
+    }
+
+    default MMRInt getMMRInt() {
+        return new MMRInt(getMMRArray());
     }
 }
