@@ -2770,7 +2770,7 @@ public class UtilityCommands {
         double bestValue = Double.MIN_VALUE;
         JavaCity best = null;
         for (DBCity other : Locutus.imp().getNationDB().getCities()) {
-            if (!other.canBuild(continent, hasProject, false)) {
+            if (!other.canBuild(continentFinal, hasProject, false)) {
                 continue;
             }
             int otherInfra = other.getRequiredInfraWithoutMilitary();
