@@ -2737,7 +2737,7 @@ public class UtilityCommands {
 
 
     @Command(desc = "Find the best build from existing builds people have")
-    public String findExistingBuild(@Me IMessageIO io,
+    public String findExistingBuild(@Me IMessageIO io, @Me DBNation me,
                             DBCity city,
                             @Range(min=600,max=3000) int infraLevel,
                             @Switch("c") Continent continent,
@@ -2751,6 +2751,9 @@ public class UtilityCommands {
         int infraNoMil = infraLevel - mmrFinal.getNumBuildings() * 50;
 
         DBNation originNation = origin.getNation();
+        if (originNation == null) {
+            originNation = me;
+        }
         Continent continentFinal = continent != null ? continent : originNation.getContinent();
         Predicate<Project> hasProject = forceProjects != null ? f -> forceProjects.contains(f) : f -> false;
         if (originNation != null) hasProject = hasProject.or(originNation::hasProject);
@@ -2760,6 +2763,8 @@ public class UtilityCommands {
                 openMarkets || (originNation != null && originNation.getDomesticPolicy() == DomesticPolicy.OPEN_MARKETS),
                 hasProject.test(Projects.GOVERNMENT_SUPPORT_AGENCY),
                 hasProject.test(Projects.BUREAU_OF_DOMESTIC_AFFAIRS));
+
+        if (rads == null) rads = originNation.getRads();
 
 
         double bestValue = Double.MIN_VALUE;
