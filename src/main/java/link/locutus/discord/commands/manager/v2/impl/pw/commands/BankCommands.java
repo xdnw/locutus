@@ -696,6 +696,9 @@ public class BankCommands {
             if (!Roles.ECON_STAFF.has(user, db.getGuild())) {
                 throw new IllegalArgumentException("No permission to check other nation's tax info. Missing: " + Roles.ECON_STAFF.toDiscordRoleNameElseInstructions(db.getGuild()));
             }
+            if (!db.isAllianceId(nation.getAlliance_id())) {
+                throw new IllegalArgumentException("Nation is not in an alliance: " + nation.getName());
+            }
         }
         List<String> responses = new ArrayList<>();
 
