@@ -411,22 +411,70 @@ public class OptimalBuild extends Command {
                 return parent.applyAsDouble(city);
             };
         }
-//
-//        if (!manu) {
-//            ToDoubleFunction<CityNode> parent = valueFunc;
-//            valueFunc = city -> {
-//                if (city.getBuilding(Buildings.MUNITIONS_FACTORY) > city.getBuilding(Buildings.LEAD_MINE))
-//                    return Double.NEGATIVE_INFINITY;
-//                if (city.getBuilding(Buildings.GAS_REFINERY) > city.getBuilding(Buildings.OIL_WELL)) return Double.NEGATIVE_INFINITY;
-//                if (city.getBuilding(Buildings.ALUMINUM_REFINERY) > city.getBuilding(Buildings.BAUXITE_MINE))
-//                    return Double.NEGATIVE_INFINITY;
-//                if (city.getBuilding(Buildings.STEEL_MILL) > city.getBuilding(Buildings.COAL_MINE) || city.getBuilding(Buildings.STEEL_MILL) > city.getBuilding(Buildings.IRON_MINE))
-//                    return Double.NEGATIVE_INFINITY;
-//                return parent.apply(city);
-//            };
-//        }
 
         Predicate<INationCity> goal = javaCity -> javaCity.getFreeSlots() <= 0;
+
+        if (!manu) {
+            Predicate<INationCity> parent = goal;
+            goal = city -> {
+                if (parent.test(city)) {
+                    if (city.getBuilding(Buildings.MUNITIONS_FACTORY) > city.getBuilding(Buildings.LEAD_MINE))
+                        return false;
+                    if (city.getBuilding(Buildings.GAS_REFINERY) > city.getBuilding(Buildings.OIL_WELL))
+                        return false;
+                    if (city.getBuilding(Buildings.ALUMINUM_REFINERY) > city.getBuilding(Buildings.BAUXITE_MINE))
+                        return false;
+                    if (city.getBuilding(Buildings.STEEL_MILL) > city.getBuilding(Buildings.COAL_MINE) || city.getBuilding(Buildings.STEEL_MILL) > city.getBuilding(Buildings.IRON_MINE))
+                        return false;
+                    return true;
+                }
+                return false;
+            };
+        }
+        if (steel != null) {
+            int steelFinal = steel;
+            Predicate<INationCity> parent = goal;
+            goal = city -> {
+                if (parent.test(city)) {
+                    if (city.getBuilding(Buildings.STEEL_MILL) < steelFinal) return false;
+                    return true;
+                }
+                return false;
+            };
+        }
+        if (gasoline != null) {
+            int gasolineFinal = gasoline;
+            Predicate<INationCity> parent = goal;
+            goal = city -> {
+                if (parent.test(city)) {
+                    if (city.getBuilding(Buildings.GAS_REFINERY) < gasolineFinal) return false;
+                    return true;
+                }
+                return false;
+            };
+        }
+        if (munitions != null) {
+            int munitionsFinal = munitions;
+            Predicate<INationCity> parent = goal;
+            goal = city -> {
+                if (parent.test(city)) {
+                    if (city.getBuilding(Buildings.MUNITIONS_FACTORY) < munitionsFinal) return false;
+                    return true;
+                }
+                return false;
+            };
+        }
+        if (aluminum != null) {
+            int aluminumFinal = aluminum;
+            Predicate<INationCity> parent = goal;
+            goal = city -> {
+                if (parent.test(city)) {
+                    if (city.getBuilding(Buildings.ALUMINUM_REFINERY) < aluminumFinal) return false;
+                    return true;
+                }
+                return false;
+            };
+        }
 
         if (diseaseLimit != null) {
             Double finalDiseaseLimit = diseaseLimit;
