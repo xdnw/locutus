@@ -502,6 +502,7 @@ public class JavaCity implements IMutableCity {
                 timeout,
                 nation.getRads(),
                 selfSufficient,
+                true,
                 nation.getGrossModifier(),
                 infraLow);
     }
@@ -535,7 +536,7 @@ public class JavaCity implements IMutableCity {
             return (newProfit * days - cost) / javaCity.getNumBuildings();
         };
         valueFunction = modifyValueFunc.apply(valueFunction);
-        JavaCity optimal = zeroed.optimalBuild(continent, numCities, valueFunction, goal, finalHasProject, timeout, rads, selfSufficient, grossModifier, infraLow);
+        JavaCity optimal = zeroed.optimalBuild(continent, numCities, valueFunction, goal, finalHasProject, timeout, rads, selfSufficient, true, grossModifier, infraLow);
         return optimal;
     }
 
@@ -548,12 +549,12 @@ public class JavaCity implements IMutableCity {
         return this;
     }
 
-    public JavaCity optimalBuild(Continent continent, int numCities, ToDoubleFunction<INationCity> valueFunction, Predicate<INationCity> goal, Predicate<Project> hasProject, long timeout, double rads, boolean selfSufficient, double grossModifier, Double infraLow) {
+    public JavaCity optimalBuild(Continent continent, int numCities, ToDoubleFunction<INationCity> valueFunction, Predicate<INationCity> goal, Predicate<Project> hasProject, long timeout, double rads, boolean selfSufficient, boolean checkBest, double grossModifier, Double infraLow) {
         JavaCity copy = new JavaCity(this);
         CityNode.CachedCity cached = new CityNode.CachedCity(this, continent, selfSufficient, hasProject, numCities, grossModifier, rads, infraLow);
         CityBranch searchServices = new CityBranch(cached);
         CityNode optimized = searchServices.toOptimal(valueFunction, goal, timeout);
-        INationCity best = findBest(continent, numCities, valueFunction, goal, hasProject, rads, grossModifier, infraLow);
+        INationCity best = selfSufficient || !checkBest ? null : findBest(continent, numCities, valueFunction, goal, hasProject, rads, grossModifier, infraLow);
         if (best != null && (optimized == null || valueFunction.applyAsDouble(best) > valueFunction.applyAsDouble(optimized))) {
             return new JavaCity(best);
         }
