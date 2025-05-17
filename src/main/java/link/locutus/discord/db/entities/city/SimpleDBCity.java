@@ -40,6 +40,7 @@ public class SimpleDBCity extends DBCity {
     }
 
     public SimpleDBCity(ICity city) {
+        this.buildings3 = new byte[PW.City.Building.SIZE];
         this.setCreated(city.getCreated());
         this.setLand(city.getLand());
         this.setInfra(city.getInfra());
