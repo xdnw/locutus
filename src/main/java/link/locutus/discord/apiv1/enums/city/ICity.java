@@ -42,7 +42,7 @@ public interface ICity {
     }
 
     default int getSlots() {
-        return (int) (getInfra() / 50);
+        return (int) (Math.round(getInfra() * 100) / 50_00);
     }
 
     default int getFreeSlots() {
@@ -149,12 +149,12 @@ public interface ICity {
     default INationCity findBest(Continent continent, int numCities, ToDoubleFunction<INationCity> valueFunction, Predicate<INationCity> goal, Predicate<Project> hasProject, double rads, double grossModifier, Double infraLow) {
         DBCity origin = new SimpleDBCity(this);
 
-        DBNation originNation = origin.getNation();
         origin.setOptimalPower(continent);
 
         Predicate<Building> militaryOrPower = f -> f.getType() == BuildingType.MILITARY || f.getType() == BuildingType.POWER;
         int milAndPowerImps = origin.getNumBuildingsMatching(militaryOrPower);
-        int slotsNonMilOrPower = ((int) origin.getInfra() / 50) - milAndPowerImps;
+        int slotsNonMilOrPower = ((int) Math.round(origin.getInfra() * 100) / 50_00) - milAndPowerImps;
+        System.out.println("Slots " + (origin.getInfra()) + " | " + (origin.getInfra() / 50) + " | " + milAndPowerImps + " | " + slotsNonMilOrPower);
         if (slotsNonMilOrPower <= 0) {
             return null;
         }
@@ -168,8 +168,7 @@ public interface ICity {
         };
 
         Predicate<Building> nonMilitaryOrPower = f -> switch (f.getType()) {
-            case MILITARY -> false;
-            case POWER -> false;
+            case MILITARY, POWER -> false;
             default -> true;
         };
         double bestValue = Double.MIN_VALUE;
