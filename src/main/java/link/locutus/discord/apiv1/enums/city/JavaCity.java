@@ -445,6 +445,7 @@ public class JavaCity implements IMutableCity {
         this.land_ = other.getLand();
         this.infra = other.getInfra();
         this.nuke_turn = other.getNuke_turn();
+        this.numBuildings = 0;
         setBuildings(other);
     }
 

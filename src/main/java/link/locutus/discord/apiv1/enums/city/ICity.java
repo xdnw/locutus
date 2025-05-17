@@ -154,7 +154,6 @@ public interface ICity {
         Predicate<Building> militaryOrPower = f -> f.getType() == BuildingType.MILITARY || f.getType() == BuildingType.POWER;
         int milAndPowerImps = origin.getNumBuildingsMatching(militaryOrPower);
         int slotsNonMilOrPower = ((int) Math.round(origin.getInfra() * 100) / 50_00) - milAndPowerImps;
-        System.out.println("Slots " + (origin.getInfra()) + " | " + (origin.getInfra() / 50) + " | " + milAndPowerImps + " | " + slotsNonMilOrPower);
         if (slotsNonMilOrPower <= 0) {
             return null;
         }

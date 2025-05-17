@@ -2736,96 +2736,97 @@ public class UtilityCommands {
 
 
 
-    @Command(desc = "Find the best build from existing builds people have")
-    public String findExistingBuild(@Me IMessageIO io, @Me DBNation me,
-                            DBCity city,
-                                @Switch("i") @Range(min=600,max=3000) Integer infra,
-                            @Switch("d") @Range(min=600,max=3000) Integer infra_damaged,
-                            @Switch("c") Continent continent,
-                            @Switch("r") Double rads,
-                            @Switch("p") Set<Project> forceProjects,
-                            @Switch("o") boolean openMarkets,
-                            @Switch("m") MMRInt mmr,
-                            @Switch("l") Double land) {
-        DBCity origin = new SimpleDBCity(city);
-        DBNation originNation = origin.getNation();
-        if (originNation == null) {
-            originNation = me;
-        }
-        Continent continentFinal = continent != null ? continent : originNation.getContinent();
-        double infraRequiredFinal = infra != null ? infra : origin.getInfra();
+//    @Command(desc = "Find the best build from existing builds people have")
+//    public String findExistingBuild(@Me IMessageIO io, @Me DBNation me,
+//                            DBCity city,
+//                                @Switch("i") @Range(min=600,max=3000) Integer infra,
+//                            @Switch("d") @Range(min=600,max=3000) Integer infra_damaged,
+//                            @Switch("c") Continent continent,
+//                            @Switch("r") Double rads,
+//                            @Switch("p") Set<Project> forceProjects,
+//                            @Switch("o") boolean openMarkets,
+//                            @Switch("m") MMRInt mmr,
+//                            @Switch("l") Double land) {
+//        DBCity origin = new SimpleDBCity(city);
+//        DBNation originNation = origin.getNation();
+//        if (originNation == null) {
+//            originNation = me;
+//        }
+//        Continent continentFinal = continent != null ? continent : originNation.getContinent();
+//        double infraRequiredFinal = infra != null ? infra : origin.getInfra();
+//
+//        if (infra_damaged != null) {
+//            origin.setInfra(infra_damaged);
+//        } else if (infra != null) {
+//            origin.setInfra(infra);
+//        }
+//        origin.setOptimalPower(continentFinal);
+//        if (mmr != null) origin.setMMR(mmr);
+//        Predicate<Building> militaryOrPower = f -> f.getType() == BuildingType.MILITARY || f.getType() == BuildingType.POWER;
+//        int milAndPowerImps = origin.getNumBuildingsMatching(militaryOrPower);
+//        int slotsNonMilOrPower = ((int) infraRequiredFinal / 50) - milAndPowerImps;
+//        if (slotsNonMilOrPower <= 0) {
+//            throw new IllegalArgumentException("No spare improvements slots with build of MMR: " + origin.getMMR() + " and infra: " + MathMan.format(infraRequiredFinal));
+//        }
+//
+//        Predicate<Project> hasProject = forceProjects != null ? f -> forceProjects.contains(f) : f -> false;
+//        if (originNation != null) hasProject = hasProject.or(originNation::hasProject);
+//        hasProject = Projects.optimize(hasProject);
+//
+//        double grossModifier = DBNation.getGrossModifier(false,
+//                openMarkets || (originNation != null && originNation.getDomesticPolicy() == DomesticPolicy.OPEN_MARKETS),
+//                hasProject.test(Projects.GOVERNMENT_SUPPORT_AGENCY),
+//                hasProject.test(Projects.BUREAU_OF_DOMESTIC_AFFAIRS));
+//
+//        if (rads == null) rads = originNation.getRads();
+//
+//
+//        Predicate<Building> nonMilitaryOrPower = f -> switch (f.getType()) {
+//            case MILITARY -> false;
+//            case POWER -> false;
+//            default -> true;
+//        };
+//        double bestValue = Double.MIN_VALUE;
+//        DBCity best = null;
+//        for (DBCity other : Locutus.imp().getNationDB().getCities()) {
+//            int otherImps = other.getNumBuildingsMatching(nonMilitaryOrPower);
+//            if (otherImps != slotsNonMilOrPower) {
+//                continue;
+//            }
+//            DBCity copy = new SimpleDBCity(other);
+//            copy.setMilitaryBuildings(origin);
+//            copy.setPowerBuildings(origin);
+//            if (!copy.canBuild(continentFinal, hasProject, false)) {
+//                continue;
+//            }
+//            copy.setNuke_turn(0);
+//            copy.setLand(origin.getLand());
+//            copy.setInfra(origin.getInfra());
+//            copy.setDateCreated(origin.getCreated());
+//
+//            double profit = PW.City.profitConverted(continentFinal, rads, hasProject, 100, grossModifier, copy);
+//            if (profit > bestValue) {
+//                bestValue = profit;
+//                best = copy;
+//            }
+//        }
+//
+//        if (best == null) {
+//            return "No build found matching: `" + MathMan.format(infraRequiredFinal) + "` infra, `" + origin.getMMR() + "` MMR";
+//        }
+//        String title = "~$" + MathMan.format(bestValue) + " profit";
+//        StringBuilder body = new StringBuilder();
+//        body.append("```\n" + best.toJson(true) + "\n```");
+//        body.append("\nDisease: ").append(MathMan.format(best.calcDisease(hasProject)));
+//        body.append("\nPollution: ").append(MathMan.format(best.calcPollution(hasProject)));
+//        body.append("\nCrime: ").append(MathMan.format(best.calcCrime(hasProject)));
+//        body.append("\nCommerce: ").append(MathMan.format(best.calcCommerce(hasProject)) + "/" + MathMan.format(best.getMaxCommerce(hasProject)));
+//        body.append("\nPopulation: ").append(MathMan.format(best.calcPopulation(hasProject)));
+//
+//        io.create().embed(title, body.toString()).send();
+//        return null;
+//    }
 
-        if (infra_damaged != null) {
-            origin.setInfra(infra_damaged);
-        } else if (infra != null) {
-            origin.setInfra(infra);
-        }
-        origin.setOptimalPower(continentFinal);
-        if (mmr != null) origin.setMMR(mmr);
-        Predicate<Building> militaryOrPower = f -> f.getType() == BuildingType.MILITARY || f.getType() == BuildingType.POWER;
-        int milAndPowerImps = origin.getNumBuildingsMatching(militaryOrPower);
-        int slotsNonMilOrPower = ((int) infraRequiredFinal / 50) - milAndPowerImps;
-        if (slotsNonMilOrPower <= 0) {
-            throw new IllegalArgumentException("No spare improvements slots with build of MMR: " + origin.getMMR() + " and infra: " + MathMan.format(infraRequiredFinal));
-        }
-
-        Predicate<Project> hasProject = forceProjects != null ? f -> forceProjects.contains(f) : f -> false;
-        if (originNation != null) hasProject = hasProject.or(originNation::hasProject);
-        hasProject = Projects.optimize(hasProject);
-
-        double grossModifier = DBNation.getGrossModifier(false,
-                openMarkets || (originNation != null && originNation.getDomesticPolicy() == DomesticPolicy.OPEN_MARKETS),
-                hasProject.test(Projects.GOVERNMENT_SUPPORT_AGENCY),
-                hasProject.test(Projects.BUREAU_OF_DOMESTIC_AFFAIRS));
-
-        if (rads == null) rads = originNation.getRads();
-
-
-        Predicate<Building> nonMilitaryOrPower = f -> switch (f.getType()) {
-            case MILITARY -> false;
-            case POWER -> false;
-            default -> true;
-        };
-        double bestValue = Double.MIN_VALUE;
-        DBCity best = null;
-        for (DBCity other : Locutus.imp().getNationDB().getCities()) {
-            int otherImps = other.getNumBuildingsMatching(nonMilitaryOrPower);
-            if (otherImps != slotsNonMilOrPower) {
-                continue;
-            }
-            DBCity copy = new SimpleDBCity(other);
-            copy.setMilitaryBuildings(origin);
-            copy.setPowerBuildings(origin);
-            if (!copy.canBuild(continentFinal, hasProject, false)) {
-                continue;
-            }
-            copy.setNuke_turn(0);
-            copy.setLand(origin.getLand());
-            copy.setInfra(origin.getInfra());
-            copy.setDateCreated(origin.getCreated());
-
-            double profit = PW.City.profitConverted(continentFinal, rads, hasProject, 100, grossModifier, copy);
-            if (profit > bestValue) {
-                bestValue = profit;
-                best = copy;
-            }
-        }
-
-        if (best == null) {
-            return "No build found matching: `" + MathMan.format(infraRequiredFinal) + "` infra, `" + origin.getMMR() + "` MMR";
-        }
-        String title = "~$" + MathMan.format(bestValue) + " profit";
-        StringBuilder body = new StringBuilder();
-        body.append("```\n" + best.toJson(true) + "\n```");
-        body.append("\nDisease: ").append(MathMan.format(best.calcDisease(hasProject)));
-        body.append("\nPollution: ").append(MathMan.format(best.calcPollution(hasProject)));
-        body.append("\nCrime: ").append(MathMan.format(best.calcCrime(hasProject)));
-        body.append("\nCommerce: ").append(MathMan.format(best.calcCommerce(hasProject)) + "/" + MathMan.format(best.getMaxCommerce(hasProject)));
-        body.append("\nPopulation: ").append(MathMan.format(best.calcPopulation(hasProject)));
-
-        io.create().embed(title, body.toString()).send();
-        return null;
-    }
     @Command(desc = "Calculate how many days it takes to ROI on the last improvement slot for a specified infra level", viewable = true)
     public String infraROI(DBCity city, @Range(min=600,max=3000) int infraLevel,
                            @Switch("c") Continent continent,

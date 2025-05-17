@@ -255,8 +255,6 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
-        getCommands().registerMethod(new UtilityCommands(), List.of("city", "find"), "findExistingBuild", "best_existing_build");
-
         getCommands().registerMethod(new GrantCommands(), List.of("grant_template", "create"), "templateCreateResearch", "research");
         getCommands().registerMethod(new GrantCommands(), List.of("grant"), "grantResearch", "research");
 
