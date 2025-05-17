@@ -1,6 +1,8 @@
 package link.locutus.discord.commands.info.optimal;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.city.ICity;
+import link.locutus.discord.apiv1.enums.city.INationCity;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
@@ -297,20 +299,20 @@ public class OptimalBuild extends Command {
         }
 
         if (mmr != null) {
-            origin.set(Buildings.BARRACKS, mmr.charAt(0) - '0');
-            origin.set(Buildings.FACTORY, mmr.charAt(1) - '0');
-            origin.set(Buildings.HANGAR, mmr.charAt(2) - '0');
-            origin.set(Buildings.DRYDOCK, mmr.charAt(3) - '0');
+            origin.setBuilding(Buildings.BARRACKS, mmr.charAt(0) - '0');
+            origin.setBuilding(Buildings.FACTORY, mmr.charAt(1) - '0');
+            origin.setBuilding(Buildings.HANGAR, mmr.charAt(2) - '0');
+            origin.setBuilding(Buildings.DRYDOCK, mmr.charAt(3) - '0');
         }
-        if (steel != null) origin.set(Buildings.STEEL_MILL, steel);
-        if (gasoline != null) origin.set(Buildings.GAS_REFINERY, gasoline);
-        if (munitions != null) origin.set(Buildings.MUNITIONS_FACTORY, munitions);
-        if (aluminum != null) origin.set(Buildings.ALUMINUM_REFINERY, aluminum);
-        if (!manu && steel != null) origin.set(Buildings.COAL_MINE, steel);
-        if (!manu && steel != null) origin.set(Buildings.IRON_MINE, steel);
-        if (!manu && gasoline != null) origin.set(Buildings.OIL_WELL, gasoline);
-        if (!manu && munitions != null) origin.set(Buildings.LEAD_MINE, munitions);
-        if (!manu && aluminum != null) origin.set(Buildings.BAUXITE_MINE, aluminum);
+        if (steel != null) origin.setBuilding(Buildings.STEEL_MILL, steel);
+        if (gasoline != null) origin.setBuilding(Buildings.GAS_REFINERY, gasoline);
+        if (munitions != null) origin.setBuilding(Buildings.MUNITIONS_FACTORY, munitions);
+        if (aluminum != null) origin.setBuilding(Buildings.ALUMINUM_REFINERY, aluminum);
+        if (!manu && steel != null) origin.setBuilding(Buildings.COAL_MINE, steel);
+        if (!manu && steel != null) origin.setBuilding(Buildings.IRON_MINE, steel);
+        if (!manu && gasoline != null) origin.setBuilding(Buildings.OIL_WELL, gasoline);
+        if (!manu && munitions != null) origin.setBuilding(Buildings.LEAD_MINE, munitions);
+        if (!manu && aluminum != null) origin.setBuilding(Buildings.BAUXITE_MINE, aluminum);
 
         if (infra != null) origin.setInfra(infra);
         if (land != null) origin.setLand(land);
@@ -338,14 +340,14 @@ public class OptimalBuild extends Command {
 
         CompletableFuture<IMessageBuilder> future = io.send("Please wait...");
 
-        ToDoubleFunction<CityNode> valueFunc;
+        ToDoubleFunction<INationCity> valueFunc;
         if (taxes != null) {
             double[] buffer = new double[ResourceType.values.length];
             double moneyFactor = (100 - taxes.money) / 100d;
             double rssFactor = (100 - taxes.resources) / 100d;
             valueFunc = javaCity -> {
                 Arrays.fill(buffer, 0);
-                double[] profit = javaCity.profit(buffer);
+                double[] profit = javaCity.getProfit(buffer);
                 profit[0] *= moneyFactor;
                 for (int i = 1; i < profit.length; i++) {
                     if (profit[i] > 0) {
@@ -380,7 +382,7 @@ public class OptimalBuild extends Command {
         if (popLimit != null) {
             Double finalpopLimit = popLimit;
 
-            ToDoubleFunction<CityNode> parent = valueFunc;
+            ToDoubleFunction<INationCity> parent = valueFunc;
             valueFunc = city -> {
                 if (city.calcPopulation(hasProject) < finalpopLimit) return Double.NEGATIVE_INFINITY;
                 return parent.applyAsDouble(city);
@@ -390,7 +392,7 @@ public class OptimalBuild extends Command {
         if (popLow != null) {
             Double finalpopLimit = popLow;
 
-            ToDoubleFunction<CityNode> parent = valueFunc;
+            ToDoubleFunction<INationCity> parent = valueFunc;
             valueFunc = city -> {
                 if (city.calcPopulation(hasProject) < finalpopLimit) return Double.NEGATIVE_INFINITY;
                 return parent.applyAsDouble(city);
@@ -411,7 +413,7 @@ public class OptimalBuild extends Command {
 //            };
 //        }
 
-        Predicate<CityNode> goal = javaCity -> javaCity.getFreeSlots() <= 0;
+        Predicate<INationCity> goal = javaCity -> javaCity.getFreeSlots() <= 0;
 
         if (diseaseLimit != null) {
             Double finalDiseaseLimit = diseaseLimit;
@@ -420,7 +422,7 @@ public class OptimalBuild extends Command {
             double recyclingPct = (-Buildings.RECYCLING_CENTER.pollution(hasProject)) * 0.05;
             double subwayPct = (-Buildings.SUBWAY.pollution(hasProject)) * 0.05;
 
-            ToDoubleFunction<CityNode> parent = valueFunc;
+            ToDoubleFunction<INationCity> parent = valueFunc;
             valueFunc = city -> {
                 Double disease = city.calcDisease(hasProject);
                 if (disease > finalDiseaseLimit) {
@@ -482,10 +484,9 @@ public class OptimalBuild extends Command {
             int policeIndex = Buildings.POLICE_STATION.ordinal();
             int diff = maxIndex - policeIndex;
 
-            ToDoubleFunction<CityNode> parent = valueFunc;
+            ToDoubleFunction<INationCity> parent = valueFunc;
             valueFunc = city -> {
                 double crime = city.calcCrime(hasProject);
-
                 if (crime > finalCrimeLimit) {
                     int remainingSlots = city.getFreeSlots();
                     if (remainingSlots == 0) return Double.NEGATIVE_INFINITY;
@@ -493,9 +494,13 @@ public class OptimalBuild extends Command {
                     if (currentPolice >= max) return Double.NEGATIVE_INFINITY;
                     double reduced = crime - Math.min(max - currentPolice, remainingSlots) * policePct;
                     if (reduced > crime) return Double.NEGATIVE_INFINITY;
-                    int index = city.getIndex();
-                    int cachedMaxIndex = city.getCached().getMaxIndex() - 1;
-                    if (index > cachedMaxIndex - diff) {
+                    if (city instanceof CityNode node) {
+                        int index = node.getIndex();
+                        int cachedMaxIndex = node.getCached().getMaxIndex() - 1;
+                        if (index > cachedMaxIndex - diff) {
+                            return Double.NEGATIVE_INFINITY;
+                        }
+                    } else {
                         return Double.NEGATIVE_INFINITY;
                     }
                 }
@@ -504,7 +509,7 @@ public class OptimalBuild extends Command {
         }
 
         if (positiceCash) {
-            Predicate<CityNode> parentGoal = goal;
+            Predicate<INationCity> parentGoal = goal;
             double[] profitBuffer = new double[ResourceType.values.length];
             double upkeepCash = 0;
             for (MilitaryUnit unit : MilitaryUnit.values) {
@@ -520,7 +525,7 @@ public class OptimalBuild extends Command {
             goal = city -> {
                 if (parentGoal.test(city)) {
                     Arrays.fill(profitBuffer, 0);
-                    city.profit(profitBuffer);
+                    city.getProfit(profitBuffer);
                     profitBuffer[0] += 500000d / numCities;
                     profitBuffer[0] -= finalUpkeepCash;
                     return !(profitBuffer[0] < 0);
@@ -533,8 +538,8 @@ public class OptimalBuild extends Command {
         if (days == null) {
             optimized = origin.optimalBuild(continent, numCities, valueFunc, goal, hasProject, timeout, rads, !manu, finalMe.getGrossModifier(), infraLow);
         } else {
-            ToDoubleFunction<CityNode> finalValueFunc = valueFunc;
-            Function<ToDoubleFunction<CityNode>, ToDoubleFunction<CityNode>> modifyValueFunc = f -> finalValueFunc;
+            ToDoubleFunction<INationCity> finalValueFunc = valueFunc;
+            Function<ToDoubleFunction<INationCity>, ToDoubleFunction<INationCity>> modifyValueFunc = f -> finalValueFunc;
             optimized = origin.roiBuild(continent, rads, numCities, hasProject, finalMe.getGrossModifier(), days, timeout, !manu, infraLow, modifyValueFunc, goal);
         }
         if (optimized == null) {

@@ -1262,8 +1262,8 @@ public class UnsortedCommands {
         if (metrics.pollution > 0) msg.append("\npollution: " + MathMan.format(metrics.pollution));
 
         long nukeCutoff = TimeUtil.getTurn() - 132;
-        if (jCity.getNukeTurn() > nukeCutoff) {
-            msg.append("\nNuked: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - TimeUtil.getTimeFromTurn(jCity.getNukeTurn())) + " ago");
+        if (jCity.getNuke_turn() > nukeCutoff) {
+            msg.append("\nNuked: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - TimeUtil.getTimeFromTurn(jCity.getNuke_turn())) + " ago");
         }
         if (!errors.isEmpty()) {
             msg.append("\n- " + StringMan.join(errors, "\n- "));

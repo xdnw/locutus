@@ -2177,13 +2177,13 @@ public abstract class DBNation implements NationOrAlliance {
 
         for (Map.Entry<Integer, JavaCity> cityEntry : cityMap.entrySet()) {
             JavaCity city = new JavaCity(cityEntry.getValue());
-            city.set(Buildings.FARM, 0);
+            city.setBuilding(Buildings.FARM, 0);
             for (Building building : Buildings.values()) {
                 if (building instanceof ResourceBuilding) {
                     ResourceBuilding rssBuilding = (ResourceBuilding) building;
                     ResourceType rss = rssBuilding.getResourceProduced();
                     if (rss.isRaw()) {
-                        city.set(building, 0);
+                        city.setBuilding(building, 0);
                     }
                 }
             }
@@ -3323,7 +3323,7 @@ public abstract class DBNation implements NationOrAlliance {
         for (JavaCity city : getCityMap(false).values()) {
             for (Building building : Buildings.values()) {
                 if (!(building instanceof PowerBuilding power)) {
-                    city.set(building, 0);
+                    city.setBuilding(building, 0);
                 }
             }
             city.profit(data()._continent(), 0, 0, this::hasProject, profitBuffer, 1, 1, 1);

@@ -1,7 +1,10 @@
 package link.locutus.discord.db.entities.city;
 
 import com.politicsandwar.graphql.model.City;
+import link.locutus.discord.apiv1.enums.city.ICity;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
+import link.locutus.discord.apiv1.enums.city.building.Building;
+import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
@@ -34,6 +37,20 @@ public class SimpleDBCity extends DBCity {
 
     public SimpleDBCity(DBCity toCopy) {
         this.set(toCopy);
+    }
+
+    public SimpleDBCity(ICity city) {
+        this.setCreated(city.getCreated());
+        this.setLand(city.getLand());
+        this.setInfra(city.getInfra());
+        this.setPowered(city.getPowered() != Boolean.FALSE);
+        for (Building building : Buildings.values()) {
+            int amt = city.getBuilding(building);
+            if (amt > 0) {
+                this.setBuilding(building, amt);
+            }
+        }
+        this.setNuke_turn(city.getNuke_turn());
     }
 
     public SimpleDBCity(ResultSet rs, int nationId) throws SQLException {

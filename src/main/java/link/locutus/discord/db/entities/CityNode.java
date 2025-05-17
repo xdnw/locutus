@@ -2,7 +2,7 @@ package link.locutus.discord.db.entities;
 
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.city.ICity;
+import link.locutus.discord.apiv1.enums.city.INationCity;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.*;
 import link.locutus.discord.apiv1.enums.city.project.Project;
@@ -13,7 +13,7 @@ import link.locutus.discord.util.PW;
 import java.util.*;
 import java.util.function.*;
 
-public class CityNode implements ICity {
+public class CityNode implements INationCity {
     private final byte[] modifiable;
     private double revenue = -1;
     private int numBuildings;
@@ -43,6 +43,16 @@ public class CityNode implements ICity {
             int finalI = i;
             getNumBuildings[i] = (n, c) -> c.getBuildingOrdinal(finalI);
         }
+    }
+
+    @Override
+    public int getNuke_turn() {
+        return 0;
+    }
+
+    @Override
+    public long getCreated() {
+        return cached.dateCreated;
     }
 
     public void setIndex(int index) {
@@ -107,6 +117,7 @@ public class CityNode implements ICity {
         private final int maxSlots;
         private final double infraLow;
         private final double[][] modifiableProfit;
+        private final long dateCreated;
         private int maxIndex;
 
         public int getBuildingOrdinal(int ordinal) {
@@ -117,13 +128,14 @@ public class CityNode implements ICity {
             this.hasProject = hasProject;
             this.selfSufficient = selfSufficient;
             this.ageDays = city.getAgeDays();
+            this.dateCreated = city.getCreated();
             this.rads = rads;
             this.continent = continent;
             this.buildingInfra = city.getInfra();
             this.land = city.getLand();
             this.buildings = city.getBuildings();
             this.maxSlots = (int) (buildingInfra / 50);
-            int basePollution = PW.City.getNukePollution(city.getNukeTurn());
+            int basePollution = PW.City.getNukePollution(city.getNuke_turn());
             this.infraLow = infraLow == null ? city.getInfra() : infraLow;
 
             this.existing = new ArrayList<>();
@@ -389,10 +401,8 @@ public class CityNode implements ICity {
         return this.revenue = revenue;
     }
 
-    public double[] profit(double[] profitBuffer) {
-        for (int i = 0; i < profitBuffer.length; i++) {
-            profitBuffer[i] = cached.baseProfit[i];
-        }
+    public double[] getProfit(double[] profitBuffer) {
+        System.arraycopy(cached.baseProfit, 0, profitBuffer, 0, profitBuffer.length);
         int population = calcPopulation(cached.hasProject);
         double revenue = cached.baseProfitConverted + cached.commerceIncome[commerce] * population;
         profitBuffer[0] += revenue;

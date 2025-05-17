@@ -5,6 +5,8 @@ import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectHeapPriorityQueue;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.city.ICity;
+import link.locutus.discord.apiv1.enums.city.INationCity;
 import link.locutus.discord.apiv1.enums.city.building.*;
 import link.locutus.discord.db.entities.CityNode;
 import link.locutus.discord.util.MathMan;
@@ -20,7 +22,7 @@ public class CityBranch implements BiConsumer<CityNode, PriorityQueue<CityNode>>
 
     private final CityNode.CachedCity origin;
 
-    public CityNode toOptimal(ToDoubleFunction<CityNode> valueFunction, Predicate<CityNode> goal, long timeout) {
+    public CityNode toOptimal(ToDoubleFunction<INationCity> valueFunction, Predicate<INationCity> goal, long timeout) {
         if (goal == null) {
             goal = f -> f.getFreeSlots() <= 0;
         }
@@ -34,9 +36,9 @@ public class CityBranch implements BiConsumer<CityNode, PriorityQueue<CityNode>>
         CityNode init = origin.create();
         origin.setMaxIndex(buildings.length);
 
-        Function<Double, Function<CityNode, Double>> valueCompletionFunction;
+        Function<Double, Function<INationCity, Double>> valueCompletionFunction;
 
-        valueCompletionFunction = factor -> (Function<CityNode, Double>) entry -> {
+        valueCompletionFunction = factor -> (Function<INationCity, Double>) entry -> {
             double parentValue = valueFunction.applyAsDouble(entry);
             int imps = entry.getNumBuildings();
             if (factor <= 1) {
@@ -52,7 +54,7 @@ public class CityBranch implements BiConsumer<CityNode, PriorityQueue<CityNode>>
             throw new IllegalArgumentException("The city infrastructure (" + MathMan.format(init.getInfra()) + ") is too low for the required buildings (required infra: " + MathMan.format(init.getRequiredInfra()) + ")");
         }
 
-        CityNode optimized = new BFSUtil<>(goal, valueFunction, valueCompletionFunction, this, this, init, queue, timeout).search();
+        CityNode optimized = new BFSUtil<CityNode>((Predicate) goal, (ToDoubleFunction) valueFunction, (Function) valueCompletionFunction, this, this, init, queue, timeout).search();
         return optimized;
     }
 

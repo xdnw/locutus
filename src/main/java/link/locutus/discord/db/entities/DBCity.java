@@ -6,6 +6,7 @@ import link.locutus.discord.apiv1.domains.subdomains.SCityContainer;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.ICity;
+import link.locutus.discord.apiv1.enums.city.IMutableCity;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
@@ -26,9 +27,10 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
-public abstract class DBCity implements ICity {
+public abstract class DBCity implements IMutableCity {
     public static final ToIntFunction<SimpleDBCity> GET_ID = c -> c.getId();
 
+    @Override
     public void setBuilding(Building building, int amt) {
         if (getBuildings3().length != PW.City.Building.SIZE) {
             setBuildings3(this.toFull());
@@ -504,15 +506,7 @@ public abstract class DBCity implements ICity {
         return getNumBuildings() * 50;
     }
 
-    @Command(desc = "Get the required infrastructure level for the number of buildings without military buildings")
-    public int getRequiredInfraWithoutMilitary() {
-        int numBuildings = getNumBuildings();
-        numBuildings -= getBuilding(Buildings.BARRACKS);
-        numBuildings -= getBuilding(Buildings.FACTORY);
-        numBuildings -= getBuilding(Buildings.HANGAR);
-        numBuildings -= getBuilding(Buildings.DRYDOCK);
-        return numBuildings * 50;
-    }
+
 
     @Command(desc = "Get the resource cost of buildings in the city")
     public Map<ResourceType, Double> getBuildingCost() {

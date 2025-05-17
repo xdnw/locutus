@@ -4,13 +4,15 @@ import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.City;
+import link.locutus.discord.apiv1.enums.BuildingType;
 import link.locutus.discord.apiv1.enums.city.building.*;
 import link.locutus.discord.commands.info.optimal.CityBranch;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.CityNode;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.MMRInt;
+import link.locutus.discord.db.entities.city.SimpleDBCity;
+import link.locutus.discord.db.entities.city.SimpleNationCity;
 import link.locutus.discord.db.entities.nation.DBNationData;
 import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.event.Event;
@@ -36,11 +38,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.function.ToDoubleFunction;
+import java.util.function.*;
 
-public class JavaCity implements ICity {
+public class JavaCity implements IMutableCity {
     private final byte[] buildings;
     private int numBuildings = -1;
     private double infra;
@@ -76,7 +76,7 @@ public class JavaCity implements ICity {
 
     public void setBuildings(ICity other) {
         for (Building building : Buildings.values()) {
-            set(building, other.getBuilding(building));
+            setBuilding(building, other.getBuilding(building));
         }
     }
 
@@ -98,7 +98,8 @@ public class JavaCity implements ICity {
         }
     }
 
-    public int getNukeTurn() {
+    @Override
+    public int getNuke_turn() {
         return nuke_turn;
     }
 
@@ -112,13 +113,6 @@ public class JavaCity implements ICity {
 
     public byte[] getBuildings() {
         return buildings;
-    }
-
-    public void setMMR(MMRInt mmr) {
-        set(Buildings.BARRACKS, (int) Math.round(mmr.getBarracks()));
-        set(Buildings.FACTORY, (int) Math.round(mmr.getFactory()));
-        set(Buildings.HANGAR, (int) Math.round(mmr.getHangar()));
-        set(Buildings.DRYDOCK, (int) Math.round(mmr.getDrydock()));
     }
 
     public static class Metrics {
@@ -201,20 +195,6 @@ public class JavaCity implements ICity {
         }
     }
 
-    public int getMaxCommerce(Predicate<Project> hasProject) {
-        int maxCommerce;
-        if (hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER)) {
-            if (hasProject.test(Projects.TELECOMMUNICATIONS_SATELLITE)) {
-                maxCommerce = 125;
-            } else {
-                maxCommerce = 115;
-            }
-        } else {
-            maxCommerce = 100;
-        }
-        return maxCommerce;
-    }
-
     public Metrics getCachedMetrics() {
         return metrics;
     }
@@ -237,33 +217,33 @@ public class JavaCity implements ICity {
     public JavaCity(CityBuild city) {
         this.buildings = new byte[PW.City.Building.SIZE];
         this.infra = city.getInfraNeeded();
-        set(Buildings.COAL_POWER, city.getImpCoalpower());
-        set(Buildings.OIL_POWER, city.getImpOilpower());
-        set(Buildings.WIND_POWER, city.getImpWindpower());
-        set(Buildings.NUCLEAR_POWER, city.getImpNuclearpower());
-        set(Buildings.COAL_MINE, city.getImpCoalmine());
-        set(Buildings.OIL_WELL, city.getImpOilwell());
-        set(Buildings.URANIUM_MINE, city.getImpUramine());
-        set(Buildings.LEAD_MINE, city.getImpLeadmine());
-        set(Buildings.IRON_MINE, city.getImpIronmine());
-        set(Buildings.BAUXITE_MINE, city.getImpBauxitemine());
-        set(Buildings.FARM, city.getImpFarm());
-        set(Buildings.GAS_REFINERY, city.getImpGasrefinery());
-        set(Buildings.ALUMINUM_REFINERY, city.getImpAluminumrefinery());
-        set(Buildings.MUNITIONS_FACTORY, city.getImpMunitionsfactory());
-        set(Buildings.STEEL_MILL, city.getImpSteelmill());
-        set(Buildings.POLICE_STATION, city.getImpPolicestation());
-        set(Buildings.HOSPITAL, city.getImpHospital());
-        set(Buildings.RECYCLING_CENTER, city.getImpRecyclingcenter());
-        set(Buildings.SUBWAY, city.getImpSubway());
-        set(Buildings.SUPERMARKET, city.getImpSupermarket());
-        set(Buildings.BANK, city.getImpBank());
-        set(Buildings.MALL, city.getImpMall());
-        set(Buildings.STADIUM, city.getImpStadium());
-        set(Buildings.BARRACKS, city.getImpBarracks());
-        set(Buildings.FACTORY, city.getImpFactory());
-        set(Buildings.HANGAR, city.getImpHangars());
-        set(Buildings.DRYDOCK, city.getImpDrydock());
+        setBuilding(Buildings.COAL_POWER, city.getImpCoalpower());
+        setBuilding(Buildings.OIL_POWER, city.getImpOilpower());
+        setBuilding(Buildings.WIND_POWER, city.getImpWindpower());
+        setBuilding(Buildings.NUCLEAR_POWER, city.getImpNuclearpower());
+        setBuilding(Buildings.COAL_MINE, city.getImpCoalmine());
+        setBuilding(Buildings.OIL_WELL, city.getImpOilwell());
+        setBuilding(Buildings.URANIUM_MINE, city.getImpUramine());
+        setBuilding(Buildings.LEAD_MINE, city.getImpLeadmine());
+        setBuilding(Buildings.IRON_MINE, city.getImpIronmine());
+        setBuilding(Buildings.BAUXITE_MINE, city.getImpBauxitemine());
+        setBuilding(Buildings.FARM, city.getImpFarm());
+        setBuilding(Buildings.GAS_REFINERY, city.getImpGasrefinery());
+        setBuilding(Buildings.ALUMINUM_REFINERY, city.getImpAluminumrefinery());
+        setBuilding(Buildings.MUNITIONS_FACTORY, city.getImpMunitionsfactory());
+        setBuilding(Buildings.STEEL_MILL, city.getImpSteelmill());
+        setBuilding(Buildings.POLICE_STATION, city.getImpPolicestation());
+        setBuilding(Buildings.HOSPITAL, city.getImpHospital());
+        setBuilding(Buildings.RECYCLING_CENTER, city.getImpRecyclingcenter());
+        setBuilding(Buildings.SUBWAY, city.getImpSubway());
+        setBuilding(Buildings.SUPERMARKET, city.getImpSupermarket());
+        setBuilding(Buildings.BANK, city.getImpBank());
+        setBuilding(Buildings.MALL, city.getImpMall());
+        setBuilding(Buildings.STADIUM, city.getImpStadium());
+        setBuilding(Buildings.BARRACKS, city.getImpBarracks());
+        setBuilding(Buildings.FACTORY, city.getImpFactory());
+        setBuilding(Buildings.HANGAR, city.getImpHangars());
+        setBuilding(Buildings.DRYDOCK, city.getImpDrydock());
         if (city.getLand() != null) setLand(city.getLand());
         if (city.getAge() != null) setAge(city.getAge());
         initImpTotal();
@@ -420,33 +400,33 @@ public class JavaCity implements ICity {
 
         infra = Double.parseDouble(city.getInfrastructure());
 
-        set(Buildings.COAL_POWER, Integer.parseInt(city.getImpCoalpower()));
-        set(Buildings.OIL_POWER, Integer.parseInt(city.getImpOilpower()));
-        set(Buildings.WIND_POWER, Integer.parseInt(city.getImpWindpower()));
-        set(Buildings.NUCLEAR_POWER, Integer.parseInt(city.getImpNuclearpower()));
-        set(Buildings.COAL_MINE, Integer.parseInt(city.getImpCoalmine()));
-        set(Buildings.OIL_WELL, Integer.parseInt(city.getImpOilwell()));
-        set(Buildings.URANIUM_MINE, Integer.parseInt(city.getImpUramine()));
-        set(Buildings.LEAD_MINE, Integer.parseInt(city.getImpLeadmine()));
-        set(Buildings.IRON_MINE, Integer.parseInt(city.getImpIronmine()));
-        set(Buildings.BAUXITE_MINE, Integer.parseInt(city.getImpBauxitemine()));
-        set(Buildings.FARM, Integer.parseInt(city.getImpFarm()));
-        set(Buildings.GAS_REFINERY, Integer.parseInt(city.getImpGasrefinery()));
-        set(Buildings.ALUMINUM_REFINERY, Integer.parseInt(city.getImpAluminumrefinery()));
-        set(Buildings.MUNITIONS_FACTORY, Integer.parseInt(city.getImpMunitionsfactory()));
-        set(Buildings.STEEL_MILL, Integer.parseInt(city.getImpSteelmill()));
-        set(Buildings.POLICE_STATION, Integer.parseInt(city.getImpPolicestation()));
-        set(Buildings.HOSPITAL, Integer.parseInt(city.getImpHospital()));
-        set(Buildings.RECYCLING_CENTER, Integer.parseInt(city.getImpRecyclingcenter()));
-        set(Buildings.SUBWAY, Integer.parseInt(city.getImpSubway()));
-        set(Buildings.SUPERMARKET, Integer.parseInt(city.getImpSupermarket()));
-        set(Buildings.BANK, Integer.parseInt(city.getImpBank()));
-        set(Buildings.MALL, Integer.parseInt(city.getImpMall()));
-        set(Buildings.STADIUM, Integer.parseInt(city.getImpStadium()));
-        set(Buildings.BARRACKS, Integer.parseInt(city.getImpBarracks()));
-        set(Buildings.FACTORY, Integer.parseInt(city.getImpFactory()));
-        set(Buildings.HANGAR, Integer.parseInt(city.getImpHangar()));
-        set(Buildings.DRYDOCK, Integer.parseInt(city.getImpDrydock()));
+        setBuilding(Buildings.COAL_POWER, Integer.parseInt(city.getImpCoalpower()));
+        setBuilding(Buildings.OIL_POWER, Integer.parseInt(city.getImpOilpower()));
+        setBuilding(Buildings.WIND_POWER, Integer.parseInt(city.getImpWindpower()));
+        setBuilding(Buildings.NUCLEAR_POWER, Integer.parseInt(city.getImpNuclearpower()));
+        setBuilding(Buildings.COAL_MINE, Integer.parseInt(city.getImpCoalmine()));
+        setBuilding(Buildings.OIL_WELL, Integer.parseInt(city.getImpOilwell()));
+        setBuilding(Buildings.URANIUM_MINE, Integer.parseInt(city.getImpUramine()));
+        setBuilding(Buildings.LEAD_MINE, Integer.parseInt(city.getImpLeadmine()));
+        setBuilding(Buildings.IRON_MINE, Integer.parseInt(city.getImpIronmine()));
+        setBuilding(Buildings.BAUXITE_MINE, Integer.parseInt(city.getImpBauxitemine()));
+        setBuilding(Buildings.FARM, Integer.parseInt(city.getImpFarm()));
+        setBuilding(Buildings.GAS_REFINERY, Integer.parseInt(city.getImpGasrefinery()));
+        setBuilding(Buildings.ALUMINUM_REFINERY, Integer.parseInt(city.getImpAluminumrefinery()));
+        setBuilding(Buildings.MUNITIONS_FACTORY, Integer.parseInt(city.getImpMunitionsfactory()));
+        setBuilding(Buildings.STEEL_MILL, Integer.parseInt(city.getImpSteelmill()));
+        setBuilding(Buildings.POLICE_STATION, Integer.parseInt(city.getImpPolicestation()));
+        setBuilding(Buildings.HOSPITAL, Integer.parseInt(city.getImpHospital()));
+        setBuilding(Buildings.RECYCLING_CENTER, Integer.parseInt(city.getImpRecyclingcenter()));
+        setBuilding(Buildings.SUBWAY, Integer.parseInt(city.getImpSubway()));
+        setBuilding(Buildings.SUPERMARKET, Integer.parseInt(city.getImpSupermarket()));
+        setBuilding(Buildings.BANK, Integer.parseInt(city.getImpBank()));
+        setBuilding(Buildings.MALL, Integer.parseInt(city.getImpMall()));
+        setBuilding(Buildings.STADIUM, Integer.parseInt(city.getImpStadium()));
+        setBuilding(Buildings.BARRACKS, Integer.parseInt(city.getImpBarracks()));
+        setBuilding(Buildings.FACTORY, Integer.parseInt(city.getImpFactory()));
+        setBuilding(Buildings.HANGAR, Integer.parseInt(city.getImpHangar()));
+        setBuilding(Buildings.DRYDOCK, Integer.parseInt(city.getImpDrydock()));
 
         initImpTotal();
     }
@@ -457,6 +437,15 @@ public class JavaCity implements ICity {
         this.infra = other.infra;
         this.dateCreated = other.dateCreated;
         this.land_ = other.land_;
+    }
+
+    public JavaCity(ICity other) {
+        this.buildings = new byte[PW.City.Building.SIZE];
+        this.dateCreated = other.getCreated();
+        this.land_ = other.getLand();
+        this.infra = other.getInfra();
+        this.nuke_turn = other.getNuke_turn();
+        setBuildings(other);
     }
 
     private transient int hashCode = 0;
@@ -505,18 +494,9 @@ public class JavaCity implements ICity {
     }
 
     public JavaCity optimalBuild(DBNation nation, long timeout, boolean selfSufficient, Double infraLow) {
-        // Continent continent,
-        // int numCities,
-        // Function<CityNode, Double> valueFunction,
-        // Function<CityNode, Boolean> goal,
-        // Predicate<Project> hasProject,
-        // long timeout, double rads,
-        // boolean selfSufficient,
-        // double grossModifier,
-        // Double infraLow
         return optimalBuild(nation.getContinent(),
                 nation.getCities(),
-                CityNode::getRevenueConverted,
+                INationCity::getRevenueConverted,
                 null,
                 nation.hasProjectPredicate(),
                 timeout,
@@ -526,21 +506,11 @@ public class JavaCity implements ICity {
                 infraLow);
     }
 
-//    public JavaCity optimalBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, double grossModifier, long timeout, boolean selfSufficient,
-//                                 Function<Function<JavaCity, Double>, Function<JavaCity, Double>> modifyValueFunc, Function<JavaCity, Boolean> goal) {
-//        Predicate<Project> finalHasProject = Projects.optimize(hasProject);
-//        Function<JavaCity, Double> valueFunction = javaCity -> {
-//            return javaCity.profitConvertedCached(continent, rads, finalHasProject, numCities, grossModifier) / javaCity.getNumBuildings();
-//        };
-//        valueFunction = modifyValueFunc.apply(valueFunction);
-//        return optimalBuild(continent, valueFunction, goal, finalHasProject, timeout, rads, selfSufficient);
-//    }
-
     public JavaCity roiBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, double grossModifier, int days, long timeout, boolean selfSufficient, Double infraLow) {
         return roiBuild(continent, rads, numCities, hasProject, grossModifier, days, timeout, selfSufficient, infraLow, f -> f, null);
     }
 
-    public JavaCity roiBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, double grossModifier, int days, long timeout, boolean selfSufficient, Double infraLow, Function<ToDoubleFunction<CityNode>, ToDoubleFunction<CityNode>> modifyValueFunc, Predicate<CityNode> goal) {
+    public JavaCity roiBuild(Continent continent, double rads, int numCities, Predicate<Project> hasProject, double grossModifier, int days, long timeout, boolean selfSufficient, Double infraLow, Function<ToDoubleFunction<INationCity>, ToDoubleFunction<INationCity>> modifyValueFunc, Predicate<INationCity> goal) {
         JavaCity origin = new JavaCity(this);
         origin.setAge(this.getAgeDays() + days / 2);
 
@@ -559,7 +529,7 @@ public class JavaCity implements ICity {
         double profitPerImp = baseProfitNonTax / impOverZero;
 
         Predicate<Project> finalHasProject = Projects.optimize(hasProject);
-        ToDoubleFunction<CityNode> valueFunction = javaCity -> {
+        ToDoubleFunction<INationCity> valueFunction = javaCity -> {
             double newProfit = javaCity.getRevenueConverted();
             double cost = javaCity.calculateCostConverted(origin);
             return (newProfit * days - cost) / javaCity.getNumBuildings();
@@ -578,45 +548,18 @@ public class JavaCity implements ICity {
         return this;
     }
 
-    public JavaCity setOptimalPower(Continent continent) {
-        int nuclear = 0;
-        int coal = 0;
-        int oil = 0;
-        int wind = 0;
-        double infra = getInfra();
-        while (infra > 500 || (getInfra() > 2000 && infra > 250)) {
-            nuclear++;
-            infra -= Buildings.NUCLEAR_POWER.getInfraMax();
-        }
-        while (infra > 250) {
-            if (continent.canBuild(Buildings.COAL_POWER)) {
-                coal++;
-                infra -= Buildings.COAL_POWER.getInfraMax();
-            } else if (continent.canBuild(Buildings.OIL_POWER)) {
-                oil++;
-                infra -= Buildings.OIL_POWER.getInfraMax();
-            } else {
-                break;
-            }
-        }
-        while (infra > 0) {
-            wind++;
-            infra -= Buildings.WIND_POWER.getInfraMax();
-        }
-        set(Buildings.NUCLEAR_POWER, nuclear);
-        set(Buildings.COAL_POWER, coal);
-        set(Buildings.OIL_POWER, oil);
-        set(Buildings.WIND_POWER, wind);
-        return this;
-    }
-
-    public JavaCity optimalBuild(Continent continent, int numCities, ToDoubleFunction<CityNode> valueFunction, Predicate<CityNode> goal, Predicate<Project> hasProject, long timeout, double rads, boolean selfSufficient, double grossModifier, Double infraLow) {
+    public JavaCity optimalBuild(Continent continent, int numCities, ToDoubleFunction<INationCity> valueFunction, Predicate<INationCity> goal, Predicate<Project> hasProject, long timeout, double rads, boolean selfSufficient, double grossModifier, Double infraLow) {
         JavaCity copy = new JavaCity(this);
         CityNode.CachedCity cached = new CityNode.CachedCity(this, continent, selfSufficient, hasProject, numCities, grossModifier, rads, infraLow);
         CityBranch searchServices = new CityBranch(cached);
         CityNode optimized = searchServices.toOptimal(valueFunction, goal, timeout);
-        if (optimized != null) copy.setBuildings(optimized);
-        return optimized == null ? null : copy;
+        INationCity best = findBest(continent, numCities, valueFunction, goal, hasProject, rads, grossModifier, infraLow);
+        if (best != null && (optimized == null || valueFunction.applyAsDouble(best) > valueFunction.applyAsDouble(optimized))) {
+            return new JavaCity(best);
+        }
+        if (optimized == null) return null;
+        copy.setBuildings(optimized);
+        return copy;
     }
 
     public double profitConvertedCached(Continent continent, double rads, Predicate<Project> hasProject, int numCities, double grossModifier) {
@@ -753,11 +696,11 @@ public class JavaCity implements ICity {
         return this;
     }
 
-    public JavaCity set(Building building, int amt) {
+    @Override
+    public void setBuilding(Building building, int amt) {
         int existing = this.buildings[building.ordinal()];
         this.numBuildings += amt - existing;
         this.buildings[building.ordinal()] = (byte) amt;
-        return this;
     }
 
     public int getBuildingOrdinal(int ordinal) {
@@ -776,10 +719,9 @@ public class JavaCity implements ICity {
         return infra;
     }
 
-    public int getAgeDays() {
-        if (dateCreated <= 0) return 1;
-        if (dateCreated == Long.MAX_VALUE) return 1;
-        return (int) Math.max(1, TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - dateCreated));
+    @Override
+    public long getCreated() {
+        return dateCreated;
     }
 
     public double getFreeInfra() {

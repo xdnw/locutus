@@ -1457,7 +1457,7 @@ public class IACheckup {
             int amt = city.getBuilding(building);
             if (amt > 1) {
                 JavaCity copy = new JavaCity(city);
-                copy.set(building, amt - 1);
+                copy.setBuilding(building, amt - 1);
 
                 if (city.calcDisease(nation::hasProject) >= (copy.calcDisease(nation::hasProject)) &&
                         city.calcCrime(nation::hasProject) >= (copy.calcCrime(nation::hasProject))) {
