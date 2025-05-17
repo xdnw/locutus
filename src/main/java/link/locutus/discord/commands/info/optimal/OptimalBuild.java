@@ -304,23 +304,10 @@ public class OptimalBuild extends Command {
             origin.setBuilding(Buildings.HANGAR, mmr.charAt(2) - '0');
             origin.setBuilding(Buildings.DRYDOCK, mmr.charAt(3) - '0');
         }
-        boolean checkBest = true;
-        if (steel != null) {
-            checkBest = false;
-            origin.setBuilding(Buildings.STEEL_MILL, steel);
-        }
-        if (gasoline != null) {
-            checkBest = false;
-            origin.setBuilding(Buildings.GAS_REFINERY, gasoline);
-        }
-        if (munitions != null) {
-            checkBest = false;
-            origin.setBuilding(Buildings.MUNITIONS_FACTORY, munitions);
-        }
-        if (aluminum != null) {
-            checkBest = false;
-            origin.setBuilding(Buildings.ALUMINUM_REFINERY, aluminum);
-        }
+        if (steel != null) origin.setBuilding(Buildings.STEEL_MILL, steel);
+        if (gasoline != null) origin.setBuilding(Buildings.GAS_REFINERY, gasoline);
+        if (munitions != null) origin.setBuilding(Buildings.MUNITIONS_FACTORY, munitions);
+        if (aluminum != null) origin.setBuilding(Buildings.ALUMINUM_REFINERY, aluminum);
         if (!manu && steel != null) origin.setBuilding(Buildings.COAL_MINE, steel);
         if (!manu && steel != null) origin.setBuilding(Buildings.IRON_MINE, steel);
         if (!manu && gasoline != null) origin.setBuilding(Buildings.OIL_WELL, gasoline);
@@ -597,7 +584,7 @@ public class OptimalBuild extends Command {
 
         JavaCity optimized;
         if (days == null) {
-            optimized = origin.optimalBuild(continent, numCities, valueFunc, goal, hasProject, timeout, rads, !manu, checkBest, finalMe.getGrossModifier(), infraLow);
+            optimized = origin.optimalBuild(continent, numCities, valueFunc, goal, hasProject, timeout, rads, !manu, true, finalMe.getGrossModifier(), infraLow);
         } else {
             ToDoubleFunction<INationCity> finalValueFunc = valueFunc;
             Function<ToDoubleFunction<INationCity>, ToDoubleFunction<INationCity>> modifyValueFunc = f -> finalValueFunc;

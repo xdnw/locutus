@@ -554,7 +554,7 @@ public class JavaCity implements IMutableCity {
         CityNode.CachedCity cached = new CityNode.CachedCity(this, continent, selfSufficient, hasProject, numCities, grossModifier, rads, infraLow);
         CityBranch searchServices = new CityBranch(cached);
         CityNode optimized = searchServices.toOptimal(valueFunction, goal, timeout);
-        INationCity best = selfSufficient || !checkBest ? null : findBest(continent, numCities, valueFunction, goal, hasProject, rads, grossModifier, infraLow);
+        INationCity best = !checkBest ? null : findBest(continent, numCities, valueFunction, goal, hasProject, rads, grossModifier, infraLow);
         if (best != null && (optimized == null || valueFunction.applyAsDouble(best) > valueFunction.applyAsDouble(optimized))) {
             return new JavaCity(best);
         }
