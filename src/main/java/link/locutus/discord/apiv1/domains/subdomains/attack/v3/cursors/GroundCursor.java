@@ -166,6 +166,12 @@ public class GroundCursor extends UnitCursor {
                 ", defcas2=" + defcas2 +
                 ", defcas3=" + defcas3 +
                 ", money_looted_cents=" + money_looted_cents +
+                ", success=" + success +
+                ", war_attack_id=" + war_attack_id +
+                ", date=" + date +
+                ", war_id=" + war_id +
+                ", attacker_id=" + attacker_id +
+                ", defender_id=" + defender_id +
                 '}';
     }
 

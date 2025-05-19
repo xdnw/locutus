@@ -223,7 +223,20 @@ public class VictoryCursor extends FailedCursor {
 
     @Override
     public String toString() {
-        return (looted == null ? "NULL" : ResourceType.toString(looted));
+        return "VictoryCursor{" +
+                "hasLoot=" + hasLoot +
+                ", looted=" + Arrays.toString(looted) +
+                ", loot_percent_cents=" + loot_percent_cents +
+                ", city_infra_before_cents=" + city_infra_before_cents +
+                ", infra_percent_decimal=" + infra_percent_decimal +
+                ", infra_destroyed_cents=" + infra_destroyed_cents +
+                ", infra_destroyed_value_cents=" + infra_destroyed_value_cents +
+                ", war_attack_id=" + war_attack_id +
+                ", date=" + date +
+                ", war_id=" + war_id +
+                ", attacker_id=" + attacker_id +
+                ", defender_id=" + defender_id +
+                '}';
     }
 
     public void loadLegacy(DBWar war, BitBuffer input) {

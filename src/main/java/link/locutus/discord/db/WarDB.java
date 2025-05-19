@@ -3199,19 +3199,26 @@ public class WarDB extends DBMainV2 {
     public void reEncodeBadAttacks() {
         AttackCursorFactory factory = new AttackCursorFactory(this);
         List<AttackEntry> bad = new ObjectArrayList<>();
+        Set<DBWar> copyOfWars;
         synchronized (warsById) {
-            iterateAttacks(warsById,
-                    (war, data) -> {
-                        AttackEntry entry = factory.shouldReEncode(war, data);
-                        if (entry != null) {
-                            bad.add(entry);
-                        }
-                        return null;
-                    }, null);
+            copyOfWars = new ObjectOpenHashSet<>(warsById);
         }
+        iterateAttacks(copyOfWars,
+            (war, data) -> {
+                AttackEntry entry = factory.shouldReEncode(war, data);
+                if (entry != null) {
+                    bad.add(entry);
+                    if (bad.size() > 100_000) {
+                        System.out.println("Saving bad attacks");
+                        saveAttacksDb(bad);
+                        bad.clear();
+                    }
+                }
+                return null;
+            }, null);
         if (bad.size() > 0) {
-            System.out.println("Saving " + bad + " bad attacks");
-            saveAttacksDb(bad);
+            System.out.println("Saving " + bad.size() + " bad attacks");
+//            saveAttacksDb(bad);
         }
     }
 

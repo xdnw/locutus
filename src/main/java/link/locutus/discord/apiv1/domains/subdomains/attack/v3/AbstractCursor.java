@@ -85,7 +85,6 @@ public abstract class AbstractCursor implements IAttack {
 
     }
 
-
     @Override
     public boolean isAttackerIdGreater() {
         return attacker_id > defender_id;

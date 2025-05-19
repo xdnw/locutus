@@ -22,6 +22,21 @@ public class ALootCursor extends FailedCursor {
     private int alliance_id;
 
     @Override
+    public String toString() {
+        return "ALootCursor{" +
+                "hasLoot=" + hasLoot +
+                ", looted=" + Arrays.toString(looted) +
+                ", loot_percent_cents=" + loot_percent_cents +
+                ", alliance_id=" + alliance_id +
+                ", war_attack_id=" + war_attack_id +
+                ", date=" + date +
+                ", war_id=" + war_id +
+                ", attacker_id=" + attacker_id +
+                ", defender_id=" + defender_id +
+                '}';
+    }
+
+    @Override
     public double[] addAttLoot(double[] buffer) {
         if (hasLoot) {
             ResourceType.subtract(buffer, looted);
