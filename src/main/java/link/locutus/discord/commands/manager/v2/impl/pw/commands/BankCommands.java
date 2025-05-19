@@ -784,12 +784,20 @@ public class BankCommands {
                                   @Arg(value = "Specify an alternative account to offshore with\n" +
                                           "Defaults to the sender alliance", group = 0) @Default NationOrAllianceOrGuild account,
                                   @Arg(value = "The amount of resources to keep in the bank\n" +
-                                          "Defaults to keep nothing", group = 1) @Default("{}") Map<ResourceType, Double> keepAmount,
+                                          "Defaults to the `OFFSHORE_KEEP_AMOUNT` setting, else nothing", group = 1) @Default Map<ResourceType, Double> keepAmount,
                                   @Arg(value = """
                                           Specify specific resource amounts to offshore
                                           Defaults to all resources
                                           The send amount is auto capped by the resources available and `keepAmount`""", group = 1)
                                   @Default Map<ResourceType, Double> sendAmount) throws IOException {
+        if (keepAmount == null) {
+            keepAmount = db.getOrNull(GuildKey.OFFSHORE_KEEP_AMOUNT);
+            if (keepAmount == null) {
+                keepAmount = new Object2DoubleOpenHashMap<>();
+            }
+        } else if (!Roles.ECON_STAFF.has(user, db.getGuild())) {
+            throw new IllegalArgumentException("You do not have permission to specify an alternative `keepAmount`. Missing: " + Roles.ECON_STAFF.toDiscordRoleNameElseInstructions(db.getGuild()));
+        }
         if (account != null && account.isNation()) {
             throw new IllegalArgumentException("You can't offshore into a nation. You can only offshore into an alliance or guild. Value provided: `Nation:" + account.getName() + "`");
         }
