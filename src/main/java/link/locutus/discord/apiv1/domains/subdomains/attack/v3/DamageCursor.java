@@ -5,7 +5,6 @@ import it.unimi.dsi.fastutil.bytes.Byte2ByteArrayMap;
 import it.unimi.dsi.fastutil.objects.Object2IntArrayMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
-import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
@@ -344,8 +343,8 @@ public abstract class DamageCursor extends AbstractCursor {
     }
 
     @Override
-    public void serialze(BitBuffer output) {
-        super.serialze(output);
+    public void serialize(BitBuffer output) {
+        super.serialize(output);
         output.writeBits(success.ordinal(), 2);
 
         if (success != SuccessType.UTTER_FAILURE) {

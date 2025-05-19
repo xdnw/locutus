@@ -14,7 +14,7 @@ public class BitBuffer {
 
     private long buffer;
     private int bitsInBuffer;
-    public final ByteBuffer byteBuffer;
+    private final ByteBuffer byteBuffer;
 
     public BitBuffer(ByteBuffer byteBuffer) {
         this.buffer = 0L;
@@ -160,6 +160,13 @@ public class BitBuffer {
         writeLong(Double.doubleToLongBits(value));
     }
 
+    public void clear() {
+        reset();
+        for (int i = 0; i < byteBuffer.capacity(); i++) {
+            byteBuffer.put(i, (byte) 0);
+        }
+    }
+
     public BitBuffer reset() {
         byteBuffer.position(0);
         buffer = 0;
@@ -208,4 +215,5 @@ public class BitBuffer {
         }
         return value | b << i;
     }
+
 }

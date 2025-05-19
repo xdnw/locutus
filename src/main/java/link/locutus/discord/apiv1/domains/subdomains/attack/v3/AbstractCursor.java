@@ -49,7 +49,7 @@ public abstract class AbstractCursor implements IAttack {
         defender_id = attack.getDef_id();
     }
 
-    public void serialze(BitBuffer output) {
+    public void serialize(BitBuffer output) {
         output.writeInt(war_attack_id);
         output.writeVarLong(date - TimeUtil.getOrigin());
         output.writeInt(war_id);

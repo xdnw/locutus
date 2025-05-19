@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -2725,13 +2726,30 @@ public class UtilityCommands {
 
 //    @Command(desc = "Calculate the ROI of various projects for your set of cities and infra")
 //    public String projectROI(@Me IMessageIO channel, @Me @Default GuildDB db,
-//                           DBNation nation,
-//
+//                            DBNation nation,
 //                             @Switch("p") Set<Project> projects,
 //                             @Switch("c") Continent continent,
-//                             @Switch("r") Double rads,
+//                             @Switch("r") Double rad_index,
 //                             @Switch("m") MMRInt mmr) {
-//        // TODO infra projects by 2 rebuilds per year?
+//        if (projects == null || projects.isEmpty()) {
+//            projects = new ObjectOpenHashSet<>(Arrays.asList(Projects.values));
+//        }
+//        double rads = rad_index == null ? nation.getRads() : rad_index / 1000d;
+//        DBNation nationCopy = new SimpleDBNation(new DBNationData(nation.data())) {
+//            @Override
+//            public double getRads() {
+//                return rads;
+//            }
+//        };
+//
+//        // Allow specifying infra in the command.
+//        // Allow specifying the projects. (otherwise ALL are used)
+//        CompletableFuture<IMessageBuilder> msgFuture = channel.send("Please wait...");
+//        for (Project project : projects) {
+//
+//        }
+//
+//
 //    }
 
 
@@ -2830,7 +2848,7 @@ public class UtilityCommands {
     @Command(desc = "Calculate how many days it takes to ROI on the last improvement slot for a specified infra level", viewable = true)
     public String infraROI(DBCity city, @Range(min=600,max=3000) int infraLevel,
                            @Switch("c") Continent continent,
-                           @Switch("r") Double rads,
+                           @Switch("r") Double rad_index,
                            @Switch("p") Set<Project> forceProjects,
                            @Switch("d") boolean openMarkets,
                            @Switch("m") MMRInt mmr,
@@ -2856,7 +2874,7 @@ public class UtilityCommands {
         origin.setOptimalPower(continent);
         originMinus50.setOptimalPower(continent);
 
-        if (rads == null) rads = nation.getRads();
+        double rads = rad_index == null ? nation.getRads() : rad_index / 1000d;
         Predicate<Project> hasProject = forceProjects != null ? f -> forceProjects.contains(f) || nation.hasProject(f) : nation::hasProject;
         double grossModifier = DBNation.getGrossModifier(false, openMarkets, hasProject.test(Projects.GOVERNMENT_SUPPORT_AGENCY), hasProject.test(Projects.BUREAU_OF_DOMESTIC_AFFAIRS));
 
@@ -2880,7 +2898,7 @@ public class UtilityCommands {
     @Command(desc = "Calculate how many days it takes to ROI on the last 50 land for a specified level", viewable = true)
     public String landROI(DBCity city, @Range(min=600,max=10000) double landLevel,
                            @Switch("c") Continent continent,
-                           @Switch("r") Double rads,
+                           @Switch("r") Double rad_index,
                            @Switch("p") Set<Project> forceProjects,
                           @Switch("d") boolean openMarkets,
                           @Switch("m") MMRInt mmr,
@@ -2890,6 +2908,7 @@ public class UtilityCommands {
         DBNation nation = DBNation.getById(city.getNationId());
         if (nation == null) return "Unknown nation: `" + city.getNation_id() + "`";
         if (landLevel > 10000) return "Land level too high (max 10,000)";
+        double rads = rad_index == null ? nation.getRads() : rad_index / 1000d;
 
         JavaCity origin = city.toJavaCity(nation).setLand(landLevel).zeroNonMilitary();
         JavaCity originMinus50 = city.toJavaCity(nation).setLand(landLevel - 50).zeroNonMilitary();
@@ -2906,7 +2925,6 @@ public class UtilityCommands {
         if (continent == null) continent = nation.getContinent();
         origin.setOptimalPower(continent);
         originMinus50.setOptimalPower(continent);
-        if (rads == null) rads = nation.getRads();
         Predicate<Project> hasProject = forceProjects != null ? f -> forceProjects.contains(f) || nation.hasProject(f) : nation::hasProject;
         double grossModifier = DBNation.getGrossModifier(false, openMarkets, hasProject.test(Projects.GOVERNMENT_SUPPORT_AGENCY), hasProject.test(Projects.BUREAU_OF_DOMESTIC_AFFAIRS));
 

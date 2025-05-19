@@ -147,8 +147,8 @@ public abstract class UnitCursor extends DamageCursor {
     }
 
     @Override
-    public void serialze(BitBuffer output) {
-        super.serialze(output);
+    public void serialize(BitBuffer output) {
+        super.serialize(output);
 
         output.writeBit(att_mun_used_cents > 0);
         if (att_mun_used_cents > 0) {

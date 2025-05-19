@@ -1,12 +1,21 @@
 package link.locutus.discord.apiv1.enums.city.project;
 
+import link.locutus.discord.apiv1.enums.Continent;
+import link.locutus.discord.apiv1.enums.city.ICity;
+import link.locutus.discord.apiv1.enums.city.JavaCity;
+import link.locutus.discord.apiv1.enums.city.building.Building;
+import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.util.scheduler.TriFunction;
 
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -33,7 +42,37 @@ public class Projects {
             .cost(BAUXITE, 500)
             .cost(LEAD, 500)
             .output(MUNITIONS)
+            .roi(getCityBuildRoi())
             .build();
+
+    private static TriFunction<Integer, DBNation, Project, RoiResult> getCityBuildRoi() {
+        return (days, nation, project) -> {
+            Continent continent = nation.getContinent();
+            ResourceType output = project.getOutput();
+            if (output != null && output.hasBuilding()) {
+                Building building = output.getBuilding();
+                if (!building.canBuild(continent)) return null;
+            }
+            // get first city
+            DBCity first = nation._getCitiesV3().values().iterator().next();
+            Predicate<Project> hasProject = nation.hasProjectPredicate();
+            Function<ICity, Double> profit = city -> {
+                return PW.City.profitConverted(continent, nation.getRads(), hasProject, nation.getCities(), nation.getGrossModifier(), city);
+            };
+            double initialProfit = profit.apply(first);
+            // optimalbuild
+            JavaCity optimal = new JavaCity(first).optimalBuild(nation, 1000, false, null);
+            double optimalProfit = profit.apply(optimal);
+            double revenuePerDay = (optimalProfit - initialProfit) * days * nation.getCities();
+
+            // return revenue increase over now
+            return new RoiResult(
+                    "Additional city revenue over the timeframe",
+                    revenuePerDay,
+                    project.getMarketValue()
+            );
+        };
+    }
 
     public static final Project BAUXITEWORKS = new Builder("bauxite_works", 1)
             .image("bauxiteworks.png")
@@ -44,6 +83,7 @@ public class Projects {
             .cost(BAUXITE, 500)
             .cost(LEAD, 500)
             .output(ALUMINUM)
+            .roi(getCityBuildRoi())
             .build();
 
     public static final Project CENTER_FOR_CIVIL_ENGINEERING = new Builder("center_for_civil_engineering", 11)
@@ -52,6 +92,17 @@ public class Projects {
             .cost(IRON, 1000)
             .cost(BAUXITE, 1000)
             .cost(MONEY, 3000000)
+            .roi((days, nation, project) -> {
+                double value = 0;
+                for (DBCity city : nation._getCitiesV3().values()) {
+                    value += PW.City.Infra.calculateInfra(0, city.getInfra());
+                }
+                return new RoiResult(
+                        "5% infra cost reduction. Value is based on current levels",
+                        value * 0.05,
+                        project.getMarketValue()
+                );
+            })
             .build();
 
     public static final Project URBAN_PLANNING = new Builder("urban_planning", 14)
@@ -74,6 +125,7 @@ public class Projects {
             .cost(BAUXITE, 500)
             .cost(LEAD, 500)
             .output(GASOLINE)
+            .roi(getCityBuildRoi())
             .build();
 
     public static final Project INTELLIGENCE_AGENCY = new Builder("central_intelligence_agency", 10)
@@ -87,6 +139,7 @@ public class Projects {
             .image("internationaltradecenter.png")
             .cost(MONEY, 50000000)
             .cost(ALUMINUM, 10000)
+            .roi(getCityBuildRoi())
             .build();
 
     public static final Project IRON_DOME = new Builder("iron_dome", 8)
@@ -104,6 +157,7 @@ public class Projects {
             .cost(BAUXITE, 500)
             .cost(LEAD, 500)
             .output(STEEL)
+            .roi(getCityBuildRoi())
             .build();
 
     public static final Project MASS_IRRIGATION = new Builder("mass_irrigation", 4)
@@ -116,6 +170,7 @@ public class Projects {
             .cost(BAUXITE, 500)
             .cost(LEAD, 500)
             .output(FOOD)
+            .roi(getCityBuildRoi())
             .build();
 
     public static final Project MISSILE_LAUNCH_PAD = new Builder("missile_launch_pad", 6)
@@ -187,6 +242,7 @@ public class Projects {
             .cost(BAUXITE, 500)
             .cost(LEAD, 500)
             .output(URANIUM)
+            .roi(getCityBuildRoi())
             .build();
 
     public static final Project VITAL_DEFENSE_SYSTEM = new Builder("vital_defense_system", 9)
@@ -202,6 +258,7 @@ public class Projects {
             .cost(FOOD, 100000)
             .cost(MONEY, 10000000)
             .requiredProjects(() -> new Project[]{CENTER_FOR_CIVIL_ENGINEERING})
+            .roi(getCityBuildRoi())
             .build();
 
     public static final Project PIRATE_ECONOMY = new Builder("pirate_economy", 19)
@@ -221,6 +278,7 @@ public class Projects {
             .cost(IRON, 10_000)
             .cost(OIL, 10_000)
             .requiredProjects(() -> new Project[]{URBAN_PLANNING, SPACE_PROGRAM})
+            .roi(getCityBuildRoi())
             .build();
 
     public static final Project TELECOMMUNICATIONS_SATELLITE = new Builder("telecommunications_satellite", 21)
@@ -230,6 +288,7 @@ public class Projects {
             .cost(ALUMINUM, 10000)
             .cost(MONEY, 300000000)
             .requiredProjects(() -> new Project[]{INTERNATIONAL_TRADE_CENTER, URBAN_PLANNING, SPACE_PROGRAM})
+            .roi(getCityBuildRoi())
             .build();
 
     public static final Project ADVANCED_ENGINEERING_CORPS = new Builder("advanced_engineering_corps", 26)
@@ -244,17 +303,43 @@ public class Projects {
                     return new Project[]{CENTER_FOR_CIVIL_ENGINEERING, ARABLE_LAND_AGENCY};
                 }
             })
+            .roi((days, nation, project) -> {
+                double infraValue = 0;
+                double landValue = 0;
+                for (DBCity city : nation._getCitiesV3().values()) {
+                    infraValue += PW.City.Infra.calculateInfra(0, city.getInfra());
+                    landValue += PW.City.Land.calculateLand(0, city.getLand());
+                }
+                double value = (infraValue + landValue) * 0.05;
+                return new RoiResult(
+                "5% infra + land cost reduction. Value is based on current levels",
+                        value,
+                        project.getMarketValue()
+                );
+            })
             .build();
 
     public static final Project ARABLE_LAND_AGENCY = new Builder("arable_land_agency", 23)
             .cost(COAL, 1500)
             .cost(LEAD, 1500)
             .cost(MONEY, 3000000)
+            .roi((days, nation, project) -> {
+                double landValue = 0;
+                for (DBCity city : nation._getCitiesV3().values()) {
+                    landValue += PW.City.Land.calculateLand(0, city.getLand());
+                }
+                return new RoiResult(
+                        "5% land cost reduction. Value is based on current levels",
+                        landValue * 0.05,
+                        project.getMarketValue()
+                );
+            })
             .build();
 
     public static final Project CLINICAL_RESEARCH_CENTER = new Builder("clinical_research_center", 24)
             .cost(FOOD, 100000)
             .cost(MONEY, 10000000)
+            .roi(getCityBuildRoi())
             .build();
 
     public static final Project SPECIALIZED_POLICE_TRAINING_PROGRAM = new Builder("specialized_police_training_program", 25)
@@ -262,6 +347,7 @@ public class Projects {
             .cost(MONEY, 50_000_000)
             .cost(FOOD, 250_000)
             .cost(ALUMINUM, 5_000)
+            .roi(getCityBuildRoi())
             .build();
 
     public static final Project RESEARCH_AND_DEVELOPMENT_CENTER = new Builder("research_and_development_center", 28)
@@ -277,6 +363,16 @@ public class Projects {
             .cost(FOOD, 1000)
             .cost(MONEY, 500000)
             .maxCities(20)
+            .roi((days, nation, project) -> {
+                if (nation.getCities() > project.maxCities()) {
+                     return null;
+                }
+                return new RoiResult(
+                        "Income over timeframe, assumes daily login.",
+                        days <= 0 ? 0 : 2_000_000 * (days - 1) + (1_000_000),
+                        project.getMarketValue()
+                );
+            })
             .build();
 
     public static final Project GOVERNMENT_SUPPORT_AGENCY = new Builder("government_support_agency", 27)
@@ -284,6 +380,20 @@ public class Projects {
             .cost(FOOD, 200000)
             .cost(ALUMINUM, 10000)
             .cost(MONEY, 20000000)
+            .roi((days, nation, project) -> {
+                double value = 0;
+                for (DBCity city : nation._getCitiesV3().values()) {
+                    value += PW.City.Infra.calculateInfra(0, city.getInfra());
+                    value += PW.City.Land.calculateLand(0, city.getLand());
+                }
+                value += nation.cityValue();
+                value += nation.projectValue();
+                return new RoiResult(
+                        "5% land + infra + cities + projects. Value assumes those double over the timeframe",
+                        value * 0.05,
+                        project.getMarketValue()
+                );
+            })
             .build();
 
     public static final Project METROPOLITAN_PLANNING = new Builder("metropolitan_planning", 30)
@@ -327,6 +437,21 @@ public class Projects {
             .cost(IRON, 8_000)
             .cost(OIL, 8_000)
             .requiredProjects(() -> new Project[]{GOVERNMENT_SUPPORT_AGENCY})
+            .roi((days, nation, project) -> {
+                // 2.5% of land + infra + cities + projects
+                double value = 0;
+                for (DBCity city : nation._getCitiesV3().values()) {
+                    value += PW.City.Infra.calculateInfra(0, city.getInfra());
+                    value += PW.City.Land.calculateLand(0, city.getLand());
+                }
+                value += nation.cityValue();
+                value += nation.projectValue();
+                return new RoiResult(
+                        "2.5% for new land + infra + cities + projects. Value assumes those double over the timeframe",
+                        value * 0.025,
+                        project.getMarketValue()
+                );
+            })
             .build();
     //
     //
@@ -473,12 +598,18 @@ public class Projects {
 
         private int requiredCities, maxCities;
         private Predicate<DBNation> otherRequirements;
+        private TriFunction<Integer, DBNation, Project, RoiResult> roi;
 
         public Builder(String apiName, int id) {
             this.apiName = apiName;
             this.imageName = apiName;
             this.id = id;
             this.maxCities = Integer.MAX_VALUE;
+        }
+
+        public Builder roi(TriFunction<Integer, DBNation, Project, RoiResult> roi) {
+            this.roi = roi;
+            return this;
         }
 
         public Builder image(String imageName) {
@@ -523,29 +654,35 @@ public class Projects {
 
     public static final Project[] values;
     public static final Map<String, Project> PROJECTS_MAP = new HashMap<>();
-    private static final Map<Integer, Project> PROJECTS_BY_ID = new ConcurrentHashMap<>();
+    private static final Project[] PROJECTS_BY_ID;
     static {
         try {
+            int maxId = 0;
             List<Project> projList = new ArrayList<>();
             int i = 0;
             for (Field field : Projects.class.getDeclaredFields()) {
                 Object value = field.get(null);
                 if (value != null && value instanceof Project) {
                     Project proj = (Project) value;
-                    projList.add(proj);
+                    if (!proj.isDisabled()) projList.add(proj);
+
                     ((AProject) proj).setName(field.getName(), i++);
                     PROJECTS_MAP.put(field.getName(), proj);
-                    PROJECTS_BY_ID.put(proj.ordinal(), proj);
+                    maxId = Math.max(maxId, proj.ordinal());
                 }
             }
             values = projList.toArray(new Project[0]);
+            PROJECTS_BY_ID = new Project[maxId + 1];
+            for (Project project : values) {
+                PROJECTS_BY_ID[project.ordinal()] = project;
+            }
         } catch (IllegalAccessException e) {
             e.printStackTrace();
             throw new RuntimeException(e);
         }
     }
     public static Project get(int id) {
-        return PROJECTS_BY_ID.get(id);
+        return PROJECTS_BY_ID[id];
     }
 
     public static Project get(String name) {

@@ -1105,7 +1105,7 @@ public class UnsortedCommands {
                           @Switch("t") boolean includeUntaxable,
                           @Arg("Exclude the new nation bonus")
                           @Switch("b") boolean excludeNationBonus,
-                          @Switch("r") Double rads,
+                          @Switch("r") Double rad_index,
                           @Switch("w") boolean forceAtWar,
                             @Switch("p") boolean forceAtPeace,
                           @Switch("c")
@@ -1147,6 +1147,7 @@ public class UnsortedCommands {
                 }
             }
         }
+        Double rads = rad_index == null ? null : rad_index / 1000d;
         for (DBNation nation : filtered) {
             int treasures = treasureByAA.getOrDefault(nation.getAlliance_id(), 0);
             Set<DBTreasure> natTreasures = nation.getTreasures();

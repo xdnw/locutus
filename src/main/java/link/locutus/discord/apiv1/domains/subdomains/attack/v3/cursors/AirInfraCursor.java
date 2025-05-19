@@ -66,8 +66,8 @@ public class AirInfraCursor extends UnitCursor {
     }
 
     @Override
-    public void serialze(BitBuffer output) {
-        super.serialze(output);
+    public void serialize(BitBuffer output) {
+        super.serialize(output);
 
         output.writeBit(attcas1 > 0);
         if (attcas1 > 0) output.writeVarInt(attcas1);

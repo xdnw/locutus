@@ -230,7 +230,6 @@ public class WarDB extends DBMainV2 {
             throw new RuntimeException(e);
         }
         Logg.info("Total damage : " + MathMan.format(total));
-
         saveAttacksDb(toSave);
 
     }
@@ -3197,6 +3196,25 @@ public class WarDB extends DBMainV2 {
 //        return result;
 //    }
 
+    public void reEncodeBadAttacks() {
+        AttackCursorFactory factory = new AttackCursorFactory(this);
+        List<AttackEntry> bad = new ObjectArrayList<>();
+        synchronized (warsById) {
+            iterateAttacks(warsById,
+                    (war, data) -> {
+                        AttackEntry entry = factory.shouldReEncode(war, data);
+                        if (entry != null) {
+                            bad.add(entry);
+                        }
+                        return null;
+                    }, null);
+        }
+        if (bad.size() > 0) {
+            System.out.println("Saving " + bad + " bad attacks");
+            saveAttacksDb(bad);
+        }
+    }
+
     public void iterateAttacks(long start, long end, Predicate<DBWar> ifWar, BiConsumer<DBWar, AbstractCursor> consumer) {
         if (start > end) return;
         AttackCursorFactory factory = new AttackCursorFactory(this);
@@ -3482,4 +3500,6 @@ public class WarDB extends DBMainV2 {
     public void syncBlockades() {
         activeWars.syncBlockades();
     }
+
+
 }

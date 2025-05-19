@@ -39,7 +39,7 @@ public class FortifyCursor extends FailedCursor {
     }
 
     @Override
-    public void serialze(BitBuffer output) {
-        super.serialze(output);
+    public void serialize(BitBuffer output) {
+        super.serialize(output);
     }
 }

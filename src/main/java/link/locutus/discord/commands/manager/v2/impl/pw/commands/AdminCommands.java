@@ -2966,10 +2966,15 @@ public class AdminCommands {
 //    SyncAttacks
     @Command(desc = "Force a fetch and update of attacks from the api")
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String syncAttacks(boolean runAlerts) throws IOException {
-        WarUpdateProcessor.checkActiveConflicts();
-        Locutus.imp().getWarDb().updateAttacksAndWarsV3(runAlerts, Event::post, Settings.USE_V2);
-        return "Done!";
+    public String syncAttacks(boolean runAlerts, @Switch("f") boolean fixAttacks) throws IOException {
+        if (fixAttacks) {
+            Locutus.imp().getWarDb().reEncodeBadAttacks();
+            return "Done!";
+        } else {
+            WarUpdateProcessor.checkActiveConflicts();
+            Locutus.imp().getWarDb().updateAttacksAndWarsV3(runAlerts, Event::post, Settings.USE_V2);
+            return "Done!";
+        }
     }
 //    SyncTrade
     @Command(desc = "Force a fetch and update of trades from the api")

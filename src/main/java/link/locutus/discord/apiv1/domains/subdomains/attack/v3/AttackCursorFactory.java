@@ -2,12 +2,13 @@ package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
 import com.politicsandwar.graphql.model.WarAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
-import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors.*;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.WarDB;
+import link.locutus.discord.db.entities.AttackEntry;
 import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.io.BitBuffer;
 
 import java.nio.ByteBuffer;
@@ -97,7 +98,7 @@ public class AttackCursorFactory {
                 return new ALootCursor();
             }
             default -> {
-                return null;
+                throw new UnsupportedOperationException("Attack type not supported: " + type);
             }
         }
     }
@@ -254,7 +255,7 @@ public class AttackCursorFactory {
     public synchronized byte[] toBytes(AbstractCursor cursor) {
         buffer.reset();
         buffer.writeBits(cursor.getAttack_type().ordinal(), 4);
-        cursor.serialze(buffer);
+        cursor.serialize(buffer);
         return buffer.getWrittenBytes();
     }
 
@@ -316,8 +317,30 @@ public class AttackCursorFactory {
         return buffer.readInt();
     }
 
+    public synchronized AttackEntry shouldReEncode(DBWar war, byte[] data) {
+        buffer.setBytes(data);
+        AttackType type = AttackType.values[(int) buffer.readBits(4)];
+        AbstractCursor cursor = getCursor(type);
+        if (cursor == null) {
+            throw new UnsupportedOperationException("Attack type not supported: " + type);
+        }
+        cursor.initialize(war, buffer);
+        cursor.load(war, buffer);
+        byte[] out = toBytes(cursor);
+        if (out.length != data.length) {
+            buffer.clear();
+            buffer.setBytes(data);
+            buffer.readBits(4);
+            cursor.initialize(war, buffer);
+            cursor.load(war, buffer);
+            return AttackEntry.of(cursor, this);
+        }
+        return null;
+    }
+
     public synchronized AbstractCursor loadWithPretest(DBWar war, byte[] data, boolean create, Predicate<AbstractCursor> testInitial) {
         buffer.setBytes(data);
+
         AttackType type = AttackType.values[(int) buffer.readBits(4)];
         AbstractCursor cursor = create ? create(type) : getCursor(type);
         if (cursor == null) {

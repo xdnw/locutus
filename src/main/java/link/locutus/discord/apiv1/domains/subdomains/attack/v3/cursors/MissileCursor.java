@@ -38,7 +38,7 @@ public class MissileCursor extends ProjectileCursor {
     }
 
     @Override
-    public void serialze(BitBuffer output) {
-        super.serialze(output);
+    public void serialize(BitBuffer output) {
+        super.serialize(output);
     }
 }

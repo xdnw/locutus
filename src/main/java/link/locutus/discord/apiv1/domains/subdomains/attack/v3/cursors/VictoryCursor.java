@@ -222,34 +222,8 @@ public class VictoryCursor extends FailedCursor {
     }
 
     @Override
-    public void serialze(BitBuffer output) {
-        super.serialze(output);
-        // add current
-        output.writeVarLong(infra_destroyed_value_cents);
-
-        output.writeBit(!city_infra_before_cents.isEmpty());
-        if (!city_infra_before_cents.isEmpty()) {
-            output.writeVarInt(infra_percent_decimal);
-
-            output.writeBits(city_infra_before_cents.size(), 7);
-            for (Map.Entry<Integer, Integer> entry : city_infra_before_cents.entrySet()) {
-                output.writeVarInt(entry.getKey());
-                output.writeVarInt(entry.getValue());
-            }
-        }
-
-        output.writeBit(hasLoot);
-        if (hasLoot) {
-            if (looted == null) looted = ResourceType.getBuffer();
-            output.writeVarInt(loot_percent_cents);
-
-            for (ResourceType type : ResourceType.values) {
-                if (type == ResourceType.CREDITS) continue;
-                double amt = looted[type.ordinal()];
-                output.writeBit(amt > 0);
-                if (amt > 0) output.writeVarLong((long) (amt * 100));
-            }
-        }
+    public String toString() {
+        return (looted == null ? "NULL" : ResourceType.toString(looted));
     }
 
     public void loadLegacy(DBWar war, BitBuffer input) {
@@ -296,10 +270,46 @@ public class VictoryCursor extends FailedCursor {
     }
 
     @Override
+    public void serialize(BitBuffer output) {
+        super.serialize(output);
+        // add current
+        output.writeVarLong(infra_destroyed_value_cents);
+
+        output.writeBit(!city_infra_before_cents.isEmpty());
+        if (!city_infra_before_cents.isEmpty()) {
+            output.writeVarInt(infra_percent_decimal);
+            output.writeBits(city_infra_before_cents.size(), 7);
+            for (Map.Entry<Integer, Integer> entry : city_infra_before_cents.entrySet()) {
+                output.writeVarInt(entry.getKey());
+                output.writeVarInt(entry.getValue());
+            }
+        }
+
+        if (hasLoot && looted == null) {// Shouldn't occur unless this has been incorrectly initialized, handle it anyway
+            hasLoot = false;
+        }
+        output.writeBit(hasLoot);
+        if (hasLoot) {
+            output.writeVarInt(loot_percent_cents);
+            for (ResourceType type : ResourceType.values) {
+                if (type == ResourceType.CREDITS) continue;
+                double amt = looted[type.ordinal()];
+                if (amt >= 0.01d) {
+                    output.writeBit(true);
+                    output.writeVarLong((long) (amt * 100));
+                } else {
+                    output.writeBit(false);
+                }
+            }
+        }
+    }
+
+    @Override
     public void load(DBWar war, BitBuffer input) {
         super.load(war, input);
 
         infra_destroyed_value_cents = input.readVarLong();
+        city_infra_before_cents.clear();
         if (input.readBit()) {
             infra_percent_decimal = input.readVarInt();
             long size = input.readBits(7);
@@ -316,7 +326,6 @@ public class VictoryCursor extends FailedCursor {
 
         // load resources
         hasLoot = input.readBit();
-        city_infra_before_cents.clear();
         if (hasLoot) {
             loot_percent_cents = input.readVarInt();
             if (looted == null) looted = ResourceType.getBuffer();
@@ -326,10 +335,9 @@ public class VictoryCursor extends FailedCursor {
                 else looted[type.ordinal()] = 0;
             }
         } else {
-            infra_destroyed_value_cents = 0;
-            infra_percent_decimal = 0;
             loot_percent_cents = 0;
             infra_destroyed_cents = 0;
+            looted = null;
         }
     }
 

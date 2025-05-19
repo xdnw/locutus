@@ -152,12 +152,26 @@ public class GroundCursor extends UnitCursor {
         if (success != SuccessType.UTTER_FAILURE) {
             if (input.readBit()) money_looted_cents = input.readVarLong();
             else money_looted_cents = 0;
+        } else {
+            money_looted_cents = 0;
         }
     }
 
     @Override
-    public void serialze(BitBuffer output) {
-        super.serialze(output);
+    public String toString() {
+        return "GroundCursor{" +
+                "attcas1=" + attcas1 +
+                ", attcas2=" + attcas2 +
+                ", defcas1=" + defcas1 +
+                ", defcas2=" + defcas2 +
+                ", defcas3=" + defcas3 +
+                ", money_looted_cents=" + money_looted_cents +
+                '}';
+    }
+
+    @Override
+    public void serialize(BitBuffer output) {
+        super.serialize(output);
         output.writeBit(attcas1 > 0);
         if (attcas1 > 0) output.writeVarInt(attcas1);
 
