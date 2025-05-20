@@ -3854,7 +3854,15 @@ public class BankCommands {
                                  "Defaults to your nation", group = 2)
                          @Default DBNation sender_nation,
                          @Switch("f") boolean force) throws IOException {
-        if (user.getIdLong() != Locutus.loader().getAdminUserId()) return "WIP";
+        switch (user.getId()) {
+            case "509173429241380884", "455788595274317844", "770284720297607228", "212911465248718848" -> {
+                break;
+            }
+            default -> {
+                throw new IllegalArgumentException("This command is currently a WIP");
+            }
+        }
+
         if (OffshoreInstance.DISABLE_TRANSFERS && user.getIdLong() != Locutus.loader().getAdminUserId()) throw new IllegalArgumentException(DISABLED_MESSAGE);
         if (sender_alliance != null && !senderDB.isAllianceId(sender_alliance.getId())) {
             throw new IllegalArgumentException("Sender alliance is not in this guild");
