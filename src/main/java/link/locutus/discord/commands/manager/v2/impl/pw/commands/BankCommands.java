@@ -3805,7 +3805,7 @@ public class BankCommands {
                     "Pick a receiver account, nation, or both",
                     "If there are multiple alliances registered to this guild"
             })
-    @RolePermission(value = Roles.ECON)
+    @RolePermission(value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON})
     public String send(@Me IMessageIO channel, @Me JSONObject command, @Me GuildDB senderDB, @Me User user, @Me DBAlliance alliance, @Me Rank rank, @Me DBNation me,
                        @Arg(value = "The amount to send", group = 0)
                        @AllianceDepositLimit Map<ResourceType, Double> amount,
@@ -3849,7 +3849,7 @@ public class BankCommands {
 
                          @Arg(value = "The offshore alliance account to send from\n" +
                                  "Defaults to your alliance (if valid)", group = 2)
-                         @Default DBAlliance sender_alliance,
+                         @Default GuildOrAlliance sender_account,
                          @Arg(value = "The nation to send from\n" +
                                  "Defaults to your nation", group = 2)
                          @Default DBNation sender_nation,
@@ -3862,6 +3862,11 @@ public class BankCommands {
                 throw new IllegalArgumentException("This command is currently a WIP");
             }
         }
+        GuildDB sender_guild = sender_account != null && sender_account.isGuild() ? sender_account.asGuild() : senderDB;
+        if (sender_guild != null && sender_guild != senderDB) {
+            throw new IllegalArgumentException("`sender_account` is a guild that does not match this guild. You must run the command in the guild of the sender account");
+        }
+        DBAlliance sender_alliance = sender_account != null && sender_account.isAlliance() ? sender_account.asAlliance() : null;
 
         if (OffshoreInstance.DISABLE_TRANSFERS && user.getIdLong() != Locutus.loader().getAdminUserId()) throw new IllegalArgumentException(DISABLED_MESSAGE);
         if (sender_alliance != null && !senderDB.isAllianceId(sender_alliance.getId())) {
@@ -3885,7 +3890,7 @@ public class BankCommands {
         double[] amountArr = ResourceType.resourcesToArray(amount);
         GuildDB receiverDB = receiver_account.isGuild() ? receiver_account.asGuild() : null;
         DBAlliance receiverAlliance = receiver_account.isAlliance() ? receiver_account.asAlliance() : null;
-        List<TransferResult> results = senderDB.sendInternal(user, me, senderDB, sender_alliance, sender_nation, receiverDB, receiverAlliance, receiver_nation, amountArr, force);
+        List<TransferResult> results = senderDB.sendInternal(user, me, sender_guild, sender_alliance, sender_nation, receiverDB, receiverAlliance, receiver_nation, amountArr, force);
         if (results.size() == 1) {
             TransferResult result = results.get(0);
             if (result.getStatus() == OffshoreInstance.TransferStatus.CONFIRMATION) {

@@ -35,10 +35,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static link.locutus.discord.util.offshore.OffshoreInstance.DISABLED_MESSAGE;
 
 public class SendInternalTask {
-    private final static Map<Long, Double> CURR_TURN_VALUE_BY_USER = new Long2ObjectOpenHashMap<>();
-    private final static Map<Long, Double> LAST_TURN_BY_USER = new Long2ObjectOpenHashMap<>();
-    private static long CURR_TURN = 0;
-
     private final User banker;
     private final double[] amount;
     private final DBNation receiverNation;
@@ -66,11 +62,12 @@ public class SendInternalTask {
         checkReceiverActive(receiverDB, receiverAlliance, receiverNation);
         checkNationMember(senderNation, receiverNation);
 
-        // TODO check if they have member role and member withdraw self with that alliance
-
         int roleAA = senderAlliance != null ? senderAlliance.getId() : 0;
         boolean hasEcon = Roles.ECON.has(banker, senderDB.getGuild(), roleAA);
         boolean canWithdrawSelf = hasEcon || Roles.ECON_WITHDRAW_SELF.has(banker, senderDB.getGuild(), roleAA);
+        if (!hasEcon && Roles.TEMP.has(banker, senderDB.getGuild())) {
+            throw new IllegalArgumentException("Banker " + banker.getName() + " has the TEMP role. Please remove that role and try again.");
+        }
         checkWithdrawPerms(roleAA, hasEcon, canWithdrawSelf, senderDB, senderNation, bankerNation, banker);
 
         this.senderOffshore = senderDB.getOffshore();
@@ -91,7 +88,14 @@ public class SendInternalTask {
         this.receiverNation = receiverNation;
         this.amount = amount;
 
-        checkTransferLimits(banker.getIdLong(), amount, 6_000_000_000L);
+        checkTransferLimits(senderOffshore, senderDB, bankerNation, amount, 6_000_000_000D);
+    }
+
+    private void checkTransferLimits(OffshoreInstance senderOffshore, GuildDB senderDB, DBNation senderNation, double[] amount, double defaultCap) {
+        TransferResult result = senderOffshore.checkLimit(senderDB, senderNation, null, amount, "#deposit", defaultCap);
+        if (result != null) {
+            throw new IllegalArgumentException(result.getMessageJoined(true));
+        }
     }
 
     ////////////////////////////////////////////////
@@ -179,6 +183,8 @@ public class SendInternalTask {
             if (accountBalance != null) {
                 senderOffshore.disabledGuilds.remove(senderDB.getIdLong());
             }
+
+            senderOffshore.addInternalTransfer(senderNation.getId(), ResourceType.convertedTotal(amount));
 
             try {
                 if (receiverChannel.canTalk()) {
@@ -502,48 +508,6 @@ public class SendInternalTask {
         double value = ResourceType.convertedTotal(amount);
         if (value > maxValue + 1) {
             throw new IllegalArgumentException("Cannot send more than $" + MathMan.format(maxValue) + " worth in a single transfer. (`" + ResourceType.toString(amount) + "` is worth ~$" + MathMan.format(value) + ")");
-        }
-    }
-
-    private void updateCurrValues(long turn) {
-        if (CURR_TURN != turn) {
-            synchronized (CURR_TURN_VALUE_BY_USER) {
-                if (CURR_TURN != turn) {
-                LAST_TURN_BY_USER.clear();
-                LAST_TURN_BY_USER.putAll(CURR_TURN_VALUE_BY_USER);
-                CURR_TURN_VALUE_BY_USER.clear();
-                CURR_TURN = turn;
-                }
-            }
-        }
-    }
-
-    private void checkTransferLimits(long userId, double[] amount, long maxValue) {
-        long turn = TimeUtil.getTurn();
-        updateCurrValues(turn);
-
-        double newValue = ResourceType.convertedTotal(amount);
-        double currValue = CURR_TURN_VALUE_BY_USER.getOrDefault(userId, 0D);
-        double lastValue = LAST_TURN_BY_USER.getOrDefault(userId, 0D);
-        double remaining = Math.max(0, maxValue - currValue - lastValue);
-        int turnsReset = 0;
-        if (newValue + currValue > maxValue + 1) {
-            turnsReset = 2;
-        }
-        if (newValue + currValue + lastValue > maxValue + 1) {
-            turnsReset = 1;
-        }
-        if (turnsReset != 0) {
-            StringBuilder msg = new StringBuilder();
-            if (remaining == 0) {
-                msg.append("You have exceeded the transfer limit for this turn.");
-            } else {
-                msg.append("You can only send up to $" + MathMan.format(remaining) + " worth before reaching the transfer limit for this turn ($" + MathMan.format(maxValue) + ").");
-            }
-            msg.append("Please wait " + turnsReset + " turn" + (turnsReset > 1 ? "s" : "") + " before you can send ~$" + MathMan.format(newValue) + " worth again.");
-            msg.append("See: " + CM.trade.value.cmd.toSlashMention());
-            AlertUtil.error("Transfer cap exceeded", msg + "\n" + bankerNation.getMarkdownUrl() + " | " + banker.getAsMention(), true);
-            throw new IllegalArgumentException(msg.toString());
         }
     }
 
