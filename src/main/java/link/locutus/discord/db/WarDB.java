@@ -3211,7 +3211,7 @@ public class WarDB extends DBMainV2 {
                 }
                 return null;
             }, null);
-        if (bad.size() > 0) {
+        if (!bad.isEmpty()) {
             if (bad.size() > 10000) {
                 System.out.println("Skipping save, too many bad attacks: " + bad.size());
             } else {

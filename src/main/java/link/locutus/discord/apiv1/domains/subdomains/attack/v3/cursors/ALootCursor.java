@@ -89,6 +89,7 @@ public class ALootCursor extends FailedCursor {
         this.alliance_id = legacy.getLooted() == null ? 0 : legacy.getLooted();
         if (hasLoot) {
             this.looted = legacy.loot;
+            if (this.looted == null) this.hasLoot = false;
         } else if (legacy.getMoney_looted() > 0) {
             hasLoot = true;
             Arrays.fill(looted, 0);
@@ -116,6 +117,7 @@ public class ALootCursor extends FailedCursor {
         super.load(attack, db);
         String note = attack.getLoot_info();
         if (note != null) {
+            if (this.looted == null) this.looted = ResourceType.getBuffer();
             looted[ResourceType.MONEY.ordinal()] = attack.getMoney_looted();
             looted[ResourceType.COAL.ordinal()] = attack.getCoal_looted();
             looted[ResourceType.OIL.ordinal()] = attack.getOil_looted();
@@ -141,7 +143,9 @@ public class ALootCursor extends FailedCursor {
 
             hasLoot = !ResourceType.isZero(looted);
         } else {
-            Arrays.fill(looted, 0);
+            if (looted != null && hasLoot) {
+                Arrays.fill(looted, 0);
+            }
             loot_percent_cents = 0;
             hasLoot = false;
             alliance_id = 0;
