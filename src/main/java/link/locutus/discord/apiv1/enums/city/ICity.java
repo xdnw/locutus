@@ -188,7 +188,7 @@ public interface ICity {
             copy.setInfra(Objects.requireNonNullElseGet(infraLow, origin::getInfra));
             copy.setDateCreated(origin.getCreated());
 
-            if (!goal.test(copy)) continue;
+            if (goal != null && !goal.test(copy)) continue;
             double value = valueFunction.applyAsDouble(copy);
             if (value > bestValue) {
                 bestValue = value;
