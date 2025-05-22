@@ -181,14 +181,24 @@ public abstract class UnitCursor extends DamageCursor {
             att_mun_used_cents = (int) input.readVarInt();
             if (input.readBit()) {
                 att_gas_used_cents = (int) input.readVarInt();
+            } else {
+                att_gas_used_cents = 0;
             }
+        } else {
+            att_mun_used_cents = 0;
+            att_gas_used_cents = 0;
         }
 
         if (input.readBit()) {
             def_mun_used_cents = (int) input.readVarInt();
             if (input.readBit()) {
                 def_gas_used_cents = (int) input.readVarInt();
+            } else {
+                def_gas_used_cents = 0;
             }
+        } else {
+            def_mun_used_cents = 0;
+            def_gas_used_cents = 0;
         }
 
         has_salvage = input.readBit();

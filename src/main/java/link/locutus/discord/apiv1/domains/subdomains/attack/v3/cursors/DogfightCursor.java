@@ -14,6 +14,20 @@ public class DogfightCursor extends UnitCursor {
     private int defcas1;
 
     @Override
+    public String toString() {
+        return "DogfightCursor{" +
+                "attcas1=" + attcas1 +
+                ", defcas1=" + defcas1 +
+                ", success=" + success +
+                ", war_attack_id=" + war_attack_id +
+                ", date=" + date +
+                ", war_id=" + war_id +
+                ", attacker_id=" + attacker_id +
+                ", defender_id=" + defender_id +
+                '}';
+    }
+
+    @Override
     public void load(DBAttack legacy) {
         super.load(legacy);
         this.attcas1 = legacy.getAttcas1();

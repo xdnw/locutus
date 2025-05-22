@@ -17,9 +17,24 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class ALootCursor extends FailedCursor {
     public boolean hasLoot = false;
-    public double[] looted = ResourceType.getBuffer();
+    public double[] looted;
     private int loot_percent_cents;
     private int alliance_id;
+
+    @Override
+    public String toString() {
+        return "ALootCursor{" +
+                "hasLoot=" + hasLoot +
+                ", looted=" + Arrays.toString(looted) +
+                ", loot_percent_cents=" + loot_percent_cents +
+                ", alliance_id=" + alliance_id +
+                ", war_attack_id=" + war_attack_id +
+                ", date=" + date +
+                ", war_id=" + war_id +
+                ", attacker_id=" + attacker_id +
+                ", defender_id=" + defender_id +
+                '}';
+    }
 
     @Override
     public double[] addAttLoot(double[] buffer) {
@@ -100,7 +115,6 @@ public class ALootCursor extends FailedCursor {
     public void load(WarAttack attack, WarDB db) {
         super.load(attack, db);
         String note = attack.getLoot_info();
-        Arrays.fill(looted, 0);
         if (note != null) {
             looted[ResourceType.MONEY.ordinal()] = attack.getMoney_looted();
             looted[ResourceType.COAL.ordinal()] = attack.getCoal_looted();
@@ -127,6 +141,7 @@ public class ALootCursor extends FailedCursor {
 
             hasLoot = !ResourceType.isZero(looted);
         } else {
+            Arrays.fill(looted, 0);
             loot_percent_cents = 0;
             hasLoot = false;
             alliance_id = 0;
@@ -142,14 +157,22 @@ public class ALootCursor extends FailedCursor {
     public void load(DBWar war, BitBuffer input) {
         super.load(war, input);
         // load resources
-        hasLoot = input.readBit();
-        if (hasLoot) {
+        boolean newHasLoot = input.readBit();
+        if (newHasLoot) {
+            if (looted == null) {
+                looted = ResourceType.getBuffer();
+            }
+            hasLoot = newHasLoot;
             loot_percent_cents = input.readVarInt();
             for (ResourceType type : ResourceType.values) {
                 if (type == ResourceType.CREDITS) continue;
                 looted[type.ordinal()] = input.readVarLong() * 0.01d;
             }
         } else {
+            if (hasLoot) {
+                Arrays.fill(looted, 0);
+                hasLoot = false;
+            }
             loot_percent_cents = 0;
         }
         if (input.readBit()) {

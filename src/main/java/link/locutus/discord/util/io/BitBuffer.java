@@ -161,10 +161,12 @@ public class BitBuffer {
     }
 
     public void clear() {
-        reset();
         for (int i = 0; i < byteBuffer.capacity(); i++) {
             byteBuffer.put(i, (byte) 0);
         }
+        byteBuffer.clear();
+        buffer = 0;
+        bitsInBuffer = 0;
     }
 
     public BitBuffer reset() {
