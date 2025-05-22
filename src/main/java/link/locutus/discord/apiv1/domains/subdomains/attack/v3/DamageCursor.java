@@ -353,10 +353,9 @@ public abstract class DamageCursor extends AbstractCursor {
             output.writeVarInt(infra_destroyed_cents);
             output.writeBits(num_improvements, 4);
             int size = buildingsDestroyed == null ? 0 : buildingsDestroyed.size();
-            if (size != num_improvements) {
+            if (size == 0) {
                 output.writeBit(false);
             } else {
-                // 26 types of buildings (2^5)
                 output.writeBit(true);
                 if (buildingsDestroyed != null) {
                     for (Map.Entry<Byte, Byte> entry : buildingsDestroyed.entrySet()) {

@@ -15,6 +15,21 @@ public class AirSoldierCursor extends UnitCursor {
     private int defcas2;
 
     @Override
+    public String toString() {
+        return "AirSoldierCursor{" +
+                "attcas1=" + attcas1 +
+                ", defcas1=" + defcas1 +
+                ", defcas2=" + defcas2 +
+                ", success=" + success +
+                ", war_attack_id=" + war_attack_id +
+                ", date=" + date +
+                ", war_id=" + war_id +
+                ", attacker_id=" + attacker_id +
+                ", defender_id=" + defender_id +
+                '}';
+    }
+
+    @Override
     public void load(DBAttack legacy) {
         super.load(legacy);
         this.attcas1 = legacy.getAttcas1();

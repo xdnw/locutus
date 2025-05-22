@@ -6,7 +6,7 @@ public class NavalAirCursor extends NavalCursor {
 
     @Override
     public AttackType getAttack_type() {
-        return AttackType.NAVAL_INFRA;
+        return AttackType.NAVAL_AIR;
     }
 }
 

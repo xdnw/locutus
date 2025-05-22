@@ -2,7 +2,12 @@
 package link.locutus.discord.util.offshore;
 
 import com.politicsandwar.graphql.model.Bankrec;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntIntImmutablePair;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongDoubleImmutablePair;
+import it.unimi.dsi.fastutil.longs.LongDoublePair;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -1094,57 +1099,9 @@ public class OffshoreInstance {
                 if (user != null) {
                     isAdmin = Roles.ADMIN.has(user, senderDB.getGuild());
                 }
-                String append = "#banker=" + banker.getNation_id();
-                // getBankTransactionsWithNote
-                if (note == null || note.isEmpty()) {
-                    note = append;
-                } else {
-                    note += " " + append;
-                }
-
                 if (!isAdmin) {
-                    Double withdrawLimit = senderDB.getHandler().getWithdrawLimit(banker.getNation_id());
-                    if (withdrawLimit != null && withdrawLimit < Long.MAX_VALUE) {
-                        long cutoff = System.currentTimeMillis();
-                        Long interval = senderDB.getOrNull(GuildKey.BANKER_WITHDRAW_LIMIT_INTERVAL);
-                        if (interval != null) {
-                            cutoff -= interval;
-                        } else {
-                            cutoff -= TimeUnit.DAYS.toMillis(1);
-                        }
-                        List<Transaction2> transactions = Locutus.imp().getBankDB().getTransactionsByNote(append, cutoff);
-                        Set<Integer> offshoreAAIds2 = getOffshoreAAIds();
-                        Set<Integer> aaIds = senderDB.getAllianceIds();
-                        double total = 0;
-                        for (Transaction2 transaction : transactions) {
-                            if (!transaction.isTrackedForGuild(senderDB, aaIds, offshoreAAIds2)) continue;
-                            total += transaction.convertedTotal();
-                        }
-                        if (total > withdrawLimit) {
-                            MessageChannel alertChannel = senderDB.getOrNull(GuildKey.WITHDRAW_ALERT_CHANNEL);
-                            if (alertChannel != null) {
-                                StringBuilder body = new StringBuilder();
-                                body.append(banker.getNationUrlMarkup() + " | " + banker.getAllianceUrlMarkup()).append("\n");
-                                body.append("Transfer: " + ResourceType.toString(amount) + " | " + note + " | to:" + receiver.getTypePrefix() + receiver.getName());
-                                body.append("Limit set to $" + MathMan.format(withdrawLimit) + " (worth of $/rss)\n\n");
-                                body.append("To set the limit for a user: " + CM.bank.limits.setTransferLimit.cmd.toSlashMention() + "\n");
-                                body.append("To set the default " + GuildKey.BANKER_WITHDRAW_LIMIT.getCommandMention());
-
-                                Role adminRole = Roles.ADMIN.toRole2(senderDB.getGuild());
-
-                                RateLimitUtil.queueMessage(new DiscordChannelIO(alertChannel), msg -> {
-                                    msg.embed("Banker withdraw limit exceeded", body.toString());
-                                    if (adminRole != null) {
-                                        msg.append(("^ " + adminRole.getAsMention()));
-                                    }
-                                    return true;
-                                }, true, null);
-                            }
-//                            return KeyValue.of(TransferStatus.INSUFFICIENT_FUNDS, "You (" + banker.getNation() + ") have hit your transfer limit ($" + MathMan.format(withdrawLimit) + ")");
-                            return new TransferResult(TransferStatus.INSUFFICIENT_FUNDS, receiver, amount, note)
-                                    .addMessage("You (" + banker.getMarkdownUrl() + ") have hit your transfer limit: `$" + MathMan.format(withdrawLimit) + "`");
-                        }
-                    }
+                    TransferResult limit = checkLimit(senderDB, banker, receiver, amount, note, null);
+                    if (limit != null) return limit;
                 }
             }
 
@@ -1327,6 +1284,97 @@ public class OffshoreInstance {
 
             return result;
         }
+    }
+
+    private final Map<Integer, List<LongDoublePair>> CURR_TURN_VALUE_BY_NATION = new Int2ObjectOpenHashMap<>();
+
+    public void addInternalTransfer(int nationId, double value) {
+        synchronized (CURR_TURN_VALUE_BY_NATION) {
+            CURR_TURN_VALUE_BY_NATION.computeIfAbsent(nationId, k -> new ObjectArrayList<>()).add(LongDoubleImmutablePair.of(System.currentTimeMillis(), value));
+        }
+    }
+
+    private double getInternalLimitUsed(int nationId, long cutoff) {
+        // Remove the elements that are before the cutoff for the user, and then return the remainder
+        synchronized (CURR_TURN_VALUE_BY_NATION) {
+            List<LongDoublePair> list = CURR_TURN_VALUE_BY_NATION.get(nationId);
+            if (list == null) return 0;
+            double total = 0;
+            int indexRemove = -1;
+            for (int i = 0; i < list.size(); i++) {
+                LongDoublePair item = list.get(i);
+                if (item.keyLong() < cutoff) {
+                    indexRemove = i;
+                } else {
+                    total += item.valueDouble();
+                }
+            }
+            if (indexRemove != -1) {
+                for (int i = indexRemove; i >= 0; i--) {
+                    list.remove(i);
+                }
+            }
+            return total;
+        }
+    }
+
+    public TransferResult checkLimit(GuildDB senderDB, DBNation banker, NationOrAlliance receiver, double[] amount, String note, Double limitDefault) {
+        Double withdrawLimit = senderDB.getHandler().getWithdrawLimit(banker.getNation_id());
+        if (withdrawLimit == null) withdrawLimit = limitDefault;
+        if (withdrawLimit != null && withdrawLimit < Long.MAX_VALUE) {
+            long cutoff = System.currentTimeMillis();
+            Long interval = senderDB.getOrNull(GuildKey.BANKER_WITHDRAW_LIMIT_INTERVAL);
+            if (interval != null) {
+                cutoff -= interval;
+            } else {
+                cutoff -= TimeUnit.DAYS.toMillis(1);
+            }
+
+            String append = "#banker=" + banker.getNation_id();
+            // getBankTransactionsWithNote
+            if (note == null || note.isEmpty()) {
+                note = append;
+            } else {
+                note += " " + append;
+            }
+
+            List<Transaction2> transactions = Locutus.imp().getBankDB().getTransactionsByNote(append, cutoff);
+            Set<Integer> offshoreAAIds2 = getOffshoreAAIds();
+            Set<Integer> aaIds = senderDB.getAllianceIds();
+            double total = 0;
+            for (Transaction2 transaction : transactions) {
+                if (!transaction.isTrackedForGuild(senderDB, aaIds, offshoreAAIds2)) continue;
+                total += transaction.convertedTotal();
+            }
+
+            total += getInternalLimitUsed(banker.getNation_id(), cutoff);
+
+            if (total > withdrawLimit) {
+                MessageChannel alertChannel = senderDB.getOrNull(GuildKey.WITHDRAW_ALERT_CHANNEL);
+                if (alertChannel != null) {
+                    StringBuilder body = new StringBuilder();
+                    body.append(banker.getNationUrlMarkup() + " | " + banker.getAllianceUrlMarkup()).append("\n");
+                    body.append("Transfer: " + ResourceType.toString(amount) + " | " + note + " | " + (receiver != null ? "to:" + receiver.getTypePrefix() + receiver.getName() : ""));
+                    body.append("Limit set to $" + MathMan.format(withdrawLimit) + " (worth of $/rss)\n\n");
+                    body.append("To set the limit for a user: " + CM.bank.limits.setTransferLimit.cmd.toSlashMention() + "\n");
+                    body.append("To set the default " + GuildKey.BANKER_WITHDRAW_LIMIT.getCommandMention());
+
+                    Role adminRole = Roles.ADMIN.toRole2(senderDB.getGuild());
+
+                    RateLimitUtil.queueMessage(new DiscordChannelIO(alertChannel), msg -> {
+                        msg.embed("Banker withdraw limit exceeded", body.toString());
+                        if (adminRole != null) {
+                            msg.append(("^ " + adminRole.getAsMention()));
+                        }
+                        return true;
+                    }, true, null);
+                }
+//                            return KeyValue.of(TransferStatus.INSUFFICIENT_FUNDS, "You (" + banker.getNation() + ") have hit your transfer limit ($" + MathMan.format(withdrawLimit) + ")");
+                return new TransferResult(TransferStatus.INSUFFICIENT_FUNDS, receiver, amount, note)
+                        .addMessage("You (" + banker.getMarkdownUrl() + ") have hit your transfer limit: `$" + MathMan.format(withdrawLimit) + "`");
+            }
+        }
+        return null;
     }
 
     private Map.Entry<double[], TransferResult> checkNationDeposits(GuildDB senderDB, DBNation nationAccount, Map<Long, AccessType> allowedIds, NationOrAlliance receiver, double[] amount, double txValue, DepositType.DepositTypeInfo depositType, boolean ignoreGrants, boolean allowNegative, StringBuilder reqMsg, boolean update, boolean allowUpdate) throws IOException {

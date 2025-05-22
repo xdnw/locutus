@@ -622,6 +622,24 @@ public class GuildKey {
             return "Whether members can use " + CM.offshore.send.cmd.toSlashMention() + " (true/false)";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID).requires(API_KEY).requiresCoalition(Coalition.OFFSHORE).requiresOffshore());
+    public static GuildSetting<Map<ResourceType, Double>> OFFSHORE_KEEP_AMOUNT = new GuildResourceSetting(GuildSettingCategory.AUDIT) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String OFFSHORE_KEEP_AMOUNT(@Me GuildDB db, @Me User user, Map<ResourceType, Double> amount) {
+            return OFFSHORE_KEEP_AMOUNT.setAndValidate(db, user, amount);
+        }
+
+        @Override
+        public String toReadableString(GuildDB db, Map<ResourceType, Double> value) {
+            return ResourceType.toString(value);
+        }
+
+        @Override
+        public String help() {
+            return "Amount of warchest to retain in the alliance bank when running " + CM.offshore.send.cmd.toSlashMention();
+        }
+    }.setupRequirements(f -> f.requires(ALLIANCE_ID).requires(API_KEY).requiresCoalition(Coalition.OFFSHORE).requiresOffshore());
     public static GuildSetting<String> RECRUIT_MESSAGE_SUBJECT = new GuildStringSetting(GuildSettingCategory.RECRUIT) {
         @NoFormat
         @Command(descMethod = "help")

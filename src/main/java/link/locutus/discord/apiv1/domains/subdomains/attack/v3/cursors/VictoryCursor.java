@@ -31,7 +31,7 @@ public class VictoryCursor extends FailedCursor {
 
     @Override
     public double[] addDefLoot(double[] buffer) {
-        if (looted != null) {
+        if (hasLoot) {
             ResourceType.add(buffer, looted);
         }
         return buffer;
@@ -39,7 +39,7 @@ public class VictoryCursor extends FailedCursor {
 
     @Override
     public double[] addAttLoot(double[] buffer) {
-        if (looted != null) {
+        if (hasLoot) {
             ResourceType.subtract(buffer, looted);
         }
         return buffer;
@@ -52,7 +52,7 @@ public class VictoryCursor extends FailedCursor {
 
     @Override
     public double getDefLootValue() {
-        return looted != null ? ResourceType.convertedTotal(looted) : 0;
+        return hasLoot ? ResourceType.convertedTotal(looted) : 0;
     }
 
     @Override
@@ -62,20 +62,20 @@ public class VictoryCursor extends FailedCursor {
     }
 
     public double[] addDefLosses(double[] buffer, DBWar war) {
-        if (looted != null) ResourceType.add(buffer, looted);
+        if (hasLoot) ResourceType.add(buffer, looted);
         addInfraCosts(buffer);
         return buffer;
     }
     public double[] addAttLosses(double[] buffer, DBWar war) {
-        if (looted != null) ResourceType.subtract(buffer, looted);
+        if (hasLoot) ResourceType.subtract(buffer, looted);
         return buffer;
     }
 
     public double getAttLossValue(DBWar war) {
-        return looted != null ? -ResourceType.convertedTotal(looted) : 0;
+        return hasLoot ? -ResourceType.convertedTotal(looted) : 0;
     }
     public double getDefLossValue(DBWar war) {
-        return (looted != null ? ResourceType.convertedTotal(looted) : 0)
+        return (hasLoot ? ResourceType.convertedTotal(looted) : 0)
                 + getInfra_destroyed_value();
     }
 
@@ -130,6 +130,8 @@ public class VictoryCursor extends FailedCursor {
             if (looted == null) looted = ResourceType.getBuffer();
             Arrays.fill(looted, 0);
             looted[ResourceType.MONEY.ordinal()] = legacy.getMoney_looted();
+        } else {
+            Arrays.fill(looted, 0);
         }
         city_infra_before_cents.clear();
         this.infra_destroyed_cents = (int) Math.round(legacy.getInfra_destroyed() * 100);
@@ -191,7 +193,6 @@ public class VictoryCursor extends FailedCursor {
 
         if (ResourceType.isZero(looted)) {
             hasLoot = false;
-            looted = null;
         } else {
             hasLoot = true;
         }
@@ -223,17 +224,31 @@ public class VictoryCursor extends FailedCursor {
 
     @Override
     public String toString() {
-        return (looted == null ? "NULL" : ResourceType.toString(looted));
+        return "VictoryCursor{" +
+                "hasLoot=" + hasLoot +
+                ", looted=" + (hasLoot ? Arrays.toString(looted) : "") +
+                ", loot_percent_cents=" + loot_percent_cents +
+                ", city_infra_before_cents=" + city_infra_before_cents +
+                ", infra_percent_decimal=" + infra_percent_decimal +
+                ", infra_destroyed_cents=" + infra_destroyed_cents +
+                ", infra_destroyed_value_cents=" + infra_destroyed_value_cents +
+                ", war_attack_id=" + war_attack_id +
+                ", date=" + date +
+                ", war_id=" + war_id +
+                ", attacker_id=" + attacker_id +
+                ", defender_id=" + defender_id +
+                '}';
     }
 
     public void loadLegacy(DBWar war, BitBuffer input) {
         super.load(war, input);
         // load resources
-        hasLoot = input.readBit();
+        boolean newHasLoot = input.readBit();
 
         city_infra_before_cents.clear();
 
-        if (hasLoot) {
+        if (newHasLoot) {
+            hasLoot = newHasLoot;
             loot_percent_cents = input.readVarInt();
             infra_destroyed_value_cents = input.readVarLong();
 
@@ -259,9 +274,12 @@ public class VictoryCursor extends FailedCursor {
             }
             if (ResourceType.isZero(looted)) {
                 hasLoot = false;
-                looted = null;
             }
         } else {
+            if (hasLoot) {
+                if (looted != null) Arrays.fill(looted, 0);
+                hasLoot = false;
+            }
             infra_destroyed_value_cents = 0;
             infra_percent_decimal = 0;
             loot_percent_cents = 0;
@@ -325,8 +343,9 @@ public class VictoryCursor extends FailedCursor {
         }
 
         // load resources
-        hasLoot = input.readBit();
-        if (hasLoot) {
+        boolean newHasLoot = input.readBit();
+        if (newHasLoot) {
+            hasLoot = newHasLoot;
             loot_percent_cents = input.readVarInt();
             if (looted == null) looted = ResourceType.getBuffer();
             for (ResourceType type : ResourceType.values) {
@@ -335,6 +354,10 @@ public class VictoryCursor extends FailedCursor {
                 else looted[type.ordinal()] = 0;
             }
         } else {
+            if (hasLoot) {
+                if (looted != null) Arrays.fill(looted, 0);
+                hasLoot = false;
+            }
             loot_percent_cents = 0;
             infra_destroyed_cents = 0;
             looted = null;
