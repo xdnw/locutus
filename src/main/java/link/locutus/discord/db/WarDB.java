@@ -3208,17 +3208,18 @@ public class WarDB extends DBMainV2 {
                 AttackEntry entry = factory.shouldReEncode(war, data);
                 if (entry != null) {
                     bad.add(entry);
-                    if (bad.size() > 100_000) {
-                        System.out.println("Saving bad attacks");
-                        saveAttacksDb(bad);
-                        bad.clear();
-                    }
                 }
                 return null;
             }, null);
         if (bad.size() > 0) {
-            System.out.println("Saving " + bad.size() + " bad attacks");
-//            saveAttacksDb(bad);
+            if (bad.size() > 10000) {
+                System.out.println("Skipping save, too many bad attacks: " + bad.size());
+            } else {
+                System.out.println("Saving " + bad.size() + " bad attacks");
+                saveAttacksDb(bad);
+            }
+        } else {
+            System.out.println("All attacks are good");
         }
     }
 

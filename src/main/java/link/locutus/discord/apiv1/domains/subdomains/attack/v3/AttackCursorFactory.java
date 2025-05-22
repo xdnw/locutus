@@ -317,8 +317,6 @@ public class AttackCursorFactory {
         return buffer.readInt();
     }
 
-    private int i5 = 0;
-
     public synchronized AttackEntry shouldReEncode(DBWar war, byte[] data) {
         buffer.setBytes(data);
         AttackType type = AttackType.values[(int) buffer.readBits(4)];
@@ -336,39 +334,38 @@ public class AttackCursorFactory {
             buffer.readBits(4);
             cursor.initialize(war, buffer);
             cursor.load(war, buffer);
-            String newStr = cursor.toString();
-            boolean equals = newStr.equals(originalStr);
-
-            System.out.println("Reencoding attack: " + type + " | " + cursor.getId() + " | " + war.getWarId() + " | " + TimeUtil.DD_MM_YY.format(cursor.getDate()) + " | " + out.length + "!=" + data.length + " | " + equals);
-            if (!equals) {
-                System.out.println("- " + originalStr + " != " + newStr);
-            } else {
-                    AbstractCursor copy2 = create(type);
-                    buffer.clear();
-                    buffer.setBytes(toBytes(cursor));
-                    buffer.readBits(4);
-                    copy2.initialize(war, buffer);
-                    copy2.load(war, buffer);
-                    String copy2Str = copy2.toString();
-                if (!copy2Str.equals(newStr)) {
-                    System.out.println("- Invalid match: " + originalStr + " != " + copy2Str);
-                } else {
-                    System.out.println("- Match: " + originalStr);
-                    for (int i = 0; i < data.length; i++) {
-                        System.out.printf("%02X ", data[i]);
-                    }
-                    System.out.println();
-                    for (int i = 0; i < out.length; i++) {
-                        System.out.printf("%02X ", out[i]);
-                    }
-                    System.out.println();
-                }
-            }
-
-            if (i5++ > 10_000) {
-                System.out.println("Exit because i5 > 10_000");
-                System.exit(0);
-            }
+//            String newStr = cursor.toString();
+//            boolean equals = newStr.equals(originalStr);
+//            System.out.println("Reencoding attack: " + type + " | " + cursor.getId() + " | " + war.getWarId() + " | " + TimeUtil.DD_MM_YY.format(cursor.getDate()) + " | " + out.length + "!=" + data.length + " | " + equals);
+//            if (!equals) {
+//                System.out.println("- " + originalStr + " != " + newStr);
+//            } else {
+//                    AbstractCursor copy2 = create(type);
+//                    buffer.clear();
+//                    buffer.setBytes(toBytes(cursor));
+//                    buffer.readBits(4);
+//                    copy2.initialize(war, buffer);
+//                    copy2.load(war, buffer);
+//                    String copy2Str = copy2.toString();
+//                if (!copy2Str.equals(newStr)) {
+//                    System.out.println("- Invalid match: " + originalStr + " != " + copy2Str);
+//                } else {
+//                    System.out.println("- Match: " + originalStr);
+//                    for (int i = 0; i < data.length; i++) {
+//                        System.out.printf("%02X ", data[i]);
+//                    }
+//                    System.out.println();
+//                    for (int i = 0; i < out.length; i++) {
+//                        System.out.printf("%02X ", out[i]);
+//                    }
+//                    System.out.println();
+//                }
+//            }
+//            if (i5++ > 10_000) {
+//                System.out.println("Exit because i5 > 10_000");
+//                System.exit(0);
+//            }
+            return AttackEntry.of(cursor, this);
         }
         return null;
     }
@@ -386,25 +383,6 @@ public class AttackCursorFactory {
             return null;
         }
         cursor.load(war, buffer);
-        {
-            byte[] out = toBytes(cursor);
-            if (out.length != data.length) {
-                if (cursor instanceof GroundCursor ground) {
-                    buffer.clear();
-                    buffer.setBytes(data);
-
-                    buffer.readBits(4);
-                    GroundCursor copy = (GroundCursor) create(type);
-                    copy.initialize(war, buffer);
-                    copy.load(war, buffer);
-
-                    byte[] out2 = toBytes(copy);
-                    System.out.println("Reencoding attack: " + type + " | " + cursor.getId() + " | " + war.getWarId() + " | " + TimeUtil.DD_MM_YY.format(cursor.getDate()) + " | " + out.length + "!=" + data.length + "!=" + out2.length + " | " + cursor.toString() + " | " + copy.toString());
-                    System.out.println("- cdef3 :" + copy.getDefcas3() + " != " + ground.getDefcas3());
-                }
-
-            }
-        }
         return cursor;
     }
 
