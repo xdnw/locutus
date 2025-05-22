@@ -139,11 +139,14 @@ public class OffshoreInstance {
                     throw new IllegalArgumentException("No API key with VIEW_BANK permission found for: `" + allianceId + "`. Please set one in the alliance server using " + CM.settings_default.registerApiKey.cmd.toSlashMention());
                 }
                 stockpile = api.getAllianceStockpile(allianceId);
+                if (stockpile == null) {
+                    throw new IllegalArgumentException("No stockpile found for " + PW.getMarkdownUrl(allianceId, true));
+                }
             } catch (HttpServerErrorException.InternalServerError | HttpServerErrorException.ServiceUnavailable |
                      HttpServerErrorException.GatewayTimeout ignore) {
+                throw ignore;
             }
-        }
-        if (stockpile == null) {
+        } else {
             try {
                 AllianceBankContainer funds = getAlliance().getApiV2().getBank(allianceId).getAllianceBanks().get(0);
                 stockpile = ResourceType.resourcesToArray(PW.adapt(funds));
