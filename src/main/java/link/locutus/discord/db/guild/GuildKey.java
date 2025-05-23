@@ -622,7 +622,7 @@ public class GuildKey {
             return "Whether members can use " + CM.offshore.send.cmd.toSlashMention() + " (true/false)";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID).requires(API_KEY).requiresCoalition(Coalition.OFFSHORE).requiresOffshore());
-    public static GuildSetting<Map<ResourceType, Double>> OFFSHORE_KEEP_AMOUNT = new GuildResourceSetting(GuildSettingCategory.AUDIT) {
+    public static GuildSetting<Map<ResourceType, Double>> OFFSHORE_KEEP_AMOUNT = new GuildResourceSetting(GuildSettingCategory.BANK_ACCESS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
