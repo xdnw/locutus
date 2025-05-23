@@ -57,10 +57,12 @@ public class BankUpdateProcessor {
         int aaId = (int) (transfer.isSenderAA() ? transfer.getSender() : transfer.getReceiver());
 
         if (!isLoot) {
+            boolean hasValidNote = false;
             Set<Integer> trackedAlliances = new IntOpenHashSet();
             trackedAlliances.add(aaId);
             if (transfer.note != null) {
                 Map<DepositType, Object> noteMap = transfer.getNoteMap();
+                hasValidNote = !noteMap.isEmpty();
                 for (Map.Entry<DepositType, Object> entry : noteMap.entrySet()) {
                     if (entry.getKey().getParent() != null) continue;
                     if (entry.getValue() instanceof Number n) {
@@ -71,6 +73,12 @@ public class BankUpdateProcessor {
                     }
                 }
             }
+            if (trackedAlliances.size() == 1 && transfer.isReceiverNation()) {
+                DBNation receiver = transfer.getReceiverObj().asNation();
+                if (receiver != null && receiver.getAlliance_id() != 0) {
+                    trackedAlliances.add(receiver.getAlliance_id());
+                }
+            }
             for (int allianceId : trackedAlliances) {
                 GuildDB guildDb = Locutus.imp().getGuildDBByAA(allianceId);
                 if (guildDb != null) {
@@ -78,6 +86,8 @@ public class BankUpdateProcessor {
                     GuildSetting<MessageChannel> key = isDeposit ? DEPOSIT_ALERT_CHANNEL : WITHDRAW_ALERT_CHANNEL;
                     Roles locrole = isDeposit ? Roles.ECON_DEPOSIT_ALERTS : Roles.ECON_WITHDRAW_ALERTS;
                     MessageChannel channel = guildDb.getOrNull(key);
+
+                    Roles invalidNoteRole = hasValidNote ? null : Roles.WITHDRAW_ALERT_NO_NOTE;
 
                     if (channel != null) {
                         Guild guild = guildDb.getGuild();
@@ -93,6 +103,11 @@ public class BankUpdateProcessor {
                                 if (role != null) {
                                     msg.append(role.getAsMention());
                                 }
+                                Role invalidNote = invalidNoteRole == null ? null : invalidNoteRole.toRole(aaId, guildDb);
+                                if (invalidNote != null) {
+                                    msg.append(invalidNote.getAsMention() + "(no valid note)");
+                                }
+
                                 if (isDeposit) {
                                     msg.send();
                                 } else {

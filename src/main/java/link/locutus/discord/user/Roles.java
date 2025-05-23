@@ -154,6 +154,8 @@ public enum Roles {
 
     RESOURCE_CONVERSION(43, false, "Set a required role for accessing resource conversion (if enabled). If no role is set, then all members have access", GuildKey.RESOURCE_CONVERSION),
 
+    WITHDRAW_ALERT_NO_NOTE(44, false, "Alert this role when a withdrawal occurs without a valid note, in the configured withdrawal alert channel", GuildKey.WITHDRAW_ALERT_CHANNEL),
+
     ;
 
 
