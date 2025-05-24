@@ -2030,9 +2030,13 @@ public class BankCommands {
         double[] totalExpire = ResourceType.getBuffer();
         double[] totalEscrow = ResourceType.getBuffer();
 
+        boolean updateBulk = Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS > 0;
         if (force) {
             String errorMsg = handleAddbalanceAllianceScope(author, guild, (Set) nations.getNations());
             if (errorMsg != null) return errorMsg;
+            if (updateBulk) {
+                Locutus.imp().runEventsAsync(events -> Locutus.imp().getBankDB().updateBankRecs(false, events));
+            }
         }
 
         CompletableFuture<IMessageBuilder> msgFuture = io.send("Please wait...");
@@ -2043,7 +2047,7 @@ public class BankCommands {
                 start = System.currentTimeMillis();
                 io.updateOptionally(msgFuture, "Resetting deposits for " + nation.getMarkdownUrl());
             }
-            Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, force ? 0L : -1L, 0, true);
+            Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, force && !updateBulk ? 0L : -1L, 0, true);
 
             double[] deposits = depoByType.get(DepositType.DEPOSIT);
             if (deposits != null && !ignoreBankDeposits && !ResourceType.isZero(deposits)) {
@@ -4153,6 +4157,14 @@ public class BankCommands {
                 } else if (!condensedFormat) {
                     footers.add("You do not have permission to withdraw escrowed funds");
                 }
+            }
+            double[] expiring = accountDeposits.get(DepositType.EXPIRE);
+            if (expiring != null && !ResourceType.isZero(expiring)) {
+                footers.add("Use " + CM.deposits.check.cmd.nationOrAllianceOrGuild(nationOrAllianceOrGuild.getQualifiedId()).show_expiring_records("true").toSlashCommand() + " or press `expiring` to view expiring records");
+                buttons.put("expiring",
+                        KeyValue.of(
+                                CM.deposits.check.cmd.nationOrAllianceOrGuild(nationOrAllianceOrGuild.getQualifiedId()).show_expiring_records("true"),
+                                false));
             }
             if (econ) {
                 footers.add("To view records: " + CM.bank.records.cmd.nationOrAllianceOrGuild(nationOrAllianceOrGuild.getQualifiedId()));

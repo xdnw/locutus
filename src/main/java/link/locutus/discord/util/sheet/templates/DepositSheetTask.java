@@ -81,7 +81,7 @@ public class DepositSheetTask implements Callable<NationBalanceRow> {
         // --- Logic from the original loop body ---
         List<Object> row = new ObjectArrayList<>(rowSize);
 
-        List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, tracked, useTaxBase, useOffset, (updateBulk && !force) ? -1 : 0L, 0L, false);
+        List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, tracked, useTaxBase, useOffset, (!force || updateBulk) ? -1 : 0L, 0L, false);
         List<Map.Entry<Integer, Transaction2>> flowTransfers = transactions;
         if (useFlowNote != null) {
             flowTransfers = flowTransfers.stream().filter(f -> f.getValue().getNoteMap().containsKey(useFlowNote)).toList();

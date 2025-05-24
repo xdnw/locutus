@@ -635,6 +635,29 @@ public class BankDB extends DBMainV3 {
         return list;
     }
 
+    public List<TaxDeposit> getTaxesPaid(int nation, Set<Integer> alliances, boolean includeNoInternal, boolean includeMaxInternal, long cutoff) {
+        List<TaxDeposit> list = new ObjectArrayList<>();
+        @NotNull SelectWhereStep<TaxDepositsDateRecord> select = ctx().selectFrom(TAX_DEPOSITS_DATE);
+        Condition where = TAX_DEPOSITS_DATE.NATION.eq(nation);
+        if (!includeNoInternal) {
+            where = where.and(TAX_DEPOSITS_DATE.INTERNAL_TAXRATE.ne(-1));
+        }
+        if (!includeMaxInternal) {
+            where = where.and(TAX_DEPOSITS_DATE.INTERNAL_TAXRATE.ne((int) MathMan.pairByte(100, 100)));
+        }
+        if (cutoff > 0) {
+            where = where.and(TAX_DEPOSITS_DATE.DATE.ge(cutoff));
+        }
+        if (alliances.size() == 1) {
+            where = where.and(TAX_DEPOSITS_DATE.ALLIANCE.eq(alliances.iterator().next()));
+        } else if (alliances.size() > 1) {
+            where = where.and(TAX_DEPOSITS_DATE.ALLIANCE.in(alliances));
+        }
+
+        select.where(where).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
+        return list;
+    }
+
     public List<TaxDeposit> getTaxesByIds(Collection<Integer> ids) {
         List<Integer> idsSorted = new IntArrayList(ids);
         idsSorted.sort(Comparator.naturalOrder());
@@ -786,7 +809,9 @@ public class BankDB extends DBMainV3 {
             byte[] depositBytes = ArrayUtil.toByteArray(depositCents);
             dbRecord.setResources(depositBytes);
 
-            short internalPair = MathMan.pairByte(record.internalMoneyRate, record.internalResourceRate);
+            int internalMoneyRate = record.internalMoneyRate >= record.moneyRate ? 100 : record.internalMoneyRate;
+            int internalResourceRate = record.internalResourceRate >= record.resourceRate ? 100 : record.internalResourceRate;
+            short internalPair = MathMan.pairByte(internalMoneyRate, internalResourceRate);
             dbRecord.setInternalTaxrate((int) internalPair);
             dbRecord.setTaxId(record.tax_id);
 

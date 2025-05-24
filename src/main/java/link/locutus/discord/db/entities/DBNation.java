@@ -2354,8 +2354,6 @@ public abstract class DBNation implements NationOrAlliance {
     public List<Map.Entry<Integer, Transaction2>> getTransactions(GuildDB db, Set<Long> tracked, boolean includeTaxes, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff, boolean priority) {
         if (tracked == null) {
             tracked = db.getTrackedBanks();
-//        } else {
-//            tracked = PW.expandCoalition(tracked);
         }
 
         List<Transaction2> transactions = new ArrayList<>();
@@ -2364,19 +2362,19 @@ public abstract class DBNation implements NationOrAlliance {
             transactions.addAll(offsets);
         }
 
-        List<TaxDeposit> taxes = includeTaxes ? Locutus.imp().getBankDB().getTaxesPaid(getNation_id()) : new ArrayList<>();
 
-        Set<Long> finalTracked = tracked;
-        taxes.removeIf(f -> !finalTracked.contains((long) f.allianceId));
         int[] defTaxBase = new int[]{100, 100};
         if (useTaxBase) {
             TaxRate defTaxBaseTmp = db.getOrNull(GuildKey.TAX_BASE);
             if (defTaxBaseTmp != null) defTaxBase = new int[]{defTaxBaseTmp.money, defTaxBaseTmp.resources};
-//            defTaxBase[0] = myTaxRate.money >= 0 ? 100 : myTaxRate.money;
-//            defTaxBase[1] = myTaxRate.resources >= 0 ? 100 : myTaxRate.resources;
         } else {
             defTaxBase = new int[]{0, 0};
         }
+        boolean includeNoInternal = defTaxBase[0] == 100 && defTaxBase[1] == 100;
+        boolean includeMaxInternal = false;
+
+        Set<Integer> finalTracked = tracked.stream().filter(f -> f <= Integer.MAX_VALUE).map(Long::intValue).collect(Collectors.toSet());
+        List<TaxDeposit> taxes = includeTaxes ? Locutus.imp().getBankDB().getTaxesPaid(getNation_id(), finalTracked, includeNoInternal, includeMaxInternal, cutOff) : new ArrayList<>();
 
         for (TaxDeposit deposit : taxes) {
             if (deposit.date < cutOff) continue;

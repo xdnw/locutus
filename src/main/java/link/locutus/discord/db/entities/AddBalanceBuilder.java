@@ -1,6 +1,7 @@
 package link.locutus.discord.db.entities;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -116,7 +117,7 @@ public class AddBalanceBuilder {
     }
 
     public AddBalanceBuilder addSheet(SpreadSheet sheet, boolean negative, Consumer<String> invalidRows, boolean throwErrorOnInvalid, String defaultNote) {
-        List<String> invalid = new ArrayList<>();
+        List<String> invalid = new ObjectArrayList<>();
         Map<String, Boolean> response = sheet.parseTransfers(this, negative, defaultNote);
         for (Map.Entry<String, Boolean> entry : response.entrySet()) {
             if (!entry.getValue()) {
@@ -326,7 +327,7 @@ public class AddBalanceBuilder {
                         double[] amount = entry2.getValue();
                         db.addTransfer(tx_datetime, sender, receiver_id, receiver_type, banker, note, amount);
                         totalAdded = ResourceType.add(totalAdded, amount);
-                        response.add("Added " + ResourceType.toString(amount) + " to " + sender);
+                        response.add("Added " + ResourceType.toString(amount) + " to " + sender + " note:`" + note + "`");
                     }
                 }
             } else {
@@ -343,7 +344,7 @@ public class AddBalanceBuilder {
                         double[] amount = entry2.getValue();
                         db.addTransfer(tx_datetime, sender.getIdLong(), sender.getReceiverType(), receiver_id, receiver_type, banker, note, amount);
                         totalAdded = ResourceType.add(totalAdded, amount);
-                        response.add("Added " + ResourceType.toString(amount) + " to " + sender.getGuild());
+                        response.add("Added " + ResourceType.toString(amount) + " to " + sender.getGuild() + " note:`" + note + "`");
                     }
                 }
             } else {
@@ -359,7 +360,7 @@ public class AddBalanceBuilder {
 
                 db.addTransfer(tx_datetime, sender, receiver_id, receiver_type, banker, note, amount);
                 totalAdded = ResourceType.add(totalAdded, amount);
-                response.add("Added " + ResourceType.toString(amount) + " to " + sender.getUrl());
+                response.add("Added " + ResourceType.toString(amount) + " to " + sender.getUrl() + " note:`" + note + "`");
             }
 
         }
@@ -372,7 +373,7 @@ public class AddBalanceBuilder {
 
                 db.addBalanceTaxId(tx_datetime, sender.taxId, 0, banker, note, amount);
                 totalAdded = ResourceType.add(totalAdded, amount);
-                response.add("Added " + ResourceType.toString(amount) + " to " + sender.getQualifiedId());
+                response.add("Added " + ResourceType.toString(amount) + " to " + sender.getQualifiedId() + " note:`" + note + "`");
             }
 
         }
