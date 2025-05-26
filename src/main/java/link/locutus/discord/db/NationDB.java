@@ -836,9 +836,15 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         Map<Treaty, Treaty> modified = new Object2ObjectOpenHashMap<>();
         Set<Treaty> newTreaties = new ObjectOpenHashSet<>();
 
+
         for (Treaty toAdd : added) {
             synchronized (treatiesByAlliance) {
-                Treaty prev1 = treatiesByAlliance.computeIfAbsent(toAdd.getFromId(), f -> new Int2ObjectOpenHashMap<>()).put(toAdd.getToId(), toAdd);
+                Map<Integer, Treaty> aa1TreatyMap = treatiesByAlliance.computeIfAbsent(toAdd.getFromId(), f -> new Int2ObjectOpenHashMap<>());
+                Treaty existing1 = aa1TreatyMap.get(toAdd.getToId());
+                if (existing1 != null && existing1.getId() > toAdd.getId() && existing1.getTurnsRemaining() > 0 && !toDeleteIds.contains(existing1.getId())) {
+                    continue;
+                }
+                Treaty prev1 = aa1TreatyMap.put(toAdd.getToId(), toAdd);
                 Treaty prev2 = treatiesByAlliance.computeIfAbsent(toAdd.getToId(), f -> new Int2ObjectOpenHashMap<>()).put(toAdd.getFromId(), toAdd);
                 if (prev1 != null) modified.put(prev1, toAdd);
                 if (prev2 != null) modified.put(prev2, toAdd);

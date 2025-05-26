@@ -329,11 +329,15 @@ public class FACommands {
         if (nationUser == null) return "Nation " + nation.getUrl() + " is not registered";
         Member member = guild.getMember(nationUser);
         if (member == null) return "User " + user.getName() + " is not in this guild";
+        DBAlliance aa = nation.getAlliance();
+        if (aa == null || aa.getAlliance_id() == 0) {
+            return "Not in an alliance.";
+        }
 
         Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(guild.getRoles());
-        Role role = aaRoles.get(nation.getAlliance_id());
+        Role role = aaRoles.get(aa.getId());
         if (role == null) {
-            db.addCoalition(nation.getAlliance_id(), Coalition.MASKEDALLIANCES);
+            db.addCoalition(aa.getId(), Coalition.MASKEDALLIANCES);
             GuildDB.AutoRoleOption autoRoleValue = db.getOrNull(GuildKey.AUTOROLE_ALLIANCES);
             if (autoRoleValue == null || autoRoleValue == GuildDB.AutoRoleOption.FALSE) {
                 return "AutoRole is disabled. See " + GuildKey.AUTOROLE_ALLIANCES.getCommandMention();
@@ -342,7 +346,7 @@ public class FACommands {
             AutoRoleInfo task = db.getAutoRoleTask().autoRole(member, nation);
             task.execute();
             aaRoles = DiscordUtil.getAARoles(guild.getRoles());
-            role = aaRoles.get(nation.getAlliance_id());
+            role = aaRoles.get(aa.getId());
             if (role == null) {
                 return "No alliance role found. Please try " + CM.role.autoassign.cmd.toSlashMention();
             }
@@ -350,7 +354,7 @@ public class FACommands {
 
         for (TextChannel channel : category.getTextChannels()) {
             String[] split = channel.getName().split("-");
-            if (MathMan.isInteger(split[split.length - 1]) && Integer.parseInt(split[split.length - 1]) == nation.getAlliance_id()) {
+            if (MathMan.isInteger(split[split.length - 1]) && Integer.parseInt(split[split.length - 1]) == aa.getId()) {
                 updateEmbassyPerms(channel, role, user, true);
                 return "Embassy: <#" + channel.getId() + ">";
             }
@@ -359,10 +363,40 @@ public class FACommands {
             return "You must be an officer to create an embassy";
         }
 
-        String embassyName = nation.getAllianceName() + "-" + nation.getAlliance_id();
+        String embassyName = aa.getName() + "-" + aa.getId();
 
         TextChannel channel = RateLimitUtil.complete(category.createTextChannel(embassyName).setParent(category));
+
+        StringBuilder body = new StringBuilder();
+        // Alliance name/link
+        body.append("## Embassy for: " + aa.getMarkdownUrl() + " `#" + aa.getRank() + "`\n");
+        // score
+        body.append("-# color:`" + aa.getColor().name() + "` | " +
+                "Score:" + aa.getScore() + " | " +
+                "Members:" + aa.countMembers() + " | " +
+                "Taxable:" + aa.getNations(true, 0, true).size());
+        if (!aa.getDiscord_link().isEmpty()) {
+            body.append("- **Discord**: <" + aa.getDiscord_link() + ">\n");
+        }
+        if (!aa.getFlag().isEmpty()) {
+            body.append("- **Flag**: " + aa.getFlag() + "\n");
+        }
+        Map<Integer, Treaty> treaties = aa.getTreaties();
+        if (!treaties.isEmpty()) {
+            body.append("***Treaties**:\n");
+            for (Map.Entry<Integer, Treaty> entry : treaties.entrySet()) {
+                Treaty treaty = entry.getValue();
+                DBAlliance other = DBAlliance.get(entry.getKey());
+                if (other == null) continue;
+                body.append("- " + treaty.getType().getName() + ": " + other.getMarkdownUrl() + "\n");
+            }
+        } else {
+            body.append("> No treaties found\n");
+        }
+
         updateEmbassyPerms(channel, role, nationUser, true);
+
+        RateLimitUtil.queue(channel.sendMessage(body.toString()));
 
         return "Embassy: <#" + channel.getId() + ">";
     }

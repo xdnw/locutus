@@ -1,5 +1,6 @@
 package link.locutus.discord.util.task.roles;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -8,6 +9,7 @@ import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
@@ -65,7 +67,7 @@ public class AutoRoleTask implements IAutoRoleTask {
     public AutoRoleTask(Guild guild, GuildDB db) {
         this.guild = guild;
         this.db = db;
-        this.allianceRoles = new HashMap<>();
+        this.allianceRoles = new Int2ObjectOpenHashMap<>();
         this.position = -1;
         syncDB();
     }
@@ -398,7 +400,7 @@ public class AutoRoleTask implements IAutoRoleTask {
 
         List<Member> members = guild.getMembers();
 
-        Map<Integer, Role> existantAllianceRoles = new HashMap<>(allianceRoles);
+        Map<Integer, Role> existantAllianceRoles = new Int2ObjectOpenHashMap<>(allianceRoles);
 
         Set<Integer> memberAllianceIds = new IntOpenHashSet();
         int requiredRank = autoRoleRank == null ? Rank.MEMBER.id : autoRoleRank.id;
@@ -423,8 +425,16 @@ public class AutoRoleTask implements IAutoRoleTask {
             Role role = entry.getValue();
             List<Member> withRole = guild.getMembersWithRoles(role);
             if (!memberAllianceIds.contains(entry.getKey()) && withRole.isEmpty()) {
-                allianceRoles.remove(entry.getKey());
                 RateLimitUtil.queue(role.delete());
+            } else {
+                DBAlliance aa = DBAlliance.get(entry.getKey());
+                if (aa != null) {
+                    String expectedName = "AA " + entry.getKey() + " " + aa.getName();
+                    if (!role.getName().equalsIgnoreCase(expectedName)) {
+                        info.renameRole(role, expectedName);
+                    }
+                }
+
             }
         }
         return info;

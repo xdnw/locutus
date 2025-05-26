@@ -31,6 +31,7 @@ public class AutoRoleInfo {
     private final Map<String, RoleOrCreate> createMap;
     private final Map<Member, Set<RoleAdd>> addRoles;
     private final Map<Member, Set<Role>> removeRoles;
+    private final Map<Role, String> renameRoles;
     private final Map<Member, String> nickSet;
     private final GuildDB db;
     private final Map<Member, List<String>> errors;
@@ -46,10 +47,16 @@ public class AutoRoleInfo {
         this.nickSet = new LinkedHashMap<>();
         this.errors = new LinkedHashMap<>();
         this.success = new LinkedHashMap<>();
+        this.renameRoles = new LinkedHashMap<>();
     }
 
     public String getSyncDbResult() {
         return syncDbResult;
+    }
+
+    public void renameRole(Role role, String newName) {
+        if (role == null || newName == null || newName.isEmpty()) return;
+        renameRoles.put(role, newName);
     }
 
     @Override
@@ -79,6 +86,12 @@ public class AutoRoleInfo {
             result.append("Set Nicknames:\n");
             for (Map.Entry<Member, String> entry : nickSet.entrySet()) {
                 result.append("- ").append(entry.getKey().getEffectiveName()).append(" -> ").append(entry.getValue()).append("\n");
+            }
+        }
+        if (!renameRoles.isEmpty()) {
+            result.append("Rename Roles:\n");
+            for (Map.Entry<Role, String> entry : renameRoles.entrySet()) {
+                result.append("- ").append(entry.getKey().getName()).append(" -> ").append(entry.getValue()).append("\n");
             }
         }
         return result.toString();
@@ -159,6 +172,22 @@ public class AutoRoleInfo {
                 } catch (PermissionException e) {
                     errors.computeIfAbsent(member, k -> new ObjectArrayList<>()).add("Failed to remove role `" + role.getName() + "`: " + e.getMessage());
                 }
+            }
+        }
+        // rename roles
+        for (Map.Entry<Role, String> entry : renameRoles.entrySet()) {
+            Role role = entry.getKey();
+            String newName = entry.getValue();
+            if (role.getName().equalsIgnoreCase(newName)) {
+                errors.computeIfAbsent(null, k -> new ObjectArrayList<>()).add("Failed to rename role `" + role.getName() + "`: Role already has name");
+                continue;
+            }
+            try {
+                tasks.add(RateLimitUtil.queue(role.getManager().setName(newName)).thenAccept(v -> {
+                    success.computeIfAbsent(null, k -> new ObjectArrayList<>()).add("Renamed role `" + role.getName() + "` to `" + newName + "`");
+                }));
+            } catch (PermissionException e) {
+                errors.computeIfAbsent(null, k -> new ObjectArrayList<>()).add("Failed to rename role `" + role.getName() + "`: " + e.getMessage());
             }
         }
 
