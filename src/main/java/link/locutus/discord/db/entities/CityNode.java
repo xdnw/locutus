@@ -22,7 +22,7 @@ public class CityNode implements INationCity {
 
     private int index;
 
-    private CachedCity cached;
+    private final CachedCity cached;
 
     private static int modIs = 4;
     private static int modIe = Buildings.values().length - 4;

@@ -3943,7 +3943,7 @@ public class BankCommands {
                            @Switch("z") boolean allowCheckDeleted,
                            @Arg("Hide the escrow balance ") @Switch("h") boolean hideEscrowed,
                            @Switch("s") boolean show_expiring_records
-    ) throws IOException {
+    ) throws IOException, GeneralSecurityException {
         if (show_expiring_records && !nationOrAllianceOrGuild.isNation()) {
             throw new IllegalArgumentException("Only nations can show expiring records");
         }
@@ -4015,9 +4015,8 @@ public class BankCommands {
 
             if (show_expiring_records) {
                 long now = System.currentTimeMillis();
-                double[] perDay = ResourceType.getBuffer();
+                SpreadSheet sheet = SpreadSheet.create(db, SheetKey.EXPIRE_RECORD_SHEET);
 
-                List<List<Object>> rows = new ObjectArrayList<>();
                 List<Object> header = new ObjectArrayList<>(Arrays.asList(
                         "sign",
                         "end_date",
@@ -4028,13 +4027,16 @@ public class BankCommands {
                         "initial",
                         "remaining"
                 ));
-                rows.add(header);
+                sheet.setHeader(header);
+
+                boolean hasRow = false;
 
                 for (Map.Entry<Integer, Transaction2> entry : transactions) {
                     Transaction2 record = entry.getValue();
                     if (record.note == null || record.note.isEmpty()) continue;
                     boolean isOffshoreSender = (record.sender_type == 2 || record.sender_type == 3) && record.receiver_type == 1;
                     if (!isOffshoreSender && !record.isInternal()) continue;
+                    hasRow = true;
                     int sign = entry.getKey();
 
                     Map<DepositType, Object> noteMap = record.getNoteMap();
@@ -4058,12 +4060,14 @@ public class BankCommands {
 
                     if (decayVal != null) {
                         double[] principal = record.resources.clone();
-                        double decayFactor = 1 - (now - record.tx_datetime) / (double) (dateVal - record.tx_datetime);
+                        double decayFactor = 1 - ((now - record.tx_datetime) / (double) (dateVal - record.tx_datetime));
                         double[] remaining = PW.multiply(principal.clone(), decayFactor);
                         double decayFactorPerDay = (double) TimeUnit.DAYS.toMillis(1) / (dateVal - record.tx_datetime);
                         double[] decayPerDay = ResourceType.getBuffer();
                         for (int i = 0; i < principal.length; i++) {
-                            decayPerDay[i] = Math.min(remaining[i], principal[i] * decayFactorPerDay);
+                            double remainingVal = remaining[i];
+                            double principalVal = principal[i] * decayFactorPerDay;
+                            decayPerDay[i] = Math.abs(remainingVal) < Math.abs(principalVal) ? remainingVal : principalVal;
                         }
                         double decayValuePerDay = ResourceType.convertedTotal(decayPerDay);
 
@@ -4077,12 +4081,13 @@ public class BankCommands {
                         row.add(ResourceType.toString(record.resources));
                         row.add(ResourceType.toString(record.resources));
                     }
-                    rows.add(row);
+                    sheet.addRow(row);
                 }
-                if (rows.size() > 1) {
-                    String title = "expire_records.csv";
-                    String csv = StringMan.join(rows, "\n", f -> StringMan.join(f, "\t"));
-                    msg.file(title, csv);
+                if (hasRow) {
+                    sheet.updateClearCurrentTab();
+                    sheet.updateWrite();
+
+                    sheet.attach(msg, "expire_records");
                 } else {
                     footers.add("No remaining expiring records found");
                 }

@@ -89,6 +89,7 @@ public enum SheetKey {
     NTH_LOOT_SCORE_RANGE,
     RESEARCH_SHEET,
     RESEARCH_CITY,
+    EXPIRE_RECORD_SHEET,
 
 
 

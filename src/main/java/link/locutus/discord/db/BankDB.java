@@ -675,7 +675,8 @@ public class BankDB extends DBMainV3 {
         idsSorted.sort(Comparator.naturalOrder());
         List<TaxDeposit> list = new ObjectArrayList<>();
         if (idsSorted.size() == 1) {
-            ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.TAX_ID.eq(idsSorted.iterator().next())).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
+            int id = idsSorted.iterator().next();
+            ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.TAX_ID.eq(id)).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
         } else {
             ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.TAX_ID.in(idsSorted)).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
         }

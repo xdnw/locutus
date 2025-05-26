@@ -3,6 +3,7 @@ package link.locutus.discord.apiv1.enums.city.project;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.scheduler.TriFunction;
 
 import java.util.*;
 import java.util.function.Function;
@@ -23,9 +24,9 @@ public class AProject implements Project {
     private String name;
     private int index;
     private boolean disabled;
-    private Function<DBNation, RoiResult> roi;
+    private TriFunction<Integer, DBNation, Project, RoiResult> roi;
 
-    public AProject(int id, String apiName, String imageName, Map<ResourceType, Double> cost, ResourceType output, int requiredCities, int maxCities, Supplier<Project[]> reqProjects, Predicate<DBNation> otherRequirements) {
+    public AProject(int id, String apiName, String imageName, Map<ResourceType, Double> cost, ResourceType output, int requiredCities, int maxCities, Supplier<Project[]> reqProjects, Predicate<DBNation> otherRequirements, TriFunction<Integer, DBNation, Project, RoiResult> roi) {
         this.id = id;
         this.cost = cost;
         this.costArr = ResourceType.resourcesToArray(cost);
@@ -36,6 +37,12 @@ public class AProject implements Project {
         this.maxCities = maxCities;
         this.reqProjects = reqProjects;
         this.otherRequirements = otherRequirements;
+        this.roi = roi;
+    }
+
+    @Override
+    public TriFunction<Integer, DBNation, Project, RoiResult> getRoiFunction() {
+        return roi;
     }
 
     public AProject disable() {

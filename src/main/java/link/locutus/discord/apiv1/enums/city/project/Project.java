@@ -9,10 +9,12 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.scheduler.TriFunction;
 
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 public interface Project {
     @Command(desc = "Map of resource cost of the project")
@@ -40,6 +42,8 @@ public interface Project {
         }
         return count;
     }
+
+    public TriFunction<Integer, DBNation, Project, RoiResult> getRoiFunction();
 
     @Command(desc = "Get average attribute for nations with this project")
     default double getAvg(@NoFormat NationAttributeDouble attribute, @NoFormat @Default Set<DBNation> nations) {

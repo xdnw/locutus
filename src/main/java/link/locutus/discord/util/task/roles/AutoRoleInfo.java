@@ -1,5 +1,6 @@
 package link.locutus.discord.util.task.roles;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.math.CIEDE2000;
@@ -129,27 +130,34 @@ public class AutoRoleInfo {
         errors.clear();
         success.clear();
 
+        List<CompletableFuture> tasks = new ObjectArrayList<>();
         for (Map.Entry<Member, Set<RoleAdd>> entry : addRoles.entrySet()) {
             for (RoleAdd roleAdd : entry.getValue()) {
-                roleAdd.submit(db.getGuild());
+                Member member = entry.getKey();
+                tasks.add(roleAdd.submit(db.getGuild()).thenAccept(f -> {
+                    if (f) {
+                        errors.computeIfAbsent(member, k -> new ObjectArrayList<>()).add(roleAdd.failedMessage);
+                    } else {
+                        success.computeIfAbsent(member, k -> new ObjectArrayList<>()).add("Added role `" + roleAdd.role.name + "` to " + member.getEffectiveName());
+                    }
+                }));
             }
         }
 
-        List<CompletableFuture> tasks = new ArrayList<>();
         // removeRoles
         for (Map.Entry<Member, Set<Role>> entry : removeRoles.entrySet()) {
             Member member = entry.getKey();
             for (Role role : entry.getValue()) {
                 if (!member.getRoles().contains(role)) {
-                    errors.computeIfAbsent(member, k -> new ArrayList<>()).add("Failed to remove role `" + role.getName() + "`: Member does not have role");
+                    errors.computeIfAbsent(member, k -> new ObjectArrayList<>()).add("Failed to remove role `" + role.getName() + "`: Member does not have role");
                     continue;
                 }
                 try {
                     tasks.add(RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role)).thenAccept(v -> {
-                        success.computeIfAbsent(member, k -> new ArrayList<>()).add("Removed role `" + role.getName() + "` from " + member.getEffectiveName());
+                        success.computeIfAbsent(member, k -> new ObjectArrayList<>()).add("Removed role `" + role.getName() + "` from " + member.getEffectiveName());
                     }));
                 } catch (PermissionException e) {
-                    errors.computeIfAbsent(member, k -> new ArrayList<>()).add("Failed to remove role `" + role.getName() + "`: " + e.getMessage());
+                    errors.computeIfAbsent(member, k -> new ObjectArrayList<>()).add("Failed to remove role `" + role.getName() + "`: " + e.getMessage());
                 }
             }
         }
@@ -160,40 +168,28 @@ public class AutoRoleInfo {
             if (nick == null) {
                 // remove nick
                 if (member.getNickname() == null) {
-                    errors.computeIfAbsent(member, k -> new ArrayList<>()).add("Failed to remove nickname: Member does not have nickname");
+                    errors.computeIfAbsent(member, k -> new ObjectArrayList<>()).add("Failed to remove nickname: Member does not have nickname");
                     continue;
                 }
                 try {
                     tasks.add(RateLimitUtil.queue(db.getGuild().modifyNickname(member, null)).thenAccept(v -> {
-                        success.computeIfAbsent(member, k -> new ArrayList<>()).add("Removed nickname from " + member.getEffectiveName());
+                        success.computeIfAbsent(member, k -> new ObjectArrayList<>()).add("Removed nickname from " + member.getEffectiveName());
                     }));
                 } catch (PermissionException e) {
-                    errors.computeIfAbsent(member, k -> new ArrayList<>()).add("Failed to remove nickname: " + e.getMessage());
+                    errors.computeIfAbsent(member, k -> new ObjectArrayList<>()).add("Failed to remove nickname: " + e.getMessage());
                 }
             } else {
                 // set nick
                 if (member.getNickname() != null && member.getNickname().equals(nick)) {
-                    errors.computeIfAbsent(member, k -> new ArrayList<>()).add("Failed to set nickname: Member already has nickname");
+                    errors.computeIfAbsent(member, k -> new ObjectArrayList<>()).add("Failed to set nickname: Member already has nickname");
                     continue;
                 }
                 try {
                     tasks.add(RateLimitUtil.queue(db.getGuild().modifyNickname(member, nick)).thenAccept(v -> {
-                        success.computeIfAbsent(member, k -> new ArrayList<>()).add("Set nickname of " + member.getEffectiveName() + " to `" + nick + "`");
+                        success.computeIfAbsent(member, k -> new ObjectArrayList<>()).add("Set nickname of " + member.getEffectiveName() + " to `" + nick + "`");
                     }));
                 } catch (PermissionException e) {
-                    errors.computeIfAbsent(member, k -> new ArrayList<>()).add("Failed to set nickname: " + e.getMessage());
-                }
-            }
-        }
-
-        // addRoles
-        for (Map.Entry<Member, Set<RoleAdd>> entry : addRoles.entrySet()) {
-            Member member = entry.getKey();
-            for (RoleAdd roleAdd : entry.getValue()) {
-                if (!roleAdd.get()) {
-                    errors.computeIfAbsent(member, k -> new ArrayList<>()).add(roleAdd.failedMessage);
-                } else {
-                    success.computeIfAbsent(member, k -> new ArrayList<>()).add("Added role `" + roleAdd.role.name + "` to " + member.getEffectiveName());
+                    errors.computeIfAbsent(member, k -> new ObjectArrayList<>()).add("Failed to set nickname: " + e.getMessage());
                 }
             }
         }

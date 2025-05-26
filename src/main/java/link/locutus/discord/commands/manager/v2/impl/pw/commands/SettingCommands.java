@@ -91,6 +91,11 @@ public class SettingCommands {
                 response.append("**type**: `" + key.getType().toSimpleString() + "`\n");
                 response.append("**commands**: ").append(key.getCommandMention()).append("\n");
 
+                List<String> requirementsStr = key.getRequirementDesc();
+                if (!requirementsStr.isEmpty()) {
+                    response.append("**requirements**:\n- " + String.join("\n- ", requirementsStr) + "\n\n");
+                }
+
                 try {
                     key.allowed(db, true);
                 } catch (IllegalArgumentException e) {

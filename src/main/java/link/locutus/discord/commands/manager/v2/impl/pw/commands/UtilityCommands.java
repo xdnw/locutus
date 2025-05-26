@@ -11,6 +11,7 @@ import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.apiv1.enums.city.project.RoiResult;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.header.NationHeaderReader;
 import link.locutus.discord.apiv3.enums.NationLootType;
@@ -53,6 +54,7 @@ import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.offshore.test.IAChannel;
 import link.locutus.discord.util.scheduler.KeyValue;
+import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.nation.MultiReport;
 import link.locutus.discord.util.task.roles.AutoRoleInfo;
@@ -2724,33 +2726,87 @@ public class UtilityCommands {
         return null;
     }
 
-//    @Command(desc = "Calculate the ROI of various projects for your set of cities and infra")
-//    public String projectROI(@Me IMessageIO channel, @Me @Default GuildDB db,
-//                            DBNation nation,
-//                             @Switch("p") Set<Project> projects,
-//                             @Switch("c") Continent continent,
-//                             @Switch("r") Double rad_index,
-//                             @Switch("m") MMRInt mmr) {
-//        if (projects == null || projects.isEmpty()) {
-//            projects = new ObjectOpenHashSet<>(Arrays.asList(Projects.values));
-//        }
-//        double rads = rad_index == null ? nation.getRads() : rad_index / 1000d;
-//        DBNation nationCopy = new SimpleDBNation(new DBNationData(nation.data())) {
-//            @Override
-//            public double getRads() {
-//                return rads;
-//            }
-//        };
-//
-//        // Allow specifying infra in the command.
-//        // Allow specifying the projects. (otherwise ALL are used)
-//        CompletableFuture<IMessageBuilder> msgFuture = channel.send("Please wait...");
-//        for (Project project : projects) {
-//
-//        }
-//
-//
-//    }
+    @Command(desc = "Calculate the ROI of various projects for your set of cities and infra")
+    public String projectROI(@Me IMessageIO channel, @Me @Default GuildDB db,
+                            DBNation nation,
+                             int days,
+                             @Switch("p") Set<Project> projects,
+                             @Switch("c") Continent continent,
+                             @Switch("r") Double rad_index,
+                             @Switch("m") MMRInt mmr,
+                             @Switch("i") Integer infra,
+                             @Switch("l") Integer land) {
+        if (projects == null || projects.isEmpty()) {
+            projects = new ObjectOpenHashSet<>(Arrays.asList(Projects.values));
+        }
+        final double radsFinal = rad_index == null ? nation.getRads() : rad_index / 1000d;
+        DBNation nationCopy = new SimpleDBNation(new DBNationData(nation.data())) {
+            @Override
+            public double getRads() {
+                return radsFinal;
+            }
+
+            @Override
+            public Continent getContinent() {
+                return continent != null ? continent : super.getContinent();
+            }
+
+            @Override
+            public Map<Integer, DBCity> _getCitiesV3() {
+                Map<Integer, DBCity> original = super._getCitiesV3();
+                boolean hasAnyModifications = mmr != null || infra != null || land != null;
+                if (!hasAnyModifications) return original;
+                Map<Integer, DBCity> modifiedCities = new Int2ObjectOpenHashMap<>();
+                for (Map.Entry<Integer, DBCity> entry : original.entrySet()) {
+                    DBCity city = new SimpleDBCity(entry.getValue());
+                    if (mmr != null) {
+                        for (Building building : Buildings.values()) {
+                            city.setBuilding(building, 0);
+                        }
+                        city.setMMR(mmr);
+                    }
+                    if (infra != null) city.setInfra(infra);
+                    if (land != null) city.setLand(land);
+                    modifiedCities.put(entry.getKey(), city);
+                }
+                return modifiedCities;
+            }
+        };
+
+
+        StringBuilder result = new StringBuilder();
+        CompletableFuture<IMessageBuilder> msgFuture = channel.send("Please wait...");
+        msgFuture = channel.send("Please wait...");
+        long start = System.currentTimeMillis();
+        boolean hasAny = false;
+        for (Project project : projects) {
+            TriFunction<Integer, DBNation, Project, RoiResult> roiFunc = project.getRoiFunction();
+            if (roiFunc == null) continue;
+            if (project.canBuild(nation) || nation.hasProject(project)) continue;
+            if (System.currentTimeMillis() - start > 10000) {
+                channel.updateOptionally(msgFuture, "Calculating ROI for " + project.name() + "...");
+                start = System.currentTimeMillis();
+                channel.send(result.toString());
+                result.setLength(0); // Clear the result to avoid sending too much at once
+            }
+            RoiResult roi = roiFunc.apply(days, nationCopy, project);
+            if (roi == null) continue;
+            hasAny = true;
+
+            result.append("**").append(project.name()).append("**: ").append(days + " days\n");
+            result.append("> - " + roi.description() + "\n");
+            result.append("> - Cost (Converted): ~$" + MathMan.format(roi.cost()) + "\n");
+            result.append("> - Cost (Full): `" + ResourceType.toString(project.cost()) + "`\n");
+            result.append("> - Profit (Gross): ~$" + MathMan.format(roi.profit()) + "\n");
+            result.append("> - Profit (Net - Over Timeframe): ~$" + MathMan.format(roi.profit() - roi.cost()) + "\n\n");
+        }
+        if (result.length() != 0) {
+            channel.send(result.toString());
+        } else if (!hasAny) {
+            channel.send("No projects found with a ROI function that can be calculated for the given parameters.");
+        }
+        return null;
+    }
 
 
 

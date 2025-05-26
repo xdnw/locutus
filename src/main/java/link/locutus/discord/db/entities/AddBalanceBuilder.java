@@ -1,6 +1,7 @@
 package link.locutus.discord.db.entities;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -98,17 +99,17 @@ public class AddBalanceBuilder {
         if (note == null) note = "#deposit";
         Map<String, double[]> existing;
         if (account.isNation()) {
-            existing = fundsToSendNations.computeIfAbsent(account.asNation(), k -> new HashMap<>());
+            existing = fundsToSendNations.computeIfAbsent(account.asNation(), k -> new Object2ObjectOpenHashMap<>());
         } else if (account.isAlliance()) {
-            existing = fundsToSendAAs.computeIfAbsent(account.asAlliance(), k -> new HashMap<>());
+            existing = fundsToSendAAs.computeIfAbsent(account.asAlliance(), k -> new Object2ObjectOpenHashMap<>());
         } else if (account.isGuild()) {
-            existing = fundsToSendGuilds.computeIfAbsent(account.asGuild(), k -> new HashMap<>());
+            existing = fundsToSendGuilds.computeIfAbsent(account.asGuild(), k -> new Object2ObjectOpenHashMap<>());
         } else if (account.isTaxid()) {
-            existing = fundsToSendBracket.computeIfAbsent(account.asBracket(), k -> new HashMap<>());
+            existing = fundsToSendBracket.computeIfAbsent(account.asBracket(), k -> new Object2ObjectOpenHashMap<>());
         } else {
             throw new IllegalArgumentException("Unknown type " + account);
         }
-        double[] rss = existing.computeIfAbsent(note, k -> ResourceType.getBuffer());
+        double[] rss = existing.computeIfAbsent(note, _ -> ResourceType.getBuffer());
 
         for (Map.Entry<ResourceType, Double> entry : amount.entrySet()) {
             rss[entry.getKey().ordinal()] += entry.getValue();

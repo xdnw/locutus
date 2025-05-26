@@ -628,7 +628,7 @@ public class Projects {
         }
 
         public AProject build() {
-            return new AProject(id, apiName, imageName, resources, output, requiredCities, maxCities, requiredProjects, otherRequirements);
+            return new AProject(id, apiName, imageName, resources, output, requiredCities, maxCities, requiredProjects, otherRequirements, roi);
         }
 
         public Builder requiredProjects(Supplier<Project[]> projects) {
