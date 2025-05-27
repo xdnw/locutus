@@ -92,9 +92,9 @@ public enum Research {
     ), Map.of(
             MilitaryUnit.AIRCRAFT, Map.of(ResourceType.MONEY, 20.0)
     )),
-    // Decrease ship cost by $500 and 500 Steel, Reduce ship upkeep cost by $30 at peace, and $50 at war
+    // Decrease ship cost by $500 and 0.5 Steel, Reduce ship upkeep cost by $30 at peace, and $50 at war
     NAVAL_COST(ResearchGroup.NAVAL, null, Map.of(
-            MilitaryUnit.SHIP, Map.of(ResourceType.MONEY, 500.0, ResourceType.STEEL, 500.0)
+            MilitaryUnit.SHIP, Map.of(ResourceType.MONEY, 500.0, ResourceType.STEEL, 0.5)
     ), Map.of(
             MilitaryUnit.SHIP, Map.of(ResourceType.MONEY, 60.0)
     ), Map.of(

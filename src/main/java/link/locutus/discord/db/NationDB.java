@@ -841,7 +841,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             synchronized (treatiesByAlliance) {
                 Map<Integer, Treaty> aa1TreatyMap = treatiesByAlliance.computeIfAbsent(toAdd.getFromId(), f -> new Int2ObjectOpenHashMap<>());
                 Treaty existing1 = aa1TreatyMap.get(toAdd.getToId());
-                if (existing1 != null && existing1.getId() > toAdd.getId() && existing1.getTurnsRemaining() > 0 && !toDeleteIds.contains(existing1.getId())) {
+                if (existing1 != null && existing1.getId() > toAdd.getId() && !toDeleteIds.contains(existing1.getId())) {
                     continue;
                 }
                 Treaty prev1 = aa1TreatyMap.put(toAdd.getToId(), toAdd);
