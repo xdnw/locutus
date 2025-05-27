@@ -421,7 +421,7 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
 
     @Override
     public double _gni() {
-        throw unsupported();
+        return estimateGNI();
     }
 
     @Override

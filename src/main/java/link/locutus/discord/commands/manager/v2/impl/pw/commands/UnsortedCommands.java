@@ -487,6 +487,8 @@ public class UnsortedCommands {
     public String stockpile(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db, @Me DBNation me, @Me User author, NationOrAlliance nationOrAlliance) throws IOException {
         Map<ResourceType, Double> totals;
 
+        StringBuilder out = new StringBuilder();
+        StringBuilder wcInfo = new StringBuilder();
         if (nationOrAlliance.isAlliance()) {
             DBAlliance alliance = nationOrAlliance.asAlliance();
             GuildDB otherDb = alliance.getGuildDB();
@@ -513,10 +515,36 @@ public class UnsortedCommands {
             if (totals == null) {
                 return "No stockpile found for " + nation.getMarkdownUrl() + ". Have they disabled alliance information access?";
             }
+
+            Map<ResourceType, Double> warchest = db.getPerCityWarchest(nation);
+            if (warchest != null && !warchest.isEmpty()) {
+                int cities = nation.getCities();
+                double[] required = ResourceType.resourcesToArray(PW.multiply(warchest, (double) cities));
+                // create
+                double[] totalsArray = ResourceType.resourcesToArray(totals);
+                double[] excess = ResourceType.subtract(totalsArray.clone(), required);
+                double[] shortage = ResourceType.subtract(required, totalsArray.clone());
+                // remove negatives
+                for (int i = 0; i < excess.length; i++) {
+                    if (excess[i] < 0) excess[i] = 0;
+                    if (shortage[i] < 0) shortage[i] = 0;
+                }
+                // if not empty, append to wcInfo
+                if (!ResourceType.isZero(shortage)) {
+                    wcInfo.append("Missing Warchest:\n```").append(ResourceType.toString(shortage)).append("```\n");
+                }
+                if (!ResourceType.isZero(excess)) {
+                    wcInfo.append("Excess Warchest:\n```").append(ResourceType.toString(excess)).append("```\n");
+                }
+            }
         }
 
-        String out = ResourceType.resourcesToFancyString(totals);
-        channel.create().embed(nationOrAlliance.getName() + " stockpile", out).send();
+        out.append(ResourceType.resourcesToFancyString(totals));
+        if (wcInfo.length() > 0) {
+            out.append("\n").append(wcInfo);
+        }
+
+        channel.create().embed(nationOrAlliance.getName() + " stockpile", out.toString()).send();
         return null;
     }
 

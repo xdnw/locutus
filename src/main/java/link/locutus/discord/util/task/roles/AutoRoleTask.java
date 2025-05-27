@@ -63,12 +63,14 @@ public class AutoRoleTask implements IAutoRoleTask {
     private Set<Role> applicantRoleValues;
     private Map<Long, Role> memberRole;
     private Set<Role> memberRoleValues;
+    private Set<Integer> offshores;
 
     public AutoRoleTask(Guild guild, GuildDB db) {
         this.guild = guild;
         this.db = db;
         this.allianceRoles = new Int2ObjectOpenHashMap<>();
         this.position = -1;
+        this.offshores = db.getCoalition(Coalition.OFFSHORE);
         syncDB();
     }
 
@@ -155,6 +157,7 @@ public class AutoRoleTask implements IAutoRoleTask {
         this.applicantRoleValues = new HashSet<>(applicantRole.values());
         this.memberRole = Roles.MEMBER.toRoleMap(db);
         this.memberRoleValues = new HashSet<>(memberRole.values());
+        this.offshores = db.getCoalition(Coalition.OFFSHORE);
 
         info.put(GuildKey.AUTONICK.name(), setNickname + "");
         info.put(GuildKey.AUTOROLE_ALLIANCES.name(), setAllianceMask + "");
@@ -731,9 +734,11 @@ public class AutoRoleTask implements IAutoRoleTask {
                 }
             }
         } else {
-            for (Role role : memberRoleValues) {
-                if (myRoles.contains(role)) {
-                    info.removeRoleFromMember(member, role);
+            if (nation == null || !offshores.contains(nation.getAlliance_id()) || nation.getPositionEnum().id <= Rank.APPLICANT.id) {
+                for (Role role : memberRoleValues) {
+                    if (myRoles.contains(role)) {
+                        info.removeRoleFromMember(member, role);
+                    }
                 }
             }
             for (Role role : applicantRoleValues) {

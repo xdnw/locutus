@@ -3007,14 +3007,6 @@ public class WarDB extends DBMainV2 {
     }
 
     private void fixAttacks() {
-        fixAttack(26532048, new Consumer<AbstractCursor>() {
-            @Override
-            public void accept(AbstractCursor attack) {
-                if (attack instanceof GroundCursor gc) {
-                    gc.setDefcas3(0);
-                }
-            }
-        });
         fixAttack(24412523, f -> {
             double[] addLoot = ResourceType.getBuffer();
             addLoot[ResourceType.MONEY.ordinal()] = 14_778_120_852.20;

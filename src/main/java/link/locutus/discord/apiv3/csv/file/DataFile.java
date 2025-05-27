@@ -148,7 +148,7 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
             Map<String, ColumnInfo<T, Object>> headers = parent.createHeaders();
 
             readAllCsv(csvFile, (csvHeader, rows) -> {
-                List<ColumnInfo<T, Object>> columnsInCsv = new ArrayList<>();
+                List<ColumnInfo<T, Object>> columnsInCsv = new ObjectArrayList<>();
 
                 for (int i = 0; i < csvHeader.size(); i++) {
                     String header = csvHeader.get(i);

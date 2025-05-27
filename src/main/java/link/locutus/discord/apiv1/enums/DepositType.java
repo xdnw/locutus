@@ -184,7 +184,7 @@ public enum DepositType {
     }
 
     public boolean isReserved() {
-        return this == GUILD || this == ALLIANCE || this == NATION || this == ACCOUNT || this == CASH || this == RSS;
+        return this == GUILD || this == ALLIANCE || this == NATION || this == ACCOUNT || this == CASH || this == RSS || this == BANKER;
     }
 
     public Object resolve(String value, long timestamp) {
