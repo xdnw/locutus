@@ -63,14 +63,14 @@ public class AutoRoleTask implements IAutoRoleTask {
     private Set<Role> applicantRoleValues;
     private Map<Long, Role> memberRole;
     private Set<Role> memberRoleValues;
-    private Set<Integer> offshores;
+    private Set<Integer> extensions;
 
     public AutoRoleTask(Guild guild, GuildDB db) {
         this.guild = guild;
         this.db = db;
         this.allianceRoles = new Int2ObjectOpenHashMap<>();
         this.position = -1;
-        this.offshores = db.getCoalition(Coalition.OFFSHORE);
+        this.extensions = db.getCoalition(Coalition.EXTENSION);
         syncDB();
     }
 
@@ -79,7 +79,7 @@ public class AutoRoleTask implements IAutoRoleTask {
         if (aaIds == null || aaIds.isEmpty()) {
             return db.getAllies(false).contains(nation.getAlliance_id()) && nation.getPositionEnum().id >= Rank.MEMBER.id;
         }
-        return (nation != null && aaIds.contains(nation.getAlliance_id()) && nation.getPositionEnum().id >= Rank.MEMBER.id);
+        return (nation != null && (aaIds.contains(nation.getAlliance_id()) && nation.getPositionEnum().id >= Rank.MEMBER.id) || extensions.contains(nation.getAlliance_id()));
     }
 
     public void setAllianceMask(GuildDB.AutoRoleOption value) {
@@ -157,7 +157,7 @@ public class AutoRoleTask implements IAutoRoleTask {
         this.applicantRoleValues = new HashSet<>(applicantRole.values());
         this.memberRole = Roles.MEMBER.toRoleMap(db);
         this.memberRoleValues = new HashSet<>(memberRole.values());
-        this.offshores = db.getCoalition(Coalition.OFFSHORE);
+        this.extensions = db.getCoalition(Coalition.EXTENSION);
 
         info.put(GuildKey.AUTONICK.name(), setNickname + "");
         info.put(GuildKey.AUTOROLE_ALLIANCES.name(), setAllianceMask + "");
@@ -221,6 +221,11 @@ public class AutoRoleTask implements IAutoRoleTask {
 
         if (!aaIds.isEmpty()) {
             info.put("Alliances", aaIds.stream().map(f -> Integer.toString(f)).collect(Collectors.joining("\n")));
+            if (!extensions.isEmpty()) {
+                info.put("Extensions", extensions.stream().map(f -> Integer.toString(f)).collect(Collectors.joining("\n")));
+            } else {
+                info.put("Extensions", "None (see: " + CM.coalition.add.cmd.toSlashMention() + " with " + Coalition.EXTENSION.name() + ")");
+            }
         } else {
             if (!allies.isEmpty()) {
                 info.put("Alliances (Allies)", allies.stream().map(f -> Integer.toString(f)).collect(Collectors.joining("\n")));
@@ -695,7 +700,7 @@ public class AutoRoleTask implements IAutoRoleTask {
             return;
         }
         List<Role> myRoles = member.getRoles();
-        if (nation != null && db.isAllianceId(nation.getAlliance_id())) {
+        if (nation != null && (db.isAllianceId(nation.getAlliance_id()) || extensions.contains(nation.getAlliance_id()))) {
             if (nation.getPositionEnum().id > Rank.APPLICANT.id) {
                 if (!memberRole.isEmpty()) {
                     Role addMemberRole = memberRole.get((long) nation.getAlliance_id());
@@ -734,11 +739,9 @@ public class AutoRoleTask implements IAutoRoleTask {
                 }
             }
         } else {
-            if (nation == null || !offshores.contains(nation.getAlliance_id()) || nation.getPositionEnum().id <= Rank.APPLICANT.id) {
-                for (Role role : memberRoleValues) {
-                    if (myRoles.contains(role)) {
-                        info.removeRoleFromMember(member, role);
-                    }
+            for (Role role : memberRoleValues) {
+                if (myRoles.contains(role)) {
+                    info.removeRoleFromMember(member, role);
                 }
             }
             for (Role role : applicantRoleValues) {

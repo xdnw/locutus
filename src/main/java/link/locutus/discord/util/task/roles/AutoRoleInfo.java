@@ -148,7 +148,7 @@ public class AutoRoleInfo {
             for (RoleAdd roleAdd : entry.getValue()) {
                 Member member = entry.getKey();
                 tasks.add(roleAdd.submit(db.getGuild()).thenAccept(f -> {
-                    if (f) {
+                    if (!f) {
                         errors.computeIfAbsent(member, k -> new ObjectArrayList<>()).add(roleAdd.failedMessage);
                     } else {
                         success.computeIfAbsent(member, k -> new ObjectArrayList<>()).add("Added role `" + roleAdd.role.name + "` to " + member.getEffectiveName());

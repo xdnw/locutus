@@ -127,6 +127,13 @@ public enum Coalition {
         public boolean hasPermission(Guild guild, User user) {
             return Roles.ADMIN.hasOnRoot(user);
         }
+    },
+
+    EXTENSION("Counts as a member for the autorole tasks") {
+        @Override
+        public boolean hasPermission(Guild guild, User user) {
+            return Roles.ADMIN.hasOnRoot(user);
+        }
     }
 
     ;
