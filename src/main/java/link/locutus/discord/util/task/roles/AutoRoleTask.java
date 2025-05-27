@@ -689,7 +689,7 @@ public class AutoRoleTask implements IAutoRoleTask {
         return info;
     }
 
-        private void setAutoRoleMemberApp(AutoRoleInfo info, Member member, DBNation nation) {
+    private void setAutoRoleMemberApp(AutoRoleInfo info, Member member, DBNation nation) {
         if (!autoRoleMembersApps) return;
         if (memberRole.isEmpty() && applicantRole.isEmpty()) {
             return;
