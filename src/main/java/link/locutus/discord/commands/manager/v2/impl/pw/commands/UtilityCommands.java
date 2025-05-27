@@ -37,6 +37,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.Activity;
 import link.locutus.discord.db.entities.city.SimpleDBCity;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.nation.DBNationData;
@@ -61,13 +62,12 @@ import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import link.locutus.discord.util.task.roles.IAutoRoleTask;
 import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.VoiceChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import org.json.JSONObject;
 
 import java.awt.*;
@@ -238,19 +238,49 @@ public class UtilityCommands {
 
     @Command(desc = "list channels", viewable = true)
     @RolePermission(Roles.ADMIN)
-    public String channelCount(@Me IMessageIO channel, @Me Guild guild) {
+    public String channelCount(@Me IMessageIO channel, @Me Guild guild, @Switch("m") boolean list_added_members, @Switch("r") boolean list_added_roles) {
         StringBuilder channelList = new StringBuilder();
 
         List<Category> categories = guild.getCategories();
         for (Category category : categories) {
             channelList.append(category.getName() + "\n");
-
             for (GuildChannel catChannel : category.getChannels()) {
                 String prefix = "+ ";
                 if (catChannel instanceof VoiceChannel) {
                     prefix = "\uD83D\uDD0A ";
                 }
                 channelList.append(prefix + catChannel.getName() + "\n");
+                if (catChannel instanceof TextChannel msgChan) {
+                    if (list_added_members) {
+                        List<Member> members = msgChan.getMemberPermissionOverrides().stream().map(f -> f.getMember()).filter(Objects::nonNull).collect(Collectors.toList());
+                        if (!members.isEmpty()) {
+                            channelList.append("  - Members: ");
+                            for (Member member : members) {
+                                channelList.append(member.getEffectiveName());
+                                DBNation nation = DiscordUtil.getNation(member.getIdLong());
+                                if (nation != null) {
+                                    channelList.append(" (" + nation.getNation() + " | " + nation.getAllianceName() + ")");
+                                }
+                                channelList.append(", ");
+                            }
+                            channelList.setLength(channelList.length() - 2);
+                            channelList.append("\n");
+                        }
+                    }
+                    if (list_added_roles) {
+                        List<Role> roles = msgChan.getRolePermissionOverrides().stream().map(f -> f.getRole()).filter(Objects::nonNull).collect(Collectors.toList());
+                        if (!roles.isEmpty()) {
+                            channelList.append("  - Roles: ");
+                            for (Role role : roles) {
+                                channelList.append(role.getName());
+                                channelList.append(", ");
+                            }
+                            channelList.setLength(channelList.length() - 2);
+                            channelList.append("\n");
+                        }
+                    }
+                }
+
             }
 
             channelList.append("\n");
