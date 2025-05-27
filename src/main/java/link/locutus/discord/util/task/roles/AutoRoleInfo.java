@@ -316,7 +316,11 @@ public class AutoRoleInfo {
                     future.join();
                 } catch (RuntimeException e) {
                     e.printStackTrace();
-                    failedMessage = e.getMessage();
+                    if (failedMessage == null) {
+                        failedMessage = e.getMessage();
+                    } else {
+                        failedMessage += " | " + e.getMessage();
+                    }
                 }
                 future = null;
             }
