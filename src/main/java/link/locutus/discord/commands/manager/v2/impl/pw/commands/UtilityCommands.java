@@ -240,11 +240,13 @@ public class UtilityCommands {
     @RolePermission(Roles.ADMIN)
     public String channelCount(@Me IMessageIO channel, @Me Guild guild, @Switch("m") boolean list_added_members, @Switch("r") boolean list_added_roles) {
         StringBuilder channelList = new StringBuilder();
+        int count = 0;
 
         List<Category> categories = guild.getCategories();
         for (Category category : categories) {
             channelList.append(category.getName() + "\n");
             for (GuildChannel catChannel : category.getChannels()) {
+                count++;
                 String prefix = "+ ";
                 if (catChannel instanceof VoiceChannel) {
                     prefix = "\uD83D\uDD0A ";
@@ -256,6 +258,7 @@ public class UtilityCommands {
                         if (!members.isEmpty()) {
                             channelList.append("  - Members: ");
                             for (Member member : members) {
+                                if (member.getUser().isBot()) continue; // Skip bots
                                 channelList.append(member.getEffectiveName());
                                 DBNation nation = DiscordUtil.getNation(member.getIdLong());
                                 if (nation != null) {
@@ -286,7 +289,7 @@ public class UtilityCommands {
             channelList.append("\n");
         }
 
-        channel.create().file(guild.getChannels().size() + "/500 channels", channelList.toString()).send();
+        channel.create().file(count + "of 500 channels", channelList.toString()).send();
         return null;
     }
 

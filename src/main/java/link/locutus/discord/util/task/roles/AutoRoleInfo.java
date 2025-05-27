@@ -315,6 +315,7 @@ public class AutoRoleInfo {
                 try {
                     future.join();
                 } catch (RuntimeException e) {
+                    e.printStackTrace();
                     failedMessage = e.getMessage();
                 }
                 future = null;

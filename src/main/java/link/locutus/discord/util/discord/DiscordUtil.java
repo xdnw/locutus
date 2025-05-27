@@ -217,7 +217,7 @@ public class DiscordUtil {
             sub.add("@" + discordRole.getName());
         }
         for (Map.Entry<Long, Role> entry : roleMap.entrySet()) {
-            if (entry.getKey() != null) {
+            if (entry.getKey() != null && entry.getKey() != 0L) {
                 Role role = entry.getValue();
                 sub.add(PW.getName(entry.getKey(), true) + ": @" + role.getName());
             }
