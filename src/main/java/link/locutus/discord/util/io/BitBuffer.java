@@ -4,6 +4,75 @@ import java.nio.ByteBuffer;
 
 public class BitBuffer {
 
+    static void testWriteReadSingleBit() {
+        ByteBuffer buf = ByteBuffer.allocate(1);
+        BitBuffer bitBuffer = new BitBuffer(buf);
+        bitBuffer.writeBit(true);
+        byte[] data = bitBuffer.getWrittenBytes();
+
+        // prepare for reading
+        bitBuffer.setBytes(data);
+        assertTrue(bitBuffer.readBit(), "Single true bit should read back true");
+    }
+
+    private static void assertTrue(boolean b, String s) {
+        if (!b) {
+            throw new AssertionError(s);
+        }
+    }
+
+    static void testWriteReadAlternatingBits() {
+        int length = 70; // crosses 64-bit boundary
+        boolean[] pattern = new boolean[length];
+        for (int i = 0; i < length; i++) {
+            pattern[i] = (i % 2 == 0);
+        }
+
+        ByteBuffer buf = ByteBuffer.allocate(16);
+        BitBuffer bitBuffer = new BitBuffer(buf);
+        for (boolean b : pattern) {
+            bitBuffer.writeBit(b);
+        }
+        byte[] data = bitBuffer.getWrittenBytes();
+
+        bitBuffer.setBytes(data);
+        for (int i = 0; i < length; i++) {
+            assertEquals(pattern[i], bitBuffer.readBit(),
+                    "Bit at index " + i + " should match");
+        }
+    }
+
+    private static void assertEquals(boolean b, boolean b1, String s) {
+        if (b != b1) {
+            throw new AssertionError(s);
+        }
+    }
+
+    static void testWriteReadAllOnesCross64Boundary() {
+        int length = 65;
+        ByteBuffer buf = ByteBuffer.allocate(16);
+        BitBuffer bitBuffer = new BitBuffer(buf);
+
+        // write 65 ones
+        for (int i = 0; i < length; i++) {
+            bitBuffer.writeBit(true);
+        }
+        byte[] data = bitBuffer.getWrittenBytes();
+
+        bitBuffer.setBytes(data);
+        for (int i = 0; i < length; i++) {
+            assertTrue(bitBuffer.readBit(), "Bit " + i + " should be true");
+        }
+    }
+
+    public static void main(String[] args) {
+        testWriteReadSingleBit();
+        testWriteReadAlternatingBits();
+        testWriteReadAllOnesCross64Boundary();
+        System.out.println("All tests passed!");
+    }
+
+
     private static final long[] MASK = new long[Long.SIZE + 1];
     static {
         for (int i = 0; i < Long.SIZE; i++) {
