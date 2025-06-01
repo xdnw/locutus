@@ -222,13 +222,11 @@ dependencies {
     implementation("org.jooq:jooq-codegen:3.19.13")
 
 
-    implementation("com.theokanning.openai-gpt3-java:client:0.18.2")
-    implementation("com.theokanning.openai-gpt3-java:service:0.18.2")
-    implementation("com.theokanning.openai-gpt3-java:api:0.18.2")
+    implementation 'com.openai:openai-java:2.3.0'
 
 //    implementation 'com.github.javaparser:javaparser-symbol-solver-core:3.25.3'
 //    implementation 'com.github.javaparser:javaparser-core:3.25.3'
-    implementation 'com.knuddels:jtokkit:0.6.1'
+    implementation 'com.knuddels:jtokkit:1.1.0'
     // https://mvnrepository.com/artifact/org.tensorflow/tensorflow
 //    implementation 'org.tensorflow:tensorflow:1.15.0'
 //    implementation 'org.apache.commons:commons-lang3:3.12.0'

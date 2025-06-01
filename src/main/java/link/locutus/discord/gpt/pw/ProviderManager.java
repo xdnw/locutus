@@ -1,6 +1,6 @@
 package link.locutus.discord.gpt.pw;
 
-import com.knuddels.jtokkit.api.ModelType;
+import com.openai.models.ChatModel;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
@@ -17,11 +17,7 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.Configurator;
-import org.apache.logging.log4j.core.config.builder.api.AppenderComponentBuilder;
-import org.apache.logging.log4j.core.config.builder.api.ComponentBuilder;
-import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilder;
-import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory;
-import org.apache.logging.log4j.core.config.builder.api.LoggerComponentBuilder;
+import org.apache.logging.log4j.core.config.builder.api.*;
 import org.apache.logging.log4j.core.config.builder.impl.BuiltConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,11 +25,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ProviderManager {
@@ -74,8 +66,8 @@ public class ProviderManager {
         Map<ProviderType, GPTProvider> result = guildProviders.computeIfAbsent(db.getIdLong(), k -> new ConcurrentHashMap<>());
         synchronized (result) {
             String openAiKey = GuildKey.OPENAI_KEY.getOrNull(db);
-            ModelType expectedModel = GuildKey.OPENAI_MODEL.getOrNull(db);
-            if (expectedModel == null) expectedModel = ModelType.GPT_4;
+            ChatModel expectedModel = GuildKey.OPENAI_MODEL.getOrNull(db);
+            if (expectedModel == null) expectedModel = ChatModel.GPT_4;
 
             int[] limits = GuildKey.GPT_USAGE_LIMITS.getOrNull(db);
 
@@ -90,7 +82,7 @@ public class ProviderManager {
                     }
                 }
             } else {
-                ModelType finalExpectedModel = expectedModel;
+                ChatModel finalExpectedModel = expectedModel;
                 GPTProvider provider = result.computeIfAbsent(ProviderType.OPENAI, k -> {
                     IText2Text newProvider = handler.createOpenAiText2Text(openAiKey, finalExpectedModel);
                     return new SimpleGPTProvider(ProviderType.OPENAI, newProvider, handler.getModerator(), true, logger);
@@ -203,7 +195,7 @@ public class ProviderManager {
         if (Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY != null) {
             SimpleGPTProvider provider = new SimpleGPTProvider(
                     ProviderType.OPENAI,
-                    handler.createOpenAiText2Text(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY, ModelType.GPT_4),
+                    handler.createOpenAiText2Text(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY, ChatModel.GPT_4),
                     handler.getModerator(),
                     true,
                     logger);

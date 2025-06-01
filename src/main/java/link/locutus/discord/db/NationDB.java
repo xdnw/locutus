@@ -1147,7 +1147,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             dirtyCities.clear();
         }
         dirtyCityNations.clear();
-        Map<Integer, Integer> citiesToDeleteToNationId = new HashMap<>();
+        Map<Integer, Integer> citiesToDeleteToNationId = new Int2IntOpenHashMap();
         synchronized (citiesByNation) {
             for (Map.Entry<Integer, Object> natEntry : citiesByNation.entrySet()) {
                 int natId = natEntry.getKey();
@@ -1180,6 +1180,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         int changed = 0;
         int newCity = 0;
 
+        List<DBCity> citiesToSave = new ObjectArrayList<>();
+
         for (SCityContainer city : cities) {
             int nationId = Integer.parseInt(city.getNationId());
             int cityId = Integer.parseInt(city.getCityId());
@@ -1200,6 +1202,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 synchronized (citiesByNation) {
                     ArrayUtil.addElement(SimpleDBCity.class, citiesByNation, nationId, existing);
                 }
+                citiesToSave.add(existing);
             } else {
                 buffer.set(existing);
                 existing.set(city);
@@ -1209,6 +1212,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                         dirtyCities.add(cityId);
                         changed++;
                     }
+                    citiesToSave.add(existing);
                 }
             }
         }
@@ -1226,6 +1230,9 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 }
             }
             deleteCitiesInDB(citiesToDeleteToNationId.keySet());
+        }
+        if (!citiesToSave.isEmpty()) {
+            saveCities(citiesToSave);
         }
     }
 
@@ -1424,7 +1431,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
     private void updateCities(Map<Integer, Map<Integer, City>> completeCitiesByNation, boolean deleteMissing, Consumer<Event> eventConsumer) {
         DBCity buffer = new SimpleDBCity(0);
-        List<DBCity> dirtyCities = new ArrayList<>(); // List<nation id, db city>
+        List<DBCity> dirtyCities = new ObjectArrayList<>();
         AtomicBoolean dirtyFlag = new AtomicBoolean();
 
         Set<Integer> citiesToDelete = new IntOpenHashSet();
@@ -1591,7 +1598,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
     public void updateCities(List<City> cities, Consumer<Event> eventConsumer, String reason) {
         DBCity buffer = new SimpleDBCity(0);
-        List<DBCity> dirtyCities = new ArrayList<>(); // List<nation id, db city>
+        List<DBCity> dirtyCities = new ObjectArrayList<>(); // List<nation id, db city>
         AtomicBoolean dirtyFlag = new AtomicBoolean();
 
         for (City city : cities) {

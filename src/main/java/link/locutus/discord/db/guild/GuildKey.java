@@ -1,9 +1,10 @@
 package link.locutus.discord.db.guild;
 
 import com.google.gson.reflect.TypeToken;
-import com.knuddels.jtokkit.api.ModelType;
+import com.openai.client.OpenAIClient;
+import com.openai.client.okhttp.OpenAIOkHttpClient;
+import com.openai.models.ChatModel;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
-import com.theokanning.openai.service.OpenAiService;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
@@ -20,9 +21,9 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
@@ -31,24 +32,16 @@ import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.gpt.ModerationResult;
 import link.locutus.discord.gpt.copilot.CopilotDeviceAuthenticationData;
 import link.locutus.discord.gpt.imps.CopilotText2Text;
-import link.locutus.discord.pnw.AllianceList;
-import link.locutus.discord.pnw.BeigeReason;
-import link.locutus.discord.pnw.CityRanges;
-import link.locutus.discord.pnw.GuildOrAlliance;
-import link.locutus.discord.pnw.NationOrAllianceOrGuild;
+import link.locutus.discord.pnw.*;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.scheduler.KeyValue;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Invite;
-import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.User;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -57,16 +50,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
@@ -221,7 +205,9 @@ public class GuildKey {
             if (apiKey == null || apiKey.isEmpty()) {
                 throw new IllegalArgumentException("Please provide an API key");
             }
-            OpenAiService service = new OpenAiService(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY, Duration.ofSeconds(120));
+            OpenAIClient service = OpenAIOkHttpClient.builder().apiKey(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY)
+                    .timeout(Duration.ofSeconds(120))
+                    .build();
             GPTModerator moderator = new GPTModerator(service);
             List<ModerationResult> result = moderator.moderate("Hello World");
             if (result.size() == 0) {
@@ -256,37 +242,37 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requireValidAlliance());
 
-    public static final GuildSetting<ModelType> OPENAI_MODEL = new GuildSetting<ModelType>(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE, ModelType.class) {
+    public static final GuildSetting<ChatModel> OPENAI_MODEL = new GuildSetting<ChatModel>(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE, ChatModel.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
-        public String register_openai_key(@Me GuildDB db, @Me User user, ModelType model) {
+        public String register_openai_key(@Me GuildDB db, @Me User user, ChatModel model) {
             return OPENAI_MODEL.set(db, user, model);
         }
 
         @Override
-        public ModelType validate(GuildDB db, User user, ModelType model) {
-            return switch (model) {
-                case GPT_4, GPT_4_32K, GPT_3_5_TURBO, GPT_3_5_TURBO_16K -> model;
-                default -> throw new IllegalArgumentException("Invalid chat model type: " + model);
-            };
+        public ChatModel validate(GuildDB db, User user, ChatModel model) {
+            if (model == ChatModel.GPT_4 || model == ChatModel.GPT_4_32K || model == ChatModel.GPT_3_5_TURBO || model == ChatModel.GPT_3_5_TURBO_16K) {
+                return model;
+            }
+            throw new IllegalArgumentException("Invalid chat model type: " + model + ". Valid values: " + StringMan.join(ChatModel.Known.values(), ", "));
         }
 
         @Override
-        public ModelType parse(GuildDB db, String input) {
-            return ModelType.valueOf(input);
+        public ChatModel parse(GuildDB db, String input) {
+            return ChatModel.of(input);
         }
 
         @Override
         public String help() {
             return "OpenAI model type\n" +
                     "Used for chat responses and completion\n" +
-                    "Valid values: " + StringMan.join(ModelType.values(), ", ");
+                    "Valid values: " + StringMan.join(ChatModel.Known.values(), ", ");
         }
 
         @Override
-        public String toString(ModelType value) {
-            return value.name();
+        public String toString(ChatModel value) {
+            return value.asString();
         }
     }.setupRequirements(f -> f.requires(OPENAI_KEY));
 

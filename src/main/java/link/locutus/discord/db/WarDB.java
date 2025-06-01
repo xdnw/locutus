@@ -6,25 +6,28 @@ import com.politicsandwar.graphql.model.*;
 import com.ptsmods.mysqlw.Database;
 import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TablePreset;
-import it.unimi.dsi.fastutil.ints.*;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.apiv1.domains.subdomains.SWarContainer;
 import link.locutus.discord.apiv1.domains.subdomains.WarAttacksContainer;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AttackCursorFactory;
-import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors.ALootCursor;
-import link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors.GroundCursor;
-import link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors.VictoryCursor;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.WarType;
-import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
+import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.conflict.ConflictManager;
@@ -33,26 +36,19 @@ import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.handlers.ActiveWarHandler;
 import link.locutus.discord.db.handlers.AttackQuery;
 import link.locutus.discord.event.Event;
+import link.locutus.discord.event.bounty.BountyCreateEvent;
+import link.locutus.discord.event.bounty.BountyRemoveEvent;
 import link.locutus.discord.event.nation.NationChangeColorEvent;
 import link.locutus.discord.event.nation.NationChangeDefEvent;
 import link.locutus.discord.event.war.AttackEvent;
-import link.locutus.discord.event.bounty.BountyCreateEvent;
-import link.locutus.discord.event.bounty.BountyRemoveEvent;
-import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.io.PagePriority;
+import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
-import link.locutus.discord.util.AlertUtil;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.ThrowingFunction;
 import link.locutus.discord.util.update.WarUpdateProcessor;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
-import link.locutus.discord.apiv1.domains.subdomains.SWarContainer;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 import java.io.File;
 import java.io.IOException;
@@ -91,6 +87,28 @@ public class WarDB extends DBMainV2 {
         executeStmt("CREATE TABLE IF NOT EXISTS war_metadata (key TEXT PRIMARY KEY, value TEXT)");
         update("INSERT OR REPLACE INTO war_metadata (key, value) VALUES (?, ?)",
                 "victory_attacks_reserialized", "true");
+    }
+
+    public void convertAttackEndian() {
+        String query = "SELECT * FROM `attacks3`";
+        // iterate attacks
+        AttackCursorFactory loader = new AttackCursorFactory(this);
+        DBWar dummy = new DBWar(0, 2, 1, 0, 0, WarType.RAID, WarStatus.ATTACKER_VICTORY, 0, 0, 0, 0);
+
+        try (PreparedStatement stmt = getConnection().prepareStatement(query)) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    byte[] data = rs.getBytes("data");
+                    int warId = rs.getInt("war_id");
+                    int attackerId = rs.getInt("attacker_nation_id");
+                    int defenderId = rs.getInt("defender_nation_id");
+                    AbstractCursor cursor = loader.load(dummy, data, true);
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
     public void importVictoryAttacksFromExternalDB(String filePath) throws SQLException {

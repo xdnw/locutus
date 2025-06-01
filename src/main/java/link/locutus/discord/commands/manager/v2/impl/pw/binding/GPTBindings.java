@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 
-import com.knuddels.jtokkit.api.ModelType;
+import com.openai.models.ChatModel;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
@@ -10,9 +10,9 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.WikiCategory;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.imps.EmbeddingType;
+import link.locutus.discord.gpt.imps.ProviderType;
 import link.locutus.discord.gpt.pw.GPTProvider;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
-import link.locutus.discord.gpt.imps.ProviderType;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
@@ -25,8 +25,8 @@ import java.util.stream.Collectors;
 
 public class GPTBindings extends BindingHelper {
     @Binding(value = "A GPT model name")
-    public ModelType ModelType(String input) {
-        return emum(ModelType.class, input);
+    public ChatModel ChatModel(String input) {
+        return ChatModel.of(input);
     }
 
     @Binding(value = "The name of an data set")

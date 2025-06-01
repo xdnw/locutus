@@ -1,32 +1,30 @@
 package link.locutus.discord.gpt;
 
 import com.knuddels.jtokkit.api.ModelType;
-import com.theokanning.openai.moderation.ModerationCategories;
-import com.theokanning.openai.moderation.ModerationCategoryScores;
-import com.theokanning.openai.service.OpenAiService;
-import com.theokanning.openai.moderation.Moderation;
-import com.theokanning.openai.moderation.ModerationRequest;
-import link.locutus.discord.Logg;
-import org.json.JSONArray;
+import com.openai.client.OpenAIClient;
+import com.openai.models.moderations.Moderation;
+import com.openai.models.moderations.ModerationCreateParams;
+import com.openai.models.moderations.ModerationModel;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import org.json.JSONObject;
 
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class GPTModerator implements IModerator{
-    private final OpenAiService service;
+    private final OpenAIClient service;
 
-    public GPTModerator(OpenAiService service) {
+    public GPTModerator(OpenAIClient service) {
         this.service = service;
     }
 
     public List<Moderation> checkModeration(String input) {
-        return service.createModeration(ModerationRequest.builder().input(input).build()).getResults();
+        ModerationCreateParams params = ModerationCreateParams.builder()
+                .model(ModerationModel.OMNI_MODERATION_LATEST)
+                .input(input)
+                .build();
+
+        return service.moderations().create(params).results();
     }
 
     @Override
@@ -42,37 +40,85 @@ public class GPTModerator implements IModerator{
             }
         }
 
-        List<ModerationResult> results = new ArrayList<>();
-        JSONObject response = checkModeration(split);
-        if (response.has("error")) {
-            ModerationResult errorResult = new ModerationResult();
-            errorResult.setError(true);
-            errorResult.setMessage(response.getString("error"));
-            results.add(errorResult);
-        } else {
-            JSONArray resultsArray = response.getJSONArray("results");
-            for (int i = 0; i < resultsArray.length(); i++) {
-                JSONObject resultObject = resultsArray.getJSONObject(i);
-                ModerationResult result = new ModerationResult();
-                result.setFlagged(resultObject.getBoolean("flagged"));
-                if (result.isFlagged()) {
-                    JSONObject categoriesObject = resultObject.getJSONObject("categories");
-                    Set<String> flaggedCategories = new HashSet<>();
-                    for (String category : categoriesObject.keySet()) {
-                        if (categoriesObject.getBoolean(category)) {
-                            flaggedCategories.add(category);
-                        }
-                    }
-                    result.setFlaggedCategories(flaggedCategories);
-                    JSONObject categoryScoresObject = resultObject.getJSONObject("category_scores");
-                    Map<String, Double> categoryScores = new HashMap<>();
-                    for (String category : categoryScoresObject.keySet()) {
-                        categoryScores.put(category, categoryScoresObject.getDouble(category));
-                    }
-                    result.setScores(categoryScores);
+        List<ModerationResult> results = new ObjectArrayList<>();
+        List<Moderation> responses = checkModeration(split);
+        for (Moderation resultObject : responses) {
+            ModerationResult result = new ModerationResult();
+            result.setFlagged(resultObject.flagged());
+            if (result.isFlagged()) {
+                Moderation.Categories categoriesObject = resultObject.categories();
+                Moderation.CategoryScores catScoresObject = resultObject.categoryScores();
+                Set<String> flaggedCategories = new HashSet<>();
+                Map<String, Double> categoryScores = new HashMap<>();
+                // private val harassment: JsonField<Boolean>,
+                //private val harassmentThreatening: JsonField<Boolea
+                //private val hate: JsonField<Boolean>,
+                //private val hateThreatening: JsonField<Boolean>,
+                //private val illicit: JsonField<Boolean>,
+                //private val illicitViolent: JsonField<Boolean>,
+                //private val selfHarm: JsonField<Boolean>,
+                //private val selfHarmInstructions: JsonField<Boolean
+                //private val selfHarmIntent: JsonField<Boolean>,
+                //private val sexual: JsonField<Boolean>,
+                //private val sexualMinors: JsonField<Boolean>,
+                //private val violence: JsonField<Boolean>,
+                //private val violenceGraphic: JsonField<Boolean>,
+                if (categoriesObject.harassment()) {
+                    flaggedCategories.add("harassment");
+                    categoryScores.put("harassment", catScoresObject.harassment());
                 }
-                results.add(result);
+                if (categoriesObject.harassmentThreatening()) {
+                    flaggedCategories.add("harassment_threatening");
+                    categoryScores.put("harassment_threatening", catScoresObject.harassmentThreatening());
+                }
+                if (categoriesObject.hate()) {
+                    flaggedCategories.add("hate");
+                    categoryScores.put("hate", catScoresObject.hate());
+                }
+                if (categoriesObject.hateThreatening()) {
+                    flaggedCategories.add("hate_threatening");
+                    categoryScores.put("hate_threatening", catScoresObject.hateThreatening());
+                }
+                if (categoriesObject.illicit().orElse(false)) {
+                    flaggedCategories.add("illicit");
+                    categoryScores.put("illicit", catScoresObject.illicit());
+                }
+                if (categoriesObject.illicitViolent().orElse(false)) {
+                    flaggedCategories.add("illicit_violent");
+                    categoryScores.put("illicit_violent", catScoresObject.illicitViolent());
+                }
+                if (categoriesObject.selfHarm()) {
+                    flaggedCategories.add("self_harm");
+                    categoryScores.put("self_harm", catScoresObject.selfHarm());
+                }
+                if (categoriesObject.selfHarmInstructions()) {
+                    flaggedCategories.add("self_harm_instructions");
+                    categoryScores.put("self_harm_instructions", catScoresObject.selfHarmInstructions());
+                }
+                if (categoriesObject.selfHarmIntent()) {
+                    flaggedCategories.add("self_harm_intent");
+                    categoryScores.put("self_harm_intent", catScoresObject.selfHarmIntent());
+                }
+                if (categoriesObject.sexual()) {
+                    flaggedCategories.add("sexual");
+                    categoryScores.put("sexual", catScoresObject.sexual());
+                }
+                if (categoriesObject.sexualMinors()) {
+                    flaggedCategories.add("sexual_minors");
+                    categoryScores.put("sexual_minors", catScoresObject.sexualMinors());
+                }
+                if (categoriesObject.violence()) {
+                    flaggedCategories.add("violence");
+                    categoryScores.put("violence", catScoresObject.violence());
+                }
+                if (categoriesObject.violenceGraphic()) {
+                    flaggedCategories.add("violence_graphic");
+                    categoryScores.put("violence_graphic", catScoresObject.violenceGraphic());
+                }
+                result.setScores(categoryScores);
             }
+            results.add(result);
+
         }
         return results;
     }
@@ -88,51 +134,11 @@ public class GPTModerator implements IModerator{
         }
     }
 
-    public JSONObject checkModeration(List<String> inputs) {
-        List<Moderation> all = new ArrayList<>();
+    public List<Moderation> checkModeration(List<String> inputs) {
+        List<Moderation> results = new ObjectArrayList<>();
         for (String input : inputs) {
-            Logg.info("Moderating: " + input);
-            List<Moderation> moderations = checkModeration(input);
-            all.addAll(moderations);
+            results.addAll(checkModeration(input));
         }
-        // construct json
-        JSONObject response = new JSONObject();
-        JSONArray resultsArray = new JSONArray();
-        for (Moderation moderation : all) {
-            System.out.println(moderation);
-            JSONObject resultObject = new JSONObject();
-            resultObject.put("flagged", moderation.isFlagged());
-            if (moderation.isFlagged()) {
-                JSONObject categoriesObject = new JSONObject();
-                ModerationCategories category = moderation.getCategories();
-                addToObject(category, categoriesObject);
-                resultObject.put("categories", categoriesObject);
-                JSONObject categoryScoresObject = new JSONObject();
-                ModerationCategoryScores categoryScores = moderation.getCategoryScores();
-                addToObject(categoryScores, categoryScoresObject);
-                resultObject.put("category_scores", categoryScoresObject);
-            }
-            resultsArray.put(resultObject);
-        }
-        response.put("results", resultsArray);
-        return response;
-//        String url = "https://api.openai.com/v1/moderations";
-//        String apiKey = Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY;
-//
-//        Map<String, List<String>> arguments = new HashMap<>();
-//        arguments.put("input", inputs);
-//
-//        Consumer<HttpURLConnection> apply = connection -> {
-//            connection.setRequestProperty("Authorization", "Bearer " + apiKey);
-//            connection.setRequestProperty("Content-Type", "application/json");
-//        };
-//
-//        JSONObject argsJs = new JSONObject(arguments);
-//        byte[] dataBinary = argsJs.toString().getBytes(StandardCharsets.UTF_8);
-//
-//        CompletableFuture<String> result = FileUtil.readStringFromURL(PagePriority.GPT_MODERATE, url, dataBinary,  FileUtil.RequestType.POST, null, apply);
-//        String jsonStr = FileUtil.get(result);
-//        // parse to JSONObject (org.json)
-//        return new JSONObject(jsonStr);
+        return results;
     }
 }

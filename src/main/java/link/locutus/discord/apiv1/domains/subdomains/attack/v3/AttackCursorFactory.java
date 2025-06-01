@@ -8,11 +8,8 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.AttackEntry;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.io.BitBuffer;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.function.Predicate;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -41,7 +38,7 @@ public class AttackCursorFactory {
 
     public AttackCursorFactory(WarDB db) {
         this.db = db;
-        this.buffer = new BitBuffer(ByteBuffer.wrap(new byte[SIZE]).order(ByteOrder.LITTLE_ENDIAN));
+        this.buffer = new BitBuffer(SIZE);
     }
 
     private AbstractCursor create(AttackType type) {
