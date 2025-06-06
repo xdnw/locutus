@@ -1204,7 +1204,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 }
                 citiesToSave.add(existing);
             } else {
-                buffer.set(existing);
+                buffer.set(existing, false);
                 existing.set(city);
 
                 if (existing.runChangeEvents(cityId, buffer, eventConsumer, "update v2")) {
@@ -1356,7 +1356,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                     }
                 }
             }
-            updateCities(cities, eventConsumer);
+            updateCities(cities, eventConsumer, "updating outdated cities");
         }
         if (!deletedCities.isEmpty()) {
             deleteCities(deletedCities, eventConsumer);
@@ -1400,7 +1400,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         for (City city : cities) {
             lastNewCityFetched = Math.max(lastNewCityFetched, city.getId());
         }
-        updateCities(cities, eventConsumer);
+        updateCities(cities, eventConsumer, "updating new cities");
     }
 
     public void updateNewAndOutdatedCities(int amtNew, Consumer<Event> eventConsumer) {
@@ -1418,7 +1418,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 }
             }
         }
-        updateCities(cities, eventConsumer);
+        updateCities(cities, eventConsumer, "updating new and outdated cities");
     }
 
     /**
@@ -1592,10 +1592,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         updateCities(cities, eventConsumer, "subscription city update");
     }
 
-    public void updateCities(List<City> cities, Consumer<Event> eventConsumer) {
-        updateCities(cities, eventConsumer, "individual city update");
-    }
-
     public void updateCities(List<City> cities, Consumer<Event> eventConsumer, String reason) {
         DBCity buffer = new SimpleDBCity(0);
         List<DBCity> dirtyCities = new ObjectArrayList<>(); // List<nation id, db city>
@@ -1630,7 +1626,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         SimpleDBCity existing = getDBCity(city.getNation_id(), city.getId());
 
         if (existing != null) {
-            buffer.set(existing);
+            buffer.set(existing, false);
             existing.set(city);
             if (existing.runChangeEvents(city.getNation_id(), buffer, eventConsumer, reason)) {
                 dirtyFlag.set(true);

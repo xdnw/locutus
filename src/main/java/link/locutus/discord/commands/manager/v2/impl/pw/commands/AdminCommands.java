@@ -2305,7 +2305,7 @@ public class AdminCommands {
             Fetch and update nations from the API
             If no nations are specified, then all will be fetched
             Note: This does not update cities""")
-    public String syncNations(NationDB db, @Default Set<DBNation> nations, @Switch("d") boolean dirtyNations) throws IOException, ParseException {
+    public String syncNations(NationDB db, @Default @AllowDeleted Set<DBNation> nations, @Switch("d") boolean dirtyNations) throws IOException, ParseException {
         if (dirtyNations) {
             db.updateDirtyNations(Event::post, Integer.MAX_VALUE);
         }

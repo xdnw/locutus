@@ -563,6 +563,7 @@ public enum ResourceType {
                 return locutus.getTradeManager().getHighAvg(type) * amt;
 //                }
             } catch (NullPointerException ignore) {}
+            return type == MONEY ? amt : 0;
         }
         return 0;
     }

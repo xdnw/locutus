@@ -898,7 +898,7 @@ public class DiscordUtil {
                     }
                     throw new IllegalArgumentException("No registered user found by id: `" + id + "` (are you sure they are registered?)");
                 } else {
-                    throw new IllegalArgumentException("No registered nation found by id: `" + id + "` (did they delete?. See also `" + CM.admin.sync.syncNations.cmd.nations(argNoBrackets) + "`)");
+                    throw new IllegalArgumentException("No registered nation found with id: `" + id + "` (did they delete?. See also `" + CM.admin.sync.syncNations.cmd.nations(argNoBrackets) + "`)");
                 }
             }
         }

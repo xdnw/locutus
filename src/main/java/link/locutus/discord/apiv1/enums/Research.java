@@ -19,7 +19,7 @@ public enum Research {
     // Decrease soldier cost by $0.1 and tank cost by $1 and 0.01 Steel, Reduce Soldier upkeep cost by $0.02 at peace, and $0.03 at war,
     // Increase the number of soldiers each ton of food feeds by 10 at peace, and 15 at war. It also reduces Tank upkeep by $1 at peace, and $1.5 at war
     GROUND_COST(ResearchGroup.GROUND, null, Map.of(
-            MilitaryUnit.SOLDIER, Map.of(ResourceType.MONEY, 0.1, ResourceType.STEEL, 0.01),
+            MilitaryUnit.SOLDIER, Map.of(ResourceType.MONEY, 0.1),
             MilitaryUnit.TANK, Map.of(ResourceType.MONEY, 1.0, ResourceType.STEEL, 0.01)
     ), Map.of(
             MilitaryUnit.SOLDIER, Map.of(ResourceType.MONEY, 0.04),
@@ -223,10 +223,6 @@ public enum Research {
             cost[ResourceType.FOOD.ordinal()] += (startLevel + i) * 10000 * factor;
         }
         return ResourceType.resourcesToMap(cost);
-    }
-
-    public static void main(String[] args) {
-
     }
 
     @Command(desc = "Name of research")
