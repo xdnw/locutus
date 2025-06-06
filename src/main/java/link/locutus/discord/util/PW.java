@@ -991,6 +991,8 @@ public final class PW {
             if (categorized.size() > 1) {
                 response.append("**Balance:** (`" + StringMan.join(balanceNotes, "`|`") + "`) worth: $" + MathMan.format(ResourceType.convertedTotal(balance)) + ")");
                 response.append("\n```").append(ResourceType.toString(balance)).append("``` ");
+            } else {
+                response.append("**No balance found**\n");
             }
         } else {
             String prefix = condenseFormat ? "**" : "## ";
