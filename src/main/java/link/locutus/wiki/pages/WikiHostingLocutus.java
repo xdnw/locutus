@@ -11,6 +11,7 @@ public class WikiHostingLocutus extends BotWikiGen {
     @Override
     public String generateMarkdown() {
         return """
+                **You do NOT need to host Locutus yourself, you can use the official Locutus bot. Only use this page if you need to host your own version**
                 This guide will walk you through the process of self hosting the Locutus bot. Follow the steps below to obtain the Locutus `.jar` file, run the bot, configure the `config.yaml` file, and set up the credentials for Google Sheets.
                             
                 # Table of Contents
