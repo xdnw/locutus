@@ -29,6 +29,8 @@ public class WikiAutoMaskingPage extends BotWikiGen {
                 - Sync roles (e.g. for a coalition or milcom server)""",
                 "# Prerequisites",
                 "Configure your role aliases, as seen on the " + linkPage("setup") + " page.",
+                "Add any additional alliances by setting the `" + Coalition.EXTENSION.name() + "` coalition via " +
+                        CM.coalition.add.cmd.alliances("").coalitionName(Coalition.EXTENSION.name()).toString(),
                 "## Alliance, City, Tax related roles",
                 "Have an alliance set OR delegate to a server with an alliance OR set the `allies` coalition (and no alliance set)",
                 "- " + CM.settings_default.registerAlliance.cmd.toSlashMention(),
