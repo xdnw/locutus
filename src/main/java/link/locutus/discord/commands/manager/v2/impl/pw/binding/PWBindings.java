@@ -639,7 +639,13 @@ public class PWBindings extends BindingHelper {
     @Binding(value = "nation id, name or url", examples = {"Borg", "<@664156861033086987>", "Danzek", "189573", "https://politicsandwar.com/nation/id=189573"})
     public static DBNation nation(@Default @Me User selfUser, @Me @Default Guild guild, String input, @Default ParameterData data) {
         boolean allowDeleted = data != null && data.getAnnotation(AllowDeleted.class) != null;
-        DBNation nation = DiscordUtil.parseNation(input, allowDeleted, guild);
+        String errMsg = null;
+        DBNation nation = null;
+        try {
+            nation = DiscordUtil.parseNation(input, allowDeleted, true, guild);
+        } catch (IllegalArgumentException e) {
+            errMsg = e.getMessage();
+        }
         if (nation == null) {
             if (selfUser != null && (input.equalsIgnoreCase("%user%") || input.equalsIgnoreCase("{usermention}"))) {
                 if (allowDeleted) {
@@ -655,11 +661,13 @@ public class PWBindings extends BindingHelper {
                 }
             }
             if (nation == null) {
-                String error = "No such nation: `" + input + "`";
-                if (input.contains(",")) {
-                    throw new IllegalArgumentException(error + " (Multiple nations are not accepted for this argument)");
+                if (errMsg == null || errMsg.isEmpty()) {
+                    errMsg = "No such nation: `" + input + "`";
                 }
-                throw new IllegalArgumentException(error);
+                if (input.contains(",")) {
+                    throw new IllegalArgumentException(errMsg + " (Multiple nations are not accepted for this argument)");
+                }
+                throw new IllegalArgumentException(errMsg);
             }
         } else if (nation.isValid()) {
             Locutus.imp().getNationDB().markNationDirty(nation.getNation_id());

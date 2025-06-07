@@ -144,14 +144,18 @@ public abstract class DBCity implements IMutableCity {
         }
     }
 
-    public void set(DBCity toCopy) {
+    public void set(DBCity toCopy, boolean cloneBuildings) {
         this.setId(toCopy.getId());
         this.setCreated(toCopy.getCreated());
         this.setFetched(toCopy.getFetched());
         this.setLand_cents(toCopy.getLand_cents());
         this.setInfra_cents(toCopy.getInfra_cents());
         this.setPowered(toCopy.isPowered());;
-        this.setBuildings3(toCopy.getBuildings3());
+        if (cloneBuildings) {
+            this.setBuildings3(toCopy.getBuildings3().clone());
+        } else {
+            this.setBuildings3(toCopy.getBuildings3());
+        }
         this.setNuke_turn(toCopy.getNuke_turn());
         this.setNation_id(toCopy.getNation_id());
     }

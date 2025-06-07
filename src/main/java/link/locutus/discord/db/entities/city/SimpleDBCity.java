@@ -36,7 +36,7 @@ public class SimpleDBCity extends DBCity {
     }
 
     public SimpleDBCity(DBCity toCopy) {
-        this.set(toCopy);
+        this.set(toCopy, true);
     }
 
     public SimpleDBCity(ICity city) {
@@ -79,7 +79,7 @@ public class SimpleDBCity extends DBCity {
         this.setCreated(date);
         this.setInfra_cents((int) Math.round(city.getInfra() * 100));
         this.setLand_cents((int) Math.round(city.getLand() * 100));
-        this.setBuildings3(city.getBuildings());
+        this.setBuildings3(city.getBuildings().clone());
         this.setPowered(city.getMetrics(f -> false).powered);
     }
 

@@ -1,11 +1,11 @@
 package link.locutus.discord.gpt.imps;
 
 import com.knuddels.jtokkit.api.ModelType;
-import com.theokanning.openai.completion.chat.ChatCompletionChoice;
-import com.theokanning.openai.completion.chat.ChatCompletionRequest;
-import com.theokanning.openai.completion.chat.ChatCompletionResult;
-import com.theokanning.openai.completion.chat.ChatMessage;
-import com.theokanning.openai.service.OpenAiService;
+import com.openai.client.OpenAIClient;
+import com.openai.client.okhttp.OpenAIOkHttpClient;
+import com.openai.models.ChatModel;
+import com.openai.models.chat.completions.ChatCompletion;
+import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.util.StringMan;
 
@@ -18,37 +18,41 @@ import java.util.Map;
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class GPTText2Text implements IText2Text{
-    private final OpenAiService service;
-    private final ModelType model;
+    private final OpenAIClient service;
+    private final ChatModel model;
 
     private OpenAiOptions defaultOptions = new OpenAiOptions();
 
-    public GPTText2Text(String openAiKey, ModelType model) {
-        this(new OpenAiService(openAiKey, Duration.ofSeconds(120)), model);
+    public GPTText2Text(String openAiKey, ChatModel model) {
+        this(OpenAIOkHttpClient.builder().apiKey(openAiKey).timeout(Duration.ofSeconds(120)).build(), model);
     }
 
-    public GPTText2Text(OpenAiService service, ModelType model) {
+    public GPTText2Text(OpenAIClient service, ChatModel model) {
         this.service = service;
         this.model = model;
     }
 
     @Override
     public String getId() {
-        return model.name();
+        return model.asString();
     }
 
     @Override
     public String generate(Map<String, String> options, String text) {
         OpenAiOptions optObj = options == null || options.isEmpty() ? defaultOptions : new OpenAiOptions().setOptions(this, options);
-        ChatCompletionRequest.ChatCompletionRequestBuilder builder = ChatCompletionRequest.builder()
-                .messages(List.of(new ChatMessage("user", text)))
-                .model(this.model.getName());
+//        ChatCompletionRequest.ChatCompletionRequestBuilder builder = ChatCompletionRequest.builder()
+//                .messages(List.of(new ChatMessage("user", text)))
+//                .model(this.model.getName());
+
+        ChatCompletionCreateParams.Builder builder = ChatCompletionCreateParams.builder()
+                .addUserMessage(text)
+                .model(this.model);
 
         if (optObj.temperature != null) {
             builder = builder.temperature(optObj.temperature);
         }
-        if (optObj.stopSequences != null) {
-            builder = builder.stop(Arrays.asList(optObj.stopSequences));
+        if (optObj.stopSequences != null && optObj.stopSequences.length > 0) {
+            builder = builder.stopOfStrings(Arrays.asList(optObj.stopSequences));
         }
         if (optObj.topP != null) {
             builder = builder.topP(optObj.topP);
@@ -63,15 +67,19 @@ public class GPTText2Text implements IText2Text{
             builder.maxTokens(optObj.maxTokens);
         }
 
-        ChatCompletionRequest completionRequest = builder.build();
-        ChatCompletionResult completion = service.createChatCompletion(completionRequest);
+        ChatCompletionCreateParams completionRequest = builder.build();
+        ChatCompletion completion = service.chat().completions().create(completionRequest);
         List<String> results = new ArrayList<>();
-        for (ChatCompletionChoice choice : completion.getChoices()) {
-            System.out.println("Reason: " + choice.getFinishReason());
-            System.out.println("name: " + choice.getMessage().getName());
-            System.out.println("role: " + choice.getMessage().getRole());
-            System.out.println("text: " + choice.getMessage().getContent());
-            results.add(choice.getMessage().getContent());
+        for (ChatCompletion.Choice choice : completion.choices()) {
+            System.out.println("Reason: " + choice.finishReason());
+            // name, getName() doesn't exist
+            System.out.println("Message: " + choice.message().toString());
+            String msg = choice.message().content().orElse(null);
+            if (msg != null) {
+                results.add(msg);
+            } else {
+                System.out.println("No content in message, skipping.");
+            }
         }
         return String.join("\n", results);
     }
@@ -143,15 +151,15 @@ public class GPTText2Text implements IText2Text{
 
     @Override
     public int getSize(String text) {
-        return GPTUtil.getTokens(text, model);
+        return GPTUtil.getTokens(text, ModelType.fromName(model.asString()).orElseThrow(() -> new IllegalArgumentException("Unknown model: " + model.asString())));
     }
 
     @Override
     public int getSizeCap() {
-        return model.getMaxContextLength();
+        return ModelType.fromName(model.asString()).orElseThrow(() -> new IllegalArgumentException("Unknown model: " + model.asString())).getMaxContextLength();
     }
 
-    public ModelType getModel() {
+    public ChatModel getModel() {
         return model;
     }
 }

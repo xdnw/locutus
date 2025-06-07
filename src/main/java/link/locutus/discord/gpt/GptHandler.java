@@ -2,19 +2,16 @@ package link.locutus.discord.gpt;
 
 import ai.djl.MalformedModelException;
 import ai.djl.repository.zoo.ModelNotFoundException;
-import com.knuddels.jtokkit.api.ModelType;
-import com.theokanning.openai.service.OpenAiService;
+import com.openai.client.OpenAIClient;
+import com.openai.client.okhttp.OpenAIOkHttpClient;
+import com.openai.models.ChatModel;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
 import link.locutus.discord.Logg;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.copilot.CopilotDeviceAuthenticationData;
-import link.locutus.discord.gpt.imps.CopilotText2Text;
-import link.locutus.discord.gpt.imps.GPTText2Text;
-import link.locutus.discord.gpt.imps.IText2Text;
-import link.locutus.discord.gpt.imps.MiniEmbedding;
-import link.locutus.discord.gpt.imps.ProcessText2Text;
+import link.locutus.discord.gpt.imps.*;
 import link.locutus.discord.gpt.pw.GptDatabase;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 
@@ -34,13 +31,16 @@ import static com.pusher.client.util.internal.Preconditions.checkArgument;
 import static com.pusher.client.util.internal.Preconditions.checkNotNull;
 
 public class GptHandler {
-    private final OpenAiService service;
+    private final OpenAIClient service;
     public final IEmbeddingDatabase embeddingDatabase;
     private final IModerator moderator;
     private final ProcessText2Text processT2;
 
     public GptHandler(GptDatabase database) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
-        this.service = new OpenAiService(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY, Duration.ofSeconds(120));
+//        this.service = new OpenAIClient(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY, Duration.ofSeconds(120));
+        this.service = OpenAIOkHttpClient.builder().apiKey(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY)
+                .timeout(Duration.ofSeconds(120))
+                .build();
         this.moderator = new GPTModerator(service);
 //        this.embeddingDatabase = new AdaEmbedding(registry, service);
         // TODO change ^ that to mini
@@ -68,7 +68,7 @@ public class GptHandler {
         return moderator;
     }
 
-    public OpenAiService getService() {
+    public OpenAIClient getService() {
         return service;
     }
 
@@ -133,7 +133,7 @@ public class GptHandler {
         return embeddingDatabase.getEmbedding(source, text, this::checkModeration);
     }
 
-    public IText2Text createOpenAiText2Text(String openAiKey, ModelType model) {
+    public IText2Text createOpenAiText2Text(String openAiKey, ChatModel model) {
         return new GPTText2Text(openAiKey, model);
     }
 

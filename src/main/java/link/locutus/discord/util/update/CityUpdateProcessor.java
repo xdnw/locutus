@@ -1,6 +1,7 @@
 package link.locutus.discord.util.update;
 
 import com.google.common.eventbus.Subscribe;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -20,13 +21,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.CaughtTask;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
@@ -34,7 +29,7 @@ import java.util.function.Function;
 
 public class CityUpdateProcessor {
 
-    private Map<Integer, Map<Integer, MMRChange>> changes2;
+    private final Map<Integer, Map<Integer, MMRChange>> changes2;
 //    private final ConcurrentLinkedQueue<MMRChange> changes;
 
     public CityUpdateProcessor() {
@@ -73,7 +68,7 @@ public class CityUpdateProcessor {
         long cutoff = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(60 * 2);
         if (changes2.isEmpty()) return;
 
-        Map<Integer, List<MMRChange>> changesByNation = new HashMap<>();
+        Map<Integer, List<MMRChange>> changesByNation = new Int2ObjectOpenHashMap<>();
         Iterator<Map.Entry<Integer, Map<Integer, MMRChange>>> iter = changes2.entrySet().iterator();
         outer:
         while (iter.hasNext()) {
@@ -100,8 +95,8 @@ public class CityUpdateProcessor {
             if (nation == null) continue;
 
             int arrLen = 0;
-            Map<Integer, int[]> beforeByCity = new HashMap<>();
-            Map<Integer, int[]> afterByCity = new HashMap<>();
+            Map<Integer, int[]> beforeByCity = new Int2ObjectOpenHashMap<>();
+            Map<Integer, int[]> afterByCity = new Int2ObjectOpenHashMap<>();
             Set<String> reasons = new HashSet<>();
             for (MMRChange change : entry.getValue()) {
                 int[] mmrFrom = beforeByCity.computeIfAbsent(change.cityId, f -> change.mmrFrom);

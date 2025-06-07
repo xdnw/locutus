@@ -4,7 +4,7 @@ import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingRegistry;
 import com.knuddels.jtokkit.api.ModelType;
-import com.theokanning.openai.moderation.Moderation;
+import com.openai.models.moderations.Moderation;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.util.MathMan;
@@ -24,7 +24,7 @@ public class GPTUtil {
 
     public static void checkThrowModeration2(List<Moderation> moderations, String text) {
         for (Moderation result : moderations) {
-            if (result.isFlagged()) {
+            if (result.flagged()) {
                 String message = "Your submission has been flagged as inappropriate:\n" +
                         "```json\n" + result.toString() + "\n```\n" +
                         "The content submitted:\n" +

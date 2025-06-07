@@ -3469,7 +3469,10 @@ public class BankCommands {
         }
         NationOrAllianceOrGuild alliance = nationOrAllianceOrGuild;
         if (alliance.isNation()) {
-            return "You can only unlock transfers for an alliance or guild";
+            if (offshore.disabledNations.remove(alliance.getId()) == null) {
+                return "No transfers are locked for " + alliance.getQualifiedId() + ". Valid options: " + offshore.disabledNations.keySet().stream().map(f -> PW.getMarkdownUrl(f, false));
+            }
+            return "Enabled transfers for " + alliance.getMarkdownUrl();
         }
         if (!alliance.isNation() && offshore.getGuildDB() != db) {
             if (!OffshoreInstance.FROZEN_ESCROW.containsKey(alliance.getId())) {

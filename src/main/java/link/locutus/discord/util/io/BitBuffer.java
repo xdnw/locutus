@@ -1,74 +1,90 @@
 package link.locutus.discord.util.io;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 public class BitBuffer {
+    static void testReadWriteRandom() {
+        BitBuffer bitBuffer = new BitBuffer(1024 * 1024); // 1 MB buffer
+        for (int i = 0; i < 10_000_000; i++) {
+            bitBuffer.reset();
+            if (i % 100_000 == 0) {
+                System.out.println("Iteration " + i);
+            }
+            int amtBits = (int) (Math.random() * 128);
+            // random between 1 and 16
+            int amtInts = (int) (Math.random() * 64);
+            // random between 1 and 8
+            int amtLongs = (int) (Math.random() * 64);
 
-    static void testWriteReadSingleBit() {
-        ByteBuffer buf = ByteBuffer.allocate(1);
-        BitBuffer bitBuffer = new BitBuffer(buf);
-        bitBuffer.writeBit(true);
-        byte[] data = bitBuffer.getWrittenBytes();
-
-        // prepare for reading
-        bitBuffer.setBytes(data);
-        assertTrue(bitBuffer.readBit(), "Single true bit should read back true");
-    }
-
-    private static void assertTrue(boolean b, String s) {
-        if (!b) {
-            throw new AssertionError(s);
-        }
-    }
-
-    static void testWriteReadAlternatingBits() {
-        int length = 70; // crosses 64-bit boundary
-        boolean[] pattern = new boolean[length];
-        for (int i = 0; i < length; i++) {
-            pattern[i] = (i % 2 == 0);
-        }
-
-        ByteBuffer buf = ByteBuffer.allocate(16);
-        BitBuffer bitBuffer = new BitBuffer(buf);
-        for (boolean b : pattern) {
-            bitBuffer.writeBit(b);
-        }
-        byte[] data = bitBuffer.getWrittenBytes();
-
-        bitBuffer.setBytes(data);
-        for (int i = 0; i < length; i++) {
-            assertEquals(pattern[i], bitBuffer.readBit(),
-                    "Bit at index " + i + " should match");
-        }
-    }
-
-    private static void assertEquals(boolean b, boolean b1, String s) {
-        if (b != b1) {
-            throw new AssertionError(s);
-        }
-    }
-
-    static void testWriteReadAllOnesCross64Boundary() {
-        int length = 65;
-        ByteBuffer buf = ByteBuffer.allocate(16);
-        BitBuffer bitBuffer = new BitBuffer(buf);
-
-        // write 65 ones
-        for (int i = 0; i < length; i++) {
-            bitBuffer.writeBit(true);
-        }
-        byte[] data = bitBuffer.getWrittenBytes();
-
-        bitBuffer.setBytes(data);
-        for (int i = 0; i < length; i++) {
-            assertTrue(bitBuffer.readBit(), "Bit " + i + " should be true");
+            // pad to nearest long boundary
+            boolean[] expectedBits = new boolean[amtBits];
+            for (int j = 0; j < amtBits; j++) {
+                boolean bit = Math.random() < 0.5;
+                expectedBits[j] = bit;
+                bitBuffer.writeBit(bit);
+            }
+            int[] expectedInts = new int[amtInts];
+            for (int j = 0; j < amtInts; j++) {
+                int value = (int) (Math.random() * Integer.MAX_VALUE);
+                expectedInts[j] = value;
+                bitBuffer.writeVarInt(value);
+            }
+            long[] expectedLongs = new long[amtLongs];
+            for (int j = 0; j < amtLongs; j++) {
+                long value = (long) (Math.random() * Long.MAX_VALUE);
+                expectedLongs[j] = value;
+                bitBuffer.writeVarLong(value);
+            }
+            byte[] data = bitBuffer.getWrittenBytes();
+            // test reading back
+            bitBuffer.setBytes(data);
+            for (int j = 0; j < amtBits; j++) {
+                boolean bit = bitBuffer.readBit();
+                if (expectedBits[j] != bit) {
+                    String bitsStr = "new boolean[] {";
+                    for (boolean b : expectedBits) {
+                        bitsStr += b + ", ";
+                    }
+                    bitsStr += "}";
+                    System.err.println("Expected bits: " + bitsStr);
+                    throw new AssertionError("Bit " + j + " should match, but " + expectedBits[j] + " != " + bit + " | itertation " + i + " | len " + expectedBits.length);
+                }
+            }
+            for (int j = 0; j < amtInts; j++) {
+                if (expectedInts[j] != bitBuffer.readVarInt()) {
+                    String intsStr = "new int[] {";
+                    for (int value : expectedInts) {
+                        intsStr += value + ", ";
+                    }
+                    intsStr += "} | " + expectedBits.length;
+                    System.err.println("Expected ints: " + intsStr);
+                    throw new AssertionError("Int " + j + " should match");
+                }
+            }
+            for (int j = 0; j < amtLongs; j++) {
+                if (expectedLongs[j] != bitBuffer.readVarLong()) {
+                    String intsStr = "new int[] {";
+                    for (int value : expectedInts) {
+                        intsStr += value + ", ";
+                    }
+                    intsStr += "} | " + expectedBits.length;
+                    System.err.println("Expected ints (correct): " + intsStr);
+                    String longsStr = "new long[] {";
+                    for (long value : expectedLongs) {
+                        longsStr += value + ", ";
+                    }
+                    longsStr += "} | " + expectedBits.length;
+                    System.err.println("Expected longs: " + longsStr);
+                    throw new AssertionError("Long " + j + " should match");
+                }
+            }
         }
     }
 
     public static void main(String[] args) {
-        testWriteReadSingleBit();
-        testWriteReadAlternatingBits();
-        testWriteReadAllOnesCross64Boundary();
+        testReadWriteRandom();
+
         System.out.println("All tests passed!");
     }
 
@@ -85,7 +101,11 @@ public class BitBuffer {
     private int bitsInBuffer;
     private final ByteBuffer byteBuffer;
 
-    public BitBuffer(ByteBuffer byteBuffer) {
+    public BitBuffer(int capacity) {
+        this(ByteBuffer.wrap(new byte[capacity]).order(ByteOrder.LITTLE_ENDIAN));
+    }
+
+    private BitBuffer(ByteBuffer byteBuffer) {
         this.buffer = 0L;
         this.bitsInBuffer = 0;
         this.byteBuffer = byteBuffer;
@@ -132,11 +152,6 @@ public class BitBuffer {
         return result;
     }
 
-    private void fill() {
-        buffer = byteBuffer.getLong();
-        bitsInBuffer = 64;
-    }
-
     private void flush() {
         byteBuffer.putLong(buffer);
         buffer = 0;
@@ -147,10 +162,10 @@ public class BitBuffer {
         int numBytesInBuffer = (bitsInBuffer + 7) / 8;
         byte[] bytes = new byte[byteBuffer.position() + numBytesInBuffer];
         System.arraycopy(byteBuffer.array(), 0, bytes, 0, byteBuffer.position());
-        if (bitsInBuffer > 0) {
-            int lastByteIndex = byteBuffer.position();
+        if (numBytesInBuffer > 0) {
+            int startIndex = byteBuffer.position();
             for (int i = 0; i < numBytesInBuffer; i++) {
-                bytes[lastByteIndex + i] = (byte) buffer;
+                bytes[startIndex + i] = (byte) (buffer & 0xFF);
                 buffer >>>= 8;
             }
         }
@@ -159,14 +174,6 @@ public class BitBuffer {
 
     public long readLong() {
         return readBits(Long.SIZE);
-    }
-
-    public void setBytes(byte[] data) {
-        byteBuffer.clear();
-        byteBuffer.put(data);
-        byteBuffer.position(0);
-        buffer = 0;
-        bitsInBuffer = 0;
     }
 
     public boolean readBit() {
@@ -243,6 +250,14 @@ public class BitBuffer {
         buffer = 0;
         bitsInBuffer = 0;
         return this;
+    }
+
+    public void setBytes(byte[] data) {
+        byteBuffer.position(0);
+        byteBuffer.put(data);
+        byteBuffer.position(0);
+        buffer = 0;
+        bitsInBuffer = 0;
     }
 
     public void writeVarInt(int value) {
