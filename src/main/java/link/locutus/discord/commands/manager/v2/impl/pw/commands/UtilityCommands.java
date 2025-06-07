@@ -6,6 +6,7 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.apiv1.enums.city.ICity;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
@@ -55,7 +56,7 @@ import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.offshore.test.IAChannel;
 import link.locutus.discord.util.scheduler.KeyValue;
-import link.locutus.discord.util.scheduler.TriFunction;
+import link.locutus.discord.util.scheduler.QuadFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.nation.MultiReport;
 import link.locutus.discord.util.task.roles.AutoRoleInfo;
@@ -67,7 +68,6 @@ import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.VoiceChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
-import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import org.json.JSONObject;
 
 import java.awt.*;
@@ -2806,14 +2806,22 @@ public class UtilityCommands {
             }
         };
 
+        double originRevenue;
+        {
+            Predicate<Project> hasProject = nation.hasProjectPredicate();
+            Function<ICity, Double> profit = city -> PW.City.profitConverted(continent, nation.getRads(), hasProject, nation.getCities(), nation.getGrossModifier(), city);
+            DBCity first = nation._getCitiesV3().values().iterator().next();
+            JavaCity optimal = new JavaCity(first).optimalBuild(nation, 1000, false, null);
+            originRevenue = profit.apply(optimal);
+        }
+
 
         StringBuilder result = new StringBuilder();
         CompletableFuture<IMessageBuilder> msgFuture = channel.send("Please wait...");
-        msgFuture = channel.send("Please wait...");
         long start = System.currentTimeMillis();
         boolean hasAny = false;
         for (Project project : projects) {
-            TriFunction<Integer, DBNation, Project, RoiResult> roiFunc = project.getRoiFunction();
+            QuadFunction<Integer, DBNation, Project, Double, RoiResult> roiFunc = project.getRoiFunction();
             if (roiFunc == null) continue;
             if (project.canBuild(nation) || nation.hasProject(project)) continue;
             if (System.currentTimeMillis() - start > 10000) {
@@ -2822,7 +2830,7 @@ public class UtilityCommands {
                 channel.send(result.toString());
                 result.setLength(0); // Clear the result to avoid sending too much at once
             }
-            RoiResult roi = roiFunc.apply(days, nationCopy, project);
+            RoiResult roi = roiFunc.apply(days, nationCopy, project, originRevenue);
             if (roi == null) continue;
             hasAny = true;
 

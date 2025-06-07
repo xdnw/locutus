@@ -1,20 +1,19 @@
 package link.locutus.discord.apiv1.enums.city.project;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.util.PW;
-import link.locutus.discord.util.scheduler.TriFunction;
+import link.locutus.discord.util.scheduler.QuadFunction;
 
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 
 public interface Project {
     @Command(desc = "Map of resource cost of the project")
@@ -43,7 +42,7 @@ public interface Project {
         return count;
     }
 
-    public TriFunction<Integer, DBNation, Project, RoiResult> getRoiFunction();
+    public QuadFunction<Integer, DBNation, Project, Double, RoiResult> getRoiFunction();
 
     @Command(desc = "Get average attribute for nations with this project")
     default double getAvg(@NoFormat NationAttributeDouble attribute, @NoFormat @Default Set<DBNation> nations) {

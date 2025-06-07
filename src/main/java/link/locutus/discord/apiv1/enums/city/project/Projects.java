@@ -1,20 +1,19 @@
 package link.locutus.discord.apiv1.enums.city.project;
 
 import link.locutus.discord.apiv1.enums.Continent;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.ICity;
+import link.locutus.discord.apiv1.enums.city.INationCity;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.util.scheduler.TriFunction;
+import link.locutus.discord.util.scheduler.QuadFunction;
 
 import java.lang.reflect.Field;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -45,8 +44,8 @@ public class Projects {
             .roi(getCityBuildRoi())
             .build();
 
-    private static TriFunction<Integer, DBNation, Project, RoiResult> getCityBuildRoi() {
-        return (days, nation, project) -> {
+    private static QuadFunction<Integer, DBNation, Project, Double, RoiResult> getCityBuildRoi() {
+        return (days, nation, project, originRevenue) -> {
             Continent continent = nation.getContinent();
             ResourceType output = project.getOutput();
             if (output != null && output.hasBuilding()) {
@@ -55,20 +54,26 @@ public class Projects {
             }
             // get first city
             DBCity first = nation._getCitiesV3().values().iterator().next();
-            Predicate<Project> hasProject = nation.hasProjectPredicate();
+            Predicate<Project> hasProject = Projects.optimize(nation.hasProjectPredicate().or(f -> f == project));
             Function<ICity, Double> profit = city -> {
                 return PW.City.profitConverted(continent, nation.getRads(), hasProject, nation.getCities(), nation.getGrossModifier(), city);
             };
-            double initialProfit = profit.apply(first);
             // optimalbuild
-            JavaCity optimal = new JavaCity(first).optimalBuild(nation, 1000, false, null);
+            JavaCity optimal = new JavaCity(first).optimalBuild(nation.getContinent(),
+                    nation.getCities(),
+                    INationCity::getRevenueConverted,
+                    null,
+                    hasProject,
+                    1000,
+                    nation.getRads(), false, true, nation.getGrossModifier(), null);
+
             double optimalProfit = profit.apply(optimal);
-            double revenuePerDay = (optimalProfit - initialProfit) * days * nation.getCities();
+            double revenuePerDay = (optimalProfit - originRevenue) * days * nation.getCities();
 
             // return revenue increase over now
             return new RoiResult(
                     "Additional city revenue over the timeframe",
-                    revenuePerDay,
+                    revenuePerDay - originRevenue,
                     project.getMarketValue()
             );
         };
@@ -92,7 +97,7 @@ public class Projects {
             .cost(IRON, 1000)
             .cost(BAUXITE, 1000)
             .cost(MONEY, 3000000)
-            .roi((days, nation, project) -> {
+            .roi((days, nation, project, oldRevenue) -> {
                 double value = 0;
                 for (DBCity city : nation._getCitiesV3().values()) {
                     value += PW.City.Infra.calculateInfra(0, city.getInfra());
@@ -303,7 +308,7 @@ public class Projects {
                     return new Project[]{CENTER_FOR_CIVIL_ENGINEERING, ARABLE_LAND_AGENCY};
                 }
             })
-            .roi((days, nation, project) -> {
+            .roi((days, nation, project, oldRevenue) -> {
                 double infraValue = 0;
                 double landValue = 0;
                 for (DBCity city : nation._getCitiesV3().values()) {
@@ -323,7 +328,7 @@ public class Projects {
             .cost(COAL, 1500)
             .cost(LEAD, 1500)
             .cost(MONEY, 3000000)
-            .roi((days, nation, project) -> {
+            .roi((days, nation, project, oldRevenue) -> {
                 double landValue = 0;
                 for (DBCity city : nation._getCitiesV3().values()) {
                     landValue += PW.City.Land.calculateLand(0, city.getLand());
@@ -363,7 +368,7 @@ public class Projects {
             .cost(FOOD, 1000)
             .cost(MONEY, 500000)
             .maxCities(20)
-            .roi((days, nation, project) -> {
+            .roi((days, nation, project, oldRevenue) -> {
                 if (nation.getCities() > project.maxCities()) {
                      return null;
                 }
@@ -380,7 +385,7 @@ public class Projects {
             .cost(FOOD, 200000)
             .cost(ALUMINUM, 10000)
             .cost(MONEY, 20000000)
-            .roi((days, nation, project) -> {
+            .roi((days, nation, project, oldRevenue) -> {
                 double value = 0;
                 for (DBCity city : nation._getCitiesV3().values()) {
                     value += PW.City.Infra.calculateInfra(0, city.getInfra());
@@ -437,7 +442,7 @@ public class Projects {
             .cost(IRON, 8_000)
             .cost(OIL, 8_000)
             .requiredProjects(() -> new Project[]{GOVERNMENT_SUPPORT_AGENCY})
-            .roi((days, nation, project) -> {
+            .roi((days, nation, project, oldRevenue) -> {
                 // 2.5% of land + infra + cities + projects
                 double value = 0;
                 for (DBCity city : nation._getCitiesV3().values()) {
@@ -598,7 +603,7 @@ public class Projects {
 
         private int requiredCities, maxCities;
         private Predicate<DBNation> otherRequirements;
-        private TriFunction<Integer, DBNation, Project, RoiResult> roi;
+        private QuadFunction<Integer, DBNation, Project, Double, RoiResult> roi;
 
         public Builder(String apiName, int id) {
             this.apiName = apiName;
@@ -607,7 +612,7 @@ public class Projects {
             this.maxCities = Integer.MAX_VALUE;
         }
 
-        public Builder roi(TriFunction<Integer, DBNation, Project, RoiResult> roi) {
+        public Builder roi(QuadFunction<Integer, DBNation, Project, Double, RoiResult> roi) {
             this.roi = roi;
             return this;
         }

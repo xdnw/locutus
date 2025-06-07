@@ -3,10 +3,12 @@ package link.locutus.discord.apiv1.enums.city.project;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.scheduler.TriFunction;
+import link.locutus.discord.util.scheduler.QuadFunction;
 
-import java.util.*;
-import java.util.function.Function;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -24,9 +26,9 @@ public class AProject implements Project {
     private String name;
     private int index;
     private boolean disabled;
-    private TriFunction<Integer, DBNation, Project, RoiResult> roi;
+    private QuadFunction<Integer, DBNation, Project, Double, RoiResult> roi;
 
-    public AProject(int id, String apiName, String imageName, Map<ResourceType, Double> cost, ResourceType output, int requiredCities, int maxCities, Supplier<Project[]> reqProjects, Predicate<DBNation> otherRequirements, TriFunction<Integer, DBNation, Project, RoiResult> roi) {
+    public AProject(int id, String apiName, String imageName, Map<ResourceType, Double> cost, ResourceType output, int requiredCities, int maxCities, Supplier<Project[]> reqProjects, Predicate<DBNation> otherRequirements, QuadFunction<Integer, DBNation, Project, Double, RoiResult> roi) {
         this.id = id;
         this.cost = cost;
         this.costArr = ResourceType.resourcesToArray(cost);
@@ -41,7 +43,7 @@ public class AProject implements Project {
     }
 
     @Override
-    public TriFunction<Integer, DBNation, Project, RoiResult> getRoiFunction() {
+    public QuadFunction<Integer, DBNation, Project, Double, RoiResult> getRoiFunction() {
         return roi;
     }
 
