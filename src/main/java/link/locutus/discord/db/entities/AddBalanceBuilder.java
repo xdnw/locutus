@@ -96,6 +96,7 @@ public class AddBalanceBuilder {
     }
 
     public AddBalanceBuilder add(NationOrAllianceOrGuildOrTaxid account, Map<ResourceType, Double> amount, String note) {
+        if (ResourceType.isZero(amount)) return this;
         if (note == null) note = "#deposit";
         Map<String, double[]> existing;
         if (account.isNation()) {

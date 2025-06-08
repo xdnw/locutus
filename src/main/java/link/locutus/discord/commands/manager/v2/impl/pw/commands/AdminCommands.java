@@ -77,6 +77,7 @@ import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.EditAllianceTask;
 import link.locutus.discord.util.task.mail.AlertMailTask;
 import link.locutus.discord.util.task.mail.MailApiResponse;
+import link.locutus.discord.util.task.mail.MailApiSuccess;
 import link.locutus.discord.util.task.multi.GetUid;
 import link.locutus.discord.util.task.multi.SnapshotMultiData;
 import link.locutus.discord.util.task.roles.AutoRoleInfo;
@@ -1982,7 +1983,11 @@ public class AdminCommands {
     @RolePermission(value = Roles.ADMIN)
     public String testRecruitMessage(@Me GuildDB db) throws IOException {
         MailApiResponse response = db.sendRecruitMessage(Locutus.imp().getNationDB().getNationById(Locutus.loader().getNationId()));
-        return response.status() + " " + response.error();
+        if (response.status() != MailApiSuccess.SUCCESS) {
+            return response.status() + ": " + response.error();
+        } else {
+            return response.status().name() + ": See in-game to confirm message formatting";
+        }
     }
 
     @Command(desc = "Purge a category's channels older than the time specified")
