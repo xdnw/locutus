@@ -903,7 +903,9 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             for (Treaty current : newTreaties) {
                 DBAlliance fromAA = getAlliance(current.getFromId());
                 DBAlliance toAA = getAlliance(current.getToId());
-                if (fromAA == null || toAA == null || fromAA.getMemberDBNations().isEmpty() || toAA.getMemberDBNations().isEmpty()) continue;
+                if (fromAA == null || toAA == null ||
+                        getNationsByAlliance(fromAA.getId()).stream().filter(f -> f.getPositionEnum() != Rank.APPLICANT).findFirst().isEmpty() ||
+                        getNationsByAlliance(toAA.getId()).stream().filter(f -> f.getPositionEnum() != Rank.APPLICANT).findFirst().isEmpty()) continue;
                 eventConsumer.accept(new TreatyCreateEvent(current));
             }
         }
