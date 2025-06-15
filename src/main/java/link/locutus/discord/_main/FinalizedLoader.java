@@ -9,6 +9,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.*;
 import link.locutus.discord.util.trade.TradeManager;
 import net.dv8tion.jda.api.JDA;
+import org.jetbrains.annotations.Nullable;
 
 import java.sql.SQLException;
 
@@ -93,6 +94,12 @@ public class FinalizedLoader implements ILoader {
 
     @Override
     public NationDB getNationDB() {
+        return nationDB;
+    }
+
+    @Nullable
+    @Override
+    public NationDB getCachedNationDB() {
         return nationDB;
     }
 
