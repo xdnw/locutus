@@ -738,15 +738,25 @@ public class TradeDB extends DBMainV2 {
     public void forEachTradesByDay(Set<ResourceType> types, long startDate, long endDate, BiConsumer<Long, List<DBTrade>> consumer) {
         if (types.isEmpty()) return;
         StringBuilder sql = new StringBuilder("SELECT * FROM TRADES WHERE ");
-        if (types.size() == 1) {
-            sql.append("resource = ? ");
+        boolean missingRss = false;
+        for (ResourceType type : types) {
+            if (type != ResourceType.MONEY && type != ResourceType.CREDITS && !types.contains(type)) {
+                missingRss = true;
+                break;
+            }
+        }
+        if (!missingRss) {
+            // If all types are requested, we don't need to filter by resource type.
+        } else if (types.size() == 1) {
+            sql.append("resource = ? AND ");
         } else {
             sql.append("resource IN (");
             StringJoiner joiner = new StringJoiner(",");
             for (ResourceType type : types) joiner.add(String.valueOf(type.ordinal()));
             sql.append(joiner).append(") ");
+            sql.append("AND ");
         }
-        sql.append("AND date > ? ");
+        sql.append("date > ? ");
         if (endDate != Long.MAX_VALUE) sql.append("AND date < ? ");
         sql.append("AND seller != 0 AND buyer != 0 ");
         sql.append("ORDER BY date ASC");

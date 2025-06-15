@@ -9,12 +9,11 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
-import link.locutus.discord.db.entities.DBTrade;
-import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.web.commands.binding.value_types.GraphType;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class TradeMarginByDay extends SimpleTable<Void> {
 
@@ -24,68 +23,55 @@ public class TradeMarginByDay extends SimpleTable<Void> {
     private long minDay;
     private long maxDay;
 
-    public static List<DBTrade> getTradesByResources(Set<ResourceType> resources, long start, Long end) {
-        if (end == null) end = Long.MAX_VALUE;
-        if (resources.size() == ResourceType.values.length) {
-            return Locutus.imp().getTradeManager().getTradeDb().getTrades(start, end);
-        }
-        return Locutus.imp().getTradeManager().getTradeDb().getTradesByResources(
-                resources.stream().filter(f -> f != ResourceType.MONEY && f != ResourceType.CREDITS).collect(Collectors.toSet()), start, end);
-    }
+//    public static List<DBTrade> getTradesByResources(Set<ResourceType> resources, long start, Long end) {
+//        if (end == null) end = Long.MAX_VALUE;
+//        if (resources.size() == ResourceType.values.length) {
+//            return Locutus.imp().getTradeManager().getTradeDb().getTrades(start, end);
+//        }
+//        return Locutus.imp().getTradeManager().getTradeDb().getTradesByResources(
+//                resources.stream().filter(f -> f != ResourceType.MONEY && f != ResourceType.CREDITS).collect(Collectors.toSet()), start, end);
+//    }
 
     public TradeMarginByDay(Set<ResourceType> resources, @Timestamp long start, @Default @Timestamp Long end,
                             @Arg("Use the margin percent instead of absolute difference")
                             @Default("true") boolean percent) {
-        this(getTradesByResources(resources, start, end), resources, percent);
-    }
-
-    public TradeMarginByDay(List<DBTrade> trades, Set<ResourceType> resources,
-                            @Arg("Use the margin percent instead of absolute difference")
-                            @Default("true") boolean percent) {
+        if (end == null) end = Long.MAX_VALUE;
         resources.remove(ResourceType.MONEY);
         resources.remove(ResourceType.CREDITS);
 
-        List<DBTrade> allOffers = trades;
-        Map<Long, List<DBTrade>> offersByDay = new Long2ObjectOpenHashMap<>();
+        this.resourceTypes = new ObjectArrayList<>(resources);
+        this.empty = new double[resourceTypes.size()];
+        String[] labels = resourceTypes.stream().map(ResourceType::getName).toArray(String[]::new);
 
         this.minDay = Long.MAX_VALUE;
         this.maxDay = 0;
-        for (DBTrade offer : allOffers) {
-            long day = TimeUtil.getDay(offer.getDate());
-            minDay = Math.min(minDay, day);
-            maxDay = Math.max(maxDay, day);
-            offersByDay.computeIfAbsent(day, f -> new ObjectArrayList<>()).add(offer);
-        }
-        offersByDay.remove(minDay);
-        minDay++;
 
-        this.resourceTypes = new ObjectArrayList<>(resources);
+        Locutus.imp().getTradeManager().getTradeDb().forEachTradesByDay(
+                resources, start, end,
+                (day, offers) -> {
+                    if (offers.isEmpty()) return;
+                    minDay = Math.min(minDay, day);
+                    maxDay = Math.max(maxDay, day);
 
-        for (Map.Entry<Long, List<DBTrade>> entry : offersByDay.entrySet()) {
-            long day = entry.getKey();
-            List<DBTrade> offers = entry.getValue();
-            double[] dayMargins = new double[resourceTypes.size()];
-
-            Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> avg = Locutus.imp().getTradeManager().getAverage(offers);
-            Map<ResourceType, Double> lows = avg.getKey();
-            Map<ResourceType, Double> highs = avg.getValue();
-            for (int i = 0; i < resourceTypes.size(); i++) {
-                ResourceType type = resourceTypes.get(i);
-                Double low = lows.get(type);
-                Double high = highs.get(type);
-                if (low != null && high != null) {
-                    double margin = high - low;
-                    if (percent) margin = 100 * margin / high;
-                    dayMargins[i] = margin;
+                    double[] dayMargins = new double[resourceTypes.size()];
+                    Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> avg = Locutus.imp().getTradeManager().getAverage(offers);
+                    Map<ResourceType, Double> lows = avg.getKey();
+                    Map<ResourceType, Double> highs = avg.getValue();
+                    for (int i = 0; i < resourceTypes.size(); i++) {
+                        ResourceType type = resourceTypes.get(i);
+                        Double low = lows.get(type);
+                        Double high = highs.get(type);
+                        if (low != null && high != null) {
+                            double margin = high - low;
+                            if (percent) margin = 100 * margin / high;
+                            dayMargins[i] = margin;
+                        }
+                    }
+                    marginsByDay.put(day, dayMargins);
                 }
-            }
+        );
 
-            marginsByDay.put(day, dayMargins);
-        }
-
-        this.empty = new double[resourceTypes.size()];
-        String[] labels = resourceTypes.stream().map(f -> f.getName()).toArray(String[]::new);
-
+        if (minDay == Long.MAX_VALUE) minDay = 0; // No data case
         setTitle("Resource margin " + (percent ? " % " : "") + "by day");
         setLabelX("day");
         setLabelY("ppu");
