@@ -27,6 +27,7 @@ import net.dv8tion.jda.api.utils.ChunkingFilter;
 import net.dv8tion.jda.api.utils.Compression;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
@@ -212,6 +213,24 @@ public class PreLoader implements ILoader {
             return null;
         });
         setupMonitor();
+    }
+
+    @Nullable
+    @Override
+    public NationDB getCachedNationDB() {
+        if (this.nationDB == null) return null;
+        if (this.finalized != null) {
+            return this.finalized.getNationDB();
+        }
+        if (this.nationDB.isDone()) {
+            try {
+                return this.nationDB.get();
+            } catch (InterruptedException | ExecutionException e) {
+                Logg.text("Failed to get NationDB: " + e.getMessage());
+                return null;
+            }
+        }
+        return null;
     }
 
     private void setupMonitor() {

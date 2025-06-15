@@ -33,10 +33,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.BankDB;
-import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.ReportManager;
-import link.locutus.discord.db.TaxDeposit;
+import link.locutus.discord.db.*;
 import link.locutus.discord.db.entities.nation.DBNationData;
 import link.locutus.discord.db.entities.nation.DBNationGetter;
 import link.locutus.discord.db.entities.nation.DBNationSetter;
@@ -1036,7 +1033,11 @@ public abstract class DBNation implements NationOrAlliance {
 
     private void markCitiesDirty() {
         long now = System.currentTimeMillis();
-        for (int cityId : this._getCitiesV3().keySet()) Locutus.imp().getNationDB().markCityDirty(getNation_id(), cityId, now);
+        NationDB db = Locutus.loader().getCachedNationDB();
+        if (db != null) {
+            for (int cityId : db.getCitiesV3(data()._nationId()).keySet())
+                db.markCityDirty(getNation_id(), cityId, now);
+        }
     }
 
     public boolean updateNationInfo(DBNation copyOriginal, com.politicsandwar.graphql.model.Nation nation, Consumer<Event> eventConsumer) {

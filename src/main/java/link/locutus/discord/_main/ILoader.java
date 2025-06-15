@@ -10,6 +10,8 @@ import link.locutus.discord.db.*;
 import link.locutus.discord.util.trade.TradeManager;
 import net.dv8tion.jda.api.JDA;
 
+import javax.annotation.Nullable;
+
 public interface ILoader {
     ILoader resolveFully(long timeout);
     void initialize();
@@ -30,6 +32,9 @@ public interface ILoader {
     CommandManager getCommandManager();
 
     NationDB getNationDB();
+    @Nullable
+    NationDB getCachedNationDB();
+
     DiscordDB getDiscordDB();
     WarDB getWarDB();
     BaseballDB getBaseballDB();
