@@ -34,6 +34,7 @@ build/generated-src/views
 /data/
 database/
 database2/
+database3/
 /config/
 tokens/
 out/
