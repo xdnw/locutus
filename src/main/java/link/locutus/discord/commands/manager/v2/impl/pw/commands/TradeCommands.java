@@ -1,13 +1,15 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.google.common.collect.Maps;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -17,7 +19,6 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAllian
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
 import link.locutus.discord.commands.manager.v2.table.imp.RssTradeByDay;
 import link.locutus.discord.commands.manager.v2.table.imp.StockpileValueByDay;
 import link.locutus.discord.commands.manager.v2.table.imp.TradeMarginByDay;
@@ -30,22 +31,16 @@ import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.trade.TradeManager;
-import com.google.common.collect.Maps;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.WM;
-import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import org.apache.commons.collections4.CollectionUtils;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
@@ -1221,7 +1216,6 @@ public class TradeCommands {
                                    @Switch("j") boolean attachJson,
                                    @Switch("c") boolean attachCsv, @Switch("ss") boolean attach_sheet) throws IOException, GeneralSecurityException {
         Set<ResourceType> allowed = new HashSet<>(Arrays.asList(ResourceType.values));
-        List<DBTrade> trades = TradeMarginByDay.getTradesByResources(allowed, start, end);
 
         List<ResourceType[]> tableTypes = new ArrayList<>();
 
@@ -1244,13 +1238,7 @@ public class TradeCommands {
         for (ResourceType[] types : tableTypes) {
             boolean[] rssIds = new boolean[ResourceType.values.length];
             for (ResourceType type : types) rssIds[type.ordinal()] = true;
-            List<DBTrade> filtered = new ObjectArrayList<>();
-            for (DBTrade trade : trades) {
-                if (rssIds[trade.getResource().ordinal()]) {
-                    filtered.add(trade);
-                }
-            }
-            TradeMarginByDay table = new TradeMarginByDay(filtered, new HashSet<>(Arrays.asList(types)), percent);
+            TradeMarginByDay table = new TradeMarginByDay(new HashSet<>(Arrays.asList(types)), start, end, percent);
             IMessageBuilder msg = table.writeMsg(channel.create(), attachJson, attachCsv, attach_sheet ? db : null, SheetKey.TRADE_MARGIN_DAY);
             if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
                 JSONObject commandRss = WebUtil.json(command);

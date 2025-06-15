@@ -284,17 +284,7 @@ public class GraphEndpoints {
                                      @Arg("Use the margin percent instead of absolute difference")
                                      @Default("true") boolean percent) throws IOException, GeneralSecurityException {
         Set<ResourceType> all = new HashSet<>(Arrays.asList(ResourceType.values()));
-        List<DBTrade> trades = TradeMarginByDay.getTradesByResources(all, start, end);
-
-        boolean[] rssIds = new boolean[ResourceType.values.length];
-        for (ResourceType type : resources) rssIds[type.ordinal()] = true;
-        List<DBTrade> filtered = new ObjectArrayList<>();
-        for (DBTrade trade : trades) {
-            if (rssIds[trade.getResource().ordinal()]) {
-                filtered.add(trade);
-            }
-        }
-        TradeMarginByDay table = new TradeMarginByDay(filtered, resources, percent);
+        TradeMarginByDay table = new TradeMarginByDay(all, start, end, percent);
         return table.toHtmlJson();
     }
 

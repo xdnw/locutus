@@ -6,9 +6,12 @@ import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TableIndex;
 import com.ptsmods.mysqlw.table.TablePreset;
+import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.db.entities.DBAlliancePosition;
 import link.locutus.discord.db.entities.DBNation;
@@ -17,24 +20,20 @@ import link.locutus.discord.db.entities.TradeSubscription;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
-import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.User;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Types;
+import java.sql.*;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public class TradeDB extends DBMainV2 {
@@ -736,6 +735,61 @@ public class TradeDB extends DBMainV2 {
         });
     }
 
+    public void forEachTradesByDay(Set<ResourceType> types, long startDate, long endDate, BiConsumer<Long, List<DBTrade>> consumer) {
+        if (types.isEmpty()) return;
+        StringBuilder sql = new StringBuilder("SELECT * FROM TRADES WHERE ");
+        boolean missingRss = false;
+        for (ResourceType type : types) {
+            if (type != ResourceType.MONEY && type != ResourceType.CREDITS && !types.contains(type)) {
+                missingRss = true;
+                break;
+            }
+        }
+        if (!missingRss) {
+            // If all types are requested, we don't need to filter by resource type.
+        } else if (types.size() == 1) {
+            sql.append("resource = ? AND ");
+        } else {
+            sql.append("resource IN (");
+            StringJoiner joiner = new StringJoiner(",");
+            for (ResourceType type : types) joiner.add(String.valueOf(type.ordinal()));
+            sql.append(joiner).append(") ");
+            sql.append("AND ");
+        }
+        sql.append("date > ? ");
+        if (endDate != Long.MAX_VALUE) sql.append("AND date < ? ");
+        sql.append("AND seller != 0 AND buyer != 0 ");
+        sql.append("ORDER BY date ASC");
+
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql.toString())) {
+            int idx = 1;
+            if (types.size() == 1) {
+                stmt.setInt(idx++, types.iterator().next().ordinal());
+            }
+            stmt.setLong(idx++, startDate);
+            if (endDate != Long.MAX_VALUE) stmt.setLong(idx++, endDate);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                List<DBTrade> buffer = new ObjectArrayList<>();
+                Long currentDay = null;
+                while (rs.next()) {
+                    DBTrade trade = new DBTrade(rs);
+                    long tradeDay = TimeUtil.getDay(trade.getDate());
+                    if (currentDay == null) currentDay = tradeDay;
+                    if (tradeDay != currentDay) {
+                        consumer.accept(currentDay, buffer);
+                        buffer.clear();
+                        currentDay = tradeDay;
+                    }
+                    buffer.add(trade);
+                }
+                if (!buffer.isEmpty()) consumer.accept(currentDay, buffer);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
     public List<DBTrade> getTrades(Set<Integer> nationIds, long startDate) {
         return getTrades(nationIds, startDate, Long.MAX_VALUE);
     }
@@ -766,7 +820,7 @@ public class TradeDB extends DBMainV2 {
     }
 
     public List<DBTrade> getTrades(Consumer<com.ptsmods.mysqlw.query.builder.SelectBuilder> query) {
-        List<DBTrade> result = new ArrayList<>();
+        List<DBTrade> result = new ObjectArrayList<>();
         com.ptsmods.mysqlw.query.builder.SelectBuilder builder = getDb().selectBuilder("TRADES")
                 .select("*");
         if (query != null) query.accept(builder);
@@ -799,7 +853,7 @@ public class TradeDB extends DBMainV2 {
                 group by date(datetime(trades.date/1000,'unixepoch'),'start of day')
                 order by trades.date DESC""";
 
-        Map<Long, Double> averages = new HashMap<>();
+        Map<Long, Double> averages = new Long2DoubleOpenHashMap();
 
         try (PreparedStatement stmt = getConnection().prepareStatement(query)) {
             stmt.setLong(1, minDate);

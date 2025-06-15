@@ -693,6 +693,16 @@ public enum ResourceType {
         return true;
     }
 
+    public static boolean isZero(Map<ResourceType, Double> amount) {
+        for (Map.Entry<ResourceType, Double> entry : amount.entrySet()) {
+            if (entry.getValue() != null && (Math.abs(entry.getValue()) >= 0.005)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+
     public static double[] floor(double[] resources, double min) {
         for (int i = 0; i < resources.length; i++) {
             if (resources[i] < min) resources[i] = min;
