@@ -1,5 +1,9 @@
 package link.locutus.discord.util.trade;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.politicsandwar.graphql.model.*;
 import com.ptsmods.mysqlw.query.QueryOrder;
 import it.unimi.dsi.fastutil.longs.Long2LongLinkedOpenHashMap;
@@ -7,6 +11,9 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
+import link.locutus.discord.apiv1.enums.Continent;
+import link.locutus.discord.apiv1.enums.NationColor;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -25,18 +32,11 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import link.locutus.discord.apiv1.enums.Continent;
-import link.locutus.discord.apiv1.enums.NationColor;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
@@ -719,18 +719,24 @@ public class TradeManager {
         int latestId = latest == null ? 0 : latest.getTradeId();
         long latestDate = latest == null ? 0 : latest.getDate();
         if (latest == null || latestDate < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(2)) {
-            if (eventConsumer == null) {
+            if (eventConsumer == null && Settings.INSTANCE.ENABLED_COMPONENTS.SNAPSHOTS) {
                 List<Trade> apiTrades = api.readSnapshot(PagePriority.API_TRADE_GET, Trade.class);
                 List<DBTrade> tradeList = new ObjectArrayList<>(apiTrades.size());
                 apiTrades.forEach(f -> tradeList.add(new DBTrade(f)));
                 tradeDb.saveTrades(tradeList);
             } else {
-                ArrayDeque<DBTrade> trades = new ArrayDeque<>();
-                api.fetchTradesWithInfo(f -> f.setMin_id(latestId + 1), trade -> {
-                    trades.add(new DBTrade(trade));
-                    if (trades.size() > 1000) {
-                        tradeDb.saveTrades(new ArrayList<>(trades));
-                        trades.clear();
+                List<DBTrade> trades = new ObjectArrayList<>();
+                api.fetchTradesWithInfo(f -> {
+                    if (latest != null) {
+                        f.setMin_id(latestId + 1);
+                    }
+                }, trade -> {
+                    synchronized (trades) {
+                        trades.add(new DBTrade(trade));
+                        if (trades.size() > 1000) {
+                            tradeDb.saveTrades(trades);
+                            trades.clear();
+                        }
                     }
                     return false;
                 });
@@ -1078,7 +1084,7 @@ public class TradeManager {
     }
 
     public boolean isTradeOutsideNormPrice(int ppu, ResourceType resource) {
-        if (resource != ResourceType.CREDITS) {
+        if (resource != link.locutus.discord.apiv1.enums.ResourceType.CREDITS) {
             if (resource != ResourceType.FOOD) {
                 return ppu < 700 || ppu > 8000;
             } else {

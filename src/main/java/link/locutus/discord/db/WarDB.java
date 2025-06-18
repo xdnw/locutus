@@ -705,13 +705,32 @@ public class WarDB extends DBMainV2 {
 
                 if (attacksByWarId2.isEmpty() && Settings.INSTANCE.TASKS.ALL_WAR_SECONDS > 0) {
                     Logg.text("Fetching all attacks");
+                    PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
                     AttackCursorFactory factory = new AttackCursorFactory(this);
-                    List<WarAttack> attacks = Locutus.imp().getApiPool().readSnapshot(PagePriority.ACTIVE_PAGE, WarAttack.class);
-                    List<AbstractCursor> attackList = new ObjectArrayList<>(attacks.size());
-                    for (WarAttack v3Attack : attacks) {
-                        attackList.add(factory.load(v3Attack, true));
+                    List<AbstractCursor> attackList;
+                    List<WarAttack> attacks;
+                    if (Settings.INSTANCE.ENABLED_COMPONENTS.SNAPSHOTS) {
+                        attacks = v3.readSnapshot(PagePriority.ACTIVE_PAGE, WarAttack.class);
+                        attackList = new ObjectArrayList<>(attacks.size());
+                        for (WarAttack v3Attack : attacks) {
+                            attackList.add(factory.load(v3Attack, true));
+                        }
+                        saveAttacks(attackList, null);
+                    } else {
+                        attackList = new ObjectArrayList<>();
+                        v3.fetchAttacksSince(null, v3Attack -> {
+                            AbstractCursor attack = factory.load(v3Attack, true);
+                            synchronized (attackList) {
+                                attackList.add(attack);
+                                if (attackList.size() > 1000) {
+                                    saveAttacks(attackList, null);
+                                    attackList.clear();
+                                }
+                            }
+                            return false;
+                        });
                     }
-                    saveAttacks(attackList, null);
+
                 }
 
                 if (Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS > 0 && !hasAnyBounties()) {
