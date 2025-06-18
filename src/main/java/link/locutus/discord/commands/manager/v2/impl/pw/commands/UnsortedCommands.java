@@ -1852,7 +1852,7 @@ public class UnsortedCommands {
     }
 
     @Command(desc = "Transfer the missing resource amounts per city to a list of nations")
-    @RolePermission(value = {Roles.ECON, Roles.ECON_WITHDRAW_SELF}, any = true)
+    @RolePermission(value = {Roles.ECON, Roles.ECON_WITHDRAW_SELF, Roles.MEMBER}, any = true)
     @HasOffshore
     @IsAlliance
     public static String warchest(@Me GuildDB db, @Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
