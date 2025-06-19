@@ -24,21 +24,21 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public enum Roles {
-    REGISTERED(0, false, "auto role for anyone who is verified with the bot"),
-    MEMBER(1, true, "Members can run commands"),
-    ADMIN(2, false, "Admin has access to alliance / guild management commands"),
+    REGISTERED(0, false, true, "auto role for anyone who is verified with the bot"),
+    MEMBER(1, true, true, "Members can run commands"),
+    ADMIN(2, false, true, "Admin has access to alliance / guild management commands"),
 
-    MILCOM(3, true, "Access to milcom related commands", GuildKey.ALLIANCE_ID) {
+    MILCOM(3, true, true, "Access to milcom related commands", GuildKey.ALLIANCE_ID) {
         @Override
         public boolean has(Member member) {
             if (super.has(member)) return true;
             return MILCOM_NO_PINGS.has(member);
         }
     },
-    MILCOM_NO_PINGS(4, true, "Access to milcom related commands- doesn't receive pings", GuildKey.ALLIANCE_ID, "MILCOM_ADVISOR"),
+    MILCOM_NO_PINGS(4, true, true, "Access to milcom related commands- doesn't receive pings", GuildKey.ALLIANCE_ID, "MILCOM_ADVISOR"),
 
-    ECON(5, true, "Has access to econ gov commands", null),
-    ECON_STAFF(6, true, "Has access to economy information commands", GuildKey.ALLIANCE_ID, "ECON_LOW_GOV") {
+    ECON(5, true, true, "Has access to econ gov commands", null),
+    ECON_STAFF(6, true, true, "Has access to economy information commands", GuildKey.ALLIANCE_ID, "ECON_LOW_GOV") {
         @Override
         public boolean has(Member member) {
             if (super.has(member)) return true;
@@ -54,13 +54,13 @@ public enum Roles {
     },
 
 //    ECON_GRANT_ALERTS(7, "Gets pinged for member grant requests", GuildKey.ALLIANCE_ID),
-    ECON_DEPOSIT_ALERTS(8, false,"Gets pinged when there is a deposit", GuildKey.DEPOSIT_ALERT_CHANNEL),
-    ECON_WITHDRAW_ALERTS(9, false,"Gets pinged when there is a withdrawal", GuildKey.WITHDRAW_ALERT_CHANNEL, "ECON_GRANT_ALERTS"),
-    ECON_WITHDRAW_SELF(10, true,"Can withdraw own funds", GuildKey.MEMBER_CAN_WITHDRAW),
-    ECON_GRANT_SELF(11, true, "Role to allow member to grant themselves", GuildKey.MEMBER_CAN_WITHDRAW),
+    ECON_DEPOSIT_ALERTS(8, false, false,"Gets pinged when there is a deposit", GuildKey.DEPOSIT_ALERT_CHANNEL),
+    ECON_WITHDRAW_ALERTS(9, false, false,"Gets pinged when there is a withdrawal", GuildKey.WITHDRAW_ALERT_CHANNEL, "ECON_GRANT_ALERTS"),
+    ECON_WITHDRAW_SELF(10, true, true,"Can withdraw own funds", GuildKey.MEMBER_CAN_WITHDRAW),
+    ECON_GRANT_SELF(11, true, true, "Role to allow member to grant themselves", GuildKey.MEMBER_CAN_WITHDRAW),
 
-    FOREIGN_AFFAIRS(12, true, "Role required to see other alliance's embassy channel", GuildKey.ALLIANCE_ID),
-    FOREIGN_AFFAIRS_STAFF(13, true, "Role for some basic FA commands", GuildKey.ALLIANCE_ID) {
+    FOREIGN_AFFAIRS(12, true, true, "Role required to see other alliance's embassy channel", GuildKey.ALLIANCE_ID),
+    FOREIGN_AFFAIRS_STAFF(13, true, true, "Role for some basic FA commands", GuildKey.ALLIANCE_ID) {
         @Override
         public boolean has(Member member) {
             if (super.has(member)) return true;
@@ -75,8 +75,8 @@ public enum Roles {
         }
     },
 
-    INTERNAL_AFFAIRS(14, true,"Access to IA related commands", GuildKey.ALLIANCE_ID),
-    INTERNAL_AFFAIRS_STAFF(15, true, "Role for some basic IA commands, such as accepting applicants", GuildKey.ALLIANCE_ID) {
+    INTERNAL_AFFAIRS(14, true, true,"Access to IA related commands", GuildKey.ALLIANCE_ID),
+    INTERNAL_AFFAIRS_STAFF(15, true, true, "Role for some basic IA commands, such as accepting applicants", GuildKey.ALLIANCE_ID) {
         @Override
         public boolean has(Member member) {
             if (super.has(member)) return true;
@@ -91,10 +91,10 @@ public enum Roles {
         }
     },
 
-    APPLICANT(16, true, "Applying to join the alliance in-game", GuildKey.INTERVIEW_PENDING_ALERTS),
-    INTERVIEWER(17, false, "Role to get pinged when a user requests an interview to join the alliance", GuildKey.INTERVIEW_PENDING_ALERTS),
-    MENTOR(18, false, "Role for mentoring applicants who have completed their interview", GuildKey.INTERVIEW_PENDING_ALERTS),
-    GRADUATED(19, true, "Members with this role can have their interview channels archived", GuildKey.INTERVIEW_PENDING_ALERTS) {
+    APPLICANT(16, true, true, "Applying to join the alliance in-game", GuildKey.INTERVIEW_PENDING_ALERTS),
+    INTERVIEWER(17, false, true, "Role to get pinged when a user requests an interview to join the alliance", GuildKey.INTERVIEW_PENDING_ALERTS),
+    MENTOR(18, false, true, "Role for mentoring applicants who have completed their interview", GuildKey.INTERVIEW_PENDING_ALERTS),
+    GRADUATED(19, true, true, "Members with this role can have their interview channels archived", GuildKey.INTERVIEW_PENDING_ALERTS) {
         @Override
         public boolean has(Member member) {
             return super.has(member)
@@ -112,49 +112,49 @@ public enum Roles {
                     ;
         }
     },
-    RECRUITER(20, false, "Role to get pinged for recruitment messages (if enabled)", GuildKey.RECRUIT_MESSAGE_OUTPUT),
+    RECRUITER(20, false, true, "Role to get pinged for recruitment messages (if enabled)", GuildKey.RECRUIT_MESSAGE_OUTPUT),
 
-    TRADE_ALERT(21, false, "Gets pinged for trade alerts", GuildKey.TRADE_ALERT_CHANNEL),
+    TRADE_ALERT(21, false, false, "Gets pinged for trade alerts", GuildKey.TRADE_ALERT_CHANNEL),
 
-    BEIGE_ALERT(22, false, "Gets pinged when a nation leaves beige (in their score range), and they have a slot free", GuildKey.BEIGE_ALERT_CHANNEL),
-    BEIGE_ALERT_OPT_OUT(23, false,"Overrides the beige alert role", GuildKey.BEIGE_ALERT_CHANNEL),
+    BEIGE_ALERT(22, false, false, "Gets pinged when a nation leaves beige (in their score range), and they have a slot free", GuildKey.BEIGE_ALERT_CHANNEL),
+    BEIGE_ALERT_OPT_OUT(23, false, false,"Overrides the beige alert role", GuildKey.BEIGE_ALERT_CHANNEL),
 
-    BOUNTY_ALERT(24, false, "Gets pings when bounties are placed in their score range"),
-    BOUNTY_ALERT_OPT_OUT(38, false, "Opt out of received bounty alerts", GuildKey.BOUNTY_ALERT_CHANNEL),
+    BOUNTY_ALERT(24, false, false, "Gets pings when bounties are placed in their score range"),
+    BOUNTY_ALERT_OPT_OUT(38, false, false, "Opt out of received bounty alerts", GuildKey.BOUNTY_ALERT_CHANNEL),
 //    MAP_FULL_ALERT("Gets pinged when you are on 12 MAPs in an offensive war", GuildKey.MEMBER_AUDIT_ALERTS),
 
 //    WAR_ALERT("Opt out of received war target alerts", GuildKey.ENEMY_ALERT_CHANNEL),
-    WAR_ALERT_OPT_OUT(25, false, "Opt out of received war target alerts", GuildKey.ENEMY_ALERT_CHANNEL),
-    AUDIT_ALERT_OPT_OUT(26, false, "Opt out of received audit alerts", GuildKey.MEMBER_AUDIT_ALERTS),
-    BLITZ_PARTICIPANT(27, false, "Opt in to blitz participation (clear this regularly)", GuildKey.ALLIANCE_ID),
-    BLITZ_PARTICIPANT_OPT_OUT(28, false, "Opt in to blitz participation (clear this regularly)", GuildKey.ALLIANCE_ID),
+    WAR_ALERT_OPT_OUT(25, false, false, "Opt out of received war target alerts", GuildKey.ENEMY_ALERT_CHANNEL),
+    AUDIT_ALERT_OPT_OUT(26, false, false, "Opt out of received audit alerts", GuildKey.MEMBER_AUDIT_ALERTS),
+    BLITZ_PARTICIPANT(27, false, false, "Opt in to blitz participation (clear this regularly)", GuildKey.ALLIANCE_ID),
+    BLITZ_PARTICIPANT_OPT_OUT(28, false, false, "Opt in to blitz participation (clear this regularly)", GuildKey.ALLIANCE_ID),
 
-    TEMP(29, false, "Role to signify temporary member, not elligable for grants", GuildKey.ALLIANCE_ID),
+    TEMP(29, false, false, "Role to signify temporary member, not elligable for grants", GuildKey.ALLIANCE_ID),
 
-    MAIL(30, true, "Can use mail commands", GuildKey.API_KEY),
+    MAIL(30, true, true, "Can use mail commands", GuildKey.API_KEY),
 
-    BLOCKADED_ALERT(31, false, "Gets a ping when you are blockaded", GuildKey.BLOCKADED_ALERTS, "BLOCKADED_ALERTS"),
-    UNBLOCKADED_ALERT(32, false, "Gets a ping when you are unblockaded", GuildKey.UNBLOCKADED_ALERTS, "UNBLOCKADED_ALERTS"),
+    BLOCKADED_ALERT(31, false, false, "Gets a ping when you are blockaded", GuildKey.BLOCKADED_ALERTS, "BLOCKADED_ALERTS"),
+    UNBLOCKADED_ALERT(32, false, false, "Gets a ping when you are unblockaded", GuildKey.UNBLOCKADED_ALERTS, "UNBLOCKADED_ALERTS"),
 
-    UNBLOCKADED_GOV_ROLE_ALERT(33, false, "Pings this role when any member is fully unblockaded", GuildKey.UNBLOCKADED_ALERTS, "UNBLOCKADED_GOV_ROLE_ALERTS"),
-    ESCROW_GOV_ALERT(39, false, "Pings this role when any member is fully unblockaded and has an escrow balance", GuildKey.UNBLOCKADED_ALERTS, "UNBLOCKADED_GOV_ROLE_ALERTS"),
+    UNBLOCKADED_GOV_ROLE_ALERT(33, false, false, "Pings this role when any member is fully unblockaded", GuildKey.UNBLOCKADED_ALERTS, "UNBLOCKADED_GOV_ROLE_ALERTS"),
+    ESCROW_GOV_ALERT(39, false, false, "Pings this role when any member is fully unblockaded and has an escrow balance", GuildKey.UNBLOCKADED_ALERTS, "UNBLOCKADED_GOV_ROLE_ALERTS"),
 
-    TREASURE_ALERT(34, false, "Gets alerts in the TREASURE_ALERT_CHANNEL if a treasure is spawning in their range", GuildKey.TREASURE_ALERT_CHANNEL, "TREASURE_ALERTS"),
-    TREASURE_ALERT_OPT_OUT(35, false, "Does not receive treasure alerts (even with the treasure alert role)", GuildKey.TREASURE_ALERT_CHANNEL, "TREASURE_ALERTS_OPT_OUT"),
+    TREASURE_ALERT(34, false, false, "Gets alerts in the TREASURE_ALERT_CHANNEL if a treasure is spawning in their range", GuildKey.TREASURE_ALERT_CHANNEL, "TREASURE_ALERTS"),
+    TREASURE_ALERT_OPT_OUT(35, false, false, "Does not receive treasure alerts (even with the treasure alert role)", GuildKey.TREASURE_ALERT_CHANNEL, "TREASURE_ALERTS_OPT_OUT"),
 
-    ENEMY_BEIGE_ALERT_AUDITOR(36, false, "Role to receive pings when an enemy gets beiged", GuildKey.ENEMY_BEIGED_ALERT_VIOLATIONS),
+    ENEMY_BEIGE_ALERT_AUDITOR(36, false, false, "Role to receive pings when an enemy gets beiged", GuildKey.ENEMY_BEIGED_ALERT_VIOLATIONS),
 
-    GROUND_MILITARIZE_ALERT(37, false, "Role to receive pings when alliances militarize", GuildKey.AA_GROUND_UNIT_ALERTS, "GROUND_MILITARIZE_ROLE"),
+    GROUND_MILITARIZE_ALERT(37, false, false, "Role to receive pings when alliances militarize", GuildKey.AA_GROUND_UNIT_ALERTS, "GROUND_MILITARIZE_ROLE"),
 
-    AI_COMMAND_ACCESS(40, false, "Access to AI commands on the discord server"),
+    AI_COMMAND_ACCESS(40, false, true, "Access to AI commands on the discord server"),
 
-    ESPIONAGE_ALERTS(41, false, "Role to receive pings when an alliance member gets spied", GuildKey.DEFENSE_WAR_CHANNEL),
+    ESPIONAGE_ALERTS(41, false, false, "Role to receive pings when an alliance member gets spied", GuildKey.DEFENSE_WAR_CHANNEL),
 
-    ENEMY_ALERT_OFFLINE(42, false, "Able to receive enemy alerts when offline or invisible on discord (unless opt out, or player setting overrides)", GuildKey.BEIGE_ALERT_CHANNEL),
+    ENEMY_ALERT_OFFLINE(42, false, false, "Able to receive enemy alerts when offline or invisible on discord (unless opt out, or player setting overrides)", GuildKey.BEIGE_ALERT_CHANNEL),
 
-    RESOURCE_CONVERSION(43, false, "Set a required role for accessing resource conversion (if enabled). If no role is set, then all members have access", GuildKey.RESOURCE_CONVERSION),
+    RESOURCE_CONVERSION(43, false, true, "Set a required role for accessing resource conversion (if enabled). If no role is set, then all members have access", GuildKey.RESOURCE_CONVERSION),
 
-    WITHDRAW_ALERT_NO_NOTE(44, false, "Alert this role when a withdrawal occurs without a valid note, in the configured withdrawal alert channel", GuildKey.WITHDRAW_ALERT_CHANNEL),
+    WITHDRAW_ALERT_NO_NOTE(44, false, false, "Alert this role when a withdrawal occurs without a valid note, in the configured withdrawal alert channel", GuildKey.WITHDRAW_ALERT_CHANNEL),
 
     ;
 
@@ -165,7 +165,7 @@ public enum Roles {
 
     private final int id;
     private final String legacy_name;
-    private final boolean allowAlliance;
+    private final boolean allowAlliance, allowAdminBypass;
 
     public static Roles getHighestRole(Member member) {
         for (int i = values.length - 1; i >= 0; i--) {
@@ -199,18 +199,19 @@ public enum Roles {
     public static String getValidRolesStringList() {
         return "\n- " + StringMan.join(Roles.values(), "\n- ");
     }
-    Roles(int id, boolean allowAlliance, String desc) {
-        this(id, allowAlliance, desc, null);
+    Roles(int id, boolean allowAlliance, boolean allowAdminBypass, String desc) {
+        this(id, allowAlliance, allowAdminBypass, desc, null);
     }
-    Roles(int id, boolean allowAlliance, String desc, GuildSetting key) {
-        this(id, allowAlliance, desc, key, null);
+    Roles(int id, boolean allowAlliance, boolean allowAdminBypass, String desc, GuildSetting key) {
+        this(id, allowAlliance, allowAdminBypass, desc, key, null);
     }
-    Roles(int id, boolean allowAlliance, String desc, GuildSetting key, String legacy_name) {
+    Roles(int id, boolean allowAlliance, boolean allowAdminBypass, String desc, GuildSetting key, String legacy_name) {
         this.desc = desc;
         this.key = key;
         this.id = id;
         this.legacy_name = legacy_name;
         this.allowAlliance = allowAlliance;
+        this.allowAdminBypass = allowAdminBypass;
     }
 
     public boolean allowAlliance() {
@@ -299,8 +300,8 @@ public enum Roles {
         if (user == null || db == null) return Collections.emptySet();
         boolean hasAdmin = false;
         Member member = null;
-        if (user.getIdLong() == Settings.INSTANCE.APPLICATION_ID) hasAdmin = true;
-        else if (user.getIdLong() == Locutus.loader().getAdminUserId()) hasAdmin = true;
+        if (allowAdminBypass && user.getIdLong() == Settings.INSTANCE.APPLICATION_ID) hasAdmin = true;
+        else if (allowAdminBypass && user.getIdLong() == Locutus.loader().getAdminUserId()) hasAdmin = true;
         else {
             member = db.getGuild().getMember(user);
             if (member != null) {
@@ -362,7 +363,7 @@ public enum Roles {
 
     public boolean hasOnRoot(User user) {
         if (user == null) return false;
-        if (user.getIdLong() == Locutus.loader().getAdminUserId()) return true;
+        if (allowAdminBypass && user.getIdLong() == Locutus.loader().getAdminUserId()) return true;
         if (Locutus.imp().getServer() == null) {
             return false;
         }
@@ -389,15 +390,19 @@ public enum Roles {
 
     public boolean has(Member member) {
         if (member == null) return false;
-        if (member.getIdLong() == Locutus.loader().getAdminUserId()) return true;
-        if (member.isOwner()) return true;
-        if (member.hasPermission(Permission.ADMINISTRATOR)) return true;
+        if (allowAdminBypass) {
+            if (member.getIdLong() == Locutus.loader().getAdminUserId()) return true;
+            if (member.isOwner()) return true;
+            if (member.hasPermission(Permission.ADMINISTRATOR)) return true;
+        }
         GuildDB db = Locutus.imp().getGuildDB(member.getGuild());
 
         List<Role> roles = member.getRoles();
-        for (Role discordRole : roles) {
-            if (discordRole.hasPermission(Permission.ADMINISTRATOR)) {
-                return true;
+        if (allowAdminBypass) {
+            for (Role discordRole : roles) {
+                if (discordRole.hasPermission(Permission.ADMINISTRATOR)) {
+                    return true;
+                }
             }
         }
         Map<Long, Role> map = db.getRoleMap(this);
@@ -430,10 +435,10 @@ public enum Roles {
 
     public Long hasAlliance(Member member) {
         if (member == null) return null;
-        if (member.getIdLong() == Settings.INSTANCE.APPLICATION_ID
+        if (allowAdminBypass && (member.getIdLong() == Settings.INSTANCE.APPLICATION_ID
         || member.getIdLong() == Locutus.loader().getAdminUserId()
         || member.hasPermission(Permission.ADMINISTRATOR)
-        || member.isOwner()) return 0L;
+        || member.isOwner())) return 0L;
         GuildDB db = Locutus.imp().getGuildDB(member.getGuild());
         List<Role> roles = member.getRoles();
         Map<Long, Role> map = db.getRoleMap(this);
@@ -448,8 +453,10 @@ public enum Roles {
 
     public boolean has(User user, Guild server) {
         if (user == null) return false;
-        if (user.getIdLong() == Settings.INSTANCE.APPLICATION_ID) return true;
-        if (user.getIdLong() == Locutus.loader().getAdminUserId()) return true;
+        if (allowAdminBypass) {
+            if (user.getIdLong() == Settings.INSTANCE.APPLICATION_ID) return true;
+            if (user.getIdLong() == Locutus.loader().getAdminUserId()) return true;
+        }
         if (server == null) return false;
         if (!server.isMember(user)) {
             return false;
