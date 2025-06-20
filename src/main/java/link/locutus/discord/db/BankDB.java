@@ -12,16 +12,19 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.entities.BankRecord;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.DiscordMeta;
 import link.locutus.discord.db.entities.TaxBracket;
+import link.locutus.discord.db.entities.TaxEstimate;
+import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.bank.TransactionEvent;
 import link.locutus.discord.pnw.NationOrAlliance;
-import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
+import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import net.dv8tion.jda.api.entities.User;
 import org.example.jooq.bank.tables.records.SubscriptionsRecord;
 import org.example.jooq.bank.tables.records.TaxDepositsDateRecord;
@@ -39,36 +42,31 @@ import java.nio.ByteBuffer;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
+import java.util.*;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.example.jooq.bank.Tables.LOOT_DIFF_BY_TAX_ID;
-import static org.example.jooq.bank.Tables.SUBSCRIPTIONS;
-import static org.example.jooq.bank.Tables.TAX_BRACKETS;
-import static org.example.jooq.bank.Tables.TAX_DEPOSITS_DATE;
-import static org.example.jooq.bank.Tables.TAX_ESTIMATE;
-import static org.example.jooq.bank.Tables.TRANSACTIONS_2;
-import static org.example.jooq.bank.Tables.TRANSACTIONS_ALLIANCE_2;
+import static org.example.jooq.bank.Tables.*;
 import static org.jooq.impl.DSL.lower;
 
 public class BankDB extends DBMainV3 {
     private final Map<Integer, Set<Transaction2>> transactionCache2 = new Int2ObjectOpenHashMap<>();
+    private final boolean legacyExists;
 
     public BankDB() throws SQLException, ClassNotFoundException {
         super(Settings.INSTANCE.DATABASE, "bank", false);
+        try {
+            System.out.println("Checking for legacy transactions table...");
+            this.legacyExists = tableExists("TRANSACTIONS_ALLIANCE_2");
+            System.out.println("Legacy transactions table exists: " + legacyExists);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
     }
 
     public List<Transaction2> getTransactions(Condition condition) {
@@ -327,79 +325,75 @@ public class BankDB extends DBMainV3 {
             condition = and(condition, TRANSACTIONS_2.TX_DATETIME.le(endDate));
         }
         List<Transaction2> results = getTransactions(condition);
-        try {
-            boolean checkAlliance = false;
-            if (receiver != null) {
-                for (NationOrAlliance nationOrAlliance : receiver) {
-                    if (nationOrAlliance.isAlliance()) {
-                        checkAlliance = true;
-                        break;
-                    }
+        boolean checkAlliance = false;
+        if (receiver != null) {
+            for (NationOrAlliance nationOrAlliance : receiver) {
+                if (nationOrAlliance.isAlliance()) {
+                    checkAlliance = true;
+                    break;
                 }
             }
-            if (sender != null) {
-                for (NationOrAlliance nationOrAlliance : sender) {
-                    if (nationOrAlliance.isAlliance()) {
-                        checkAlliance = true;
-                        break;
-                    }
+        }
+        if (sender != null) {
+            for (NationOrAlliance nationOrAlliance : sender) {
+                if (nationOrAlliance.isAlliance()) {
+                    checkAlliance = true;
+                    break;
                 }
             }
+        }
 //            boolean checkNation = (sender != null && sender.isNation()) || (receiver != null && receiver.isNation()) || (sender == null && receiver == null);
 //            boolean checkAlliance = !checkNation || (sender == null && receiver == null);
 
-            if (checkAlliance && tableExists("TRANSACTIONS_ALLIANCE_2")) {
-                String query = "SELECT * FROM %table% WHERE tx_datetime > ? AND tx_datetime < ? ";
-                if (sender != null) {
-                    if (sender.size() == 1) {
-                        NationOrAlliance sender1 = sender.iterator().next();
-                        query += " AND sender_id = " + sender1.getIdLong();
-                        query += " AND sender_type = " + sender1.getReceiverType();
-                    } else {
-                        query += " AND sender_id IN (" + sender.stream().map(NationOrAlliance::getIdLong).map(String::valueOf).collect(Collectors.joining(",")) + ")";
-                    }
+        if (checkAlliance && legacyExists) {
+            String query = "SELECT * FROM %table% WHERE tx_datetime > ? AND tx_datetime < ? ";
+            if (sender != null) {
+                if (sender.size() == 1) {
+                    NationOrAlliance sender1 = sender.iterator().next();
+                    query += " AND sender_id = " + sender1.getIdLong();
+                    query += " AND sender_type = " + sender1.getReceiverType();
+                } else {
+                    query += " AND sender_id IN (" + sender.stream().map(NationOrAlliance::getIdLong).map(String::valueOf).collect(Collectors.joining(",")) + ")";
                 }
-                if (receiver != null) {
-                    if (receiver.size() == 1) {
-                        NationOrAlliance receiver1 = receiver.iterator().next();
-                        query += " AND receiver_id = " + receiver1.getIdLong();
-                        query += " AND receiver_type = " + receiver1.getReceiverType();
-                    } else {
-                        query += " AND receiver_id IN (" + receiver.stream().map(NationOrAlliance::getIdLong).map(String::valueOf).collect(Collectors.joining(",")) + ")";
-                    }
+            }
+            if (receiver != null) {
+                if (receiver.size() == 1) {
+                    NationOrAlliance receiver1 = receiver.iterator().next();
+                    query += " AND receiver_id = " + receiver1.getIdLong();
+                    query += " AND receiver_type = " + receiver1.getReceiverType();
+                } else {
+                    query += " AND receiver_id IN (" + receiver.stream().map(NationOrAlliance::getIdLong).map(String::valueOf).collect(Collectors.joining(",")) + ")";
                 }
-                if (banker != null) {
-                    if (banker.size() == 1)
-                        query += " AND banker_nation_id = " + banker.iterator().next().getId();
-                    else
-                        query += " AND banker_nation_id IN (" + banker.stream().map(NationOrAlliance::getIdLong).map(String::valueOf).collect(Collectors.joining(",")) + ")";
-                }
-                String queryAA = query.replaceFirst("%table%", "TRANSACTIONS_ALLIANCE_2");
-                Predicate<Transaction2> finalFilter = filter;
-                queryLegacy(queryAA,
-                        (ThrowingConsumer<PreparedStatement>) elem -> {
-                            elem.setLong(1, startDate == null ? 0 : startDate);
-                            elem.setLong(2, endDate == null ? 0 : endDate);
-                        },
-                        (ThrowingConsumer<ResultSet>) elem -> {
-                            while (elem.next()) {
-                                Transaction2 tx = new Transaction2(elem);
-                                if (finalFilter.test(tx)) {
-                                    results.add(tx);
-                                }
+            }
+            if (banker != null) {
+                if (banker.size() == 1)
+                    query += " AND banker_nation_id = " + banker.iterator().next().getId();
+                else
+                    query += " AND banker_nation_id IN (" + banker.stream().map(NationOrAlliance::getIdLong).map(String::valueOf).collect(Collectors.joining(",")) + ")";
+            }
+            String queryAA = query.replaceFirst("%table%", "TRANSACTIONS_ALLIANCE_2");
+            Predicate<Transaction2> finalFilter = filter;
+            queryLegacy(queryAA,
+                    (ThrowingConsumer<PreparedStatement>) elem -> {
+                        elem.setLong(1, startDate == null ? 0 : startDate);
+                        elem.setLong(2, endDate == null ? 0 : endDate);
+                    },
+                    (ThrowingConsumer<ResultSet>) elem -> {
+                        while (elem.next()) {
+                            Transaction2 tx = new Transaction2(elem);
+                            if (finalFilter.test(tx)) {
+                                results.add(tx);
                             }
                         }
-                );
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+                    }
+            );
         }
         return results;
     }
 
     public void deleteLegacyAllianceTransactions(int allianceId, long minDate) {
         try {
-            if (tableExists("TRANSACTIONS_ALLIANCE_2")) {
+            if (legacyExists && tableExists("TRANSACTIONS_ALLIANCE_2")) {
                 ctx().deleteFrom(TRANSACTIONS_ALLIANCE_2)
                         .where(TRANSACTIONS_ALLIANCE_2.TX_DATETIME.gt(minDate).and(
                                         DSL.or(TRANSACTIONS_ALLIANCE_2.SENDER_ID.eq((long) allianceId).and(TRANSACTIONS_ALLIANCE_2.SENDER_TYPE.eq(2)),
@@ -1107,7 +1101,8 @@ public class BankDB extends DBMainV3 {
             }
         }
 
-        if (includeLegacy) {
+        if (includeLegacy && legacyExists) {
+            System.out.println("LEGACY EXISTS " + legacyExists);
             List<Transaction2> legacy = new ObjectArrayList<>();
             String inOrEqual = remaining.size() == 1 ? " = " + remaining.get(0) : " IN " + StringMan.getString(remaining);
             String query = "select * FROM TRANSACTIONS_ALLIANCE_2 WHERE ((sender_type = ? AND receiver_type = ? AND receiver_id " + inOrEqual + "))";
