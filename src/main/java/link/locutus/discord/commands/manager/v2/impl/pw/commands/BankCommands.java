@@ -2254,7 +2254,7 @@ public class BankCommands {
         // transfer limit
         long userId = author.getIdLong();
         if (ResourceType.convertedTotal(transfer) > 5000000000L
-                && userId != Locutus.loader().getAdminUserId()
+                && (!Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN || userId != Locutus.loader().getAdminUserId())
                 && !Settings.INSTANCE.LEGACY_SETTINGS.WHITELISTED_BANK_USERS.contains(userId)
                 && !isGrant && offshore.getAllianceId() == Settings.INSTANCE.ALLIANCE_ID()
         ) {
@@ -3819,7 +3819,7 @@ public class BankCommands {
                        @Default DBAlliance sender_alliance,
 
                        @Switch("f") boolean force) throws IOException {
-        if (OffshoreInstance.DISABLE_TRANSFERS && user.getIdLong() != Locutus.loader().getAdminUserId()) throw new IllegalArgumentException(DISABLED_MESSAGE);
+        if (OffshoreInstance.DISABLE_TRANSFERS && (!Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN || user.getIdLong() != Locutus.loader().getAdminUserId())) throw new IllegalArgumentException(DISABLED_MESSAGE);
         return sendAA(channel, command, senderDB, user, me, amount, receiver_account, receiver_nation, sender_alliance, me, force);
     }
 
@@ -3865,7 +3865,7 @@ public class BankCommands {
         }
         DBAlliance sender_alliance = sender_account != null && sender_account.isAlliance() ? sender_account.asAlliance() : null;
 
-        if (OffshoreInstance.DISABLE_TRANSFERS && user.getIdLong() != Locutus.loader().getAdminUserId()) throw new IllegalArgumentException(DISABLED_MESSAGE);
+        if (OffshoreInstance.DISABLE_TRANSFERS && (!Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN || user.getIdLong() != Locutus.loader().getAdminUserId())) throw new IllegalArgumentException(DISABLED_MESSAGE);
         if (sender_alliance != null && !senderDB.isAllianceId(sender_alliance.getId())) {
             throw new IllegalArgumentException("Sender alliance is not in this guild");
         }
