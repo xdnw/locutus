@@ -2182,6 +2182,9 @@ public class BankCommands {
                                   @Switch("b") boolean bypassChecks,
                                   @Switch("p") boolean ping_when_sent,
                                   @Switch("f") boolean force) throws IOException {
+        System.out.println("ROLES " + Roles.ECON.has(author, guildDb.getGuild()) + "| " + Roles.ECON.toRole(author, guildDb));
+        System.out.println("ROLES2 " + Roles.ECON_WITHDRAW_SELF.has(author, guildDb.getGuild()));
+        System.out.println("ROLES3 " + Roles.MEMBER.has(author, guildDb.getGuild()));
         if (existingTaxAccount) {
             if (taxAccount != null) throw new IllegalArgumentException("You can't specify both `tax_id` and `existingTaxAccount`");
             if (!receiver.isNation()) throw new IllegalArgumentException("You can only specify `existingTaxAccount` for a nation");
