@@ -482,6 +482,8 @@ public class PWBindings extends BindingHelper {
         // {city X Nation}
         int index = input.indexOf('{');
         Integer cityId = null;
+        CityBuild build = null;
+
         String json;
         if (index == -1) {
             json = null;
@@ -496,18 +498,20 @@ public class PWBindings extends BindingHelper {
                 int i = 0;
                 for (Map.Entry<Integer, JavaCity> entry : cities) {
                     if (++i == cityIndex) {
-                        CityBuild build = entry.getValue().toCityBuild();
-                        build.setCity_id(entry.getKey());
-                        return build;
+                        CityBuild other = entry.getValue().toCityBuild();
+                        other.setCity_id(entry.getKey());
+                        build = other;
+                        break;
                     }
                 }
-                throw new IllegalArgumentException("City not found: " + index + " for natiion " + nation.getName());
+                if (build == null) {
+                    throw new IllegalArgumentException("City not found: " + index + " for natiion " + nation.getName());
+                }
             }
             json = input.substring(index);
             input = input.substring(0, index);
         }
-        CityBuild build = null;
-        if (input.contains("city/id=")) {
+        if (build == null && input.contains("city/id=")) {
             cityId = Integer.parseInt(input.split("=")[1]);
             DBCity cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId);
             if (cityEntry == null) {
@@ -526,7 +530,9 @@ public class PWBindings extends BindingHelper {
             build = cityEntry.toJavaCity(nation == null ? f -> false : nation::hasProject).toCityBuild();
             build.setCity_id(cityEntry.getId());
         }
-        if (json != null && !json.isBlank()) {
+        if (json == null) json = "";
+        else json = json.trim();
+        if (!json.isBlank() && json.startsWith("{") && json.endsWith("}")) {
             for (Building building : Buildings.values()) {
                 json = json.replace(building.name(), building.nameSnakeCase());
             }
