@@ -1,7 +1,6 @@
 package link.locutus.discord.util.io;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
+import link.locutus.discord.util.IOUtil;
 
 public class BitBuffer {
     static void testReadWriteRandom() {
@@ -99,16 +98,17 @@ public class BitBuffer {
 
     private long buffer;
     private int bitsInBuffer;
-    private final ByteBuffer byteBuffer;
+    private byte[] byteArray;
+    private int offset;
 
     public BitBuffer(int capacity) {
-        this(ByteBuffer.wrap(new byte[capacity]).order(ByteOrder.LITTLE_ENDIAN));
+        this(new byte[capacity]);
     }
 
-    private BitBuffer(ByteBuffer byteBuffer) {
+    private BitBuffer(byte[] byteBuffer) {
         this.buffer = 0L;
         this.bitsInBuffer = 0;
-        this.byteBuffer = byteBuffer;
+        this.byteArray = byteBuffer;
     }
 
     public void writeBits(long value, int count) {
@@ -143,7 +143,10 @@ public class BitBuffer {
         } else {
             int remainingCount = count - bitsInBuffer;
             result = buffer & MASK[bitsInBuffer];
-            buffer = byteBuffer.getLong();
+
+            buffer = IOUtil.readLong(byteArray, offset);
+            offset += Long.BYTES;
+
             result |= (buffer & MASK[remainingCount]) << bitsInBuffer;
             buffer >>>= remainingCount;
             bitsInBuffer = 64 - remainingCount;
@@ -153,17 +156,19 @@ public class BitBuffer {
     }
 
     private void flush() {
-        byteBuffer.putLong(buffer);
+        IOUtil.writeLong(byteArray, buffer, offset);
+        offset += Long.BYTES;
+
         buffer = 0;
         bitsInBuffer = 0;
     }
 
     public byte[] getWrittenBytes() {
         int numBytesInBuffer = (bitsInBuffer + 7) / 8;
-        byte[] bytes = new byte[byteBuffer.position() + numBytesInBuffer];
-        System.arraycopy(byteBuffer.array(), 0, bytes, 0, byteBuffer.position());
+        byte[] bytes = new byte[offset + numBytesInBuffer];
+        System.arraycopy(byteArray, 0, bytes, 0, offset);
         if (numBytesInBuffer > 0) {
-            int startIndex = byteBuffer.position();
+            int startIndex = offset;
             for (int i = 0; i < numBytesInBuffer; i++) {
                 bytes[startIndex + i] = (byte) (buffer & 0xFF);
                 buffer >>>= 8;
@@ -236,26 +241,20 @@ public class BitBuffer {
         writeLong(Double.doubleToLongBits(value));
     }
 
-    public void clear() {
-        for (int i = 0; i < byteBuffer.capacity(); i++) {
-            byteBuffer.put(i, (byte) 0);
-        }
-        byteBuffer.clear();
-        buffer = 0;
-        bitsInBuffer = 0;
-    }
-
     public BitBuffer reset() {
-        byteBuffer.position(0);
+        offset = 0;
         buffer = 0;
         bitsInBuffer = 0;
         return this;
     }
 
     public void setBytes(byte[] data) {
-        byteBuffer.position(0);
-        byteBuffer.put(data);
-        byteBuffer.position(0);
+        System.arraycopy(data, 0, byteArray, 0, Math.min(data.length, byteArray.length));
+        int mod = data.length % Long.BYTES;
+        for (int i = data.length; i < data.length + mod; i++) {
+            byteArray[i] = 0;
+        }
+        offset = 0;
         buffer = 0;
         bitsInBuffer = 0;
     }
