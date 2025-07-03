@@ -2,9 +2,6 @@ package link.locutus.discord.util.io;
 
 import link.locutus.discord.util.IOUtil;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-
 public class BitBuffer {
     static void testReadWriteRandom() {
         BitBuffer bitBuffer = new BitBuffer(1024 * 1024); // 1 MB buffer
@@ -244,26 +241,20 @@ public class BitBuffer {
         writeLong(Double.doubleToLongBits(value));
     }
 
-    public void clear() {
-        for (int i = 0; i < byteBuffer.capacity(); i++) {
-            byteBuffer.put(i, (byte) 0);
-        }
-        byteBuffer.clear();
-        buffer = 0;
-        bitsInBuffer = 0;
-    }
-
     public BitBuffer reset() {
-        byteBuffer.position(0);
+        offset = 0;
         buffer = 0;
         bitsInBuffer = 0;
         return this;
     }
 
     public void setBytes(byte[] data) {
-        byteBuffer.position(0);
-        byteBuffer.put(data);
-        byteBuffer.position(0);
+        System.arraycopy(data, 0, byteArray, 0, Math.min(data.length, byteArray.length));
+        int mod = data.length % Long.BYTES;
+        for (int i = data.length; i < data.length + mod; i++) {
+            byteArray[i] = 0;
+        }
+        offset = 0;
         buffer = 0;
         bitsInBuffer = 0;
     }

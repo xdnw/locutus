@@ -90,7 +90,7 @@ public class IOUtil {
             byte[] data = new byte[Long.BYTES];
             for (int i = 0; i < 1000; i++) {
                 long value = RANDOM.nextLong();
-                IOUtil.writeLong(data, value);
+                IOUtil.writeLong(data, value,0 );
 
                 long fromBuffer = ByteBuffer
                         .wrap(data)

@@ -326,7 +326,6 @@ public class AttackCursorFactory {
         byte[] out = toBytes(cursor);
         if (out.length != data.length) {
             String originalStr = cursor.toString();
-            buffer.clear();
             buffer.setBytes(data);
             buffer.readBits(4);
             cursor.initialize(war, buffer);
