@@ -2823,7 +2823,7 @@ public class UtilityCommands {
         for (Project project : projects) {
             QuadFunction<Integer, DBNation, Project, Double, RoiResult> roiFunc = project.getRoiFunction();
             if (roiFunc == null) continue;
-            if (project.canBuild(nation) || nation.hasProject(project)) continue;
+            if (!project.canBuild(nation) || nation.hasProject(project)) continue;
             if (System.currentTimeMillis() - start > 10000) {
                 channel.updateOptionally(msgFuture, "Calculating ROI for " + project.name() + "...");
                 start = System.currentTimeMillis();
