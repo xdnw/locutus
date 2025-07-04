@@ -2380,9 +2380,19 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
 
     public Map.Entry<GuildDB, Integer> getOffshoreDB(boolean throwError) {
         Set<Integer> aaIds = getAllianceIds();
-
         Set<Long> offshores = getCoalitionRaw(OFFSHORE);
-        Map<Long, String> errors = new LinkedHashMap<>();
+        if (!aaIds.isEmpty()) {
+            Set<Long> localOffshoring = getCoalitionRaw(OFFSHORING);
+            if (!localOffshoring.isEmpty()) {
+                for (int aaId : aaIds) {
+                    if (localOffshoring.contains((long) aaId) && offshores.contains((long) aaId)) {
+                        return new KeyValue<>(this, aaId);
+                    }
+                }
+            }
+        }
+
+        Map<Long, String> errors = new Long2ObjectOpenHashMap<>();
         for (long offshoreIdLong : offshores) {
             if (offshoreIdLong > Integer.MAX_VALUE) {
                 errors.put(offshoreIdLong, "Guild ID, Not an Alliance");
@@ -2397,7 +2407,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
 
             GuildDB otherDb = aa.getGuildDB();
             if (otherDb == null) {
-
                 continue;
             }
             Set<Long> offshoring = otherDb.getCoalitionRaw(OFFSHORING);

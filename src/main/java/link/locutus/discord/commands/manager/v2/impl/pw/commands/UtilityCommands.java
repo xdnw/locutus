@@ -2809,7 +2809,7 @@ public class UtilityCommands {
         double originRevenue;
         {
             Predicate<Project> hasProject = nation.hasProjectPredicate();
-            Function<ICity, Double> profit = city -> PW.City.profitConverted(continent, nation.getRads(), hasProject, nation.getCities(), nation.getGrossModifier(), city);
+            Function<ICity, Double> profit = city -> PW.City.profitConverted(nationCopy.getContinent(), nationCopy.getRads(), hasProject, nation.getCities(), nation.getGrossModifier(), city);
             DBCity first = nation._getCitiesV3().values().iterator().next();
             JavaCity optimal = new JavaCity(first).optimalBuild(nation, 1000, false, null);
             originRevenue = profit.apply(optimal);
@@ -2823,7 +2823,7 @@ public class UtilityCommands {
         for (Project project : projects) {
             QuadFunction<Integer, DBNation, Project, Double, RoiResult> roiFunc = project.getRoiFunction();
             if (roiFunc == null) continue;
-            if (project.canBuild(nation) || nation.hasProject(project)) continue;
+            if (!project.canBuild(nation) || nation.hasProject(project)) continue;
             if (System.currentTimeMillis() - start > 10000) {
                 channel.updateOptionally(msgFuture, "Calculating ROI for " + project.name() + "...");
                 start = System.currentTimeMillis();

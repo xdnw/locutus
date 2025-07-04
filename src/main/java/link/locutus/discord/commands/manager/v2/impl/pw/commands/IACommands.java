@@ -737,7 +737,11 @@ public class IACommands {
             }
 
             String append = close(db, channel, force);
-            msg = msg.append(append);
+            if (append != null) {
+                msg = msg.append(append);
+            } else {
+                msg = msg.append("Closed " + channel.getAsMention() + "\n");
+            }
         }
         msg.append("Done!").send();
         return null;
