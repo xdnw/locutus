@@ -321,8 +321,8 @@ public class AutoRoleTask implements IAutoRoleTask {
                                 continue;
                             }
                             if (allies.contains(nation.getAlliance_id()) && nation.getPosition() > 1) {
-                                List<Role> roles = member.getRoles();
-                                List<Role> allyRoles = allyMember.getRoles();
+                                Set<Role> roles = member.getUnsortedRoles();
+                                Set<Role> allyRoles = allyMember.getUnsortedRoles();
 //                                if (!memberRole.isEmpty()) {
 //                                    Role addRole = memberRole.get((long) nation.getAlliance_id());
 //                                    if (addRole == null) addRole = memberRole.get(0L);
@@ -354,7 +354,7 @@ public class AutoRoleTask implements IAutoRoleTask {
                 }
 
                 for (Member member : members) {
-                    List<Role> roles = new ArrayList<>(member.getRoles());
+                    List<Role> roles = new ArrayList<>(member.getUnsortedRoles());
                     boolean isMember = false;
                     if (!memberRole.isEmpty()) {
                         DBNation nation = DiscordUtil.getNation(member.getIdLong());
@@ -500,7 +500,7 @@ public class AutoRoleTask implements IAutoRoleTask {
         this.registeredRole = Roles.REGISTERED.toRole2(guild);
 
         try {
-        List<Role> roles = member.getRoles();
+        Set<Role> roles = member.getUnsortedRoles();
 
         boolean hasRegisteredRole = registeredRole != null && roles.contains(registeredRole);
 
@@ -579,7 +579,7 @@ public class AutoRoleTask implements IAutoRoleTask {
             expectedRole = tmpTaxRoles.get(key);
         }
 
-        List<Role> roles = member.getRoles();
+        Set<Role> roles = member.getUnsortedRoles();
 
         for (Map.Entry<Map.Entry<Integer, Integer>, Role> entry : tmpTaxRoles.entrySet()) {
             Role taxRole = entry.getValue();
@@ -603,7 +603,7 @@ public class AutoRoleTask implements IAutoRoleTask {
                 alliance_id = 0;
             }
 
-            Map<Integer, Role> myRoles = DiscordUtil.getAARoles(member.getRoles());
+            Map<Integer, Role> myRoles = DiscordUtil.getAARoles(member.getUnsortedRoles());
             if (myRoles.size() == 1) {
                 int aaRole = myRoles.keySet().iterator().next();
                 if (aaRole == alliance_id) return;
@@ -643,7 +643,7 @@ public class AutoRoleTask implements IAutoRoleTask {
             }
         }
         if (nation == null) {
-            Map<Integer, Role> memberAARoles = DiscordUtil.getAARoles(member.getRoles());
+            Map<Integer, Role> memberAARoles = DiscordUtil.getAARoles(member.getUnsortedRoles());
             if (!memberAARoles.isEmpty()) {
                 for (Map.Entry<Integer, Role> entry : memberAARoles.entrySet()) {
                     info.removeRoleFromMember(member, entry.getValue());
@@ -699,7 +699,7 @@ public class AutoRoleTask implements IAutoRoleTask {
         if (memberRole.isEmpty() && applicantRole.isEmpty()) {
             return;
         }
-        List<Role> myRoles = member.getRoles();
+        Set<Role> myRoles = member.getUnsortedRoles();
         if (nation != null && (db.isAllianceId(nation.getAlliance_id()) || extensions.contains(nation.getAlliance_id()))) {
             if (nation.getPositionEnum().id > Rank.APPLICANT.id) {
                 if (!memberRole.isEmpty()) {
@@ -757,7 +757,7 @@ public class AutoRoleTask implements IAutoRoleTask {
         if (nation != null && isMember(member, nation)) {
             for (Map.Entry<NationFilter, Role> entry : conditionalRoles.entrySet()) {
                 Predicate<DBNation> condition = entry.getKey().toCached(TimeUnit.MINUTES.toMillis(1));
-                List<Role> memberRoles = member.getRoles();
+                Set<Role> memberRoles = member.getUnsortedRoles();
                 if (condition.test(nation)) {
                     if (!memberRoles.contains(entry.getValue())) {
                         info.addRoleToMember(member, entry.getValue());
@@ -769,7 +769,7 @@ public class AutoRoleTask implements IAutoRoleTask {
                 }
             }
         } else {
-            List<Role> memberRoles = member.getRoles();
+            Set<Role> memberRoles = member.getUnsortedRoles();
             for (Role role : conditionalRoles.values()) {
                 if (memberRoles.contains(role)) {
                     info.removeRoleFromMember(member, role);
@@ -782,7 +782,7 @@ public class AutoRoleTask implements IAutoRoleTask {
         if (cityRoles.isEmpty()) return;
         if (nation != null && isMember(member, nation)) {
             Set<Role> allowed = new HashSet<>(cityRoleMap.getOrDefault(nation.getCities(), new HashSet<>()));
-            List<Role> memberRoles = member.getRoles();
+            Set<Role> memberRoles = member.getUnsortedRoles();
             for (Role role : allowed) {
                 if (!memberRoles.contains(role)) {
                     info.addRoleToMember(member, role);
@@ -794,7 +794,7 @@ public class AutoRoleTask implements IAutoRoleTask {
                 }
             }
         } else {
-            List<Role> memberRoles = member.getRoles();
+            Set<Role> memberRoles = member.getUnsortedRoles();
             for (Role role : cityRoles) {
                 if (memberRoles.contains(role)) {
                     info.removeRoleFromMember(member, role);

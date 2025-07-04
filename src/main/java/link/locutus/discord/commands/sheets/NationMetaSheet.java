@@ -83,7 +83,7 @@ public class NationMetaSheet extends Command {
             if (interviewMeta == null) row.add("");
             else row.add(InterviewQuestion.values()[interviewMeta.getInt()].name());
 
-            List<Role> roles = member.getRoles();
+            Set<Role> roles = member.getUnsortedRoles();
             List<String> rolesStr = new ArrayList<>();
             for (Role role : roles) rolesStr.add(role.getName());
             row.add(StringMan.join(rolesStr, ","));

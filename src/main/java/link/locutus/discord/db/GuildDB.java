@@ -2665,7 +2665,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
 
                 Roles role = Roles.parse(roleName);
                 Role discRole = DiscordUtil.getRole(member.getGuild(), roleName);
-                if ((role != null && role.has(member)) || (discRole != null && member.getRoles().contains(discRole))) {
+                if ((role != null && role.has(member)) || (discRole != null && member.getUnsortedRoles().contains(discRole))) {
                     return Collections.emptySet();
                 }
                 if (role != null) noRoles.add(role.toString());

@@ -82,7 +82,7 @@ public class ChannelCommand extends Command {
         List<IPermissionHolder> holders = new ArrayList<>();
         holders.add(member);
         assert member != null;
-        holders.addAll(member.getRoles());
+        holders.addAll(member.getUnsortedRoles());
         holders.add(guild.getRolesByName("@everyone", false).get(0));
 
         boolean hasOverride = !(channel instanceof DiscordChannelIO);

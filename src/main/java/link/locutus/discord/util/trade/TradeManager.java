@@ -950,7 +950,7 @@ public class TradeManager {
         if (member == null) return;
 
         Role pingOptOut = Roles.AUDIT_ALERT_OPT_OUT.toRole2(db.getGuild());
-        if (pingOptOut != null && member.getRoles().contains(pingOptOut)) return;
+        if (pingOptOut != null && member.getUnsortedRoles().contains(pingOptOut)) return;
 
         MessageChannel rssChannel = db.getResourceChannel(0);
         MessageChannel auditChannel = db.getOrNull(GuildKey.MEMBER_AUDIT_ALERTS);

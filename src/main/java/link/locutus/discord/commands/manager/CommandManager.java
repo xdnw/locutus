@@ -126,7 +126,7 @@ public class CommandManager {
     }
 
     public boolean run(Guild guild, IMessageIO channel, final User msgUser, String command, final boolean async, final boolean noPermMsg) {
-        if (msgUser.isSystem() || msgUser.isBot()) {
+        if (msgUser.isSystem() || (msgUser.isBot() && !Settings.INSTANCE.LEGACY_SETTINGS.WHITELISTED_BOT_IDS.contains(msgUser.getIdLong()))) {
             return false;
         }
 
@@ -355,7 +355,7 @@ public class CommandManager {
                 return true;
             } else {
                 assert member != null;
-                if (!member.getRoles().contains(registeredRole)) {
+                if (!member.getUnsortedRoles().contains(registeredRole)) {
                     channel.sendMessage("Please use " + CM.register.cmd.toSlashMention() + " to get masked with the role: `" + registeredRole.getName() + "`");
                     return true;
                 }
@@ -374,7 +374,7 @@ public class CommandManager {
                     channel.sendMessage("No admin role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole ADMIN @someRole`");
                     return true;
                 }
-            } else if (!member.getRoles().contains(adminRole)) {
+            } else if (!member.getUnsortedRoles().contains(adminRole)) {
                 channel.sendMessage("You do not have the role: " + adminRole.getName());
                 return true;
             }

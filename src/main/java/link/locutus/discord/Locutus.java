@@ -1200,7 +1200,7 @@ public final class Locutus extends ListenerAdapter {
             User author = GuildShardManager.updateUserName(event.getAuthor());
 
             // Cache locutus messages to reduce lookups from message reactions
-            if (author.isSystem() || author.isBot()) {
+            if (author.isSystem() || (author.isBot() && !Settings.INSTANCE.LEGACY_SETTINGS.WHITELISTED_BOT_IDS.contains(author.getIdLong()))) {
                 if (author.getIdLong() == Settings.INSTANCE.APPLICATION_ID) {
                     isMessageLocutusMap.put(event.getMessageIdLong(), true);
                 } else {
@@ -1250,7 +1250,9 @@ public final class Locutus extends ListenerAdapter {
     @Override
     public void onMessageReactionAdd(@Nonnull MessageReactionAddEvent event) {
         User author = event.getUser();
-        if (author.isBot() || author.isSystem()) return;
+        if (author.isSystem() || (author.isBot() && !Settings.INSTANCE.LEGACY_SETTINGS.WHITELISTED_BOT_IDS.contains(author.getIdLong()))) {
+            return;
+        }
         if (author.getIdLong() == Settings.INSTANCE.APPLICATION_ID) {
             return;
         }

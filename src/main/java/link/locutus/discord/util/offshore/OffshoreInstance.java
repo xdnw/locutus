@@ -679,7 +679,7 @@ public class OffshoreInstance {
                 rssConversion = false;
                 Member member = senderDB.getGuild().getMember(banker);
                 if (member != null) {
-                    rssConversion = member.getRoles().contains(role);
+                    rssConversion = member.getUnsortedRoles().contains(role);
                 }
             }
         }
