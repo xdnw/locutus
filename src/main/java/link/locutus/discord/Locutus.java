@@ -1251,7 +1251,6 @@ public final class Locutus extends ListenerAdapter {
     public void onMessageReactionAdd(@Nonnull MessageReactionAddEvent event) {
         User author = event.getUser();
         if (author.isSystem() || (author.isBot() && !Settings.INSTANCE.LEGACY_SETTINGS.WHITELISTED_BOT_IDS.contains(author.getIdLong()))) {
-            System.out.println("Returning because is bot is true");
             return;
         }
         if (author.getIdLong() == Settings.INSTANCE.APPLICATION_ID) {
