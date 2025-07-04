@@ -1,13 +1,14 @@
 package link.locutus.discord.user;
 
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -167,15 +168,6 @@ public enum Roles {
     private final String legacy_name;
     private final boolean allowAlliance, allowAdminBypass;
 
-    public static Roles getHighestRole(Member member) {
-        for (int i = values.length - 1; i >= 0; i--) {
-            if (values[i].has(member)) {
-                return values[i];
-            }
-        }
-        return null;
-    }
-
     public static Long hasAlliance(Roles[] roles, User author, Guild guild) {
         Long min = null;
         for (Roles role : roles) {
@@ -316,6 +308,28 @@ public enum Roles {
         } else {
             Set<Integer> aaIds = db.getAllianceIds();
             Set<Long> allowed = new LongOpenHashSet();
+
+            if (member == null && user.isBot()) {
+                if (Settings.INSTANCE.LEGACY_SETTINGS.WHITELISTED_BOT_IDS.contains(user.getIdLong())) {
+                    boolean hasMember = false;
+                    for (String roleName : user.getName().split("-")) {
+                        if (roleName.equalsIgnoreCase(Roles.MEMBER.name())) {
+                            hasMember = true;
+                            break;
+                        }
+                    }
+                    if (hasMember) {
+                        for (int aaId : aaIds) {
+                            allowed.add((long) aaId);
+                        }
+                        allowed.add(0L);
+                        allowed.add(db.getIdLong());
+                    }
+                }
+                return allowed;
+            }
+
+
             if (aaIds.isEmpty()) {
                 if (has(member)) {
                     allowed.add(db.getIdLong());
@@ -377,6 +391,16 @@ public enum Roles {
     public boolean has(User user, Guild server, int alliance) {
         if (user == null) return false;
         Member member = server.getMember(user);
+        if (member == null && user.isBot()) {
+            if (Settings.INSTANCE.LEGACY_SETTINGS.WHITELISTED_BOT_IDS.contains(user.getIdLong())) {
+                for (String roleName : user.getName().split("-")) {
+                    if (roleName.equalsIgnoreCase(name())) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
         return member != null && has(member, alliance);
     }
 
@@ -385,7 +409,7 @@ public enum Roles {
         if (has(member)) return true;
         if (alliance == 0) return false;
         Role role = Locutus.imp().getGuildDB(member.getGuild()).getRole(this, (long) alliance);
-        return role != null && member.getRoles().contains(role);
+        return role != null && getRoles(member).contains(role);
     }
 
     public boolean has(Member member) {
@@ -397,7 +421,7 @@ public enum Roles {
         }
         GuildDB db = Locutus.imp().getGuildDB(member.getGuild());
 
-        List<Role> roles = member.getRoles();
+        Set<Role> roles = getRoles(member);
         if (allowAdminBypass) {
             for (Role discordRole : roles) {
                 if (discordRole.hasPermission(Permission.ADMINISTRATOR)) {
@@ -440,7 +464,7 @@ public enum Roles {
         || member.hasPermission(Permission.ADMINISTRATOR)
         || member.isOwner())) return 0L;
         GuildDB db = Locutus.imp().getGuildDB(member.getGuild());
-        List<Role> roles = member.getRoles();
+        Set<Role> roles = getRoles(member);
         Map<Long, Role> map = db.getRoleMap(this);
         Role serverRole = map.get(0L);
         if (serverRole != null && roles.contains(serverRole)) return 0L;
@@ -451,6 +475,28 @@ public enum Roles {
         return null;
     }
 
+    private static Set<Role> getRoles(Member member) {
+        return member.getUnsortedRoles();
+    }
+
+    private Set<Role> getWebhookRoles(User user, Guild guild) {
+        if (user.isBot() && Settings.INSTANCE.LEGACY_SETTINGS.WHITELISTED_BOT_IDS.contains(user.getIdLong())) {
+            Set<Role> rolesCopy = new ObjectOpenHashSet<>();
+            String[] roleNames = user.getName().split("-");
+            for (String roleName : roleNames) {
+                try {
+                    Roles lcRole = Roles.valueOf(roleName.toUpperCase(Locale.ROOT));
+                    Role discRole = lcRole.toRole2(guild);
+                    if (discRole != null) {
+                        rolesCopy.add(discRole);
+                    }
+                } catch (IllegalArgumentException ignore) {}
+            }
+            return rolesCopy;
+        }
+        return Collections.emptySet();
+    }
+
     public boolean has(User user, Guild server) {
         if (user == null) return false;
         if (allowAdminBypass) {
@@ -459,6 +505,14 @@ public enum Roles {
         }
         if (server == null) return false;
         if (!server.isMember(user)) {
+            if (user.isBot() && Settings.INSTANCE.LEGACY_SETTINGS.WHITELISTED_BOT_IDS.contains(user.getIdLong())) {
+                String[] split = user.getName().split("-");
+                for (String name : split) {
+                    if (name.equalsIgnoreCase(name())) {
+                        return true;
+                    }
+                }
+            }
             return false;
         }
         return has(server.getMember(user));

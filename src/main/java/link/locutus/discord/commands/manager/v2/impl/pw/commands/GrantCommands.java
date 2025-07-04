@@ -1895,7 +1895,7 @@ public class GrantCommands {
                                @Switch("p") String customValue,
                                @Switch("em") EscrowMode escrowMode,
                                @Switch("f") boolean force) throws IOException {
-        boolean hasAdmin = Roles.ECON.has(selfMember);
+        boolean hasAdmin = Roles.ECON.has(user, db.getGuild());
         if (expire != null && expire == 0) expire = null;
         if (decay != null && decay == 0) decay = null;
         if (ignore == null) ignore = template.allowsIgnore();
@@ -1925,13 +1925,13 @@ public class GrantCommands {
         }
         Role selfRole = template.getSelfRole();
 
-        boolean hasEconRole = hasAdmin || selfMember.getRoles().contains(econRole);
+        boolean hasEconRole = hasAdmin || selfMember.getUnsortedRoles().contains(econRole);
         if (!hasEconRole) {
             if (receiver.getNation_id() != me.getNation_id() || selfRole == null) {
                 throw new IllegalArgumentException("You must have the role `" + econRole.getName() + "` to send grants to other nations");
             }
             // check has self role
-            if (selfRole == null || !selfMember.getRoles().contains(selfRole)) {
+            if (selfRole == null || !selfMember.getUnsortedRoles().contains(selfRole)) {
                 throw new IllegalArgumentException("You must have the role `" + selfRole.getName() + "` to send grants to yourself");
             }
         }
@@ -1982,7 +1982,7 @@ public class GrantCommands {
             for (Map.Entry<Long, Double> entry : rankLimits.entrySet()) {
                 Role role = db.getGuild().getRoleById(entry.getKey());
                 if (role == null) continue;
-                if (myRoles.getRoles().contains(role)) {
+                if (myRoles.getUnsortedRoles().contains(role)) {
                     if (limit == null) limit = 0d;
                     limit = Math.max(limit, entry.getValue());
                 }

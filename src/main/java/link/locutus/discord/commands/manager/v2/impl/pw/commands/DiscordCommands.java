@@ -232,7 +232,7 @@ public class DiscordCommands {
         List<IPermissionHolder> holders = new ArrayList<>();
         holders.add(member);
         assert member != null;
-        holders.addAll(member.getRoles());
+        holders.addAll(member.getUnsortedRoles());
         holders.add(guild.getRolesByName("@everyone", false).get(0));
 
         IMessageBuilder msg = output.getMessage();

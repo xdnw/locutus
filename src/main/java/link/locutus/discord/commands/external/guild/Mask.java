@@ -63,7 +63,7 @@ public class Mask extends Command {
                 continue;
             }
 
-            List<Role> roles = member.getRoles();
+            Set<Role> roles = member.getUnsortedRoles();
             if (value && roles.contains(role)) {
                 response.append("\nYou already have the role: `").append(args.get(1)).append("`");
                 continue;

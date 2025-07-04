@@ -485,7 +485,7 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
                         if (user == null) return false;
                         Member member = role.getGuild().getMember(user);
                         if (member == null) return false;
-                        return member.getRoles().contains(role);
+                        return member.getUnsortedRoles().contains(role);
                     };
                 } else if (name.contains("#")) {
                     String[] split = name.split("#");

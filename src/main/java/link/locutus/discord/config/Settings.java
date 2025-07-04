@@ -1,5 +1,7 @@
 package link.locutus.discord.config;
 
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.yaml.Config;
 
@@ -308,7 +310,7 @@ public class Settings extends Config {
 
         @Comment({"The available hosts to use",
         "multiple hosts will be distributed amongst the clients used"})
-        public List<String> HOSTS = new ArrayList<>(Arrays.asList(
+        public List<String> HOSTS = new ObjectArrayList<>(Arrays.asList(
                 "region.example.com"
         ));
 
@@ -369,15 +371,19 @@ public class Settings extends Config {
 
         @Ignore
         @Final
-        @Comment("Print the binding types which lack an autocomplete\n" +
-                "Disabled by default, as its normal for some types not to have completion")
+        @Comment({"Print the binding types which lack an autocomplete",
+                "Disabled by default, as its normal for some types not to have completion"})
         public boolean PRINT_MISSING_AUTOCOMPLETE = false;
 
         @Ignore
         @Final
-        @Comment("Print the espionage debug information\n" +
-                "Disabled by default, as it is verbose")
+        @Comment({"Print the espionage debug information",
+                "Disabled by default, as it is verbose"})
         public boolean PRINT_ESPIONAGE_DEBUG = false;
+
+        @Comment({"Whitelist a list of bot ids allowed to send messages to the bot",
+        "Intended for testing purposes, DO NOT USE IN PRODUCTION"})
+        public Set<Long> WHITELISTED_BOT_IDS = new LongOpenHashSet();
     }
 
 

@@ -56,7 +56,7 @@ public class UpdateEmbed extends Command {
             String roleRaw = requiredRole.replaceAll("[<@>]", "");
             if (MathMan.isInteger(roleRaw)) {
                 Role role = guild.getRoleById(roleRaw);
-                if (role == null || !Objects.requireNonNull(guild.getMember(author)).getRoles().contains(role)) {
+                if (role == null || !Objects.requireNonNull(guild.getMember(author)).getUnsortedRoles().contains(role)) {
                     return null;
                 }
             }

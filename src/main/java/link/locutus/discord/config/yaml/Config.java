@@ -1,8 +1,22 @@
 package link.locutus.discord.config.yaml;
 
+import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
+import it.unimi.dsi.fastutil.booleans.BooleanOpenHashSet;
+import it.unimi.dsi.fastutil.bytes.ByteArrayList;
+import it.unimi.dsi.fastutil.bytes.ByteOpenHashSet;
+import it.unimi.dsi.fastutil.chars.CharArrayList;
+import it.unimi.dsi.fastutil.chars.CharOpenHashSet;
+import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
+import it.unimi.dsi.fastutil.doubles.DoubleOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Logg;
-import link.locutus.discord.util.StringMan;
 import link.locutus.discord.config.yaml.file.YamlConfiguration;
+import link.locutus.discord.util.StringMan;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -16,12 +30,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 public class Config {
 
@@ -102,6 +111,40 @@ public class Config {
                         }
                         if (field.getType() == String.class && !(value instanceof String)) {
                             value = value + "";
+                        } else if (value instanceof Collection<?> myCol) {
+                            boolean isSet = Set.class.isAssignableFrom(field.getType());
+                            ParameterizedType pType = (ParameterizedType) field.getGenericType();
+                            Type elemType = pType.getActualTypeArguments()[0];
+                            Collection fastCol;
+                            if (elemType == Integer.class) {
+                                fastCol = isSet ? new IntOpenHashSet() : new IntArrayList();
+                                for (Object o : myCol) fastCol.add(((Number) o).intValue());
+                            } else if (elemType == Long.class) {
+                                fastCol = isSet ? new LongOpenHashSet() : new LongArrayList();
+                                for (Object o : myCol) fastCol.add(((Number) o).longValue());
+                            } else if (elemType == Double.class) {
+                                fastCol = isSet ? new DoubleOpenHashSet() : new DoubleArrayList();
+                                for (Object o : myCol) fastCol.add(((Number) o).doubleValue());
+                            } else if (elemType == Float.class) {
+                                fastCol = isSet ? new DoubleOpenHashSet() : new DoubleArrayList();
+                                for (Object o : myCol) fastCol.add(((Number) o).floatValue());
+                            } else if (elemType == Short.class) {
+                                fastCol = isSet ? new IntOpenHashSet() : new IntArrayList();
+                                for (Object o : myCol) fastCol.add(((Number) o).shortValue());
+                            } else if (elemType == Byte.class) {
+                                fastCol = isSet ? new ByteOpenHashSet() : new ByteArrayList();
+                                for (Object o : myCol) fastCol.add(((Number) o).byteValue());
+                            } else if (elemType == Boolean.class) {
+                                fastCol = isSet ? new BooleanOpenHashSet() : new BooleanArrayList();
+                                for (Object o : myCol) fastCol.add(Boolean.parseBoolean(o.toString()));
+                            } else if (elemType == Character.class) {
+                                fastCol = isSet ? new CharOpenHashSet() : new CharArrayList();
+                                for (Object o : myCol) fastCol.add(o.toString().charAt(0));
+                            } else {
+                                fastCol = isSet ? new ObjectOpenHashSet<>() : new ObjectArrayList();
+                                for (Object o : myCol) fastCol.add(o);
+                            }
+                            value = fastCol;
                         }
                         field.set(instance, value);
                         return;
@@ -231,7 +274,7 @@ public class Config {
     }
 
     private String toYamlString(Object value, String spacing) {
-        if (value instanceof List) {
+        if (value instanceof Collection<?>) {
             Collection<?> listValue = (Collection<?>) value;
             if (listValue.isEmpty()) {
                 return "[]";

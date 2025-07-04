@@ -3924,7 +3924,8 @@ public class BankCommands {
             "Balance info includes deposits, loans, grants, taxes and escrow", viewable = true)
     @RolePermission(Roles.MEMBER)
     @UserCommand
-    public static String deposits(@Me Guild guild, @Me GuildDB db, @Me IMessageIO channel, @Me DBNation me, @Me User author,
+    public static String deposits(@Me Guild guild, @Me GuildDB db, @Me IMessageIO channel,
+                                  @Me @Default DBNation me, @Me User author,
                            @AllowDeleted
                            @StarIsGuild
                            @Arg("Account to check holdings for") NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild,
@@ -4125,7 +4126,7 @@ public class BankCommands {
         String body = balanceBody.getValue();
         Map<String, Map.Entry<CommandRef, Boolean>> buttons = new LinkedHashMap<>();
 
-        if (me != null && nationOrAllianceOrGuild == me) {
+        if (me != null && nationOrAllianceOrGuild.isNation() && nationOrAllianceOrGuild.getId() == me.getId()) {
             if (!condensedFormat) {
                 footers.add("Funds default to `#deposit` if no other note is used");
             }

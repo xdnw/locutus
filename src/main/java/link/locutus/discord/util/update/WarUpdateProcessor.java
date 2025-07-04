@@ -78,7 +78,7 @@ public class WarUpdateProcessor {
                     double maxScore = enemy.getScore() / 0.75;
 
                     for (Member member : members) {
-                        if (member.getRoles().contains(optOut)) continue;
+                        if (member.getUnsortedRoles().contains(optOut)) continue;
                         DBNation nation = DiscordUtil.getNation(member.getUser());
                         if (nation == null) continue;
 

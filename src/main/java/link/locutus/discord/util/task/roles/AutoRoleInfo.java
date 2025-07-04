@@ -161,7 +161,7 @@ public class AutoRoleInfo {
         for (Map.Entry<Member, Set<Role>> entry : removeRoles.entrySet()) {
             Member member = entry.getKey();
             for (Role role : entry.getValue()) {
-                if (!member.getRoles().contains(role)) {
+                if (!member.getUnsortedRoles().contains(role)) {
                     errors.computeIfAbsent(member, k -> new ObjectArrayList<>()).add("Failed to remove role `" + role.getName() + "`: Member does not have role");
                     continue;
                 }
@@ -244,7 +244,7 @@ public class AutoRoleInfo {
 
     public void addRoleToMember(Member member, RoleOrCreate create) {
         RoleAdd roleAdd = new RoleAdd(member, create);
-        if (create.getCachedOrNull() != null && member.getRoles().contains(create.getCachedOrNull())) {
+        if (create.getCachedOrNull() != null && member.getUnsortedRoles().contains(create.getCachedOrNull())) {
             return;
         }
         addRoles.computeIfAbsent(member, k -> new HashSet<>()).add(roleAdd);
@@ -286,7 +286,7 @@ public class AutoRoleInfo {
                         failedMessage = "Failed to create role `" + RoleAdd.this.role.name + "`: " + RoleAdd.this.role.failedCreateMessage;
                         return false;
                     }
-                    if (member.getRoles().contains(role)) {
+                    if (member.getUnsortedRoles().contains(role)) {
                         success = false;
                         failedMessage = "Member already has role `" + role.getName() + "`";
                         return false;

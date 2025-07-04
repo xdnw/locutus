@@ -125,11 +125,11 @@ public class LeavingBeigeAlert {
             if (throwError) throw new IllegalArgumentException("No BEIGE_ALERT role set. See: " + CM.role.setAlias.cmd.toSlashMention());
             return false;
         }
-        if (!member.getRoles().contains(beigeAlert)) {
+        if (!member.getUnsortedRoles().contains(beigeAlert)) {
             if (throwError) throw new IllegalArgumentException("You do not have the beige alert role: " + beigeAlert.getName());
             return false;
         }
-        if (beigeAlertOptOut != null && member.getRoles().contains(beigeAlertOptOut)) {
+        if (beigeAlertOptOut != null && member.getUnsortedRoles().contains(beigeAlertOptOut)) {
             if (throwError) throw new IllegalArgumentException("You have the beige alert opt out role: " + beigeAlertOptOut.getName());
             return false;
         }

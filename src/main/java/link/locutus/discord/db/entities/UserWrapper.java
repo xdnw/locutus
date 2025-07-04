@@ -42,20 +42,21 @@ public class UserWrapper {
     @Command(desc = "If this member has a role")
     public boolean hasRole(Role role) {
         Member member = getMember();
-        return member != null && member.getRoles().contains(role);
+        return member != null && member.getUnsortedRoles().contains(role);
     }
 
     @Command(desc = "If this member has all roles")
     public boolean hasAllRoles(@NoFormat Set<Role> roles) {
         Member member = getMember();
-        return member != null && new ObjectOpenHashSet<>(member.getRoles()).containsAll(roles);
+        return member != null && new ObjectOpenHashSet<>(member.getUnsortedRoles()).containsAll(roles);
     }
 
     @Command(desc = "If this member has any roles")
     public boolean hasAnyRoles(@NoFormat Set<Role> roles) {
         Member member = getMember();
-        return member != null && member.getRoles().stream().anyMatch(roles::contains);
+        return member != null && member.getUnsortedRoles().stream().anyMatch(roles::contains);
     }
+
     @Command(desc = "Discord user id")
     public long getId() {
         return userId;
@@ -75,7 +76,7 @@ public class UserWrapper {
         Member member = getMember();
         if (member == null) return new ObjectArraySet<>();
         Set<String> roles = new HashSet<>();
-        for (Role role : member.getRoles()) {
+        for (Role role : member.getUnsortedRoles()) {
             roles.add(role.getName());
         }
         return roles;

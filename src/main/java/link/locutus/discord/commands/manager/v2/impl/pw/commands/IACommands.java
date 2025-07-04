@@ -664,7 +664,7 @@ public class IACommands {
     public String addRoleToAllMembers(@Me Guild guild, Role role) {
         int amt = 0;
         for (Member member : guild.getMembers()) {
-            if (!member.getRoles().contains(role)) {
+            if (!member.getUnsortedRoles().contains(role)) {
                 RateLimitUtil.queue(guild.addRoleToMember(member, role));
                 amt ++;
             }
@@ -751,7 +751,7 @@ public class IACommands {
         }
         assignable = new Object2ObjectOpenHashMap<>(assignable);
         if (!Roles.ADMIN.has(member)) {
-            Set<Role> myRoles = new ObjectOpenHashSet<>(member.getRoles());
+            Set<Role> myRoles = new ObjectOpenHashSet<>(member.getUnsortedRoles());
             assignable.entrySet().removeIf(f -> {
                 boolean contains = false;
                 for (Role role : f.getValue()) {
@@ -829,7 +829,7 @@ public class IACommands {
         if (assignable == null) return "`!KeyStore ASSIGNABLE_ROLES` is not set`";
         boolean canAssign = Roles.ADMIN.has(author);
         if (!canAssign) {
-            for (Role role : author.getRoles()) {
+            for (Role role : author.getUnsortedRoles()) {
                 if (assignable.getOrDefault(role, Collections.emptySet()).contains(addRole)) {
                     canAssign = true;
                     break;
@@ -839,7 +839,7 @@ public class IACommands {
         if (!canAssign) {
             return "No permission to assign " + addRole + " (see: `listAssignableRoles` | ADMIN: see " +  CM.self.create.cmd.toSlashMention() + ")";
         }
-        if (member.getRoles().contains(addRole)) {
+        if (member.getUnsortedRoles().contains(addRole)) {
             return member + " already has " + addRole;
         }
         RateLimitUtil.queue(db.getGuild().addRoleToMember(member, addRole));
@@ -863,7 +863,7 @@ public class IACommands {
         if (assignable == null) return "`!KeyStore ASSIGNABLE_ROLES` is not set`";
         boolean canAssign = Roles.ADMIN.has(author);
         if (!canAssign) {
-            for (Role role : author.getRoles()) {
+            for (Role role : author.getUnsortedRoles()) {
                 if (assignable.getOrDefault(role, Collections.emptySet()).contains(addRole)) {
                     canAssign = true;
                     break;
@@ -873,7 +873,7 @@ public class IACommands {
         if (!canAssign) {
             return "No permission to assign " + addRole + " (see: `listAssignableRoles` | ADMIN: see " +  CM.self.create.cmd.toSlashMention() + ")";
         }
-        if (!member.getRoles().contains(addRole)) {
+        if (!member.getUnsortedRoles().contains(addRole)) {
             return member + " does not have " + addRole;
         }
         RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, addRole));
@@ -887,7 +887,7 @@ public class IACommands {
         if (role == null) {
             return WarCommands.beigeAlertMode(member.getUser(), me, NationMeta.BeigeAlertMode.NO_ALERTS);
         }
-        if (member.getRoles().contains(role)) {
+        if (member.getUnsortedRoles().contains(role)) {
             // remove role
             RateLimitUtil.complete(guild.removeRoleFromMember(member, role));
             return "Opted in to beige alerts (@" + role.getName() + " role removed). Use the command again to opt out";
@@ -1869,7 +1869,7 @@ public class IACommands {
                     } else if (position == DBAlliancePosition.APPLICANT || position == DBAlliancePosition.REMOVE) {
                         Collection<Role> roles = Roles.MEMBER.toRoleMap(db).values();
                         if (!roles.isEmpty()) {
-                            List<Role> currentRoles = member.getRoles();
+                            Set<Role> currentRoles = member.getUnsortedRoles();
                             for (Role role : roles) {
                                 if (currentRoles.contains(role)) {
                                     RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role));
@@ -2225,7 +2225,7 @@ public class IACommands {
         }
         if (aaIds.isEmpty()) {
             boolean hasAny = false;
-            for (Role role : member.getRoles()) {
+            for (Role role : member.getUnsortedRoles()) {
                 if (memberRoles.contains(role)) {
                     hasAny = true;
                     break;
@@ -2411,7 +2411,7 @@ public class IACommands {
         Role applicantRole = Roles.APPLICANT.toRole(user, db);
         if (applicantRole != null) {
             Member member = db.getGuild().getMember(user);
-            if (member == null || !member.getRoles().contains(applicantRole)) {
+            if (member == null || !member.getUnsortedRoles().contains(applicantRole)) {
                 RateLimitUtil.queue(db.getGuild().addRoleToMember(user, applicantRole));
             }
         }
@@ -2700,7 +2700,7 @@ public class IACommands {
             if (interviewMeta == null) row.add("");
             else row.add(InterviewQuestion.values()[interviewMeta.getInt()].name());
 
-            List<Role> roles = member.getRoles();
+            Set<Role> roles = member.getUnsortedRoles();
             List<String> rolesStr = new ArrayList<>();
             for (Role role : roles) rolesStr.add(role.getName());
             row.add(StringMan.join(rolesStr, ","));

@@ -585,7 +585,7 @@ public final class PW {
                 if (user != null) {
                     Member member = guildDB.getGuild().getMember(user);
                     if (member != null) {
-                        if (member.getRoles().contains(role)) {
+                        if (member.getUnsortedRoles().contains(role)) {
                             allowConversionDefault = true;
                         }
                     }

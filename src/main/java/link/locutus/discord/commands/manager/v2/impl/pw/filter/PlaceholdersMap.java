@@ -994,7 +994,7 @@ public class PlaceholdersMap {
                     if (canRole) {
                         Member member = f.getMember();
                         if (member != null) {
-                            for (Role role : member.getRoles()) {
+                            for (Role role : member.getUnsortedRoles()) {
                                 if (role.getIdLong() == id) return true;
                             }
                         }
@@ -1040,7 +1040,7 @@ public class PlaceholdersMap {
         return f -> {
             Member member = f.getMember();
             if (member != null) {
-                for (Role role : member.getRoles()) {
+                for (Role role : member.getUnsortedRoles()) {
                     if (role.getName().equalsIgnoreCase(finalInput)) return true;
                 }
             }
