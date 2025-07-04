@@ -1250,7 +1250,7 @@ public class OffshoreInstance {
                             body.append("`").append(result.getMessageJoined(true)).append("`\n");
                             for (Map.Entry<NationOrAllianceOrGuild, double[]> entry : addBalanceResult.entrySet()) {
                                 NationOrAllianceOrGuild account = entry.getKey();
-                                body.append("\n- `!addbalance " + account.getTypePrefix() + ":" + account.getId() + " " + ResourceType.toString(entry.getValue()) + " #deposit");
+                                body.append("\n- `!addbalance " + account.getTypePrefix() + ":" + account.getIdLong() + " " + ResourceType.toString(entry.getValue()) + " #deposit");
                             }
                             body.append("\n<@" + Locutus.loader().getAdminUserId() + ">");
                             log(senderDB, banker, receiver, title + ": " + body.toString());
