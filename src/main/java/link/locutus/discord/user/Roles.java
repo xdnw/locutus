@@ -313,7 +313,7 @@ public enum Roles {
                 if (Settings.INSTANCE.LEGACY_SETTINGS.WHITELISTED_BOT_IDS.contains(user.getIdLong())) {
                     boolean hasMember = false;
                     for (String roleName : user.getName().split("-")) {
-                        if (roleName.equalsIgnoreCase(Roles.MEMBER.name())) {
+                        if (roleName.equalsIgnoreCase(Roles.MEMBER.name()) || roleName.equalsIgnoreCase(Roles.ADMIN.name())) {
                             hasMember = true;
                             break;
                         }
@@ -388,16 +388,46 @@ public enum Roles {
         return has(user, server.getGuild(), alliance);
     }
 
+    private static Set<Roles> getRoles(String webhookName) {
+        Set<Roles> roles = new ObjectOpenHashSet<>();
+        String[] roleNames = webhookName.split("-");
+        for (String roleName : roleNames) {
+            try {
+                Roles role = Roles.valueOf(roleName.toUpperCase(Locale.ROOT));
+                roles.add(role);
+            } catch (IllegalArgumentException e) {
+                // Ignore, not a valid role
+            }
+        }
+        if (roles.contains(ADMIN)) {
+            for (Roles role : Roles.values()) {
+                if (role.allowAlliance || role.allowAdminBypass) {
+                    roles.add(role);
+                }
+            }
+        }
+        if (roles.contains(INTERNAL_AFFAIRS)) {
+            roles.add(INTERNAL_AFFAIRS_STAFF);
+        }
+        if (roles.contains(FOREIGN_AFFAIRS)) {
+            roles.add(FOREIGN_AFFAIRS_STAFF);
+        }
+        if (roles.contains(MILCOM)) {
+            roles.add(MILCOM_NO_PINGS);
+        }
+        if (roles.contains(ECON)) {
+            roles.add(ECON_STAFF);
+        }
+        return roles;
+    }
+
     public boolean has(User user, Guild server, int alliance) {
         if (user == null) return false;
         Member member = server.getMember(user);
         if (member == null && user.isBot()) {
             if (Settings.INSTANCE.LEGACY_SETTINGS.WHITELISTED_BOT_IDS.contains(user.getIdLong())) {
-                for (String roleName : user.getName().split("-")) {
-                    if (roleName.equalsIgnoreCase(name())) {
-                        return true;
-                    }
-                }
+                Set<Roles> roles = getRoles(user.getName());
+                return roles.contains(this);
             }
             return false;
         }
@@ -482,15 +512,12 @@ public enum Roles {
     private Set<Role> getWebhookRoles(User user, Guild guild) {
         if (user.isBot() && Settings.INSTANCE.LEGACY_SETTINGS.WHITELISTED_BOT_IDS.contains(user.getIdLong())) {
             Set<Role> rolesCopy = new ObjectOpenHashSet<>();
-            String[] roleNames = user.getName().split("-");
-            for (String roleName : roleNames) {
-                try {
-                    Roles lcRole = Roles.valueOf(roleName.toUpperCase(Locale.ROOT));
-                    Role discRole = lcRole.toRole2(guild);
-                    if (discRole != null) {
-                        rolesCopy.add(discRole);
-                    }
-                } catch (IllegalArgumentException ignore) {}
+            Set<Roles> lcRoles = getRoles(user.getName());
+            for (Roles lcRole : lcRoles) {
+                Role discRole = lcRole.toRole2(guild);
+                if (discRole != null) {
+                    rolesCopy.add(discRole);
+                }
             }
             return rolesCopy;
         }
@@ -506,12 +533,8 @@ public enum Roles {
         if (server == null) return false;
         if (!server.isMember(user)) {
             if (user.isBot() && Settings.INSTANCE.LEGACY_SETTINGS.WHITELISTED_BOT_IDS.contains(user.getIdLong())) {
-                String[] split = user.getName().split("-");
-                for (String name : split) {
-                    if (name.equalsIgnoreCase(name())) {
-                        return true;
-                    }
-                }
+                Set<Roles> lcRoles = getRoles(user.getName());
+                return lcRoles.contains(this);
             }
             return false;
         }

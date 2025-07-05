@@ -126,7 +126,7 @@ public class DiscordCommands {
 
     @Command(desc = "Have the bot say the provided message, with placeholders replaced.")
     @NoFormat
-    public String say(NationPlaceholders placeholders, ValueStore store, @Me User author, @Me DBNation me, @TextArea String msg) {
+    public String say(NationPlaceholders placeholders, ValueStore store, @Me User author, @Me @Default DBNation me, @TextArea String msg) {
         msg = DiscordUtil.trimContent(msg);
         msg = msg.replace("@", "@\u200B");
         msg = msg.replace("&", "&\u200B");
@@ -135,7 +135,9 @@ public class DiscordCommands {
 
         msg = msg + "\n\n- " + author.getAsMention();
 
-        msg = placeholders.format2(store, msg, me, false);
+        if (me != null) {
+            msg = placeholders.format2(store, msg, me, false);
+        }
         return msg;
     }
 
