@@ -120,11 +120,7 @@ public abstract class Command {
             server = rootGuild;
         }
 
-        Member rootMember = server.getMemberById(user.getIdLong());
-        if (rootMember != null) {
-            return Roles.MEMBER.has(rootMember);
-        }
-        return false;
+        return Roles.MEMBER.has(user, server);
     }
 
     public String help() {

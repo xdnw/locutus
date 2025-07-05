@@ -515,11 +515,11 @@ public class NationUpdateProcessor {
 
                             OnlineStatus status = member.getOnlineStatus();
                             if (attacker.active_m() > 15 && checkDiscord && (status == OnlineStatus.OFFLINE || status == OnlineStatus.INVISIBLE)) {
-                                if (bountyRoleOffline == null || !member.getRoles().contains(bountyRoleOffline)) {
+                                if (bountyRoleOffline == null || !member.getUnsortedRoles().contains(bountyRoleOffline)) {
                                     continue;
                                 }
                             }
-                            if (optOut != null && member.getRoles().contains(optOut)) continue;
+                            if (optOut != null && member.getUnsortedRoles().contains(optOut)) continue;
 
                             if (/* attacker.active_m() > 1440 || */attacker.getDef() >= 3 || attacker.getVm_turns() != 0 || attacker.isBeige())
                                 continue;

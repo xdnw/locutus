@@ -79,14 +79,15 @@ public class ClearRoles extends Command {
 
             for (Member member : guild.getMembers()) {
                 DBNation nation = DiscordUtil.getNation(member.getIdLong());
-                List<Role> roles = member.getRoles();
+                Set<Role> roles = member.getUnsortedRoles();
                 if (nation == null || !aaIds.contains(nation.getAlliance_id())) {
-                    for (Role role : roles) {
-                        if (memberRoles.containsKey(role.getIdLong())) {
+                    for (Role role : memberRoles.values()) {
+                        if (roles.contains(role)) {
                             response.append("\nRemove member from " + member.getEffectiveName());
                             RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role));
                         }
                     }
+
                 } else {
                     Map<Role, Set<Long>> inverse = new HashMap<>();
                     for (Map.Entry<Long, Role> entry : memberRoles.entrySet()) {

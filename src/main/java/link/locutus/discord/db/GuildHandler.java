@@ -2723,7 +2723,7 @@ public class GuildHandler {
         User user = blockaded.getUser();
         if (user != null && role != null) {
             Member member = getGuild().getMember(user);
-            if (member != null && member.getRoles().contains(role)) {
+            if (member != null && member.getUnsortedRoles().contains(role)) {
                 msg.append("\n(see below) " + member.getAsMention());
             }
         }

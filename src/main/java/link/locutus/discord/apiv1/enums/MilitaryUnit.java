@@ -407,9 +407,9 @@ public enum MilitaryUnit {
     public double getConvertedCostPlusSalvage(int researchBits) {
         double value = costConverted.get();
         if (costReducer == null) return value;
-        int level = costReducer.getLevel(researchBits);
-        value -= costReductionConverted.get() * level;
-        value += costReductionSalvageConverted.get() * level;
+//        int level = costReducer.getLevel(researchBits);  TODO FIXME SALVAGE
+//        value -= costReductionConverted.get() * level;  TODO FIXME SALVAGE
+//        value += costReductionSalvageConverted.get() * level;  TODO FIXME SALVAGE
         value -= costSalvageConverted.get();
         return value;
     }
@@ -457,9 +457,9 @@ public enum MilitaryUnit {
     }
 
     public double[] addCostSalvage(double[] buffer, int amt, int researchBits) {
-        int level = costReducer == null ? 0 : costReducer.getLevel(researchBits);
+//        int level = costReducer == null ? 0 : costReducer.getLevel(researchBits);  TODO FIXME SALVAGE
         for (ResourceType type : costRss) {
-            double costPer = this.cost[type.ordinal()] - (level == 0 ? 0 : costReduction[type.ordinal()] * level);
+            double costPer = this.cost[type.ordinal()];// - (level == 0 ? 0 : costReduction[type.ordinal()] * level); TODO FIXME SALVAGE
             if (type == ALUMINUM || type == STEEL) {
                 costPer *= 0.95;
             }

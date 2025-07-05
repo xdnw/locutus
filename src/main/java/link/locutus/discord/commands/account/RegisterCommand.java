@@ -6,14 +6,11 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.nation.DBNationData;
-import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
@@ -89,11 +86,10 @@ public class RegisterCommand extends Command {
                     if (!Settings.INSTANCE.DISCORD.REGISTER_APPLICANTS.contains(author.getIdLong())) {
                         return usage();
                     } else {
-                        Member mentionMember = guild.getMember(mention);
 
-                        if (mentionMember == null) return "User is not in server.";
+                        if (mention == null) return "User is not in server.";
                         if (Roles.APPLICANT.toRoles(guildDb).isEmpty() && Roles.MEMBER.toRoles(guildDb).isEmpty()) return "No applicant or member role exists.";
-                        if (!Roles.APPLICANT.has(mentionMember) && !Roles.MEMBER.has(mentionMember))
+                        if (!Roles.APPLICANT.has(mention, guild) && !Roles.MEMBER.has(mention, guild))
                             return "User does not have applicant role.";
                         if (DiscordUtil.getNation(mention) != null) return "User is already registered.";
                         if (nation.getUser() != null) return "Nation already registered: " + nation.getNation() + " = " + nation.getUser();

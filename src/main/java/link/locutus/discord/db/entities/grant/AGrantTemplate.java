@@ -254,7 +254,7 @@ public abstract class AGrantTemplate<T> {
     }
 
     public boolean hasRole(Member author) {
-        List<Role> roles = author.getRoles();
+        Set<Role> roles = author.getUnsortedRoles();
         for (Role role : roles) {
             if (role.getIdLong() == econRole) {
                 return true;
@@ -264,7 +264,7 @@ public abstract class AGrantTemplate<T> {
     }
 
     public boolean hasSelfRole(Member author) {
-        List<Role> roles = author.getRoles();
+        Set<Role> roles = author.getUnsortedRoles();
         for (Role role : roles) {
             if (role.getIdLong() == selfRole) {
                 return true;

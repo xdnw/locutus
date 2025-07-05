@@ -16,6 +16,8 @@ public abstract class UnitCursor extends DamageCursor {
     private int def_gas_used_cents;
     private boolean has_salvage;
 
+    private static long SALVAGE_INCLUDED_DEFENDER_DATE = 1693105320000L;
+
     @Override
     public void load(DBAttack legacy) {
         super.load(legacy);
@@ -72,10 +74,10 @@ public abstract class UnitCursor extends DamageCursor {
     public double[] addAttUnitCosts(double[] buffer, DBWar war) {
         if (has_salvage) {
             MilitaryUnit[] units = getUnits();
-            int research = war == null ? 0 : war.getAttResearchBits();
+//            int research = war == null ? 0 : war.getAttResearchBits();  TODO FIXME SALVAGE
             for (MilitaryUnit unit : units) {
-                int amt = getAttUnitLosses(unit);
-                if (amt > 0) unit.addCostSalvage(buffer, amt, research);
+                int amt = getAttUnitLosses(unit) + (date > SALVAGE_INCLUDED_DEFENDER_DATE ? getDefUnitLosses(unit) : 0);
+                if (amt > 0) unit.addCostSalvage(buffer, amt, 0/* research */);//  TODO FIXME SALVAGE
             }
             return buffer;
         } else {
@@ -109,11 +111,11 @@ public abstract class UnitCursor extends DamageCursor {
         if (has_salvage) {
             double value = 0;
             MilitaryUnit[] units = getUnits();
-            int research = war == null ? 0 : war.getAttResearchBits();
+//            int research = war == null ? 0 : war.getAttResearchBits();  TODO FIXME SALVAGE
             for (MilitaryUnit unit : units) {
-                int amt = getAttUnitLosses(unit);
+                int amt = getAttUnitLosses(unit) + (date > SALVAGE_INCLUDED_DEFENDER_DATE ? getDefUnitLosses(unit) : 0);
                 if (amt > 0) {
-                    value += unit.getConvertedCostPlusSalvage(research) * amt;
+                    value += unit.getConvertedCostPlusSalvage(0 /* research */) * amt; //  TODO FIXME SALVAGE
                 }
             }
             return value;
@@ -126,11 +128,11 @@ public abstract class UnitCursor extends DamageCursor {
     public double[] addAttUnitLossValueByUnit(double[] valueByUnit, DBWar war) {
         if (has_salvage) {
             MilitaryUnit[] units = getUnits();
-            int research = war == null ? 0 : war.getAttResearchBits();
+//            int research = war == null ? 0 : war.getAttResearchBits();  TODO FIXME SALVAGE
             for (MilitaryUnit unit : units) {
-                int amt = getAttUnitLosses(unit);
+                int amt = getAttUnitLosses(unit) + (date > SALVAGE_INCLUDED_DEFENDER_DATE ? getDefUnitLosses(unit) : 0);
                 if (amt > 0) {
-                    valueByUnit[unit.ordinal()] += unit.getConvertedCostPlusSalvage(research) * amt;
+                    valueByUnit[unit.ordinal()] += unit.getConvertedCostPlusSalvage(0 /* research */) * amt; //  TODO FIXME SALVAGE
                 }
             }
             return valueByUnit;

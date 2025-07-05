@@ -219,7 +219,7 @@ public class TradeListener {
                             if (!filter.test(nation)) continue;
 
                             String mention;
-                            if ((optOut != null && member.getRoles().contains(optOut)) || !member.getRoles().contains(optIn)) {
+                            if ((optOut != null && member.getUnsortedRoles().contains(optOut)) || !member.getUnsortedRoles().contains(optIn)) {
                                 mention = nation.getName();
                             } else {
                                 mention = member.getAsMention();

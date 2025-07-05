@@ -143,7 +143,7 @@ public class PlayerSettingCommands {
             }
         }
 
-        List<Role> memberRoles = member.getRoles();
+        Set<Role> memberRoles = member.getUnsortedRoles();
         boolean hasAnyOptIn = optInDiscRoles.stream().anyMatch(memberRoles::contains);
         if (memberRoles.contains(role)) {
             if (forceOptOut == Boolean.TRUE) {

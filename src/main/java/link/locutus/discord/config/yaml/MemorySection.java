@@ -1,12 +1,17 @@
 package link.locutus.discord.config.yaml;
 
+import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
+import it.unimi.dsi.fastutil.bytes.ByteArrayList;
+import it.unimi.dsi.fastutil.chars.CharArrayList;
+import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
+import it.unimi.dsi.fastutil.floats.FloatArrayList;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.shorts.ShortArrayList;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * A type of {@link ConfigurationSection} that is stored in memory.
@@ -82,6 +87,14 @@ public class MemorySection implements ConfigurationSection {
             if (!val.isEmpty()) {
                 return toDouble(val.get(0), def);
             }
+        } else if (obj instanceof Collection<?>) {
+            Collection<?> val = (Collection<?>) obj;
+            if (!val.isEmpty()) {
+                Iterator<?> it = val.iterator();
+                if (it.hasNext()) {
+                    return toDouble(it.next(), def);
+                }
+            }
         }
         return def;
     }
@@ -100,6 +113,14 @@ public class MemorySection implements ConfigurationSection {
             if (!val.isEmpty()) {
                 return toInt(val.get(0), def);
             }
+        } else if (obj instanceof Collection<?>) {
+            Collection<?> val = (Collection<?>) obj;
+            if (!val.isEmpty()) {
+                Iterator<?> it = val.iterator();
+                if (it.hasNext()) {
+                    return toInt(it.next(), def);
+                }
+            }
         }
         return def;
     }
@@ -117,6 +138,14 @@ public class MemorySection implements ConfigurationSection {
             List<?> val = (List<?>) obj;
             if (!val.isEmpty()) {
                 return toLong(val.get(0), def);
+            }
+        } else if (obj instanceof Collection<?>) {
+            Collection<?> val = (Collection<?>) obj;
+            if (!val.isEmpty()) {
+                Iterator<?> it = val.iterator();
+                if (it.hasNext()) {
+                    return toLong(it.next(), def);
+                }
             }
         }
         return def;
@@ -543,10 +572,10 @@ public class MemorySection implements ConfigurationSection {
         final List<?> list = getList(path);
 
         if (list == null) {
-            return new ArrayList<>(0);
+            return new ObjectArrayList<>(0);
         }
 
-        final List<String> result = new ArrayList<>();
+        final List<String> result = new ObjectArrayList<>();
 
         for (final Object object : list) {
             if ((object instanceof String) || (isPrimitiveWrapper(object))) {
@@ -561,7 +590,7 @@ public class MemorySection implements ConfigurationSection {
     public List<Integer> getIntegerList(String path) {
         List<?> list = getList(path);
 
-        List<Integer> result = new ArrayList<>();
+        List<Integer> result = new IntArrayList();
 
         for (Object object : list) {
             if (object instanceof Integer) {
@@ -585,7 +614,7 @@ public class MemorySection implements ConfigurationSection {
     public List<Boolean> getBooleanList(String path) {
         List<?> list = getList(path);
 
-        List<Boolean> result = new ArrayList<>();
+        List<Boolean> result = new BooleanArrayList();
 
         for (Object object : list) {
             if (object instanceof Boolean) {
@@ -606,7 +635,7 @@ public class MemorySection implements ConfigurationSection {
     public List<Double> getDoubleList(String path) {
         List<?> list = getList(path);
 
-        List<Double> result = new ArrayList<>();
+        List<Double> result = new DoubleArrayList();
 
         for (Object object : list) {
             if (object instanceof Double) {
@@ -630,7 +659,7 @@ public class MemorySection implements ConfigurationSection {
     public List<Float> getFloatList(String path) {
         List<?> list = getList(path);
 
-        List<Float> result = new ArrayList<>();
+        List<Float> result = new FloatArrayList();
 
         for (Object object : list) {
             if (object instanceof Float) {
@@ -654,7 +683,7 @@ public class MemorySection implements ConfigurationSection {
     public List<Long> getLongList(String path) {
         List<?> list = getList(path);
 
-        List<Long> result = new ArrayList<>();
+        List<Long> result = new LongArrayList();
 
         for (Object object : list) {
             if (object instanceof Long) {
@@ -678,7 +707,7 @@ public class MemorySection implements ConfigurationSection {
     public List<Byte> getByteList(String path) {
         List<?> list = getList(path);
 
-        List<Byte> result = new ArrayList<>();
+        List<Byte> result = new ByteArrayList();
 
         for (Object object : list) {
             if (object instanceof Byte) {
@@ -702,7 +731,7 @@ public class MemorySection implements ConfigurationSection {
     public List<Character> getCharacterList(String path) {
         List<?> list = getList(path);
 
-        List<Character> result = new ArrayList<>();
+        List<Character> result = new CharArrayList();
 
         for (Object object : list) {
             if (object instanceof Character) {
@@ -724,7 +753,7 @@ public class MemorySection implements ConfigurationSection {
     public List<Short> getShortList(String path) {
         List<?> list = getList(path);
 
-        List<Short> result = new ArrayList<>();
+        List<Short> result = new ShortArrayList();
 
         for (Object object : list) {
             if (object instanceof Short) {
@@ -747,7 +776,7 @@ public class MemorySection implements ConfigurationSection {
     @Override
     public List<Map<?, ?>> getMapList(String path) {
         List<?> list = getList(path);
-        List<Map<?, ?>> result = new ArrayList<>();
+        List<Map<?, ?>> result = new ObjectArrayList<>();
 
         for (Object object : list) {
             if (object instanceof Map) {

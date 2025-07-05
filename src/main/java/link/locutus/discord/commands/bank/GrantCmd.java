@@ -269,7 +269,7 @@ public class GrantCmd extends Command {
 //                    throw new IllegalArgumentException("Not on this discord");
 //                }
             }
-            if (noGrants != null && member != null && member.getRoles().contains(noGrants)) {
+            if (noGrants != null && member != null && member.getUnsortedRoles().contains(noGrants)) {
                 throw new IllegalArgumentException("The member has been marked (with discord role) as to not receive grants");
             }
         }

@@ -1509,12 +1509,17 @@ public class AdminCommands {
                     continue;
                 }
                 String roleNameList = roleCell.toString();
+                Set<Role> memberRoles = null;
                 for (String roleName : roleNameList.split(",")) {
                     roleName = roleName.trim();
                     try {
                         Role role = DiscordBindings.role(guild, roleName);
                         rolesAllowed.computeIfAbsent(member, f -> new ObjectLinkedOpenHashSet<>()).add(role);
-                        if (existingRoles.computeIfAbsent(member, f -> new HashSet<>(f.getRoles())).contains(role)) {
+                        if (memberRoles == null) {
+                            memberRoles = new ObjectLinkedOpenHashSet<>(member.getUnsortedRoles());
+                        }
+                        Set<Role> finalMemberRoles = memberRoles;
+                        if (existingRoles.computeIfAbsent(member, f -> finalMemberRoles).contains(role)) {
                             continue;
                         }
                         rolesAdded.computeIfAbsent(member, f -> new ObjectLinkedOpenHashSet<>()).add(role);
@@ -1530,9 +1535,14 @@ public class AdminCommands {
             for (Member member : guild.getMembers()) {
                 if (member.getUser().isBot()) continue;
                 Set<Role> granted = rolesAllowed.getOrDefault(member, Collections.emptySet());
+                Set<Role> memberRoles = null;
                 for (Role role : removeRoles) {
                     if (!granted.contains(role)) {
-                        if (existingRoles.computeIfAbsent(member, f -> new HashSet<>(f.getRoles())).contains(role)) {
+                        if (memberRoles == null) {
+                            memberRoles = new ObjectLinkedOpenHashSet<>(member.getUnsortedRoles());
+                        }
+                        Set<Role> finalMemberRoles = memberRoles;
+                        if (existingRoles.computeIfAbsent(member, f -> finalMemberRoles).contains(role)) {
                             rolesRemoved.computeIfAbsent(member, f -> new ObjectLinkedOpenHashSet<>()).add(role);
                         }
                     }
@@ -1610,11 +1620,10 @@ public class AdminCommands {
     @RolePermission(Roles.ADMIN)
     public String mask(@Me Member me, @Me GuildDB db, Set<Member> members, Role role, boolean value, @Arg("If the role should be added or removed from all other members\n" +
             "If `value` is true, the role will be removed, else added") @Switch("r") boolean toggleMaskFromOthers) {
-        List<Role> myRoles = me.getRoles();
         List<String> response = new ArrayList<>();
         for (Member member : members) {
             User user = member.getUser();
-            List<Role> roles = member.getRoles();
+            Set<Role> roles = member.getUnsortedRoles();
             if (value && roles.contains(role)) {
                 response.add(user.getName() + " already has the role: `" + role + "`");
                 continue;
@@ -1633,7 +1642,7 @@ public class AdminCommands {
         if (toggleMaskFromOthers) {
             for (Member member : db.getGuild().getMembers()) {
                 if (members.contains(member)) continue;
-                List<Role> memberRoles = member.getRoles();
+                Set<Role> memberRoles = member.getUnsortedRoles();
                 if (value) {
                     if (memberRoles.contains(role)) {
                         RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role));
