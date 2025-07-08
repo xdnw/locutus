@@ -44,7 +44,6 @@ import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
-import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.TransferResult;
 import link.locutus.discord.util.scheduler.KeyValue;
@@ -66,6 +65,7 @@ import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
+import org.hibernate.Remove;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -1512,7 +1512,7 @@ public class BankCommands {
                     io.send(role.getAsMention());
                 }
             }
-            return transfer(io, command, author, me, db, nation, transfer, bank_note, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, false, expire, decay, null, deduct_as_cash, escrow_mode, bypass_checks, ping_when_sent, force);
+            return transfer(io, command, author, me, db, nation, transfer, bank_note, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, false, expire, decay, deduct_as_cash, escrow_mode, bypass_checks, ping_when_sent, force, null);
         } else {
             UUID key = UUID.randomUUID();
             TransferSheet sheet = new TransferSheet(db).write(fundsToSendNations, new LinkedHashMap<>()).build();
@@ -1882,7 +1882,70 @@ public class BankCommands {
         return null;
     }
 
-    public static final Map<UUID, Grant> AUTHORIZED_TRANSFERS = new HashMap<>();
+    @Command(desc = "Request a grant from the grant request channel")
+    @RolePermission(value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON, Roles.ECON_STAFF, Roles.MEMBER}, any=true)
+    public String grantRequest(@Me GuildDB db, @Me DBNation nation,
+                               String reason,
+                               NationOrAlliance receiver,
+                               JSONObject command) {
+        // Remove arguments
+        Set<String> keysToRemove = Set.of(
+                "expire", "decay", "ignore", "taxaccount", "existingtaxaccount",
+                "depositsaccount", "usealliancebank", "useoffshoreaccount",
+                "bypass_checks", "force"
+        );
+        List<String> toDelete = new ObjectArrayList<>();
+        for (String key : command.keySet()) {
+            for (String target : keysToRemove) {
+                if (key.equalsIgnoreCase(target)) {
+                    toDelete.add(key);
+                    break;
+                }
+            }
+        }
+        for (String key : toDelete) {
+            command.remove(key);
+        }
+
+        // Force set the above based on the grant settings
+        //GRANT_REQUEST_ADD_IGNORE
+        //GRANT_REQUEST_ADD_DECAY
+        //GRANT_REQUEST_ADD_EXPIRE
+        //GRANT_REQUEST_TAX_ACCOUNT
+        //Set depositsaccount to the nation requesting the grant
+        boolean taxAccount = GuildKey.GRANT_REQUEST_TAX_ACCOUNT.getOrNull(db) == Boolean.TRUE;
+        if (taxAccount) {
+            command.put("existingtaxaccount", "true");
+        }
+        boolean addIgnore = GuildKey.GRANT_REQUEST_IGNORE.getOrNull(db) == Boolean.TRUE;
+        if (addIgnore) {
+            command.put("ignore", "true");
+        }
+        Long decay = GuildKey.GRANT_REQUEST_DECAY.getOrNull(db);
+        if (decay != null && decay > 0) {
+            command.put("decay", TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay));
+        }
+        Long expire = GuildKey.GRANT_REQUEST_EXPIRE.getOrNull(db);
+        if (expire != null && expire > 0) {
+            command.put("expire", TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire));
+        }
+        command.put("depositsaccount", nation.getQualifiedId());
+
+        // show grant info
+        // sender
+        // receiver
+        // arguments
+        // date requested
+        // nation balance
+        //
+        StringBuilder sb = new StringBuilder();
+
+        // ping role, else econ
+        // ping when sent
+
+
+
+    }
 
     @Command(desc = "Withdraw from the alliance bank (nation balance)", groups = {
             "Amount Options",
@@ -1936,12 +1999,12 @@ public class BankCommands {
                 only_send_missing,
                 expire,
                 decay,
-                null,
                 deduct_as_cash,
                 escrow_mode,
                 bypass_checks,
                 false,
-                force);
+                force,
+                null);
     }
 
     @Command(desc = "Bulk shift resources in a nations holdings to another note category")
@@ -2167,7 +2230,9 @@ public class BankCommands {
     @Command(desc = "Transfer from the alliance bank (alliance deposits)")
     @RolePermission(value = {Roles.ECON, Roles.ECON_WITHDRAW_SELF, Roles.MEMBER}, any = true)
     public static String transfer(@Me IMessageIO channel, @Me JSONObject command,
-                                  @Me User author, @Me DBNation me, @Me GuildDB guildDb, NationOrAlliance receiver, @AllianceDepositLimit Map<ResourceType, Double> transfer, DepositType.DepositTypeInfo depositType,
+                                  @Me User author, @Me DBNation me, @Me GuildDB guildDb,
+                                  NationOrAlliance receiver,
+                                  @AllianceDepositLimit Map<ResourceType, Double> transfer, DepositType.DepositTypeInfo depositType,
                                   @Arg("The nation account to deduct from") @Switch("n") DBNation nationAccount,
                                   @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance senderAlliance,
                                   @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance allianceAccount,
@@ -2176,15 +2241,14 @@ public class BankCommands {
                                   @Arg("Only send funds the receiver is lacking from the amount") @Switch("m") boolean onlyMissingFunds,
                                   @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
                                   @Arg("Have the transfer decrease linearly to zero for balances over a timeframe") @Switch("d") @Timediff Long decay,
-                                  @Switch("g") UUID token,
                                   @Arg("Transfer valued at cash equivalent in nation holdings") @Switch("c") boolean convertCash,
                                   @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
                                   @Switch("b") boolean bypassChecks,
                                   @Switch("p") boolean ping_when_sent,
-                                  @Switch("f") boolean force) throws IOException {
-        System.out.println("ROLES " + Roles.ECON.has(author, guildDb.getGuild()) + "| " + Roles.ECON.toRole(author, guildDb));
-        System.out.println("ROLES2 " + Roles.ECON_WITHDRAW_SELF.has(author, guildDb.getGuild()));
-        System.out.println("ROLES3 " + Roles.MEMBER.has(author, guildDb.getGuild()));
+                                  @Switch("f") boolean force,
+
+                                  @Switch("cmd") JSONObject calling_command
+                                  ) throws IOException {
         if (existingTaxAccount) {
             if (taxAccount != null) throw new IllegalArgumentException("You can't specify both `tax_id` and `existingTaxAccount`");
             if (!receiver.isNation()) throw new IllegalArgumentException("You can only specify `existingTaxAccount` for a nation");
@@ -2234,32 +2298,12 @@ public class BankCommands {
             nationAccount = me;
         }
 
-        Set<Grant.Requirement> failedRequirements = new HashSet<>();
-        boolean isGrant = false;
-        if (token != null) {
-            Grant authorized = AUTHORIZED_TRANSFERS.get(token);
-            if (authorized == null) return "Invalid token (try again)";
-            if (!receiver.isNation()) return "Receiver is not nation";
-
-            for (Grant.Requirement requirement : authorized.getRequirements()) {
-                if (!requirement.apply(receiver.asNation())) {
-                    failedRequirements.add(requirement);
-                    if (requirement.canOverride()) continue;
-                    else {
-                        return "Failed requirement: " + requirement.getMessage();
-                    }
-                }
-            }
-
-            isGrant = true;
-        }
-
         // transfer limit
         long userId = author.getIdLong();
         if (ResourceType.convertedTotal(transfer) > 5000000000L
                 && (!Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN || userId != Locutus.loader().getAdminUserId())
                 && !Settings.INSTANCE.LEGACY_SETTINGS.WHITELISTED_BANK_USERS.contains(userId)
-                && !isGrant && offshore.getAllianceId() == Settings.INSTANCE.ALLIANCE_ID()
+                && offshore.getAllianceId() == Settings.INSTANCE.ALLIANCE_ID()
         ) {
             return "Transfer too large. Please specify a smaller amount";
         }
@@ -2326,20 +2370,30 @@ public class BankCommands {
             return null;
         }
 
-        IMessageBuilder msg = channel.create().embed(result.toTitleString(), result.toEmbedString());
+        String body = result.toEmbedString();
+        String footer = null;
 
-        if (ping_when_sent && receiver.isNation()) {
+        if (!result.getStatus().isSuccess()) {
+            MessageChannel grantChannel = GuildKey.GRANT_REQUEST_CHANNEL.getOrNull(guildDb);
+            if (grantChannel != null) {
+                // Would you like to request a grant?
+                // TODO FIXME GRANT MESSAGE
+            }
+        } else if (ping_when_sent && receiver.isNation()) {
             User user = receiver.asNation().getUser();
             if (user != null) {
-                MessageChannel notify = GuildKey.GRANT_REQUEST_CHANNEL.getOrNull(guildDb);
-                if (notify == null) notify = guildDb.getResourceChannel(receiver.getAlliance_id());
+                MessageChannel notify = guildDb.getResourceChannel(receiver.getAlliance_id());
                 if (notify == null) notify = guildDb.getResourceChannel(0);
                 if (notify != null) {
                     DiscordUtil.sendMessage(notify, user.getAsMention() + " " + result.getMessageJoined(false));
                 } else {
-                    msg.append(user.getAsMention());
+                    footer = user.getAsMention();
                 }
             }
+        }
+        IMessageBuilder msg = channel.create().embed(result.toTitleString(), body);
+        if (footer != null) {
+            msg.append(footer);
         }
 
         msg.send();

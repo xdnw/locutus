@@ -3,40 +3,31 @@ package link.locutus.discord.commands.bank;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.DepositType;
-import link.locutus.discord.apiv1.enums.EscrowMode;
+import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.apiv1.enums.city.JavaCity;
+import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
+import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
-import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.MMRDouble;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.guild.SheetKey;
-import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.offshore.Grant;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MarkupUtil;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.apiv1.enums.DomesticPolicy;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
-import link.locutus.discord.apiv1.enums.city.project.Project;
-import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
@@ -44,14 +35,7 @@ import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
@@ -274,9 +258,6 @@ public class GrantCmd extends Command {
             }
         }
 
-        UUID uuid = UUID.randomUUID();
-        BankCommands.AUTHORIZED_TRANSFERS.put(uuid, grant);
-
         Map<ResourceType, Double> resources = ResourceType.resourcesToMap(grant.cost());
 
         if (factor != null) {
@@ -294,8 +275,7 @@ public class GrantCmd extends Command {
                 flags.contains('t') ? "true" : null).onlyMissingFunds(
                 String.valueOf(flags.contains('o'))).expire(
                 expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null).decay(
-                decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null).token(
-                uuid.toString()).convertCash(
+                decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null).convertCash(
                 String.valueOf(flags.contains('c'))).escrow_mode(
                 escrowMode == null ? null : escrowMode.name()).bypassChecks(
                 String.valueOf(flags.contains('f'))).force(

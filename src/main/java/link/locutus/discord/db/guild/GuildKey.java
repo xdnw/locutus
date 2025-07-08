@@ -2246,6 +2246,80 @@ public class GuildKey {
             return "The #channel for users to request grants in. No additional functionality is added, you can setup a ticket bot or an embed there";
         }
     }.setupRequirements(f -> f.requireValidAlliance().requiresRole(Roles.ECON_GRANT_SELF, true).requiresOffshore());
+
+    public static GuildSetting<Boolean> GRANT_REQUEST_TAX_ACCOUNT = new GuildBooleanSetting(GuildSettingCategory.BANK_INFO) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String GRANT_REQUEST_TAX_ACCOUNT(@Me GuildDB db, @Me User user, boolean value) {
+            return GRANT_REQUEST_TAX_ACCOUNT.setAndValidate(db, user, value);
+        }
+        @Override
+        public String help() {
+            return "Use the tax account of the nation requesting a grant for grants requested via the grant request channel";
+        }
+    }.setupRequirements(f -> f.requires(GRANT_REQUEST_CHANNEL));
+
+    public static GuildSetting<Boolean> GRANT_REQUEST_IGNORE = new GuildBooleanSetting(GuildSettingCategory.BANK_INFO) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String GRANT_REQUEST_IGNORE(@Me GuildDB db, @Me User user, boolean value) {
+            return GRANT_REQUEST_IGNORE.setAndValidate(db, user, value);
+        }
+        @Override
+        public String help() {
+            return "If `#ignore` is added to grants requested approved via the grant request channel";
+        }
+    }.setupRequirements(f -> f.requires(GRANT_REQUEST_CHANNEL));
+
+    public static GuildSetting<Long> GRANT_REQUEST_EXPIRE = new GuildLongSetting(GuildSettingCategory.BANK_INFO) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String GRANT_REQUEST_EXPIRE(@Me GuildDB db, @Me User user, @Timediff long expire) {
+            if (expire == 0) {
+                return GRANT_REQUEST_EXPIRE.delete(db, user);
+            } else {
+                return GRANT_REQUEST_EXPIRE.setAndValidate(db, user, expire);
+            }
+        }
+
+        @Override
+        public String toReadableString(GuildDB db, Long value) {
+            return TimeUtil.secToTime(TimeUnit.MILLISECONDS, value);
+        }
+
+        @Override
+        public String help() {
+            return "An #expire duration to apply to grant requests approved via the grant request channel";
+        }
+    }.setupRequirements(f -> f.requires(GRANT_REQUEST_CHANNEL));
+
+    public static GuildSetting<Long> GRANT_REQUEST_DECAY = new GuildLongSetting(GuildSettingCategory.BANK_INFO) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String GRANT_REQUEST_DECAY(@Me GuildDB db, @Me User user, @Timediff long expire) {
+            if (expire == 0) {
+                return GRANT_REQUEST_DECAY.delete(db, user);
+            } else {
+                return GRANT_REQUEST_DECAY.setAndValidate(db, user, expire);
+            }
+        }
+
+        @Override
+        public String toReadableString(GuildDB db, Long value) {
+            return TimeUtil.secToTime(TimeUnit.MILLISECONDS, value);
+        }
+
+        @Override
+        public String help() {
+            return "A #decay duration to apply to grant requests approved via the grant request channel";
+        }
+    }.setupRequirements(f -> f.requires(GRANT_REQUEST_CHANNEL));
+
+
     public static GuildSetting<MessageChannel> TREATY_ALERTS = new GuildChannelSetting(GuildSettingCategory.FOREIGN_AFFAIRS) {
         @NoFormat
         @Command(descMethod = "help")
