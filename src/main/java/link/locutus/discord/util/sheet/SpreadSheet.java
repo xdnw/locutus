@@ -1220,7 +1220,8 @@ public class SpreadSheet {
             String name = entry.getKey();
             int i = entry.getValue();
             List<Object> column = new ArrayList<>(values.size());
-            for (List<Object> row : values) {
+            for (int j = 1; j < values.size(); j++) {
+                List<Object> row = values.get(j);
                 if (row.size() <= i) {
                     column.add(null);
                 } else {

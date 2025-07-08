@@ -90,6 +90,7 @@ public enum SheetKey {
     RESEARCH_SHEET,
     RESEARCH_CITY,
     EXPIRE_RECORD_SHEET,
+    BUILD_SHEET,
 
 
 

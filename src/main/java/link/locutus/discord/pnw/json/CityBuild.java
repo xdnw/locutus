@@ -669,12 +669,16 @@ public class CityBuild {
 
     @Override
     public boolean equals(Object o) {
+        return equals(o, true);
+    }
+
+    public boolean equals(Object o, boolean checkInfra) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
         CityBuild cityBuild = (CityBuild) o;
 
-        if (!Objects.equals(infraNeeded, cityBuild.infraNeeded))
+        if (checkInfra && !Objects.equals(infraNeeded, cityBuild.infraNeeded))
             return false;
         if (!Objects.equals(impTotal, cityBuild.impTotal)) return false;
         if (!Objects.equals(impCoalpower, cityBuild.impCoalpower))
