@@ -53,6 +53,7 @@ public class WikiGenHandler {
         pages.add(new WikiEmbassyPage(manager));
         //Deposits System
         pages.add(new WikiDepositsPage(manager));
+        pages.add(new WikiConversionPage(manager));
         //Deposits System
         pages.add(new WikiBankFlows(manager));
 //        //Setup an offshore or bank
