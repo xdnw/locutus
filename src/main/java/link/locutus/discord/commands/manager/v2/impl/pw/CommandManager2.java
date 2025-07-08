@@ -255,6 +255,7 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        getCommands().registerMethod(new IACommands(), List.of("build"), "matchBuildSheet", "matches_sheet");
         getCommands().registerMethod(new UtilityCommands(), List.of("project"), "projectROI", "roi");
         getCommands().registerMethod(new GrantCommands(), List.of("grant_template", "create"), "templateCreateResearch", "research");
         getCommands().registerMethod(new GrantCommands(), List.of("grant"), "grantResearch", "research");

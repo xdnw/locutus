@@ -5,7 +5,6 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.SCityContainer;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.city.ICity;
 import link.locutus.discord.apiv1.enums.city.IMutableCity;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -16,6 +15,7 @@ import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.city.SimpleDBCity;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.city.*;
+import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
@@ -656,4 +656,8 @@ public abstract class DBCity implements IMutableCity {
     public abstract int getNuke_turn();
 
     public abstract void setNuke_turn(int nuke_turn);
+
+    public boolean matches(CityBuild build, boolean checkInfra) {
+        return CityBuild.of(this.toJson(false)).equals(build, checkInfra);
+    }
 }

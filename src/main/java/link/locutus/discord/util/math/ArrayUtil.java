@@ -602,7 +602,7 @@ public class ArrayUtil {
                 .stream()
                 .sorted(Map.Entry.comparingByKey(keyComparator))
                 .toList();
-        Map<T, V> sortedMap = new LinkedHashMap<>();
+        Map<T, V> sortedMap = new Object2ObjectLinkedOpenHashMap<>();
         for (Map.Entry<T, V> entry : sortedEntries) {
             sortedMap.put(entry.getKey(), entry.getValue());
         }

@@ -2,10 +2,10 @@ package link.locutus.discord.apiv1.enums.city;
 
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.BuildingType;
 import link.locutus.discord.apiv1.enums.Continent;
-import link.locutus.discord.apiv1.enums.DomesticPolicy;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
@@ -13,16 +13,13 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.db.entities.DBCity;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.MMRInt;
 import link.locutus.discord.db.entities.city.SimpleDBCity;
 import link.locutus.discord.db.entities.city.SimpleNationCity;
-import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.web.WebUtil;
 
-import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -111,7 +108,7 @@ public interface ICity {
     default String toJson(@Default Boolean pretty) {
         JsonObject object = new JsonObject();
 
-        Map<String, String> json = new HashMap<>();
+        Map<String, String> json = new Object2ObjectLinkedOpenHashMap<>();
         json.put("infra_needed", getRequiredInfra() + "");
         json.put("imp_total", getNumBuildings() + "");
         if (getLand() > 0) {

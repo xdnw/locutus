@@ -1620,7 +1620,9 @@ public class GuildKey {
             return """
                     If set, all allowed resources will be converted to cash at the rates set, regardless of #cash being present as a note
                     This is performed when deposits are checked, and only to new deposits
-                    Requires resource conversion to be enabled for the nation""";
+                    Requires resource conversion to be enabled for the nation
+                    If no RESOURCE_CONVERSION role is set, then this applies to everyone
+                    See also: """ + CM.deposits.convert.cmd.toSlashMention();
         }
     }.setupRequirements(f -> f.requires(RESOURCE_CONVERSION));
 
@@ -1694,13 +1696,15 @@ public class GuildKey {
         public String help() {
             return """
                     Set the rate (as a percent of market value) each resource converts to cash
-                    Conversion rates can be set for different nations or roles. Use `*` to apply to everyone\
+                    Conversion rates can be set for different nations or roles. Use `*` to apply to everyone 
+                    - note: If a discord role is set for {ALIAS_ROLE}, they will still need that role
                     In the form: `*:{FOOD=75, COAL=90, OIL=90, URANIUM=90, LEAD=90, IRON=90, BAUXITE=90, GASOLINE=80, MUNITIONS=80, STEEL=80, ALUMINUM=80}`
                     See: <https://github.com/xdnw/locutus/wiki/Nation_placeholders>
                     A value of 75 = 75%
                     Set to 0 to disable conversion for that resource
                     If no value is set for a resource it will default to 100% of weekly market average
-                    **It is recommended to set both a default `*` and a specific value for each resource**""";
+                    **It is recommended to set both a default `*` and a specific value for each resource**"""
+                    .replace("{ALIAS_ROLE}", Roles.RESOURCE_CONVERSION.name());
         }
     }.setupRequirements(f -> f.requires(RESOURCE_CONVERSION));
 

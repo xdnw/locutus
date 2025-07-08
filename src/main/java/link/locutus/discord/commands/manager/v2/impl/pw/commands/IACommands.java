@@ -4,6 +4,7 @@ import com.politicsandwar.graphql.model.AlliancePosition;
 import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationResponseProjection;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
+import it.unimi.dsi.fastutil.Pair;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
@@ -11,6 +12,7 @@ import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.account.question.questions.InterviewQuestion;
@@ -18,6 +20,7 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
+import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.StringMessageBuilder;
@@ -28,11 +31,10 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
-import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
@@ -42,14 +44,11 @@ import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.PNWUser;
+import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.offshore.test.IAChannel;
@@ -59,7 +58,6 @@ import link.locutus.discord.util.task.MailRespondTask;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.util.task.mail.*;
 import link.locutus.discord.web.jooby.handler.CommandResult;
-import link.locutus.discord.apiv1.enums.Rank;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel;
@@ -85,6 +83,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -2103,7 +2102,7 @@ public class IACommands {
             GPTUtil.checkThrowModeration(messagesJoined);
         }
 
-        for (int i = 1; i < nationNames.size(); i++) {
+        for (int i = 0; i < nationNames.size(); i++) {
             Object nationNameObj = nationNames.get(i);
             if (nationNameObj == null) continue;
             String nationNameStr = nationNameObj.toString();
@@ -2717,6 +2716,154 @@ public class IACommands {
         sheet.updateWrite();
 
         sheet.attach(io.create(), "interview").send();
+        return null;
+    }
+
+    @Command(desc = "Check and match a spreadsheet of city builds to a set of nations\n" +
+            "The sheet must have columns: `filter` and `build` where `filter` is a nation filter and `build` is a city build json.\n" +
+            "The `filter` column can be empty, in which case all nations are matched.\n" +
+            "This command will output a sheet of nations that match a filter but did not match any of the builds provided",
+            viewable = true, aliases = {"matchBuilds", "matchBuildsSheet"})
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF, Roles.ECON}, any = true)
+    public String matchBuildSheet(@Me IMessageIO io, ValueStore store, @Me GuildDB db, SpreadSheet builds, @Default Set<DBNation> nations, @Switch("s") SpreadSheet output) throws GeneralSecurityException, IOException {
+        // 2. Determine nations defaulting to non-VM alliance members
+        if (nations == null) {
+            if (!db.isValidAlliance()) {
+                throw new IllegalArgumentException("No alliance registered to guild");
+            }
+            nations = db.getAllianceList()
+                    .getNations(true, 0, true) // all active
+                    .stream()
+                    .filter(n -> n.getVm_turns() == 0)
+                    .collect(Collectors.toSet());
+        }
+
+        // 3. Load and parse builds sheet: columns "filter" and "build"
+        builds.loadValues(null, true);
+        List<Object> filterCol = builds.findColumn("filter");
+        List<Object> buildCol  = builds.findColumn("build");
+        if (buildCol == null) {
+            throw new IllegalArgumentException("No column found: `build`");
+        }
+
+        // 4. Build list of filter→build entries
+        List<Pair<Predicate<DBNation>, CityBuild>> entries = new ArrayList<>();
+        NationPlaceholders placeholders = Locutus.cmd().getV2().getNationPlaceholders();
+
+        int rows = buildCol.size();
+        if (rows == 0) {
+            throw new IllegalArgumentException("No rows found in builds sheet");
+        }
+        for (int i = 0; i < rows; i++) {
+            String filt = (filterCol == null ? null : Objects.toString(filterCol.get(i), "").trim());
+            String buildSpec = Objects.toString(buildCol.get(i), "").trim();
+            if (buildSpec.isEmpty()) continue; // skip empty
+            Predicate<DBNation> nf = filt == null || filt.isEmpty()
+                    ? nation -> true    // match-all if no filter
+                    : placeholders.parseFilter(store, filt); // may throw
+            CityBuild cb = CityBuild.of(buildSpec);  // implement parsing logic
+            entries.add(Pair.of(nf, cb));
+        }
+        if (entries.isEmpty()) {
+            throw new IllegalArgumentException("No builds provided");
+        }
+
+        // The nations with no matching filter
+        Set<DBNation> noMatchingFilter = new ObjectLinkedOpenHashSet<>(nations);
+        Map<DBNation, Map<Integer, DBCity>> citiesNoMatch = new Object2ObjectOpenHashMap<>();
+        Map<DBNation, Map<Integer, Integer>> cityIndexes = new Object2ObjectOpenHashMap<>();
+
+
+        // 6. For each nation, compute unmatched cities
+        for (DBNation nation : nations) {
+            Map<Integer, DBCity> natCities = nation._getCitiesV3();
+            Map<Integer, DBCity> natNotMatched = citiesNoMatch.get(nation);
+            if (natNotMatched == null) {
+                // Initialize unmatched cities map for this nation
+                natNotMatched = ArrayUtil.sortMapKeys(natCities, true);
+                citiesNoMatch.put(nation, natNotMatched);
+
+                // initialize cityIndexes
+                Map<Integer, Integer> cityIndexMap = new Object2IntOpenHashMap<>();
+                int index = 1;
+                for (Map.Entry<Integer, DBCity> entry : natNotMatched.entrySet()) {
+                    cityIndexMap.put(entry.getKey(), index++);
+                }
+                cityIndexes.put(nation, cityIndexMap);
+            }
+            if (citiesNoMatch.isEmpty()) continue;
+            // collect all cities of this nation
+            for (Pair<Predicate<DBNation>, CityBuild> entry : entries) {
+                if (!entry.first().test(nation)) continue;
+                noMatchingFilter.remove(nation); // nation matches at least one filter
+                CityBuild build = entry.right();
+
+                Iterator<Map.Entry<Integer, DBCity>> iter = natNotMatched.entrySet().iterator();
+                while (iter.hasNext()) {
+                    Map.Entry<Integer, DBCity> cityEntry = iter.next();
+                    int cityId = cityEntry.getKey();
+                    DBCity city = cityEntry.getValue();
+                    if (city.matches(build, false)) {
+                        iter.remove();
+                    } else {
+                        // TODO closest match logic?? track number of buildings
+                    }
+                }
+                if (natNotMatched.isEmpty()) {
+                    // No unmatched cities left for this nation, break early
+                    // also remove nation from citiesNoMatch
+                    citiesNoMatch.remove(nation);
+                    break;
+                }
+            }
+        }
+
+        IMessageBuilder msg = io.create();
+        if (noMatchingFilter.size() == nations.size()) {
+            // No nation matched any filter
+            return "None of the nations provided matched any filter. Please check your nations/filters and try again.";
+        } else if (!noMatchingFilter.isEmpty()) {
+            // Attach file of nations that did not match any filter
+            StringBuilder fileContent = new StringBuilder("URL\tNation\tUser\n");
+            for (DBNation nation : noMatchingFilter) {
+                fileContent.append(nation.getUrl()).append("\t").append(nation.getNation()).append("\t").append(nation.getUserDiscriminator());
+                fileContent.append("\n");
+            }
+            msg = msg.file(noMatchingFilter.size() + "_unmatched_nations.txt", fileContent.toString());
+        }
+        if (citiesNoMatch.isEmpty()) {
+            // No unmatched cities, nothing to do
+            msg.append("No unmatched cities found for nations.");
+        } else {
+            // 1. Determine output sheet
+            if (output == null) {
+                output = SpreadSheet.create(db, SheetKey.BUILD_SHEET);
+            }
+            output.setHeader(Arrays.asList("nation", "user", "city_no", "city", "build"));
+            for (Map.Entry<DBNation, Map<Integer, DBCity>> entry : citiesNoMatch.entrySet()) {
+                DBNation nation = entry.getKey();
+                String userStr = nation.getUserDiscriminator();
+                if (userStr == null) userStr = "";
+
+                Map<Integer, DBCity> unmatchedCities = entry.getValue();
+                for (Map.Entry<Integer, DBCity> cityEntry : unmatchedCities.entrySet()) {
+                    int index = cityIndexes.get(nation).get(cityEntry.getKey());
+                    DBCity city = cityEntry.getValue();
+                    String buildJson = city.toJson(true);
+                    output.addRow(Arrays.asList(
+                            nation.getSheetUrl(),
+                            userStr,
+                            index + "/" + nation.getCities(),
+                            city.getUrl(),
+                            buildJson
+                    ));
+                }
+            }
+            output.updateClearCurrentTab();
+            output.updateWrite();
+            output.attach(msg, "unmatched_builds");
+        }
+        msg.send();
         return null;
     }
 }
