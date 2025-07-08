@@ -2760,7 +2760,7 @@ public class IACommands {
             if (buildSpec.isEmpty()) continue; // skip empty
             Predicate<DBNation> nf = filt == null || filt.isEmpty()
                     ? nation -> true    // match-all if no filter
-                    : placeholders.parseSingleFilter(store, filt); // may throw
+                    : placeholders.parseFilter(store, filt); // may throw
             CityBuild cb = CityBuild.of(buildSpec);  // implement parsing logic
             entries.add(Pair.of(nf, cb));
         }
