@@ -3730,14 +3730,16 @@ public class BankCommands {
         int[] baseArr = baseTaxRate == null ? null : baseTaxRate.toArray();
         TaxRate aaBase = db.getOrNull(GuildKey.TAX_BASE);
 
+        int[] internalRate = {0, 0};
         for (TaxDeposit tax : taxes) {
             if (tax.date < startDate || tax.date > endDate) continue;
             DBNation nation = DBNation.getById(tax.nationId);
             if (!nations.contains(nation)) continue;
 
-            int[] internalRate = new int[] {tax.internalMoneyRate, tax.internalResourceRate};
-            if (baseArr != null && baseArr[0] >= 0) internalRate[0] = baseArr[0];
-            if (baseArr != null && baseArr[1] >= 0) internalRate[1] = baseArr[1];
+            if (baseArr != null) internalRate[0] = baseArr[0];
+            else internalRate[0] = tax.internalMoneyRate;
+            if (baseArr != null) internalRate[1] = baseArr[1];
+            else internalRate[1] = tax.internalResourceRate;
             if (internalRate[0] < 0) internalRate[0] = aaBase != null && aaBase.money >= 0 ? aaBase.money : 0;
             if (internalRate[1] < 0) internalRate[1] = aaBase != null && aaBase.resources >= 0 ? aaBase.resources : 0;
 
