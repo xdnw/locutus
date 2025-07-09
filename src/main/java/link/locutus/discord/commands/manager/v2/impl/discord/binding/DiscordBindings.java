@@ -7,10 +7,8 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
-import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
-import link.locutus.discord.commands.manager.v2.command.CommandCallable;
-import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.command.ParameterData;
+import link.locutus.discord.commands.manager.v2.command.*;
+import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -33,13 +31,9 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.json.JSONObject;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import static link.locutus.discord.commands.manager.v2.impl.pw.commands.AppMenuCommands.USER_MENU_STATE;
 
@@ -343,6 +337,42 @@ public class DiscordBindings extends BindingHelper {
     @Me
     public JSONObject command() {
         throw new IllegalArgumentException("No command binding found.");
+    }
+
+    @Binding
+    public JSONObject cmd(String input) {
+        if (input.isEmpty()) {
+            throw new IllegalArgumentException("No command input provided.");
+        }
+        CommandManager2 v2 = Locutus.cmd().getV2();
+        if (input.startsWith("{") && input.endsWith("}")) {
+            JSONObject json = new JSONObject(input);
+            String cmdName = json.optString("", null);
+            if (cmdName == null || cmdName.isEmpty()) {
+                throw new IllegalArgumentException("No command name found in JSON: `" + input + "`");
+            }
+            CommandCallable callable = v2.getCommands().get(cmdName);
+            if (callable == null) {
+                throw new IllegalArgumentException("No command found for " + cmdName);
+            }
+            if (callable instanceof ParametricCallable parametric) {
+                Set<String> allowedArgsLowercase = parametric.getUserParameterMap().keySet().stream().map(f -> f.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
+                for (String key : json.keySet()) {
+                    if (key.isEmpty()) continue;
+                    if (!allowedArgsLowercase.contains(key.toLowerCase(Locale.ROOT))) {
+                        throw new IllegalArgumentException("Command `" + cmdName + "` does not accept parameter `" + key + "`");
+                    }
+                }
+                return json;
+            } else {
+                throw new IllegalArgumentException("Command " + cmdName + " is not a parametric command.");
+            }
+        }
+        if (!Character.isLetterOrDigit(input.charAt(0))) {
+            input = input.substring(1);
+        }
+        Map<String, String> slash = v2.validateSlashCommand(input, true);
+        return new JSONObject(slash);
     }
 
     @Binding

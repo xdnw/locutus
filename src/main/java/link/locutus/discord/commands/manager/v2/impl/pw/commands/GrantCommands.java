@@ -2,10 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -28,10 +25,12 @@ import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.grant.*;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
+import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.TransferResult;
@@ -3460,6 +3459,83 @@ public class GrantCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
         sheet.attach(io.create(), "purchases").append(body.toString()).send();
+        return null;
+    }
+
+    @Command(desc = "Request a grant from the grant request channel")
+    @RolePermission(value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON, Roles.ECON_STAFF, Roles.MEMBER}, any=true)
+    public String grantRequest(@Me IMessageIO io, @Me GuildDB db, @Me DBNation nation,
+                               String reason,
+                               NationOrAlliance receiver,
+                               JSONObject command,
+                               @Default Map<ResourceType, Double> estimate_amount
+    ) throws IOException {
+        long now = System.currentTimeMillis();
+        // Remove arguments
+        Set<String> keysToRemove = Set.of(
+                "expire", "decay", "ignore", "taxaccount", "existingtaxaccount",
+                "depositsaccount", "usealliancebank", "useoffshoreaccount",
+                "bypass_checks", "force"
+        );
+        List<String> toDelete = new ObjectArrayList<>();
+        for (String key : command.keySet()) {
+            for (String target : keysToRemove) {
+                if (key.equalsIgnoreCase(target)) {
+                    toDelete.add(key);
+                    break;
+                }
+            }
+        }
+        for (String key : toDelete) {
+            command.remove(key);
+        }
+
+        boolean taxAccount = GuildKey.GRANT_REQUEST_TAX_ACCOUNT.getOrNull(db) == Boolean.TRUE;
+        if (taxAccount) {
+            command.put("existingtaxaccount", "true");
+        }
+        boolean addIgnore = GuildKey.GRANT_REQUEST_IGNORE.getOrNull(db) == Boolean.TRUE;
+        if (addIgnore) {
+            command.put("ignore", "true");
+        }
+        Long decay = GuildKey.GRANT_REQUEST_DECAY.getOrNull(db);
+        if (decay != null && decay > 0) {
+            command.put("decay", TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay));
+        }
+        Long expire = GuildKey.GRANT_REQUEST_EXPIRE.getOrNull(db);
+        if (expire != null && expire > 0) {
+            command.put("expire", TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire));
+        }
+        command.put("depositsaccount", nation.getQualifiedId());
+        command.put("ping_when_sent", "true");
+
+        String title = "Grant Request from " + nation.getNation();
+        if (estimate_amount != null) {
+            title += " worth: ~$" + MathMan.format(ResourceType.convertedTotal(estimate_amount));
+        }
+        StringBuilder sb = new StringBuilder();
+        if (estimate_amount != null) {
+            sb.append("**Amount (estimated):** ").append(ResourceType.toString(estimate_amount)).append("\n");
+        }
+        sb.append("**Requested By:** ").append(nation.getMarkdownUrl()).append(" | ").append(nation.getAllianceUrlMarkup()).append("\n");
+        sb.append("**To:** ");
+        if (nation.getId() == receiver.getId() && receiver.isNation()) {
+            sb.append("[REQUESTING NATION]\n");
+        } else {
+            sb.append(nation.getMarkdownUrl()).append(" | ").append(nation.getAllianceUrlMarkup()).append("\n");
+        }
+        sb.append("**Reason:** `").append(reason).append("`\n");
+        sb.append("**Date Requested:** ").append(DiscordUtil.timestamp(now, null)).append("\n");
+        double[] deposits = nation.getNetDeposits(db, -1, false);
+        sb.append("**Nation Balance:** worth ~$").append(MathMan.format(ResourceType.convertedTotal(deposits))).append("`\n");
+        sb.append("- `").append(ResourceType.toString(deposits)).append("`\n");
+        sb.append("**Command:**\n```json\n").append(command.toString(2)).append("```\n");
+
+
+        io.create().embed(title, sb.toString())
+                .confirmation(command)
+                .cancelButton()
+                .send();
         return null;
     }
 }

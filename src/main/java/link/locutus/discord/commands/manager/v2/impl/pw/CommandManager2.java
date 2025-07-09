@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw;
 
 import ai.djl.MalformedModelException;
 import ai.djl.repository.zoo.ModelNotFoundException;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
@@ -255,6 +256,7 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        getCommands().registerMethod(new GrantCommands(), List.of("grant"), "grantRequest", "request");
         getCommands().registerMethod(new IACommands(), List.of("build"), "matchBuildSheet", "matches_sheet");
         getCommands().registerMethod(new UtilityCommands(), List.of("project"), "projectROI", "roi");
         getCommands().registerMethod(new GrantCommands(), List.of("grant_template", "create"), "templateCreateResearch", "research");
@@ -1125,7 +1127,7 @@ public class CommandManager2 {
                 if (!input.isEmpty()) {
                     return parseArguments(parametric.getUserParameterMap().keySet(), input, strict);
                 }
-                return new HashMap<>();
+                return new Object2ObjectLinkedOpenHashMap<>();
             } else if (next instanceof CommandGroup group) {
                 root = group;
             } else if (next == null) {

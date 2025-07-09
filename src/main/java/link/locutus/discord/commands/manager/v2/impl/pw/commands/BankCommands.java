@@ -65,7 +65,6 @@ import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
-import org.hibernate.Remove;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -1880,71 +1879,6 @@ public class BankCommands {
 
         sheet.attach(io.create(), "warchest", response, false, 0).append(response.toString()).send();
         return null;
-    }
-
-    @Command(desc = "Request a grant from the grant request channel")
-    @RolePermission(value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON, Roles.ECON_STAFF, Roles.MEMBER}, any=true)
-    public String grantRequest(@Me GuildDB db, @Me DBNation nation,
-                               String reason,
-                               NationOrAlliance receiver,
-                               JSONObject command) {
-        // Remove arguments
-        Set<String> keysToRemove = Set.of(
-                "expire", "decay", "ignore", "taxaccount", "existingtaxaccount",
-                "depositsaccount", "usealliancebank", "useoffshoreaccount",
-                "bypass_checks", "force"
-        );
-        List<String> toDelete = new ObjectArrayList<>();
-        for (String key : command.keySet()) {
-            for (String target : keysToRemove) {
-                if (key.equalsIgnoreCase(target)) {
-                    toDelete.add(key);
-                    break;
-                }
-            }
-        }
-        for (String key : toDelete) {
-            command.remove(key);
-        }
-
-        // Force set the above based on the grant settings
-        //GRANT_REQUEST_ADD_IGNORE
-        //GRANT_REQUEST_ADD_DECAY
-        //GRANT_REQUEST_ADD_EXPIRE
-        //GRANT_REQUEST_TAX_ACCOUNT
-        //Set depositsaccount to the nation requesting the grant
-        boolean taxAccount = GuildKey.GRANT_REQUEST_TAX_ACCOUNT.getOrNull(db) == Boolean.TRUE;
-        if (taxAccount) {
-            command.put("existingtaxaccount", "true");
-        }
-        boolean addIgnore = GuildKey.GRANT_REQUEST_IGNORE.getOrNull(db) == Boolean.TRUE;
-        if (addIgnore) {
-            command.put("ignore", "true");
-        }
-        Long decay = GuildKey.GRANT_REQUEST_DECAY.getOrNull(db);
-        if (decay != null && decay > 0) {
-            command.put("decay", TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay));
-        }
-        Long expire = GuildKey.GRANT_REQUEST_EXPIRE.getOrNull(db);
-        if (expire != null && expire > 0) {
-            command.put("expire", TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire));
-        }
-        command.put("depositsaccount", nation.getQualifiedId());
-
-        // show grant info
-        // sender
-        // receiver
-        // arguments
-        // date requested
-        // nation balance
-        //
-        StringBuilder sb = new StringBuilder();
-
-        // ping role, else econ
-        // ping when sent
-
-
-
     }
 
     @Command(desc = "Withdraw from the alliance bank (nation balance)", groups = {
