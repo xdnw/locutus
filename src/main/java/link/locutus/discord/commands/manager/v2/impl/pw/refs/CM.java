@@ -5177,25 +5177,43 @@ public class CM {
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="grantRequest")
-            public static class request extends CommandRef {
-                public static final request cmd = new request();
-            public request reason(String value) {
-                return set("reason", value);
-            }
+            public static class request{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="grantRequestApprove")
+                public static class approve extends CommandRef {
+                    public static final approve cmd = new approve();
+                public approve request(String value) {
+                    return set("request", value);
+                }
 
-            public request receiver(String value) {
-                return set("receiver", value);
-            }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="grantRequestCancel")
+                public static class cancel extends CommandRef {
+                    public static final cancel cmd = new cancel();
+                public cancel request(String value) {
+                    return set("request", value);
+                }
 
-            public request command(String value) {
-                return set("command", value);
-            }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="grantRequest")
+                public static class create extends CommandRef {
+                    public static final create cmd = new create();
+                public create reason(String value) {
+                    return set("reason", value);
+                }
 
-            public request estimate_amount(String value) {
-                return set("estimate_amount", value);
-            }
+                public create receiver(String value) {
+                    return set("receiver", value);
+                }
 
+                public create command(String value) {
+                    return set("command", value);
+                }
+
+                public create estimate_amount(String value) {
+                    return set("estimate_amount", value);
+                }
+
+                }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="grantResearch")
             public static class research extends CommandRef {
