@@ -729,6 +729,7 @@ public class WarDB extends DBMainV2 {
                             }
                             return false;
                         });
+                        saveAttacks(attackList, null);
                     }
 
                 }
