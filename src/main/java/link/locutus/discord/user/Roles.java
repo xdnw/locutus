@@ -54,7 +54,7 @@ public enum Roles {
         }
     },
 
-//    ECON_GRANT_ALERTS(7, "Gets pinged for member grant requests", GuildKey.ALLIANCE_ID),
+    ECON_GRANT_ALERTS(7, false, false, "Gets pinged for member grant requests", GuildKey.GRANT_REQUEST_CHANNEL),
     ECON_DEPOSIT_ALERTS(8, false, false,"Gets pinged when there is a deposit", GuildKey.DEPOSIT_ALERT_CHANNEL),
     ECON_WITHDRAW_ALERTS(9, false, false,"Gets pinged when there is a withdrawal", GuildKey.WITHDRAW_ALERT_CHANNEL, "ECON_GRANT_ALERTS"),
     ECON_WITHDRAW_SELF(10, true, true,"Can withdraw own funds", GuildKey.MEMBER_CAN_WITHDRAW),

@@ -1045,7 +1045,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
 
         CM.deposits.check deposits = CM.deposits.check.cmd.nationOrAllianceOrGuild("nation:{nation_id}");
         CM.transfer.self self = CM.transfer.self.cmd.amount("");
-        CM.transfer.resources other = CM.transfer.resources.cmd.receiver("").transfer("").nationAccount("{nation_id}").depositType("#ignore");
+        CM.transfer.resources other = CM.transfer.resources.cmd.receiver("").transfer("").nation_account("{nation_id}").bank_note("#ignore");
         CM.nation.stockpile stockpile = CM.nation.stockpile.cmd.nationOrAlliance("nation:{nation_id}");
 
         CommandBehavior behavior = CommandBehavior.EPHEMERAL;

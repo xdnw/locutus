@@ -256,7 +256,10 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
-        getCommands().registerMethod(new GrantCommands(), List.of("grant"), "grantRequest", "request");
+        getCommands().registerMethod(new GrantCommands(), List.of("grant", "request"), "grantRequest", "create");
+        getCommands().registerMethod(new GrantCommands(), List.of("grant", "request"), "grantRequestCancel", "cancel");
+        getCommands().registerMethod(new GrantCommands(), List.of("grant", "request"), "grantRequestApprove", "approve");
+
         getCommands().registerMethod(new IACommands(), List.of("build"), "matchBuildSheet", "matches_sheet");
         getCommands().registerMethod(new UtilityCommands(), List.of("project"), "projectROI", "roi");
         getCommands().registerMethod(new GrantCommands(), List.of("grant_template", "create"), "templateCreateResearch", "research");

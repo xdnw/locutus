@@ -11,6 +11,7 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -2260,16 +2261,22 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(GRANT_REQUEST_CHANNEL));
 
-    public static GuildSetting<Boolean> GRANT_REQUEST_IGNORE = new GuildBooleanSetting(GuildSettingCategory.BANK_INFO) {
+    public static GuildSetting<DepositType.DepositTypeInfo> GRANT_REQUEST_NOTE = new GuildSetting<DepositType.DepositTypeInfo>(GuildSettingCategory.BANK_INFO, DepositType.DepositTypeInfo.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
-        public String GRANT_REQUEST_IGNORE(@Me GuildDB db, @Me User user, boolean value) {
-            return GRANT_REQUEST_IGNORE.setAndValidate(db, user, value);
+        public String GRANT_REQUEST_NOTE(@Me GuildDB db, @Me User user, DepositType.DepositTypeInfo bank_note) {
+            return GRANT_REQUEST_NOTE.setAndValidate(db, user, bank_note);
         }
+
+        @Override
+        public String toString(DepositType.DepositTypeInfo value) {
+            return value.toString();
+        }
+
         @Override
         public String help() {
-            return "If `#ignore` is added to grants requested approved via the grant request channel";
+            return "The default note to apply to approved grant requests, such as `#" + DepositType.IGNORE.name().toLowerCase(Locale.ROOT) + "`";
         }
     }.setupRequirements(f -> f.requires(GRANT_REQUEST_CHANNEL));
 

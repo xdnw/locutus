@@ -30,9 +30,7 @@ import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
-import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.*;
@@ -107,18 +105,18 @@ public class GrantCmd extends Command {
 
         boolean ignore = false;
         DBNation nationAccount = null;
-        DBAlliance allianceAccount = null;
+        DBAlliance ingameBank = null;
         DBAlliance offshoreAccount = null;
-        TaxBracket taxAccount = null;
+        TaxBracket tax_account = null;
 
         String nationAccountStr = DiscordUtil.parseArg(args, "nation");
         if (nationAccountStr != null) {
             nationAccount = PWBindings.nation(author, guild, nationAccountStr);
         }
 
-        String allianceAccountStr = DiscordUtil.parseArg(args, "alliance");
-        if (allianceAccountStr != null) {
-            allianceAccount = PWBindings.alliance(allianceAccountStr);
+        String ingameBankStr = DiscordUtil.parseArg(args, "alliance");
+        if (ingameBankStr != null) {
+            ingameBank = PWBindings.alliance(ingameBankStr);
         }
 
         String offshoreAccountStr = DiscordUtil.parseArg(args, "offshore");
@@ -129,10 +127,10 @@ public class GrantCmd extends Command {
         String taxIdStr = DiscordUtil.parseArg(args, "tax_id");
         if (taxIdStr == null) taxIdStr = DiscordUtil.parseArg(args, "bracket");
         if (taxIdStr != null) {
-            taxAccount = PWBindings.bracket(guildDb, "tax_id=" + taxIdStr);
+            tax_account = PWBindings.bracket(guildDb, "tax_id=" + taxIdStr);
         }
         if (flags.contains('t')) {
-            if (taxAccount != null) return "You can't specify both `tax_id` and `-t`";
+            if (tax_account != null) return "You can't specify both `tax_id` and `-t`";
         }
 
 
@@ -240,59 +238,153 @@ public class GrantCmd extends Command {
             return null;
         }
 
-        Grant grant = generateGrant(typeArg, guildDb, me, num, flags, true, ignore);
+        runGrant(channel, guildDb, me, typeArg, num, flags, true, ignore,
+                nationAccount,
+                ingameBank,
+                offshoreAccount,
+                tax_account,
+                expire,
+                decay,
+                escrowMode
+        );
+//
+//        Grant grant = generateGrant(typeArg, guildDb, me, num, flags, true, ignore);
+//
+//        Member member = null;
+//
+//        if (!flags.contains('f')) {
+//            Role noGrants = Roles.TEMP.toRole2(guild);
+//            PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(me.getNation_id());
+//            if (user != null) {
+//                member = guild.getMemberById(user.getDiscordId());
+////                if (member == null) {
+////                    throw new IllegalArgumentException("Not on this discord");
+////                }
+//            }
+//            if (noGrants != null && member != null && member.getUnsortedRoles().contains(noGrants)) {
+//                throw new IllegalArgumentException("The member has been marked (with discord role) as to not receive grants");
+//            }
+//        }
+//
+//        Map<ResourceType, Double> resources = ResourceType.resourcesToMap(grant.cost());
+//
+//        if (factor != null) {
+//            resources = PW.multiply(resources, factor);
+//        }
+//
+//        JSONObject command = CM.transfer.resources.cmd.receiver(
+//                me.getUrl()).transfer(
+//                ResourceType.toString(resources)).bank_note(
+//                grant.getType().toString()).nation_account(
+//                (nationAccount == null ? me : nationAccount).getUrl()).ingame_bank(
+//                ingameBank != null ? ingameBank.getUrl() : null).offshore_account(
+//                offshoreAccount != null ? offshoreAccount.getUrl() : null).tax_account(
+//                tax_account != null ? tax_account.getQualifiedId() : null).use_receiver_tax_account(
+//                flags.contains('t') ? "true" : null).onlyMissingFunds(
+//                String.valueOf(flags.contains('o'))).expire(
+//                expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null).decay(
+//                decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null).deduct_as_cash(
+//                String.valueOf(flags.contains('c'))).escrow_mode(
+//                escrowMode == null ? null : escrowMode.name()).bypass_checks(
+//                String.valueOf(flags.contains('f'))).force(
+//                "false").toJson();
+//        StringBuilder msg = new StringBuilder();
+//        msg.append(ResourceType.toString(resources)).append("\n")
+//                .append("Current values for: " + me.getNation()).append('\n')
+//                .append("Cities: " + me.getCities()).append('\n')
+//                .append("Infra: " + me.getAvg_infra()).append('\n')
+//        ;
+//
+//
+//        channel.create().embed("Instruct: " + grant.title(), "**INSTRUCTIONS:** " + grant.getInstructions()).send();
+//        channel.create().confirmation("Confirm: " + grant.title(), msg.toString(), command).cancelButton().send();
 
-        Member member = null;
+        return null;
+    }
 
-        if (!flags.contains('f')) {
-            Role noGrants = Roles.TEMP.toRole2(guild);
-            PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(me.getNation_id());
-            if (user != null) {
-                member = guild.getMemberById(user.getDiscordId());
-//                if (member == null) {
-//                    throw new IllegalArgumentException("Not on this discord");
-//                }
-            }
-            if (noGrants != null && member != null && member.getUnsortedRoles().contains(noGrants)) {
-                throw new IllegalArgumentException("The member has been marked (with discord role) as to not receive grants");
-            }
-        }
+    // typeArg, guildDb, me, num, flags, true, ignore
+    public void runGrant(IMessageIO io, GuildDB guildDb, DBNation me,
+                         String arg,
+                         double amt,
+                         Set<Character> flags,
+                         boolean single,
+                         boolean ignore,
+                         DBNation nationAccount,
+                            DBAlliance ingameBank,
+                            DBAlliance offshoreAccount,
+                            TaxBracket tax_account,
+                         Long expire,
+                            Long decay,
+                            EscrowMode escrowMode
+         ) {
+        boolean existing = flags.contains('o');
+        boolean force = flags.contains('f');
+        boolean noInfra = flags.contains('i');
+        boolean noLand = flags.contains('l');
+        boolean deductAsCash = flags.contains('c');
+        boolean existingTaxAccount = flags.contains('t');
+        boolean multiplyPerCity = flags.contains('m'); // TODO ensure this gets used for city grants
 
-        Map<ResourceType, Double> resources = ResourceType.resourcesToMap(grant.cost());
-
-        if (factor != null) {
-            resources = PW.multiply(resources, factor);
-        }
-
-        JSONObject command = CM.transfer.resources.cmd.receiver(
-                me.getUrl()).transfer(
-                ResourceType.toString(resources)).depositType(
-                grant.getType().toString()).nationAccount(
-                (nationAccount == null ? me : nationAccount).getUrl()).senderAlliance(
-                allianceAccount != null ? allianceAccount.getUrl() : null).allianceAccount(
-                offshoreAccount != null ? offshoreAccount.getUrl() : null).taxAccount(
-                taxAccount != null ? taxAccount.getQualifiedId() : null).existingTaxAccount(
+        switch (arg.toLowerCase(Locale.ROOT)) {
+            case "city" -> {
+                /*
+                ("receivers", value);
+                ("amount", value);
+                ("upTo", value);
+                ("onlySendMissingFunds", value);
+                ("nation_account", value);
+                ("ingame_bank", value);
+                ("offshore_account", value);
+                ("tax_account", value);
+                ("use_receiver_tax_account", value);
+                ("expire", value);
+                ("decay", value);
+                ("ignore", value);
+                ("deduct_as_cash", value);
+                ("escrow_mode", value);
+                ("manifest_destiny", value);
+                ("gov_support_agency", value);
+                ("domestic_affairs", value);
+                ("exclude_city_refund", value);
+                ("ping_role", value);
+                ("ping_when_sent", value);
+                ("bypass_checks", value);
+                ("force", value);
+                 */
+                /*
+                ResourceType.toString(resources)).bank_note(
+                grant.getType().toString()).nation_account(
+                (nationAccount == null ? me : nationAccount).getUrl()).ingame_bank(
+                ingameBank != null ? ingameBank.getUrl() : null).offshore_account(
+                offshoreAccount != null ? offshoreAccount.getUrl() : null).tax_account(
+                tax_account != null ? tax_account.getQualifiedId() : null).use_receiver_tax_account(
                 flags.contains('t') ? "true" : null).onlyMissingFunds(
                 String.valueOf(flags.contains('o'))).expire(
                 expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null).decay(
-                decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null).convertCash(
+                decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null).deduct_as_cash(
                 String.valueOf(flags.contains('c'))).escrow_mode(
-                escrowMode == null ? null : escrowMode.name()).bypassChecks(
+                escrowMode == null ? null : escrowMode.name()).bypass_checks(
                 String.valueOf(flags.contains('f'))).force(
-                "false"
-        ).toJson();
-        StringBuilder msg = new StringBuilder();
-        msg.append(ResourceType.toString(resources)).append("\n")
-                .append("Current values for: " + me.getNation()).append('\n')
-                .append("Cities: " + me.getCities()).append('\n')
-                .append("Infra: " + me.getAvg_infra()).append('\n')
-        ;
+                "false").toJson();
+                 */
+//                CM.grant.city.cmd
+//                        .receivers(me.getUrl())
+//                        .amount(amt + "")
+//                        .onlySendMissingFunds(existing ? "true" : null)
+//                        .nation_account((nationAccount == null ? me : nationAccount).getUrl())
+//                        .ingame_bank(ingameBank != null ? ingameBank.getUrl() : null)
+//                        .offshore_account(offshoreAccount != null ? offshoreAccount.getUrl() : null)
+//                        .tax_account(tax_account != null ? tax_account.getQualifiedId() : null)
+//                        .use_receiver_tax_account(existingTaxAccount ? "true" : null)
+//                        .expire(expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null)
+//                        .decay(decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null)
+//                        .ignore(ignore ? "true" : null)
+//                        .deduct_as_cash(deductAsCash ? "true" : null)
+//                        .escrow_mode(escrowMode == null ? null : escrowMode.name())
 
-
-        channel.create().embed("Instruct: " + grant.title(), "**INSTRUCTIONS:** " + grant.getInstructions()).send();
-        channel.create().confirmation("Confirm: " + grant.title(), msg.toString(), command).cancelButton().send();
-
-        return null;
+            }
+            // todo add  others
+        }
     }
 
     public Grant generateGrant(String arg, GuildDB guildDb, DBNation me, double amt, Set<Character> flags, boolean single, boolean ignore) throws IOException, ExecutionException, InterruptedException {

@@ -20,7 +20,6 @@ import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
-import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -46,6 +45,7 @@ import link.locutus.discord.pnw.json.CityBuildRange;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.TransferResult;
 import link.locutus.discord.util.offshore.test.IACategory;
@@ -1115,6 +1115,168 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             // war room cache
             executeStmt("CREATE TABLE IF NOT EXISTS `WAR_ROOM_CACHE_2` (`target` INT NOT NULL PRIMARY KEY, `channel` BIGINT NOT NULL)");
         }
+
+        {
+            executeStmt("CREATE TABLE IF NOT EXISTS `GRANT_REQUESTS` (" +
+                    "`id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    "`user` BIGINT, " +
+                    "`nation` INT NOT NULL, " +
+                    "`receiver` INT NOT NULL, " +
+                    "`receiver_type` INT NOT NULL, " +
+                    "`reason` VARCHAR NOT NULL, " +
+                    "`command` VARCHAR NOT NULL, " +
+                    "`channel` BIGINT NOT NULL, " +
+                    "`message_id` BIGINT, " +
+                    "`estimate_amount` BLOB NOT NULL, " +
+                    "`date_created` BIGINT NOT NULL DEFAULT " + System.currentTimeMillis() + ")");
+        }
+    }
+
+    public List<GrantRequest> getGrantRequests() {
+        GuildDB delegate = getDelegateServer();
+        if (delegate != null) return delegate.getGrantRequests();
+            List<GrantRequest> list = new ArrayList<>();
+        query("SELECT * FROM GRANT_REQUESTS", ps -> {}, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) list.add(new GrantRequest(rs));
+        });
+        return list;
+    }
+
+    public List<GrantRequest> getGrantRequestsByUser(long userId) {
+        GuildDB delegate = getDelegateServer();
+        if (delegate != null) return delegate.getGrantRequestsByUser(userId);
+        List<GrantRequest> list = new ArrayList<>();
+        query("SELECT * FROM GRANT_REQUESTS WHERE user = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setLong(1, userId);
+        }, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) list.add(new GrantRequest(rs));
+        });
+        return list;
+    }
+
+    public List<GrantRequest> getGrantRequestsByNation(int nationId) {
+        GuildDB delegate = getDelegateServer();
+        if (delegate != null) return delegate.getGrantRequestsByNation(nationId);
+        List<GrantRequest> list = new ArrayList<>();
+        query("SELECT * FROM GRANT_REQUESTS WHERE nation = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, nationId);
+        }, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) list.add(new GrantRequest(rs));
+        });
+        return list;
+    }
+
+    public GrantRequest getGrantRequestById(int id) {
+        GuildDB delegate = getDelegateServer();
+        if (delegate != null) return delegate.getGrantRequestById(id);
+        GrantRequest[] request = new GrantRequest[1];
+        query("SELECT * FROM GRANT_REQUESTS WHERE id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, id);
+        }, (ThrowingConsumer<ResultSet>) rs -> {
+            if (rs.next()) {
+                request[0] = new GrantRequest(rs);
+            }
+        });
+        return request[0];
+    }
+
+    public void deleteGrantRequest(int id) {
+        GuildDB delegate = getDelegateServer();
+        if (delegate != null) {
+            delegate.deleteGrantRequest(id);
+            return;
+        }
+        update("DELETE FROM GRANT_REQUESTS WHERE id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, id);
+        });
+    }
+
+    public void deleteGrantRequests(Set<Integer> ids) {
+        GuildDB delegate = getDelegateServer();
+        if (delegate != null) {
+            delegate.deleteGrantRequests(ids);
+            return;
+        }
+        if (ids.isEmpty()) return;
+        String in = StringMan.getString(ids); // e.g. "(1,2,3)"
+        executeStmt("DELETE FROM GRANT_REQUESTS WHERE id IN " + in);
+    }
+
+    public void deleteGrantRequestsByNation(int nationId) {
+        GuildDB delegate = getDelegateServer();
+        if (delegate != null) {
+            delegate.deleteGrantRequestsByNation(nationId);
+            return;
+        }
+        update("DELETE FROM GRANT_REQUESTS WHERE nation = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, nationId);
+        });
+    }
+
+    public void deleteDeletedNationGrantRequests() {
+        GuildDB delegate = getDelegateServer();
+        if (delegate != null) {
+            delegate.deleteDeletedNationGrantRequests();
+            return;
+        }
+        Set<Integer> delete = new IntOpenHashSet();
+        query("SELECT * FROM GRANT_REQUESTS", (ThrowingConsumer<PreparedStatement>) stmt -> {}, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                int nationId = rs.getInt("nation");
+                if (DBNation.getById(nationId) == null) {
+                    delete.add(nationId);
+                }
+            }
+        });
+        if (delete.size() == 1) {
+            deleteGrantRequest(delete.iterator().next());
+        } else if (delete.size() > 1) {
+            deleteGrantRequests(delete);
+        }
+    }
+
+    public void addGrantRequest(GrantRequest request) {
+        GuildDB delegate = getDelegateServer();
+        if (delegate != null) {
+            delegate.addGrantRequest(request);
+            return;
+        }
+        String query = "INSERT INTO GRANT_REQUESTS(`user`, `nation`, `receiver`, `receiver_type`, `reason`, `command`, `channel`, `message_id`, `estimate_amount`, `date_created`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        try (PreparedStatement stmt = getConnection().prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
+            stmt.setLong(1, request.getUserId());
+            stmt.setInt(2, request.getNationId());
+            stmt.setInt(3, request.getReceiverId());
+            stmt.setInt(4, request.getReceiverType());
+            stmt.setString(5, request.getReason());
+            stmt.setString(6, request.getCommand().toString());
+            stmt.setLong(7, request.getMessageId());
+            stmt.setBytes(8, ArrayUtil.toByteArray(request.getEstimatedAmount()));
+            stmt.setLong(9, request.getDateCreated());
+
+            int affectedRows = stmt.executeUpdate();
+            if (affectedRows > 0) {
+                try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        request.setId(generatedKeys.getInt(1));
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // updateRequestMessageId
+    public void updateGrantRequestMessageId(int requestId, long messageId) {
+        GuildDB delegate = getDelegateServer();
+        if (delegate != null) {
+            delegate.updateGrantRequestMessageId(requestId, messageId);
+            return;
+        }
+        update("UPDATE GRANT_REQUESTS SET message_id = ? WHERE id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setLong(1, messageId);
+            stmt.setInt(2, requestId);
+        });
     }
 
     public int importNationTransactions(GuildDB other, Set<Integer> nationIds) {
