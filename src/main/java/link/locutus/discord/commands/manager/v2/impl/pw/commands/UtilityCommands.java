@@ -106,7 +106,11 @@ public class UtilityCommands {
                                         @Default Set<DBNation> set_red,
                                         @Default Set<DBNation> set_white,
                                         @Default Set<DBNation> set_yellow,
-                                        @Default Set<DBNation> set_gray_or_beige
+                                        @Default Set<DBNation> set_gray_or_beige,
+                                        @Default Set<DBNation> set_mint,
+                                        @Default Set<DBNation> set_lavender,
+                                        @Default Set<DBNation> set_turquoise,
+                                        @Default Set<DBNation> set_gold
     ) {
         Map<NationColor, Set<DBNation>> changeColors = new HashMap<>();
         changeColors.put(NationColor.AQUA, set_aqua);
@@ -124,6 +128,12 @@ public class UtilityCommands {
         changeColors.put(NationColor.WHITE, set_white);
         changeColors.put(NationColor.YELLOW, set_yellow);
         changeColors.put(NationColor.GRAY, set_gray_or_beige);
+        changeColors.put(NationColor.BEIGE, set_gray_or_beige);
+        changeColors.put(NationColor.MINT, set_mint);
+        changeColors.put(NationColor.LAVENDER, set_lavender);
+        changeColors.put(NationColor.TURQUOISE, set_turquoise);
+        changeColors.put(NationColor.GOLD, set_gold);
+
 
         Map<DBNation, NationColor> newColors = new HashMap<>();
 

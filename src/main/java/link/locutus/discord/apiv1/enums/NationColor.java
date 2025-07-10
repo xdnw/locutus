@@ -29,10 +29,14 @@ public enum  NationColor implements NationList {
     RED,
     WHITE,
     YELLOW,
+    MINT,
+    LAVENDER,
+    TURQUOISE,
+    GOLD
 
     ;
 
-    public static final int COLOR_REVENUE_CAP = 125_000;
+    public static final int COLOR_REVENUE_CAP = 175_000;
 
     public static final NationColor[] values = values();
     private int turnBonus;
@@ -108,6 +112,10 @@ public enum  NationColor implements NationList {
             case "RED": return RED;
             case "WHITE": return WHITE;
             case "YELLOW": return YELLOW;
+            case "MINT": return MINT;
+            case "LAVENDER": return LAVENDER;
+            case "TURQUOISE": return TURQUOISE;
+            case "GOLD": return GOLD;
             default: throw new IllegalArgumentException("Unknown color: " + color.getColor());
         }
     }
