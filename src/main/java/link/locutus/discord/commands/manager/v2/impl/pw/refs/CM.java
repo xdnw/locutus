@@ -3094,6 +3094,22 @@ public class CM {
                 return set("set_gray_or_beige", value);
             }
 
+            public revenue set_mint(String value) {
+                return set("set_mint", value);
+            }
+
+            public revenue set_lavender(String value) {
+                return set("set_lavender", value);
+            }
+
+            public revenue set_turquoise(String value) {
+                return set("set_turquoise", value);
+            }
+
+            public revenue set_gold(String value) {
+                return set("set_gold", value);
+            }
+
             }
         }
         public static class conflict{
@@ -4556,8 +4572,8 @@ public class CM {
                 return set("decay", value);
             }
 
-            public build ignore(String value) {
-                return set("ignore", value);
+            public build bank_note(String value) {
+                return set("bank_note", value);
             }
 
             public build deduct_as_cash(String value) {
@@ -4632,8 +4648,8 @@ public class CM {
                 return set("decay", value);
             }
 
-            public city ignore(String value) {
-                return set("ignore", value);
+            public city bank_note(String value) {
+                return set("bank_note", value);
             }
 
             public city deduct_as_cash(String value) {
@@ -4744,8 +4760,8 @@ public class CM {
                 return set("decay", value);
             }
 
-            public consumption ignore(String value) {
-                return set("ignore", value);
+            public consumption bank_note(String value) {
+                return set("bank_note", value);
             }
 
             public consumption deduct_as_cash(String value) {
@@ -4872,8 +4888,8 @@ public class CM {
                 return set("decay", value);
             }
 
-            public infra ignore(String value) {
-                return set("ignore", value);
+            public infra bank_note(String value) {
+                return set("bank_note", value);
             }
 
             public infra deduct_as_cash(String value) {
@@ -4968,8 +4984,8 @@ public class CM {
                 return set("decay", value);
             }
 
-            public land ignore(String value) {
-                return set("ignore", value);
+            public land bank_note(String value) {
+                return set("bank_note", value);
             }
 
             public land deduct_as_cash(String value) {
@@ -5064,8 +5080,8 @@ public class CM {
                 return set("decay", value);
             }
 
-            public mmr ignore(String value) {
-                return set("ignore", value);
+            public mmr bank_note(String value) {
+                return set("bank_note", value);
             }
 
             public mmr deduct_as_cash(String value) {
@@ -5136,8 +5152,8 @@ public class CM {
                 return set("decay", value);
             }
 
-            public project ignore(String value) {
-                return set("ignore", value);
+            public project bank_note(String value) {
+                return set("bank_note", value);
             }
 
             public project deduct_as_cash(String value) {
@@ -5262,8 +5278,8 @@ public class CM {
                 return set("decay", value);
             }
 
-            public research ignore(String value) {
-                return set("ignore", value);
+            public research bank_note(String value) {
+                return set("bank_note", value);
             }
 
             public research deduct_as_cash(String value) {
@@ -5346,8 +5362,8 @@ public class CM {
                 return set("decay", value);
             }
 
-            public unit ignore(String value) {
-                return set("ignore", value);
+            public unit bank_note(String value) {
+                return set("bank_note", value);
             }
 
             public unit deduct_as_cash(String value) {
@@ -5418,8 +5434,8 @@ public class CM {
                 return set("decay", value);
             }
 
-            public warchest ignore(String value) {
-                return set("ignore", value);
+            public warchest bank_note(String value) {
+                return set("bank_note", value);
             }
 
             public warchest deduct_as_cash(String value) {
@@ -9360,6 +9376,14 @@ public class CM {
                 public static final GRANT_REQUEST_EXPIRE cmd = new GRANT_REQUEST_EXPIRE();
             public GRANT_REQUEST_EXPIRE expire(String value) {
                 return set("expire", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="GRANT_REQUEST_NOTE", field="GRANT_REQUEST_NOTE")
+            public static class GRANT_REQUEST_NOTE extends CommandRef {
+                public static final GRANT_REQUEST_NOTE cmd = new GRANT_REQUEST_NOTE();
+            public GRANT_REQUEST_NOTE bank_note(String value) {
+                return set("bank_note", value);
             }
 
             }
@@ -16507,8 +16531,8 @@ public class CM {
                 return set("sheet", value);
             }
 
-            public bulk bank_note(String value) {
-                return set("bank_note", value);
+            public bulk depositType(String value) {
+                return set("depositType", value);
             }
 
             public bulk nation_account(String value) {
