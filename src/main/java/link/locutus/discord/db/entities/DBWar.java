@@ -76,6 +76,7 @@ public class DBWar {
         }
     }
 
+    @Command
     public int getResearchBits() {
         return costBits;
     }
@@ -97,6 +98,7 @@ public class DBWar {
         }
     }
 
+    @Command
     public int getTurnsLeft() {
         return (int) (TimeUtil.getTurn() - TimeUtil.getTurn(getDate()) + 60);
     }
@@ -113,10 +115,12 @@ public class DBWar {
         this.costBits = research;
     }
 
+    @Command
     public int getCostBits() {
         return costBits;
     }
 
+    @Command
     public int getAttResearch(Research research) {
         if (costBits <= 0) return 0;
         return switch (research) {
@@ -127,6 +131,7 @@ public class DBWar {
         };
     }
 
+    @Command
     public int getDefResearch(Research research) {
         if (costBits <= 0) return 0;
         return switch (research) {
@@ -137,18 +142,22 @@ public class DBWar {
         };
     }
 
+    @Command
     public int getAttResearchBits() {
         return costBits & 0b11111111111;
     }
 
+    @Command
     public int getDefResearchBits() {
         return costBits >> 15;
     }
 
+    @Command
     public int getAttCities() {
         return attDefCities & 0xFF;
     }
 
+    @Command
     public int getDefCities() {
         return attDefCities >> 8;
     }
@@ -169,26 +178,32 @@ public class DBWar {
         allianceIdPair = MathMan.pairChars((char) getAttacker_aa(), (char) allianceId);
     }
 
+    @Command
     public int getAttacker_id() {
         return MathMan.unpairIntX(nationIdPair);
     }
 
+    @Command
     public int getDefender_id() {
         return MathMan.unpairIntY(nationIdPair);
     }
 
+    @Command
     public int getAttacker_aa() {
         return MathMan.getXFromInt(allianceIdPair);
     }
 
+    @Command
     public int getDefender_aa() {
         return MathMan.getYFromInt(allianceIdPair);
     }
 
+    @Command
     public WarType getWarType() {
         return WarType.values[warStatusType & 0b11];
     }
 
+    @Command
     public WarStatus getStatus() {
         return WarStatus.values[warStatusType >> 2];
     }
@@ -213,6 +228,7 @@ public class DBWar {
         }
     }
 
+    @Command
     public boolean shouldBeExpired() {
         return TimeUtil.getTurn() - TimeUtil.getTurn(getDate()) >= 60;
     }
@@ -390,6 +406,7 @@ public class DBWar {
         return new KeyValue<>((int) attTurnMap[1], (int) defTurnMap[1]);
     }
 
+    @Command
     public boolean isActive() {
         switch (getStatus()) {
             case ACTIVE:
@@ -405,6 +422,7 @@ public class DBWar {
         }
     }
 
+    @Command
     public int getWarId() {
         return warId;
     }
@@ -414,6 +432,7 @@ public class DBWar {
         return date;
     }
 
+    @Command
     public String toUrl() {
         return Settings.PNW_URL() + "/nation/war/timeline/war=" + warId;
     }
@@ -456,6 +475,7 @@ public class DBWar {
         return null;
     }
 
+    @Command
     public DBNation getNation(Boolean attacker) {
         if (attacker == null) return null;
         return Locutus.imp().getNationDB().getNationById(attacker ? getAttacker_id() : getDefender_id());
@@ -516,6 +536,7 @@ public class DBWar {
         return attacker_nation_id == this.getAttacker_id() ? this.getAttacker_aa() : (attacker_nation_id == this.getDefender_id() ? this.getDefender_aa() : 0);
     }
 
+    @Command
     public long possibleEndDate() {
         return TimeUtil.getTimeFromTurn(TimeUtil.getTurn(getDate()) + 60);
     }
@@ -567,14 +588,17 @@ public class DBWar {
         return acNation[0];
     }
 
+    @Command
     public int getGroundControl() {
         return getControl(f -> f == AttackType.GROUND, MilitaryUnit.SOLDIER, MilitaryUnit.TANK);
     }
 
+    @Command
     public int getBlockader() {
         return getControl(f -> f == AttackType.NAVAL, MilitaryUnit.SHIP);
     }
 
+    @Command
     public int getAirControl() {
         return getControl(f -> switch (f) {
             case AIRSTRIKE_INFRA -> true;

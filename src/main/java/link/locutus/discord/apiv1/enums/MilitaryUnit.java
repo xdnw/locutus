@@ -113,7 +113,7 @@ public enum MilitaryUnit {
 
     public static MilitaryUnit[] values = values();
 
-    private Research costReducer;
+    public Research costReducer;
     private Research upkeepReducer;
 
     private double[] costReduction;
@@ -468,7 +468,7 @@ public enum MilitaryUnit {
             double baseCost = this.cost[type.ordinal()];
             double costPer = baseCost - (level == 0 ? 0 : costReduction[type.ordinal()] * level);
             if (type == ALUMINUM || type == STEEL) {
-                costPer -= baseCost * 0.05; // 5% salvage
+                costPer -= baseCost * 0.05;
             }
             buffer[type.ordinal()] += costPer * amt;
         }
@@ -477,8 +477,8 @@ public enum MilitaryUnit {
 
     public double[] subtractSalvageCost(double[] buffer, int amt) {
         for (ResourceType type : costRss) {
-            double baseCost = this.cost[type.ordinal()];
             if (type == ALUMINUM || type == STEEL) {
+                double baseCost = this.cost[type.ordinal()];
                 buffer[type.ordinal()] -= baseCost * 0.05 * amt;
             }
         }
