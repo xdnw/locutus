@@ -5044,6 +5044,14 @@ public class CM {
                 return set("mmr", value);
             }
 
+            public mmr multiplier(String value) {
+                return set("multiplier", value);
+            }
+
+            public mmr mode(String value) {
+                return set("mode", value);
+            }
+
             public mmr is_additional_units(String value) {
                 return set("is_additional_units", value);
             }
@@ -16531,8 +16539,8 @@ public class CM {
                 return set("sheet", value);
             }
 
-            public bulk depositType(String value) {
-                return set("depositType", value);
+            public bulk bank_note(String value) {
+                return set("bank_note", value);
             }
 
             public bulk nation_account(String value) {
