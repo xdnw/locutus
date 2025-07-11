@@ -30,7 +30,7 @@ public class AttackCursorFactory {
     private final NavalCursor navalCursor = new NavalCursor();
     private final NavalAirCursor navalAirCursor = new NavalAirCursor();
     private final NavalGroundCursor navalGroundCursor = new NavalGroundCursor();
-    private final NavalAirCursor navalInfraCursor = new NavalAirCursor();
+    private final NavalInfraCursor navalInfraCursor = new NavalInfraCursor();
     private final NukeCursor nukeCursor = new NukeCursor();
     private final PeaceCursor peaceCursor = new PeaceCursor();
     private final VictoryCursor victoryCursor = new VictoryCursor();
@@ -53,7 +53,7 @@ public class AttackCursorFactory {
                 return new NavalAirCursor();
             }
             case NAVAL_INFRA -> {
-                return new NavalAirCursor();
+                return new NavalInfraCursor();
             }
             case NAVAL_GROUND -> {
                 return new NavalGroundCursor();

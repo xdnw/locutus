@@ -200,7 +200,7 @@ public class ActiveWarHandler {
             removeBlockade(attack.getAttacker_id(), attack.getDefender_id(), attack.getDate(), eventConsumer);
             removeBlockade(attack.getDefender_id(), attack.getAttacker_id(), attack.getDate(), eventConsumer);
             // remove blockade
-        } else if (attack.getAttack_type() == AttackType.NAVAL) {
+        } else if (attack.getAttack_type().isNaval()) {
             if (attack.getSuccess() == SuccessType.IMMENSE_TRIUMPH) {
                 addBlockade(attack.getAttacker_id(), attack.getDefender_id(), attack.getDate(), eventConsumer);
             } else if (attack.getSuccess() != SuccessType.UTTER_FAILURE) {
