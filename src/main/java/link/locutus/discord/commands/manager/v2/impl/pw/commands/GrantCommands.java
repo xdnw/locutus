@@ -430,6 +430,9 @@ public class GrantCommands {
             Set<DBNation> receivers,
             MMRDouble mmr,
 
+            @Arg("Number of buys to multiply this grant by") @Default("1") @Range(min=1, max=100) int multiplier,
+            @Arg("If to grant as a daily buy, or full MMR") @Default("FULL") MMRBuyMode mode,
+
             @Arg(value = "If the mmr being granted is for new units, rather than only the difference from current units", group = 0) @Switch("u") boolean is_additional_units,
             @Arg(value = "Only send funds the receiver is lacking from the amount", group = 0) @Switch("m") boolean onlySendMissingFunds, 
 
@@ -463,6 +466,9 @@ public class GrantCommands {
                     double currPct = receiver.getUnits(unit) / (double) unitCap;
                     if (!is_additional_units) {
                         pctGrant -= currPct;
+                    }
+                    if (multiplier != 1) {
+                        pctGrant += (pctGrant + (!is_additional_units ? currPct : 0) * (multiplier - 1));
                     }
                     int numUnits = (int) Math.ceil(pctGrant * unitCap);
                     if (numUnits > 0) unitsToGrant.put(unit, numUnits);

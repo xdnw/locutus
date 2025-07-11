@@ -1,6 +1,7 @@
 package link.locutus.discord.db.entities;
 
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
@@ -109,5 +110,13 @@ public class GrantRequest {
         if (reqChannel != null) {
             RateLimitUtil.queue(reqChannel.deleteMessageById(getMessageId()));
         }
+    }
+
+    public String getCommandName() {
+        return command.optString("", null);
+    }
+
+    public String toLineString() {
+        return "#" + id + ": " + PW.getName(nationId, false) + getCommandName() + " | " + getReason();
     }
 }

@@ -62,6 +62,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
 
+import static net.dv8tion.jda.api.interactions.commands.Command.Choice.MAX_STRING_VALUE_LENGTH;
+
 public class SlashCommandManager extends ListenerAdapter {
     private static final Map<Type, Collection<ChannelType>> CHANNEL_TYPES = new ConcurrentHashMap<>();
     private static final Map<Type, OptionType> OPTION_TYPES = new ConcurrentHashMap<>();
@@ -851,6 +853,9 @@ public class SlashCommandManager extends ListenerAdapter {
                             } else {
                                 name = o.toString();
                                 value = o.toString();
+                            }
+                            if (name.length() > MAX_STRING_VALUE_LENGTH) {
+                                name = name.substring(0, MAX_STRING_VALUE_LENGTH);
                             }
                             choices.add(new Choice(name, value));
                         }

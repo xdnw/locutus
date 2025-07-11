@@ -1766,6 +1766,11 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding
+    public MMRBuyMode mmrBuyMode(String trigger) {
+        return emum(MMRBuyMode.class, trigger);
+    }
+
+    @Binding
     public AllianceMetricMode AllianceMetricMode(String mode) {
         return emum(AllianceMetricMode.class, mode);
     }

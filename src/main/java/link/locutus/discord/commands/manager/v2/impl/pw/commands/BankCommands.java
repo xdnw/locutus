@@ -3241,7 +3241,7 @@ public class BankCommands {
             and then there must be a column named for each resource type you wish to transfer
             OR use a column called `resources` which has a resource list (e.g. a json object of the resources)""")
     @RolePermission(value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON}, alliance = true, any = true)
-    public static String transferBulk(@Me IMessageIO io, @Me JSONObject command, @Me User user, @Me DBNation me, @Me GuildDB db, TransferSheet sheet, DepositType.DepositTypeInfo depositType,
+    public static String transferBulk(@Me IMessageIO io, @Me JSONObject command, @Me User user, @Me DBNation me, @Me GuildDB db, TransferSheet sheet, DepositType.DepositTypeInfo bank_note,
 
                                       @Arg("The nation account to deduct from") @Switch("n") DBNation nation_account,
                                       @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance ingame_bank,
@@ -3255,7 +3255,7 @@ public class BankCommands {
                                       @Switch("b") boolean bypass_checks,
                                       @Switch("f") boolean force,
                                       @Switch("k") UUID key) throws IOException {
-        return transferBulkWithErrors(io, command, user, me, db, sheet, depositType, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, expire, decay, deduct_as_cash, escrow_mode, bypass_checks, force, key, new HashMap<>());
+        return transferBulkWithErrors(io, command, user, me, db, sheet, bank_note, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, expire, decay, deduct_as_cash, escrow_mode, bypass_checks, force, key, new HashMap<>());
     }
 
 

@@ -1180,6 +1180,21 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return request[0];
     }
 
+    public List<GrantRequest> getGrantRequestsByIdPrefix(String prefix) {
+        String pattern = prefix + "%";
+        List<GrantRequest> list = new ArrayList<>();
+        query(
+            "SELECT * FROM GRANT_REQUESTS WHERE id LIKE ?",
+            (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setString(1, pattern),
+            (ThrowingConsumer<ResultSet>) rs -> {
+                while (rs.next()) {
+                    list.add(new GrantRequest(rs));
+                }
+            }
+        );
+        return list;
+    }
+
     public void deleteGrantRequest(int id) {
         GuildDB delegate = getDelegateServer();
         if (delegate != null) {

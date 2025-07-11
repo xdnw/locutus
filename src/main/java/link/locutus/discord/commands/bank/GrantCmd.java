@@ -238,7 +238,7 @@ public class GrantCmd extends Command {
             return null;
         }
 
-        runGrant(channel, guildDb, me, typeArg, num, flags, true, ignore,
+        runGrant(channel, guildDb, author, me, typeArg, num, flags, true, ignore,
                 nationAccount,
                 ingameBank,
                 offshoreAccount,
@@ -303,7 +303,7 @@ public class GrantCmd extends Command {
     }
 
     // typeArg, guildDb, me, num, flags, true, ignore
-    public void runGrant(IMessageIO io, GuildDB guildDb, DBNation me,
+    public void runGrant(IMessageIO io, GuildDB guildDb, User author, DBNation me,
                          String arg,
                          double amt,
                          Set<Character> flags,
@@ -325,66 +325,205 @@ public class GrantCmd extends Command {
         boolean existingTaxAccount = flags.contains('t');
         boolean multiplyPerCity = flags.contains('m'); // TODO ensure this gets used for city grants
 
-        switch (arg.toLowerCase(Locale.ROOT)) {
-            case "city" -> {
-                /*
-                ("receivers", value);
-                ("amount", value);
-                ("upTo", value);
-                ("onlySendMissingFunds", value);
-                ("nation_account", value);
-                ("ingame_bank", value);
-                ("offshore_account", value);
-                ("tax_account", value);
-                ("use_receiver_tax_account", value);
-                ("expire", value);
-                ("decay", value);
-                ("ignore", value);
-                ("deduct_as_cash", value);
-                ("escrow_mode", value);
-                ("manifest_destiny", value);
-                ("gov_support_agency", value);
-                ("domestic_affairs", value);
-                ("exclude_city_refund", value);
-                ("ping_role", value);
-                ("ping_when_sent", value);
-                ("bypass_checks", value);
-                ("force", value);
-                 */
-                /*
-                ResourceType.toString(resources)).bank_note(
-                grant.getType().toString()).nation_account(
-                (nationAccount == null ? me : nationAccount).getUrl()).ingame_bank(
-                ingameBank != null ? ingameBank.getUrl() : null).offshore_account(
-                offshoreAccount != null ? offshoreAccount.getUrl() : null).tax_account(
-                tax_account != null ? tax_account.getQualifiedId() : null).use_receiver_tax_account(
-                flags.contains('t') ? "true" : null).onlyMissingFunds(
-                String.valueOf(flags.contains('o'))).expire(
-                expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null).decay(
-                decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null).deduct_as_cash(
-                String.valueOf(flags.contains('c'))).escrow_mode(
-                escrowMode == null ? null : escrowMode.name()).bypass_checks(
-                String.valueOf(flags.contains('f'))).force(
-                "false").toJson();
-                 */
-//                CM.grant.city.cmd
-//                        .receivers(me.getUrl())
-//                        .amount(amt + "")
-//                        .onlySendMissingFunds(existing ? "true" : null)
-//                        .nation_account((nationAccount == null ? me : nationAccount).getUrl())
-//                        .ingame_bank(ingameBank != null ? ingameBank.getUrl() : null)
-//                        .offshore_account(offshoreAccount != null ? offshoreAccount.getUrl() : null)
-//                        .tax_account(tax_account != null ? tax_account.getQualifiedId() : null)
-//                        .use_receiver_tax_account(existingTaxAccount ? "true" : null)
-//                        .expire(expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null)
-//                        .decay(decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null)
-//                        .ignore(ignore ? "true" : null)
-//                        .deduct_as_cash(deductAsCash ? "true" : null)
-//                        .escrow_mode(escrowMode == null ? null : escrowMode.name())
+        CommandRef ref = null;
 
+        String argLower = arg.toLowerCase(Locale.ROOT);
+        if (arg.equalsIgnoreCase("city")) {
+            ref = CM.grant.city.cmd
+                    .receivers(me.getUrl())
+                    .amount(amt + "")
+                    .upTo(amt > me.getCities() && amt > 1 ? "true" : null)
+                    .onlySendMissingFunds(existing ? "true" : null)
+                    .nation_account((nationAccount == null ? me : nationAccount).getUrl())
+                    .ingame_bank(ingameBank != null ? ingameBank.getUrl() : null)
+                    .offshore_account(offshoreAccount != null ? offshoreAccount.getUrl() : null)
+                    .tax_account(tax_account != null ? tax_account.getQualifiedId() : null)
+                    .use_receiver_tax_account(existingTaxAccount ? "true" : null)
+                    .expire(expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null)
+                    .decay(decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null)
+                    .bank_note(ignore ? "#ignore" : null)
+                    .deduct_as_cash(deductAsCash ? "true" : null)
+                    .escrow_mode(escrowMode == null ? null : escrowMode.name())
+                    .bypass_checks(flags.contains('f') ? "true" : null);
+        } else if (arg.equalsIgnoreCase("infra")) {
+            ref = CM.grant.infra.cmd
+                    .receivers(me.getUrl())
+                    .infra_level((int) amt + "")
+                    .single_new_city(null)
+                    .onlySendMissingFunds(existing ? "true" : null)
+                    .nation_account((nationAccount == null ? me : nationAccount).getUrl())
+                    .ingame_bank(ingameBank != null ? ingameBank.getUrl() : null)
+                    .offshore_account(offshoreAccount != null ? offshoreAccount.getUrl() : null)
+                    .tax_account(tax_account != null ? tax_account.getQualifiedId() : null)
+                    .use_receiver_tax_account(existingTaxAccount ? "true" : null)
+                    .expire(expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null)
+                    .decay(decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null)
+                    .bank_note(ignore ? "#ignore" : null)
+                    .deduct_as_cash(deductAsCash ? "true" : null)
+                    .escrow_mode(escrowMode == null ? null : escrowMode.name())
+                    .bypass_checks(flags.contains('f') ? "true" : null);
+        } else if (arg.equalsIgnoreCase("land")) {
+            ref = CM.grant.land.cmd
+                    .receivers(me.getUrl())
+                    .to_land((int) amt + "")
+                    .single_new_city(null)
+                    .onlySendMissingFunds(existing ? "true" : null)
+                    .nation_account((nationAccount == null ? me : nationAccount).getUrl())
+                    .ingame_bank(ingameBank != null ? ingameBank.getUrl() : null)
+                    .offshore_account(offshoreAccount != null ? offshoreAccount.getUrl() : null)
+                    .tax_account(tax_account != null ? tax_account.getQualifiedId() : null)
+                    .use_receiver_tax_account(existingTaxAccount ? "true" : null)
+                    .expire(expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null)
+                    .decay(decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null)
+                    .bank_note(ignore ? "#ignore" : null)
+                    .deduct_as_cash(deductAsCash ? "true" : null)
+                    .escrow_mode(escrowMode == null ? null : escrowMode.name())
+                    .bypass_checks(flags.contains('f') ? "true" : null);
+        } else if (arg.contains("mmrbuy=")) {
+            ref = CM.grant.mmr.cmd
+                    .receivers(me.getUrl())
+                    .mmr(arg.split("=", 2)[1])
+                    .mode(MMRBuyMode.DAILY_BUY.name())
+                    .multiplier(amt != Double.MAX_VALUE && amt > 1 ? String.valueOf((int) amt) : null)
+                    .is_additional_units("true")
+                    .onlySendMissingFunds(existing ? "true" : null)
+                    .nation_account((nationAccount == null ? me : nationAccount).getUrl())
+                    .ingame_bank(ingameBank != null ? ingameBank.getUrl() : null)
+                    .offshore_account(offshoreAccount != null ? offshoreAccount.getUrl() : null)
+                    .tax_account(tax_account != null ? tax_account.getQualifiedId() : null)
+                    .use_receiver_tax_account(existingTaxAccount ? "true" : null)
+                    .expire(expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null)
+                    .decay(decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null)
+                    .bank_note(ignore ? "#ignore" : null)
+                    .deduct_as_cash(deductAsCash ? "true" : null)
+                    .escrow_mode(escrowMode == null ? null : escrowMode.name())
+                    .bypass_checks(flags.contains('f') ? "true" : null);
+        } else if (arg.contains("mmr=")) {
+            ref = CM.grant.mmr.cmd
+                    .receivers(me.getUrl())
+                    .mmr(arg.split("=", 2)[1])
+                    .mode(MMRBuyMode.FULL.name())
+                    .multiplier(amt != Double.MAX_VALUE && amt > 1 ? String.valueOf((int) amt) : null)
+                    .is_additional_units("true")
+                    .onlySendMissingFunds(existing ? "true" : null)
+                    .nation_account((nationAccount == null ? me : nationAccount).getUrl())
+                    .ingame_bank(ingameBank != null ? ingameBank.getUrl() : null)
+                    .offshore_account(offshoreAccount != null ? offshoreAccount.getUrl() : null)
+                    .tax_account(tax_account != null ? tax_account.getQualifiedId() : null)
+                    .use_receiver_tax_account(existingTaxAccount ? "true" : null)
+                    .expire(expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null)
+                    .decay(decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null)
+                    .bank_note(ignore ? "#ignore" : null)
+                    .deduct_as_cash(deductAsCash ? "true" : null)
+                    .escrow_mode(escrowMode == null ? null : escrowMode.name())
+                    .bypass_checks(flags.contains('f') ? "true" : null);
+        } else if (arg.startsWith("{")) {
+            if (arg.contains("infra_needed")) {
+                ref = CM.grant.build.cmd
+                        .receivers(me.getUrl())
+                        .build(arg)
+                        .is_new_city(amt == 1 ? "true" : null)
+                        .city_ids(amt == Double.MAX_VALUE || amt <= 1 ? null : String.valueOf((int) amt))
+                        .grant_infra(noInfra ? "false" : "true")
+                        .grant_land(noLand ? "false" : "true")
+                        .bonus_percent(null)
+                        .onlySendMissingFunds(existing ? "true" : null)
+                        .nation_account((nationAccount == null ? me : nationAccount).getUrl())
+                        .ingame_bank(ingameBank != null ? ingameBank.getUrl() : null)
+                        .offshore_account(offshoreAccount != null ? offshoreAccount.getUrl() : null)
+                        .tax_account(tax_account != null ? tax_account.getQualifiedId() : null)
+                        .use_receiver_tax_account(existingTaxAccount ? "true" : null)
+                        .expire(expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null)
+                        .decay(decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null)
+                        .bank_note(ignore ? "#ignore" : null)
+                        .deduct_as_cash(deductAsCash ? "true" : null)
+                        .escrow_mode(escrowMode == null ? null : escrowMode.name())
+                        .bypass_checks(flags.contains('f') ? "true" : null);
+            } else {
+                Map<ResourceType,Double> resources = ResourceType.parseResources(arg);
+                ref = CM.transfer.resources.cmd
+                        .receiver(me.getUrl())
+                        .transfer(ResourceType.toString(resources))
+                        .bank_note(ignore ? "#ignore" : null)
+                        .nation_account((nationAccount == null ? me : nationAccount).getUrl())
+                        .ingame_bank(ingameBank != null ? ingameBank.getUrl() : null)
+                        .offshore_account(offshoreAccount != null ? offshoreAccount.getUrl() : null)
+                        .tax_account(tax_account != null ? tax_account.getQualifiedId() : null)
+                        .use_receiver_tax_account(existingTaxAccount ? "true" : null)
+                        .onlyMissingFunds(existing ? "true" : null)
+                        .expire(expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null)
+                        .decay(decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null)
+                        .deduct_as_cash(deductAsCash ? "true" : null)
+                        .escrow_mode(escrowMode == null ? null : escrowMode.name())
+                        .bypass_checks(flags.contains('f') ? "true" : null);
             }
-            // todo add  others
+        } else if (arg.equalsIgnoreCase("warchest")) {
+            ref = CM.grant.warchest.cmd
+                    .receivers(me.getUrl())
+                    .ratio(MathMan.format(amt))
+                    .onlySendMissingFunds(existing ? "true" : null)
+                    .nation_account((nationAccount == null ? me : nationAccount).getUrl())
+                    .ingame_bank(ingameBank != null ? ingameBank.getUrl() : null)
+                    .offshore_account(offshoreAccount != null ? offshoreAccount.getUrl() : null)
+                    .tax_account(tax_account != null ? tax_account.getQualifiedId() : null)
+                    .use_receiver_tax_account(existingTaxAccount ? "true" : null)
+                    .expire(expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null)
+                    .decay(decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null)
+                    .bank_note(ignore ? "#ignore" : null)
+                    .deduct_as_cash(deductAsCash ? "true" : null)
+                    .escrow_mode(escrowMode == null ? null : escrowMode.name())
+                    .bypass_checks(flags.contains('f') ? "true" : null);
+        } else if (arg.equalsIgnoreCase("build")) {
+            throw new IllegalArgumentException("Usage: " + Settings.commandPrefix(true) + "grant <nation> <json> 1");
+        } else {
+            Project project = Projects.get(arg);
+            if (project == null) {
+                if (arg.equalsIgnoreCase("project")) {
+                    if (me.getProjectTurns() > 0 && me.getCities() >= 10 && !force) throw new IllegalArgumentException("You still have a project timer");
+                    throw new IllegalArgumentException("Usage: " + Settings.commandPrefix(true) + "grant <nation> <" + StringMan.join(Projects.PROJECTS_MAP.keySet(), "|") + "> 1");
+                }
+                if (arg.equalsIgnoreCase("unit")) {
+                    throw new IllegalArgumentException("Usage: " + Settings.commandPrefix(true) + "grant <nation> <" + StringMan.join(MilitaryUnit.values(), "|") + "> <amount>");
+                }
+                MilitaryUnit unit = MilitaryUnit.get(arg);
+                if (unit == null) usage();
+                CM.grant.unit.cmd
+                        .receivers(me.getUrl())
+                        .units(unit.name() + "=" + ((int) amt))
+                        .scale_per_city(multiplyPerCity ? "true" : null)
+                        .only_missing_units("true")
+                        .onlySendMissingFunds(existing ? "true" : null)
+                        .no_cash(deductAsCash ? "true" : null)
+                        .nation_account((nationAccount == null ? me : nationAccount).getUrl())
+                        .ingame_bank(ingameBank != null ? ingameBank.getUrl() : null)
+                        .offshore_account(offshoreAccount != null ? offshoreAccount.getUrl() : null)
+                        .tax_account(tax_account != null ? tax_account.getQualifiedId() : null)
+                        .use_receiver_tax_account(existingTaxAccount ? "true" : null)
+                        .expire(expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null)
+                        .decay(decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null)
+                        .bank_note(ignore ? "#ignore" : null)
+                        .deduct_as_cash(deductAsCash ? "true" : null)
+                        .escrow_mode(escrowMode == null ? null : escrowMode.name())
+                        .bypass_checks(flags.contains('f') ? "true" : null);
+            } else {
+                ref = CM.grant.project.cmd
+                        .receivers(me.getUrl())
+                        .project(project.name())
+                        .onlySendMissingFunds(existing ? "true" : null)
+                        .nation_account((nationAccount == null ? me : nationAccount).getUrl())
+                        .ingame_bank(ingameBank != null ? ingameBank.getUrl() : null)
+                        .offshore_account(offshoreAccount != null ? offshoreAccount.getUrl() : null)
+                        .tax_account(tax_account != null ? tax_account.getQualifiedId() : null)
+                        .use_receiver_tax_account(existingTaxAccount ? "true" : null)
+                        .expire(expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null)
+                        .decay(decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null)
+                        .bank_note(ignore ? "#ignore" : null)
+                        .deduct_as_cash(deductAsCash ? "true" : null)
+                        .escrow_mode(escrowMode == null ? null : escrowMode.name())
+                        .bypass_checks(flags.contains('f') ? "true" : null);
+            }
         }
+        Locutus.cmd().getV2().run(guildDb.getGuild(), io, author, ref.toJson().toString(), false, true);
     }
 
     public Grant generateGrant(String arg, GuildDB guildDb, DBNation me, double amt, Set<Character> flags, boolean single, boolean ignore) throws IOException, ExecutionException, InterruptedException {
