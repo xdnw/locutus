@@ -97,6 +97,9 @@ public class NationHeader extends DataHeader<DBNation> {
             nation.setLeaving_vm(turn + turns);
         }
     });
+
+    public final IntColumn<DBNation> spies = new IntColumn<>(this, (nation, amt) -> nation.setSpies(amt, null));
+
     public final ProjectColumn ironworks_np = new ProjectColumn(this, Projects.IRON_WORKS);
     public final ProjectColumn bauxiteworks_np = new ProjectColumn(this, Projects.BAUXITEWORKS);
     public final ProjectColumn arms_stockpile_np = new ProjectColumn(this, Projects.ARMS_STOCKPILE);
