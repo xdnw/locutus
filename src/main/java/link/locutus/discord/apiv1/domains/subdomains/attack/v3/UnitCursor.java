@@ -74,7 +74,7 @@ public abstract class UnitCursor extends DamageCursor {
     public double[] addAttUnitCosts(double[] buffer, DBWar war) {
         if (has_salvage) {
             MilitaryUnit[] units = getUnits();
-            int research = war == null ? 0 : war.getAttResearchBits();
+            int research = war == null ? 0 : getAttResearchBits(war);
             for (MilitaryUnit unit : units) {
                 int amt = getAttUnitLosses(unit);
                 if (amt > 0) unit.addCostSalvage(buffer, amt, research);
@@ -116,7 +116,7 @@ public abstract class UnitCursor extends DamageCursor {
         if (has_salvage) {
             double value = 0;
             MilitaryUnit[] units = getUnits();
-            int research = war == null ? 0 : war.getAttResearchBits();
+            int research = war == null ? 0 : getAttResearchBits(war);
             for (MilitaryUnit unit : units) {
                 int amt = getAttUnitLosses(unit);
                 if (amt > 0) {
@@ -139,7 +139,7 @@ public abstract class UnitCursor extends DamageCursor {
     public double[] addAttUnitLossValueByUnit(double[] valueByUnit, DBWar war) {
         if (has_salvage) {
             MilitaryUnit[] units = getUnits();
-            int research = war == null ? 0 : war.getAttResearchBits();
+            int research = war == null ? 0 : getAttResearchBits(war);
             for (MilitaryUnit unit : units) {
                 int amt = getAttUnitLosses(unit);
                 if (amt > 0) {

@@ -154,7 +154,7 @@ public abstract class DamageCursor extends AbstractCursor {
     @Override
     public double[] addDefUnitCosts(double[] buffer, DBWar war) {
         MilitaryUnit[] units = getUnits();
-        int research = war.getDefResearchBits();
+        int research = getDefResearchBits(war);
         for (MilitaryUnit unit : units) {
             int amt = getDefUnitLosses(unit);
             if (amt > 0) unit.addCost(buffer, amt, research);
@@ -166,7 +166,7 @@ public abstract class DamageCursor extends AbstractCursor {
     public double getDefUnitLossValue(DBWar war) {
         double value = 0;
         MilitaryUnit[] units = getUnits();
-        int research = war.getDefResearchBits();
+        int research = getDefResearchBits(war);
         for (MilitaryUnit unit : units) {
             int amt = getDefUnitLosses(unit);
             if (amt > 0) {
@@ -180,7 +180,7 @@ public abstract class DamageCursor extends AbstractCursor {
     public double getAttUnitLossValue(DBWar war) {
         double value = 0;
         MilitaryUnit[] units = getUnits();
-        int research = war == null ? 0 : war.getAttResearchBits();
+        int research = war == null ? 0 : getAttResearchBits(war);
         for (MilitaryUnit unit : units) {
             int amt = getAttUnitLosses(unit);
             if (amt > 0) {
@@ -193,7 +193,7 @@ public abstract class DamageCursor extends AbstractCursor {
     @Override
     public double[] addAttUnitCosts(double[] buffer, DBWar war) {
         MilitaryUnit[] units = getUnits();
-        int research = war == null ? 0 : war.getAttResearchBits();
+        int research = war == null ? 0 : getAttResearchBits(war);
         for (MilitaryUnit unit : units) {
             int amt = getAttUnitLosses(unit);
             if (amt > 0) unit.addCost(buffer, amt, research);
@@ -204,7 +204,7 @@ public abstract class DamageCursor extends AbstractCursor {
     @Override
     public double[] addAttUnitLossValueByUnit(double[] valueByUnit, DBWar war) {
         MilitaryUnit[] units = getUnits();
-        int research = war == null ? 0 : war.getAttResearchBits();
+        int research = war == null ? 0 : getAttResearchBits(war);
         for (MilitaryUnit unit : units) {
             int amt = getAttUnitLosses(unit);
             if (amt > 0) {
@@ -217,7 +217,7 @@ public abstract class DamageCursor extends AbstractCursor {
     @Override
     public double[] addDefUnitLossValueByUnit(double[] valueByUnit, DBWar war) {
         MilitaryUnit[] units = getUnits();
-        int research = war.getDefResearchBits();
+        int research = getDefResearchBits(war);
         for (MilitaryUnit unit : units) {
             int amt = getDefUnitLosses(unit);
             if (amt > 0) {

@@ -113,7 +113,7 @@ public enum MilitaryUnit {
 
     public static MilitaryUnit[] values = values();
 
-    public Research costReducer;
+    private Research costReducer;
     private Research upkeepReducer;
 
     private double[] costReduction;
