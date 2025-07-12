@@ -3535,12 +3535,38 @@ public class GrantCommands {
         }
 
         db.deleteGrantRequest(request.getId());
+
+        DBNation requester = DBNation.getById(request.getNationId());
+        User reqUser = requester.getUser();
+
+        StringBuilder response = new StringBuilder();
+        String msgStart = "Your grant request of: `" + request.getCommand() + "` has been approved by ";
+        boolean sendMail = true;
+        if (reqUser != null) {
+            // DM them
+            try {
+                PrivateChannel channel = RateLimitUtil.complete(reqUser.openPrivateChannel());
+                RateLimitUtil.queue(channel.sendMessage(msgStart + user.getAsMention()));
+                sendMail = false;
+                response.append("Approval notification sent to " + reqUser.getAsMention() + " via DM\n");
+            } catch (Throwable e) {}
+        }
+        if (sendMail) {
+            ApiKeyPool mailKey = db.getMailKey();
+            if (mailKey == null) {
+                response.append("Could not send approval notification to " + requester.getNationUrlMarkup() + " because they are not registered to the bot and no API key is set in this server.");
+            } else {
+                MailApiResponse result = requester.sendMail(mailKey, "Grant Request Rejected", msgStart + DiscordUtil.getFullUsername(user), true);
+                response.append("Approval notification sent to " + requester.getNationUrlMarkup() + ": " + result);
+            }
+        }
+
+        if (response.length() > 0) return response.toString();
         return null;
     }
 
     @Command(desc = "Request a grant from the grant request channel")
     @RolePermission(value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON, Roles.ECON_STAFF, Roles.MEMBER}, any=true)
-    @Ephemeral
     public String grantRequest(@Me IMessageIO io, @Me @Default User user, @Me GuildDB db, @Me DBNation nation,
                                String reason,
                                NationOrAlliance receiver,
