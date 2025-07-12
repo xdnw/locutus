@@ -59,21 +59,25 @@ public class Projects {
                 return PW.City.profitConverted(continent, nation.getRads(), hasProject, nation.getCities(), nation.getGrossModifier(), city);
             };
             // optimalbuild
-            JavaCity optimal = new JavaCity(first).optimalBuild(nation.getContinent(),
+            JavaCity optimal = new JavaCity(first).zeroNonMilitary().optimalBuild(nation.getContinent(),
                     nation.getCities(),
                     INationCity::getRevenueConverted,
                     null,
                     hasProject,
                     1000,
-                    nation.getRads(), false, true, nation.getGrossModifier(), null);
+                    nation.getRads(),
+                    false,
+                    true,
+                    nation.getGrossModifier(),
+                    null);
 
             double optimalProfit = profit.apply(optimal);
-            double revenuePerDay = (optimalProfit - originRevenue) * days * nation.getCities();
+            double revenuePerDay = Math.max(0, optimalProfit - originRevenue) * days * nation.getCities();
 
             // return revenue increase over now
             return new RoiResult(
                     "Additional city revenue over the timeframe",
-                    revenuePerDay - originRevenue,
+                    revenuePerDay,
                     project.getMarketValue()
             );
         };
