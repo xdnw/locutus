@@ -1090,29 +1090,8 @@ public enum AllianceMetric implements IAllianceMetric {
         }
     },
 
-    SPIES(true, SI_UNIT) {
-        @Override
-        public Double apply(DBAlliance alliance) {
-            double total = 0;
-            Set<DBNation> nations = alliance.getMemberDBNations();
-            for (DBNation nation : nations) {
-                total += nation.getSpies();
-            }
-            return total;
-        }
-    },
-
-    SPIES_AVG(true, SI_UNIT) {
-        @Override
-        public Double apply(DBAlliance alliance) {
-            double total = 0;
-            Set<DBNation> nations = alliance.getMemberDBNations();
-            for (DBNation nation : nations) {
-                total += nation.getSpies();
-            }
-            return total / nations.size();
-        }
-    },
+    SPIES(false, SI_UNIT, new UnitMetric(MilitaryUnit.SPIES, f -> f.spies)),
+    SPIES_AVG(true, DECIMAL_ROUNDED, new UnitAvgMetric(MilitaryUnit.SPIES, f -> f.spies)),
     TREASURE(true, SI_UNIT) {
         @Override
         public Double apply(DBAlliance alliance) {

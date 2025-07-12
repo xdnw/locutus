@@ -140,6 +140,14 @@ public interface IAttack {
         return getWarAttacks(load).stream().filter(f -> f.war_attack_id < getWar_attack_id()).toList();
     }
 
+    default int getAttResearchBits(DBWar war) {
+        return this.getAttacker_id() == war.getAttacker_id() ? war.getAttResearchBits() : war.getDefResearchBits();
+    }
+
+    default int getDefResearchBits(DBWar war) {
+        return this.getDefender_id() == war.getDefender_id() ? war.getDefResearchBits() : war.getAttResearchBits();
+    }
+
     default AbstractCursor getPriorAttack(boolean onlySameAttacker, boolean load) {
         List<AbstractCursor> attacks = getWarAttacks(load);
         if (attacks.isEmpty()) return null;

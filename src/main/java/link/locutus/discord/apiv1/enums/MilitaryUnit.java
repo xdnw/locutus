@@ -398,20 +398,26 @@ public enum MilitaryUnit {
 
     public double getConvertedCost(int researchBits) {
         double value = costConverted.get();
-        if (costReducer == null) return value;
-        int level = costReducer.getLevel(researchBits);
-        value -= costReductionConverted.get() * level;
+        if (researchBits != 0 && costReducer != null) {
+            int level = costReducer.getLevel(researchBits);
+            value -= costReductionConverted.get() * level;
+        }
         return value;
     }
 
     public double getConvertedCostPlusSalvage(int researchBits) {
         double value = costConverted.get();
-        if (costReducer == null) return value;
-//        int level = costReducer.getLevel(researchBits);  TODO FIXME SALVAGE
-//        value -= costReductionConverted.get() * level;  TODO FIXME SALVAGE
+        if (researchBits != 0 && costReducer != null) {
+            int level = costReducer.getLevel(researchBits);
+            value -= costReductionConverted.get() * level;
+        }
 //        value += costReductionSalvageConverted.get() * level;  TODO FIXME SALVAGE
         value -= costSalvageConverted.get();
         return value;
+    }
+
+    public double getSalvageCostPerUnit() {
+        return costSalvageConverted.get();
     }
 
     @Command(desc = "Base resource cost of this unit")
@@ -457,13 +463,24 @@ public enum MilitaryUnit {
     }
 
     public double[] addCostSalvage(double[] buffer, int amt, int researchBits) {
-//        int level = costReducer == null ? 0 : costReducer.getLevel(researchBits);  TODO FIXME SALVAGE
+        int level = costReducer == null ? 0 : costReducer.getLevel(researchBits);
         for (ResourceType type : costRss) {
-            double costPer = this.cost[type.ordinal()];// - (level == 0 ? 0 : costReduction[type.ordinal()] * level); TODO FIXME SALVAGE
+            double baseCost = this.cost[type.ordinal()];
+            double costPer = baseCost - (level == 0 ? 0 : costReduction[type.ordinal()] * level);
             if (type == ALUMINUM || type == STEEL) {
-                costPer *= 0.95;
+                costPer -= baseCost * 0.05;
             }
             buffer[type.ordinal()] += costPer * amt;
+        }
+        return buffer;
+    }
+
+    public double[] subtractSalvageCost(double[] buffer, int amt) {
+        for (ResourceType type : costRss) {
+            if (type == ALUMINUM || type == STEEL) {
+                double baseCost = this.cost[type.ordinal()];
+                buffer[type.ordinal()] -= baseCost * 0.05 * amt;
+            }
         }
         return buffer;
     }

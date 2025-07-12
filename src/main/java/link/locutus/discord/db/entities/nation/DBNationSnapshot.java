@@ -335,7 +335,7 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
 
     @Override
     public int _spies() {
-        return 0;
+        return wrapper.get(wrapper.header.spies, offset);
     }
 
     @Override
