@@ -351,7 +351,7 @@ public class DiscordBindings extends BindingHelper {
             if (cmdName == null || cmdName.isEmpty()) {
                 throw new IllegalArgumentException("No command name found in JSON: `" + input + "`");
             }
-            CommandCallable callable = v2.getCommands().get(cmdName);
+            CommandCallable callable = v2.getCallable(Arrays.asList(cmdName.split(" ")));
             if (callable == null) {
                 throw new IllegalArgumentException("No command found for " + cmdName);
             }

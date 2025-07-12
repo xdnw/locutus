@@ -15,6 +15,7 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -3480,12 +3481,8 @@ public class GrantCommands {
 
     @Command
     @RolePermission(value = {Roles.ECON, Roles.ECON_STAFF}, any=true)
-    @Ephemeral
     public String grantRequestCancel(@Me IMessageIO io, @Me User user, @Me GuildDB db, GrantRequest request) {
-        // delete the message
-        if (request.getMessageId() != 0) {
-            request.deleteMessage(db);
-        } else {
+        if (!request.updateMessage(io, "Rejected by " + user.getAsMention())) {
             io.setMessageDeleted();
         }
         db.deleteGrantRequest(request.getId());
@@ -3522,8 +3519,7 @@ public class GrantCommands {
 
     @Command(desc = "Confirm a grant request")
     @RolePermission(value = {Roles.ECON}, any=true)
-    @Ephemeral
-    public String grantRequestApprove(ValueStore locals, @Me GuildDB db, @Me IMessageIO io, GrantRequest request) {
+    public String grantRequestApprove(ValueStore locals, @Me GuildDB db, @Me User user, @Me IMessageIO io, GrantRequest request) {
         JSONObject command = request.getCommand();
         String cmd = command.optString("", null);
         Map<String, Object> arguments = command.toMap();
@@ -3534,9 +3530,7 @@ public class GrantCommands {
         arguments.remove("");
         Locutus.cmd().getV2().run((LocalValueStore) locals, io, cmd, stringArguments, false);
 
-        if (request.getMessageId() != 0) {
-            request.deleteMessage(db);
-        } else {
+        if (!request.updateMessage(io, "Approved by " + user.getAsMention())) {
             io.setMessageDeleted();
         }
 
@@ -3601,7 +3595,7 @@ public class GrantCommands {
         if (expire != null && expire > 0) {
             command.put("expire", TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire));
         }
-        command.put("nation_account", nation.getQualifiedId());
+        command.put("nation_account", nation.getId());
         command.put("ping_when_sent", "true");
 
         String title = "Grant Request from " + nation.getNation();
@@ -3622,7 +3616,7 @@ public class GrantCommands {
         sb.append("**Reason:** `").append(reason).append("`\n");
         sb.append("**Date Requested:** ").append(DiscordUtil.timestamp(now, null)).append("\n");
         double[] deposits = nation.getNetDeposits(db, -1, false);
-        sb.append("**Nation Balance:** worth ~$").append(MathMan.format(ResourceType.convertedTotal(deposits))).append("`\n");
+        sb.append("**Nation Balance:** worth `~$").append(MathMan.format(ResourceType.convertedTotal(deposits))).append("`\n");
         sb.append("- `").append(ResourceType.toString(deposits)).append("`\n");
         sb.append("**Command:**\n```json\n").append(command.toString(2)).append("```\n");
 
@@ -3645,11 +3639,12 @@ public class GrantCommands {
         requestTitle += "(ID: #" + request.getId() + ")";
 
         CommandRef confirmCmd = CM.grant.request.approve.cmd.request(request.getId() + "");
+        CommandRef cancelCmd = CM.grant.request.cancel.cmd.request(request.getId() + "");
 
         IMessageBuilder requestMsg = grantIo.create().embed(title, sb.toString())
                 .append(roleMention)
-                .confirmation(confirmCmd)
-                .cancelButton()
+                .commandButton(CommandBehavior.DELETE_BUTTONS, confirmCmd, "confirm")
+                .commandButton(CommandBehavior.DELETE_BUTTONS, cancelCmd, "cancel")
                 .send().get();
         if (requestMsg.getId() != 0) {
             request.setMessageId(requestMsg.getId());
@@ -3659,6 +3654,8 @@ public class GrantCommands {
         IMessageBuilder response = io.create().embed(requestTitle, "**Please be patient while it is processed**\n\n" + sb.toString());
         if (user != null) response.append(user.getAsMention());
         response.send();
+
+        io.appendToEmbed("**Submitted grant request, ID: #" + request.getId() + "**");
 
         return null;
     }

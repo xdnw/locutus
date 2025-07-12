@@ -1256,7 +1256,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             delegate.addGrantRequest(request);
             return;
         }
-        String query = "INSERT INTO GRANT_REQUESTS(`user`, `nation`, `receiver`, `receiver_type`, `reason`, `command`, `channel`, `message_id`, `estimate_amount`, `date_created`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String query = "INSERT INTO GRANT_REQUESTS(`user`, `nation`, `receiver`, `receiver_type`, `reason`, `command`, `channel`, `message_id`, `estimate_amount`, `date_created`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = getConnection().prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
             stmt.setLong(1, request.getUserId());
             stmt.setInt(2, request.getNationId());
@@ -1264,9 +1264,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             stmt.setInt(4, request.getReceiverType());
             stmt.setString(5, request.getReason());
             stmt.setString(6, request.getCommand().toString());
-            stmt.setLong(7, request.getMessageId());
-            stmt.setBytes(8, ArrayUtil.toByteArray(request.getEstimatedAmount()));
-            stmt.setLong(9, request.getDateCreated());
+            stmt.setLong(7, request.getChannel());
+            stmt.setLong(8, request.getMessageId());
+            stmt.setBytes(9, ArrayUtil.toByteArray(request.getEstimatedAmount()));
+            stmt.setLong(10, request.getDateCreated());
 
             int affectedRows = stmt.executeUpdate();
             if (affectedRows > 0) {

@@ -1,8 +1,10 @@
 package link.locutus.discord.db.entities;
 
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.math.ArrayUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import org.json.JSONObject;
@@ -33,11 +35,12 @@ public class GrantRequest {
         command          = new JSONObject(rs.getString("command"));
         channel          = rs.getLong("channel");
         message_id       = rs.getLong("message_id");
-        estimated_amount = (double[]) rs.getObject("estimate_amount");
+        estimated_amount = ArrayUtil.toDoubleArray(rs.getBytes("estimate_amount"));
         dateCreated      = rs.getLong("date_created");
     }
 
     public GrantRequest(long userId, int nationId, int receiverId, int receiverType, String reason, JSONObject command, long channel, long message_id, double[] estimated_amount, long dateCreated) {
+        id = -1; // -1 indicates a new request that hasn't been saved to the database yet
         this.userId = userId;
         this.nationId = nationId;
         this.receiverId = receiverId;
@@ -118,5 +121,9 @@ public class GrantRequest {
 
     public String toLineString() {
         return "#" + id + ": " + PW.getName(nationId, false) + getCommandName() + " | " + getReason();
+    }
+
+    public boolean updateMessage(IMessageIO io, String s) {
+        return io.appendToEmbed(s);
     }
 }
