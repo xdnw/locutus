@@ -2830,11 +2830,15 @@ public class UtilityCommands {
         CompletableFuture<IMessageBuilder> msgFuture = channel.send("Please wait...");
         long start = System.currentTimeMillis();
         boolean hasAny = false;
-        for (Project project : projects) {
+        List<Project> projectsList = new ArrayList<>(projects);
+        Collections.sort(projectsList, Comparator.comparing(Project::name));
+
+        for (int i = 0; i < projectsList.size(); i++) {
+            Project project = projectsList.get(i);
             QuadFunction<Integer, DBNation, Project, Double, RoiResult> roiFunc = project.getRoiFunction();
             if (roiFunc == null) continue;
             if (!project.canBuild(nation) || nation.hasProject(project)) continue;
-            if (System.currentTimeMillis() - start > 10000) {
+            if (i != projectsList.size() - 1 && System.currentTimeMillis() - start > 10000) {
                 channel.updateOptionally(msgFuture, "Calculating ROI for " + project.name() + "...");
                 start = System.currentTimeMillis();
                 channel.send(result.toString());
@@ -2852,6 +2856,7 @@ public class UtilityCommands {
             result.append("> - Profit (Net - Over Timeframe): ~$" + MathMan.format(roi.profit() - roi.cost()) + "\n\n");
         }
         if (result.length() != 0) {
+            result.append("\n\nDone!");
             channel.send(result.toString());
         } else if (!hasAny) {
             channel.send("No projects found with a ROI function that can be calculated for the given parameters.");
