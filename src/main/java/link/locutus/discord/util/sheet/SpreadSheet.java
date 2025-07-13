@@ -674,7 +674,7 @@ public class SpreadSheet {
     }
 
     public void addRow(String tab, List<?> list) {
-        this.getCachedValues(tab).add(formatRow(tab, new ArrayList<>(list)));
+        this.getCachedValues(tab).add(formatRow(tab, new ObjectArrayList<>(list)));
     }
 
     public String getDefaultTab() {
@@ -693,7 +693,7 @@ public class SpreadSheet {
                 if (!defaultTab.isEmpty()) {
                     List<List<Object>> existing = valuesByTab.remove("");
                     if (existing != null && !existing.isEmpty()) {
-                        valuesByTab.computeIfAbsent(defaultTab.toLowerCase(Locale.ROOT), k -> new ArrayList<>()).addAll(existing);
+                        valuesByTab.computeIfAbsent(defaultTab.toLowerCase(Locale.ROOT), k -> new ObjectArrayList<>()).addAll(existing);
                     }
                 }
             }
@@ -703,7 +703,7 @@ public class SpreadSheet {
 
     public List<List<Object>> getCachedValues(String tab) {
         if (tab == null) tab = getDefaultTab();
-        return valuesByTab.computeIfAbsent(tab.toLowerCase(Locale.ROOT), k -> new ArrayList<>());
+        return valuesByTab.computeIfAbsent(tab.toLowerCase(Locale.ROOT), k -> new ObjectArrayList<>());
     }
 
     public void addRow(List<?> row) {
@@ -715,7 +715,7 @@ public class SpreadSheet {
     }
 
     private List<Object> formatRow(String tab, List<?> row) {
-        List<Object> out = new ArrayList<>();
+        List<Object> out = new ObjectArrayList<>();
         for (Object value : row) {
             if (value == null) {
                 out.add(null);
@@ -738,7 +738,7 @@ public class SpreadSheet {
         if (service == null) {
             reset();
             for (RowData row : rowData) {
-                List<Object> dataSimple = new ArrayList<>();
+                List<Object> dataSimple = new ObjectArrayList<>();
                 for (CellData cell : row.getValues()) {
                     ExtendedValue value = cell.getUserEnteredValue();
                     dataSimple.add(value.toString());
@@ -766,7 +766,7 @@ public class SpreadSheet {
             start.setSheetId(id);
         }
         appendCellReq.setStart(start);
-        ArrayList<Request> requests = new ArrayList<Request>();
+        List<Request> requests = new ObjectArrayList<Request>();
         requests.add( new Request().setUpdateCells(appendCellReq));
         BatchUpdateSpreadsheetRequest batchRequests = new BatchUpdateSpreadsheetRequest();
         batchRequests.setRequests( requests );
@@ -817,7 +817,7 @@ public class SpreadSheet {
         SheetProperties sheetProperties = new SheetProperties();
         sheetProperties.setTitle(tabName);
         addSheetRequest.setProperties(sheetProperties);
-        List<Request> requests = new ArrayList<>();
+        List<Request> requests = new ObjectArrayList<>();
         requests.add(new Request().setAddSheet(addSheetRequest));
         BatchUpdateSpreadsheetRequest batchUpdateSpreadsheetRequest = new BatchUpdateSpreadsheetRequest();
         batchUpdateSpreadsheetRequest.setRequests(requests);
@@ -857,17 +857,18 @@ public class SpreadSheet {
 
         for (int i = 0; i < size; i += 10000) {
             int height = Math.min(i + 9999, size);
-            List<List<Object>> subList = values.subList(i, height);
-            for (List<Object> objects : subList) {
-                width = Math.max(width, objects.size());
+            List<List<Object>> batch = new ObjectArrayList<>(values.subList(i, height));
+            int batchWidth = 0;
+            for (List<Object> row : batch) {
+                batchWidth = Math.max(batchWidth, row.size());
             }
 
             String pos1 = SheetUtil.getRange(0, i);
-            String pos2 = SheetUtil.getRange(width - 1, height - 1);
+            String pos2 = SheetUtil.getRange(batchWidth - 1, height - 1);
             String range = pos1 + ":" + pos2;
 
             ValueRange body = new ValueRange()
-                    .setValues(subList);
+                    .setValues(batch);
 
             UpdateValuesResponse result =
                     service.spreadsheets().values().update(spreadsheetId, (tabName.isEmpty() ? "" : tabName + "!") + range, body)
@@ -889,7 +890,7 @@ public class SpreadSheet {
             tabName = getDefaultTab(true);
         }
         if (service == null) {
-            return valuesByTab.getOrDefault(tabName.toLowerCase(Locale.ROOT), new ArrayList<>());
+            return valuesByTab.getOrDefault(tabName.toLowerCase(Locale.ROOT), new ObjectArrayList<>());
         }
         if (!force) {
             List<List<Object>> values = this.valuesByTab.get(tabName.toLowerCase(Locale.ROOT));
@@ -909,7 +910,7 @@ public class SpreadSheet {
                 this.valuesByTab.put(tabNameLower, entry.getValue());
             }
             if (this.valuesByTab.isEmpty()) {
-                this.valuesByTab.put("", new ArrayList<>());
+                this.valuesByTab.put("", new ObjectArrayList<>());
             }
         }
         return this.valuesByTab;
@@ -982,7 +983,7 @@ public class SpreadSheet {
         }
 
         try {
-            List<String> tabNamesList = new ArrayList<>(tabNames);
+            List<String> tabNamesList = new ObjectArrayList<>(tabNames);
             // Prepare the ranges for batch request
             List<String> ranges = tabNamesList.stream()
                     .map(tab -> tab + "!1:1")
@@ -1038,7 +1039,7 @@ public class SpreadSheet {
             e.printStackTrace();
         }
         List<Sheet> sheets = spreadsheet.getSheets();
-        List<Request> requests = new ArrayList<>();
+        List<Request> requests = new ObjectArrayList<>();
         for (Sheet sheet : sheets) {
             ClearValuesRequest requestBody = new ClearValuesRequest();
             Sheets.Spreadsheets.Values.Clear request =
@@ -1112,7 +1113,7 @@ public class SpreadSheet {
         if (service == null) {
             return;
         }
-        List<Request> requests = new ArrayList<>();
+        List<Request> requests = new ObjectArrayList<>();
         DeleteSheetRequest deleteSheetRequest = new DeleteSheetRequest();
         deleteSheetRequest.setSheetId(tabId);
         Request request = new Request();
@@ -1219,7 +1220,7 @@ public class SpreadSheet {
         for (Map.Entry<String, Integer> entry : columnIds.entrySet()) {
             String name = entry.getKey();
             int i = entry.getValue();
-            List<Object> column = new ArrayList<>(values.size());
+            List<Object> column = new ObjectArrayList<>(values.size());
             for (int j = 1; j < values.size(); j++) {
                 List<Object> row = values.get(j);
                 if (row.size() <= i) {
