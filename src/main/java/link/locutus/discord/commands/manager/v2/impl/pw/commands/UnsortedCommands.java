@@ -1851,33 +1851,51 @@ public class UnsortedCommands {
         return null;
     }
 
-    @Command(desc = "Transfer the missing resource amounts per city to a list of nations")
+    @Command(
+            desc = "Transfer the missing resource amounts per city to a list of nations",
+            groups = {
+                    "Resource Details",
+                    "Source Accounts",
+                    "Transfer Options",
+                    "Miscellaneous"
+            }
+    )
     @RolePermission(value = {Roles.ECON, Roles.ECON_WITHDRAW_SELF, Roles.MEMBER}, any = true)
     @HasOffshore
     @IsAlliance
     public static String warchest(@Me GuildDB db, @Me JSONObject command, @Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
                            NationList nations,
-                          @Arg("The resources each nation needs for each city\n" +
-                                  "Only resources they are missing is sent")
-                          Map<ResourceType, Double> resourcesPerCity,
-                                  @Arg("The transfer note to use\n" +
-                                          "Defaults to `#WARCHEST`")
-                                  @Default DepositType.DepositTypeInfo bank_note,
-                           @Arg("Do not check nation stockpile\n" +
-                               "Sends the full amount of resources to each nation")
-                           @Switch("s") boolean skipStockpile,
-                          @Arg("The nation account to deduct from") @Switch("n") DBNation nation_account,
-                          @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance ingame_bank,
-                          @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance offshore_account,
-                          @Arg("The tax account to deduct from") @Switch("t") TaxBracket tax_account,
-                          @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean use_receiver_tax_account,
-                                  @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
-                                  @Arg("Have the transfer decay linearly in balances over a timeframe") @Switch("d") @Timediff Long decay,
-                          @Arg("Have the transfer valued as cash in nation holdings")@Switch("m") boolean deduct_as_cash,
-                          @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
-                          @Switch("p") boolean ping_when_sent,
-                          @Switch("b") boolean bypass_checks,
-                          @Switch("f") boolean force) throws Exception {
+                                  @Arg(value = "The resources each nation needs for each city\n" +
+                                          "Only resources they are missing is sent", group = 0)
+                                      Map<ResourceType, Double> resourcesPerCity,
+                                  @Arg(value = "The transfer note to use\nDefaults to `#WARCHEST`", group = 0)
+                                      @Default DepositType.DepositTypeInfo bank_note,
+                                  @Arg(value = "Do not check nation stockpile\nSends the full amount of resources to each nation", group = 2)
+                                      @Switch("s") boolean skipStockpile,
+                                  @Arg(value = "The nation account to deduct from", group = 1)
+                                      @Switch("n") DBNation nation_account,
+                                  @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1)
+                                      @Switch("a") DBAlliance ingame_bank,
+                                  @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1)
+                                      @Switch("o") DBAlliance offshore_account,
+                                  @Arg(value = "The tax account to deduct from", group = 1)
+                                      @Switch("t") TaxBracket tax_account,
+                                  @Arg(value = "Deduct from the receiver's tax bracket account", group = 1)
+                                      @Switch("ta") boolean use_receiver_tax_account,
+                                  @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2)
+                                      @Switch("e") @Timediff Long expire,
+                                  @Arg(value = "Have the transfer decay linearly in balances over a timeframe", group = 2)
+                                      @Switch("d") @Timediff Long decay,
+                                  @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2)
+                                      @Switch("m") boolean deduct_as_cash,
+                                  @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 2)
+                                      @Switch("em") EscrowMode escrow_mode,
+                                  @Arg(value = "Ping the user when the transfer is sent", group = 3)
+                                      @Switch("p") boolean ping_when_sent,
+                                  @Arg(value = "Bypass validation checks", group = 3)
+                                      @Switch("b") boolean bypass_checks,
+                                  @Arg(value = "Force the transfer even if conditions are not met", group = 3)
+                                      @Switch("f") boolean force) throws Exception {
         if (use_receiver_tax_account) {
             if (tax_account != null) throw new IllegalArgumentException("You can't specify both `tax_id` and `use_receiver_tax_account`");
         }
