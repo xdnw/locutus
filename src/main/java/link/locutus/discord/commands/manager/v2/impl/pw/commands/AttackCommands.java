@@ -3,10 +3,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.util.MathMan;
@@ -78,37 +75,68 @@ public class AttackCommands {
         return response.toString();
     }
 
-    // TODO muni/gas usage
-    @Command(desc = "Simulate an attack between two nations and return the odds and casualties", viewable = true)
+    @Command(
+            desc = "Simulate an attack between two nations and return the odds and casualties\n" +
+                    "Configure fortification, air control, projects and infrastructure overrides.",
+            groups = {
+                    "Main Parameters",
+                    "Military Units",
+                    "War Policy",
+                    "War Control",
+                    "Projects",
+                    "Infrastructure"
+            }
+    )
     public String casualties(
-                            AttackType attack,
-                            WarType warType,
-                            DBNation enemy,
-
-                            @Default("%user%") DBNation me,
-
-                            @Default Map<MilitaryUnit, Long> attackerMilitary,
-                            @Default Map<MilitaryUnit, Long> defenderMilitary,
-
-                            @Switch("att_policy") WarPolicy attackerPolicy,
-                            @Switch("def_policy") WarPolicy defenderPolicy,
-
-                            @Switch("f") boolean defFortified,
-                            @Switch("ac") boolean attAirControl,
-                            @Switch("dac") boolean defAirControl,
-
-                            @Switch("agc") boolean att_ground_control,
-
-                            @Switch("s") boolean selfIsDefender,
-
-                            @Switch("ua") boolean unequipAttackerSoldiers,
-                            @Switch("ud") boolean unequipDefenderSoldiers,
-
-                            @Switch("ap") Set<Project> attackerProjects,
-                            @Switch("dp") Set<Project> defenderProjects,
-
-                            @Switch("ai") Integer attacker_infra,
-                            @Switch("di") Integer defender_infra
+            @Arg(value = "The type of attack to perform", group = 0)
+            AttackType attack,
+            @Arg(value = "War declaration type", group = 0)
+            WarType warType,
+            @Arg(value = "Enemy nation to attack", group = 0)
+            DBNation enemy,
+            @Arg(value = "Primary nation (defaults to your nation)", group = 0)
+            @Default("%user%")
+            DBNation me,
+            @Arg(value = "Swap roles: you become defender", group = 0)
+            @Switch("s") boolean selfIsDefender,
+            @Arg(value = "Override attacker military units", group = 1)
+            @Default
+            Map<MilitaryUnit, Long> attackerMilitary,
+            @Arg(value = "Override defender military units", group = 1)
+            @Default
+            Map<MilitaryUnit, Long> defenderMilitary,
+            @Arg(value="No munitions for attacker soldiers", group = 1) @Switch("ua") boolean unequipAttackerSoldiers,
+            @Arg(value="No munitions for defender soldiers", group = 1) @Switch("ud") boolean unequipDefenderSoldiers,
+            @Arg(value = "Attacker war policy", group = 2)
+            @Switch("att_policy")
+            WarPolicy attackerPolicy,
+            @Arg(value = "Defender war policy", group = 2)
+            @Switch("def_policy")
+            WarPolicy defenderPolicy,
+            @Arg(value = "Defender is fortified", group = 3)
+            @Switch("f")
+            boolean defFortified,
+            @Arg(value = "Attacker has air control", group = 3)
+            @Switch("ac")
+            boolean attAirControl,
+            @Arg(value = "Defender has air control", group = 3)
+            @Switch("dac")
+            boolean defAirControl,
+            @Arg(value = "Attacker has ground control", group = 3)
+            @Switch("agc")
+            boolean att_ground_control,
+            @Arg(value = "Attacker projects", group = 4)
+            @Switch("ap")
+            Set<Project> attackerProjects,
+            @Arg(value = "Defender projects", group = 4)
+            @Switch("dp")
+            Set<Project> defenderProjects,
+            @Arg(value = "Override attacker infrastructure level", group = 5)
+            @Switch("ai")
+            Integer attacker_infra,
+            @Arg(value = "Override defender infrastructure level", group = 5)
+            @Switch("di")
+            Integer defender_infra
     ) {
         if (att_ground_control && attack != AttackType.GROUND) {
             throw new IllegalArgumentException("Ground control can only be used with ground attacks, not " + attack.name());
