@@ -949,19 +949,29 @@ public class UtilityCommands {
         return "$" + MathMan.format(total);
     }
 
-    @Command(desc = "Calculate the score of various things. Each argument is option, and can go in any order", viewable = true)
-    public String score(@Default DBNation nation,
-                        @Switch("c") Integer cities,
-                        @Switch("b") Integer soldiers,
-                        @Switch("f") Integer tanks,
-                        @Switch("h") Integer aircraft,
-                        @Switch("d") Integer ships,
-                        @Switch("m") Integer missiles,
-                        @Switch("n") Integer nukes,
-                        @Switch("p") Integer projects,
-                        @Switch("a") Integer avg_infra,
-                        @Switch("i") Integer infraTotal,
-                        @Switch("mmr") MMRDouble builtMMR
+    @Command(
+            desc = "Calculate the score of various things. Each argument is option, and can go in any order",
+            viewable = true,
+            groups = {
+                    "Nation Details",
+                    "Military Units",
+                    "Infrastructure Details",
+                    "MMR Details"
+            }
+    )
+    public String score(
+            @Default DBNation nation,
+            @Arg(value = "Number of cities", group = 0) @Switch("c") Integer cities,
+            @Arg(value = "Number of soldiers", group = 1) @Switch("b") Integer soldiers,
+            @Arg(value = "Number of tanks", group = 1) @Switch("f") Integer tanks,
+            @Arg(value = "Number of aircraft", group = 1) @Switch("h") Integer aircraft,
+            @Arg(value = "Number of ships", group = 1) @Switch("d") Integer ships,
+            @Arg(value = "Number of missiles", group = 1) @Switch("m") Integer missiles,
+            @Arg(value = "Number of nukes", group = 1) @Switch("n") Integer nukes,
+            @Arg(value = "Number of projects", group = 1) @Switch("p") Integer projects,
+            @Arg(value = "Average infrastructure per city", group = 2) @Switch("a") Integer avg_infra,
+            @Arg(value = "Total infrastructure", group = 2) @Switch("i") Integer infraTotal,
+            @Arg(value = "Unit MMR value", group = 3) @Switch("mmr") MMRDouble builtMMR
     ) {
         if (nation == null) {
             nation = new SimpleDBNation(new DBNationData());
