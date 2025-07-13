@@ -284,23 +284,56 @@ public class StatCommands {
         return null;
     }
 
-    @Command(desc = "War costs stats between two coalitions", viewable = true)
+    @Command(desc = "War costs stats between you and the nation specified", viewable = true,
+            groups = {
+                    "Coalition Details",
+                    "Time Period",
+                    "Cost Exclusions",
+                    "Display Options",
+                    "War and Attack Filters"
+            })
     public String myloot(@Me IMessageIO channel, @Me DBNation nation, @Me JSONObject command,
-                         Set<NationOrAlliance> coalition2, @Timestamp long timeStart,
-                         @Default @Timestamp Long timeEnd,
-                         @Switch("u") boolean ignoreUnits,
-                         @Switch("i") boolean ignoreInfra,
-                         @Switch("c") boolean ignoreConsumption,
-                         @Switch("l") boolean ignoreLoot,
-                         @Switch("b") boolean ignoreBuildings,
+                         @Arg(value = "Nations required to be in the conflicts against you\nDefaults to all nations", group = 0)
+                         Set<NationOrAlliance> coalition2,
 
-                         @Arg("Return a list of war ids") @Switch("id") boolean listWarIds,
-                         @Arg("Return a tally of war types") @Switch("t") boolean showWarTypes,
+                         @Arg(value = "Start time of the period to include", group = 1)
+                             @Timestamp long timeStart,
 
-                         @Switch("w") Set<WarType> allowedWarTypes,
-                         @Switch("s") Set<WarStatus> allowedWarStatus,
-                         @Switch("a") Set<AttackType> allowedAttackTypes,
-                         @Switch("v") Set<SuccessType> allowedVictoryTypes) {
+                         @Arg(value = "End time of the period to include\nDefaults to now", group = 1)
+                             @Default @Timestamp Long timeEnd,
+
+                         @Arg(value = "Exclude unit costs", group = 2)
+                             @Switch("u") boolean ignoreUnits,
+
+                         @Arg(value = "Exclude infrastructure costs", group = 2)
+                             @Switch("i") boolean ignoreInfra,
+
+                         @Arg(value = "Exclude consumption costs", group = 2)
+                             @Switch("c") boolean ignoreConsumption,
+
+                         @Arg(value = "Exclude loot costs", group = 2)
+                             @Switch("l") boolean ignoreLoot,
+
+                         @Arg(value = "Exclude building costs", group = 2)
+                             @Switch("b") boolean ignoreBuildings,
+
+                         @Arg(value = "Return a list of war IDs", group = 3)
+                             @Switch("id") boolean listWarIds,
+
+                         @Arg(value = "Return a tally of war types", group = 3)
+                             @Switch("t") boolean showWarTypes,
+
+                         @Arg(value = "Filter the war types included", group = 4)
+                             @Switch("w") Set<WarType> allowedWarTypes,
+
+                         @Arg(value = "Filter the war statuses included", group = 4)
+                             @Switch("s") Set<WarStatus> allowedWarStatus,
+
+                         @Arg(value = "Filter the attack types included", group = 4)
+                             @Switch("a") Set<AttackType> allowedAttackTypes,
+
+                         @Arg(value = "Filter the attack success types included", group = 4)
+                             @Switch("v") Set<SuccessType> allowedVictoryTypes) {
         if (command != null && coalition2 != null && command.getString("coalition2").equalsIgnoreCase("*")) {
             coalition2 = null;
         }
