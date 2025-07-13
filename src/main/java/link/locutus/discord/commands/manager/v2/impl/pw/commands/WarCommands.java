@@ -3852,47 +3852,69 @@ public class WarCommands {
             Note: If the blitz sheet generated has a lot of city updeclares or unslotted enemies it is recommended to go through and remove low priority defenders
             - Low priority could be enemies without a recent offensive war, inactive, low military, or poor activity
             - Example defNations: `~enemies,#position>1,#active_m<4880,#dayssincelastoffensive>200,#dayssince3consecutivelogins>120,#aircraftpct<0.8,#tankpct<=0.6`\
-            Note: To avoid updeclares enable `onlyEasyTargets`""", viewable = true)
+            Note: To avoid updeclares enable `onlyEasyTargets`""", viewable = true,
+            groups = {
+                    "Attacker Nations",
+                    "Defender Nations",
+                    "Offensive Slot Settings",
+                    "Activity Filters",
+                    "Target Ratios",
+                    "Spreadsheet Options"
+            })
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String blitzSheet(@Me IMessageIO io, @Me @Default User author, @Me @Default GuildDB db,
-                             @Arg("Nations that should be used for the attackers\n" +
-                                     "It is recommended to use a google sheet of the attackers available")
+
+                             @Arg(value = "Nations that should be used for the attackers\n" +
+                                     "It is recommended to use a google sheet of the attackers available", group = 0)
                              NationList attNations,
 
-                             @Arg("Nations that should be used for the defenders\n" +
-                                     "It is recommended to use a google sheet of the priority defenders (unless you are sure you can hit every nation)")
-                             NationList defNations,
-                             @Arg("How many offensive slots a nation can have (defaults to 3)")
-                             @Default("3") @Range(min=1,max=5) int maxOff,
-                             @Arg("Value between 0 and 1 to prioritize assigning a target to nations in the same alliance\n" +
-                                     "Default: 0")
-                             @Default("0") double sameAAPriority,
-                             @Arg("Value between 0 and 1 to prioritize assigning targets to nations with similar activity patterns\n" +
-                                     "Recommended not to use if you know who is attacking")
-                             @Default("0") double sameActivityPriority,
-                             @Arg("The turn in the day (between 0 and 11) when you expect the blitz to happen")
-                             @Default("-1") @Range(min=-1,max=11) int turn,
-                             @Arg("A value between 0 and 1 to filter out attackers below this level of daily activity (default: 0, which is 0%)\n" +
-                                     "Recommend using if you did not provide a sheet of attackers")
-                             @Default("0") double attActivity,
-                             @Arg("A value between 0 and 1 to filter out defenders below this level of activity (default: 0)\n" +
-                                     "Recommend using if you did not provide a sheet of defenders")
-                             @Default("0") double defActivity,
-                             @Arg("Factor in existing wars of attackers and defenders\n" +
-                                     "i.e. To determine slots available and nation strength")
-                             @Switch("w") @Default("true") boolean processActiveWars,
-                             @Arg("Only assign down declares")
-                             @Switch("e") boolean onlyEasyTargets,
-                             @Arg("Maximum ratio of defender cities to attacker\n" +
-                                     "e.g. A value of 1.5 means defenders can have 1.5x more cities than the attacker")
-                             @Switch("c") Double maxCityRatio,
-                             @Arg("Maximum ratio of defender ground strength to attacker\n" +
-                                     "e.g. A value of 1.5 means defenders can have 1.5x more ground strength than the attacker")
-                             @Switch("g") Double maxGroundRatio,
-                             @Arg("Maximum ratio of defender aircraft to attacker\n" +
-                                     "e.g. A value of 1.5 means defenders can have 1.5x more aircraft than the attacker")
-                             @Switch("a") Double maxAirRatio,
-                             @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+                             @Arg(value = "Nations that should be used for the defenders\n" +
+                                     "It is recommended to use a google sheet of the priority defenders (unless you are sure you can hit every nation)", group = 0)
+                                 NationList defNations,
+
+                             @Arg(value = "How many offensive slots a nation can have (defaults to 3)", group = 1)
+                                 @Default("3") @Range(min = 1, max = 5) int maxOff,
+
+                             @Arg(value = "Value between 0 and 1 to prioritize assigning a target to nations in the same alliance\n" +
+                                     "Default: 0", group = 1)
+                                 @Default("0") double sameAAPriority,
+
+                             @Arg(value = "Value between 0 and 1 to prioritize assigning targets to nations with similar activity patterns\n" +
+                                     "Recommended not to use if you know who is attacking", group = 1)
+                                 @Default("0") double sameActivityPriority,
+
+                             @Arg(value = "The turn in the day (between 0 and 11) when you expect the blitz to happen", group = 1)
+                                 @Default("-1") @Range(min = -1, max = 11) int turn,
+
+                             @Arg(value = "A value between 0 and 1 to filter out attackers below this level of daily activity (default: 0, which is 0%)\n" +
+                                     "Recommend using if you did not provide a sheet of attackers", group = 2)
+                                 @Default("0") double attActivity,
+
+                             @Arg(value = "A value between 0 and 1 to filter out defenders below this level of activity (default: 0)\n" +
+                                     "Recommend using if you did not provide a sheet of defenders", group = 2)
+                                 @Default("0") double defActivity,
+
+                             @Arg(value = "Factor in existing wars of attackers and defenders\n" +
+                                     "i.e. To determine slots available and nation strength", group = 3)
+                                 @Switch("w") @Default("true") boolean processActiveWars,
+
+                             @Arg(value = "Only assign down declares", group = 3)
+                                 @Switch("e") boolean onlyEasyTargets,
+
+                             @Arg(value = "Maximum ratio of defender cities to attacker\n" +
+                                     "e.g. A value of 1.5 means defenders can have 1.5x more cities than the attacker", group = 4)
+                                 @Switch("c") Double maxCityRatio,
+
+                             @Arg(value = "Maximum ratio of defender ground strength to attacker\n" +
+                                     "e.g. A value of 1.5 means defenders can have 1.5x more ground strength than the attacker", group = 4)
+                                 @Switch("g") Double maxGroundRatio,
+
+                             @Arg(value = "Maximum ratio of defender aircraft to attacker\n" +
+                                     "e.g. A value of 1.5 means defenders can have 1.5x more aircraft than the attacker", group = 4)
+                                 @Switch("a") Double maxAirRatio,
+
+                             @Arg(value = "The spreadsheet to use for the blitz sheet", group = 5)
+                                 @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         Set<Long> guilds = new LongOpenHashSet();
 
         BlitzGenerator blitz = new BlitzGenerator(turn, maxOff, sameAAPriority, sameActivityPriority, attActivity, defActivity, guilds, processActiveWars);
