@@ -3,9 +3,6 @@ package link.locutus.discord.util;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.Random;
 
 public class IOUtil {
 
@@ -62,49 +59,4 @@ public class IOUtil {
         }
         return value;
     }
-
-    public static void main(String[] args) {
-        Random RANDOM = new Random(0);
-
-        {
-            byte[] data = new byte[Long.BYTES];
-            for (int i = 0; i < 1000; i++) {
-                long value = RANDOM.nextLong();
-
-                // prepare data with ByteBuffer
-                ByteBuffer
-                        .wrap(data)
-                        .order(ByteOrder.LITTLE_ENDIAN)
-                        .putLong(0, value);
-
-                long fromUtil = IOUtil.readLong(data, 0);
-
-//                assertEquals(value, fromUtil,
-//                        "IOUtil.readLong did not match ByteBuffer for value " + value);
-                if (value != fromUtil) {
-                    throw new AssertionError("IOUtil.readLong did not match ByteBuffer for value " + value);
-                }
-            }
-        }
-        {
-            byte[] data = new byte[Long.BYTES];
-            for (int i = 0; i < 1000; i++) {
-                long value = RANDOM.nextLong();
-                IOUtil.writeLong(data, value,0 );
-
-                long fromBuffer = ByteBuffer
-                        .wrap(data)
-                        .order(ByteOrder.LITTLE_ENDIAN)
-                        .getLong(0);
-
-//                assertEquals(value, fromBuffer,
-//                        "IOUtil.writeLong did not match ByteBuffer for value " + value);
-                if (value != fromBuffer) {
-                    throw new AssertionError("IOUtil.writeLong did not match ByteBuffer for value " + value);
-                }
-            }
-        }
-        System.out.println("All tests passed!");
-    }
-
 }

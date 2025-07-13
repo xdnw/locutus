@@ -1852,35 +1852,36 @@ public class UnsortedCommands {
     }
 
     @Command(desc = "Transfer the missing resource amounts per city to a list of nations")
-    @RolePermission(value = {Roles.ECON, Roles.ECON_WITHDRAW_SELF}, any = true)
+    @RolePermission(value = {Roles.ECON, Roles.ECON_WITHDRAW_SELF, Roles.MEMBER}, any = true)
     @HasOffshore
     @IsAlliance
-    public static String warchest(@Me GuildDB db, @Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
+    public static String warchest(@Me GuildDB db, @Me JSONObject command, @Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
                            NationList nations,
                           @Arg("The resources each nation needs for each city\n" +
                                   "Only resources they are missing is sent")
                           Map<ResourceType, Double> resourcesPerCity,
                                   @Arg("The transfer note to use\n" +
                                           "Defaults to `#WARCHEST`")
-                                  @Default DepositType.DepositTypeInfo note,
+                                  @Default DepositType.DepositTypeInfo bank_note,
                            @Arg("Do not check nation stockpile\n" +
                                "Sends the full amount of resources to each nation")
                            @Switch("s") boolean skipStockpile,
-                          @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
-                          @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
-                          @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
-                          @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
-                          @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
+                          @Arg("The nation account to deduct from") @Switch("n") DBNation nation_account,
+                          @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance ingame_bank,
+                          @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance offshore_account,
+                          @Arg("The tax account to deduct from") @Switch("t") TaxBracket tax_account,
+                          @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean use_receiver_tax_account,
                                   @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
                                   @Arg("Have the transfer decay linearly in balances over a timeframe") @Switch("d") @Timediff Long decay,
-                          @Arg("Have the transfer valued as cash in nation holdings")@Switch("m") boolean convertToMoney,
+                          @Arg("Have the transfer valued as cash in nation holdings")@Switch("m") boolean deduct_as_cash,
                           @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
-                          @Switch("b") boolean bypassChecks,
+                          @Switch("p") boolean ping_when_sent,
+                          @Switch("b") boolean bypass_checks,
                           @Switch("f") boolean force) throws Exception {
-        if (existingTaxAccount) {
-            if (taxAccount != null) throw new IllegalArgumentException("You can't specify both `tax_id` and `existingTaxAccount`");
+        if (use_receiver_tax_account) {
+            if (tax_account != null) throw new IllegalArgumentException("You can't specify both `tax_id` and `use_receiver_tax_account`");
         }
-        if (note == null) note = DepositType.WARCHEST.withValue();
+        if (bank_note == null) bank_note = DepositType.WARCHEST.withValue();
 
         Collection<DBNation> nationSet = new HashSet<>(nations.getNations());
         Map<NationOrAlliance, TransferResult> errors = new HashMap<>();
@@ -1893,13 +1894,13 @@ public class UnsortedCommands {
             DBNation nation = iter.next();
             if (nation.active_m() > 7200) {
                 iter.remove();
-                errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.INACTIVE, nation, new HashMap<>(), note.toString()).addMessage( "Nation is inactive: " + TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m())));
+                errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.INACTIVE, nation, new HashMap<>(), bank_note.toString()).addMessage( "Nation is inactive: " + TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m())));
             } else if (nation.getPosition() <= 1) {
                 iter.remove();
-                errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.NOT_MEMBER, nation, new HashMap<>(), note.toString()).addMessage( "Nation is not a member"));
+                errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.NOT_MEMBER, nation, new HashMap<>(), bank_note.toString()).addMessage( "Nation is not a member"));
             } else if (nation.getVm_turns() != 0) {
                 iter.remove();
-                errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.VACATION_MODE, nation, new HashMap<>(), note.toString()).addMessage( "Nation is in Vacation Mode"));
+                errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.VACATION_MODE, nation, new HashMap<>(), bank_note.toString()).addMessage( "Nation is in Vacation Mode"));
             }
         }
 
@@ -1921,14 +1922,14 @@ public class UnsortedCommands {
             }
             if (stockpile == null) {
                 if (!aaList.isInAlliance(nation)) {
-                    errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.NOT_MEMBER, nation, new HashMap<>(), note.toString()).addMessage( "No stockpile information available (not in the guild's alliance)"));
+                    errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.NOT_MEMBER, nation, new HashMap<>(), bank_note.toString()).addMessage( "No stockpile information available (not in the guild's alliance)"));
                 } else {
-                    errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.INVALID_API_KEY, nation, new HashMap<>(), note.toString()).addMessage( "No stockpile information available (are you sure a valid api key is set?)"));
+                    errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.INVALID_API_KEY, nation, new HashMap<>(), bank_note.toString()).addMessage( "No stockpile information available (are you sure a valid api key is set?)"));
                 }
                 continue;
             }
             if (ResourceType.convertedTotal(stockpile) < 0) {
-                errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.ALLIANCE_ACCESS, nation, new HashMap<>(), note.toString()).addMessage( "Alliance information access is disabled from their **account** page"));
+                errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.ALLIANCE_ACCESS, nation, new HashMap<>(), bank_note.toString()).addMessage( "Alliance information access is disabled from their **account** page"));
                 continue;
             }
             Map<ResourceType, Double> toSendCurrent = new HashMap<>();
@@ -1942,32 +1943,54 @@ public class UnsortedCommands {
             if (!toSendCurrent.isEmpty()) {
                 fundsToSendNations.put(nation, toSendCurrent);
             } else {
-                errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, nation, new HashMap<>(), note.toString()).addMessage( "No funds need to be sent"));
+                errors.put(nation, new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, nation, new HashMap<>(), bank_note.toString()).addMessage( "No funds need to be sent"));
                 continue;
             }
+        }
+
+        if (fundsToSendNations.size() == 1) {
+            Map.Entry<DBNation, Map<ResourceType, Double>> entry = fundsToSendNations.entrySet().iterator().next();
+            DBNation target = entry.getKey();
+            Map<ResourceType, Double> amount = entry.getValue();
+            CM.transfer.resources transferCmd = CM.transfer.resources.cmd.receiver(target.getQualifiedId())
+                    .bank_note(
+                    bank_note.toString()).nation_account(
+                    nation_account != null ? nation_account.getUrl() : null).ingame_bank(
+                    ingame_bank != null ? ingame_bank.getUrl() : null).offshore_account(
+                    offshore_account != null ? offshore_account.getUrl() : null).tax_account(
+                    tax_account != null ? tax_account.getQualifiedId() : null).use_receiver_tax_account(
+                    use_receiver_tax_account + "").expire(
+                    expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire)).decay(
+                    decay == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay)).deduct_as_cash(
+                    Boolean.FALSE.toString()).escrow_mode(
+                    escrow_mode == null ? null : escrow_mode.name()).bypass_checks(
+                    String.valueOf(force))
+                    .onlyMissingFunds("false")
+                    .ping_when_sent(ping_when_sent + "").calling_command(command.toString());
+            return BankCommands.transfer(io, transferCmd.toJson(), author, me, db, target, amount, bank_note, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, false, expire, decay, deduct_as_cash, escrow_mode, bypass_checks, ping_when_sent, force, command);
         }
 
         UUID key = UUID.randomUUID();
         TransferSheet sheet = new TransferSheet(db).write(fundsToSendNations, new LinkedHashMap<>()).build();
         BankCommands.APPROVED_BULK_TRANSFER.put(key, sheet.getTransfers());
 
-        JSONObject command = CM.transfer.bulk.cmd.sheet(
-                sheet.getSheet().getURL()).depositType(
-                note.toString()).depositsAccount(
-                depositsAccount != null ? depositsAccount.getUrl() : null).useOffshoreAccount(
-                useAllianceBank != null ? useAllianceBank.getUrl() : null).useOffshoreAccount(
-                useOffshoreAccount != null ? useOffshoreAccount.getUrl() : null).taxAccount(
-                taxAccount != null ? taxAccount.getQualifiedId() : null).existingTaxAccount(
-                existingTaxAccount + "").expire(
+        JSONObject bulkCmd = CM.transfer.bulk.cmd.sheet(
+                sheet.getSheet().getURL()).bank_note(
+                bank_note.toString()).nation_account(
+                nation_account != null ? nation_account.getUrl() : null).ingame_bank(
+                ingame_bank != null ? ingame_bank.getUrl() : null).offshore_account(
+                offshore_account != null ? offshore_account.getUrl() : null).tax_account(
+                tax_account != null ? tax_account.getQualifiedId() : null).use_receiver_tax_account(
+                use_receiver_tax_account + "").expire(
                 expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire)).decay(
-                decay == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay)).convertToMoney(
+                decay == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay)).deduct_as_cash(
                 Boolean.FALSE.toString()).escrow_mode(
-                escrow_mode == null ? null : escrow_mode.name()).bypassChecks(
+                escrow_mode == null ? null : escrow_mode.name()).bypass_checks(
                 String.valueOf(force)).key(
                 key.toString()
         ).toJson();
 
-        return BankCommands.transferBulkWithErrors(io, command, author, me, db, sheet, note, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, convertToMoney, escrow_mode, bypassChecks, force, key, errors);
+        return BankCommands.transferBulkWithErrors(io, bulkCmd, author, me, db, sheet, bank_note, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, expire, decay, deduct_as_cash, escrow_mode, bypass_checks, force, key, errors);
     }
 
     @Command(desc = "Check if a nation is a reroll and print their reroll date", viewable = true)

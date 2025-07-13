@@ -3,14 +3,15 @@ package link.locutus.discord.commands.bank;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.EscrowMode;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -20,14 +21,13 @@ import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 public class TransferCommand extends Command {
@@ -85,18 +85,18 @@ public class TransferCommand extends Command {
         EscrowMode escrowMode = escrowModeStr != null ? PWBindings.EscrowMode(escrowModeStr) : null;
 
         DBNation nationAccount = null;
-        DBAlliance allianceAccount = null;
+        DBAlliance ingameBank = null;
         DBAlliance offshoreAccount = null;
-        TaxBracket taxAccount = null;
+        TaxBracket tax_account = null;
 
         String nationAccountStr = DiscordUtil.parseArg(args, "nation");
         if (nationAccountStr != null) {
             nationAccount = PWBindings.nation(author, guild, nationAccountStr);
         }
 
-        String allianceAccountStr = DiscordUtil.parseArg(args, "alliance");
-        if (allianceAccountStr != null) {
-            allianceAccount = PWBindings.alliance(allianceAccountStr);
+        String ingameBankStr = DiscordUtil.parseArg(args, "alliance");
+        if (ingameBankStr != null) {
+            ingameBank = PWBindings.alliance(ingameBankStr);
         }
 
         String offshoreAccountStr = DiscordUtil.parseArg(args, "offshore");
@@ -107,7 +107,7 @@ public class TransferCommand extends Command {
         String taxIdStr = DiscordUtil.parseArg(args, "tax_id");
         if (taxIdStr == null) taxIdStr = DiscordUtil.parseArg(args, "bracket");
         if (taxIdStr != null) {
-            taxAccount = PWBindings.bracket(guildDb, "tax_id=" + taxIdStr);
+            tax_account = PWBindings.bracket(guildDb, "tax_id=" + taxIdStr);
         }
 
         if (args.size() < 3) return usage();
@@ -118,34 +118,32 @@ public class TransferCommand extends Command {
         DepositType.DepositTypeInfo depositType = PWBindings.DepositTypeInfo(noteStr);
 
         if (flags.contains('t')) {
-            if (taxAccount != null) return "You can't specify both `tax_id` and `-t`";
+            if (tax_account != null) return "You can't specify both `tax_id` and `-t`";
             if (!receiver.isNation()) return "You can only specify `-t` for a nation";
-            taxAccount = receiver.asNation().getTaxBracket();
+            tax_account = receiver.asNation().getTaxBracket();
         }
 
         boolean onlyMissingFunds = flags.contains('o');
         boolean convertCash = flags.contains('c');
         boolean bypassChecks = flags.contains('f');
 
-        UUID token = null;
-        // String receiver, String transfer, String depositType, String nationAccount, String senderAlliance, String allianceAccount, String onlyMissingFunds, String expire, String token, String convertCash, String bypassChecks
+        // String receiver, String transfer, String depositType, String nationAccount, String ingame_bank, String offshore_account, String onlyMissingFunds, String expire, String token, String convertCash, String bypassChecks
         JSONObject command = CM.transfer.resources.cmd.receiver(
                 receiver.getUrl()).transfer(
-                ResourceType.toString(transfer)).depositType(
-                depositType.toString()).nationAccount(
-                nationAccount != null ? nationAccount.getUrl() : null).senderAlliance(
-                allianceAccount != null ? allianceAccount.getUrl() : null).allianceAccount(
-                offshoreAccount != null ? offshoreAccount.getUrl() : null).taxAccount(
-                taxAccount != null ? taxAccount.getQualifiedId() : null).onlyMissingFunds(
+                ResourceType.toString(transfer)).bank_note(
+                depositType.toString()).nation_account(
+                nationAccount != null ? nationAccount.getUrl() : null).ingame_bank(
+                ingameBank != null ? ingameBank.getUrl() : null).offshore_account(
+                offshoreAccount != null ? offshoreAccount.getUrl() : null).tax_account(
+                tax_account != null ? tax_account.getQualifiedId() : null).onlyMissingFunds(
                 String.valueOf(onlyMissingFunds)).expire(
                 expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire)).decay(
-                decay == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay)).token(
-                token == null ? null : token.toString()).convertCash(
+                decay == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay)).deduct_as_cash(
                 String.valueOf(convertCash)).escrow_mode(
-                escrowMode == null ? null : escrowMode.name()).bypassChecks(
+                escrowMode == null ? null : escrowMode.name()).bypass_checks(
                 String.valueOf(bypassChecks)
         ).toJson();
 
-        return BankCommands.transfer(channel, command, author, me, guildDb, receiver, transfer, depositType, nationAccount, allianceAccount, offshoreAccount, taxAccount, false, onlyMissingFunds, expire, decay, token, convertCash, escrowMode, bypassChecks, false, false);
+        return BankCommands.transfer(channel, command, author, me, guildDb, receiver, transfer, depositType, nationAccount, ingameBank, offshoreAccount, tax_account, false, onlyMissingFunds, expire, decay, convertCash, escrowMode, bypassChecks, false, false, null);
     }
 }

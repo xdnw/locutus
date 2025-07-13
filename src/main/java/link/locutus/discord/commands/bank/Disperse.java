@@ -68,18 +68,18 @@ public class Disperse extends Command {
 
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
         DBNation nationAccount = null;
-        DBAlliance allianceAccount = null;
+        DBAlliance ingame_bank = null;
         DBAlliance offshoreAccount = null;
-        TaxBracket taxAccount = null;
+        TaxBracket tax_account = null;
 
         String nationAccountStr = DiscordUtil.parseArg(args, "nation");
         if (nationAccountStr != null) {
             nationAccount = PWBindings.nation(author, guild, nationAccountStr);
         }
 
-        String allianceAccountStr = DiscordUtil.parseArg(args, "alliance");
-        if (allianceAccountStr != null) {
-            allianceAccount = PWBindings.alliance(allianceAccountStr);
+        String ingame_bankStr = DiscordUtil.parseArg(args, "alliance");
+        if (ingame_bankStr != null) {
+            ingame_bank = PWBindings.alliance(ingame_bankStr);
         }
 
         String offshoreAccountStr = DiscordUtil.parseArg(args, "offshore");
@@ -90,7 +90,7 @@ public class Disperse extends Command {
         String taxIdStr = DiscordUtil.parseArg(args, "tax_id");
         if (taxIdStr == null) taxIdStr = DiscordUtil.parseArg(args, "bracket");
         if (taxIdStr != null) {
-            taxAccount = PWBindings.bracket(guildDb, "tax_id=" + taxIdStr);
+            tax_account = PWBindings.bracket(guildDb, "tax_id=" + taxIdStr);
         }
 
         if (args.size() != 3) return usage(args.size(), 3, channel);
@@ -99,7 +99,7 @@ public class Disperse extends Command {
         }
 
 
-        double daysDefault = Integer.parseInt(args.get(1));
+        int daysDefault = Integer.parseInt(args.get(1));
         boolean ignoreInactives = !flags.contains('i');
 
         DepositType.DepositTypeInfo type = PWBindings.DepositTypeInfo(args.get(2));
@@ -109,8 +109,30 @@ public class Disperse extends Command {
         if (nations.isEmpty()) {
             return "No nations found (add `-b` to force send)";
         }
+
+        CM.transfer.raws command = CM.transfer.raws.cmd
+                .nationList(arg)
+                .days(daysDefault + "")
+                .no_daily_cash(flags.contains('d') ? "true" : null)
+                .no_cash(flags.contains('c') ? "true" : null)
+                .bank_note(type.toString())
+                .expire(null)
+                .decay(null)
+                .deduct_as_cash(flags.contains('m') ? "true" : null)
+                .nation_account(nationAccount == null ? null : nationAccount.getQualifiedId())
+                .escrow_mode(escrowMode == null ? null : escrowMode.name())
+                .ingame_bank(ingame_bank == null ? null : ingame_bank.getQualifiedId())
+                .offshore_account(offshoreAccount == null ? null : offshoreAccount.getQualifiedId())
+                .tax_account(tax_account == null ? null : tax_account.getQualifiedId())
+                .use_receiver_tax_account(flags.contains('t') ? "true" : null)
+                .bypass_checks(flags.contains('b') ? "true" : null)
+                .ping_when_sent(null)
+                .ping_role(null)
+                .force(flags.contains('f') ? "true" : null);
+
         return BankCommands.disburse(
                 author,
+                command.toJson(),
                 guildDb,
                 channel,
                 me,
@@ -124,9 +146,9 @@ public class Disperse extends Command {
                 flags.contains('m'),
                 nationAccount,
                 escrowMode,
-                allianceAccount,
+                ingame_bank,
                 offshoreAccount,
-                taxAccount,
+                tax_account,
                 flags.contains('t'),
                 flags.contains('b'),
                 false, null,

@@ -10,6 +10,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
@@ -39,7 +40,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 public class IACategory {
     private final GuildDB db;
@@ -522,7 +522,7 @@ public class IACategory {
         Member member = null;
         for (PermissionOverride override : overrides) {
             if (override.getMember() != null) {
-                if (override.getMember().getIdLong() == Locutus.loader().getAdminUserId()) continue;
+                if (Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN && override.getMember().getIdLong() == Locutus.loader().getAdminUserId()) continue;
                 if (member != null) {
                     return null;
                 }

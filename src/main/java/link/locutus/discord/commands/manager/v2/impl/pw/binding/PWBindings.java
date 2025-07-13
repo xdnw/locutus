@@ -184,6 +184,15 @@ public class PWBindings extends BindingHelper {
         return (ICommand) command;
     }
 
+    @Binding(value = "A grant request id")
+    public GrantRequest grantRequest(@Me GuildDB db, int id) {
+        GrantRequest request = db.getGrantRequestById(id);
+        if (request == null) {
+            throw new IllegalArgumentException("No grant request found with id: `" + id + "`");
+        }
+        return request;
+    }
+
     @Binding(value = """
             A map of city ranges to a list of beige reasons for defeating an enemy in war
             Priority is first to last (so put defaults at the bottom)""",
@@ -1754,6 +1763,11 @@ public class PWBindings extends BindingHelper {
     @Binding
     public MessageTrigger trigger(String trigger) {
         return emum(MessageTrigger.class, trigger);
+    }
+
+    @Binding
+    public MMRBuyMode mmrBuyMode(String trigger) {
+        return emum(MMRBuyMode.class, trigger);
     }
 
     @Binding

@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw;
 
 import ai.djl.MalformedModelException;
 import ai.djl.repository.zoo.ModelNotFoundException;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
@@ -255,12 +256,17 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        getCommands().registerMethod(new GrantCommands(), List.of("grant", "request"), "grantRequest", "create");
+        getCommands().registerMethod(new GrantCommands(), List.of("grant", "request"), "grantRequestCancel", "cancel");
+        getCommands().registerMethod(new GrantCommands(), List.of("grant", "request"), "grantRequestApprove", "approve");
+
         getCommands().registerMethod(new IACommands(), List.of("build"), "matchBuildSheet", "matches_sheet");
         getCommands().registerMethod(new UtilityCommands(), List.of("project"), "projectROI", "roi");
         getCommands().registerMethod(new GrantCommands(), List.of("grant_template", "create"), "templateCreateResearch", "research");
         getCommands().registerMethod(new GrantCommands(), List.of("grant"), "grantResearch", "research");
 
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "syncCityRefund", "city_refund");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "reloadConfig", "config");
 
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "edit"), "addManualWars", "add_none_war");
         getCommands().registerMethod(new SettingCommands(), List.of("bank"), "importTransactions", "import_transfers");
@@ -1124,7 +1130,7 @@ public class CommandManager2 {
                 if (!input.isEmpty()) {
                     return parseArguments(parametric.getUserParameterMap().keySet(), input, strict);
                 }
-                return new HashMap<>();
+                return new Object2ObjectLinkedOpenHashMap<>();
             } else if (next instanceof CommandGroup group) {
                 root = group;
             } else if (next == null) {

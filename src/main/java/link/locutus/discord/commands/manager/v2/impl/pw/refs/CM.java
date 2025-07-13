@@ -405,6 +405,10 @@ public class CM {
                     return set("runAlerts", value);
                 }
 
+                public attacks fixAttacks(String value) {
+                    return set("fixAttacks", value);
+                }
+
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="syncBans")
                 public static class bans extends CommandRef {
@@ -1029,8 +1033,8 @@ public class CM {
                 return set("excludeNationBonus", value);
             }
 
-            public revenue rads(String value) {
-                return set("rads", value);
+            public revenue rad_index(String value) {
+                return set("rad_index", value);
             }
 
             public revenue forceAtWar(String value) {
@@ -2311,6 +2315,22 @@ public class CM {
                 public static final listall cmd = new listall();
 
             }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="matchBuildSheet")
+            public static class matches_sheet extends CommandRef {
+                public static final matches_sheet cmd = new matches_sheet();
+            public matches_sheet builds(String value) {
+                return set("builds", value);
+            }
+
+            public matches_sheet nations(String value) {
+                return set("nations", value);
+            }
+
+            public matches_sheet output(String value) {
+                return set("output", value);
+            }
+
+            }
         }
         public static class building{
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="buildingCost")
@@ -2360,6 +2380,13 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="channelCount")
             public static class count extends CommandRef {
                 public static final count cmd = new count();
+            public count list_added_members(String value) {
+                return set("list_added_members", value);
+            }
+
+            public count list_added_roles(String value) {
+                return set("list_added_roles", value);
+            }
 
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.DiscordCommands.class,method="channel")
@@ -3065,6 +3092,22 @@ public class CM {
 
             public revenue set_gray_or_beige(String value) {
                 return set("set_gray_or_beige", value);
+            }
+
+            public revenue set_mint(String value) {
+                return set("set_mint", value);
+            }
+
+            public revenue set_lavender(String value) {
+                return set("set_lavender", value);
+            }
+
+            public revenue set_turquoise(String value) {
+                return set("set_turquoise", value);
+            }
+
+            public revenue set_gold(String value) {
+                return set("set_gold", value);
             }
 
             }
@@ -4501,24 +4544,24 @@ public class CM {
                 return set("onlySendMissingFunds", value);
             }
 
-            public build depositsAccount(String value) {
-                return set("depositsAccount", value);
+            public build nation_account(String value) {
+                return set("nation_account", value);
             }
 
-            public build useAllianceBank(String value) {
-                return set("useAllianceBank", value);
+            public build ingame_bank(String value) {
+                return set("ingame_bank", value);
             }
 
-            public build useOffshoreAccount(String value) {
-                return set("useOffshoreAccount", value);
+            public build offshore_account(String value) {
+                return set("offshore_account", value);
             }
 
-            public build taxAccount(String value) {
-                return set("taxAccount", value);
+            public build tax_account(String value) {
+                return set("tax_account", value);
             }
 
-            public build existingTaxAccount(String value) {
-                return set("existingTaxAccount", value);
+            public build use_receiver_tax_account(String value) {
+                return set("use_receiver_tax_account", value);
             }
 
             public build expire(String value) {
@@ -4529,12 +4572,12 @@ public class CM {
                 return set("decay", value);
             }
 
-            public build ignore(String value) {
-                return set("ignore", value);
+            public build bank_note(String value) {
+                return set("bank_note", value);
             }
 
-            public build convertToMoney(String value) {
-                return set("convertToMoney", value);
+            public build deduct_as_cash(String value) {
+                return set("deduct_as_cash", value);
             }
 
             public build escrow_mode(String value) {
@@ -4577,24 +4620,24 @@ public class CM {
                 return set("onlySendMissingFunds", value);
             }
 
-            public city depositsAccount(String value) {
-                return set("depositsAccount", value);
+            public city nation_account(String value) {
+                return set("nation_account", value);
             }
 
-            public city useAllianceBank(String value) {
-                return set("useAllianceBank", value);
+            public city ingame_bank(String value) {
+                return set("ingame_bank", value);
             }
 
-            public city useOffshoreAccount(String value) {
-                return set("useOffshoreAccount", value);
+            public city offshore_account(String value) {
+                return set("offshore_account", value);
             }
 
-            public city taxAccount(String value) {
-                return set("taxAccount", value);
+            public city tax_account(String value) {
+                return set("tax_account", value);
             }
 
-            public city existingTaxAccount(String value) {
-                return set("existingTaxAccount", value);
+            public city use_receiver_tax_account(String value) {
+                return set("use_receiver_tax_account", value);
             }
 
             public city expire(String value) {
@@ -4605,12 +4648,12 @@ public class CM {
                 return set("decay", value);
             }
 
-            public city ignore(String value) {
-                return set("ignore", value);
+            public city bank_note(String value) {
+                return set("bank_note", value);
             }
 
-            public city convertToMoney(String value) {
-                return set("convertToMoney", value);
+            public city deduct_as_cash(String value) {
+                return set("deduct_as_cash", value);
             }
 
             public city escrow_mode(String value) {
@@ -4689,24 +4732,24 @@ public class CM {
                 return set("onlySendMissingFunds", value);
             }
 
-            public consumption depositsAccount(String value) {
-                return set("depositsAccount", value);
+            public consumption nation_account(String value) {
+                return set("nation_account", value);
             }
 
-            public consumption useAllianceBank(String value) {
-                return set("useAllianceBank", value);
+            public consumption ingame_bank(String value) {
+                return set("ingame_bank", value);
             }
 
-            public consumption useOffshoreAccount(String value) {
-                return set("useOffshoreAccount", value);
+            public consumption offshore_account(String value) {
+                return set("offshore_account", value);
             }
 
-            public consumption taxAccount(String value) {
-                return set("taxAccount", value);
+            public consumption tax_account(String value) {
+                return set("tax_account", value);
             }
 
-            public consumption existingTaxAccount(String value) {
-                return set("existingTaxAccount", value);
+            public consumption use_receiver_tax_account(String value) {
+                return set("use_receiver_tax_account", value);
             }
 
             public consumption expire(String value) {
@@ -4717,12 +4760,12 @@ public class CM {
                 return set("decay", value);
             }
 
-            public consumption ignore(String value) {
-                return set("ignore", value);
+            public consumption bank_note(String value) {
+                return set("bank_note", value);
             }
 
-            public consumption convertToMoney(String value) {
-                return set("convertToMoney", value);
+            public consumption deduct_as_cash(String value) {
+                return set("deduct_as_cash", value);
             }
 
             public consumption escrow_mode(String value) {
@@ -4817,24 +4860,24 @@ public class CM {
                 return set("onlySendMissingFunds", value);
             }
 
-            public infra depositsAccount(String value) {
-                return set("depositsAccount", value);
+            public infra nation_account(String value) {
+                return set("nation_account", value);
             }
 
-            public infra useAllianceBank(String value) {
-                return set("useAllianceBank", value);
+            public infra ingame_bank(String value) {
+                return set("ingame_bank", value);
             }
 
-            public infra useOffshoreAccount(String value) {
-                return set("useOffshoreAccount", value);
+            public infra offshore_account(String value) {
+                return set("offshore_account", value);
             }
 
-            public infra taxAccount(String value) {
-                return set("taxAccount", value);
+            public infra tax_account(String value) {
+                return set("tax_account", value);
             }
 
-            public infra existingTaxAccount(String value) {
-                return set("existingTaxAccount", value);
+            public infra use_receiver_tax_account(String value) {
+                return set("use_receiver_tax_account", value);
             }
 
             public infra expire(String value) {
@@ -4845,12 +4888,12 @@ public class CM {
                 return set("decay", value);
             }
 
-            public infra ignore(String value) {
-                return set("ignore", value);
+            public infra bank_note(String value) {
+                return set("bank_note", value);
             }
 
-            public infra convertToMoney(String value) {
-                return set("convertToMoney", value);
+            public infra deduct_as_cash(String value) {
+                return set("deduct_as_cash", value);
             }
 
             public infra escrow_mode(String value) {
@@ -4913,24 +4956,24 @@ public class CM {
                 return set("onlySendMissingFunds", value);
             }
 
-            public land depositsAccount(String value) {
-                return set("depositsAccount", value);
+            public land nation_account(String value) {
+                return set("nation_account", value);
             }
 
-            public land useAllianceBank(String value) {
-                return set("useAllianceBank", value);
+            public land ingame_bank(String value) {
+                return set("ingame_bank", value);
             }
 
-            public land useOffshoreAccount(String value) {
-                return set("useOffshoreAccount", value);
+            public land offshore_account(String value) {
+                return set("offshore_account", value);
             }
 
-            public land taxAccount(String value) {
-                return set("taxAccount", value);
+            public land tax_account(String value) {
+                return set("tax_account", value);
             }
 
-            public land existingTaxAccount(String value) {
-                return set("existingTaxAccount", value);
+            public land use_receiver_tax_account(String value) {
+                return set("use_receiver_tax_account", value);
             }
 
             public land expire(String value) {
@@ -4941,12 +4984,12 @@ public class CM {
                 return set("decay", value);
             }
 
-            public land ignore(String value) {
-                return set("ignore", value);
+            public land bank_note(String value) {
+                return set("bank_note", value);
             }
 
-            public land convertToMoney(String value) {
-                return set("convertToMoney", value);
+            public land deduct_as_cash(String value) {
+                return set("deduct_as_cash", value);
             }
 
             public land escrow_mode(String value) {
@@ -5001,6 +5044,14 @@ public class CM {
                 return set("mmr", value);
             }
 
+            public mmr multiplier(String value) {
+                return set("multiplier", value);
+            }
+
+            public mmr mode(String value) {
+                return set("mode", value);
+            }
+
             public mmr is_additional_units(String value) {
                 return set("is_additional_units", value);
             }
@@ -5009,24 +5060,24 @@ public class CM {
                 return set("onlySendMissingFunds", value);
             }
 
-            public mmr depositsAccount(String value) {
-                return set("depositsAccount", value);
+            public mmr nation_account(String value) {
+                return set("nation_account", value);
             }
 
-            public mmr useAllianceBank(String value) {
-                return set("useAllianceBank", value);
+            public mmr ingame_bank(String value) {
+                return set("ingame_bank", value);
             }
 
-            public mmr useOffshoreAccount(String value) {
-                return set("useOffshoreAccount", value);
+            public mmr offshore_account(String value) {
+                return set("offshore_account", value);
             }
 
-            public mmr taxAccount(String value) {
-                return set("taxAccount", value);
+            public mmr tax_account(String value) {
+                return set("tax_account", value);
             }
 
-            public mmr existingTaxAccount(String value) {
-                return set("existingTaxAccount", value);
+            public mmr use_receiver_tax_account(String value) {
+                return set("use_receiver_tax_account", value);
             }
 
             public mmr expire(String value) {
@@ -5037,12 +5088,12 @@ public class CM {
                 return set("decay", value);
             }
 
-            public mmr ignore(String value) {
-                return set("ignore", value);
+            public mmr bank_note(String value) {
+                return set("bank_note", value);
             }
 
-            public mmr convertToMoney(String value) {
-                return set("convertToMoney", value);
+            public mmr deduct_as_cash(String value) {
+                return set("deduct_as_cash", value);
             }
 
             public mmr escrow_mode(String value) {
@@ -5081,24 +5132,24 @@ public class CM {
                 return set("onlySendMissingFunds", value);
             }
 
-            public project depositsAccount(String value) {
-                return set("depositsAccount", value);
+            public project nation_account(String value) {
+                return set("nation_account", value);
             }
 
-            public project useAllianceBank(String value) {
-                return set("useAllianceBank", value);
+            public project ingame_bank(String value) {
+                return set("ingame_bank", value);
             }
 
-            public project useOffshoreAccount(String value) {
-                return set("useOffshoreAccount", value);
+            public project offshore_account(String value) {
+                return set("offshore_account", value);
             }
 
-            public project taxAccount(String value) {
-                return set("taxAccount", value);
+            public project tax_account(String value) {
+                return set("tax_account", value);
             }
 
-            public project existingTaxAccount(String value) {
-                return set("existingTaxAccount", value);
+            public project use_receiver_tax_account(String value) {
+                return set("use_receiver_tax_account", value);
             }
 
             public project expire(String value) {
@@ -5109,12 +5160,12 @@ public class CM {
                 return set("decay", value);
             }
 
-            public project ignore(String value) {
-                return set("ignore", value);
+            public project bank_note(String value) {
+                return set("bank_note", value);
             }
 
-            public project convertToMoney(String value) {
-                return set("convertToMoney", value);
+            public project deduct_as_cash(String value) {
+                return set("deduct_as_cash", value);
             }
 
             public project escrow_mode(String value) {
@@ -5150,6 +5201,44 @@ public class CM {
             }
 
             }
+            public static class request{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="grantRequestApprove")
+                public static class approve extends CommandRef {
+                    public static final approve cmd = new approve();
+                public approve request(String value) {
+                    return set("request", value);
+                }
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="grantRequestCancel")
+                public static class cancel extends CommandRef {
+                    public static final cancel cmd = new cancel();
+                public cancel request(String value) {
+                    return set("request", value);
+                }
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="grantRequest")
+                public static class create extends CommandRef {
+                    public static final create cmd = new create();
+                public create reason(String value) {
+                    return set("reason", value);
+                }
+
+                public create receiver(String value) {
+                    return set("receiver", value);
+                }
+
+                public create command(String value) {
+                    return set("command", value);
+                }
+
+                public create estimate_amount(String value) {
+                    return set("estimate_amount", value);
+                }
+
+                }
+            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="grantResearch")
             public static class research extends CommandRef {
                 public static final research cmd = new research();
@@ -5169,24 +5258,24 @@ public class CM {
                 return set("onlySendMissingFunds", value);
             }
 
-            public research depositsAccount(String value) {
-                return set("depositsAccount", value);
+            public research nation_account(String value) {
+                return set("nation_account", value);
             }
 
-            public research useAllianceBank(String value) {
-                return set("useAllianceBank", value);
+            public research ingame_bank(String value) {
+                return set("ingame_bank", value);
             }
 
-            public research useOffshoreAccount(String value) {
-                return set("useOffshoreAccount", value);
+            public research offshore_account(String value) {
+                return set("offshore_account", value);
             }
 
-            public research taxAccount(String value) {
-                return set("taxAccount", value);
+            public research tax_account(String value) {
+                return set("tax_account", value);
             }
 
-            public research existingTaxAccount(String value) {
-                return set("existingTaxAccount", value);
+            public research use_receiver_tax_account(String value) {
+                return set("use_receiver_tax_account", value);
             }
 
             public research expire(String value) {
@@ -5197,12 +5286,12 @@ public class CM {
                 return set("decay", value);
             }
 
-            public research ignore(String value) {
-                return set("ignore", value);
+            public research bank_note(String value) {
+                return set("bank_note", value);
             }
 
-            public research convertToMoney(String value) {
-                return set("convertToMoney", value);
+            public research deduct_as_cash(String value) {
+                return set("deduct_as_cash", value);
             }
 
             public research escrow_mode(String value) {
@@ -5253,24 +5342,24 @@ public class CM {
                 return set("no_cash", value);
             }
 
-            public unit depositsAccount(String value) {
-                return set("depositsAccount", value);
+            public unit nation_account(String value) {
+                return set("nation_account", value);
             }
 
-            public unit useAllianceBank(String value) {
-                return set("useAllianceBank", value);
+            public unit ingame_bank(String value) {
+                return set("ingame_bank", value);
             }
 
-            public unit useOffshoreAccount(String value) {
-                return set("useOffshoreAccount", value);
+            public unit offshore_account(String value) {
+                return set("offshore_account", value);
             }
 
-            public unit taxAccount(String value) {
-                return set("taxAccount", value);
+            public unit tax_account(String value) {
+                return set("tax_account", value);
             }
 
-            public unit existingTaxAccount(String value) {
-                return set("existingTaxAccount", value);
+            public unit use_receiver_tax_account(String value) {
+                return set("use_receiver_tax_account", value);
             }
 
             public unit expire(String value) {
@@ -5281,12 +5370,12 @@ public class CM {
                 return set("decay", value);
             }
 
-            public unit ignore(String value) {
-                return set("ignore", value);
+            public unit bank_note(String value) {
+                return set("bank_note", value);
             }
 
-            public unit convertToMoney(String value) {
-                return set("convertToMoney", value);
+            public unit deduct_as_cash(String value) {
+                return set("deduct_as_cash", value);
             }
 
             public unit escrow_mode(String value) {
@@ -5325,24 +5414,24 @@ public class CM {
                 return set("onlySendMissingFunds", value);
             }
 
-            public warchest depositsAccount(String value) {
-                return set("depositsAccount", value);
+            public warchest nation_account(String value) {
+                return set("nation_account", value);
             }
 
-            public warchest useAllianceBank(String value) {
-                return set("useAllianceBank", value);
+            public warchest ingame_bank(String value) {
+                return set("ingame_bank", value);
             }
 
-            public warchest useOffshoreAccount(String value) {
-                return set("useOffshoreAccount", value);
+            public warchest offshore_account(String value) {
+                return set("offshore_account", value);
             }
 
-            public warchest taxAccount(String value) {
-                return set("taxAccount", value);
+            public warchest tax_account(String value) {
+                return set("tax_account", value);
             }
 
-            public warchest existingTaxAccount(String value) {
-                return set("existingTaxAccount", value);
+            public warchest use_receiver_tax_account(String value) {
+                return set("use_receiver_tax_account", value);
             }
 
             public warchest expire(String value) {
@@ -5353,12 +5442,12 @@ public class CM {
                 return set("decay", value);
             }
 
-            public warchest ignore(String value) {
-                return set("ignore", value);
+            public warchest bank_note(String value) {
+                return set("bank_note", value);
             }
 
-            public warchest convertToMoney(String value) {
-                return set("convertToMoney", value);
+            public warchest deduct_as_cash(String value) {
+                return set("deduct_as_cash", value);
             }
 
             public warchest escrow_mode(String value) {
@@ -6249,8 +6338,8 @@ public class CM {
                 return set("continent", value);
             }
 
-            public roi rads(String value) {
-                return set("rads", value);
+            public roi rad_index(String value) {
+                return set("rad_index", value);
             }
 
             public roi forceProjects(String value) {
@@ -6552,8 +6641,8 @@ public class CM {
                 return set("continent", value);
             }
 
-            public roi rads(String value) {
-                return set("rads", value);
+            public roi rad_index(String value) {
+                return set("rad_index", value);
             }
 
             public roi forceProjects(String value) {
@@ -7184,8 +7273,8 @@ public class CM {
                 return set("excludeNationBonus", value);
             }
 
-            public revenue rads(String value) {
-                return set("rads", value);
+            public revenue rad_index(String value) {
+                return set("rad_index", value);
             }
 
             public revenue forceAtWar(String value) {
@@ -7862,6 +7951,42 @@ public class CM {
                 public static final costsheet cmd = new costsheet();
 
             }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="projectROI")
+            public static class roi extends CommandRef {
+                public static final roi cmd = new roi();
+            public roi nation(String value) {
+                return set("nation", value);
+            }
+
+            public roi days(String value) {
+                return set("days", value);
+            }
+
+            public roi projects(String value) {
+                return set("projects", value);
+            }
+
+            public roi continent(String value) {
+                return set("continent", value);
+            }
+
+            public roi rad_index(String value) {
+                return set("rad_index", value);
+            }
+
+            public roi mmr(String value) {
+                return set("mmr", value);
+            }
+
+            public roi infra(String value) {
+                return set("infra", value);
+            }
+
+            public roi land(String value) {
+                return set("land", value);
+            }
+
+            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="ProjectSheet")
             public static class sheet extends CommandRef {
                 public static final sheet cmd = new sheet();
@@ -8277,12 +8402,12 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ResearchCommands.class,method="researchCost")
             public static class cost extends CommandRef {
                 public static final cost cmd = new cost();
-            public cost start_level(String value) {
-                return set("start_level", value);
-            }
-
             public cost end_level(String value) {
                 return set("end_level", value);
+            }
+
+            public cost start_level(String value) {
+                return set("start_level", value);
             }
 
             public cost military_doctrine(String value) {
@@ -8297,10 +8422,6 @@ public class CM {
                 return set("nations", value);
             }
 
-            public sheet update(String value) {
-                return set("update", value);
-            }
-
             public sheet sheet(String value) {
                 return set("sheet", value);
             }
@@ -8311,6 +8432,34 @@ public class CM {
                 public static final sync cmd = new sync();
             public sync nations(String value) {
                 return set("nations", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ResearchCommands.class,method="researchCityTable")
+            public static class table extends CommandRef {
+                public static final table cmd = new table();
+            public table research(String value) {
+                return set("research", value);
+            }
+
+            public table percent_of_city_cost(String value) {
+                return set("percent_of_city_cost", value);
+            }
+
+            public table sheet(String value) {
+                return set("sheet", value);
+            }
+
+            public table gov_support_agency(String value) {
+                return set("gov_support_agency", value);
+            }
+
+            public table domestic_affairs(String value) {
+                return set("domestic_affairs", value);
+            }
+
+            public table military_doctrine(String value) {
+                return set("military_doctrine", value);
             }
 
             }
@@ -8930,6 +9079,14 @@ public class CM {
             }
 
             }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="MAIL_DEMOTED_MEMBERS", field="MAIL_DEMOTED_MEMBERS")
+            public static class MAIL_DEMOTED_MEMBERS extends CommandRef {
+                public static final MAIL_DEMOTED_MEMBERS cmd = new MAIL_DEMOTED_MEMBERS();
+            public MAIL_DEMOTED_MEMBERS enabled(String value) {
+                return set("enabled", value);
+            }
+
+            }
             @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="MEMBER_AUDIT_ALERTS", field="MEMBER_AUDIT_ALERTS")
             public static class MEMBER_AUDIT_ALERTS extends CommandRef {
                 public static final MEMBER_AUDIT_ALERTS cmd = new MEMBER_AUDIT_ALERTS();
@@ -9092,6 +9249,14 @@ public class CM {
             }
 
             }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="OFFSHORE_KEEP_AMOUNT", field="OFFSHORE_KEEP_AMOUNT")
+            public static class OFFSHORE_KEEP_AMOUNT extends CommandRef {
+                public static final OFFSHORE_KEEP_AMOUNT cmd = new OFFSHORE_KEEP_AMOUNT();
+            public OFFSHORE_KEEP_AMOUNT amount(String value) {
+                return set("amount", value);
+            }
+
+            }
             @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="PUBLIC_OFFSHORING", field="PUBLIC_OFFSHORING")
             public static class PUBLIC_OFFSHORING extends CommandRef {
                 public static final PUBLIC_OFFSHORING cmd = new PUBLIC_OFFSHORING();
@@ -9203,6 +9368,38 @@ public class CM {
                 public static final GRANT_REQUEST_CHANNEL cmd = new GRANT_REQUEST_CHANNEL();
             public GRANT_REQUEST_CHANNEL channel(String value) {
                 return set("channel", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="GRANT_REQUEST_DECAY", field="GRANT_REQUEST_DECAY")
+            public static class GRANT_REQUEST_DECAY extends CommandRef {
+                public static final GRANT_REQUEST_DECAY cmd = new GRANT_REQUEST_DECAY();
+            public GRANT_REQUEST_DECAY expire(String value) {
+                return set("expire", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="GRANT_REQUEST_EXPIRE", field="GRANT_REQUEST_EXPIRE")
+            public static class GRANT_REQUEST_EXPIRE extends CommandRef {
+                public static final GRANT_REQUEST_EXPIRE cmd = new GRANT_REQUEST_EXPIRE();
+            public GRANT_REQUEST_EXPIRE expire(String value) {
+                return set("expire", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="GRANT_REQUEST_NOTE", field="GRANT_REQUEST_NOTE")
+            public static class GRANT_REQUEST_NOTE extends CommandRef {
+                public static final GRANT_REQUEST_NOTE cmd = new GRANT_REQUEST_NOTE();
+            public GRANT_REQUEST_NOTE bank_note(String value) {
+                return set("bank_note", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="GRANT_REQUEST_TAX_ACCOUNT", field="GRANT_REQUEST_TAX_ACCOUNT")
+            public static class GRANT_REQUEST_TAX_ACCOUNT extends CommandRef {
+                public static final GRANT_REQUEST_TAX_ACCOUNT cmd = new GRANT_REQUEST_TAX_ACCOUNT();
+            public GRANT_REQUEST_TAX_ACCOUNT value(String value) {
+                return set("value", value);
             }
 
             }
@@ -9416,6 +9613,14 @@ public class CM {
             public static class ARCHIVE_CATEGORY extends CommandRef {
                 public static final ARCHIVE_CATEGORY cmd = new ARCHIVE_CATEGORY();
             public ARCHIVE_CATEGORY category(String value) {
+                return set("category", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="INTERVIEW_CATEGORY", field="INTERVIEW_CATEGORY")
+            public static class INTERVIEW_CATEGORY extends CommandRef {
+                public static final INTERVIEW_CATEGORY cmd = new INTERVIEW_CATEGORY();
+            public INTERVIEW_CATEGORY category(String value) {
                 return set("category", value);
             }
 
@@ -16334,28 +16539,28 @@ public class CM {
                 return set("sheet", value);
             }
 
-            public bulk depositType(String value) {
-                return set("depositType", value);
+            public bulk bank_note(String value) {
+                return set("bank_note", value);
             }
 
-            public bulk depositsAccount(String value) {
-                return set("depositsAccount", value);
+            public bulk nation_account(String value) {
+                return set("nation_account", value);
             }
 
-            public bulk useAllianceBank(String value) {
-                return set("useAllianceBank", value);
+            public bulk ingame_bank(String value) {
+                return set("ingame_bank", value);
             }
 
-            public bulk useOffshoreAccount(String value) {
-                return set("useOffshoreAccount", value);
+            public bulk offshore_account(String value) {
+                return set("offshore_account", value);
             }
 
-            public bulk taxAccount(String value) {
-                return set("taxAccount", value);
+            public bulk tax_account(String value) {
+                return set("tax_account", value);
             }
 
-            public bulk existingTaxAccount(String value) {
-                return set("existingTaxAccount", value);
+            public bulk use_receiver_tax_account(String value) {
+                return set("use_receiver_tax_account", value);
             }
 
             public bulk expire(String value) {
@@ -16366,16 +16571,16 @@ public class CM {
                 return set("decay", value);
             }
 
-            public bulk convertToMoney(String value) {
-                return set("convertToMoney", value);
+            public bulk deduct_as_cash(String value) {
+                return set("deduct_as_cash", value);
             }
 
             public bulk escrow_mode(String value) {
                 return set("escrow_mode", value);
             }
 
-            public bulk bypassChecks(String value) {
-                return set("bypassChecks", value);
+            public bulk bypass_checks(String value) {
+                return set("bypass_checks", value);
             }
 
             public bulk force(String value) {
@@ -16427,8 +16632,8 @@ public class CM {
                     return set("receiver_nation", value);
                 }
 
-                public from_offshore_account sender_alliance(String value) {
-                    return set("sender_alliance", value);
+                public from_offshore_account sender_account(String value) {
+                    return set("sender_account", value);
                 }
 
                 public from_offshore_account sender_nation(String value) {
@@ -16548,28 +16753,28 @@ public class CM {
                 return set("transfer", value);
             }
 
-            public resources depositType(String value) {
-                return set("depositType", value);
+            public resources bank_note(String value) {
+                return set("bank_note", value);
             }
 
-            public resources nationAccount(String value) {
-                return set("nationAccount", value);
+            public resources nation_account(String value) {
+                return set("nation_account", value);
             }
 
-            public resources senderAlliance(String value) {
-                return set("senderAlliance", value);
+            public resources ingame_bank(String value) {
+                return set("ingame_bank", value);
             }
 
-            public resources allianceAccount(String value) {
-                return set("allianceAccount", value);
+            public resources offshore_account(String value) {
+                return set("offshore_account", value);
             }
 
-            public resources taxAccount(String value) {
-                return set("taxAccount", value);
+            public resources tax_account(String value) {
+                return set("tax_account", value);
             }
 
-            public resources existingTaxAccount(String value) {
-                return set("existingTaxAccount", value);
+            public resources use_receiver_tax_account(String value) {
+                return set("use_receiver_tax_account", value);
             }
 
             public resources onlyMissingFunds(String value) {
@@ -16584,20 +16789,16 @@ public class CM {
                 return set("decay", value);
             }
 
-            public resources token(String value) {
-                return set("token", value);
-            }
-
-            public resources convertCash(String value) {
-                return set("convertCash", value);
+            public resources deduct_as_cash(String value) {
+                return set("deduct_as_cash", value);
             }
 
             public resources escrow_mode(String value) {
                 return set("escrow_mode", value);
             }
 
-            public resources bypassChecks(String value) {
-                return set("bypassChecks", value);
+            public resources bypass_checks(String value) {
+                return set("bypass_checks", value);
             }
 
             public resources ping_when_sent(String value) {
@@ -16606,6 +16807,10 @@ public class CM {
 
             public resources force(String value) {
                 return set("force", value);
+            }
+
+            public resources calling_command(String value) {
+                return set("calling_command", value);
             }
 
             }
@@ -16680,32 +16885,32 @@ public class CM {
                 return set("resourcesPerCity", value);
             }
 
-            public warchest note(String value) {
-                return set("note", value);
+            public warchest bank_note(String value) {
+                return set("bank_note", value);
             }
 
             public warchest skipStockpile(String value) {
                 return set("skipStockpile", value);
             }
 
-            public warchest depositsAccount(String value) {
-                return set("depositsAccount", value);
+            public warchest nation_account(String value) {
+                return set("nation_account", value);
             }
 
-            public warchest useAllianceBank(String value) {
-                return set("useAllianceBank", value);
+            public warchest ingame_bank(String value) {
+                return set("ingame_bank", value);
             }
 
-            public warchest useOffshoreAccount(String value) {
-                return set("useOffshoreAccount", value);
+            public warchest offshore_account(String value) {
+                return set("offshore_account", value);
             }
 
-            public warchest taxAccount(String value) {
-                return set("taxAccount", value);
+            public warchest tax_account(String value) {
+                return set("tax_account", value);
             }
 
-            public warchest existingTaxAccount(String value) {
-                return set("existingTaxAccount", value);
+            public warchest use_receiver_tax_account(String value) {
+                return set("use_receiver_tax_account", value);
             }
 
             public warchest expire(String value) {
@@ -16716,16 +16921,20 @@ public class CM {
                 return set("decay", value);
             }
 
-            public warchest convertToMoney(String value) {
-                return set("convertToMoney", value);
+            public warchest deduct_as_cash(String value) {
+                return set("deduct_as_cash", value);
             }
 
             public warchest escrow_mode(String value) {
                 return set("escrow_mode", value);
             }
 
-            public warchest bypassChecks(String value) {
-                return set("bypassChecks", value);
+            public warchest ping_when_sent(String value) {
+                return set("ping_when_sent", value);
+            }
+
+            public warchest bypass_checks(String value) {
+                return set("bypass_checks", value);
             }
 
             public warchest force(String value) {

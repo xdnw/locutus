@@ -409,6 +409,7 @@ public class Settings extends Config {
     }
 
     public static class DISCORD {
+
         @Create
         public CHANNEL CHANNEL;
         @Create
@@ -483,6 +484,12 @@ public class Settings extends Config {
             @Comment("Additional prefixes supported for message commands (single character)")
             public List<String> ALTERNATE_COMMAND_PREFIX = Arrays.asList("$");
         }
+
+        @Comment("If the discord user who owns the bot has access to bot admin commands without needing a role")
+        public boolean BOT_OWNER_IS_LOCUTUS_ADMIN = true;
+
+        @Comment("If having administrator permissions in a discord server grants access to server specific admin commands without needing an admin role")
+        public boolean DISCORD_ADMIN_IS_LOCUTUS_ADMIN = true;
     }
 
 

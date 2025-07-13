@@ -370,7 +370,7 @@ public class CommandManager {
         if (cmd.getCategories().contains(CommandCategory.ADMIN)) {
             Role adminRole = Roles.ADMIN.toRole2(msgGuild);
             if (adminRole == null) {
-                if (!member.hasPermission(net.dv8tion.jda.api.Permission.ADMINISTRATOR)) {
+                if (!Settings.INSTANCE.DISCORD.DISCORD_ADMIN_IS_LOCUTUS_ADMIN || !member.hasPermission(net.dv8tion.jda.api.Permission.ADMINISTRATOR)) {
                     channel.sendMessage("No admin role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole ADMIN @someRole`");
                     return true;
                 }

@@ -2,11 +2,9 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -14,37 +12,48 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.grant.*;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
+import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.TransferResult;
 import link.locutus.discord.util.sheet.SpreadSheet;
+import link.locutus.discord.util.task.mail.MailApiResponse;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONObject;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -61,7 +70,7 @@ public class GrantCommands {
     @RolePermission(Roles.MEMBER)
     @IsAlliance
     public String grantCity(
-            @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
+            @Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, @Me DBNation me, @Me User author,
 
             Set<DBNation> receivers,
 
@@ -69,16 +78,17 @@ public class GrantCommands {
             @Switch("u") @Arg(value = "If buying up to a city count, instead of additional cities", group = 0) boolean upTo,
             @Arg(value = "Only send funds the receiver is lacking from the amount", group = 0) @Switch("m") boolean onlySendMissingFunds,
 
-            @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation depositsAccount,
-            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance useAllianceBank,
-            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance useOffshoreAccount,
-            @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket taxAccount,
-            @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean existingTaxAccount,
+            @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation nation_account,
+            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance ingame_bank,
+            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance offshore_account,
+            @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket tax_account,
+            @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean use_receiver_tax_account,
 
             @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
             @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
-            @Arg(value = "Have the transfer not deduct from balance", group = 2) @Switch("i") boolean ignore,
-            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2)@Switch("c") boolean convertToMoney,
+            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 2, aliases = "deposittype") @Default("#grant") DepositType.DepositTypeInfo bank_note,
+
+            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2)@Switch("c") boolean deduct_as_cash,
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
 
             @Arg(value = "Apply the specified domestic policy for determining cost", group = 4) @Switch("md") Boolean manifest_destiny,
@@ -99,7 +109,7 @@ public class GrantCommands {
             int currentCity = receiver.getCities();
             return Math.max(upTo ? amount - currentCity : amount, 0);
         };
-        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
+        return Grant.generateCommandLogic(io, command, db, me, author, receivers, onlySendMissingFunds, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, expire, decay, bank_note, deduct_as_cash, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
                 (receiver, grant) -> {
                     int currentCity = receiver.getCities();
                     int numBuy = getNumBuy.apply(receiver);
@@ -145,21 +155,21 @@ public class GrantCommands {
     @RolePermission(Roles.MEMBER)
     @IsAlliance
     public String grantProject(
-            @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
+            @Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, @Me DBNation me, @Me User author,
             Set<DBNation> receivers,
             Project project,
             @Arg(value = "Only send funds the receiver is lacking from the amount", group = 0) @Switch("m") boolean onlySendMissingFunds, 
 
-            @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation depositsAccount,
-            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance useAllianceBank,
-            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance useOffshoreAccount,
-            @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket taxAccount,
-            @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean existingTaxAccount,
+            @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation nation_account,
+            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance ingame_bank,
+            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance offshore_account,
+            @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket tax_account,
+            @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean use_receiver_tax_account,
             
             @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
             @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
-            @Arg(value = "Have the transfer not deduct from balance", group = 2) @Switch("i") boolean ignore, 
-            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2) @Switch("c") boolean convertToMoney,
+            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 2, aliases = "deposittype") @Default("#grant") DepositType.DepositTypeInfo bank_note,
+            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2) @Switch("c") boolean deduct_as_cash,
 
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
 
@@ -176,7 +186,7 @@ public class GrantCommands {
         if (!Roles.ECON.has(author, db.getGuild()) && (force || receivers.size() > 1 || receivers.iterator().next().getId() != me.getId())) {
             throw new IllegalArgumentException("Missing role: " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
         }
-        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
+        return Grant.generateCommandLogic(io, command, db, me, author, receivers, onlySendMissingFunds, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, expire, decay, bank_note, deduct_as_cash, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
             (receiver, grant) -> {
                 if (receiver.hasProject(project)) {
                     return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new Object2DoubleOpenHashMap<>(), DepositType.PROJECT.withValue().toString()).addMessage("Nation already has project: " + project.name());
@@ -204,7 +214,7 @@ public class GrantCommands {
     @RolePermission(Roles.MEMBER)
     @IsAlliance
     public String grantInfra(
-            @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
+            @Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, @Me DBNation me, @Me User author,
             Set<DBNation> receivers,
 
             @Range(min=50, max=10000) int infra_level,
@@ -212,16 +222,16 @@ public class GrantCommands {
             @Switch("new") @Arg(value = "If the grant is for a new city", group = 0) boolean single_new_city,
             @Arg(value = "Only send funds the receiver is lacking from the amount", group = 0) @Switch("m") boolean onlySendMissingFunds,
 
-            @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation depositsAccount,
-            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance useAllianceBank,
-            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance useOffshoreAccount,
-            @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket taxAccount,
-            @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean existingTaxAccount,
+            @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation nation_account,
+            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance ingame_bank,
+            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance offshore_account,
+            @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket tax_account,
+            @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean use_receiver_tax_account,
 
             @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
             @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
-            @Arg(value = "Have the transfer not deduct from balance", group = 2) @Switch("i") boolean ignore, 
-            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2) @Switch("c") boolean convertToMoney,
+            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 2, aliases = "deposittype") @Default("#grant") DepositType.DepositTypeInfo bank_note,
+            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2) @Switch("c") boolean deduct_as_cash,
 
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
 
@@ -239,7 +249,7 @@ public class GrantCommands {
         if (!Roles.ECON.has(author, db.getGuild()) && (force || receivers.size() > 1 || receivers.iterator().next().getId() != me.getId())) {
             throw new IllegalArgumentException("Missing role: " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
         }
-        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
+        return Grant.generateCommandLogic(io, command, db, me, author, receivers, onlySendMissingFunds, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, expire, decay, bank_note, deduct_as_cash, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
             (receiver, grant) -> {
                 double cost;
                 if (single_new_city) {
@@ -283,22 +293,22 @@ public class GrantCommands {
     @RolePermission(Roles.MEMBER)
     @IsAlliance
     public String grantLand(
-            @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
+            @Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, @Me DBNation me, @Me User author,
             Set<DBNation> receivers,
             @Range(min=1, max=10000) int to_land,
 
             @Switch("new") @Arg(value = "If the grant is for a new city", group = 0) boolean single_new_city,
             @Arg(value = "Only send funds the receiver is lacking from the amount", group = 0) @Switch("m") boolean onlySendMissingFunds,
 
-            @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation depositsAccount,
-            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance useAllianceBank,
-            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance useOffshoreAccount,
-            @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket taxAccount,
-            @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean existingTaxAccount,
+            @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation nation_account,
+            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance ingame_bank,
+            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance offshore_account,
+            @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket tax_account,
+            @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean use_receiver_tax_account,
             @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
             @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
-            @Arg(value = "Have the transfer not deduct from balance", group = 2) @Switch("i") boolean ignore, 
-            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2)@Switch("c") boolean convertToMoney,
+            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 2, aliases = "deposittype") @Default("#grant") DepositType.DepositTypeInfo bank_note,
+            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2)@Switch("c") boolean deduct_as_cash,
 
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
 
@@ -315,7 +325,7 @@ public class GrantCommands {
         if (!Roles.ECON.has(author, db.getGuild()) && (force || receivers.size() > 1 || receivers.iterator().next().getId() != me.getId())) {
             throw new IllegalArgumentException("Missing role: " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
         }
-        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
+        return Grant.generateCommandLogic(io, command, db, me, author, receivers, onlySendMissingFunds, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, expire, decay, bank_note, deduct_as_cash, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
                 (receiver, grant) -> {
                     double cost = receiver.getBuyLandCost(to_land,
                             rapid_expansion != null ? rapid_expansion : false,
@@ -348,7 +358,7 @@ public class GrantCommands {
     @RolePermission(Roles.MEMBER)
     @IsAlliance
     public String grantUnit(
-            @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
+            @Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, @Me DBNation me, @Me User author,
             Set<DBNation> receivers,
             Map<MilitaryUnit, Long> units,
 
@@ -357,15 +367,15 @@ public class GrantCommands {
             @Arg(value = "Only send funds the receiver is lacking from the amount", group = 0) @Switch("m") boolean onlySendMissingFunds,
             @Arg(value = "Don't send any cash, only other resources", group = 0) @Switch("nc") boolean no_cash,
 
-            @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation depositsAccount,
-            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance useAllianceBank,
-            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance useOffshoreAccount,
-            @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket taxAccount,
-            @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean existingTaxAccount,
+            @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation nation_account,
+            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance ingame_bank,
+            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance offshore_account,
+            @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket tax_account,
+            @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean use_receiver_tax_account,
             @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
             @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
-            @Arg(value = "Have the transfer not deduct from balance", group = 2) @Switch("i") boolean ignore, 
-            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2)@Switch("c") boolean convertToMoney,
+            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 2, aliases = "deposittype") @Default("#grant") DepositType.DepositTypeInfo bank_note,
+            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2)@Switch("c") boolean deduct_as_cash,
 
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
             @Switch("pr") Roles ping_role,
@@ -376,7 +386,7 @@ public class GrantCommands {
         if (!Roles.ECON.has(author, db.getGuild()) && (force || receivers.size() > 1 || receivers.iterator().next().getId() != me.getId())) {
             throw new IllegalArgumentException("Missing role: " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
         }
-        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
+        return Grant.generateCommandLogic(io, command, db, me, author, receivers, onlySendMissingFunds, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, expire, decay, bank_note, deduct_as_cash, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
             (receiver, grant) -> {
                 Map<MilitaryUnit, Long> unitsToGrant = new Object2LongOpenHashMap<>();
                 units.forEach((unit, amount) -> {
@@ -417,22 +427,25 @@ public class GrantCommands {
     @RolePermission(Roles.MEMBER)
     @IsAlliance
     public String grantMMR(
-            @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
+            @Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, @Me DBNation me, @Me User author,
             Set<DBNation> receivers,
             MMRDouble mmr,
+
+            @Arg("Number of buys to multiply this grant by") @Default("1") @Range(min=1, max=100) int multiplier,
+            @Arg("If to grant as a daily buy, or full MMR") @Default("FULL") MMRBuyMode mode,
 
             @Arg(value = "If the mmr being granted is for new units, rather than only the difference from current units", group = 0) @Switch("u") boolean is_additional_units,
             @Arg(value = "Only send funds the receiver is lacking from the amount", group = 0) @Switch("m") boolean onlySendMissingFunds, 
 
-            @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation depositsAccount,
-            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance useAllianceBank,
-            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance useOffshoreAccount,
-            @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket taxAccount,
-            @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean existingTaxAccount,
+            @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation nation_account,
+            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance ingame_bank,
+            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance offshore_account,
+            @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket tax_account,
+            @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean use_receiver_tax_account,
             @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
             @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
-            @Arg(value = "Have the transfer not deduct from balance", group = 2) @Switch("i") boolean ignore, 
-            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2) @Switch("c") boolean convertToMoney,
+            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 2, aliases = "deposittype") @Default("#grant") DepositType.DepositTypeInfo bank_note,
+            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2) @Switch("c") boolean deduct_as_cash,
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
             @Switch("pr") Roles ping_role,
             @Switch("ps") boolean ping_when_sent,
@@ -442,7 +455,7 @@ public class GrantCommands {
         if (!Roles.ECON.has(author, db.getGuild()) && (force || receivers.size() > 1 || receivers.iterator().next().getId() != me.getId())) {
             throw new IllegalArgumentException("Missing role: " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
         }
-        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
+        return Grant.generateCommandLogic(io, command, db, me, author, receivers, onlySendMissingFunds, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, expire, decay, bank_note, deduct_as_cash, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
             (receiver, grant) -> {
                 int cities = receiver.getCities();
                 Map<MilitaryUnit, Integer> unitsToGrant = new Object2IntOpenHashMap<>();
@@ -454,6 +467,9 @@ public class GrantCommands {
                     double currPct = receiver.getUnits(unit) / (double) unitCap;
                     if (!is_additional_units) {
                         pctGrant -= currPct;
+                    }
+                    if (multiplier != 1) {
+                        pctGrant += (pctGrant + (!is_additional_units ? currPct : 0) * (multiplier - 1));
                     }
                     int numUnits = (int) Math.ceil(pctGrant * unitCap);
                     if (numUnits > 0) unitsToGrant.put(unit, numUnits);
@@ -482,7 +498,7 @@ public class GrantCommands {
     @RolePermission(Roles.MEMBER)
     @IsAlliance
     public String grantConsumption(
-            @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
+            @Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, @Me DBNation me, @Me User author,
             Set<DBNation> receivers,
 
             @Arg(value = "Number of Soldier attacks with munitions", group = 0) @Range(min=0, max=10000) Integer soldier_attacks,
@@ -495,15 +511,15 @@ public class GrantCommands {
             @Arg(value = "Attach a bonus percent, to account for loot losses", group = 1) @Switch("p") Integer bonus_percent,
             @Arg(value = "Only send funds the receiver is lacking from the amount", group = 1) @Switch("m") boolean onlySendMissingFunds,
 
-            @Arg(value = "The nation account to deduct from", group = 2) @Switch("n") DBNation depositsAccount,
-            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 2) @Switch("a") DBAlliance useAllianceBank,
-            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 2) @Switch("o") DBAlliance useOffshoreAccount,
-            @Arg(value = "The tax account to deduct from", group = 2) @Switch("t") TaxBracket taxAccount,
-            @Arg(value = "Deduct from the receiver's tax bracket account", group = 2) @Switch("ta") boolean existingTaxAccount,
+            @Arg(value = "The nation account to deduct from", group = 2) @Switch("n") DBNation nation_account,
+            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 2) @Switch("a") DBAlliance ingame_bank,
+            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 2) @Switch("o") DBAlliance offshore_account,
+            @Arg(value = "The tax account to deduct from", group = 2) @Switch("t") TaxBracket tax_account,
+            @Arg(value = "Deduct from the receiver's tax bracket account", group = 2) @Switch("ta") boolean use_receiver_tax_account,
             @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 3) @Switch("e") @Timediff Long expire,
             @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 3) @Switch("d") @Timediff Long decay,
-            @Arg(value = "Have the transfer not deduct from balance", group = 3) @Switch("i") boolean ignore,
-            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 3)@Switch("c") boolean convertToMoney,
+            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 3, aliases = "deposittype") @Default("#grant") DepositType.DepositTypeInfo bank_note,
+            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 3)@Switch("c") boolean deduct_as_cash,
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 4) @Switch("em") EscrowMode escrow_mode,
             @Switch("pr") Roles ping_role,
             @Switch("ps") boolean ping_when_sent,
@@ -513,7 +529,7 @@ public class GrantCommands {
         if (!Roles.ECON.has(author, db.getGuild()) && (force || receivers.size() > 1 || receivers.iterator().next().getId() != me.getId())) {
             throw new IllegalArgumentException("Missing role: " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
         }
-        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
+        return Grant.generateCommandLogic(io, command, db, me, author, receivers, onlySendMissingFunds, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, expire, decay, bank_note, deduct_as_cash, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
                 (receiver, grant) -> {
                     int cities = receiver.getCities();
                     Map<MilitaryUnit, Integer> numAttacks = new LinkedHashMap<>(Map.of(
@@ -563,7 +579,7 @@ public class GrantCommands {
     @RolePermission(Roles.MEMBER)
     @IsAlliance
     public String grantBuild(
-            @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
+            @Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, @Me DBNation me, @Me User author,
             Set<DBNation> receivers,
             CityBuild build,
 
@@ -575,15 +591,15 @@ public class GrantCommands {
             @Arg(value = "Attach a bonus percent, to account for loot losses", group = 1) @Switch("p") Integer bonus_percent,
             @Arg(value = "Only send funds the receiver is lacking from the amount", group = 1) @Switch("m") boolean onlySendMissingFunds,
 
-            @Arg(value = "The nation account to deduct from", group = 2) @Switch("n") DBNation depositsAccount,
-            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 2) @Switch("a") DBAlliance useAllianceBank,
-            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 2) @Switch("o") DBAlliance useOffshoreAccount,
-            @Arg(value = "The tax account to deduct from", group = 2) @Switch("t") TaxBracket taxAccount,
-            @Arg(value = "Deduct from the receiver's tax bracket account", group = 2) @Switch("ta") boolean existingTaxAccount,
+            @Arg(value = "The nation account to deduct from", group = 2) @Switch("n") DBNation nation_account,
+            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 2) @Switch("a") DBAlliance ingame_bank,
+            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 2) @Switch("o") DBAlliance offshore_account,
+            @Arg(value = "The tax account to deduct from", group = 2) @Switch("t") TaxBracket tax_account,
+            @Arg(value = "Deduct from the receiver's tax bracket account", group = 2) @Switch("ta") boolean use_receiver_tax_account,
             @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 3) @Switch("e") @Timediff Long expire,
             @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 3) @Switch("d") @Timediff Long decay,
-            @Arg(value = "Have the transfer not deduct from balance", group = 3) @Switch("i") boolean ignore,
-            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 3) @Switch("c") boolean convertToMoney,
+            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 3, aliases = "deposittype") @Default("#grant") DepositType.DepositTypeInfo bank_note,
+            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 3) @Switch("c") boolean deduct_as_cash,
 
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 4) @Switch("em") EscrowMode escrow_mode,
             @Switch("pr") Roles ping_role,
@@ -612,7 +628,7 @@ public class GrantCommands {
         if (!notes.isEmpty()) {
             notes.add("You can append partial city json to a city url to modify an existing build");
         }
-        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
+        return Grant.generateCommandLogic(io, command, db, me, author, receivers, onlySendMissingFunds, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, expire, decay, bank_note, deduct_as_cash, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
                 (receiver, grant) -> {
                     JavaCity grantTo = new JavaCity(build);
                     try {
@@ -685,20 +701,20 @@ public class GrantCommands {
     @RolePermission(Roles.MEMBER)
     @IsAlliance
     public String grantWarchest(
-            @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
+            @Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, @Me DBNation me, @Me User author,
             Set<DBNation> receivers,
             @Range(min=0.01, max=50) double ratio,
 
             @Arg(value = "Only send funds the receiver is lacking from the amount", group = 0) @Switch("m") boolean onlySendMissingFunds,
-            @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation depositsAccount,
-            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance useAllianceBank,
-            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance useOffshoreAccount,
-            @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket taxAccount,
-            @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean existingTaxAccount,
+            @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation nation_account,
+            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance ingame_bank,
+            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance offshore_account,
+            @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket tax_account,
+            @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean use_receiver_tax_account,
             @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
             @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
-            @Arg(value = "Have the transfer not deduct from balance", group = 2) @Switch("i") boolean ignore,
-            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2) @Switch("c") boolean convertToMoney,
+            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 2, aliases = "deposittype") @Default("#grant") DepositType.DepositTypeInfo bank_note,
+            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2) @Switch("c") boolean deduct_as_cash,
 
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
             @Switch("pr") Roles ping_role,
@@ -709,7 +725,7 @@ public class GrantCommands {
         if (!Roles.ECON.has(author, db.getGuild()) && (force || receivers.size() > 1 || receivers.iterator().next().getId() != me.getId())) {
             throw new IllegalArgumentException("Missing role: " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
         }
-        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
+        return Grant.generateCommandLogic(io, command, db, me, author, receivers, onlySendMissingFunds, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, expire, decay, bank_note, deduct_as_cash, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
                 (receiver, grant) -> {
                     int cities = receiver.getCities();
                     Map<ResourceType, Double> perCity = db.getPerCityWarchest(receiver);
@@ -730,21 +746,21 @@ public class GrantCommands {
     @RolePermission(Roles.ECON)
     @IsAlliance
     public String grantResearch(
-            @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User author,
+            @Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, @Me DBNation me, @Me User author,
             Set<DBNation> receivers,
             Map<Research, Integer> research,
 
             @Arg(value = "Grant the research cost from zero prior research", group = 0) @Switch("z") boolean research_from_zero,
             @Arg(value = "Only send funds the receiver is lacking from the amount", group = 0) @Switch("m") boolean onlySendMissingFunds,
-            @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation depositsAccount,
-            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance useAllianceBank,
-            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance useOffshoreAccount,
-            @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket taxAccount,
-            @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean existingTaxAccount,
+            @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation nation_account,
+            @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance ingame_bank,
+            @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance offshore_account,
+            @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket tax_account,
+            @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean use_receiver_tax_account,
             @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
             @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
-            @Arg(value = "Have the transfer not deduct from balance", group = 2) @Switch("i") boolean ignore,
-            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2) @Switch("c") boolean convertToMoney,
+            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 2, aliases = "deposittype") @Default("#grant") DepositType.DepositTypeInfo bank_note,
+            @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2) @Switch("c") boolean deduct_as_cash,
 
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
             @Switch("pr") Roles ping_role,
@@ -753,7 +769,7 @@ public class GrantCommands {
             @Switch("f") boolean force
     ) throws IOException, GeneralSecurityException {
         int researchBits = Research.toBits(research);
-        return Grant.generateCommandLogic(io, db, me, author, receivers, onlySendMissingFunds, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, ignore, convertToMoney, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
+        return Grant.generateCommandLogic(io, command, db, me, author, receivers, onlySendMissingFunds, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, expire, decay, bank_note, deduct_as_cash, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
                 (receiver, grant) -> {
                     Map<Research, Integer> base = research_from_zero ? new Object2IntOpenHashMap<>() : receiver.getResearchLevels();
                     Map<ResourceType, Double> cost = Research.cost(base, research, receiver.getResearchCostFactor());
@@ -1965,7 +1981,7 @@ public class GrantCommands {
         for (Long id : Roles.MEMBER.getAllowedAccounts(selfMember.getUser(), db)) {
             accessType.put(id, AccessType.ECON);
         }
-        TaxBracket taxAccount = template.getTaxAccount(db, receiver);
+        TaxBracket tax_account = template.getTaxAccount(db, receiver);
         accessType.put(db.getIdLong(), AccessType.ECON);
         if (template.getFromBracket() > 0) {
             if (db.isAllianceId(receiver.getAlliance_id())) {
@@ -2034,7 +2050,7 @@ public class GrantCommands {
                     selfMember.getUser(),
                     null,
                     null,
-                    taxAccount,
+                    tax_account,
                     db,
                     null,
                     receiver,
@@ -3460,6 +3476,213 @@ public class GrantCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
         sheet.attach(io.create(), "purchases").append(body.toString()).send();
+        return null;
+    }
+
+    @Command
+    @RolePermission(value = {Roles.ECON, Roles.ECON_STAFF}, any=true)
+    public String grantRequestCancel(@Me IMessageIO io, @Me User user, @Me GuildDB db, GrantRequest request) {
+        if (!request.updateMessage(io, "Rejected by " + user.getAsMention())) {
+            io.setMessageDeleted();
+        }
+        db.deleteGrantRequest(request.getId());
+
+        DBNation requester = DBNation.getById(request.getNationId());
+
+        StringBuilder response = new StringBuilder();
+        response.append("Rejected grant request by: " + requester.getNationUrlMarkup() + "\n");
+
+        String msgStart = "Your grant request of: `" + request.getCommand() + "` has been rejected by ";
+
+        User reqUser = requester.getUser();
+        boolean sendMail = true;
+        if (reqUser != null) {
+            // DM them
+            try {
+                PrivateChannel channel = RateLimitUtil.complete(reqUser.openPrivateChannel());
+                RateLimitUtil.queue(channel.sendMessage(msgStart + user.getAsMention()));
+                sendMail = false;
+                response.append("Rejection notification sent to " + reqUser.getAsMention() + " via DM\n");
+            } catch (Throwable e) {}
+        }
+        if (sendMail) {
+            ApiKeyPool mailKey = db.getMailKey();
+            if (mailKey == null) {
+                response.append("Could not send rejection notification to " + requester.getNationUrlMarkup() + " because they are not registered to the bot and no API key is set in this server.");
+            } else {
+                MailApiResponse result = requester.sendMail(mailKey, "Grant Request Rejected", msgStart + DiscordUtil.getFullUsername(user), true);
+                response.append("Rejection notification sent to " + requester.getNationUrlMarkup() + ": " + result);
+            }
+        }
+        return response.toString();
+    }
+
+    @Command(desc = "Confirm a grant request")
+    @RolePermission(value = {Roles.ECON}, any=true)
+    public String grantRequestApprove(ValueStore locals, @Me GuildDB db, @Me User user, @Me IMessageIO io, GrantRequest request) {
+        JSONObject command = request.getCommand();
+        String cmd = command.optString("", null);
+        Map<String, Object> arguments = command.toMap();
+        Map<String, String> stringArguments = new Object2ObjectLinkedOpenHashMap<>();
+        for (Map.Entry<String, Object> entry : arguments.entrySet()) {
+            stringArguments.put(entry.getKey(), entry.getValue().toString());
+        }
+        arguments.remove("");
+        Locutus.cmd().getV2().run((LocalValueStore) locals, io, cmd, stringArguments, false);
+
+        if (!request.updateMessage(io, "Approved by " + user.getAsMention())) {
+            io.setMessageDeleted();
+        }
+
+        db.deleteGrantRequest(request.getId());
+
+        DBNation requester = DBNation.getById(request.getNationId());
+        User reqUser = requester.getUser();
+
+        StringBuilder response = new StringBuilder();
+        String msgStart = "Your grant request of: `" + request.getCommand() + "` has been approved by ";
+        boolean sendMail = true;
+        if (reqUser != null) {
+            // DM them
+            try {
+                PrivateChannel channel = RateLimitUtil.complete(reqUser.openPrivateChannel());
+                RateLimitUtil.queue(channel.sendMessage(msgStart + user.getAsMention()));
+                sendMail = false;
+                response.append("Approval notification sent to " + reqUser.getAsMention() + " via DM\n");
+            } catch (Throwable e) {}
+        }
+        if (sendMail) {
+            ApiKeyPool mailKey = db.getMailKey();
+            if (mailKey == null) {
+                response.append("Could not send approval notification to " + requester.getNationUrlMarkup() + " because they are not registered to the bot and no API key is set in this server.");
+            } else {
+                MailApiResponse result = requester.sendMail(mailKey, "Grant Request Rejected", msgStart + DiscordUtil.getFullUsername(user), true);
+                response.append("Approval notification sent to " + requester.getNationUrlMarkup() + ": " + result);
+            }
+        }
+
+        if (response.length() > 0) return response.toString();
+        return null;
+    }
+
+    @Command(desc = "Request a grant from the grant request channel")
+    @RolePermission(value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON, Roles.ECON_STAFF, Roles.MEMBER}, any=true)
+    public String grantRequest(@Me IMessageIO io, @Me @Default User user, @Me GuildDB db, @Me DBNation nation,
+                               String reason,
+                               NationOrAlliance receiver,
+                               JSONObject command,
+                               Map<ResourceType, Double> estimate_amount
+    ) throws IOException, ExecutionException, InterruptedException {
+        if (!io.isInteraction()) {
+            throw new IllegalArgumentException("This command can only be run as an interaction");
+        }
+        MessageChannel grantChannel = GuildKey.GRANT_REQUEST_CHANNEL.get(db);
+        DiscordChannelIO grantIo = new DiscordChannelIO(grantChannel);
+
+        Role role = Roles.ECON_GRANT_ALERTS.toRole2(db);
+        if (role == null) {
+            role = Roles.ECON.toRole2(db);
+        }
+
+        long now = System.currentTimeMillis();
+        Set<String> keysToRemove = Set.of(
+                "expire", "decay", "ignore", "bank_note", "tax_account", "use_receiver_tax_account",
+                "nation_account", "ingame_bank", "offshore_account",
+                "bypass_checks", "force", "deduct_as_cash"
+        );
+        List<String> toDelete = new ObjectArrayList<>();
+        for (String key : command.keySet()) {
+            for (String target : keysToRemove) {
+                if (key.equalsIgnoreCase(target)) {
+                    toDelete.add(key);
+                    break;
+                }
+            }
+        }
+        for (String key : toDelete) {
+            command.remove(key);
+        }
+
+        boolean tax_account = GuildKey.GRANT_REQUEST_TAX_ACCOUNT.getOrNull(db) == Boolean.TRUE;
+        if (tax_account) {
+            command.put("use_receiver_tax_account", "true");
+        }
+        DepositType.DepositTypeInfo bankNote = GuildKey.GRANT_REQUEST_NOTE.getOrNull(db);
+        if (bankNote != null) {
+            command.put("bank_note", bankNote.toString());
+        } else {
+            command.put("bank_note", "#" + DepositType.GRANT.name().toLowerCase(Locale.ROOT));
+        }
+        Long decay = GuildKey.GRANT_REQUEST_DECAY.getOrNull(db);
+        if (decay != null && decay > 0) {
+            command.put("decay", TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay));
+        }
+        Long expire = GuildKey.GRANT_REQUEST_EXPIRE.getOrNull(db);
+        if (expire != null && expire > 0) {
+            command.put("expire", TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire));
+        }
+        command.put("nation_account", nation.getId());
+        command.put("ping_when_sent", "true");
+
+        String title = "Grant Request from " + nation.getNation();
+        if (estimate_amount != null) {
+            title += " worth: ~$" + MathMan.format(ResourceType.convertedTotal(estimate_amount));
+        }
+        StringBuilder sb = new StringBuilder();
+        if (estimate_amount != null) {
+            sb.append("**Amount (estimated):** ").append(ResourceType.toString(estimate_amount)).append("\n");
+        }
+        sb.append("**Requested By:** ").append(nation.getMarkdownUrl()).append(" | ").append(nation.getAllianceUrlMarkup()).append("\n");
+        sb.append("**To:** ");
+        if (nation.getId() == receiver.getId() && receiver.isNation()) {
+            sb.append("[REQUESTING NATION]\n");
+        } else {
+            sb.append(nation.getMarkdownUrl()).append(" | ").append(nation.getAllianceUrlMarkup()).append("\n");
+        }
+        sb.append("**Reason:** `").append(reason).append("`\n");
+        sb.append("**Date Requested:** ").append(DiscordUtil.timestamp(now, null)).append("\n");
+        double[] deposits = nation.getNetDeposits(db, -1, false);
+        sb.append("**Nation Balance:** worth `~$").append(MathMan.format(ResourceType.convertedTotal(deposits))).append("`\n");
+        sb.append("- `").append(ResourceType.toString(deposits)).append("`\n");
+        sb.append("**Command:**\n```json\n").append(command.toString(2)).append("```\n");
+
+        String roleMention = role == null ? "" : role.getAsMention();
+
+        String requestTitle = "Submitted Grant Request";
+        Long userId = nation.getUserId();
+        if (userId == null) userId = 0L;
+        GrantRequest request = new GrantRequest(userId,
+                nation.getId(),
+                receiver.getId(),
+                receiver.getReceiverType(),
+                reason,
+                command,
+                grantChannel.getIdLong(),
+                0,
+                ResourceType.resourcesToArray(estimate_amount),
+                now);
+        db.addGrantRequest(request);
+        requestTitle += "(ID: #" + request.getId() + ")";
+
+        CommandRef confirmCmd = CM.grant.request.approve.cmd.request(request.getId() + "");
+        CommandRef cancelCmd = CM.grant.request.cancel.cmd.request(request.getId() + "");
+
+        IMessageBuilder requestMsg = grantIo.create().embed(title, sb.toString())
+                .append(roleMention)
+                .commandButton(CommandBehavior.DELETE_BUTTONS, confirmCmd, "confirm")
+                .commandButton(CommandBehavior.DELETE_BUTTONS, cancelCmd, "cancel")
+                .send().get();
+        if (requestMsg.getId() != 0) {
+            request.setMessageId(requestMsg.getId());
+            db.updateGrantRequestMessageId(request.getId(), requestMsg.getId());
+        }
+
+        IMessageBuilder response = io.create().embed(requestTitle, "**Please be patient while it is processed**\n\n" + sb.toString());
+        if (user != null) response.append(user.getAsMention());
+        response.send();
+
+        io.appendToEmbed("**Submitted grant request, ID: #" + request.getId() + "**");
+
         return null;
     }
 }

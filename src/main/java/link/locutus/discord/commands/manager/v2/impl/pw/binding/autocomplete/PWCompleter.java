@@ -44,6 +44,7 @@ import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AutoAuditType;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -79,6 +80,12 @@ public class PWCompleter extends BindingHelper {
     @Binding(types={NationMeta.class})
     public List<String> NationMeta(String input) {
         return StringMan.completeEnum(input, NationMeta.class);
+    }
+
+    @Autocomplete
+    @Binding(types={MMRBuyMode.class})
+    public List<String> MMRBuyMode(String input) {
+        return StringMan.completeEnum(input, MMRBuyMode.class);
     }
 
     @Autocomplete
@@ -262,6 +269,20 @@ public class PWCompleter extends BindingHelper {
     @Binding(types={ReportManager.Report.class})
     public List<Map.Entry<String, String>> reports(ReportManager manager, @Me DBNation me, @Me User author, @Me GuildDB db, String input) {
         return reports(manager, me, author, db, input, true, OptionData.MAX_CHOICES);
+    }
+
+    @Autocomplete
+    @ReportPerms
+    @Binding(types={GrantRequest.class})
+    public List<Map.Entry<String, String>> grantRequests(@Me GuildDB db, String input) {
+        List<GrantRequest> requests;
+        if (MathMan.isInteger(input)) {
+            requests = db.getGrantRequestsByIdPrefix(input);
+        } else {
+            requests = db.getGrantRequests();
+        }
+        List<GrantRequest> options = StringMan.getClosest(input, requests, f -> f.toLineString(), OptionData.MAX_CHOICES, true, false);
+        return options.stream().map(f -> KeyValue.of(f.toLineString(), f.getId() + "")).collect(Collectors.toList());
     }
 
     @Autocomplete

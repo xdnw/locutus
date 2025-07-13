@@ -486,18 +486,18 @@ public class Grant {
     // DepositType
 
     public static String generateCommandLogic(
-            IMessageIO io, GuildDB db, DBNation me, User author,
+            IMessageIO io, JSONObject command, GuildDB db, DBNation me, User author,
             Set<DBNation> receivers,
             boolean onlySendMissingFunds,
-            DBNation depositsAccount,
-            DBAlliance useAllianceBank,
-            DBAlliance useOffshoreAccount,
-            TaxBracket taxAccount,
-            boolean existingTaxAccount,
+            DBNation nation_account,
+            DBAlliance ingame_bank,
+            DBAlliance offshore_account,
+            TaxBracket tax_account,
+            boolean use_receiver_tax_account,
             Long expire,
             Long decay,
-            boolean ignore,
-            boolean convertToMoney,
+            DepositType.DepositTypeInfo bank_note,
+            boolean deduct_as_cash,
             EscrowMode escrow_mode,
             boolean bypass_checks,
             Roles pingRole,
@@ -639,7 +639,6 @@ public class Grant {
             return null;
         }
 
-        String typeStr = (ignore ? DepositType.IGNORE : DepositType.GRANT).name();
         if (sheet == null) {
             if (pingRole != null) {
                 Role role = pingRole.toRole2(db);
@@ -651,23 +650,24 @@ public class Grant {
             Grant grant = grantByReceiver.get(receiver);
             double[] resources = grant.cost();
 
-            JSONObject command = CM.transfer.resources.cmd
+            JSONObject transferCmd = CM.transfer.resources.cmd
                     .receiver(receiver.getUrl())
-                    .depositType(typeStr)
+                    .bank_note(bank_note.toString())
                     .transfer(ResourceType.toString(resources))
-                    .nationAccount(depositsAccount != null ? depositsAccount.getQualifiedId() : null)
-                    .senderAlliance(useAllianceBank != null ? useAllianceBank.getQualifiedId() : null)
-                    .allianceAccount(useOffshoreAccount != null ? useOffshoreAccount.getQualifiedId() : null)
-                    .taxAccount(taxAccount != null ? taxAccount.getQualifiedId() : null)
-                    .existingTaxAccount(existingTaxAccount ? "true" : null)
+                    .nation_account(nation_account != null ? nation_account.getQualifiedId() : null)
+                    .ingame_bank(ingame_bank != null ? ingame_bank.getQualifiedId() : null)
+                    .offshore_account(offshore_account != null ? offshore_account.getQualifiedId() : null)
+                    .tax_account(tax_account != null ? tax_account.getQualifiedId() : null)
+                    .use_receiver_tax_account(use_receiver_tax_account ? "true" : null)
                     .expire(expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null)
                     .decay(decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null)
                     .onlyMissingFunds(onlySendMissingFunds ? "true" : null)
-                    .convertCash(convertToMoney ? "true" : null)
+                    .deduct_as_cash(deduct_as_cash ? "true" : null)
                     .escrow_mode(escrow_mode != null ? escrow_mode.name() : null)
-                    .bypassChecks(bypass_checks ? "true" : null)
+                    .bypass_checks(bypass_checks ? "true" : null)
                     .force(force ? "true" : null)
                     .ping_when_sent(pingWhenSent ? "true" : null)
+                    .calling_command(command.toString())
                     .toJson();
             StringBuilder msg = new StringBuilder();
             msg.append(ResourceType.toString(resources)).append("\n")
@@ -683,7 +683,7 @@ public class Grant {
             }
 
             io.create().embed("Instruct: " + grant.title(), body.toString()).send();
-            io.create().confirmation("Confirm: " + grant.title(), msg.toString(), command).cancelButton().send();
+            io.create().confirmation("Confirm: " + grant.title(), msg.toString(), transferCmd).cancelButton().send();
             return null;
         } else {
             sheet.updateWrite();
@@ -691,33 +691,33 @@ public class Grant {
             TransferSheet transferSheet = new TransferSheet(sheet);
             transferSheet.read();
 
-            JSONObject command = CM.transfer.bulk.cmd
+            JSONObject transferCmd = CM.transfer.bulk.cmd
                     .sheet(sheet.getURL())
-                    .depositType(typeStr)
-                    .depositsAccount(depositsAccount != null ? depositsAccount.getQualifiedId() : null)
-                    .useAllianceBank(useAllianceBank != null ? useAllianceBank.getQualifiedId() : null)
-                    .useOffshoreAccount(useOffshoreAccount != null ? useOffshoreAccount.getQualifiedId() : null)
-                    .taxAccount(taxAccount != null ? taxAccount.getQualifiedId() : null)
-                    .existingTaxAccount(existingTaxAccount ? "true" : null)
+                    .bank_note(bank_note.toString())
+                    .nation_account(nation_account != null ? nation_account.getQualifiedId() : null)
+                    .ingame_bank(ingame_bank != null ? ingame_bank.getQualifiedId() : null)
+                    .offshore_account(offshore_account != null ? offshore_account.getQualifiedId() : null)
+                    .tax_account(tax_account != null ? tax_account.getQualifiedId() : null)
+                    .use_receiver_tax_account(use_receiver_tax_account ? "true" : null)
                     .expire(expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null)
                     .decay(decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null)
-                    .convertToMoney(convertToMoney ? "true" : null)
+                    .deduct_as_cash(deduct_as_cash ? "true" : null)
                     .escrow_mode(escrow_mode != null ? escrow_mode.name() : null)
-                    .bypassChecks(bypass_checks ? "true" : null)
+                    .bypass_checks(bypass_checks ? "true" : null)
                     .force(force ? "true" : null)
                     .toJson();
 
-            return BankCommands.transferBulkWithErrors(io, command, author, me, db,
+            return BankCommands.transferBulkWithErrors(io, transferCmd, author, me, db,
                     transferSheet,
-                    (ignore ? DepositType.IGNORE : DepositType.GRANT).withValue(),
-                    depositsAccount,
-                    useAllianceBank,
-                    useOffshoreAccount,
-                    taxAccount,
-                    existingTaxAccount,
+                    bank_note,
+                    nation_account,
+                    ingame_bank,
+                    offshore_account,
+                    tax_account,
+                    use_receiver_tax_account,
                     expire,
                     decay,
-                    convertToMoney,
+                    deduct_as_cash,
                     escrow_mode,
                     bypass_checks,
                     force,

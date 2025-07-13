@@ -103,7 +103,7 @@ public abstract class Command {
         if (user.getIdLong() == Settings.INSTANCE.APPLICATION_ID) {
             return true;
         }
-        if (user.getIdLong() == Locutus.loader().getAdminUserId()) {
+        if (Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN && user.getIdLong() == Locutus.loader().getAdminUserId()) {
             return true;
         }
         if (checkGuild && !checkGuildPermission(server)) {

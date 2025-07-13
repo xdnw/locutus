@@ -3,67 +3,41 @@ package link.locutus.discord.util.offshore;
 
 import com.politicsandwar.graphql.model.Bankrec;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntIntImmutablePair;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongDoubleImmutablePair;
 import it.unimi.dsi.fastutil.longs.LongDoublePair;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.AccessType;
-import link.locutus.discord.apiv1.enums.DepositType;
-import link.locutus.discord.apiv1.enums.EscrowMode;
+import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.AllianceMeta;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.TaxBracket;
-import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -476,14 +450,14 @@ public class OffshoreInstance {
 
     public final Map<Integer, Long> disabledNations = new ConcurrentHashMap<>();
 
-    public TransferResult transferFromNationAccountWithRoleChecks(DBNation bankerNation, User banker, DBNation nationAccount, DBAlliance allianceAccount, TaxBracket taxAccount, GuildDB senderDB, Long senderChannel, NationOrAlliance receiver, double[] amount, DepositType.DepositTypeInfo depositType, Long expire, Long decay, UUID grantToken, boolean convertCash, EscrowMode escrowMode, boolean requireConfirmation, boolean bypassChecks) throws IOException {
+    public TransferResult transferFromNationAccountWithRoleChecks(DBNation bankerNation, User banker, DBNation nationAccount, DBAlliance allianceAccount, TaxBracket tax_account, GuildDB senderDB, Long senderChannel, NationOrAlliance receiver, double[] amount, DepositType.DepositTypeInfo depositType, Long expire, Long decay, UUID grantToken, boolean convertCash, EscrowMode escrowMode, boolean requireConfirmation, boolean bypassChecks) throws IOException {
         Supplier<Map<Long, AccessType>> allowedIdsGet = ArrayUtil.memorize(new Supplier<Map<Long, AccessType>>() {
             @Override
             public Map<Long, AccessType> get() {
                return senderDB.getAllowedBankAccountsOrThrow(bankerNation, banker, receiver, senderChannel, senderChannel == null || Roles.ECON.has(banker, senderDB.getGuild()));
             }
         });
-        return transferFromNationAccountWithRoleChecks(allowedIdsGet, banker, nationAccount, allianceAccount, taxAccount, senderDB, senderChannel, receiver, amount, depositType, expire, decay, grantToken, convertCash, escrowMode, requireConfirmation, bypassChecks);
+        return transferFromNationAccountWithRoleChecks(allowedIdsGet, banker, nationAccount, allianceAccount, tax_account, senderDB, senderChannel, receiver, amount, depositType, expire, decay, grantToken, convertCash, escrowMode, requireConfirmation, bypassChecks);
     }
 
     private final Map<Integer, double[]> lastSuccessfulTransfer = new ConcurrentHashMap<>();
@@ -502,7 +476,7 @@ public class OffshoreInstance {
         return previous != null && ResourceType.equals(previous, amount);
     }
 
-    public TransferResult transferFromNationAccountWithRoleChecks(Supplier<Map<Long, AccessType>> allowedIdsGet, User banker, DBNation nationAccount, DBAlliance allianceAccount, TaxBracket taxAccount, GuildDB senderDB, Long senderChannel, NationOrAlliance receiver, double[] amount, DepositType.DepositTypeInfo depositType, Long expire, Long decay, UUID grantToken, boolean convertCash, EscrowMode escrowMode, boolean requireConfirmation, boolean bypassChecks) throws IOException {
+    public TransferResult transferFromNationAccountWithRoleChecks(Supplier<Map<Long, AccessType>> allowedIdsGet, User banker, DBNation nationAccount, DBAlliance allianceAccount, TaxBracket tax_account, GuildDB senderDB, Long senderChannel, NationOrAlliance receiver, double[] amount, DepositType.DepositTypeInfo depositType, Long expire, Long decay, UUID grantToken, boolean convertCash, EscrowMode escrowMode, boolean requireConfirmation, boolean bypassChecks) throws IOException {
         if (!TimeUtil.checkTurnChange()) {
 //            return KeyValue.of(TransferStatus.TURN_CHANGE, "You cannot transfer close to turn change");
             return new TransferResult(TransferStatus.TURN_CHANGE, receiver, amount, depositType.toString()).addMessage("You cannot transfer close to turn change");
@@ -548,7 +522,7 @@ public class OffshoreInstance {
         Set<Grant.Requirement> failedRequirements = new HashSet<>();
         boolean isGrant = false;
         if (grantToken != null) {
-            Grant authorized = BankCommands.AUTHORIZED_TRANSFERS.get(grantToken);
+            Grant authorized = null; // TODO grant request tokens;
             if (authorized == null) {
 //                return KeyValue.of(TransferStatus.INVALID_TOKEN, "Invalid grant token (try again)");
                 return new TransferResult(TransferStatus.INVALID_TOKEN, receiver, amount, depositType.toString()).addMessage("Invalid grant token (try again)");
@@ -736,26 +710,26 @@ public class OffshoreInstance {
                 }
             }
 
-            if (taxAccount != null) {
-                int taxAAId = taxAccount.getAlliance_id();
+            if (tax_account != null) {
+                int taxAAId = tax_account.getAlliance_id();
                 if (taxAAId == 0) {
-//                    return KeyValue.of(TransferStatus.INVALID_DESTINATION, "The tax bracket you specified either does not exist, or has no alliance: " + taxAccount.getQualifiedName());
-                    return new TransferResult(TransferStatus.INVALID_DESTINATION, receiver, amount, depositType.toString()).addMessage("The tax bracket you specified either does not exist, or has no alliance: " + taxAccount.getQualifiedId());
+//                    return KeyValue.of(TransferStatus.INVALID_DESTINATION, "The tax bracket you specified either does not exist, or has no alliance: " + tax_account.getQualifiedName());
+                    return new TransferResult(TransferStatus.INVALID_DESTINATION, receiver, amount, depositType.toString()).addMessage("The tax bracket you specified either does not exist, or has no alliance: " + tax_account.getQualifiedId());
                 }
                 AccessType aaAccess = allowedIds.get((long) taxAAId);
                 if (aaAccess == null) {
-//                    return KeyValue.of(TransferStatus.AUTHORIZATION, "You do not have permission to withdraw from the tax bracket: " + taxAccount.getQualifiedName());
-                    return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, depositType.toString()).addMessage("You do not have permission to withdraw from the tax bracket: " + taxAccount.getQualifiedId());
+//                    return KeyValue.of(TransferStatus.AUTHORIZATION, "You do not have permission to withdraw from the tax bracket: " + tax_account.getQualifiedName());
+                    return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, depositType.toString()).addMessage("You do not have permission to withdraw from the tax bracket: " + tax_account.getQualifiedId());
                 }
                 if (aaAccess != AccessType.ECON) {
-//                    return KeyValue.of(TransferStatus.AUTHORIZATION, "You only have member permissions and cannot withdraw from the tax bracket: " + taxAccount.getQualifiedName());
-                    return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, depositType.toString()).addMessage("You only have member permissions and cannot withdraw from the tax bracket: " + taxAccount.getQualifiedId());
+//                    return KeyValue.of(TransferStatus.AUTHORIZATION, "You only have member permissions and cannot withdraw from the tax bracket: " + tax_account.getQualifiedName());
+                    return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, depositType.toString()).addMessage("You only have member permissions and cannot withdraw from the tax bracket: " + tax_account.getQualifiedId());
                 }
                 allowedIds.entrySet().removeIf(f -> f.getKey() != taxAAId);
 
                 boolean hasEcon = allowedIds.containsValue(AccessType.ECON);
                 if (!hasEcon || requireConfirmation) {
-                    Map<DepositType, double[]> bracketDeposits = senderDB.getTaxBracketDeposits(taxAccount.taxId, 0L, false, false);
+                    Map<DepositType, double[]> bracketDeposits = senderDB.getTaxBracketDeposits(tax_account.taxId, 0L, false, false);
                     double[] taxDeposits = bracketDeposits.get(DepositType.TAX);
                     double[] taxDepositsNormalized = PW.normalize(taxDeposits);
                     double taxDepoValue = ResourceType.convertedTotal(taxDepositsNormalized);
@@ -771,8 +745,8 @@ public class OffshoreInstance {
                     }
                     if (missing != null) {
                         if (!allowNegative) {
-                            String[] msg = {taxAccount.getQualifiedId() + " is missing `" + ResourceType.toString(missing) + "`. (see " +
-                                    CM.deposits.check.cmd.nationOrAllianceOrGuild(taxAccount.getQualifiedId()) +
+                            String[] msg = {tax_account.getQualifiedId() + " is missing `" + ResourceType.toString(missing) + "`. (see " +
+                                    CM.deposits.check.cmd.nationOrAllianceOrGuild(tax_account.getQualifiedId()) +
                                     " ).", "ALLOW_NEGATIVE_RESOURCES is disabled (see " +
                                     GuildKey.ALLOW_NEGATIVE_RESOURCES.getCommandObj(senderDB, true) +
                                     ")"};
@@ -783,7 +757,7 @@ public class OffshoreInstance {
                             }
                             reqMsg.append(msg + "\n");
                         } else if (taxDepoValue < txValue) {
-                            String msg = taxAccount.getQualifiedId() + "'s deposits are worth $" + MathMan.format(taxDepoValue) + "(market max) but you requested to withdraw $" + MathMan.format(txValue) + " worth of resources";
+                            String msg = tax_account.getQualifiedId() + "'s deposits are worth $" + MathMan.format(taxDepoValue) + "(market max) but you requested to withdraw $" + MathMan.format(txValue) + " worth of resources";
                             allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
                             if (allowedIds.isEmpty()) {
 //                                return KeyValue.of(TransferStatus.INSUFFICIENT_FUNDS, msg);
@@ -869,8 +843,8 @@ public class OffshoreInstance {
                 if (senderDB != null) {
                     body.append("- Sender Guild: " + senderDB.getGuild().getName() + "\n");
                 }
-                if (taxAccount != null) {
-                    body.append("- Tax Account: " + taxAccount.toString() + "\n");
+                if (tax_account != null) {
+                    body.append("- Tax Account: " + tax_account.toString() + "\n");
                 }
 //                return KeyValue.of(TransferStatus.CONFIRMATION, body.toString());
                 return new TransferResult(TransferStatus.CONFIRMATION, receiver, amount, depositType.toString()).addMessage(body.toString());
@@ -920,12 +894,12 @@ public class OffshoreInstance {
                 }
             }
 
-            if (taxAccount != null) {
+            if (tax_account != null) {
                 double[] amountNegative = ResourceType.negative(amount.clone());
                 if (receiver.isNation()) {
-                    senderDB.addBalanceTaxId(timestamp, taxAccount.getId(), receiver.getId(), bankerNation != null ? bankerNation.getNation_id() : 0, "#tax", amountNegative);
+                    senderDB.addBalanceTaxId(timestamp, tax_account.getId(), receiver.getId(), bankerNation != null ? bankerNation.getNation_id() : 0, "#tax", amountNegative);
                 } else {
-                    senderDB.addBalanceTaxId(timestamp, taxAccount.getId(), bankerNation != null ? bankerNation.getNation_id() : 0, "#tax", amountNegative);
+                    senderDB.addBalanceTaxId(timestamp, tax_account.getId(), bankerNation != null ? bankerNation.getNation_id() : 0, "#tax", amountNegative);
                 }
 
             }
@@ -960,16 +934,16 @@ public class OffshoreInstance {
                     if (isInternalTransfer) {
                         senderDB.addBalance(timestamp, nationAccount, bankerNation != null ? bankerNation.getNation_id() : 0, note, amount);
                     }
-                    if (taxAccount != null) {
-                        senderDB.addBalanceTaxId(timestamp, taxAccount.getId(), bankerNation != null ? bankerNation.getNation_id() : 0, "#tax", amount);
+                    if (tax_account != null) {
+                        senderDB.addBalanceTaxId(timestamp, tax_account.getId(), bankerNation != null ? bankerNation.getNation_id() : 0, "#tax", amount);
                     }
                     break;
                 }
                 case ESCROWED:
                 case SENT_TO_ALLIANCE_BANK:
                 case SUCCESS: {
-                    if (taxAccount != null) {
-                        result.addMessage("Deducted from tax account: " + taxAccount.getQualifiedId());
+                    if (tax_account != null) {
+                        result.addMessage("Deducted from tax account: " + tax_account.getQualifiedId());
                     }
                     break;
                 }

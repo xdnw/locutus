@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.command;
 
+import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
 import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.config.Settings;
 import net.dv8tion.jda.api.entities.Guild;
@@ -50,6 +51,22 @@ public interface IMessageIO {
         }
         return message.paginate(title, command, page, perPage, results, footer, inline);
     }
+
+    default boolean appendToEmbed(String s) {
+        IMessageBuilder message = getMessage();
+        if (message == null || message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) return false;
+        List<EmbedShrink> embeds = message.getEmbeds();
+        if (embeds.size() != 1) return false;
+        EmbedShrink embed = embeds.get(0);
+
+        EmbedShrink builder = new EmbedShrink(embed);
+        builder.setDescription(embed.getDescription().get() + "\n\n" + s);
+
+        message.clearEmbeds().embed(builder).send();
+
+        return true;
+    }
+
 
     default IMessageBuilder updateOptionally(CompletableFuture<IMessageBuilder> msgFuture, String message) {
         if (msgFuture == null) return null;

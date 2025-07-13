@@ -65,9 +65,9 @@ public class Warchest extends Command {
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
         DBNation nationAccount = null;
-        DBAlliance allianceAccount = null;
-        DBAlliance offshoreAccount = null;
-        TaxBracket taxAccount = null;
+        DBAlliance ingame_bank = null;
+        DBAlliance offshore_account = null;
+        TaxBracket tax_account = null;
 
         String escrowModeStr = DiscordUtil.parseArg(args, "escrow");
         EscrowMode escrowMode = escrowModeStr != null ? PWBindings.EscrowMode(escrowModeStr) : null;
@@ -77,24 +77,24 @@ public class Warchest extends Command {
             nationAccount = PWBindings.nation(author, guild, nationAccountStr);
         }
 
-        String allianceAccountStr = DiscordUtil.parseArg(args, "alliance");
-        if (allianceAccountStr != null) {
-            allianceAccount = PWBindings.alliance(allianceAccountStr);
+        String ingame_bankStr = DiscordUtil.parseArg(args, "alliance");
+        if (ingame_bankStr != null) {
+            ingame_bank = PWBindings.alliance(ingame_bankStr);
         }
 
         String offshoreAccountStr = DiscordUtil.parseArg(args, "offshore");
         if (offshoreAccountStr != null) {
-            offshoreAccount = PWBindings.alliance(offshoreAccountStr);
+            offshore_account = PWBindings.alliance(offshoreAccountStr);
         }
 
         String taxIdStr = DiscordUtil.parseArg(args, "tax_id");
         if (taxIdStr == null) taxIdStr = DiscordUtil.parseArg(args, "bracket");
         if (taxIdStr != null) {
-            taxAccount = PWBindings.bracket(guildDb, "tax_id=" + taxIdStr);
+            tax_account = PWBindings.bracket(guildDb, "tax_id=" + taxIdStr);
         }
 
         if (flags.contains('t')) {
-            if (taxAccount != null) return "You can't specify both `tax_id` and `-t`";
+            if (tax_account != null) return "You can't specify both `tax_id` and `-t`";
         }
 
         if (args.size() < 3) {
@@ -121,8 +121,29 @@ public class Warchest extends Command {
             return "No nations found (add `-f` to force send)";
         }
         boolean skipStockpile = flags.contains('s');
+
+        boolean ping_when_sent = false;
+
+        CM.transfer.warchest command = CM.transfer.warchest.cmd.nations(arg)
+                .resourcesPerCity(ResourceType.toString(perCity))
+                .bank_note(type.toString())
+                .skipStockpile(skipStockpile ? "true" : null)
+                .nation_account(nationAccount != null ? nationAccount.getQualifiedId() : null)
+                .ingame_bank(ingame_bank != null ? ingame_bank.getQualifiedId() : null)
+                .offshore_account(offshore_account != null ? offshore_account.getQualifiedId() : null)
+                .tax_account(tax_account != null ? tax_account.getQualifiedId() : null)
+                .use_receiver_tax_account(flags.contains('t') ? "true" : null)
+                .expire(null)
+                .decay(null)
+                .deduct_as_cash(flags.contains('m') ? "true" : null)
+                .escrow_mode(escrowMode != null ? escrowMode.name() : null)
+                .ping_when_sent(ping_when_sent ? "true" : null)
+                .bypass_checks(flags.contains('b') ? "true" : null)
+                .force(flags.contains('f') ? "true" : null);
+
         return UnsortedCommands.warchest(
                 guildDb,
+                command.toJson(),
                 channel,
                 guild,
                 author,
@@ -132,14 +153,15 @@ public class Warchest extends Command {
                 type,
                 skipStockpile,
                 nationAccount,
-                allianceAccount,
-                offshoreAccount,
-                taxAccount,
+                ingame_bank,
+                offshore_account,
+                tax_account,
                 flags.contains('t'),
                 null,
                 null,
                 flags.contains('m'),
                 escrowMode,
+                ping_when_sent,
                 flags.contains('b'),
                 flags.contains('f'));
     }

@@ -54,7 +54,7 @@ public enum Roles {
         }
     },
 
-//    ECON_GRANT_ALERTS(7, "Gets pinged for member grant requests", GuildKey.ALLIANCE_ID),
+    ECON_GRANT_ALERTS(7, false, false, "Gets pinged for member grant requests", GuildKey.GRANT_REQUEST_CHANNEL),
     ECON_DEPOSIT_ALERTS(8, false, false,"Gets pinged when there is a deposit", GuildKey.DEPOSIT_ALERT_CHANNEL),
     ECON_WITHDRAW_ALERTS(9, false, false,"Gets pinged when there is a withdrawal", GuildKey.WITHDRAW_ALERT_CHANNEL, "ECON_GRANT_ALERTS"),
     ECON_WITHDRAW_SELF(10, true, true,"Can withdraw own funds", GuildKey.MEMBER_CAN_WITHDRAW),
@@ -292,8 +292,7 @@ public enum Roles {
         if (user == null || db == null) return Collections.emptySet();
         boolean hasAdmin = false;
         Member member = null;
-        if (allowAdminBypass && user.getIdLong() == Settings.INSTANCE.APPLICATION_ID) hasAdmin = true;
-        else if (allowAdminBypass && user.getIdLong() == Locutus.loader().getAdminUserId()) hasAdmin = true;
+        if (allowAdminBypass && (Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN && user.getIdLong() == Locutus.loader().getAdminUserId())) hasAdmin = true;
         else {
             member = db.getGuild().getMember(user);
             if (member != null) {
@@ -377,7 +376,7 @@ public enum Roles {
 
     public boolean hasOnRoot(User user) {
         if (user == null) return false;
-        if (allowAdminBypass && user.getIdLong() == Locutus.loader().getAdminUserId()) return true;
+        if (allowAdminBypass && (Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN && user.getIdLong() == Locutus.loader().getAdminUserId())) return true;
         if (Locutus.imp().getServer() == null) {
             return false;
         }
@@ -445,14 +444,14 @@ public enum Roles {
     public boolean has(Member member) {
         if (member == null) return false;
         if (allowAdminBypass) {
-            if (member.getIdLong() == Locutus.loader().getAdminUserId()) return true;
-            if (member.isOwner()) return true;
-            if (member.hasPermission(Permission.ADMINISTRATOR)) return true;
+            if (Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN && member.getIdLong() == Locutus.loader().getAdminUserId()) return true;
+            if (Settings.INSTANCE.DISCORD.DISCORD_ADMIN_IS_LOCUTUS_ADMIN && member.isOwner()) return true;
+            if (Settings.INSTANCE.DISCORD.DISCORD_ADMIN_IS_LOCUTUS_ADMIN && member.hasPermission(Permission.ADMINISTRATOR)) return true;
         }
         GuildDB db = Locutus.imp().getGuildDB(member.getGuild());
 
         Set<Role> roles = getRoles(member);
-        if (allowAdminBypass) {
+        if (allowAdminBypass && Settings.INSTANCE.DISCORD.DISCORD_ADMIN_IS_LOCUTUS_ADMIN) {
             for (Role discordRole : roles) {
                 if (discordRole.hasPermission(Permission.ADMINISTRATOR)) {
                     return true;
@@ -489,10 +488,9 @@ public enum Roles {
 
     public Long hasAlliance(Member member) {
         if (member == null) return null;
-        if (allowAdminBypass && (member.getIdLong() == Settings.INSTANCE.APPLICATION_ID
-        || member.getIdLong() == Locutus.loader().getAdminUserId()
-        || member.hasPermission(Permission.ADMINISTRATOR)
-        || member.isOwner())) return 0L;
+        if (allowAdminBypass && (
+                (Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN && member.getIdLong() == Locutus.loader().getAdminUserId()) ||
+                (Settings.INSTANCE.DISCORD.DISCORD_ADMIN_IS_LOCUTUS_ADMIN && (member.hasPermission(Permission.ADMINISTRATOR) || member.isOwner())))) return 0L;
         GuildDB db = Locutus.imp().getGuildDB(member.getGuild());
         Set<Role> roles = getRoles(member);
         Map<Long, Role> map = db.getRoleMap(this);
@@ -527,8 +525,7 @@ public enum Roles {
     public boolean has(User user, Guild server) {
         if (user == null) return false;
         if (allowAdminBypass) {
-            if (user.getIdLong() == Settings.INSTANCE.APPLICATION_ID) return true;
-            if (user.getIdLong() == Locutus.loader().getAdminUserId()) return true;
+            if (Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN && user.getIdLong() == Locutus.loader().getAdminUserId()) return true;
         }
         if (server == null) return false;
         if (!server.isMember(user)) {
