@@ -379,7 +379,7 @@ public class IACategory {
                     } else {
                         // just prompt to use CM.interview.sync
                         if (output != null) {
-                            output.send("Channel " + channel.getName() + " has no member assigned. Use " + CM.interview.sync.cmd.toSlashMention() + " to delete unused channels.");
+                            output.send("Channel " + channel.getName() + " has no member assigned. Use " + CM.interview.syncInterviews.cmd.toSlashMention() + " to delete unused channels.");
                         }
                     }
                     continue;
