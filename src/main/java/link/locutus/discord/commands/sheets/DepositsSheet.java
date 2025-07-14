@@ -89,8 +89,11 @@ public class DepositsSheet extends Command {
                 channel,
                 guild,
                 db,
+
                 nations,
                 tracked == null ? null : new ArrayList<>(tracked).stream().map(f -> DBAlliance.getOrCreate(f.intValue())).collect(Collectors.toSet()),
+                includePastDepositors,
+
                 ignoreTaxBase,
                 ignoreOffset,
                 false,
@@ -99,7 +102,6 @@ public class DepositsSheet extends Command {
                 noLoans,
                 noGrants,
                 noDeposits,
-                includePastDepositors,
                 noEscrowSheet,
                 noteFlow == null ? null : PWBindings.DepositType(noteFlow),
                 flags.contains('f')

@@ -2161,27 +2161,37 @@ public class BankCommands {
         return response.toString();
     }
 
-    @Command(desc = "Transfer from the alliance bank (alliance deposits)")
+    @Command(
+            desc = "Transfer the resources specified to a desired nation or alliance",
+            groups = {
+                    "Transfer Details",
+                    "Account Options",
+                    "Transfer Note/Behavior"
+            }
+    )
     @RolePermission(value = {Roles.ECON, Roles.ECON_WITHDRAW_SELF, Roles.MEMBER}, any = true)
     public static String transfer(@Me IMessageIO channel, @Me JSONObject command,
                                   @Me User author, @Me DBNation me, @Me GuildDB guildDb,
-                                  NationOrAlliance receiver,
-                                  @AllianceDepositLimit Map<ResourceType, Double> transfer, DepositType.DepositTypeInfo bank_note,
-                                  @Arg("The nation account to deduct from") @Switch("n") DBNation nation_account,
-                                  @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance ingame_bank,
-                                  @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance offshore_account,
-                                  @Arg("The tax account to deduct from") @Switch("t") TaxBracket tax_account,
-                                  @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean use_receiver_tax_account,
-                                  @Arg("Only send funds the receiver is lacking from the amount") @Switch("m") boolean onlyMissingFunds,
-                                  @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
-                                  @Arg("Have the transfer decrease linearly to zero for balances over a timeframe") @Switch("d") @Timediff Long decay,
-                                  @Arg("Transfer valued at cash equivalent in nation holdings") @Switch("c") boolean deduct_as_cash,
-                                  @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
+                                  @Arg(value = "The nation or alliance to receive the transfer", group = 0) NationOrAlliance receiver,
+                                  @Arg(value = "The resources to transfer", group = 0) @AllianceDepositLimit Map<ResourceType, Double> transfer,
+                                  @Arg(value = "The note to categorize the transfer", group = 0) DepositType.DepositTypeInfo bank_note,
+
+                                  @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation nation_account,
+                                  @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance ingame_bank,
+                                  @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance offshore_account,
+                                  @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket tax_account,
+                                  @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean use_receiver_tax_account,
+
+                                  @Arg(value = "Only send funds the receiver is lacking from the amount", group = 2) @Switch("m") boolean onlyMissingFunds,
+                                  @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
+                                  @Arg(value = "Have the transfer decrease linearly to zero for balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
+                                  @Arg(value = "Transfer valued at cash equivalent in nation holdings", group = 2) @Switch("c") boolean deduct_as_cash,
+                                  @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 2) @Switch("em") EscrowMode escrow_mode,
+
                                   @Switch("b") boolean bypass_checks,
                                   @Switch("p") boolean ping_when_sent,
-                                  @Switch("f") boolean force,
-
-                                  @Switch("cmd") JSONObject calling_command
+                                  boolean force,
+                                  JSONObject calling_command
                                   ) throws IOException {
         if (use_receiver_tax_account) {
             if (tax_account != null) throw new IllegalArgumentException("You can't specify both `tax_id` and `use_receiver_tax_account`");
@@ -2495,37 +2505,45 @@ public class BankCommands {
     @Command(aliases = {"depositSheet", "depositsSheet"}, desc =
             """
                     Get a sheet with member nations and their deposits
-                    Each nation's safekeep should match the total balance given by deposits command\
-                    Add `-b` to\s
-                    Add `-o` to not include any manual deposit offsets
-                    Add `-d` to not include deposits
-                    Add `-t` to not include taxes
-                    Add `-l` to not include loans
-                    Add `-g` to not include grants
-                    Add `-p` to include past depositors
-                    Add `-f` to force an update""",
-            viewable = true)
+                    Each nation's safekeep should match the total balance given by deposits command""",
+            viewable = true,
+            groups = {
+                    "Deposit Tracking",
+                    "Transaction Filtering",
+                    "Flow Options"
+            })
     @RolePermission(Roles.ECON)
     public static String depositSheet(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db,
-                               @Default Set<DBNation> nations,
-                               @Arg("The alliances to track transfers from") @Default Set<DBAlliance> offshores,
-                               @Arg("use 0/0 as the tax base") @Switch("b") boolean ignoreTaxBase,
-                               @Arg("Do NOT include any manual deposit offsets") @Switch("o") boolean ignoreOffsets,
-                                      @Arg("Include ALL #expire and #decay transfers") @Switch("ex") boolean includeExpired,
-                                      @Arg("Include #ignore transfers") @Switch("i") boolean includeIgnored,
-                               @Arg("Do NOT include taxes") @Switch("t") boolean noTaxes,
-                               @Arg("Do NOT include loans") @Switch("l") boolean noLoans,
-                               @Arg("Do NOT include grants") @Switch("g") boolean noGrants,
-                               @Arg("Do NOT include deposits") @Switch("d") boolean noDeposits,
-                               @Arg("Include past depositors") @Switch("p") Set<Integer> includePastDepositors,
-                               @Arg("Do NOT include escrow sheet") @Switch("e") boolean noEscrowSheet,
-                               @Arg("""
-                                       Only show the flow for this note
-                                       i.e. To only see funds marked as #TRADE
-                                       This is for transfer flow breakdown internal, withdrawal, and deposit""")
-                                  @Switch("n") DepositType useFlowNote,
-                               @Switch("f") boolean force
-
+                                      @Default Set<DBNation> nations,
+                                      @Arg(value = "The alliances to track transfers from", group = 0)
+                                          @Default Set<DBAlliance> offshores,
+                                      @Arg(value = "Include past depositors", group = 0)
+                                          @Switch("p") Set<Integer> includePastDepositors,
+                                      @Arg(value = "Use 0/0 as the tax base", group = 1)
+                                          @Switch("b") boolean ignoreTaxBase,
+                                      @Arg(value = "Do NOT include any manual deposit offsets", group = 1)
+                                          @Switch("o") boolean ignoreOffsets,
+                                      @Arg(value = "Include ALL #expire and #decay transfers", group = 1)
+                                          @Switch("ex") boolean includeExpired,
+                                      @Arg(value = "Include #ignore transfers", group = 1)
+                                          @Switch("i") boolean includeIgnored,
+                                      @Arg(value = "Do NOT include taxes", group = 1)
+                                          @Switch("t") boolean noTaxes,
+                                      @Arg(value = "Do NOT include loans", group = 1)
+                                          @Switch("l") boolean noLoans,
+                                      @Arg(value = "Do NOT include grants", group = 1)
+                                          @Switch("g") boolean noGrants,
+                                      @Arg(value = "Do NOT include deposits", group = 1)
+                                          @Switch("d") boolean noDeposits,
+                                      @Arg(value = "Do NOT include escrow sheet", group = 1)
+                                          @Switch("e") boolean noEscrowSheet,
+                                      @Arg(value = """
+                                          Only show the flow for this note
+                                          i.e. To only see funds marked as #TRADE
+                                          This is for transfer flow breakdown internal, withdrawal, and deposit""",
+                                              group = 2)
+                                          @Switch("n") DepositType useFlowNote,
+                                      @Switch("f") boolean force
     ) throws GeneralSecurityException, IOException {
         CompletableFuture<IMessageBuilder> msgFuture = channel.send("Please wait...");
 
@@ -3239,22 +3257,36 @@ public class BankCommands {
             Send multiple transfers to nations/alliances according to a sheet
             The transfer sheet columns must be `nations` (which has the nations or alliance name/id/url)
             and then there must be a column named for each resource type you wish to transfer
-            OR use a column called `resources` which has a resource list (e.g. a json object of the resources)""")
+            OR use a column called `resources` which has a resource list (e.g. a json object of the resources)""",
+            groups = {
+                    "Transfer Details",
+                    "Account Options",
+                    "Transfer Note/Behavior"
+            })
     @RolePermission(value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON}, alliance = true, any = true)
-    public static String transferBulk(@Me IMessageIO io, @Me JSONObject command, @Me User user, @Me DBNation me, @Me GuildDB db, TransferSheet sheet, DepositType.DepositTypeInfo bank_note,
+    public static String transferBulk(@Me IMessageIO io, @Me JSONObject command, @Me User user, @Me DBNation me, @Me GuildDB db,
+                                      @Arg(value = "The transfer sheet to use\nExpects a `nation` or `leader` column and either columns for each resource name or `resources`", group = 0) @Switch("s")
+                                      TransferSheet sheet,
+                                      @Arg(value = "The deposit type to use for the transfer\nDefaults to `#deposit`", group = 0) @Switch("bn")
+                                      DepositType.DepositTypeInfo bank_note,
 
-                                      @Arg("The nation account to deduct from") @Switch("n") DBNation nation_account,
-                                      @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance ingame_bank,
-                                      @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance offshore_account,
-                                      @Arg("The tax account to deduct from") @Switch("t") TaxBracket tax_account,
-                                      @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean use_receiver_tax_account,
-                                      @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
-                                      @Arg("Have the transfer decrease linearly over a timeframe") @Switch("d") @Timediff Long decay,
-                                      @Switch("m") boolean deduct_as_cash,
-                                      @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
+                                      @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation nation_account,
+                                      @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance ingame_bank,
+                                      @Arg(value = "The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild", group = 1) @Switch("o") DBAlliance offshore_account,
+                                      @Arg(value = "The tax account to deduct from", group = 1) @Switch("t") TaxBracket tax_account,
+                                      @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean use_receiver_tax_account,
+
+                                      @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
+                                      @Arg(value = "Have the transfer decrease linearly over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
+                                      @Arg(value = "Transfer valued at cash equivalent in nation holdings", group = 2) @Switch("m") boolean deduct_as_cash,
+                                      @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 2) @Switch("em") EscrowMode escrow_mode,
+
                                       @Switch("b") boolean bypass_checks,
                                       @Switch("f") boolean force,
                                       @Switch("k") UUID key) throws IOException {
+        if (bank_note == null) {
+            bank_note = DepositType.DEPOSIT.withValue();
+        }
         return transferBulkWithErrors(io, command, user, me, db, sheet, bank_note, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, expire, decay, deduct_as_cash, escrow_mode, bypass_checks, force, key, new HashMap<>());
     }
 

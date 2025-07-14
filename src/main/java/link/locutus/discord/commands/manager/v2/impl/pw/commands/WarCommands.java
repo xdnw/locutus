@@ -1096,31 +1096,45 @@ public class WarCommands {
     }
 
     @Command(desc="Find a war target that you can hit\n" +
-            "Defaults to `enemies` coalition", viewable = true)
+            "Defaults to `enemies` coalition", viewable = true,
+            groups = {
+                    "Output Options",
+                    "Attacker Options",
+                    "Filter Options"
+            })
     @RolePermission(Roles.MEMBER)
-    public void war(@Me @Default User author, @Me IMessageIO channel, @Me DBNation me, @Default("~enemies") Set<DBNation> targets, @Default("8") int numResults,
-                      @Arg("Score to search for targets within war range of\n" +
-                              "Defaults to your score")
-                      @Switch("r") Double attackerScore,
-                      @Arg("Include inactive nations in the search\n" +
-                              "Defaults to false")
-                      @Switch("i") boolean includeInactives,
-                        @Arg("Include applicants in the search\n" +
-                                "Defaults to false")
-                      @Switch("a") boolean includeApplicants,
-                      @Arg("Only list targets with offensive wars they are winning")
-                      @Switch("p") boolean onlyPriority,
-                      @Arg("Only list targets weaker than you")
-                      @Switch("w") boolean onlyWeak,
-                      @Arg("Sort by easiest targets")
-                      @Switch("e") boolean onlyEasy,
-                        @Arg("Only list targets with less cities than you")
-                      @Switch("c") boolean onlyLessCities,
-                      @Arg("Return results in direct message")
-                      @Switch("d") boolean resultsInDm,
-                      @Arg("Include nations much stronger than you in the search\n" +
-                              "Defaults to false")
-                      @Switch("s") boolean includeStrong) throws IOException, ExecutionException, InterruptedException {
+    public void war(@Me @Default User author, @Me IMessageIO channel, @Me DBNation me,
+                    @Default("~enemies") Set<DBNation> targets,
+
+                    @Arg(value = "Number of results to return\nDefaults to 8", group = 0)
+                        @Default("8") int numResults,
+
+                    @Arg(value = "Return results in direct message", group = 0)
+                        @Switch("d") boolean resultsInDm,
+
+                    @Arg(value = "Score to search for targets within war range of\nDefaults to your score", group = 1)
+                        @Switch("r") Double attackerScore,
+
+                    @Arg(value = "Include inactive nations in the search\nDefaults to false", group = 2)
+                        @Switch("i") boolean includeInactives,
+
+                    @Arg(value = "Include applicants in the search\nDefaults to false", group = 2)
+                        @Switch("a") boolean includeApplicants,
+
+                    @Arg(value = "Only list targets with offensive wars they are winning", group = 2)
+                        @Switch("p") boolean onlyPriority,
+
+                    @Arg(value = "Only list targets weaker than you", group = 2)
+                        @Switch("w") boolean onlyWeak,
+
+                    @Arg(value = "Sort by easiest targets", group = 2)
+                        @Switch("e") boolean onlyEasy,
+
+                    @Arg(value = "Only list targets with less cities than you", group = 2)
+                        @Switch("c") boolean onlyLessCities,
+
+                    @Arg(value = "Include nations much stronger than you in the search\nDefaults to false", group = 2)
+                        @Switch("s") boolean includeStrong) throws IOException, ExecutionException, InterruptedException {
         if (resultsInDm && author != null) {
             channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel()), null);
         }
@@ -2280,34 +2294,47 @@ public class WarCommands {
 
     }
 
-    @Command(desc = "Generate a spy blitz sheet with the defender on the left and attackers on the right", viewable = true)
+    @Command(desc = "Generate a spy blitz sheet with the defender on the left and attackers on the right", viewable = true,
+            groups = {
+                    "Operation Settings",
+                    "Sheet Settings",
+                    "Weighting Settings"
+            })
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String SpySheet(@Me IMessageIO io, @Me @Default User author, @Me @Default GuildDB db,
                            Set<DBNation> attackers,
                            Set<DBNation> defenders,
-                           @Arg("Allowed spy operations")
-                           @Default("nuke,missile,ships,aircraft,tanks,spies") Set<SpyCount.Operation> allowedTypes,
-                           @Arg("Force an update of all participant spy count")
-                           @Switch("f") boolean forceUpdate,
-                           @Arg("Check the defensive spy slots")
-                           @Switch("e") boolean checkEspionageSlots,
-                           @Arg("Prioritize unit kills instead of damage")
-                           @Switch("k") boolean prioritizeKills,
-                           @Switch("s") SpreadSheet sheet,
-                           @Arg("Max Attackers to assign per defender")
-                               @Range(min=1) @Switch("d") @Default("3") Integer maxDef,
-                           @Arg("Double the offensive spy ops, e.g. two sets of ops at day change\n" +
-                                   "Note: You should also set maxDef to e.g. `6`")
+
+                           // Operation settings
+                           @Arg(value = "Allowed spy operations", group = 0)
+                               @Default("nuke,missile,ships,aircraft,tanks,spies") Set<SpyCount.Operation> allowedTypes,
+                           @Arg(value = "Check the defensive spy slots", group = 0)
+                               @Switch("e") boolean checkEspionageSlots,
+                           @Arg(value = "Prioritize unit kills instead of damage", group = 0)
+                               @Switch("k") boolean prioritizeKills,
+                           @Arg(value = "Max Attackers to assign per defender", group = 0)
+                               @Range(min = 1) @Switch("d") @Default("3") Integer maxDef,
+                           @Arg(value = "Double the offensive spy ops, e.g. two sets of ops at day change\n" +
+                                   "Note: You should also set maxDef to e.g. `6`", group = 0)
                                @Switch("o") boolean doubleOps,
-                           @Arg("Remove the available spy ops in another spreadsheet")
-                           @Switch("r") Set<SpreadSheet> removeSheets,
-                           @Arg("Prioritize defenders in these alliances")
-                           @Switch("p") Set<DBAlliance> prioritizeAlliances,
-                           @Arg("Fine grained control over attacker priority\n" +
-                                   "e.g. `(#warpolicy=ARCANE?1.2:1)*(#active_m<1440?1.2:1)*(#hasProject(SS)?1.2:1)`")
-                           @Switch("aw") NationAttributeDouble attackerWeighting,
-                           @Arg("Fine grained control over defender priority")
-                           @Switch("dw") NationAttributeDouble defenderWeighting
+
+                           // Sheet settings
+                           @Arg(value = "Remove the available spy ops in another spreadsheet", group = 1)
+                               @Switch("r") Set<SpreadSheet> removeSheets,
+                           @Switch("s") SpreadSheet sheet,
+
+                           // Weighting settings
+                           @Arg(value = "Prioritize defenders in these alliances", group = 2)
+                               @Switch("p") Set<DBAlliance> prioritizeAlliances,
+                           @Arg(value = "Fine grained control over attacker priority\n" +
+                                   "e.g. `(#warpolicy=ARCANE?1.2:1)*(#active_m<1440?1.2:1)*(#hasProject(SS)?1.2:1)`", group = 2)
+                               @Switch("aw") NationAttributeDouble attackerWeighting,
+                           @Arg(value = "Fine grained control over defender priority", group = 2)
+                               @Switch("dw") NationAttributeDouble defenderWeighting,
+
+                           // No group
+                           @Arg("Force an update of all participant spy count")
+                            @Switch("f") boolean forceUpdate
                            ) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.SPYOP_SHEET);
