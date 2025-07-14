@@ -39,7 +39,7 @@ public class WikiAuditingPage extends BotWikiGen {
         commandMarkdownSpoiler(CM.alerts.audit.optout.cmd),
         "# Create or send audit reports",
         "## List of Audit Types",
-        MarkupUtil.spoiler("CLick to show", Arrays.stream(IACheckup.AuditType.values())
+        MarkupUtil.spoiler("CLick to show", "\n\n" + Arrays.stream(IACheckup.AuditType.values())
             .map(auditType -> "- [" + auditType.severity.name() + "] " + auditType.getName() + ": " + auditType.description)
             .reduce((a, b) -> a + "\n" + b)
             .orElse("No audit types available.")),
