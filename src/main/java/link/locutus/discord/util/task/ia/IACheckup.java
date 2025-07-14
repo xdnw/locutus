@@ -250,7 +250,7 @@ public class IACheckup {
         FINISH_OBJECTIVES("\uD83D\uDC69\u200D\uD83C\uDFEB", AuditSeverity.WARNING, "false",
                 "Has one city in-game", false, false),
         FIX_COLOR(FINISH_OBJECTIVES, "\uD83C\uDFA8", AuditSeverity.WARNING, "color",
-                "Not on the alliance color", false, false),
+                "Not on the alliance color or beige", false, false),
         CHANGE_CONTINENT(FINISH_OBJECTIVES, "\uD83C\uDF0D", AuditSeverity.WARNING, "continent",
                 "Not in a continent that can build uranium (needed for self sufficient city power)", false, false),
         FIX_WAR_POLICY(FINISH_OBJECTIVES, "\uD83D\uDCDC", AuditSeverity.WARNING, "war policy",

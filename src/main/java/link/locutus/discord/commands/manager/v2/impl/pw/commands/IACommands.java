@@ -2422,12 +2422,12 @@ public class IACommands {
         return channel.getAsMention();
     }
 
-    @Command(aliases = {"syncInterviews", "syncInterview"}, desc = "Force an update of all interview channels and print the results")
+    @Command(aliases = {"syncInterviews", "syncInterview"}, desc = "Force an update of all interview channels, delete unused channels and print the results")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, any=true)
     public String syncInterviews(@Me IMessageIO channel, @Me GuildDB db) {
         IACategory iaCat = db.getIACategory();
         iaCat.load();
-        iaCat.purgeUnusedChannels(channel);
+        iaCat.purgeUnusedChannels(channel, true);
         iaCat.alertInvalidChannels(channel);
         return "Done!";
     }
@@ -2465,7 +2465,7 @@ public class IACommands {
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, any=true)
     public String sortInterviews(@Me GuildMessageChannel channel, @Me IMessageIO io, @Me GuildDB db, @Arg("Sort channels already in a category") @Default("true") boolean sortCategorized) {
         IACategory iaCat = db.getIACategory();
-        iaCat.purgeUnusedChannels(io);
+        iaCat.purgeUnusedChannels(io, true);
         iaCat.load();
         if (iaCat.isInCategory(channel)) {
             iaCat.sort(io, Collections.singleton((TextChannel) channel), sortCategorized);

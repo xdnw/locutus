@@ -1764,7 +1764,7 @@ public class UnsortedCommands {
             IACategory category = db.getIACategory();
             if (category != null) {
                 category.load();
-                category.purgeUnusedChannels(channel);
+                category.purgeUnusedChannels(channel, false);
                 category.alertInvalidChannels(channel);
             }
         }

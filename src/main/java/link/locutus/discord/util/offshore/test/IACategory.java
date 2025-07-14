@@ -363,7 +363,7 @@ public class IACategory {
 
     }
 
-    public void purgeUnusedChannels(IMessageIO output) {
+    public void purgeUnusedChannels(IMessageIO output, boolean force) {
         if (output == null) output = this.output;
 
         List<TextChannel> channels = getAllChannels();
@@ -372,8 +372,16 @@ public class IACategory {
             if (iaChannel == null) {
                 Member member = getOverride(channel.getMemberPermissionOverrides());
                 if (member == null) {
-                    if (output != null) output.send("Deleted channel " + channel.getName() + " (no member was found)");
-                    RateLimitUtil.queue(channel.delete());
+                    if (force) {
+                        if (output != null)
+                            output.send("Deleted channel " + channel.getName() + " (no member was found)");
+                        RateLimitUtil.queue(channel.delete());
+                    } else {
+                        // just prompt to use CM.interview.sync
+                        if (output != null) {
+                            output.send("Channel " + channel.getName() + " has no member assigned. Use " + CM.interview.sync.cmd.toSlashMention() + " to delete unused channels.");
+                        }
+                    }
                     continue;
                 }
                 GuildMessageChannel tc = (GuildMessageChannel) channel;
