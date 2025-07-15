@@ -2172,6 +2172,7 @@ public class BankCommands {
     @RolePermission(value = {Roles.ECON, Roles.ECON_WITHDRAW_SELF, Roles.MEMBER}, any = true)
     public static String transfer(@Me IMessageIO channel, @Me JSONObject command,
                                   @Me User author, @Me DBNation me, @Me GuildDB guildDb,
+
                                   @Arg(value = "The nation or alliance to receive the transfer", group = 0) NationOrAlliance receiver,
                                   @Arg(value = "The resources to transfer", group = 0) @AllianceDepositLimit Map<ResourceType, Double> transfer,
                                   @Arg(value = "The note to categorize the transfer", group = 0) DepositType.DepositTypeInfo bank_note,
@@ -2190,8 +2191,8 @@ public class BankCommands {
 
                                   @Switch("b") boolean bypass_checks,
                                   @Switch("p") boolean ping_when_sent,
-                                  boolean force,
-                                  JSONObject calling_command
+                                  @Switch("f") boolean force,
+                                  @Switch("cmd") JSONObject calling_command
                                   ) throws IOException {
         if (use_receiver_tax_account) {
             if (tax_account != null) throw new IllegalArgumentException("You can't specify both `tax_id` and `use_receiver_tax_account`");
