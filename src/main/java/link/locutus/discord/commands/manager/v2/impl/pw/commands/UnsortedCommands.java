@@ -1384,28 +1384,44 @@ public class UnsortedCommands {
         return null;
     }
 
-    @Command(desc = "Get a ranking of alliances or nations by their resource production", viewable = true)
+    @Command(desc = "Get a ranking of alliances or nations by their net resource production", viewable = true,
+            groups = {
+                    "Production Filters",
+                    "Ranking Options",
+                    "Snapshot Settings",
+                    "Output Options"
+            })
     public String findProducer(@Me IMessageIO channel, @Me JSONObject command, @Me @Default Guild guild,
-                               @Arg("The resources to rank production of")
+                               @Arg("The resources to rank production of\n" +
+                                       "Use `*` to rank all resources")
                                Set<ResourceType> resources,
                                @Arg("Nations to include in the ranking")
                                @Default NationList nationList,
+
+                               @Arg(value = "Exclude military unit upkeep", group = 0)
                                @Switch("m") boolean ignoreMilitaryUpkeep,
-                               @Arg("Exclude color trade bloc bonus")
+                               @Arg(value = "Exclude color trade bloc bonus", group = 0)
                                @Switch("t") boolean ignoreTradeBonus,
-                               @Arg("Exclude the new nation bonus")
+                               @Arg(value = "Exclude the new nation bonus", group = 0)
                                @Switch("b") boolean ignoreNationBonus,
-                               @Arg("Include negative resource revenue")
+                               @Arg(value = "Include negative resource revenue", group = 0)
                                @Switch("n") boolean includeNegative,
-                               @Arg("Rank by nation instead of alliances")
-                               @Switch("a") boolean listByNation,
-                               @Arg("Rank by average per nation instead of total per alliance")
-                               @Switch("s") boolean listAverage,
-                               @Switch("u") boolean uploadFile,
-                               @Arg("Include inactive nations (2 days)")
+                               @Arg(value = "Include inactive nations (2 days)", group = 0)
                                @Switch("i") boolean includeInactive,
+
+                               @Arg(value = "Rank by nation instead of alliances", group = 1)
+                               @Switch("a") boolean listByNation,
+                               @Arg(value = "Rank by average per nation instead of total", group = 1)
+                               @Switch("s") boolean listAverage,
+
+                               @Arg(value = "The date to use for the snapshot", group = 2)
                                @Switch("d") @Timestamp Long snapshotDate,
+
+                               @Arg(value = "Upload the results as a file", group = 3)
+                               @Switch("u") boolean uploadFile,
+                                 @Arg(value = "The number of results to show", group = 3)
                                @Switch("r") Integer num_results,
+                                 @Arg(value = "Highlight specific entries in the result", group = 3)
                                @Switch("h") @AllowDeleted Set<NationOrAlliance> highlight) {
         if (nationList == null) nationList = new SimpleNationList(Locutus.imp().getNationDB().getAllNations()).setFilter("*");
         Set<DBNation> nations = PW.getNationsSnapshot(nationList.getNations(), nationList.getFilter(), snapshotDate, guild);

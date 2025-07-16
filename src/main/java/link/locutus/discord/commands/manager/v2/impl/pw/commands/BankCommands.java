@@ -3951,7 +3951,13 @@ public class BankCommands {
     }
 
     @Command(desc="Displays the account balance for a nation, alliance or guild\n" +
-            "Balance info includes deposits, loans, grants, taxes and escrow", viewable = true)
+            "Balance info includes deposits, loans, grants, taxes and escrow", viewable = true,
+            groups = {
+                    "Account Selection",
+                    "Source & Time Filters",
+                    "Balance Options",
+                    "Output & Display"
+            })
     @RolePermission(Roles.MEMBER)
     @UserCommand
     public static String deposits(@Me Guild guild, @Me GuildDB db, @Me IMessageIO channel,
@@ -3959,24 +3965,43 @@ public class BankCommands {
                            @AllowDeleted
                            @StarIsGuild
                            @Arg("Account to check holdings for") NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild,
-                           @Arg("The alliances to check transfers from\nOtherwise the guild configured ones will be used")
-                           @Switch("a") Set<DBAlliance> offshores,
-                           @Arg("Only include transfers after this time")
-                           @Switch("c") @Timestamp Long timeCutoff,
-                            @Arg("Include all taxes in account balance")
-                           @Switch("b") boolean includeBaseTaxes,
-                            @Arg("Do NOT include manual offsets in account balance")
-                           @Switch("o") boolean ignoreInternalOffsets,
-                            @Arg("Show separate sections for taxes and deposits")
-                           @Switch("t") Boolean showCategories,
-                           @Switch("d") boolean replyInDMs,
-                           @Arg("Include expired transfers")
-                           @Switch("e") boolean includeExpired,
-                           @Arg("Include transfers marked as ignore")
-                           @Switch("i") boolean includeIgnored,
-                           @Switch("z") boolean allowCheckDeleted,
-                           @Arg("Hide the escrow balance ") @Switch("h") boolean hideEscrowed,
-                           @Switch("s") boolean show_expiring_records
+
+                                  @Arg(value = "The alliances to check transfers from. Defaults to guild-configured offshores.", group = 0)
+                                      @Switch("a")
+                                      Set<DBAlliance> offshores,
+                                  @Arg(value = "Only include transfers after this time", group = 0)
+                                      @Switch("c")
+                                      @Timestamp
+                                      Long timeCutoff,
+                                  @Arg(value = "Allow checking deleted records", group = 0)
+                                      @Switch("z")
+                                      boolean allowCheckDeleted,
+
+                                  @Arg(value = "Include all taxes in account balance", group = 1)
+                                      @Switch("b")
+                                      boolean includeBaseTaxes,
+                                  @Arg(value = "Exclude manual offsets from balance", group = 1)
+                                      @Switch("o")
+                                      boolean ignoreInternalOffsets,
+                                  @Arg(value = "Include expired transfers", group = 1)
+                                      @Switch("e")
+                                      boolean includeExpired,
+                                  @Arg(value = "Include ignored transfers", group = 1)
+                                      @Switch("i")
+                                      boolean includeIgnored,
+                                  @Arg(value = "Hide escrowed balance section", group = 1)
+                                      @Switch("h")
+                                      boolean hideEscrowed,
+
+                                  @Arg(value = "Separate sections for taxes and deposits", group = 2)
+                                      @Switch("t")
+                                      Boolean showCategories,
+                                  @Arg(value = "Reply via direct message", group = 2)
+                                      @Switch("d")
+                                      boolean replyInDMs,
+                                  @Arg(value = "Show records nearing expiration", group = 2)
+                                      @Switch("s")
+                                      boolean show_expiring_records
     ) throws IOException, GeneralSecurityException {
         if (show_expiring_records && !nationOrAllianceOrGuild.isNation()) {
             throw new IllegalArgumentException("Only nations can show expiring records");

@@ -63,31 +63,18 @@ public class RaidCommand extends Command {
     public String desc() {
         return """
                 Find a raid target, with optional alliance and sorting (default: inactive None or applicants, sorted by estimated monetary value).
-                \t\
                 To see a list of coalitions, use `!coalitions`.
-                \t\
                 To get more than 5 results (e.g. 10 results): `!raid * 10`
-                \t\
                 To list active nations use `!raid * -a`
-                \t\
                 To instead list inactives for X time, add `-3d` (change 3d to the time)
-                \t\
                 To filter out the top X alliances, add e.g. `-50`
-                \t\
                 To list only weak neations, add `-weak`
-                \t\
                 To also list nations on beige use e.g. `-beige` or `-beige<24` (for <24 turns of beige)
-                \t\
                 To use a custom score, add e.g. `score=1500`
-                \t\
                 To only list by free defensive slots, add e.g. `slots=0`
-                \t\
                 To also list nations in vm, add e.g. `vm<3d`
-                \t\
                 To ignore the Do Not Raid list use `-donotraid`
-                \t\
                 Add `-l` to ignore bank loot
-                \t\
                 Add `-c` to ignore city revenue""";
     }
 
