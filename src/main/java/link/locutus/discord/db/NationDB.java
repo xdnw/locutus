@@ -1017,6 +1017,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public void updateDirtyNations(Consumer<Event> eventConsumer, int max) {
+        System.out.println("Updating dirty nations, max: " + max + " (" + dirtyNations.size() + " total)");
         List<Integer> ids = new IntArrayList();
         synchronized (dirtyNations) {
             Iterator<Integer> iter = dirtyNations.iterator();
@@ -1050,6 +1051,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         } else {
             fetched = updateNations(r -> r.setId(idsFinal), eventConsumer, eventConsumer != null);
         }
+        System.out.println("Fetched nations: " + fetched.size() + " for ids: " + idsFinal.size());
         if (ids.size() >= 500 && fetched.isEmpty()) {
             return fetched;
         }
@@ -1280,7 +1282,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     public void updateCitiesOfNations(Set<Integer> nationIds, boolean priority, boolean bulk, Consumer<Event> eventConsumer) {
         PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
         List<Integer> idList = new ArrayList<>(nationIds);
-        if (bulk) markDirtyIncorrectCities(true, true);
         int estimatedCitiesToFetch = estimateCities(nationIds);
         if (estimatedCitiesToFetch >= PoliticsAndWarV3.CITIES_PER_PAGE * 30) {
             updateAllCities(eventConsumer);
@@ -1316,6 +1317,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         if (dirtyCities.size() > 15000 || dirtyNationCities > 15000) {
             Logg.info("Marking cities as outdated " + dirtyCities.size() + " " + dirtyNationCities);
         }
+        System.out.println("Dirty cities: " + dirtyCities.size() + ", Dirty nation cities: " + dirtyNationCities);
 
         if (!dirtyCities.isEmpty()) {
             synchronized (dirtyCities) {
@@ -1345,7 +1347,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         Set<Integer> deletedCities = new IntOpenHashSet();
         Collections.sort(cityIds);
 
-        for (int i = 0; i < 500 && !cityIds.isEmpty(); i += 500) {
+        System.out.println("City ids to update: " + cityIds.size());
+        for (int i = 0; i < cityIds.size() && !cityIds.isEmpty(); i += 500) {
             int end = Math.min(i + 500, cityIds.size());
             List<Integer> toFetch = cityIds.subList(i, end);
             List<City> cities = v3.fetchCitiesWithInfo(priority, r -> r.setId(toFetch), true);
@@ -1358,6 +1361,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                     }
                 }
             }
+            System.out.println("Updating cities: " + cities.size() + " for ids: " + toFetch.size());
             updateCities(cities, eventConsumer, "updating outdated cities");
         }
         if (!deletedCities.isEmpty()) {
@@ -1595,6 +1599,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public void updateCities(List<City> cities, Consumer<Event> eventConsumer, String reason) {
+        System.out.println("Updating " + cities.size() + " cities, reason: " + reason);
         DBCity buffer = new SimpleDBCity(0);
         List<DBCity> dirtyCities = new ObjectArrayList<>(); // List<nation id, db city>
         AtomicBoolean dirtyFlag = new AtomicBoolean();
@@ -1613,7 +1618,10 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
 
         if (!dirtyCities.isEmpty()) {
+            System.out.println("Saving " + dirtyCities.size() + " dirty cities, reason: " + reason);
             saveCities(dirtyCities);
+        } else {
+            System.out.println("No dirty cities to save, reason: " + reason);
         }
     }
 
@@ -2134,16 +2142,36 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     public void markDirtyIncorrectCities(Set<DBNation> nations, boolean score, boolean cities) {
         int markedForScore = 0;
         int markedForCity = 0;
+
+        int debugVM = 0;
+
         for (DBNation nation : nations) {
             Map<Integer, DBCity> cityMap = getCitiesV3(nation.getNation_id());
             int cityCount = cityMap.size();
             int natCityCount = nation.getCities();
             if (cityCount == natCityCount) {
+                boolean natScoreBad = false;
                 if (score && Math.round(100 * (PW.estimateScore(this, nation) - nation.getScore())) != 0) {
                     markedForScore += cityMap.size();
                     synchronized (dirtyCities) {
                         cityMap.forEach((key, value) -> dirtyCities.add(key));
                     }
+                    if (nation.getVm_turns() > 0 && !natScoreBad) {
+                        debugVM++;
+                    }
+                    if (!natScoreBad) natScoreBad = true;
+                }
+                if (natScoreBad) {
+                    System.out.println("Nation Score " + nation.getMarkdownUrl() + " | c" + nation.getCities() + " | " + MathMan.format(nation.estimateScore()) + " != " + MathMan.format(nation.getScore()) + "\n" +
+                            " - soldier:" + nation.getSoldiers() + "\n" +
+                            " - tank:" + nation.getTanks() + "\n" +
+                            " - air:" + nation.getAircraft() + "\n" +
+                            " - ship:" + nation.getShips() + "\n" +
+                            " - missile:" + nation.getMissiles() + "\n" +
+                            " - nuke:" + nation.getNukes() + "\n" +
+                            " - project:" + nation.getNumProjects() + "\n" +
+                            " - cities:" + nation.getCities() + "\n" +
+                            " - infra:" + nation.getInfra());
                 }
             } else if (natCityCount > cityCount) {
                 // new city, ignore
@@ -2162,16 +2190,23 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     private final Set<Integer> updateTimer = Collections.synchronizedSet(new IntOpenHashSet());
 
     public void markDirtyIncorrectNations() {
+        int byScore = 0;
+        int byCities = 0;
+        int byColor = 0;
+        int byUnit = 0;
+        int byVM = 0;
         int originalSize = dirtyNations.size();
         long turnNow = TimeUtil.getTurn();
         outer:
         for (DBNation nation : getNationsMatching(f -> f.getVm_turns() == 0)) {
             if (Math.round(100 * (PW.estimateScore(this, nation) - nation.getScore())) != 0) {
+                byScore++;
                 dirtyNations.add(nation.getNation_id());
                 continue;
             }
             Map<Integer, DBCity> cityMap = getCitiesV3(nation.getNation_id());
-            if (nation.getCities() != cityMap.size()) {
+            if (nation.getCities() < cityMap.size()) {
+                byCities++;
                 dirtyNations.add(nation.getNation_id());
                 continue;
             }
@@ -2182,6 +2217,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                     unitCap += city.getBuilding(building) * building.getUnitCap() ;
                 }
                 if (nation.getUnits(unit) > unitCap) {
+                    byUnit++;
                     dirtyNations.add(nation.getNation_id());
                     continue outer;
                 }
@@ -2191,20 +2227,23 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 long turnDiff = turnNow - turnActive;
                 if (turnDiff >= 61 && nation.getVm_turns() == 0 && !updateTimer.add(nation.getNation_id())) {
                     dirtyNations.add(nation.getNation_id());
-                    continue outer;
+                    byColor++;
+                    continue;
                 }
             } else if (nation.getVm_turns() == 0) {
                 long turnActive = TimeUtil.getTurn(nation.lastActiveMs());
                 long turnDiff = turnNow - turnActive;
                 if (turnDiff > 1101 && !updateTimer.add(nation.getNation_id())) {
+                    byVM++;
                     dirtyNations.add(nation.getNation_id());
-                    continue outer;
+                    continue;
                 }
             }
         }
         int added = dirtyNations.size() - originalSize;
-        if (added > 1000) {
-            Logg.info("Added " + added + " nations to outdated list");
+//        if (added > 1000)
+        {
+            Logg.info("Added " + added + " nations to outdated list (" + byScore + " by score, " + byCities + " by cities, " + byColor + " by color, " + byUnit + " by unit, " + byVM + " by VM)");
         }
     }
 

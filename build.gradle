@@ -222,7 +222,8 @@ dependencies {
     implementation("org.jooq:jooq-codegen:3.19.13")
 
 
-    implementation 'com.openai:openai-java:2.3.0'
+    implementation 'com.openai:openai-java:2.16.0'
+    implementation 'com.google.genai:google-genai:1.9.0'
 
 //    implementation 'com.github.javaparser:javaparser-symbol-solver-core:3.25.3'
 //    implementation 'com.github.javaparser:javaparser-core:3.25.3'

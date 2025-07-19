@@ -120,7 +120,8 @@ public class PoliticsAndWarV3 {
         } else {
             validKeysStr = keys.stream().map(key -> PW.getMarkdownUrl(key.getNationId(), false)).collect(Collectors.joining(","));
         }
-        message = "Error accessing `" + alliancePermission.name() + "`" + (message == null || message.isEmpty() ? "" : " " + message) + ". Using keys: " + validKeysStr + "\n";
+        message = "Error accessing `" + alliancePermission.name() + "`" + (message == null || message.isEmpty() ? "" : " " + message) + ". Using keys: " + validKeysStr + "\n" +
+                "API key scopes can be set on the account page: <" + Settings.PNW_URL() + "/account/>";
         throw new IllegalArgumentException(message);
     }
 

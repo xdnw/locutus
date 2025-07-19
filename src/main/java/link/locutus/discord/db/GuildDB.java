@@ -18,8 +18,12 @@ import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -710,20 +714,24 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
     @Override
+    @Command
     public long getIdLong() {
         return guild.getIdLong();
     }
 
     @Override
+    @Command
     public boolean isAlliance() {
         return false;
     }
 
     @Override
+    @Command
     public int getAlliance_id() {
         throw new UnsupportedOperationException("Not an alliance");
     }
 
+    @Command
     public boolean hasAlliance() {
         return getOrNull(GuildKey.ALLIANCE_ID) != null;
     }
@@ -738,9 +746,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
     @Override
+    @Command
     public String getName() {
         return guild.getName() + "/" + guild.getIdLong();
     }
+
 
     public String getUrl() {
         AllianceList alliances = this.getAllianceList();
@@ -2422,6 +2432,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     public MailApiResponse sendRecruitMessage(DBNation to) throws IOException {
         return getHandler().sendRecruitMessage(to);
     }
+
+    @Command
     public GuildDB getDelegateServer() {
         Map.Entry<Integer, Long> delegate = getOrNull(GuildKey.DELEGATE_SERVER, false);
         if (delegate != null && delegate.getValue() != getIdLong()) {
@@ -2430,10 +2442,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return null;
     }
 
+    @Command
     public boolean isDelegateServer() {
         return getDelegateServer() != null;
     }
 
+    @Command
     public boolean isValidAlliance() {
         Set<Integer> aaIds = getOrNull(GuildKey.ALLIANCE_ID);
         if (aaIds == null || aaIds.isEmpty()) return false;
@@ -2466,6 +2480,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return allowedMMr;
     }
 
+    @Command
     public boolean isOffshore() {
         return isOffshore(false);
     }
@@ -2495,6 +2510,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return false;
     }
 
+    @Command
     public boolean isOwnerActive() {
         if (guild == null) return false;
         Member owner = guild.getOwner();
@@ -2816,6 +2832,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return canRaid;
     }
 
+    //    @Command TODO PERMS
     public Map<String, String> getCopyPastas(@Nullable Member memberOrNull) {
         Map<String, String> options = new LinkedHashMap<>();
         for (Map.Entry<String, String> entry : getInfoMap().entrySet()) {
@@ -2862,6 +2879,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return getInfo(key.name(), allowDelegate);
     }
 
+//    @Command TODO PERMS
     public String getInfoRaw(GuildSetting key, boolean allowDelegate) {
         if (key == GuildKey.ALLIANCE_ID) {
             String result = getInfo(key.name(), false);
@@ -2897,6 +2915,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return channel;
     }
 
+    //    @Command TODO PERMS
     public String getCopyPasta(String key, boolean allowDelegate) {
         return getInfo("copypasta." + key, allowDelegate);
     }
@@ -3265,6 +3284,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return copy;
     }
 
+    //    @Command TODO PERMS
     public Set<Integer> getCoalition(String coalition) {
         Set<Long> longs = getCoalitionRaw(coalition);
         if (longs.isEmpty()) return new IntArraySet();
@@ -3293,6 +3313,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return coalitions2.getOrDefault(hash, Collections.emptySet());
     }
 
+    //    @Command TODO PERMS
     public Set<Long> getCoalitionRaw(String coalition) {
         GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
         if (faServer != null && faServer.getIdLong() != getIdLong()) return faServer.getCoalitionRaw(coalition);
@@ -3319,6 +3340,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return tracked;
     }
 
+    //    @Command TODO PERMS
     public Set<Integer> getAllianceIds() {
         return getAllianceIds(true);
     }
@@ -3439,6 +3461,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         }
     }
 
+    //    @Command TODO PERMS
     public  Map<Roles, Map<Long, Long>> getMappingRaw() {
         loadRoles();
         return Collections.unmodifiableMap(roleToAccountToDiscord);
@@ -3498,6 +3521,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return result;
     }
 
+    //    @Command TODO PERMS
     public Set<Integer> getRoleAllianceIds(Roles lcRole, Role discordRole) {
         loadRoles();
         Map<Long, Long> roleIds = roleToAccountToDiscord.get(lcRole);
@@ -3576,5 +3600,17 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             }
         }
         return rateFunc;
+    }
+
+    ///  Placeholders ///
+
+    @Command(desc = "Resources offshored")
+    @RolePermission(Roles.ECON_STAFF)
+    public Map<ResourceType, Double> getOffshoredBalance(@Me GuildDB db, @Switch("u") boolean update) {
+        if (db.getIdLong() != getIdLong()) return null;
+        OffshoreInstance offshore = getOffshore();
+        if (offshore == null) return Collections.emptyMap();
+        double[] result = offshore.getDeposits(this, update);
+        return ResourceType.resourcesToMap(result);
     }
 }

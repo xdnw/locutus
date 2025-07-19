@@ -608,19 +608,6 @@ public class Settings extends Config {
         }
 
         @Create
-        public COPILOT COPILOT;
-
-        public static final class COPILOT {
-            @Comment({"Allow use of github copilot as on option for chat completions"})
-            public boolean ENABLED = false;
-
-            public int USER_TURN_LIMIT = 10;
-            public int USER_DAY_LIMIT = 25;
-            public int GUILD_TURN_LIMIT = 10;
-            public int GUILD_DAY_LIMIT = 25;
-        }
-
-        @Create
         public OPENAI OPENAI;
 
         public static final class OPENAI {
@@ -630,8 +617,34 @@ public class Settings extends Config {
             public int USER_DAY_LIMIT = 25;
             public int GUILD_TURN_LIMIT = 10;
             public int GUILD_DAY_LIMIT = 25;
+
+            @Comment({"The model to use for text embeddings",
+                    "See: <https://platform.openai.com/docs/models/overview>"})
+            public String EMBEDDING_MODEL = "text-embedding-3-small";
         }
 
+        @Create
+        public GOOGLE_AI GOOGLE_AI;
+        public static final class GOOGLE_AI {
+            @Comment({"Your gemini API key from <https://console.cloud.google.com/apis/credentials> (optional)"})
+            public String API_KEY = "";
+            // text embedding model
+            @Comment({"The model to use for text embeddings",
+                    "See: <https://cloud.google.com/vertex-ai/docs/generative-ai/embeddings/models>"})
+            public String EMBEDDING_MODEL = "gemini-embedding-001";
+            // base url (empty for default)
+            @Comment({"The base url for the gemini API",
+                    "Leave empty to use the default (https://generativelanguage.googleapis.com)"})
+            public String BASE_URL = "";
+        }
+
+
+        // Either OPENAI, GOOGLE or any compatible pytorch model on huggingface (will attempt to download and run locally)
+        @Comment({"The provider to use for text embeddings",
+                "OPENAI = OpenAI API (requires API key)",
+                "GOOGLE = Google Gemini API (requires API key)",
+                "OR enter the name of a compatible pytorch model on huggingface (e.g. `sentence-transformers/all-MiniLM-L6-v2`)",})
+        public static String TEXT_EMBEDDING_PROVIDER = "sentence-transformers/all-MiniLM-L6-v2";
     }
 
     public static class DATABASE {

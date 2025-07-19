@@ -13,13 +13,27 @@ import link.locutus.discord.gpt.pw.GptDatabase;
 import java.io.IOException;
 import java.sql.SQLException;
 
-public class MiniEmbedding extends AEmbeddingDatabase {
+public class LocalEmbedding extends AEmbeddingDatabase {
+    private final ZooModel<String, float[]> modelName;
     private Criteria<String, float[]> criteria;
     private ZooModel<String, float[]> model;
     private Predictor<String, float[]> predictor;
 
-    public MiniEmbedding(GptDatabase database) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
-        super("minilm", database);
+    public LocalEmbedding(GptDatabase database, String modelName) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
+        super(getTableName(modelName), database);
+        this.modelName = model;
+    }
+
+    private static String getTableName(String modelName) {
+        // get last part after / if present
+        if (modelName.contains("/")) {
+            modelName = modelName.substring(modelName.lastIndexOf('/') + 1);
+        }
+        if (modelName.equalsIgnoreCase("all-MiniLM-L6-v2")) {
+            // legacy table name
+            return "minilm";
+        }
+        return modelName.replaceAll("[^a-zA-Z0-9]", "_").toLowerCase();
     }
 
     private void init() {
@@ -29,7 +43,7 @@ public class MiniEmbedding extends AEmbeddingDatabase {
                     try {
                         criteria = Criteria.builder()
                                 .setTypes(String.class, float[].class)
-                                .optModelUrls("djl://ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2")
+                                .optModelUrls("djl://ai.djl.huggingface.pytorch/" + modelName)
                                 .optEngine("PyTorch")
                                 .optTranslatorFactory(new TextEmbeddingTranslatorFactory())
                                 .build();

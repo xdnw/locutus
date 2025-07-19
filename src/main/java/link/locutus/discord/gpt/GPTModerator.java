@@ -50,19 +50,6 @@ public class GPTModerator implements IModerator{
                 Moderation.CategoryScores catScoresObject = resultObject.categoryScores();
                 Set<String> flaggedCategories = new HashSet<>();
                 Map<String, Double> categoryScores = new HashMap<>();
-                // private val harassment: JsonField<Boolean>,
-                //private val harassmentThreatening: JsonField<Boolea
-                //private val hate: JsonField<Boolean>,
-                //private val hateThreatening: JsonField<Boolean>,
-                //private val illicit: JsonField<Boolean>,
-                //private val illicitViolent: JsonField<Boolean>,
-                //private val selfHarm: JsonField<Boolean>,
-                //private val selfHarmInstructions: JsonField<Boolean
-                //private val selfHarmIntent: JsonField<Boolean>,
-                //private val sexual: JsonField<Boolean>,
-                //private val sexualMinors: JsonField<Boolean>,
-                //private val violence: JsonField<Boolean>,
-                //private val violenceGraphic: JsonField<Boolean>,
                 if (categoriesObject.harassment()) {
                     flaggedCategories.add("harassment");
                     categoryScores.put("harassment", catScoresObject.harassment());

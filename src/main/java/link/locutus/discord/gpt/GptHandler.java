@@ -2,6 +2,8 @@ package link.locutus.discord.gpt;
 
 import ai.djl.MalformedModelException;
 import ai.djl.repository.zoo.ModelNotFoundException;
+import com.google.genai.Client;
+import com.google.genai.types.HttpOptions;
 import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.models.ChatModel;
@@ -31,20 +33,32 @@ import static com.pusher.client.util.internal.Preconditions.checkArgument;
 import static com.pusher.client.util.internal.Preconditions.checkNotNull;
 
 public class GptHandler {
-    private final OpenAIClient service;
+    private final OpenAIClient openAiService;
     public final IEmbeddingDatabase embeddingDatabase;
     private final IModerator moderator;
     private final ProcessText2Text processT2;
+    private final Client googleClient;
 
     public GptHandler(GptDatabase database) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
-//        this.service = new OpenAIClient(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY, Duration.ofSeconds(120));
-        this.service = OpenAIOkHttpClient.builder().apiKey(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY)
+        this.openAiService = OpenAIOkHttpClient.builder().apiKey(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY)
                 .timeout(Duration.ofSeconds(120))
                 .build();
-        this.moderator = new GPTModerator(service);
-//        this.embeddingDatabase = new AdaEmbedding(registry, service);
-        // TODO change ^ that to mini
-        this.embeddingDatabase = new MiniEmbedding(database);
+
+        {
+            HttpOptions.Builder googeHttpOpt = HttpOptions.builder();
+            if (!Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.GOOGLE_AI.BASE_URL.isEmpty()) {
+                googeHttpOpt.baseUrl(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.GOOGLE_AI.BASE_URL);
+            }
+            googeHttpOpt.timeout(120);
+            this.googleClient = Client.builder()
+                    .apiKey(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.GOOGLE_AI.API_KEY)
+                    .httpOptions(googeHttpOpt.build())
+                    .build();
+        }
+
+        this.moderator = new GPTModerator(openAiService);
+
+        this.embeddingDatabase = new LocalEmbedding(database, "sentence-transformers/all-MiniLM-L6-v2");
 
 
         File scriptPath = new File("../gpt4free/my_project/gpt3_5_turbo.py");
@@ -68,8 +82,8 @@ public class GptHandler {
         return moderator;
     }
 
-    public OpenAIClient getService() {
-        return service;
+    public OpenAIClient getOpenAiService() {
+        return openAiService;
     }
 
     public IEmbeddingDatabase getEmbeddings() {
