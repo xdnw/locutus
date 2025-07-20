@@ -130,7 +130,11 @@ public class AdminCommands {
                                      @Default Set<GuildDB> servers, @Switch("s") SpreadSheet sheet, @Switch("f") boolean force) throws GeneralSecurityException, IOException {
         if (servers != null) {
             if (!force) {
-                io.create().confirmation(command).send();
+                io.create()
+                        .embed("Guild Culling Confirmation",
+                                "You are about to leave the following guilds:\n" +
+                                        sheet.getURL())
+                        .confirmation(command).send();
                 return null;
             }
             for (GuildDB db : servers) {
@@ -212,8 +216,8 @@ public class AdminCommands {
             for (Member member : other.getGuild().getMembers()) {
                 DBNation nation = DiscordUtil.getNation(member.getIdLong());
                 if (nation != null) {
-                    if (!hasRecentAdmin && (member.isOwner() || member.getRoles().stream().anyMatch(r -> r.getPermissions().contains(Permission.ADMINISTRATOR)))) {
-                        hasRecentAdmin = true;
+                    if (!hasRegisteredAdmin && (member.isOwner() || member.getRoles().stream().anyMatch(r -> r.getPermissions().contains(Permission.ADMINISTRATOR)))) {
+                        hasRegisteredAdmin = true;
                     }
                     hasRegisteredUser = true;
                 }
@@ -236,14 +240,18 @@ public class AdminCommands {
 
             boolean hasOffshoreAccount = other.getOffshore() != null;
 
+            if (hasRecentMessage || isValidAlliance || !joinedLongTimeAgo || hasRecentMember || hasRecentAdmin || hasRegisteredAdmin || hasRecentRole || hasOffshoreAccount) {
+                continue;
+            }
+
             List<Object> row = List.of(
-                    other.getIdLong(),
+                    other.getIdLong() + "",
                     other.getGuild().getName(),
                     memberCount,
                     StringMan.getString(other.getAllianceIds()),
                     cannotTalk,
                     hasNoSettings,
-                    lowMemberCount,
+                    !lowMemberCount,
                     allianceDeleted,
                     hasRegisteredUser
             );
