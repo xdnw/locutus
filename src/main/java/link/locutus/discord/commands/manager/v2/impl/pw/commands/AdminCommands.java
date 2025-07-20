@@ -137,14 +137,18 @@ public class AdminCommands {
                         .confirmation(command).send();
                 return null;
             }
+            int delay = 1;
             for (GuildDB db : servers) {
-                TextChannel channel = db.getNotifcationChannel();
-                if (channel != null && channel.canTalk()) {
-                    RateLimitUtil.queue(channel.sendMessage("Leaving this guild due to inactivity. Please re-invite this bot if you want to use it again!\n" +
-                            "<https://discord.com/api/oauth2/authorize?client_id=" + Settings.INSTANCE.APPLICATION_ID + "&permissions=395606879321&scope=bot>\n" +
-                            "- <https://github.com/xdnw/locutus/wiki>"));
-                }
-                RateLimitUtil.queue(db.getGuild().leave());
+                Locutus.cmd().getExecutor().schedule(() -> {
+                    TextChannel channel = db.getNotifcationChannel();
+                    if (channel != null && channel.canTalk()) {
+                        RateLimitUtil.queue(channel.sendMessage("Leaving this guild due to inactivity. Please re-invite this bot if you want to use it again!\n" +
+                                "<https://discord.com/api/oauth2/authorize?client_id=" + Settings.INSTANCE.APPLICATION_ID + "&permissions=395606879321&scope=bot>\n" +
+                                "- <https://github.com/xdnw/locutus/wiki>"));
+                    }
+                    RateLimitUtil.queue(db.getGuild().leave());
+                }, delay, TimeUnit.SECONDS);
+                delay += 2; // Increase delay for each guild to avoid hitting rate limits
             }
             return "Left all specified servers";
         }
