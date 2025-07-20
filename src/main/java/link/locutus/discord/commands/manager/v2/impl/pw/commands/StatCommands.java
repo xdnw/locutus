@@ -749,7 +749,7 @@ public class StatCommands {
         if (coalition1Nations.isEmpty() || coalition2Nations.isEmpty()) throw new IllegalArgumentException("No nations provided");
         if (coalition1Nations.size() < 3 || coalition2Nations.size() < 3) return "Coalitions are too small to compare";
 
-        Function<DBNation, Integer> groupByInt = groupBy == null ? f -> f.getCities() : f -> (int) groupBy.apply(f).doubleValue();
+        Function<DBNation, Integer> groupByInt = groupBy == null ? DBNation::getCities : f -> (int) groupBy.apply(f).doubleValue();
 
         Map<Integer, List<DBNation>> coalition1ByGroup = new Int2ObjectOpenHashMap<>();
         Map<Integer, List<DBNation>> coalition2ByGroup = new Int2ObjectOpenHashMap<>();
@@ -1789,7 +1789,7 @@ public class StatCommands {
         ));
         sheet.setHeader(header);
 
-        Map<Integer, DBWar> allWars = Locutus.imp().getWarDb().getWarsForNationOrAlliance(f -> nationIds.contains(f), null, f -> f.getDate() >= time);
+        Map<Integer, DBWar> allWars = Locutus.imp().getWarDb().getWarsForNationOrAlliance(nationIds::contains, null, f -> f.getDate() >= time);
 
         Map<Integer, AttackCost> costByAlliance = AttackCost.groupBy(ArrayUtil.select(allWars.values(), f -> f.getDate() >= time),
                 AttackType::canDamage,
@@ -1966,7 +1966,7 @@ public class StatCommands {
             {
                 List<DBWar> wars = entry.getValue();
                 List<AbstractCursor> attacks = attacksByNation.remove(nationId);
-                Map<Integer, List<AbstractCursor>> attacksByWar = attacks == null ? new Int2ObjectOpenHashMap<>() : new RankBuilder<>(attacks).group(f -> f.getWar_id()).get();
+                Map<Integer, List<AbstractCursor>> attacksByWar = attacks == null ? new Int2ObjectOpenHashMap<>() : new RankBuilder<>(attacks).group(AbstractCursor::getWar_id).get();
 
                 for (DBWar war : wars) {
                     List<AbstractCursor> warAttacks = attacksByWar.getOrDefault(war.warId, Collections.emptyList());

@@ -73,7 +73,7 @@ public class PWCompleter extends BindingHelper {
     @Binding(types={Class.class})
     public List<String> PlaceholderType(String input) {
         PlaceholdersMap phMap = Locutus.cmd().getV2().getPlaceholders();
-        List<String> options = phMap.getTypes().stream().map(f -> PlaceholdersMap.getClassName(f)).collect(Collectors.toList());
+        List<String> options = phMap.getTypes().stream().map(PlaceholdersMap::getClassName).collect(Collectors.toList());
         return StringMan.getClosest(input, options, true);
     }
     @Autocomplete
@@ -164,7 +164,7 @@ public class PWCompleter extends BindingHelper {
     @Binding(types={CommandCallable.class})
     public List<String> command(String input) {
         List<ParametricCallable> options = new ArrayList<>(Locutus.imp().getCommandManager().getV2().getCommands().getParametricCallables(f -> true));
-        List<String> optionsStr = options.stream().map(f -> f.getFullPath()).toList();
+        List<String> optionsStr = options.stream().map(CommandCallable::getFullPath).toList();
         return StringMan.getClosest(input, optionsStr, f -> f, OptionData.MAX_CHOICES, true);
     }
 
@@ -281,7 +281,7 @@ public class PWCompleter extends BindingHelper {
         } else {
             requests = db.getGrantRequests();
         }
-        List<GrantRequest> options = StringMan.getClosest(input, requests, f -> f.toLineString(), OptionData.MAX_CHOICES, true, false);
+        List<GrantRequest> options = StringMan.getClosest(input, requests, GrantRequest::toLineString, OptionData.MAX_CHOICES, true, false);
         return options.stream().map(f -> KeyValue.of(f.toLineString(), f.getId() + "")).collect(Collectors.toList());
     }
 
@@ -578,7 +578,7 @@ public class PWCompleter extends BindingHelper {
     @Autocomplete
     @Binding(types={GuildSetting.class})
     public List<String> setting(String input) {
-        List<String> options = Arrays.asList(GuildKey.values()).stream().map(f -> f.name()).collect(Collectors.toList());
+        List<String> options = Arrays.asList(GuildKey.values()).stream().map(GuildSetting::name).collect(Collectors.toList());
         return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true);
     }
 

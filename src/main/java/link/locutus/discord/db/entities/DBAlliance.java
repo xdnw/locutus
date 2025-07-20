@@ -573,7 +573,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         Set<DBNation> nations = getNations();
         Set<DBNation> members = nations.stream().filter(n -> n.getPosition() > Rank.APPLICANT.id && n.getVm_turns() == 0).collect(Collectors.toSet());
         Set<DBNation> activeMembers = members.stream().filter(n -> n.active_m() < 7200).collect(Collectors.toSet());
-        Set<DBNation> taxableMembers = members.stream().filter(n -> n.isTaxable()).collect(Collectors.toSet());
+        Set<DBNation> taxableMembers = members.stream().filter(DBNation::isTaxable).collect(Collectors.toSet());
         Set<DBNation> applicants = nations.stream().filter(n -> n.getPosition() == Rank.APPLICANT.id && n.getVm_turns() == 0).collect(Collectors.toSet());
         Set<DBNation> activeApplicants = applicants.stream().filter(n -> n.active_m() < 7200).collect(Collectors.toSet());
         // 5 members (3 active/2 taxable) | 2 applicants (1 active)
@@ -755,7 +755,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 
     @Command(desc = "Revenue of taxable alliance members")
     public Map<ResourceType, Double> getRevenue() {
-        return getRevenue(getNations(f -> f.isTaxable()));
+        return getRevenue(getNations(DBNation::isTaxable));
     }
 
     private Map<ResourceType, Double> getRevenue(Set<DBNation> nations) {
@@ -873,7 +873,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 //            updated.add(nation.getId());
 //        }
 //        return updated;
-        return getNations().stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
+        return getNations().stream().map(DBNation::getNation_id).collect(Collectors.toSet());
     }
 
     public DBNation getTotal() {
@@ -1969,13 +1969,13 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     @Command(desc = "The number of the specified assets bought for members in this alliance over the period, regardless of leaving")
     public int getBoughtAssetCount(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
         return getGrowthSummary(store, start, end)
-                .getAssetCounts(f -> assets.contains(f), f -> f == MembershipChangeReason.UNCHANGED, false);
+                .getAssetCounts(assets::contains, f -> f == MembershipChangeReason.UNCHANGED, false);
     }
 
     @Command(desc = "The number of the specified assets bought for remaining members in this alliance over the period")
     public int getEffectiveBoughtAssetCount(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
         return getGrowthSummary(store, start, end)
-                .getAssetCounts(f -> assets.contains(f), f -> f == MembershipChangeReason.UNCHANGED, true);
+                .getAssetCounts(assets::contains, f -> f == MembershipChangeReason.UNCHANGED, true);
     }
 
     //

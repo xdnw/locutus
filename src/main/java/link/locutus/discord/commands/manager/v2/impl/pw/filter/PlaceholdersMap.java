@@ -2475,7 +2475,7 @@ public class PlaceholdersMap {
                                     }
                                 }
                                 return transfers.stream()
-                                        .filter(f -> filterFinal.test(f))
+                                        .filter(filterFinal::test)
                                         .collect(Collectors.toCollection(ObjectLinkedOpenHashSet::new));
                             }
                         } catch (ParseException e) {

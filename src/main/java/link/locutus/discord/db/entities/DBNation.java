@@ -632,7 +632,7 @@ public abstract class DBNation implements NationOrAlliance {
     public int minWarResistance() { // TODO FIXME Placeholders.PlaceholderCache<DBNation> cache
         if (getNumWars() == 0) return 100;
         int[] min = {100};
-        Locutus.imp().getWarDb().iterateAttackList(getActiveWars(), f -> f.canDamage(), null, (war, attacks) -> {
+        Locutus.imp().getWarDb().iterateAttackList(getActiveWars(), AttackType::canDamage, null, (war, attacks) -> {
             boolean isAttacker = war.isAttacker(this);
 
             Map.Entry<Integer, Integer> warRes = war.getResistance(attacks);
@@ -646,7 +646,7 @@ public abstract class DBNation implements NationOrAlliance {
     public int minWarResistancePlusMap() {
         if (getNumWars() == 0) return 100;
         int[] min = {100};
-        Locutus.imp().getWarDb().iterateAttackList(getActiveWars(), f -> f.canDamage(), null, (war, attacks) -> {
+        Locutus.imp().getWarDb().iterateAttackList(getActiveWars(), AttackType::canDamage, null, (war, attacks) -> {
             boolean isAttacker = war.isAttacker(this);
 
             Map.Entry<Integer, Integer> warRes = war.getResistance(attacks);
@@ -3250,7 +3250,7 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     public String fetchUsername() throws IOException {
-        List<Nation> discord = Locutus.imp().getApiPool().fetchNations(true, f -> f.setId(List.of(data()._nationId())), r -> r.discord());
+        List<Nation> discord = Locutus.imp().getApiPool().fetchNations(true, f -> f.setId(List.of(data()._nationId())), NationResponseProjection::discord);
         if (discord.isEmpty()) return null;
         return discord.get(0).getDiscord();
     }

@@ -17,7 +17,7 @@ import java.util.function.Function;
 
 public class NationsFile extends DataFile<DBNation, NationHeader, NationHeaderReader> {
     public NationsFile(File file, Dictionary dict) {
-        super(file, parseDateFromFile(file.getName()), () -> new NationHeader(dict), ((header, date) -> new NationHeaderReader(header, date)));
+        super(file, parseDateFromFile(file.getName()), () -> new NationHeader(dict), (NationHeaderReader::new));
     }
 
     private ThreadLocal<SoftReference<Map<Integer, DBNationSnapshot>>> nationsCache = ThreadLocal.withInitial(() -> new SoftReference<>(null));

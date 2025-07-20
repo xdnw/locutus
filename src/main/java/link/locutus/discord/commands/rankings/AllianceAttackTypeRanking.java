@@ -65,7 +65,7 @@ public class AllianceAttackTypeRanking extends Command {
         Map<Integer, Integer> totalAttacks = new HashMap<>();
         Map<Integer, Integer> attackOfType = new HashMap<>();
 
-        Locutus.imp().getWarDb().queryAttacks().withActiveWars(f -> allowedNations.contains(f), f -> true).afterDate(cutoffMs).withTypes(type)
+        Locutus.imp().getWarDb().queryAttacks().withActiveWars(allowedNations::contains, f -> true).afterDate(cutoffMs).withTypes(type)
         .iterateAttacks((war, attack) -> {
             DBNation nat = Locutus.imp().getNationDB().getNationById(attack.getAttacker_id());
             if (nat == null || nat.getAlliance_id() == 0 || nat.getPosition() <= 1) return;

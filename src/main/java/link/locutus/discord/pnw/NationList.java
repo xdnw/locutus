@@ -19,14 +19,7 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -180,7 +173,7 @@ public interface NationList extends NationFilter {
         body.append("> " + nations.size() + " nations ");
         int countNone = nations.stream().filter(f -> f.getAlliance_id() == 0).collect(Collectors.toSet()).size();
         if (includeAlliance) {
-            Set<DBAlliance> alliances = nations.stream().map(DBNation::getAlliance).filter(f -> f != null).collect(Collectors.toSet());
+            Set<DBAlliance> alliances = nations.stream().map(DBNation::getAlliance).filter(Objects::nonNull).collect(Collectors.toSet());
             if (alliances.isEmpty()) {
                 body.append("(No alliance)\n");
             } else if (alliances.size() == 1) {
@@ -372,7 +365,7 @@ public interface NationList extends NationFilter {
 
     default Set<Integer> updateSpies(boolean updateManually) {
         Set<DBNation> toUpdate = new HashSet<>(getNations());
-        return toUpdate.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
+        return toUpdate.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
 //        toUpdate.removeIf(f -> f.getVm_turns() > 0 || f.active_m() > 7200);
 //        Set<Integer> alliances = new HashSet<>();
 //        for (DBNation nation : toUpdate) {

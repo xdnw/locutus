@@ -301,7 +301,7 @@ public class TradeListener {
                 ResourceType resource = rssEntry.getKey();
                 List<TradeSubscription> rssSubs = rssEntry.getValue();
 
-                Set<TradeDB.TradeAlertType> types = rssSubs.stream().map(f -> f.getType()).collect(Collectors.toSet());
+                Set<TradeDB.TradeAlertType> types = rssSubs.stream().map(TradeSubscription::getType).collect(Collectors.toSet());
 
                 String title = resource + " Alert: " + StringMan.getString(types);
 

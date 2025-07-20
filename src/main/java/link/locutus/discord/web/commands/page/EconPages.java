@@ -46,7 +46,7 @@ public class EconPages {
         Predicate<Integer> isNationIdPermitted;
         if (nationFilter == null) isNationIdPermitted = f -> true;
         else {
-            Set<Integer> ids = nationFilter.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
+            Set<Integer> ids = nationFilter.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
             isNationIdPermitted = ids::contains;
         }
         Set<Integer> aaIds = db.getAllianceIds();

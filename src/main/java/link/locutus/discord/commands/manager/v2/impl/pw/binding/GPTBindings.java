@@ -45,7 +45,7 @@ public class GPTBindings extends BindingHelper {
     @Binding(value = "A comma separated list of data sets")
     public Set<EmbeddingSource> EmbeddingSources(PWGPTHandler handler, @Me Guild guild, String input) {
         Set<String> sourcesStr = StringMan.split(input, ',').stream().map(String::toLowerCase).collect(Collectors.toCollection(LinkedHashSet::new));
-        Set<Long> sourceIds = sourcesStr.stream().filter(f -> MathMan.isInteger(f)).map(Long::parseLong).collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<Long> sourceIds = sourcesStr.stream().filter(MathMan::isInteger).map(Long::parseLong).collect(Collectors.toCollection(LinkedHashSet::new));
         Set<EmbeddingSource> sources = new ObjectLinkedOpenHashSet<>();
         for (EmbeddingSource source : sources) {
             if (sourceIds.contains((long) source.source_id) || sourcesStr.contains(source.source_name.toLowerCase())) {

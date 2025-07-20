@@ -1482,7 +1482,7 @@ public enum AllianceMetric implements IAllianceMetric {
         Set<DBAlliance> allAlliances = new ObjectLinkedOpenHashSet<>();
         for (Set<DBAlliance> coalition : coalitions) allAlliances.addAll(coalition);
         // to linked hash set
-        Set<Integer> aaIds = allAlliances.stream().map(f -> f.getAlliance_id()).collect(Collectors.toCollection(ObjectLinkedOpenHashSet::new));
+        Set<Integer> aaIds = allAlliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toCollection(ObjectLinkedOpenHashSet::new));
         Set<AllianceMetric> finalMetrics = new ObjectLinkedOpenHashSet<>(metrics);
         if (aaIds.size() > 1) {
             for (AllianceMetric metric : metrics) {

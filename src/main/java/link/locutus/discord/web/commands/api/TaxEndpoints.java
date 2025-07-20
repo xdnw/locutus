@@ -55,7 +55,7 @@ public class TaxEndpoints {
             }
             WebTaxBracket webBracket = new WebTaxBracket(entry.getValue());
             List<DBNation> nations = categorized.getNationsByBracket().getOrDefault(taxId, new ObjectArrayList<>());
-            List<NationTaxInfo> nationsInfo = nations.stream().map(nation -> new NationTaxInfo(nation)).toList();
+            List<NationTaxInfo> nationsInfo = nations.stream().map(NationTaxInfo::new).toList();
             Map<Integer, Integer> bracketToNationDepositCount = categorized.getBracketToNationDepositCount().getOrDefault(taxId, Map.of());
             double[] income = incomeByBracket.get(taxId);
             Map<Integer, double[]> incomeByNation = categorized.getIncomeByNationByBracket().getOrDefault(taxId, Map.of());

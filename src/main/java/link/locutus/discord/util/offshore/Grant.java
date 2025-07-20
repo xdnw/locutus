@@ -324,8 +324,8 @@ public class Grant {
     public static List<Integer> getNCityIdAfter(DBNation nation, long date, int amt) {
         List<DBCity> cities = new ArrayList<>(nation._getCitiesV3().values());
         cities.removeIf(f -> f.getCreated() < date);
-        cities.sort(Comparator.comparingLong(o -> o.getCreated()));
-        return cities.subList(0, Math.min(cities.size(), amt)).stream().map(f -> f.getId()).toList();
+        cities.sort(Comparator.comparingLong(DBCity::getCreated));
+        return cities.subList(0, Math.min(cities.size(), amt)).stream().map(DBCity::getId).toList();
     }
 
     /**

@@ -239,17 +239,11 @@ public class WebRoot {
                     "/command/" + cmd
             );
             for (String pattern : patterns) {
-                this.app.get(pattern, ctx -> {
-                    pageHandler.handle(ctx);
-                });
-                this.app.post(pattern, ctx -> {
-                    pageHandler.handle(ctx);
-                });
+                this.app.get(pattern, pageHandler::handle);
+                this.app.post(pattern, pageHandler::handle);
             }
         }
-        this.app.get("/command/", ctx -> {
-            pageHandler.handle(ctx);
-        });
+        this.app.get("/command/", pageHandler::handle);
 
         this.app.get("/page/*", ctx -> {
             Logg.info("Handle page request " + ctx.path());
@@ -260,9 +254,7 @@ public class WebRoot {
                 Logg.text("Handled " + ctx.path() + " in " + (System.currentTimeMillis() - start) + "ms");
             }
         });
-        this.app.post("/page/*", ctx -> {
-            pageHandler.handle(ctx);
-        });
+        this.app.post("/page/*", pageHandler::handle);
 //        this.app.get("/api/*", ctx -> {
 //            pageHandler.handle(ctx);
 //        });
@@ -274,9 +266,7 @@ public class WebRoot {
 
         this.fileRoot = new File("files");
 
-        this.app.get("/", ctx -> {
-            pageHandler.handle(ctx);
-        });
+        this.app.get("/", pageHandler::handle);
     }
 
 //    private void registerClasses(Fury fury) {

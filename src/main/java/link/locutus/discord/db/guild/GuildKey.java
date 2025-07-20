@@ -241,7 +241,7 @@ public class GuildKey {
                     Used for chat responses and completion
                     Get a key from: <https://platform.openai.com/account/api-keys>""";
         }
-    }.setupRequirements(f -> f.requireValidAlliance());
+    }.setupRequirements(GuildSetting::requireValidAlliance);
 
     public static final GuildSetting<ChatModel> OPENAI_MODEL = new GuildSetting<ChatModel>(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE, ChatModel.class) {
         @NoFormat
@@ -901,7 +901,7 @@ public class GuildKey {
             List<String> lines = new ArrayList<>();
             for (Map.Entry<Role, Set<Role>> entry : map.entrySet()) {
                 String key = entry.getKey().getName();
-                List<String> valueStrings = entry.getValue().stream().map(f -> f.getName()).collect(Collectors.toList());
+                List<String> valueStrings = entry.getValue().stream().map(Role::getName).collect(Collectors.toList());
                 String value = StringMan.join(valueStrings, ",");
 
                 lines.add(key + ":" + value);
@@ -913,7 +913,7 @@ public class GuildKey {
             List<String> lines = new ArrayList<>();
             for (Map.Entry<Role, Set<Role>> entry : map.entrySet()) {
                 String key = entry.getKey().getAsMention();
-                List<String> valueStrings = entry.getValue().stream().map(f -> f.getAsMention()).collect(Collectors.toList());
+                List<String> valueStrings = entry.getValue().stream().map(IMentionable::getAsMention).collect(Collectors.toList());
                 String value = StringMan.join(valueStrings, ",");
 
                 lines.add(key + ":" + value);
@@ -1401,7 +1401,7 @@ public class GuildKey {
         }
         @Override
         public String toString(Set<Roles> value) {
-            return StringMan.join(value.stream().map(f -> f.name()).collect(Collectors.toList()), ",");
+            return StringMan.join(value.stream().map(Enum::name).collect(Collectors.toList()), ",");
         }
 
         @Override
@@ -1779,7 +1779,7 @@ public class GuildKey {
             StringBuilder response = new StringBuilder();
             for (CityRanges existRange : existing.keySet()) {
                 if (existRange.equals(range)) {
-                    response.append("Replacing previous value: `" + StringMan.join(existing.get(range).stream().map(f -> f.name()).collect(Collectors.toSet()), ", ") + "`\n");
+                    response.append("Replacing previous value: `" + StringMan.join(existing.get(range).stream().map(Enum::name).collect(Collectors.toSet()), ", ") + "`\n");
                 }
                 else if (existRange.overlaps(range)) {
                     response.append("City range `" + range + "` overlaps with existing `" + range + "`. You may want to remove it\n" +
@@ -1897,7 +1897,7 @@ public class GuildKey {
 
             return response;
         }
-    }.setupRequirements(f -> f.requireValidAlliance());
+    }.setupRequirements(GuildSetting::requireValidAlliance);
 
     public static GuildSetting<Map<NationFilter, MMRMatcher>> REQUIRED_MMR = new GuildSetting<Map<NationFilter, MMRMatcher>>(GuildSettingCategory.AUDIT, Map.class, NationFilter.class, MMRMatcher.class) {
 
@@ -2009,7 +2009,7 @@ public class GuildKey {
         public String help() {
             return "The channel to receive alerts when a bounty is placed";
         }
-    }.setupRequirements(f -> f.requireActiveGuild());
+    }.setupRequirements(GuildSetting::requireActiveGuild);
 
     public static GuildSetting<MessageChannel> TREASURE_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BOUNTY) {
         @NoFormat
@@ -2022,7 +2022,7 @@ public class GuildKey {
         public String help() {
             return "The channel to receive alerts when a treasure moves to another nation or is about to reset";
         }
-    }.setupRequirements(f -> f.requireActiveGuild());
+    }.setupRequirements(GuildSetting::requireActiveGuild);
 
     public static GuildSetting<MessageChannel> MEMBER_REBUY_INFRA_ALERT = new GuildChannelSetting(GuildSettingCategory.AUDIT) {
         @NoFormat
@@ -2035,7 +2035,7 @@ public class GuildKey {
         public String help() {
             return "The channel to receive alerts when a member buys infra";
         }
-    }.setupRequirements(f -> f.requireValidAlliance());
+    }.setupRequirements(GuildSetting::requireValidAlliance);
     public static GuildSetting<MessageChannel> MEMBER_LEAVE_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.AUDIT) {
         @NoFormat
         @Command(descMethod = "help")
@@ -2047,7 +2047,7 @@ public class GuildKey {
         public String help() {
             return "The channel to receive alerts when a member leaves";
         }
-    }.setupRequirements(f -> f.requireValidAlliance());
+    }.setupRequirements(GuildSetting::requireValidAlliance);
 
     public static GuildSetting<Boolean> MAIL_DEMOTED_MEMBERS = new GuildBooleanSetting(GuildSettingCategory.AUDIT) {
         @NoFormat
@@ -2073,7 +2073,7 @@ public class GuildKey {
         public String MAIL_NEW_APPLICANTS(@Me GuildDB db, @Me User user, boolean enabled) {
             return MAIL_NEW_APPLICANTS.setAndValidate(db, user, enabled);
         }
-    }.setupRequirements(f -> f.requireValidAlliance());
+    }.setupRequirements(GuildSetting::requireValidAlliance);
     public static GuildSetting<String> MAIL_NEW_APPLICANTS_TEXT = new GuildStringSetting(GuildSettingCategory.RECRUIT) {
         @Override
         public String help() {
@@ -2105,7 +2105,7 @@ public class GuildKey {
         public String help() {
             return "The channel to receive info spam about expired interview channels";
         }
-    }.setupRequirements(f -> f.requireValidAlliance());
+    }.setupRequirements(GuildSetting::requireValidAlliance);
     public static GuildSetting<MessageChannel> INTERVIEW_PENDING_ALERTS = new GuildChannelSetting(GuildSettingCategory.INTERVIEW) {
         @NoFormat
         @Command(descMethod = "help")
@@ -2157,7 +2157,7 @@ public class GuildKey {
         public String help() {
             return "The name or id of the CATEGORY you would like to use for new interviews";
         }
-    }.setupRequirements(f -> f.requireValidAlliance());
+    }.setupRequirements(GuildSetting::requireValidAlliance);
 
     public static GuildSetting<Map<Long, MessageChannel>> RESOURCE_REQUEST_CHANNEL = new GuildSetting<Map<Long, MessageChannel>>(GuildSettingCategory.BANK_ACCESS, Map.class, Long.class, MessageChannel.class) {
 
@@ -2340,7 +2340,7 @@ public class GuildKey {
         public String help() {
             return "The #channel to receive alerts for treaty changes";
         }
-    }.setupRequirements(f -> f.requireActiveGuild());
+    }.setupRequirements(GuildSetting::requireActiveGuild);
     public static GuildSetting<MessageChannel> ALLIANCE_CREATE_ALERTS = new GuildChannelSetting(GuildSettingCategory.FOREIGN_AFFAIRS) {
         @NoFormat
         @Command(descMethod = "help")
@@ -2352,7 +2352,7 @@ public class GuildKey {
         public String help() {
             return "The #channel to receive alerts for alliance creation";
         }
-    }.setupRequirements(f -> f.requireActiveGuild());
+    }.setupRequirements(GuildSetting::requireActiveGuild);
     public static GuildSetting<MessageChannel> ORBIS_LEADER_CHANGE_ALERT = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
@@ -2364,7 +2364,7 @@ public class GuildKey {
         public String help() {
             return "The #channel to receive alerts when a nation is promoted to leader in an alliance (top 80)";
         }
-    }.setupRequirements(f -> f.requireActiveGuild()).nonPublic();
+    }.setupRequirements(GuildSetting::requireActiveGuild).nonPublic();
     public static GuildSetting<MessageChannel> ORBIS_OFFICER_LEAVE_ALERTS = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
@@ -2376,7 +2376,7 @@ public class GuildKey {
         public String help() {
             return "The #channel to receive alerts when officers leave an alliance  (top 50)";
         }
-    }.setupRequirements(f -> f.requireActiveGuild()).nonPublic();
+    }.setupRequirements(GuildSetting::requireActiveGuild).nonPublic();
     public static GuildSetting<MessageChannel> ORBIS_ALLIANCE_EXODUS_ALERTS = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
@@ -2389,7 +2389,7 @@ public class GuildKey {
             return "The #channel to receive alerts when multiple 5+ members leave an alliance\n" +
                     "See also: " + ALLIANCE_EXODUS_TOP_X.getCommandMention();
         }
-    }.setupRequirements(f -> f.requireActiveGuild()).nonPublic();
+    }.setupRequirements(GuildSetting::requireActiveGuild).nonPublic();
 
     public static GuildSetting<Integer> ALLIANCE_EXODUS_TOP_X = new GuildIntegerSetting(GuildSettingCategory.ORBIS_ALERTS) {
         @NoFormat
@@ -2416,7 +2416,7 @@ public class GuildKey {
         public String help() {
             return "The #channel to receive alerts when gov members increase MMR (top 80)";
         }
-    }.setupRequirements(f -> f.requireActiveGuild()).nonPublic();
+    }.setupRequirements(GuildSetting::requireActiveGuild).nonPublic();
     public static GuildSetting<MessageChannel> ENEMY_MMR_CHANGE_ALERTS = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
@@ -2440,7 +2440,7 @@ public class GuildKey {
         public String help() {
             return "The #channel to receive alerts for war escalation alerts in orbis";
         }
-    }.setupRequirements(f -> f.requireActiveGuild()).nonPublic();
+    }.setupRequirements(GuildSetting::requireActiveGuild).nonPublic();
     public static GuildSetting<MessageChannel> ACTIVITY_ALERTS = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
@@ -2452,7 +2452,7 @@ public class GuildKey {
         public String help() {
             return "The #channel to receive alerts for activity (e.g. pre blitz)";
         }
-    }.setupRequirements(f -> f.requireActiveGuild()).nonPublic();
+    }.setupRequirements(GuildSetting::requireActiveGuild).nonPublic();
     public static GuildSetting<Long> BANKER_WITHDRAW_LIMIT = new GuildLongSetting(GuildSettingCategory.BANK_ACCESS) {
         @NoFormat
         @Command(descMethod = "help")
@@ -2464,7 +2464,7 @@ public class GuildKey {
         public String help() {
             return "The daily withdraw limit (from the offshore) of non admins";
         }
-    }.setupRequirements(f -> f.requiresOffshore());
+    }.setupRequirements(GuildSetting::requiresOffshore);
     public static GuildSetting<Long> BANKER_WITHDRAW_LIMIT_INTERVAL = new GuildLongSetting(GuildSettingCategory.BANK_ACCESS) {
         @NoFormat
         @Command(descMethod = "help")
@@ -2665,7 +2665,7 @@ public class GuildKey {
             return "The channel to send alerts when alliance ground units increase by more than 2.5%\n" +
                     "See also setting `" + AA_GROUND_TOP_X.name() + "` and coalition: `" + Coalition.GROUND_ALERTS.name() + "` and role alias: `" + Roles.GROUND_MILITARIZE_ALERT.name() + "`";
         }
-    }.setupRequirements(f -> f.requireActiveGuild()).nonPublic();
+    }.setupRequirements(GuildSetting::requireActiveGuild).nonPublic();
     // AA_GROUND_TOP_X (min = 1, max = 80)
     public static GuildSetting<Integer> AA_GROUND_TOP_X = new GuildIntegerSetting(GuildSettingCategory.ORBIS_ALERTS) {
         @NoFormat
@@ -2687,7 +2687,7 @@ public class GuildKey {
         public String help() {
             return "Only do alliance ground unit alerts for the top X alliances (by active member score)";
         }
-    }.setupRequirements(f -> f.requireActiveGuild()).nonPublic();
+    }.setupRequirements(GuildSetting::requireActiveGuild).nonPublic();
 
     public static GuildSetting<Map<Long, Double>> GRANT_TEMPLATE_LIMITS = new GuildSetting<Map<Long,Double>>(GuildSettingCategory.BANK_ACCESS, Map.class, Long.class, Double.class) {
         @NoFormat
@@ -3069,7 +3069,7 @@ public class GuildKey {
         public String help() {
             return "The #channel to receive alerts when a nation goes into VM";
         }
-    }.setupRequirements(f -> f.nonPublic());
+    }.setupRequirements(GuildSetting::nonPublic);
 
     public static GuildSetting<Boolean> HIDE_LEGACY_NOTICE = new GuildBooleanSetting(GuildSettingCategory.DEFAULT) {
         @NoFormat

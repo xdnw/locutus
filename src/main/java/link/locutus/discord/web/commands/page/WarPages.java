@@ -109,7 +109,7 @@ public class WarPages {
             });
         }
 
-        table.addColumn("type", false, false, f -> f.getWarType());
+        table.addColumn("type", false, false, DBWar::getWarType);
         table.addColumn("ctrl", true, false, f -> {
             String a = "";
             String b = "";

@@ -86,7 +86,7 @@ public enum WarCostMode {
         }
         if (includeReceived()) {
             if (addReceived()) {
-                applyReceived = (isAttacker, war, attack) -> valueFunc.apply(isAttacker, war, attack);
+                applyReceived = valueFunc::apply;
             } else {
                 applyReceived = (isAttacker, war, attack) -> -valueFunc.apply(isAttacker, war, attack);
             }

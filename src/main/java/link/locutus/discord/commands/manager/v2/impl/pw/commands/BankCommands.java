@@ -849,8 +849,8 @@ public class BankCommands {
     public String warReimburseByNationCsv(@Arg("The alliances with nations you want to reimburse") Set<DBAlliance> allies,
                                           @Arg("The enemies during the conflict") Set<DBAlliance> enemies,
                                           @Arg("Starting time of the conflict") @Timestamp long cutoff, @Arg("If wars with no actions by the defender should NOT be reimbursed") boolean removeWarsWithNoDefenderActions) {
-        Set<Integer> allyIds = allies.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
-        Set<Integer> enemyIds = enemies.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
+        Set<Integer> allyIds = allies.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
+        Set<Integer> enemyIds = enemies.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
 
         Map<Integer, Integer> offensivesByNation = new Int2IntOpenHashMap();
         Map<Integer, Integer> defensivesByNation = new Int2IntOpenHashMap();
@@ -3556,7 +3556,7 @@ public class BankCommands {
             nations = db.getAllianceList().getNations();;
         }
         List<String> messages = new ArrayList<>();
-        Map<DBNation, Map.Entry<TaxRate, String>> result = db.getHandler().setNationInternalTaxRate(nations, s -> messages.add(s));
+        Map<DBNation, Map.Entry<TaxRate, String>> result = db.getHandler().setNationInternalTaxRate(nations, messages::add);
         if (result.isEmpty()) {
             return "Done! No changes made to internal tax rates";
         }
@@ -3651,7 +3651,7 @@ public class BankCommands {
             nations = db.getAllianceList().getNations();
         }
         List<String> messages = new ArrayList<>();
-        Map<DBNation, Map.Entry<TaxBracket, String>> result = db.getHandler().setNationTaxBrackets(nations, s -> messages.add(s));
+        Map<DBNation, Map.Entry<TaxBracket, String>> result = db.getHandler().setNationTaxBrackets(nations, messages::add);
         if (result.isEmpty()) {
             return "Done! No changes made to ingame brackets";
         }
@@ -4014,7 +4014,7 @@ public class BankCommands {
             showCategories = (db.getOrNull(GuildKey.DISPLAY_ITEMIZED_DEPOSITS) == Boolean.TRUE);
         }
         if (timeCutoff == null) timeCutoff = 0L;
-        Set<Long> offshoreIds = offshores == null ? null : offshores.stream().map(f -> f.getIdLong()).collect(Collectors.toSet());
+        Set<Long> offshoreIds = offshores == null ? null : offshores.stream().map(NationOrAllianceOrGuild::getIdLong).collect(Collectors.toSet());
         if (offshoreIds != null) offshoreIds = PW.expandCoalition(offshoreIds);
 
 //        boolean hasAdmin = Roles.ECON.has(author, guild);

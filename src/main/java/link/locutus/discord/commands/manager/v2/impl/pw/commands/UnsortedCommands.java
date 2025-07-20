@@ -593,7 +593,7 @@ public class UnsortedCommands {
                           @Switch("o") boolean hideOutflows) {
         List<Transaction2> allTransfers = new ArrayList<>();
 
-        String selfName = StringMan.join(nationOrAlliances.stream().map(f -> f.getName()).collect(Collectors.toList()), ",");
+        String selfName = StringMan.join(nationOrAlliances.stream().map(NationOrAllianceOrGuild::getName).collect(Collectors.toList()), ",");
         Set<Integer> self = new IntOpenHashSet();
         Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNationsById();
         Function<Integer, String> nationNameFunc = i -> {
@@ -1466,7 +1466,7 @@ public class UnsortedCommands {
             }
         }
 
-        Set<Integer> highlightIds = highlight == null ? null : highlight.stream().map(f -> f.getId()).collect(Collectors.toSet());
+        Set<Integer> highlightIds = highlight == null ? null : highlight.stream().map(NationOrAlliance::getId).collect(Collectors.toSet());
         SummedMapRankBuilder<Integer, Number> byNation = new SummedMapRankBuilder<>(profitByNation).adaptKeys((n, v) -> n.getNation_id());
         RankBuilder<IShrink> ranks;
         if (!listByNation) {
@@ -2192,8 +2192,8 @@ public class UnsortedCommands {
             includeAudits.removeAll(excludeAudits);
         }
         if (warningOrHigher) includeAudits.removeIf(f -> f.severity.ordinal() < IACheckup.AuditSeverity.WARNING.ordinal());
-        if (skipApiAudits) includeAudits.removeIf(f -> f.requiresApi());
-        if (skipDiscordAudits) includeAudits.removeIf(f -> f.requiresDiscord());
+        if (skipApiAudits) includeAudits.removeIf(IACheckup.AuditType::requiresApi);
+        if (skipDiscordAudits) includeAudits.removeIf(IACheckup.AuditType::requiresDiscord);
 
         if (nations == null) {
             nations = db.getAllianceList().getNations(true, 0, true);

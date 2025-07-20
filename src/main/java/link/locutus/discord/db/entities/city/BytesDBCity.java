@@ -30,7 +30,7 @@ public class BytesDBCity extends DBCity {
 
         private void set(CityHeader header, Function<CityHeader, BuildingColumn> supplier) {
             BuildingColumn col = supplier.apply(header);
-            byBuilding[col.getBuilding().ordinal()] = f -> supplier.apply(f);
+            byBuilding[col.getBuilding().ordinal()] = supplier::apply;
         }
 
         @Override

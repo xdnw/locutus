@@ -16,6 +16,7 @@ import link.locutus.discord.db.entities.announce.AnnounceType;
 import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.NationOrAlliance;
+import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -304,8 +305,8 @@ public class PlayerSettingCommands {
             return "Unsubscribed from ALL bank alerts";
         }
         // get subscriptions
-        Set<Integer> aaIds = nation_or_alliances.stream().filter(f -> f.isAlliance()).map(f -> f.getId()).collect(Collectors.toSet());
-        Set<Integer> nationIds = nation_or_alliances.stream().filter(f -> f.isNation()).map(f -> f.getId()).collect(Collectors.toSet());
+        Set<Integer> aaIds = nation_or_alliances.stream().filter(NationOrAllianceOrGuildOrTaxid::isAlliance).map(NationOrAlliance::getId).collect(Collectors.toSet());
+        Set<Integer> nationIds = nation_or_alliances.stream().filter(NationOrAllianceOrGuildOrTaxid::isNation).map(NationOrAlliance::getId).collect(Collectors.toSet());
         Set<BankDB.Subscription> subscriptions = bankDb.getSubscriptions(author.getIdLong());
         int numUnsubscribed = 0;
         for (BankDB.Subscription sub : subscriptions) {

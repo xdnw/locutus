@@ -67,7 +67,7 @@ public class TradeRanking extends Command {
             return usage(args.size(), 2, channel);
         }
         boolean isAA = flags.contains('a');
-        Function<DBNation, Integer> groupBy = isAA ? groupBy = f -> f.getAlliance_id() : f -> f.getNation_id();
+        Function<DBNation, Integer> groupBy = isAA ? groupBy = DBNation::getAlliance_id : DBNation::getNation_id;
         Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, false);
         if (nations.isEmpty()) {
             return "invalid user `" + args.get(0) + "`";
@@ -78,7 +78,7 @@ public class TradeRanking extends Command {
             return "Invalid number of days: `" + args.get(1) + "`";
         }
 
-        Set<Integer> nationIds = nations.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
+        Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
         Map<Integer, TradeProfitContainer> tradeContainers = new HashMap<>();
 
         long cutoffMs = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;

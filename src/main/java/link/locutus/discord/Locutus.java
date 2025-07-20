@@ -1214,7 +1214,7 @@ public final class Locutus extends ListenerAdapter {
             }
 
             String message = event.getMessage().getContentRaw();
-            DiscordChannelIO io = new DiscordChannelIO(event.getChannel(), () -> event.getMessage());
+            DiscordChannelIO io = new DiscordChannelIO(event.getChannel(), event::getMessage);
             getCommandManager().run(guild, io, author, message, true, true);
             long diff = System.currentTimeMillis() - start;
             if (diff > 1000) {

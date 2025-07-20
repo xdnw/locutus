@@ -275,7 +275,7 @@ public class WarCommand extends Command {
                     if (nationNetValues.isEmpty()) {
                         for (DBNation nation : nations) {
                             if (nation.isBeige()) {
-                                int turns = beigeTurns.computeIfAbsent(nation, f -> f.getBeigeTurns());
+                                int turns = beigeTurns.computeIfAbsent(nation, DBNation::getBeigeTurns);
                                 nationNetValues.add(new KeyValue<>(nation, (double) turns));
                             }
                         }
@@ -330,7 +330,7 @@ public class WarCommand extends Command {
 //                                .append(String.format("%2s", nation.getSpies())).append(" \uD83D\uDD0D");
 
                         if (nation.isBeige()) {
-                            int turns = beigeTurns.computeIfAbsent(nation, f -> f.getBeigeTurns());
+                            int turns = beigeTurns.computeIfAbsent(nation, DBNation::getBeigeTurns);
                             if (turns > 0) {
                                 response.append(" | ").append("beige=" + turns);
                             }

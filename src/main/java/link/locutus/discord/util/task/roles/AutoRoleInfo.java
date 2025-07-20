@@ -251,7 +251,7 @@ public class AutoRoleInfo {
     }
 
     public void addRoleToMember(Member member, Role role) {
-        RoleOrCreate create = createRole(role, role.getName(), -1, () -> role.getColor());
+        RoleOrCreate create = createRole(role, role.getName(), -1, role::getColor);
         addRoleToMember(member, create);
     }
 

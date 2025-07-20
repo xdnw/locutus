@@ -509,7 +509,7 @@ public class TradeManager {
     }
 
     public Collection<DBTrade> getLow(Collection<DBTrade> offers) {
-        return offers.stream().filter(f -> f.isBuy()).collect(Collectors.toList());
+        return offers.stream().filter(DBTrade::isBuy).collect(Collectors.toList());
     }
 
     public Collection<DBTrade> getHigh(Collection<DBTrade> offers) {

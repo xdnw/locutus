@@ -513,9 +513,7 @@ public abstract class GuildSetting<T> {
 
 
     public GuildSetting<T> requireActiveGuild() {
-        requireFunction(db -> {
-            checkRegisteredOwnerOrActiveAlliance(db);
-        }, "Guild owner must be registered to an active nation, or registered to an alliance with an active nation in a leader/heir position");
+        requireFunction(this::checkRegisteredOwnerOrActiveAlliance, "Guild owner must be registered to an active nation, or registered to an alliance with an active nation in a leader/heir position");
         return this;
     }
 

@@ -113,14 +113,14 @@ public class LazyMathEntity<T> implements ArrayUtil.MathToken<LazyMathEntity<T>>
         // Enum
         // Map
         if (a instanceof Map) {
-            return mathMap((Map<?, ?>) a, b, (x, y) -> x + y, f -> f, f -> f);
+            return mathMap((Map<?, ?>) a, b, Double::sum, f -> f, f -> f);
         } else if (b instanceof Map) {
-            return mathMap((Map<?, ?>) b, a, (x, y) -> x + y, f -> f, f -> f);
+            return mathMap((Map<?, ?>) b, a, Double::sum, f -> f, f -> f);
         }
         if (a instanceof double[]) {
-            return mathDoubleArray((double[]) a, b, (x, y) -> x + y);
+            return mathDoubleArray((double[]) a, b, Double::sum);
         } else if (b instanceof double[]) {
-            return mathDoubleArray((double[]) b, a, (x, y) -> x + y);
+            return mathDoubleArray((double[]) b, a, Double::sum);
         }
         // List
         // Set

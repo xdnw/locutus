@@ -121,7 +121,7 @@ public class CommandManager2 {
         }
 
         Map<String, Object> phRoot = new LinkedHashMap<>();
-        List<Class<?>> phTypesSorted = placeholders.getTypes().stream().sorted(Comparator.comparing(f -> PlaceholdersMap.getClassName(f))).toList();
+        List<Class<?>> phTypesSorted = placeholders.getTypes().stream().sorted(Comparator.comparing(PlaceholdersMap::getClassName)).toList();
         for (Class<?> t : phTypesSorted) {
             Placeholders<?, ?> ph = placeholders.get(t);
             Map<String, Object> json = new LinkedHashMap<>();
@@ -267,6 +267,7 @@ public class CommandManager2 {
 
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "syncCityRefund", "city_refund");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "reloadConfig", "config");
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "cullInactiveGuilds", "cull_inactive_guilds");
 
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "edit"), "addManualWars", "add_none_war");
         getCommands().registerMethod(new SettingCommands(), List.of("bank"), "importTransactions", "import_transfers");

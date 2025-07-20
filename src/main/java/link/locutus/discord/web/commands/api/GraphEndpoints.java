@@ -195,7 +195,7 @@ public class GraphEndpoints {
                                      ResourceType resource,
                                      @Timestamp long start, @Default @Timestamp Long end) throws IOException, GeneralSecurityException {
         String title = "volume by day";
-        return rssTradeByDay(title, start, end, offers -> manager.volumeByResource(offers), resource);
+        return rssTradeByDay(title, start, end, manager::volumeByResource, resource);
     }
 
     public static WebGraph rssTradeByDay(String title, long start, Long end, Function<Collection<DBTrade>, long[]> rssFunction, ResourceType resource) throws IOException {
@@ -215,7 +215,7 @@ public class GraphEndpoints {
                                     ResourceType resource,
                                     @Timestamp long start, @Default @Timestamp Long end) throws IOException, GeneralSecurityException {
         String title = "total by day";
-        return rssTradeByDay(title, start, end, offers -> manager.totalByResource(offers), resource);
+        return rssTradeByDay(title, start, end, manager::totalByResource, resource);
     }
 
     @Command(desc = "Generate a graph of nation counts by score between two coalitions", aliases = {"scoreTierGraph", "scoreTierSheet"}, viewable = true)
