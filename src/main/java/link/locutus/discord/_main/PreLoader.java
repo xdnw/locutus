@@ -381,7 +381,8 @@ public class PreLoader implements ILoader {
     }
 
     private JDA buildJDA() throws ExecutionException, InterruptedException {
-        JDABuilder builder = JDABuilder.createLight(Settings.INSTANCE.BOT_TOKEN, GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_MESSAGES, GatewayIntent.DIRECT_MESSAGES);
+        JDABuilder builder = JDABuilder.createLight(Settings.INSTANCE.BOT_TOKEN, GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_MESSAGES, GatewayIntent.DIRECT_MESSAGES)
+                .useSharding(0, 1);
         if (Settings.INSTANCE.ENABLED_COMPONENTS.SLASH_COMMANDS) {
             SlashCommandManager slash = getSlashCommandManager();
             if (slash != null) {
@@ -417,7 +418,7 @@ public class PreLoader implements ILoader {
             builder.enableIntents(GatewayIntent.DIRECT_MESSAGES);
         }
         if (Settings.INSTANCE.DISCORD.INTENTS.EMOJI) {
-            builder.enableIntents(GatewayIntent.GUILD_EMOJIS_AND_STICKERS);
+            builder.enableIntents(GatewayIntent.GUILD_EXPRESSIONS);
         }
         if (Settings.INSTANCE.DISCORD.CACHE.MEMBER_OVERRIDES) {
             builder.enableCache(CacheFlag.MEMBER_OVERRIDES);

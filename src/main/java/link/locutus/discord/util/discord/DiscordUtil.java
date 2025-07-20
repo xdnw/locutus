@@ -29,6 +29,7 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import com.google.common.base.Charsets;
+import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
@@ -43,7 +44,6 @@ import net.dv8tion.jda.api.entities.channel.middleman.StandardGuildMessageChanne
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.interactions.InteractionHook;
-import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.internal.entities.UserImpl;
 import org.apache.http.NameValuePair;

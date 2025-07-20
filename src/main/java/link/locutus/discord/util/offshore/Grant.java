@@ -510,6 +510,28 @@ public class Grant {
         if (receivers.size() > 1 && pingWhenSent) {
             throw new IllegalArgumentException("The argument `ping_when_sent` can only be used with a single receiver");
         }
+
+        BiFunction<DBNation, double[] , double[]> onlyMissingFunc = (nation, resourcesArr) -> {
+            double[] costApplyMissing = resourcesArr.clone();
+            if (onlySendMissingFunds) {
+                if (!db.isAllianceId(nation.getAlliance_id())) {
+                    throw new IllegalArgumentException("Nation " + nation.getMarkdownUrl() + " is not in an alliance registered to this guild (currently: " + db.getAllianceIds() + ")");
+                }
+                Map<ResourceType, Double> stockpile = nation.getStockpile();
+                for (Map.Entry<ResourceType, Double> entry : stockpile.entrySet()) {
+                    if (entry.getValue() > 0) {
+                        double newAmt = Math.max(0, costApplyMissing[entry.getKey().ordinal()] - entry.getValue());
+                        if (newAmt <= 0) {
+                            costApplyMissing[entry.getKey().ordinal()] = 0;
+                        } else {
+                            costApplyMissing[entry.getKey().ordinal()] = newAmt;
+                        }
+                    }
+                }
+            }
+            return costApplyMissing;
+        };
+
         List<TransferResult> errors = new ArrayList<>();
         SpreadSheet sheet = receivers.size() > 1 ? SpreadSheet.create(db, SheetKey.GRANT_SHEET) : null;
         if (sheet != null) {
@@ -587,23 +609,7 @@ public class Grant {
                 grantByReceiver.put(receiver, grant);
 
                 if (sheet != null) {
-                    double[] costApplyMissing = resources.clone();
-                    if (onlySendMissingFunds) {
-                        if (!db.isAllianceId(receiver.getAlliance_id())) {
-                            throw new IllegalArgumentException("Nation " + receiver.getMarkdownUrl() + " is not in an alliance registered to this guild (currently: " + db.getAllianceIds() + ")");
-                        }
-                        Map<ResourceType, Double> stockpile = receiver.getStockpile();
-                        for (Map.Entry<ResourceType, Double> entry : stockpile.entrySet()) {
-                            if (entry.getValue() > 0) {
-                                double newAmt = Math.max(0, costApplyMissing[entry.getKey().ordinal()] - entry.getValue());
-                                if (newAmt <= 0) {
-                                    costApplyMissing[entry.getKey().ordinal()] = 0;
-                                } else {
-                                    costApplyMissing[entry.getKey().ordinal()] = newAmt;
-                                }
-                            }
-                        }
-                    }
+                    double[] costApplyMissing = onlyMissingFunc.apply(receiver, resources);
                     if (ResourceType.isZero(costApplyMissing)) {
                         errors.add(new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), baseNote.withValue().toString()).addMessage(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN.getMessage()));
                         continue;
@@ -648,7 +654,7 @@ public class Grant {
             }
             DBNation receiver = receivers.iterator().next();
             Grant grant = grantByReceiver.get(receiver);
-            double[] resources = grant.cost();
+            double[] resources = onlyMissingFunc.apply(receiver, grant.cost());
 
             JSONObject transferCmd = CM.transfer.resources.cmd
                     .receiver(receiver.getUrl())
@@ -661,7 +667,6 @@ public class Grant {
                     .use_receiver_tax_account(use_receiver_tax_account ? "true" : null)
                     .expire(expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null)
                     .decay(decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null)
-                    .onlyMissingFunds(onlySendMissingFunds ? "true" : null)
                     .deduct_as_cash(deduct_as_cash ? "true" : null)
                     .escrow_mode(escrow_mode != null ? escrow_mode.name() : null)
                     .bypass_checks(bypass_checks ? "true" : null)
@@ -673,13 +678,15 @@ public class Grant {
             msg.append(ResourceType.toString(resources)).append("\n")
                     .append("Current values for: " + receiver.getNation()).append('\n')
                     .append("Cities: " + receiver.getCities()).append('\n')
-                    .append("Infra: " + receiver.getAvg_infra()).append('\n')
-            ;
+                    .append("Infra: " + receiver.getAvg_infra()).append('\n');
             StringBuilder body = new StringBuilder();
             body.append("**INSTRUCTIONS:** " + grant.getInstructions());
             if (!errors.isEmpty()) {
                 body.append("\n\n**Warnings:**\n");
                 body.append(TransferResult.toEmbed(errors).getValue());
+            }
+            if (onlySendMissingFunds) {
+                body.append("\n\n**Only missing funds will be sent**\n");
             }
 
             io.create().embed("Instruct: " + grant.title(), body.toString()).send();

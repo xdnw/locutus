@@ -56,6 +56,7 @@ import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.util.update.*;
 import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.components.actionrow.ActionRowChildComponentUnion;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
@@ -79,9 +80,8 @@ import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.InteractionHook;
-import net.dv8tion.jda.api.interactions.components.ActionRow;
-import net.dv8tion.jda.api.interactions.components.ItemComponent;
-import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.dv8tion.jda.api.components.actionrow.ActionRow;
+import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.interactions.modals.ModalMapping;
 import org.jetbrains.annotations.NotNull;
 
@@ -235,9 +235,13 @@ public final class Locutus extends ListenerAdapter {
             }
             setSelfUser(jda);
             manager.put(jda);
-            jda.awaitStatus(JDA.Status.LOADING_SUBSYSTEMS);
+//            jda.awaitStatus(JDA.Status.LOADING_SUBSYSTEMS);
             Logg.text("Discord Gateway: " + jda.getStatus() + " (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
-            jda.awaitReady();
+            try {
+                jda.awaitReady();
+            } catch (IllegalArgumentException e) {
+                e.printStackTrace();
+            }
             Logg.text("Discord Gateway: " + jda.getStatus() + " (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
             setSelfUser(jda);
             if (Settings.INSTANCE.ENABLED_COMPONENTS.CREATE_DATABASES_ON_STARTUP) {
@@ -1124,8 +1128,9 @@ public final class Locutus extends ListenerAdapter {
                             List<ActionRow> rows = new ArrayList<>(message.getActionRows());
                             for (int i = 0; i < rows.size(); i++) {
                                 ActionRow row = rows.get(i);
-                                List<ItemComponent> components = new ArrayList<>(row.getComponents());
-                                if (components.remove(button)) {
+                                List<ActionRowChildComponentUnion> components = new ArrayList<>(row.getComponents());
+                                if (components.removeIf(f -> f instanceof Button && ((Button) f).getId().equals(button.getId()))) {
+//                                if (components.remove(button)) {
                                     rows.set(i, ActionRow.of(components));
                                 }
                             }

@@ -5,8 +5,8 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.util.RateLimitUtil;
-import net.dv8tion.jda.api.interactions.components.text.TextInput;
-import net.dv8tion.jda.api.interactions.components.text.TextInputStyle;
+import net.dv8tion.jda.api.components.textinput.TextInput;
+import net.dv8tion.jda.api.components.textinput.TextInputStyle;
 
 import java.util.Collection;
 import java.util.HashMap;

@@ -2364,7 +2364,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                 return null;
             }
             if (db.getOrNull(GuildKey.WAR_SERVER, false) != null) {
-                if (throwException) throw new IllegalArgumentException("There is a null war server set " + GuildKey.WAR_SERVER.getCommandMention() + " in guild " + getGuild());
+                if (throwException) throw new IllegalArgumentException("There is a war server set " + GuildKey.WAR_SERVER.getCommandMention() + " in guild " + getGuild() + ". Please disable it via " + CM.settings.delete.cmd.key(GuildKey.WAR_SERVER.name()));
                 return null;
             }
             return db.getWarChannel(throwException, true, create);
@@ -2661,6 +2661,17 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         if (faServer != null && faServer.getIdLong() != getIdLong()) return faServer.getCoalitionNames();
         loadCoalitions();
         return new ObjectLinkedOpenHashSet<>(coalitionName2Id.keySet());
+    }
+
+    public boolean isWarServer() {
+        for (GuildDB other : Locutus.imp().getGuildDatabases().values()) {
+            if (other.getIdLong() == getIdLong()) continue;
+            Guild warServer = other.getOrNull(GuildKey.WAR_SERVER, false);
+            if (warServer != null && warServer.getIdLong() == getIdLong()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public enum AutoNickOption {
