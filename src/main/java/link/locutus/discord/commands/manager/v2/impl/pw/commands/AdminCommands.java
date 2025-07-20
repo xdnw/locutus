@@ -132,8 +132,9 @@ public class AdminCommands {
             if (!force) {
                 io.create()
                         .embed("Guild Culling Confirmation",
-                                "You are about to leave the following guilds:\n" +
-                                        sheet.getURL())
+                                "You are about to leave " + servers.size() + " guilds.\n" +
+                                        "This action is irreversible and will remove the bot from these guilds.\n" +
+                                        "If you are sure, use the `!cull <guilds> -f` command to force this action.")
                         .confirmation(command).send();
                 return null;
             }
@@ -199,8 +200,7 @@ public class AdminCommands {
                 }
             }
 
-            int memberCount = other.getGuild().getMemberCount();
-            boolean lowMemberCount = memberCount < 4; // Arbitrary threshold, can be adjusted
+            int memberCount = 0;
 
             boolean allianceDeleted = GuildKey.ALLIANCE_ID.getOrNull(other) != null && !other.isValidAlliance();
             boolean isValidAlliance = other.isValidAlliance();
@@ -214,6 +214,8 @@ public class AdminCommands {
             boolean hasRegisteredUser = false;
 
             for (Member member : other.getGuild().getMembers()) {
+                if (member.getUser().isBot() || member.getUser().isSystem()) continue;
+                memberCount++;
                 DBNation nation = DiscordUtil.getNation(member.getIdLong());
                 if (nation != null) {
                     if (!hasRegisteredAdmin && (member.isOwner() || member.getRoles().stream().anyMatch(r -> r.getPermissions().contains(Permission.ADMINISTRATOR)))) {
@@ -243,6 +245,8 @@ public class AdminCommands {
             if (hasRecentMessage || isValidAlliance || !joinedLongTimeAgo || hasRecentMember || hasRecentAdmin || hasRegisteredAdmin || hasRecentRole || hasOffshoreAccount) {
                 continue;
             }
+
+            boolean lowMemberCount = memberCount < 4; // Arbitrary threshold, can be adjusted
 
             List<Object> row = List.of(
                     other.getIdLong() + "",
