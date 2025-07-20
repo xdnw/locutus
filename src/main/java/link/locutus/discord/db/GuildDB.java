@@ -2349,6 +2349,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         if (!isWhitelisted() && !isValidAlliance()) {
             if (throwException) {
                 String msg = "Ensure there are members in this alliance, " + CM.who.cmd.toSlashMention() + " and that " + CM.settings_default.registerAlliance.cmd.toSlashMention() + " is set in guild " + getGuild();
+                msg += "\nNote: If you wish to run a separate milcom server, that requires either whitelisting by the bot administrator, or your alliance server to be set as the delegate server (from the milcom server) via " + CM.settings_default.DELEGATE_SERVER.cmd.toSlashMention() + " (specify your main server as the delegate)";
                 if (warCatError != null) {
                     msg += msg + "\nPreviously disabled due to error: " + warCatError.getMessage();
                 }
