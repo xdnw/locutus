@@ -3507,7 +3507,7 @@ public class WarCommands {
             if (room == null) {
                 response.append("Failed to create channel for ").append(target.getName()).append("\n");
             } else {
-                WarRoomUtil.handleRoomCreation(room, author, db, s -> response.append(s).append("\n"), ping, addMember, addCounterMessage, target, attackers);
+                WarRoomUtil.handleRoomCreation(room, author, warCat.getGuildDb(), s -> response.append(s).append("\n"), ping, addMember, addCounterMessage, target, attackers);
                 GuildMessageChannel roomChan = room.getChannel();
                 if (roomChan != null) {
                     response.append(roomChan.getAsMention());
@@ -4836,7 +4836,7 @@ public class WarCommands {
         if (warChan == null) {
             return "Error creating war room channel";
         }
-        WarRoomUtil.handleRoomCreation(room, author, db, new Consumer<String>() {
+        WarRoomUtil.handleRoomCreation(room, author, warCat.getGuildDb(), new Consumer<String>() {
             @Override
             public void accept(String s) {
                 response.append(s + "\n");
