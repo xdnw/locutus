@@ -985,6 +985,7 @@ public class OffshoreInstance {
 
     public TransferResult transferFromAllianceDeposits(DBNation banker, GuildDB senderDB, Predicate<Integer> allowedAlliances, NationOrAlliance receiver, double[] amount, String note) {
         if (banker != null) {
+            note += " #banker=" + banker.getId();
             String denyReason = Settings.INSTANCE.MODERATION.BANNED_BANKERS.get((long) banker.getId());
             if (denyReason != null) {
                 return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, note).addMessage("Access-Denied[Banker-Nation]: " + denyReason);
@@ -1315,21 +1316,25 @@ public class OffshoreInstance {
             List<Transaction2> transactions = Locutus.imp().getBankDB().getTransactionsByNote(append, cutoff);
             Set<Integer> offshoreAAIds2 = getOffshoreAAIds();
             Set<Integer> aaIds = senderDB.getAllianceIds();
-            double total = 0;
+            double initialValue = ResourceType.convertedTotal(amount);
+            double total = initialValue;
+
             for (Transaction2 transaction : transactions) {
                 if (!transaction.isTrackedForGuild(senderDB, aaIds, offshoreAAIds2)) continue;
                 total += transaction.convertedTotal();
             }
 
-            total += getInternalLimitUsed(banker.getNation_id(), cutoff);
+            double valueUsed = getInternalLimitUsed(banker.getNation_id(), cutoff);
+            total += valueUsed;
 
             if (total > withdrawLimit) {
                 MessageChannel alertChannel = senderDB.getOrNull(GuildKey.WITHDRAW_ALERT_CHANNEL);
                 if (alertChannel != null) {
                     StringBuilder body = new StringBuilder();
                     body.append(banker.getNationUrlMarkup() + " | " + banker.getAllianceUrlMarkup()).append("\n");
-                    body.append("Transfer: " + ResourceType.toString(amount) + " | " + note + " | " + (receiver != null ? "to:" + receiver.getTypePrefix() + receiver.getName() : ""));
-                    body.append("Limit set to $" + MathMan.format(withdrawLimit) + " (worth of $/rss)\n\n");
+                    body.append("Transfer: " + ResourceType.toString(amount) + " worth `$" + MathMan.format(initialValue) + "` | " + note + " | " + (receiver != null ? "to:" + receiver.getTypePrefix() + receiver.getName() : ""));
+                    body.append("Your limit is `$" + MathMan.format(withdrawLimit) + "` (worth of $/rss)\n\n");
+                    body.append("You have used $" + MathMan.format(total) + " in the last " + (interval != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, interval) : "24 hours") + "\n");
                     body.append("To set the limit for a user: " + CM.bank.limits.setTransferLimit.cmd.toSlashMention() + "\n");
                     body.append("To set the default " + GuildKey.BANKER_WITHDRAW_LIMIT.getCommandMention());
 
