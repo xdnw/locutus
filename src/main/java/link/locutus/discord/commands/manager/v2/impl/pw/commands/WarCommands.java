@@ -297,20 +297,36 @@ public class WarCommands {
     @Command(desc = """
             Find targets to raid
             Sorted by best nation loot
-            Defaults to 7d inactive""", viewable = true)
+            Defaults to 7d inactive""", viewable = true,
+    groups = {
+            "Result Options",
+            "Filter Options"
+    })
     @RolePermission(value = {Roles.MEMBER, Roles.APPLICANT}, any=true)
     public String raid(@Me DBNation me, @Me @Default GuildDB db, @Me @Default User user, @Me IMessageIO channel,
                        @Default Set<DBNation> targets,
-                       @Switch("r") @Default("5") Integer numResults,
-                       @Switch("a") @Timediff Long activeTimeCutoff,
-                       @Switch("w") boolean weakground,
-                       @Switch("b") Integer beigeTurns,
-                       @Switch("v") Integer vmTurns,
-                       @Switch("n") Double nationScore,
-                       @Switch("s") Integer defensiveSlots,
-                       @Switch("d") boolean ignoreDNR,
-                       @Switch("l") boolean ignoreBankLoot,
-                       @Switch("c") boolean ignoreCityRevenue) throws ExecutionException, InterruptedException {
+                       @Arg(value = "Number of top targets to return", group = 0)
+                           @Switch("r") @Default("5") Integer numResults,
+                       @Arg(value = "Specify the score range for results", group = 0)
+                           @Switch("n") Double nationScore,
+                       @Arg(value = "Exclude recently active nations (default: 7d)", group = 1)
+                           @Switch("a") @Timediff Long activeTimeCutoff,
+                       @Arg(value = "Only include nations with weakther ground than you", group = 1)
+                           @Switch("w") boolean weakground,
+                       @Arg(value = "Include nations with a number of beige turns or less\n" +
+                               "Also includes nations without beige", group = 1)
+                           @Switch("b") Integer beigeTurns,
+                       @Arg(value = "Include nations with a number of vacation mode turns or less\n" +
+                               "Also includes nations without VM", group = 1)
+                           @Switch("v") Integer vmTurns,
+                       @Arg(value = "Only show enemies with a specified number of free defensive slots", group = 1)
+                           @Switch("s") Integer defensiveSlots,
+                       @Arg(value = "Bypass do-not-raid settings", group = 1)
+                           @Switch("d") boolean ignoreDNR,
+                       @Arg(value = "Do not include potential alliance bank in loot and thus result rankings", group = 1)
+                           @Switch("l") boolean ignoreBankLoot,
+                       @Arg(value = "Do not include potential city revenue in loot and thus result rankings", group = 1)
+                           @Switch("c") boolean ignoreCityRevenue) throws ExecutionException, InterruptedException {
         DBNation nation = me;
         if (nation == null) return null;
 
@@ -1397,33 +1413,43 @@ public class WarCommands {
     @Command(desc = """
             Find a high infrastructure target
             optional alliance and sorting (default: active nations, sorted by damage stimate).
-            \t\
             To see a list of coalitions, use `{prefix}coalition list`.
-            \t\
-            Damage estimate is based on attacks you can perform (i.e. if you are stronger or have the project for missiles/nukes), and chance of success""", viewable = true)
+            Damage estimate is based on attacks you can perform (i.e. if you are stronger or have the project for missiles/nukes), and chance of success""", viewable = true,
+            groups = {
+                    "Filter Options",
+                    "Range Options",
+                    "Display Options"
+            })
     @RolePermission(Roles.MEMBER)
     public String damage(@Me IMessageIO channel, @Me DBNation me, @Me @Default User author, Set<DBNation> nations,
-                         @Arg("Include targets which are applicants")
-                         @Switch("a") boolean includeApps,
-                         @Arg("Include targets which are inactive")
-                         @Switch("i") boolean includeInactives,
-                         @Arg("Remove nations with stronger ground than you")
-                         @Switch("w") boolean filterWeak,
-                         @Arg("Only include enemies with no navy")
-                         @Switch("n") boolean noNavy,
-                         @Arg("Sort results by average infrastructure instead of damage estimate")
-                         @Switch("m") boolean targetMeanInfra,
-                         @Arg("Sort results by top city infrastructure instead of damage estimate")
-                         @Switch("c") boolean targetCityMax,
-                         @Arg("Include targets currently on beige")
-                         @Switch("b") boolean includeBeige,
-                         @Switch("d") boolean resultsInDm,
-                         @Arg("Score to search for targets within war range of\n" +
-                                 "Defaults to your score")
-                         @Switch("s") Double warRange,
-                         @Arg("Exclude targets with ships equal to this multiple relative to yours\n" +
-                                 "i.e. `1.0` would be nations with ships equal or less than yours")
-                         @Switch("r") Double relativeNavalStrength) {
+
+                         // Filter Options (group 0)
+                         @Arg(value = "Include nations that are applicants (#position<=1)", group = 0)
+                             @Switch("a") boolean includeApps,
+                         @Arg(value = "Include nations that have been inactive\n" +
+                                 "Default (2d for below city 11, 5d for above)", group = 0)
+                             @Switch("i") boolean includeInactives,
+                         @Arg(value = "Exclude nations with stronger ground strength than you", group = 0)
+                             @Switch("w") boolean filterWeak,
+                         @Arg(value = "Only include nations with no naval forces", group = 0)
+                             @Switch("n") boolean noNavy,
+                         @Arg(value = "Sort results by average infrastructure per city instead of damage estimate", group = 0)
+                             @Switch("m") boolean targetMeanInfra,
+                         @Arg(value = "Sort results by maximum single-city infrastructure instead of damage estimate", group = 0)
+                             @Switch("c") boolean targetCityMax,
+                         @Arg(value = "Include nations currently on beige status", group = 0)
+                             @Switch("b") boolean includeBeige,
+                         @Arg(value = "Exclude targets whose naval strength exceeds this multiple of yours (e.g., `1.0` = ≤ your ships)", group = 0)
+                             @Switch("r") Double relativeNavalStrength,
+
+                         // Range Options (group 1)
+                         @Arg(value = "Score range window for war targets relative to your score", group = 1)
+                             @Switch("s") Double warRange,
+
+                         // Display Options (group 2)
+                         @Arg(value = "Send results via direct message instead of channel", group = 2)
+                             @Switch("d") boolean resultsInDm
+                         ) {
         nations.removeIf(f -> f.getDef() >= 3);
         nations.removeIf(f -> f.getVm_turns() != 0);
         if (!includeApps) nations.removeIf(f -> f.getPosition() <= 1);
@@ -3505,26 +3531,42 @@ public class WarCommands {
 
     @RolePermission(Roles.MILCOM)
     @Command(desc = "Send spy or war blitz sheets to individual nations\n" +
-            "Blitz Sheet Columns: `nation`, `attacker 1`, `attacker 2`, `attacker 3`")
+            "Blitz Sheet Columns: `nation`, `attacker 1`, `attacker 2`, `attacker 3`",
+            groups = {
+                    "Sheets",
+                    "Filter Nations",
+                    "Sheet Parsing",
+                    "Mail Settings"
+            })
     public String mailTargets(@Me GuildDB db, @Me Guild guild, @Me JSONObject command, @Me @Default User author, @Me IMessageIO channel, @Me DBNation me,
-                              @Arg("Url of the war blitz sheet to send")
-                              @Default SpreadSheet blitzSheet,
-                              @Arg("Url of the spy sheet to send")
-                              @Default SpreadSheet spySheet,
-                              @Arg("What attacker nations to send to")
-                              @Default("*") Set<DBNation> allowedNations,
-                              @Arg("What defender nations to include (default: all)")
-                              @Default Set<DBNation> allowedEnemies,
-                              @Arg("Text to prepend to the target instructions being sent")
-                              @Default("") String header,
-                              @Arg("Send from the api key registered to the guild") @Switch("g") boolean sendFromGuildAccount,
-                              @Arg("The api key to use to send the mail") @Switch("a") String apiKey,
-                              @Arg("Hide the default blurb from the message")
-                              @Switch("b") boolean hideDefaultBlurb,
-                              @Switch("f") boolean force,
-                              @Arg("Parse nation leader instead of nation name") @Switch("l") boolean useLeader,
-                              @Arg("Send instructions as direct message on discord")
-                              @Switch("d") boolean dm) throws IOException, GeneralSecurityException {
+                              // Sheets (group 0)
+                              @Arg(value = "URL of the war blitz sheet to send", group = 0)
+                                  @Default SpreadSheet blitzSheet,
+                              @Arg(value = "URL of the spy sheet to send", group = 0)
+                                  @Default SpreadSheet spySheet,
+                              @Arg(value = "Parse using nation leader names instead of nation names", group = 0)
+                                  @Switch("l") boolean useLeader,
+
+                              // Filter Nations (group 1)
+                              @Arg(value = "Which attacker nations to send mails to (defaults to all)", group = 1)
+                                  @Default("*") Set<DBNation> allowedNations,
+                              @Arg(value = "Which defender nations to include in mails (defaults to all)", group = 1)
+                                  @Default Set<DBNation> allowedEnemies,
+
+                              // Mail Settings (group 3)
+                              @Arg(value = "Text to prepend to the message body", group = 3)
+                                  @Default("") String header,
+                              @Arg(value = "Send mail from the guild's registered API key", group = 3)
+                                  @Switch("g") boolean sendFromGuildAccount,
+                              @Arg(value = "Use this API key to send mails", group = 3)
+                                  @Switch("a") String apiKey,
+                              @Arg(value = "Hide the default email blurb in the message", group = 3)
+                                  @Switch("b") boolean hideDefaultBlurb,
+                              @Arg(value = "Send messages as direct Discord DMs to recipients", group = 3)
+                                  @Switch("d") boolean dm,
+
+                              // No group
+                              @Switch("f") boolean force) throws IOException, GeneralSecurityException {
         if(header != null) {
             GPTUtil.checkThrowModeration(header);
         }
