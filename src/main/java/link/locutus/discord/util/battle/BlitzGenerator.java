@@ -411,8 +411,8 @@ public class BlitzGenerator {
     Function<Double, Double> enemyPlaneRatio;
 
     private void init() {
-        colA.removeIf(n -> n.hasUnsetMil());
-        colB.removeIf(n -> n.hasUnsetMil());
+        colA.removeIf(DBNation::hasUnsetMil);
+        colB.removeIf(DBNation::hasUnsetMil);
         attScores = PW.getIsNationsInScoreRange(colA);
         defScores = PW.getIsNationsInScoreRange(colB);
 

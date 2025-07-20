@@ -984,7 +984,7 @@ public class StringMan {
     }
 
     public static List<String> autocompleteComma(String input, List<String> options, int maxResults) {
-        return autocompleteComma(input, options, f -> f, f -> f, f -> f, maxResults).stream().map(f -> f.getKey()).toList();
+        return autocompleteComma(input, options, f -> f, f -> f, f -> f, maxResults).stream().map(Map.Entry::getKey).toList();
     }
 
     public static <T>  List<Map.Entry<String, String>> autocompleteComma(String input, List<T> options, Function<String, T> parse, Function<T, String> keyFunc, Function<T, String> valueFunc, int maxResults) {

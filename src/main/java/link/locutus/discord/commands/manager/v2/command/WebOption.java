@@ -116,9 +116,7 @@ public class WebOption {
     }
 
     public WebOption setQueryMap(TriFunction<GuildDB, User, DBNation, WebOptions> queryOptions) {
-        this.queryOptions = (guild, user, nation) -> {
-            return queryOptions.apply(guild, user, nation);
-        };
+        this.queryOptions = queryOptions::apply;
         allowQuery = true;
         return this;
     }

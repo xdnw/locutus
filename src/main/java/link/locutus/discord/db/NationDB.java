@@ -578,7 +578,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 }
             }
         }
-        Set<Integer> ids = treaties.stream().map(f -> f.getId()).collect(Collectors.toSet());
+        Set<Integer> ids = treaties.stream().map(Treaty::getId).collect(Collectors.toSet());
         deleteTreatiesInDB(ids);
     }
 
@@ -626,7 +626,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 }
             }
             if (alliance.getAlliance_positions() != null) {
-                Set<Integer> positionIds = alliance.getAlliance_positions().stream().map(f -> f.getId()).collect(Collectors.toSet());
+                Set<Integer> positionIds = alliance.getAlliance_positions().stream().map(AlliancePosition::getId).collect(Collectors.toSet());
                 synchronized (nationsByAlliance) {
                     Map<Integer, DBNation> nations = nationsByAlliance.get(alliance.getId());
                     if (nations != null) {

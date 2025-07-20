@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.manager.v2.command;
 
-import net.dv8tion.jda.api.interactions.components.text.TextInput;
+import net.dv8tion.jda.api.components.textinput.TextInput;
 
 import java.util.ArrayList;
 import java.util.List;

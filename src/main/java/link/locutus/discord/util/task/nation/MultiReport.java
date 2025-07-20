@@ -153,7 +153,7 @@ public class MultiReport {
                     }
                     response.append("shared transfers: " + transfers.size() + " worth: $" + MathMan.format(worth)).append("\n");
                 } else {
-                    response.append("shared transfers:\n- ").append(StringMan.join(transfers.stream().map(t -> t.toSimpleString()).collect(Collectors.toList()), "\n- ")).append("\n\n");
+                    response.append("shared transfers:\n- ").append(StringMan.join(transfers.stream().map(Transaction2::toSimpleString).collect(Collectors.toList()), "\n- ")).append("\n\n");
                 }
             }
 

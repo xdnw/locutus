@@ -447,7 +447,7 @@ public class WarCommands {
         enemies.removeIf(f -> allies.contains(f.getAlliance_id()));
         enemies.removeIf(f -> f.active_m() < 4320);
         enemies.removeIf(f -> f.getVm_turns() > 0);
-        enemies.removeIf(f -> f.isBeige());
+        enemies.removeIf(DBNation::isBeige);
         if (finalNation.getCities() > 3) enemies.removeIf(f -> f.getCities() < 4 || f.getScore() < 500);
         enemies.removeIf(f -> f.getDef() == 3);
         enemies.removeIf(nation ->
@@ -869,7 +869,7 @@ public class WarCommands {
         List<DBNation> nations = new ArrayList<>(targets);
         nations.removeIf(f -> f.getVm_turns() != 0);
         nations.removeIf(f -> f.getDef() >= 3);
-        nations.removeIf(f -> f.isBeige());
+        nations.removeIf(DBNation::isBeige);
         if (withinAllAttackersRange) {
             if (nationsToBlitzWith == null) {
                 throw new IllegalArgumentException("Please provide a list of nations for `nationsToBlitzWith`");
@@ -1231,7 +1231,7 @@ public class WarCommands {
         if (nationNetValues.isEmpty()) {
             for (DBNation nation : targetsStorted) {
                 if (nation.isBeige()) {
-                    int turns = beigeTurns.computeIfAbsent(nation, f -> f.getBeigeTurns());
+                    int turns = beigeTurns.computeIfAbsent(nation, DBNation::getBeigeTurns);
                     nationNetValues.add(new KeyValue<>(nation, (double) turns));
                 }
             }
@@ -1280,7 +1280,7 @@ public class WarCommands {
                     .append(String.format("%1s", nation.getDef())).append(" \uD83D\uDEE1");
 
             if (nation.isBeige()) {
-                int turns = beigeTurns.computeIfAbsent(nation, f -> f.getBeigeTurns());
+                int turns = beigeTurns.computeIfAbsent(nation, DBNation::getBeigeTurns);
                 if (turns > 0) {
                     response.append(" | ").append("beige=" + turns);
                 }
@@ -1457,7 +1457,7 @@ public class WarCommands {
         if (noNavy) nations.removeIf(f -> f.getShips() > 2);
         DBNation finalMe = me;
         if (relativeNavalStrength != null) nations.removeIf(f -> f.getShips() > finalMe.getShips() * relativeNavalStrength);
-        if (!includeBeige) nations.removeIf(f -> f.isBeige());
+        if (!includeBeige) nations.removeIf(DBNation::isBeige);
 
         if (warRange == null || warRange == 0) warRange = me.getScore();
         double minScore = warRange * 0.75;
@@ -1477,13 +1477,13 @@ public class WarCommands {
         Map<Integer, Double> damageEstByNation = new HashMap<>();
         Map<Integer, Double> avgInfraByNation = new HashMap<>();
 
-        Set<Integer> nationIds = nations.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
+        Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
         Map<Integer, List<Double>> cityInfraByNation = new HashMap<>();
 
         {
             for (DBNation nation : nations) {
                 Collection<JavaCity> cities = nation.getCityMap(false, false, false).values();
-                List<Double> allInfra = cities.stream().map(f -> f.getInfra()).collect(Collectors.toList());
+                List<Double> allInfra = cities.stream().map(JavaCity::getInfra).collect(Collectors.toList());
                 double max = Collections.max(allInfra);
                 double average = allInfra.stream().mapToDouble(f -> f).average().orElse(0);
                 avgInfraByNation.put(nation.getNation_id(), average);
@@ -1913,7 +1913,7 @@ public class WarCommands {
         }
         if (!includeBeigeAttackers) {
             int num = attackers.size();
-            attackers.removeIf(f -> f.isBeige());
+            attackers.removeIf(DBNation::isBeige);
             int numRemoved = num - attackers.size();
             if (numRemoved > 0) {
                 warnings.add("Removed " + numRemoved + " beige attackers");
@@ -1939,7 +1939,7 @@ public class WarCommands {
         targets.removeIf(f -> !canRaid.apply(f));
         Set<Integer> aaIds = db.getAllianceIds();
 
-        Set<Integer> attackerAAs = attackers.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
+        Set<Integer> attackerAAs = attackers.stream().map(DBNation::getAlliance_id).collect(Collectors.toSet());
         if (!aaIds.containsAll(attackerAAs)) {
             throw new IllegalArgumentException("Only attackers from this guild's alliance ids can be used: `" + StringMan.getString(aaIds) + "`. You tried generating targets for attackers in the alliance ids: `" + StringMan.getString(attackerAAs) + "`");
         }
@@ -2899,7 +2899,7 @@ public class WarCommands {
         ));
 
         sheet.setHeader(header);
-        nationSet.removeIf(n -> n.hasUnsetMil());
+        nationSet.removeIf(DBNation::hasUnsetMil);
 
         Map<Integer, Set<DBNation>> byAlliance = new HashMap<>();
 
@@ -2922,7 +2922,7 @@ public class WarCommands {
         double airBuyTotal = 0;
         double navyBuyTotal= 0;
 
-        Set<Integer> nationIds = nationSet.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
+        Set<Integer> nationIds = nationSet.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
         long dayCutoff = TimeUtil.getDay() - 2;
 //        Map<Integer, Integer> lastSpyCounts = Locutus.imp().getNationDB().getLastSpiesByNation(nationIds, dayCutoff);
 
@@ -3078,7 +3078,7 @@ public class WarCommands {
                                 @Switch("v") boolean ignoreVM,
                                 @Arg("Ignore nations that are member in an alliance")
                                 @Switch("n") boolean ignoreMembers) throws IOException, GeneralSecurityException {
-        Set<Integer> aaIds = alliances.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
+        Set<Integer> aaIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
         Map<Integer, List<AllianceChange>> removesByAA = Locutus.imp().getNationDB().getRemovesByAlliances(aaIds, cuttOff);
 
         Map<DBNation, Map.Entry<Long, Rank>> nations = new LinkedHashMap<>();
@@ -3386,7 +3386,7 @@ public class WarCommands {
             }
         };
 
-        Function<DBNation, Boolean> isValidTarget = n -> filter.contains(n);
+        Function<DBNation, Boolean> isValidTarget = filter::contains;
 
         AtomicBoolean hasErrors = new AtomicBoolean(false);
         BlitzGenerator.getTargets(sheet, useLeader, 0, maxWarsFunc, 0.4, 2.5, false, false, true, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
@@ -3507,7 +3507,7 @@ public class WarCommands {
             if (room == null) {
                 response.append("Failed to create channel for ").append(target.getName()).append("\n");
             } else {
-                WarRoomUtil.handleRoomCreation(room, author, db, s -> response.append(s).append("\n"), ping, addMember, addCounterMessage, target, attackers);
+                WarRoomUtil.handleRoomCreation(room, author, warCat.getGuildDb(), s -> response.append(s).append("\n"), ping, addMember, addCounterMessage, target, attackers);
                 GuildMessageChannel roomChan = room.getChannel();
                 if (roomChan != null) {
                     response.append(roomChan.getAsMention());
@@ -3600,15 +3600,15 @@ public class WarCommands {
         Map<String, Object> spySheetSummary = new LinkedHashMap<>();
 
         if (blitzSheet != null) {
-            warDefAttMap = BlitzGenerator.getTargets(blitzSheet, useLeader, 0, f -> 3, 0.75, PW.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true, (a, b) -> {}, (a) -> blitzSheetSummary.putAll(a));
+            warDefAttMap = BlitzGenerator.getTargets(blitzSheet, useLeader, 0, f -> 3, 0.75, PW.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true, (a, b) -> {}, blitzSheetSummary::putAll);
         }
 
         if (spySheet != null) {
             try {
-                spyDefAttMap = BlitzGenerator.getTargets(spySheet, useLeader, 0, f -> 3, 0.4, 2.5, false, false, true, f -> true, (a, b) -> {}, (a) -> spySheetSummary.putAll(a));
+                spyDefAttMap = BlitzGenerator.getTargets(spySheet, useLeader, 0, f -> 3, 0.4, 2.5, false, false, true, f -> true, (a, b) -> {}, spySheetSummary::putAll);
                 spyOps = SpyBlitzGenerator.getTargets(spySheet, 0);
             } catch (NullPointerException e) {
-                spyDefAttMap = BlitzGenerator.getTargets(spySheet, useLeader, 4, f -> 3, 0.4, 2.5, false, false, true, f -> true, (a, b) -> {}, (a) -> spySheetSummary.putAll(a));
+                spyDefAttMap = BlitzGenerator.getTargets(spySheet, useLeader, 4, f -> 3, 0.4, 2.5, false, false, true, f -> true, (a, b) -> {}, spySheetSummary::putAll);
                 spyOps = SpyBlitzGenerator.getTargets(spySheet, 4);
             }
         }
@@ -4836,7 +4836,7 @@ public class WarCommands {
         if (warChan == null) {
             return "Error creating war room channel";
         }
-        WarRoomUtil.handleRoomCreation(room, author, db, new Consumer<String>() {
+        WarRoomUtil.handleRoomCreation(room, author, warCat.getGuildDb(), new Consumer<String>() {
             @Override
             public void accept(String s) {
                 response.append(s + "\n");

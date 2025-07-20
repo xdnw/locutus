@@ -2359,6 +2359,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         if (!isWhitelisted() && !isValidAlliance()) {
             if (throwException) {
                 String msg = "Ensure there are members in this alliance, " + CM.who.cmd.toSlashMention() + " and that " + CM.settings_default.registerAlliance.cmd.toSlashMention() + " is set in guild " + getGuild();
+                msg += "\nNote: If you wish to run a separate milcom server, that requires either whitelisting by the bot administrator, or your alliance server to be set as the delegate server (from the milcom server) via " + CM.settings_default.DELEGATE_SERVER.cmd.toSlashMention() + " (specify your main server as the delegate)";
                 if (warCatError != null) {
                     msg += msg + "\nPreviously disabled due to error: " + warCatError.getMessage();
                 }
@@ -2374,7 +2375,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                 return null;
             }
             if (db.getOrNull(GuildKey.WAR_SERVER, false) != null) {
-                if (throwException) throw new IllegalArgumentException("There is a null war server set " + GuildKey.WAR_SERVER.getCommandMention() + " in guild " + getGuild());
+                if (throwException) throw new IllegalArgumentException("There is a war server set " + GuildKey.WAR_SERVER.getCommandMention() + " in guild " + getGuild() + ". Please disable it via " + CM.settings.delete.cmd.key(GuildKey.WAR_SERVER.name()));
                 return null;
             }
             return db.getWarChannel(throwException, true, create);
@@ -2677,6 +2678,17 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         if (faServer != null && faServer.getIdLong() != getIdLong()) return faServer.getCoalitionNames();
         loadCoalitions();
         return new ObjectLinkedOpenHashSet<>(coalitionName2Id.keySet());
+    }
+
+    public boolean isWarServer() {
+        for (GuildDB other : Locutus.imp().getGuildDatabases().values()) {
+            if (other.getIdLong() == getIdLong()) continue;
+            Guild warServer = other.getOrNull(GuildKey.WAR_SERVER, false);
+            if (warServer != null && warServer.getIdLong() == getIdLong()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public enum AutoNickOption {

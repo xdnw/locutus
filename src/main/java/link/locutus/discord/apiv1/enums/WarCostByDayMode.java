@@ -92,7 +92,7 @@ public enum WarCostByDayMode {
     INFRASTRUCTURE {
         @Override
         public BiFunction<AttackCost, Boolean, Double> apply() {
-            return (cost, f) -> cost.getInfraLost(f);
+            return AttackCost::getInfraLost;
         }
     },
     GROUND(true)  {

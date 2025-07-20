@@ -40,14 +40,15 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.sheet.GoogleDoc;
 import link.locutus.discord.util.sheet.SpreadSheet;
+import net.dv8tion.jda.api.components.actionrow.ActionRowChildComponent;
+import net.dv8tion.jda.api.components.actionrow.ActionRowChildComponentUnion;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.interactions.components.ActionRow;
-import net.dv8tion.jda.api.interactions.components.ItemComponent;
-import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.dv8tion.jda.api.components.actionrow.ActionRow;
+import net.dv8tion.jda.api.components.buttons.Button;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -185,7 +186,7 @@ public class EmbedCommands {
         List<ActionRow> rows = new ArrayList<>(message.getActionRows());
         for (int i = 0; i < rows.size(); i++) {
             ActionRow row = rows.get(i);
-            List<ItemComponent> components = new ArrayList<>(row.getComponents());
+            List<ActionRowChildComponentUnion> components = new ArrayList<>(row.getComponents());
             components.stream().filter(f -> f instanceof Button).map(f -> ((Button) f).getLabel()).forEach(validLabels::add);
             components.removeIf(f -> {
                 if (f instanceof Button button) {

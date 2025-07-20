@@ -753,15 +753,15 @@ public class WebPWBindings extends WebBindingHelper {
                 {
                     Key<String> key = Key.of(type, HtmlInput.class);
                     addBinding(rootStore -> {
-                        rootStore.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) store -> getBankInput(store)));
+                        rootStore.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) this::getBankInput));
                     });
                     Key<String> key2 = Key.of(type, NationDepositLimit.class, HtmlInput.class);
                     addBinding(rootStore -> {
-                        rootStore.addParser(key2, new FunctionProviderParser<>(key2, (Function<ValueStore, String>) store -> getBankInput(store)));
+                        rootStore.addParser(key2, new FunctionProviderParser<>(key2, (Function<ValueStore, String>) this::getBankInput));
                     });
                     Key<String> key3 = Key.of(type, AllianceDepositLimit.class, HtmlInput.class);
                     addBinding(rootStore -> {
-                        rootStore.addParser(key3, new FunctionProviderParser<>(key3, (Function<ValueStore, String>) store -> getBankInput(store)));
+                        rootStore.addParser(key3, new FunctionProviderParser<>(key3, (Function<ValueStore, String>) this::getBankInput));
                     });
                 }
             }

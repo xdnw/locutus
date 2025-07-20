@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.sheets;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
@@ -145,7 +146,7 @@ public class WarCostSheet extends Command {
 
             {
                 List<DBWar> wars = entry.getValue();
-                Locutus.imp().getWarDb().iterateAttackList(wars, f -> f.canDamage(), null, new BiConsumer<DBWar, List<AbstractCursor>>() {
+                Locutus.imp().getWarDb().iterateAttackList(wars, AttackType::canDamage, null, new BiConsumer<DBWar, List<AbstractCursor>>() {
                     @Override
                     public void accept(DBWar war, List<AbstractCursor> attacks) {
                         boolean selfAttack = false;

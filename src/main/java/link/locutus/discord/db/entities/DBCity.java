@@ -28,7 +28,7 @@ import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
 public abstract class DBCity implements IMutableCity {
-    public static final ToIntFunction<SimpleDBCity> GET_ID = c -> c.getId();
+    public static final ToIntFunction<SimpleDBCity> GET_ID = SimpleDBCity::getId;
 
     @Override
     public void setBuilding(Building building, int amt) {

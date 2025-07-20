@@ -111,7 +111,7 @@ public class WarCostRankingByDay extends SimpleTable<Map<String, WarParser>> {
 
     @Override
     public void add(long day, Map<String, WarParser> costMap) {
-        WarCostByDayMode.addRanking(this, day, min, costMap, coalitionsByDay, cost -> delegate.apply(cost));
+        WarCostByDayMode.addRanking(this, day, min, costMap, coalitionsByDay, delegate::apply);
         if (running_total) WarCostByDay.processTotal(this);
     }
 }

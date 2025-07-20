@@ -91,7 +91,7 @@ public enum SheetKey {
     RESEARCH_CITY,
     EXPIRE_RECORD_SHEET,
     BUILD_SHEET,
-
+    GUILD_CULLING,
 
 
 }

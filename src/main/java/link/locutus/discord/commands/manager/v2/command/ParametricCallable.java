@@ -186,7 +186,7 @@ public class ParametricCallable implements ICommand {
         this.help = definition.help();
 
         //        desc.append(ICommand.formatDescription(definition));
-        this.descMethod = () -> definition.desc();
+        this.descMethod = definition::desc;
         if (!definition.descMethod().isBlank()) {
             try {
                 Method method2 = object.getClass().getMethod(definition.descMethod());

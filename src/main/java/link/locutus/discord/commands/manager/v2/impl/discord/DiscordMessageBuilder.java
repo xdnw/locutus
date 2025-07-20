@@ -14,9 +14,8 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.interactions.components.ActionRow;
-import net.dv8tion.jda.api.interactions.components.LayoutComponent;
-import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.dv8tion.jda.api.components.actionrow.ActionRow;
+import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
@@ -33,7 +32,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static net.dv8tion.jda.api.interactions.components.buttons.Button.ID_MAX_LENGTH;
+import static net.dv8tion.jda.api.components.buttons.Button.ID_MAX_LENGTH;
 
 public class DiscordMessageBuilder extends AMessageBuilder {
 
@@ -134,14 +133,14 @@ public class DiscordMessageBuilder extends AMessageBuilder {
         List<Button> buttonObjs = toButtonObjs();
         if (!buttonObjs.isEmpty()) {
             if (buttonObjs.size() > 5) {
-                List<LayoutComponent> rows = new ArrayList<>();
+                List<ActionRow> rows = new ArrayList<>();
                 for (int i = 0; i < buttonObjs.size(); i += 5) {
                     List<Button> group = buttonObjs.subList(i, Math.min(i + 5, buttonObjs.size()));
                     rows.add(ActionRow.of(group));
                 }
                 discBuilder.setComponents(rows);
             } else {
-                discBuilder.setActionRow(buttonObjs);
+                discBuilder.setComponents(ActionRow.of(buttonObjs));
             }
         }
         if (!embeds.isEmpty()) {
@@ -245,11 +244,13 @@ public class DiscordMessageBuilder extends AMessageBuilder {
         // add buttons
         List<Button> buttons = toButtonObjs();
         if (!buttons.isEmpty()) {
+            List<ActionRow> rows = new ArrayList<>();
             while (!buttons.isEmpty()) {
                 List<Button> group = buttons.subList(0, Math.min(5, buttons.size()));
+                rows.add(ActionRow.of(group));
                 buttons = buttons.subList(group.size(), buttons.size());
-                latest.addActionRow(group);
             }
+            latest.setComponents(rows);
         }
         // Files
         if (includeContent && (!files.isEmpty() || !images.isEmpty() || !tables.isEmpty())) {

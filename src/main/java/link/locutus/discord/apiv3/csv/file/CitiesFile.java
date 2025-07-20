@@ -18,7 +18,7 @@ import java.util.function.Function;
 
 public class CitiesFile extends DataFile<DBCity, CityHeader, CityHeaderReader> {
     public CitiesFile(File file, Dictionary dict) {
-        super(file, parseDateFromFile(file.getName()), () -> new CityHeader(dict), ((header, date) -> new CityHeaderReader(header, date)));
+        super(file, parseDateFromFile(file.getName()), () -> new CityHeader(dict), (CityHeaderReader::new));
     }
 
     public record CityCache(Map<Integer, int[]> map, GlobalDataWrapper<CityHeader> wrapper) {

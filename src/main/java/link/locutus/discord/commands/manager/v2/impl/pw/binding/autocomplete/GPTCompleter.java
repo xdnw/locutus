@@ -46,7 +46,7 @@ public class GPTCompleter extends BindingHelper {
     @Binding(types={GPTProvider.class})
     public List<String> provider(PWGPTHandler handler, @Me GuildDB db, String input) {
         Set<GPTProvider> providers = handler.getProviderManager().getProviders(db);
-        List<String> providerList = providers.stream().map(f -> f.getId()).collect(Collectors.toList());
+        List<String> providerList = providers.stream().map(GPTProvider::getId).collect(Collectors.toList());
         return StringMan.getClosest(input, providerList, f -> f, OptionData.MAX_CHOICES, true);
     }
 

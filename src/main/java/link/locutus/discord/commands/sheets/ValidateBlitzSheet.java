@@ -61,7 +61,7 @@ public class ValidateBlitzSheet extends Command {
         Function<DBNation, Boolean> isValidTarget = f -> true;
         if (args.size() >= 3) {
             Set<DBNation> filter = DiscordUtil.parseNations(guild, author, me, args.get(2), false, false);
-            isValidTarget = n -> filter.contains(n);
+            isValidTarget = filter::contains;
         }
 
         SpreadSheet sheet = SpreadSheet.create(args.get(0));

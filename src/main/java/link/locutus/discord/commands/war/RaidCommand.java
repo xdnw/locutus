@@ -231,7 +231,7 @@ public class RaidCommand extends Command {
                 }
         }
 
-        nations.removeIf(f -> f.hasUnsetMil());
+        nations.removeIf(DBNation::hasUnsetMil);
         if (nations.isEmpty()) {
             return "Invalid AA or Coalition (case sensitive): " + aa + ". @see also: `!coalitions`";
         }

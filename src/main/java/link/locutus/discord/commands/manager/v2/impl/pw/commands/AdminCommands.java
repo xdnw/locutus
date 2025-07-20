@@ -113,6 +113,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.sql.SQLException;
 import java.text.ParseException;
+import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.BiConsumer;
@@ -123,6 +124,164 @@ import java.util.stream.Collectors;
 import static link.locutus.discord.commands.manager.v2.binding.annotation.Kw.*;
 
 public class AdminCommands {
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String cullInactiveGuilds(@Me JSONObject command, @Me GuildDB thisDb, @Me IMessageIO io,
+                                     @Default Set<GuildDB> servers, @Switch("s") SpreadSheet sheet, @Switch("f") boolean force) throws GeneralSecurityException, IOException {
+        if (servers != null) {
+            if (!force) {
+                io.create()
+                        .embed("Guild Culling Confirmation",
+                                "You are about to leave " + servers.size() + " guilds.\n" +
+                                        "This action is irreversible and will remove the bot from these guilds.\n" +
+                                        "If you are sure, use the `!cull <guilds> -f` command to force this action.")
+                        .confirmation(command).send();
+                return null;
+            }
+            int delay = 1;
+            for (GuildDB db : servers) {
+                Locutus.cmd().getExecutor().schedule(() -> {
+                    TextChannel channel = db.getNotifcationChannel();
+                    if (channel != null && channel.canTalk()) {
+                        RateLimitUtil.queue(channel.sendMessage("Leaving this guild due to inactivity. Please re-invite this bot if you want to use it again!\n" +
+                                "<https://discord.com/api/oauth2/authorize?client_id=" + Settings.INSTANCE.APPLICATION_ID + "&permissions=395606879321&scope=bot>\n" +
+                                "- <https://github.com/xdnw/locutus/wiki>"));
+                    }
+                    RateLimitUtil.queue(db.getGuild().leave());
+                }, delay, TimeUnit.SECONDS);
+                delay += 2; // Increase delay for each guild to avoid hitting rate limits
+            }
+            return "Left all specified servers";
+        }
+
+        List<GuildDB> toCheck = new ObjectArrayList<>(Locutus.imp().getGuildDatabases().values());
+        if (toCheck.isEmpty()) {
+            throw new IllegalArgumentException("No guilds to check");
+        }
+
+        if (sheet == null) {
+            sheet = SpreadSheet.create(thisDb, SheetKey.GUILD_CULLING);
+        }
+
+        sheet.setHeader(List.of(
+                "guild_id",
+                "Guild Name",
+                "Member Count",
+                "Alliance Ids",
+                "Cannot Talk",
+                "No Settings",
+                "Member Count",
+                "Alliance Deleted",
+                "Has Registered User"
+        ));
+
+        OffsetDateTime now = OffsetDateTime.now();
+        OffsetDateTime oneYearAgo = now.minusDays(365);
+        long oneYearAgoMs = oneYearAgo.toEpochSecond() * 1000L;
+
+        int numGuildsToCull = 0;
+        for (GuildDB other : toCheck) {
+            boolean hasNoSettings = other.getInfoMap().isEmpty();
+
+            boolean hasRecentMessage = false;
+            boolean cannotTalk = true;
+            {
+                for (GuildMessageChannel channel : other.getGuild().getTextChannels()) {
+                    if (cannotTalk && channel.canTalk()) {
+                        cannotTalk = false;
+                    }
+                    long latestSnowflake = channel.getLatestMessageIdLong();
+                    if (latestSnowflake != 0) {
+                        long latestMs = net.dv8tion.jda.api.utils.TimeUtil.getTimeCreated(latestSnowflake).toEpochSecond() * 1000L;
+                        if (latestMs > oneYearAgoMs) {
+                            hasRecentMessage = true;
+                        }
+                    }
+                    long channelCreated = channel.getTimeCreated().toEpochSecond() * 1000L;
+                    if (channelCreated > oneYearAgoMs) {
+                        hasRecentMessage = true;
+                    }
+                }
+            }
+
+            int memberCount = 0;
+
+            boolean allianceDeleted = GuildKey.ALLIANCE_ID.getOrNull(other) != null && !other.isValidAlliance();
+            boolean isValidAlliance = other.isValidAlliance();
+
+
+            boolean joinedLongTimeAgo = other.getGuild().getSelfMember().getTimeJoined().isBefore(oneYearAgo);
+
+            boolean hasRecentMember = false;
+            boolean hasRecentAdmin = false;
+            boolean hasRegisteredAdmin = false;
+            boolean hasRegisteredUser = false;
+
+            for (Member member : other.getGuild().getMembers()) {
+                if (member.getUser().isBot() || member.getUser().isSystem()) continue;
+                memberCount++;
+                DBNation nation = DiscordUtil.getNation(member.getIdLong());
+                if (nation != null) {
+                    if (!hasRegisteredAdmin && (member.isOwner() || member.getRoles().stream().anyMatch(r -> r.getPermissions().contains(Permission.ADMINISTRATOR)))) {
+                        hasRegisteredAdmin = true;
+                    }
+                    hasRegisteredUser = true;
+                }
+                if (member.getUser().isBot()) continue;
+                if (member.getTimeJoined().isAfter(oneYearAgo)) {
+                    hasRecentMember = true;
+                    if (member.isOwner() || member.getRoles().stream().anyMatch(r -> r.getPermissions().contains(Permission.ADMINISTRATOR))) {
+                        hasRecentAdmin = true;
+                    }
+                }
+            }
+
+            boolean hasRecentRole = false;
+            for (Role role : other.getGuild().getRoles()) {
+                if (role.getTimeCreated().toEpochSecond() * 1000L > oneYearAgoMs) {
+                    hasRecentRole = true;
+                    break;
+                }
+            }
+
+            boolean hasOffshoreAccount = other.getOffshore() != null;
+
+            if (hasRecentMessage || isValidAlliance || !joinedLongTimeAgo || hasRecentMember || hasRecentAdmin || hasRegisteredAdmin || hasRecentRole || hasOffshoreAccount) {
+                continue;
+            }
+
+            boolean lowMemberCount = memberCount < 4; // Arbitrary threshold, can be adjusted
+
+            List<Object> row = List.of(
+                    other.getIdLong() + "",
+                    other.getGuild().getName(),
+                    memberCount,
+                    StringMan.getString(other.getAllianceIds()),
+                    cannotTalk,
+                    hasNoSettings,
+                    !lowMemberCount,
+                    allianceDeleted,
+                    hasRegisteredUser
+            );
+            sheet.addRow(row);
+            numGuildsToCull++;
+        }
+
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
+
+        String title = numGuildsToCull + " guilds to cull";
+        String body = "Checked " + toCheck.size() + " guilds.\n" +
+                "Found " + numGuildsToCull + " guilds that are inactive or have no settings.\n" +
+                "Please review the sheet for details";
+
+        IMessageBuilder msg = sheet.attach(io.create(), "guild_culling");
+        msg.embed(title, body);
+        msg.send();
+
+        return null;
+    }
+
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
     public String newOffshore(@Me IMessageIO io, @Me DBNation nation, DBAlliance alliance) throws IOException {
@@ -330,7 +489,7 @@ public class AdminCommands {
         if (categories.isEmpty()) {
             errors.add("No categories found. " +
                     "Create one starting with `warcat`\n" +
-                    "Grant the bot the perms: `" + Arrays.stream(catPerms).map(f -> f.getName()).collect(Collectors.joining(", ")) + "`\n");
+                    "Grant the bot the perms: `" + Arrays.stream(catPerms).map(Permission::getName).collect(Collectors.joining(", ")) + "`\n");
         } else {
             response.append("**" + categories.size() + " categories:**\n");
             for (Category category : categories) {
@@ -341,7 +500,7 @@ public class AdminCommands {
                 }
                 Set<Permission> lacking = permissionsMissing.getOrDefault(category, Collections.emptySet());
                 if (!lacking.isEmpty()) {
-                    response.append(" | missing: `" + lacking.stream().map(f -> f.getName()).collect(Collectors.joining(",")) + "`");
+                    response.append(" | missing: `" + lacking.stream().map(Permission::getName).collect(Collectors.joining(",")) + "`");
                 }
                 response.append("\n");
             }
@@ -1083,7 +1242,7 @@ public class AdminCommands {
         StringBuilder response = new StringBuilder();
         for (Map.Entry<GuildDB, List<GuildSetting>> entry : toUnset.entrySet()) {
             response.append(entry.getKey().getGuild().toString() + ":\n");
-            List<String> keys = entry.getValue().stream().map(f -> f.name()).collect(Collectors.toList());
+            List<String> keys = entry.getValue().stream().map(GuildSetting::name).collect(Collectors.toList());
             response.append("- " + StringMan.join(keys, "\n- "));
             response.append("\n");
         }

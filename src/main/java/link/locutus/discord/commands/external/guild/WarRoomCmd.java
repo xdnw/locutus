@@ -127,7 +127,7 @@ public class WarRoomCmd extends Command {
                 DBNation target = entry.getKey();
                 Set<DBNation> attackers = entry.getValue();
                 WarRoom room = warCat.createWarRoom(target, true, true, true, WarCatReason.WARCAT_SHEET);
-                WarRoomUtil.handleRoomCreation(room, author, db, s -> response.append(s).append("\n"), ping, addMember, addMessage, target, attackers);
+                WarRoomUtil.handleRoomCreation(room, author, warCat.getGuildDb(), s -> response.append(s).append("\n"), ping, addMember, addMessage, target, attackers);
                 GuildMessageChannel warChan = room.getChannel();
                 if (warChan == null) {
                     response.append("Failed to create channel for ").append(target.getName()).append("\n");
@@ -162,7 +162,7 @@ public class WarRoomCmd extends Command {
         if (room == null) {
             response.append("Failed to create channel for ").append(target.getName()).append("\n");
         } else {
-            WarRoomUtil.handleRoomCreation(room, author, db, s -> response.append(s).append("\n"), ping, addMember, addMessage, target, attackers);
+            WarRoomUtil.handleRoomCreation(room, author, warCat.getGuildDb(), s -> response.append(s).append("\n"), ping, addMember, addMessage, target, attackers);
             GuildMessageChannel roomChan = room.getChannel();
             if (roomChan != null) {
                 response.append(roomChan.getAsMention());

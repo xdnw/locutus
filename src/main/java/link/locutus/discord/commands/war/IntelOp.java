@@ -91,7 +91,7 @@ public class IntelOp extends Command {
         enemies.removeIf(f -> allies.contains(f.getAlliance_id()));
         enemies.removeIf(f -> f.active_m() < 4320);
         enemies.removeIf(f -> f.getVm_turns() > 0);
-        enemies.removeIf(f -> f.isBeige());
+        enemies.removeIf(DBNation::isBeige);
         if (finalNation.getCities() > 3) enemies.removeIf(f -> f.getCities() < 4 || f.getScore() < 500);
         enemies.removeIf(f -> f.getDef() == 3);
         enemies.removeIf(nation ->

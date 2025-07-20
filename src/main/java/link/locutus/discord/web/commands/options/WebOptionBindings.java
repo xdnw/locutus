@@ -10,6 +10,7 @@ import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
+import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.command.WebOption;
@@ -153,7 +154,7 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = ICommand.class)
     public WebOption getCommandCallable() {
         List<ParametricCallable> options = new ArrayList<>(Locutus.imp().getCommandManager().getV2().getCommands().getParametricCallables(f -> true));
-        return new WebOption(ICommand.class).setOptions(options.stream().map(f -> f.getFullPath()).toList());
+        return new WebOption(ICommand.class).setOptions(options.stream().map(CommandCallable::getFullPath).toList());
     }
 
 //MessageChannel - just return textChannel()
