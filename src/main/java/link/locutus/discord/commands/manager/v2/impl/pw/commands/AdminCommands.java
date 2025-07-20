@@ -155,7 +155,7 @@ public class AdminCommands {
         }
 
         sheet.setHeader(List.of(
-                "Guild ID",
+                "guild_id",
                 "Guild Name",
                 "Member Count",
                 "Alliance Ids",
