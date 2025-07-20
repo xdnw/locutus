@@ -125,7 +125,7 @@ public class Keno {
         List<Set<Integer>> picks = new ArrayList<>();
         for (String line : input.split("\n")) {
             if (!line.startsWith("Picks ")) continue;
-            List<Integer> split = Arrays.asList(line.split("\\(")[1].split("\\)")[0].trim().split(",")).stream().map(f -> Integer.parseInt(f)).collect(Collectors.toList());
+            List<Integer> split = Arrays.asList(line.split("\\(")[1].split("\\)")[0].trim().split(",")).stream().map(Integer::parseInt).collect(Collectors.toList());
             picks.add(new HashSet<>(split));
         }
         return picks;

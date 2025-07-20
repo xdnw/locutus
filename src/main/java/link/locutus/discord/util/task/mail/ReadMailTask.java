@@ -8,6 +8,7 @@ import link.locutus.discord.util.offshore.Auth;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.nodes.TextNode;
 import org.jsoup.select.Elements;
 
 import java.time.Instant;
@@ -66,7 +67,7 @@ public class ReadMailTask implements Callable<List<ReadMailTask.MailMessage>> {
             Element nationLink = header.selectFirst("a");
             String nationIdStr = nationLink.attr("href").split("=")[1];
             this.nationId = Integer.parseInt(nationIdStr);
-            String dateStr = header.textNodes().stream().map(f -> f.text()).collect(Collectors.joining()).trim();
+            String dateStr = header.textNodes().stream().map(TextNode::text).collect(Collectors.joining()).trim();
             DateTimeFormatter formatter = new DateTimeFormatterBuilder()
                     .parseCaseInsensitive()
                     .appendPattern("MM/dd/yyyy EEEE h:mm a")

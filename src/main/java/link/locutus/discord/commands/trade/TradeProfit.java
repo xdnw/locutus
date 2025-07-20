@@ -69,7 +69,7 @@ public class TradeProfit extends Command {
             return "Invalid number of days: `" + args.get(1) + "`";
         }
 
-        Set<Integer> nationIds = nations.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
+        Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
 
         long cutoffMs = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
 

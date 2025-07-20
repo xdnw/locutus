@@ -634,8 +634,8 @@ public class TradeCommands {
                               @Switch("p") boolean usePercent) {
         String refreshEmoji = "Refresh";
 
-        Map<ResourceType, Double> low = trader.getLow().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue()));
-        Map<ResourceType, Double> high = trader.getHigh().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue()));
+        Map<ResourceType, Double> low = trader.getLow().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        Map<ResourceType, Double> high = trader.getHigh().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         List<ResourceType> resources = new ArrayList<>(ResourceType.valuesList);
         resources.remove(ResourceType.MONEY);
 
@@ -667,8 +667,8 @@ public class TradeCommands {
 
     @Command(desc = "Get the current top buy and sell price of each resource", viewable = true)
     public String tradePrice(@Me JSONObject command, @Me IMessageIO channel, TradeManager manager) {
-        Map<ResourceType, Double> low = manager.getLow().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue()));
-        Map<ResourceType, Double> high = manager.getHigh().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue()));
+        Map<ResourceType, Double> low = manager.getLow().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        Map<ResourceType, Double> high = manager.getHigh().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
         String lowKey = "Low";
         String highKey = "High";
@@ -706,8 +706,8 @@ public class TradeCommands {
                                @Timestamp long time,
                                @Arg("Group by alliance instead of nation")
                                @Switch("a") boolean groupByAlliance, @Switch("u") boolean uploadFile) {
-        Function<DBNation, Integer> groupBy = groupByAlliance ? groupBy = f -> f.getAlliance_id() : f -> f.getNation_id();
-        Set<Integer> nationIds = nations.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
+        Function<DBNation, Integer> groupBy = groupByAlliance ? groupBy = DBNation::getAlliance_id : DBNation::getNation_id;
+        Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
         Map<Integer, TradeRanking.TradeProfitContainer> tradeContainers = new HashMap<>();
 
         List<DBTrade> trades = nationIds.size() > 1000 ? Locutus.imp().getTradeManager().getTradeDb().getTrades(time) : Locutus.imp().getTradeManager().getTradeDb().getTrades(nationIds, time);
@@ -888,7 +888,7 @@ public class TradeCommands {
                               @Arg("Date to start from")
                               @Timestamp long time,
                               @Switch("o") boolean include_outliers) throws GeneralSecurityException, IOException {
-        Set<Integer> nationIds = nations.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
+        Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
 
         List<DBTrade> trades = nationIds.size() > 1000 ? Locutus.imp().getTradeManager().getTradeDb().getTrades(time) : Locutus.imp().getTradeManager().getTradeDb().getTrades(nationIds, time);
 
@@ -997,7 +997,7 @@ public class TradeCommands {
                               @Arg("Return a deposits add command for each grouping")
                               @Switch("a") boolean addBalance) throws IOException {
         if (forceUpdate) {
-            Locutus.imp().runEventsAsync(events -> manager.updateTradeList(events));
+            Locutus.imp().runEventsAsync(manager::updateTradeList);
         }
 
         Map<Integer, Map<ResourceType, Long>> netInflows = new HashMap<>();
@@ -1258,7 +1258,7 @@ public class TradeCommands {
                                    @Switch("c") boolean attachCsv, @Switch("ss") boolean attach_sheet,
                                    @Switch("r") Set<ResourceType> resources) throws IOException, GeneralSecurityException {
         String title = "volume by day";
-        rssTradeByDay(title, channel, start, end, offers -> manager.volumeByResource(offers), attachJson, attachCsv, attach_sheet ? db : null,
+        rssTradeByDay(title, channel, start, end, manager::volumeByResource, attachJson, attachCsv, attach_sheet ? db : null,
                 SheetKey.TRADE_VOLUME_DAY, resources, command, WM.api.tradeVolumeByDay.cmd);
         return null;
     }
@@ -1270,7 +1270,7 @@ public class TradeCommands {
                                   @Switch("c") boolean attachCsv, @Switch("ss") boolean attach_sheet,
                                   @Switch("r") Set<ResourceType> resources) throws IOException, GeneralSecurityException {
         String title = "total by day";
-        rssTradeByDay(title, channel, start, end, offers -> manager.totalByResource(offers), attachJson, attachCsv, attach_sheet ? db : null,
+        rssTradeByDay(title, channel, start, end, manager::totalByResource, attachJson, attachCsv, attach_sheet ? db : null,
                 SheetKey.TRADE_TOTAL_DAY, resources, command, WM.api.tradeTotalByDay.cmd);
         return null;
     }
@@ -1316,7 +1316,7 @@ public class TradeCommands {
         if (nations == null) {
             offers = db.getTrades(cutoff);
         } else {
-            Set<Integer> nationIds = nations.stream().map(f -> f.getNation_id()).collect(IntOpenHashSet::new, IntOpenHashSet::add, IntOpenHashSet::addAll);
+            Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(IntOpenHashSet::new, IntOpenHashSet::add, IntOpenHashSet::addAll);
             offers = db.getTrades(nationIds, cutoff);
         }
         if (!includeMoneyTrades) {

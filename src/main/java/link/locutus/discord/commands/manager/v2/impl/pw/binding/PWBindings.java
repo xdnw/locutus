@@ -1053,7 +1053,7 @@ public class PWBindings extends BindingHelper {
                 if (arg.charAt(0) == '~') arg = arg.substring(1);
                 Set<Integer> coalition = db.getCoalition(arg);
                 if (!coalition.isEmpty()) {
-                    result.addAll(coalition.stream().map(f -> DBAlliance.getOrCreate(f)).collect(Collectors.toSet()));
+                    result.addAll(coalition.stream().map(DBAlliance::getOrCreate).collect(Collectors.toSet()));
                     continue;
                 }
             }

@@ -315,7 +315,7 @@ public class GuildHandler {
         List<CommandRef> cmds = List.of(
                 CM.embed.update.cmd.desc("{description}\nAssigned to {usermention} in {timediff}"),
                 CM.interview.create.cmd.user(author.getAsMention()));
-        String cmdStr = cmds.stream().map(f -> f.toCommandArgs()).collect(Collectors.joining("\n"));
+        String cmdStr = cmds.stream().map(CommandRef::toCommandArgs).collect(Collectors.joining("\n"));
 
         IMessageBuilder msg = new DiscordChannelIO(alertChannel).create().embed(title, body.toString()).commandButton(CommandBehavior.DELETE_BUTTONS, cmdStr, emoji);
         if (mentionInterviewer) {

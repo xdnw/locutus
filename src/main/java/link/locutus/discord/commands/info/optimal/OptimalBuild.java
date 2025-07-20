@@ -357,7 +357,7 @@ public class OptimalBuild extends Command {
                 return ResourceType.convertedTotal(profit);
             };
         } else {
-            valueFunc = javaCity -> javaCity.getRevenueConverted();
+            valueFunc = INationCity::getRevenueConverted;
         }
 
 //        if (infraLow != null) {

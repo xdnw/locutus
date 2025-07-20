@@ -59,7 +59,7 @@ public class MultiUpdater {
             sharesUid.computeIfAbsent(entry.getValue(), f -> new IntOpenHashSet()).add(entry.getKey());
         }
         for (Map.Entry<BigInteger, Set<Integer>> entry : sharesUid.entrySet()) {
-            List<DBNation> nations = sharesUid.get(entry.getKey()).stream().map(DBNation::getById).filter(f -> f != null).collect(Collectors.toList());
+            List<DBNation> nations = sharesUid.get(entry.getKey()).stream().map(DBNation::getById).filter(Objects::nonNull).collect(Collectors.toList());
             for (DBNation nation : nations) {
                 nationSharesUid.put(nation.getNation_id(), nations.size());
             }

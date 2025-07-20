@@ -270,7 +270,7 @@ public class AllianceList {
     }
 
     public void updateCities() {
-        Set<Integer> nationIds = getNations(false, 0, true).stream().map(f -> f.getId()).collect(Collectors.toSet());
+        Set<Integer> nationIds = getNations(false, 0, true).stream().map(DBNation::getId).collect(Collectors.toSet());
         Locutus.imp().runEventsAsync(events ->
             Locutus.imp().getNationDB().updateCitiesOfNations(nationIds, true, true, events));
     }

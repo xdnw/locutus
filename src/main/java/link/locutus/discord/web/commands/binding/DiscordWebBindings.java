@@ -81,7 +81,7 @@ public class DiscordWebBindings extends WebBindingHelper {
     @HtmlInput
     @Binding(types = {User.class})
     public String user(@Me Guild guild, ParameterData param) {
-        Set<User> users = guild.getMembers().stream().map(f -> f.getUser()).collect(Collectors.toSet());
+        Set<User> users = guild.getMembers().stream().map(Member::getUser).collect(Collectors.toSet());
         return WebUtil.generateSearchableDropdown(param, users, (obj, names, values, subtext) -> {
             names.add(obj.getName());
             values.add(obj.getAsMention());

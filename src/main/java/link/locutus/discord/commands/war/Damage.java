@@ -86,7 +86,7 @@ public class Damage extends Command {
         if (!includeApps) nations.removeIf(f -> f.getPosition() <= 1);
         if (!includeInactives) nations.removeIf(f -> f.active_m() > (f.getCities() > 11 ? 5 : 2) * 1440);
         if (filterNoShips) nations.removeIf(f -> f.getShips() > 2);
-        if (!includeBeige) nations.removeIf(f -> f.isBeige());
+        if (!includeBeige) nations.removeIf(DBNation::isBeige);
 
         if (score == null) score = me.getScore();
         double minScore = score * 0.75;

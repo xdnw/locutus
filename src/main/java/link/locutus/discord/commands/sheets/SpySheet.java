@@ -98,8 +98,8 @@ public class SpySheet extends Command {
 
         Set<DBNation> attackers = DiscordUtil.parseNations(guild, author, me, args.get(0), false, false);
         Set<DBNation> defenders = DiscordUtil.parseNations(guild, author, me, args.get(1), false, false);
-        attackers.removeIf(f -> f.hasUnsetMil());
-        defenders.removeIf(f -> f.hasUnsetMil());
+        attackers.removeIf(DBNation::hasUnsetMil);
+        defenders.removeIf(DBNation::hasUnsetMil);
 
         attackers.removeIf(t -> t.getVm_turns() > 0 || t.active_m() > 1880 || t.getPosition() <= 1);
         if (minSpies != -1) {

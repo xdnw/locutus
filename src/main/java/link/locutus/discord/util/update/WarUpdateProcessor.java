@@ -311,7 +311,7 @@ public class WarUpdateProcessor {
     }
 
     public static void handleAlerts(List<Map.Entry<DBWar, DBWar>> wars) {
-        List<DBWar> newWars = wars.stream().filter(f -> f.getKey() == null).map(f -> f.getValue()).collect(Collectors.toList());
+        List<DBWar> newWars = wars.stream().filter(f -> f.getKey() == null).map(Map.Entry::getValue).collect(Collectors.toList());
 
         Map<Integer, Set<GuildHandler>> defGuildsByAA = new HashMap<>();
         Map<Integer, Set<GuildHandler>> offGuildsByAA = new HashMap<>();

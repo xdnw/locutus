@@ -264,7 +264,7 @@ public class UtilityCommands {
                 channelList.append(prefix + catChannel.getName() + "\n");
                 if (catChannel instanceof TextChannel msgChan) {
                     if (list_added_members) {
-                        List<Member> members = msgChan.getMemberPermissionOverrides().stream().map(f -> f.getMember()).filter(Objects::nonNull).collect(Collectors.toList());
+                        List<Member> members = msgChan.getMemberPermissionOverrides().stream().map(PermissionOverride::getMember).filter(Objects::nonNull).collect(Collectors.toList());
                         if (!members.isEmpty()) {
                             channelList.append("  - Members: ");
                             for (Member member : members) {
@@ -281,7 +281,7 @@ public class UtilityCommands {
                         }
                     }
                     if (list_added_roles) {
-                        List<Role> roles = msgChan.getRolePermissionOverrides().stream().map(f -> f.getRole()).filter(Objects::nonNull).collect(Collectors.toList());
+                        List<Role> roles = msgChan.getRolePermissionOverrides().stream().map(PermissionOverride::getRole).filter(Objects::nonNull).collect(Collectors.toList());
                         if (!roles.isEmpty()) {
                             channelList.append("  - Roles: ");
                             for (Role role : roles) {
@@ -583,8 +583,8 @@ public class UtilityCommands {
             "If allies are specified, only offshores that are not allied with any of the allies will be returned", viewable = true)
     public String findOffshores(@Timestamp long cutoff, Set<DBAlliance> enemiesList, @Default() Set<DBAlliance> alliesList) {
         if (alliesList == null) alliesList = Collections.emptySet();
-        Set<Integer> enemies = enemiesList.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
-        Set<Integer> allies = alliesList.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
+        Set<Integer> enemies = enemiesList.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
+        Set<Integer> allies = alliesList.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
 
         Map<Integer, List<AllianceChange>> removes = Locutus.imp().getNationDB().getRemovesByAlliances(enemies, cutoff);
         Map<Integer, Set<AllianceChange>> removesByNation = removes.entrySet().stream().flatMap(f -> f.getValue().stream()).collect(Collectors.groupingBy(AllianceChange::getNationId, Collectors.toSet()));
@@ -1440,7 +1440,7 @@ public class UtilityCommands {
             header.set(i, arg);
         }
 
-        Map<Integer, List<DBNation>> nationMap = new RankBuilder<>(nations).group(n -> n.getAlliance_id()).get();
+        Map<Integer, List<DBNation>> nationMap = new RankBuilder<>(nations).group(DBNation::getAlliance_id).get();
 
         Map<DBAlliance, DBNation> totals = new HashMap<>();
         for (Map.Entry<Integer, List<DBNation>> entry : nationMap.entrySet()) {
@@ -2267,7 +2267,7 @@ public class UtilityCommands {
 
         Map<DBAlliance, Integer> rankings = new HashMap<DBAlliance, Integer>();
 
-        Set<Integer> aaIds = alliances.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
+        Set<Integer> aaIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
         Map<Integer, List<AllianceChange>> removesByAlliance = Locutus.imp().getNationDB().getRemovesByAlliances(aaIds, cutoff);
 
         for (DBAlliance alliance : alliances) {

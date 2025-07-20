@@ -204,7 +204,7 @@ public class NewsletterCommands {
 
         Set<Integer> subscribed = manager.getSubscribedNations(newsletter.getId());
         if (document != null) {
-            Set<DBNation> nations = subscribed.stream().map(f -> DBNation.getById(f)).filter(Objects::nonNull).collect(Collectors.toSet());
+            Set<DBNation> nations = subscribed.stream().map(DBNation::getById).filter(Objects::nonNull).collect(Collectors.toSet());
             if (nations.isEmpty()) {
                 throw new IllegalArgumentException("No nations subscribed to newsletter: `" + newsletter.getName() + "`\n" +
                         "Subscribe with " + CM.newsletter.subscribe.cmd.newsletter(newsletter.getName()));
@@ -378,7 +378,7 @@ public class NewsletterCommands {
                 throw new IllegalArgumentException("No subscriptions found.");
             }
             manager.unsubscribeAllNation(nation.getId());
-            return "Unsubscribed " + nation.getMarkdownUrl() + " from newsletter: `" + current.stream().map(f -> f.getName()).collect(Collectors.joining(",")) + "`";
+            return "Unsubscribed " + nation.getMarkdownUrl() + " from newsletter: `" + current.stream().map(Newsletter::getName).collect(Collectors.joining(",")) + "`";
         } else {
             for (DBNation nation : nations) {
                 manager.unsubscribe(nation.getId(), newsletter.getId());

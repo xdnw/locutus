@@ -43,6 +43,7 @@ import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationList;
+import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
@@ -60,6 +61,7 @@ import link.locutus.discord.util.task.mail.*;
 import link.locutus.discord.web.jooby.handler.CommandResult;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.channel.Channel;
 import net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel;
 import net.dv8tion.jda.api.entities.channel.attribute.IMemberContainer;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
@@ -974,7 +976,7 @@ public class IACommands {
         }
 
         Set<Integer> lackingIds = lacking.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
-        Set<String> userMentions = lacking.stream().map(f -> f.getUserId()).filter(f -> f != null).map(f -> "<@" + f + ">").collect(Collectors.toSet());
+        Set<String> userMentions = lacking.stream().map(DBNation::getUserId).filter(Objects::nonNull).map(f -> "<@" + f + ">").collect(Collectors.toSet());
 
         StringBuilder response = new StringBuilder("**Nations lacking spies**");
         response.append("\nIDs: " + StringMan.getString(lackingIds));
@@ -1289,7 +1291,7 @@ public class IACommands {
             String title = entry.getKey();
             new SummedMapRankBuilder<>(entry.getValue())
                     .sort()
-                    .nameKeys(f -> f.toShrink())
+                    .nameKeys(NationOrAllianceOrGuildOrTaxid::toShrink)
                     .build(io, command, title, true);
         }
         return null;
@@ -1924,7 +1926,7 @@ public class IACommands {
         int perPage = 5;
 
         String title = "Inactive nations";
-        List<IShrink> results = nationList.stream().map(f -> f.toShrink()).collect(Collectors.toList());
+        List<IShrink> results = nationList.stream().map(NationOrAllianceOrGuildOrTaxid::toShrink).collect(Collectors.toList());
         channel.create().paginate(title, command, page, perPage, results).send();
 
     }
@@ -2282,7 +2284,7 @@ public class IACommands {
     @Command(desc = "List discord channels a member has access to", viewable = true)
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.ADMIN}, any = true)
     public String memberChannels(@Me Guild guild, Member member) {
-        List<String> channels = guild.getTextChannels().stream().filter(f -> f.getMembers().contains(member)).map(f -> f.getAsMention()).collect(Collectors.toList());
+        List<String> channels = guild.getTextChannels().stream().filter(f -> f.getMembers().contains(member)).map(Channel::getAsMention).collect(Collectors.toList());
         User user = member.getUser();
         return DiscordUtil.getFullUsername(user) + " has access to:\n" +
                 StringMan.join(channels, "\n");

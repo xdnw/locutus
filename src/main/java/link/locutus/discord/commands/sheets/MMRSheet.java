@@ -103,7 +103,7 @@ public class MMRSheet extends Command {
 
             sheet.setHeader(header);
             nations = new ArrayList<>(nations);
-            nations.removeIf(n -> n.hasUnsetMil());
+            nations.removeIf(DBNation::hasUnsetMil);
 
             Map<Integer, Set<DBNation>> byAlliance = new HashMap<>();
 

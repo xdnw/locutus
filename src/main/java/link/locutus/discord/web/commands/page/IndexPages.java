@@ -390,7 +390,7 @@ public class IndexPages extends PageHelper {
         List<DBWar> myWars = new ObjectArrayList<>(nation.getActiveWars());
 //        myWars = nation.getWars().subList(0, 5);
 
-        Collections.sort(myWars, Comparator.comparingLong(o -> o.getDate()));
+        Collections.sort(myWars, Comparator.comparingLong(DBWar::getDate));
         Collections.reverse(myWars);
 //        List<AbstractCursor> attacks = myWars.isEmpty() ? Collections.emptyList() : Locutus.imp().getWarDb().getAttacksByWars(myWars);
         boolean[] isFightingActives = {false};

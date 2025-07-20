@@ -266,7 +266,7 @@ public abstract class TimeNumericTable<T> {
         if (!timeFormat.isTime() && origin > 0) {
             timeFormatFunction = time -> timeFormat.toString(time.longValue() + origin);
         } else {
-            timeFormatFunction = time -> timeFormat.toString(time);
+            timeFormatFunction = timeFormat::toString;
         }
         // Create new xy-plot
         XYPlot plot;

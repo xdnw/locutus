@@ -82,7 +82,7 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
 
         private void set(NationHeader w, Function<NationHeader, ProjectColumn> supplier) {
             ProjectColumn col = supplier.apply(w);
-            byProject[col.getProject().ordinal()] = f -> supplier.apply(f);
+            byProject[col.getProject().ordinal()] = supplier::apply;
         }
 
         @Override

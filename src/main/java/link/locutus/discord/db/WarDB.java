@@ -1072,9 +1072,7 @@ public class WarDB extends DBMainV2 {
     }
 
     public void iterateAttackList(Collection<DBWar> wars, Predicate<AttackType> attackTypeFilter,  Predicate<AbstractCursor> preliminaryFilter, BiConsumer<DBWar, List<AbstractCursor>> onEachWar) {
-        iterateAttackList(wars, attackTypeFilter, preliminaryFilter, (war, list) -> {
-            onEachWar.accept(war, list);
-        }, true);
+        iterateAttackList(wars, attackTypeFilter, preliminaryFilter, onEachWar::accept, true);
     }
 
     public void iterateAttacksByWarId(DBWar war, boolean loadInactive, BiConsumer<DBWar, AbstractCursor> forEachAttack) {
@@ -2337,7 +2335,7 @@ public class WarDB extends DBMainV2 {
         Set<Integer> all = new IntOpenHashSet();
 
         Map<Integer, List<DBWar>> map = new Int2ObjectOpenHashMap<>();
-        activeWars.getActiveWars(f -> all.contains(f), new Predicate<DBWar>() {
+        activeWars.getActiveWars(all::contains, new Predicate<DBWar>() {
             @Override
             public boolean test(DBWar war) {
                 if (attackers.contains(war.getAttacker_id()) || defenders.contains(war.getDefender_id())) {

@@ -100,7 +100,7 @@ public class PreLoader implements ILoader {
             backup = CompletableFuture.completedFuture(false);
         }
 
-        this.discordDB = add("Discord Database", () -> new DiscordDB());
+        this.discordDB = add("Discord Database", DiscordDB::new);
         this.nationDB = add("Nation Database", () -> new NationDB().load());
         add("Flag Outdated Cities", () -> {
             getNationDB().markDirtyIncorrectNations();
@@ -116,8 +116,8 @@ public class PreLoader implements ILoader {
         });
 
         this.warDb = add("War Database", () -> new WarDB().load());
-        this.stockDB = add("Stock Database", () -> new StockDB());
-        this.bankDb = add("Bank Database", () -> new BankDB());
+        this.stockDB = add("Stock Database", StockDB::new);
+        this.bankDb = add("Bank Database", BankDB::new);
         this.tradeManager = add("Trade Database", () -> new TradeManager().load());
         if (Settings.INSTANCE.FORUM_FEED_SERVER > 0) {
             this.forumDb = add("Forum Database", () -> new ForumDB(Settings.INSTANCE.FORUM_FEED_SERVER));
