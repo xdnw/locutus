@@ -118,6 +118,48 @@ public class TradeDB extends DBMainV2 {
         purgeExpiredMarketOffers();
         purgeSubscriptions();
         loadColorBlocs();
+
+        {
+            String gameAverages = "CREATE TABLE IF NOT EXISTS TRADE_AVERAGE (" +
+                    "id INTEGER PRIMARY KEY," +
+                    "prices BLOB NOT NULL," +
+                    "turn BIGINT NOT NULL" +
+                    ");";
+            executeStmt(gameAverages);
+        }
+    }
+
+    public Map.Entry<double[], Long> loadGameAverages() {
+        try (ResultSet rs = getDb().selectBuilder("TRADE_AVERAGE")
+                .select("prices", "turn")
+                .where(QueryCondition.equals("id", 1))
+                .limit(1)
+                .executeRaw()) {
+            if (rs.next()) {
+                byte[] data = rs.getBytes(1);
+                long gameAvgUpdated = rs.getLong(2);
+                if (data != null) {
+                    double[] averages = ArrayUtil.toDoubleArray(data);
+                    return KeyValue.of(averages, gameAvgUpdated);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public void saveGameAverages(double[] data, long gameAvgUpdated) {
+        try (PreparedStatement stmt = getConnection().prepareStatement(
+                "INSERT OR REPLACE INTO TRADE_AVERAGE (id, prices, turn) VALUES (1, ?, ?)"
+        )) {
+            stmt.setObject(1, ArrayUtil.toByteArray(data));
+            stmt.setObject(2, gameAvgUpdated);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
     }
 
     public static class BulkTradeOffer {

@@ -58,7 +58,7 @@ public class TradeManager {
     private double[] lowAvg;
 
     private double[] gameAvg;
-    private long gameAvgUpdated = 0;
+    private long gameAvgUpdated = -1;
     private final TradeDB tradeDb;
 
     private Map<Integer, DBTrade> activeTradesById = new ConcurrentHashMap<>();
@@ -79,6 +79,17 @@ public class TradeManager {
     public double getGamePrice(ResourceType type) {
         if (type == ResourceType.MONEY) return 1;
         long turn = TimeUtil.getTurn();
+        if (gameAvgUpdated == -1) {
+            synchronized (this) {
+                gameAvgUpdated = 0;
+                Map.Entry<double[], Long> gameAverages = tradeDb.loadGameAverages();
+                if (gameAverages != null) {
+                    gameAvg = gameAverages.getKey();
+                    gameAvgUpdated = gameAverages.getValue();
+                }
+            }
+        }
+
         if (gameAvg == null || (gameAvgUpdated < turn)) {
             synchronized (this) {
                 if (gameAvg == null || (gameAvgUpdated < turn)) {
@@ -103,6 +114,8 @@ public class TradeManager {
 
                         gameAvgUpdated = turn;
                         gameAvg = tmp;
+
+                        tradeDb.saveGameAverages(tmp, gameAvgUpdated);
                     } catch (Exception e) {
                         e.printStackTrace();
                         return switch (type) {
@@ -1095,7 +1108,7 @@ public class TradeManager {
 
     public boolean isTradeOutsideNormPrice(int ppu, ResourceType resource) {
         if (resource != link.locutus.discord.apiv1.enums.ResourceType.CREDITS) {
-            if (resource != ResourceType.FOOD) {
+            if (resource != link.locutus.discord.apiv1.enums.ResourceType.FOOD) {
                 return ppu < 700 || ppu > 8000;
             } else {
                 return ppu < 50 || ppu > 800;
