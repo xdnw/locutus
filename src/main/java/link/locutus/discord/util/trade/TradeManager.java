@@ -127,6 +127,16 @@ public class TradeManager {
         return gameAvg[type.ordinal()];
     }
 
+    public double getGamePrice(double[] resources) {
+        double total = 0;
+        for (ResourceType type : ResourceType.values) {
+            double amt = resources[type.ordinal()];
+            if (amt == 0) continue;
+            total += amt * getGamePrice(type);
+        }
+        return total;
+    }
+
     public Set<TradeDB.BulkTradeOffer> getBulkOffers(ResourceType type, Predicate<TradeDB.BulkTradeOffer> filter) {
         Queue<TradeDB.BulkTradeOffer> offers = offersByResource.get(type);
         if (offers == null) {

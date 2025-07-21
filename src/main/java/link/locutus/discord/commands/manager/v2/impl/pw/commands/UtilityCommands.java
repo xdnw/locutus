@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
@@ -61,6 +62,7 @@ import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.nation.MultiReport;
 import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import link.locutus.discord.util.task.roles.IAutoRoleTask;
+import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
@@ -81,18 +83,20 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.function.*;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import static link.locutus.discord.apiv1.enums.NationColor.COLOR_REVENUE_CAP;
 import static link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.handleAddbalanceAllianceScope;
-import static link.locutus.discord.util.math.ArrayUtil.memorize;
 import static org.example.jooq.bank.Tables.TRANSACTIONS_2;
 
 public class UtilityCommands {
     @Command(desc = "List the color blocs and their revenue\n" +
             "Optionally switch nations or alliances to a color to view potential revenue changes", viewable = true)
-    public String calculateColorRevenue(@Default Set<DBNation> set_aqua,
+    public String calculateColorRevenue(@Me GuildDB db, @Me IMessageIO io,
+                                        @Default Set<DBNation> set_aqua,
                                         @Default Set<DBNation> set_black,
                                         @Default Set<DBNation> set_blue,
                                         @Default Set<DBNation> set_brown,
@@ -110,8 +114,14 @@ public class UtilityCommands {
                                         @Default Set<DBNation> set_mint,
                                         @Default Set<DBNation> set_lavender,
                                         @Default Set<DBNation> set_turquoise,
-                                        @Default Set<DBNation> set_gold
-    ) {
+                                        @Default Set<DBNation> set_gold,
+                                        @Switch("s") SpreadSheet sheet
+    ) throws GeneralSecurityException, IOException {
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, SheetKey.COLOR_REVENUE);
+        }
+
+
         Map<NationColor, Set<DBNation>> changeColors = new HashMap<>();
         changeColors.put(NationColor.AQUA, set_aqua);
         changeColors.put(NationColor.BLACK, set_black);
@@ -135,114 +145,162 @@ public class UtilityCommands {
         changeColors.put(NationColor.GOLD, set_gold);
 
 
-        Map<DBNation, NationColor> newColors = new HashMap<>();
+        Map<Integer, NationColor> newColors = new Int2ObjectOpenHashMap<>();
 
         for (Map.Entry<NationColor, Set<DBNation>> entry : changeColors.entrySet()) {
             if (entry.getValue() == null) continue;
             for (DBNation nation : entry.getValue()) {
                 if (nation.getColor() == entry.getKey() || ((nation.isGray() || nation.isBeige()) && entry.getKey() == NationColor.GRAY)) continue;
-
-                newColors.put(nation, entry.getKey());
+                newColors.put(nation.getId(), entry.getKey());
             }
         }
 
-        Map<NationColor, Integer> oldRevenueMap = new LinkedHashMap<>();
-        Map<NationColor, Double> revenueTotalMap = new LinkedHashMap<>();
-        Map<NationColor, Integer> numNationsMap = new LinkedHashMap<>();
-        Map<NationColor, Integer> oldNumNationsMap = new LinkedHashMap<>();
-
-        Set<NationColor> requiresScaling = new HashSet<>();
-        List<Map.Entry<Double, Integer>> scalingCounts = new ArrayList<>();
-
-        for (NationColor color : NationColor.values()) {
-            Set<DBNation> oldNations = Locutus.imp().getNationDB().getNationsMatching(f -> f.getVm_turns() == 0 && f.getColor() == color);
-            boolean isChanged = false;
-            for (Map.Entry<DBNation, NationColor> entry : newColors.entrySet()) {
-                if (entry.getKey().getColor() == color || entry.getValue() == color) {
-                    isChanged = true;
-                    break;
-                }
-            }
-
-            Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(f -> f.getVm_turns() == 0 && newColors.getOrDefault(f, f.getColor()) == color);
-
-            oldNumNationsMap.put(color, oldNations.size());
-            if (isChanged) numNationsMap.put(color, nations.size());
-            else numNationsMap.put(color, oldNations.size());
-
-            int oldColorRev = color.getTurnBonus();
-
-            oldRevenueMap.put(color, oldColorRev);
-
-            if (color == NationColor.BEIGE || color == NationColor.GRAY) {
-                continue;
-            }
-            if (!newColors.isEmpty()) {
-                Supplier<Double> oldRevenueTotal = memorize(() -> ResourceType.convertedTotal(new SimpleNationList(oldNations).getRevenue()));
-                Supplier<Double> newRevenueTotal = memorize(() -> ResourceType.convertedTotal(new SimpleNationList(nations).getRevenue()));
-
-                double scalingFactor = -1;
-                if (oldColorRev > 0 && oldColorRev < COLOR_REVENUE_CAP) {
-                    double oldRevTotalEstimate = oldRevenueTotal.get();
-                    double oldRevTotalExact = ((double) oldColorRev) * oldNations.size() * oldNations.size();
-
-                    scalingFactor = (1d / oldRevTotalEstimate) * oldRevTotalExact;
-                    scalingCounts.add(new KeyValue<>(scalingFactor, nations.size()));
-                }
-                if (isChanged) {
-                    double newColorRev = newRevenueTotal.get();
-                    if (scalingFactor != -1) {
-                        newColorRev = newColorRev * scalingFactor;
-                    } else {
-                        requiresScaling.add(color);
-                    }
-                    revenueTotalMap.put(color, newColorRev);
-                }
-            }
+        Map<NationColor, Set<DBNation>> newNationsMap = new Object2ObjectOpenHashMap<>();
+        for (DBNation nation : Locutus.imp().getNationDB().getNationsMatching(f -> f.getAlliance_id() != 0 && f.getVm_turns() == 0)) {
+            NationColor color = newColors.getOrDefault(nation.getId(), nation.getColor());
+            newNationsMap.computeIfAbsent(color, k -> new ObjectOpenHashSet<>()).add(nation);
         }
 
-        // calculate scaling factor
-        double scalingFactor = 1;
-        if (!scalingCounts.isEmpty() && !requiresScaling.isEmpty()) {
-            double totalValue = 0;
-            long num = 0L;
-            for (Map.Entry<Double, Integer> entry : scalingCounts) {
-                totalValue += entry.getKey() * entry.getValue();
-                num += entry.getValue();
-            }
-            scalingFactor = totalValue / num;
+        Map<NationColor, Set<DBNation>> oldNationsMap = NationColor.getNationsByColor();
+
+        NationColor.RevenueCapInfo oldCapInfo = NationColor.calculateColorRevenueCap(oldNationsMap);
+        NationColor.RevenueCapInfo newCapInfo = NationColor.calculateColorRevenueCap(newNationsMap);
+        int oldNationsBelowC21 = NationColor.countNationsLessThanC21(oldNationsMap);
+        int newNationsBelowC21 = NationColor.countNationsLessThanC21(newNationsMap);
+
+        {
+            sheet.reset();
+            sheet.addRow(Arrays.asList(
+                    "", "Aggregate DNR", "Total Nations", "Nations <C21", "Average DNR", "Color Cap"
+            ));
+            sheet.addRow("OLD",
+                    MathMan.format(oldCapInfo.aggregateRevenue()),
+                    oldCapInfo.nations(),
+                    oldNationsBelowC21,
+                    MathMan.format(oldCapInfo.averageRevenue()),
+                    MathMan.format(oldCapInfo.cap())
+            );
+            sheet.addRow("NEW",
+                    MathMan.format(newCapInfo.aggregateRevenue()),
+                    newCapInfo.nations(),
+                    newNationsBelowC21,
+                    MathMan.format(newCapInfo.averageRevenue()),
+                    MathMan.format(newCapInfo.cap())
+            );
+            sheet.addRow();
         }
+
+        TradeManager tradeManager = Locutus.imp().getTradeManager();
+
+        sheet.addRow();
 
         StringBuilder lines = new StringBuilder();
-        for (NationColor color : NationColor.values) {
-            lines.append(color + " | ");
+        lines.append("**Color Cap**: ");
+        int capDiff = newCapInfo.cap() - oldCapInfo.cap();
+        if (capDiff != 0) {
+            lines.append(MathMan.format(oldCapInfo.cap()) + " -> " + MathMan.format(newCapInfo.cap()));
+            String signSym = (capDiff > 0) ? "+" : "-";
+            lines.append(" (" + signSym + MathMan.format(Math.abs(capDiff)) + ")");
+        } else {
+            lines.append(MathMan.format(oldCapInfo.cap()));
+        }
 
-            int numNations = numNationsMap.get(color);
-            int oldNumNations = oldNumNationsMap.get(color);
-            lines.append("nations: " + MathMan.format(numNations));
-            if (oldNumNations != numNations) {
-                String signSym = (numNations > oldNumNations) ? "+" : "-";
-                lines.append(" (").append(signSym).append(MathMan.format(Math.abs(numNations - oldNumNations)) + ")");
+        // int nations, int nationsBelowC21, double aggregateDNR, double averageDNR, int growthTurnBonus, int growthTurnBonusUncapped, int recruitTurnBonus
+        sheet.addRow(List.of(
+                "Color",
+                "Old Nations",
+                "New Nations",
+                "Old Nations <C21",
+                "New Nations <C21",
+                "Old Avg DNR",
+                "New Avg DNR",
+                "Old Growth Bonus",
+                "New Growth Bonus",
+                "Old Growth Bonus (Uncapped)",
+                "New Growth Bonus (Uncapped)",
+                "Old Recruit Bonus",
+                "New Recruit Bonus",
+                "Old Color Revenue",
+                "New Color Revenue"
+        ));
+
+        for (NationColor color : NationColor.values()) {
+            NationColor.TurnBonusInfo oldBonus = color.getTurnBonus(oldNationsMap, oldCapInfo.cap(), oldNationsBelowC21);
+            NationColor.TurnBonusInfo newBonus = color.getTurnBonus(newNationsMap, newCapInfo.cap(), newNationsBelowC21);
+
+            int oldNationsOnColor = oldBonus.nations();
+            int newNationsOnColor = newBonus.nations();
+            int oldNationsBelowC21OnColor = oldBonus.nationsBelowC21();
+            int newNationsBelowC21OnColor = newBonus.nationsBelowC21();
+
+            lines.append("**" + color.name() + "**: ");
+            int oldTotal = oldBonus.totalTurnBonus();
+            int newTotal = newBonus.totalTurnBonus();
+            if (oldTotal != newTotal) {
+                String signSym = (newTotal > oldTotal) ? "+" : "-";
+                lines.append("$" + MathMan.format(oldTotal) + " -> $" + MathMan.format(newTotal) + " (" + signSym + "$" + MathMan.format(Math.abs(newTotal - oldTotal)) + ")");
+            } else {
+                lines.append(MathMan.format(oldTotal));
             }
 
-            int oldTurnIncome = oldRevenueMap.get(color);
-            int newTurnIncome = oldTurnIncome;
-
-            Double revenueTotal = revenueTotalMap.get(color);
-            if (revenueTotal != null) {
-                if (requiresScaling.contains(color)) {
-                    revenueTotal *= scalingFactor;
-                }
-                newTurnIncome = (int) Math.round(revenueTotal / (numNations * numNations));
-            }
-            newTurnIncome = Math.max(0, Math.min(COLOR_REVENUE_CAP, newTurnIncome));
-            lines.append(" | bonus: " + newTurnIncome);
-            if (oldTurnIncome != newTurnIncome) {
-                String signSym = (newTurnIncome > oldTurnIncome) ? "+" : "-";
-                lines.append(" (").append(signSym).append(MathMan.format(Math.abs(newTurnIncome - oldTurnIncome)) + ")");
+            lines.append("-# - nations: ");
+            if (oldNationsOnColor != newNationsOnColor) {
+                String signSym = (newNationsOnColor > oldNationsOnColor) ? "+" : "-";
+                lines.append(MathMan.format(oldNationsOnColor) + " -> " + MathMan.format(newNationsOnColor) + " (" + signSym + MathMan.format(Math.abs(newNationsOnColor - oldNationsOnColor)) + ")");
+            } else {
+                lines.append(MathMan.format(oldNationsOnColor));
             }
             lines.append("\n");
+            lines.append("-# - nations <C21: ");
+            if (oldNationsBelowC21OnColor != newNationsBelowC21OnColor) {
+                String signSym = (newNationsBelowC21OnColor > oldNationsBelowC21OnColor) ? "+" : "-";
+                lines.append(MathMan.format(oldNationsBelowC21OnColor) + " -> " + MathMan.format(newNationsBelowC21OnColor) + " (" + signSym + MathMan.format(Math.abs(newNationsBelowC21OnColor - oldNationsBelowC21OnColor)) + ")");
+            } else {
+                lines.append(MathMan.format(oldNationsBelowC21OnColor));
+            }
+            lines.append("\n");
+            // growth bonus
+            lines.append("-# - Growth Bonus: ");
+            if (oldBonus.growthTurnBonus() != newBonus.growthTurnBonus()) {
+                String signSym = (newBonus.growthTurnBonus() > oldBonus.growthTurnBonus()) ? "+" : "-";
+                lines.append(MathMan.format(oldBonus.growthTurnBonus()) + " -> " + MathMan.format(newBonus.growthTurnBonus()) + " (" + signSym + MathMan.format(Math.abs(newBonus.growthTurnBonus() - oldBonus.growthTurnBonus())) + ")");
+            } else {
+                lines.append(MathMan.format(oldBonus.growthTurnBonus()));
+            }
+            lines.append("\n");
+            // Recruit Bonus
+            lines.append("-# - Recruit Bonus: ");
+            if (oldBonus.recruitTurnBonus() != newBonus.recruitTurnBonus()) {
+                String signSym = (newBonus.recruitTurnBonus() > oldBonus.recruitTurnBonus()) ? "+" : "-";
+                lines.append(MathMan.format(oldBonus.recruitTurnBonus()) + " -> " + MathMan.format(newBonus.recruitTurnBonus()) + " (" + signSym + MathMan.format(Math.abs(newBonus.recruitTurnBonus() - oldBonus.recruitTurnBonus())) + ")");
+            } else {
+                lines.append(MathMan.format(oldBonus.recruitTurnBonus()));
+            }
+            lines.append("\n");
+
+            sheet.addRow(Arrays.asList(
+                    color.name(),
+                    MathMan.format(oldNationsOnColor),
+                    MathMan.format(newNationsOnColor),
+                    MathMan.format(oldNationsBelowC21OnColor),
+                    MathMan.format(newNationsBelowC21OnColor),
+                    MathMan.format(oldBonus.averageDNR()),
+                    MathMan.format(newBonus.averageDNR()),
+                    MathMan.format(oldBonus.growthTurnBonus()),
+                    MathMan.format(newBonus.growthTurnBonus()),
+                    MathMan.format(oldBonus.growthTurnBonusUncapped()),
+                    MathMan.format(newBonus.growthTurnBonusUncapped()),
+                    MathMan.format(oldBonus.recruitTurnBonus()),
+                    MathMan.format(newBonus.recruitTurnBonus()),
+                    MathMan.format(oldBonus.totalTurnBonus()),
+                    MathMan.format(newBonus.totalTurnBonus())
+            ));
         }
+
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
+        sheet.attach(io.create(), "colors").append(lines.toString()).send();
+
         return lines.toString();
     }
 
