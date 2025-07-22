@@ -396,7 +396,7 @@ public abstract class DBNation implements NationOrAlliance {
 
             // Bulk fetch activity days for all nations from the earliest creation turn
             activityByDay = scoped.getGlobal(
-                    () -> Locutus.imp().getNationDB().getActivityByDay(minTime, creationTurnById::containsKey)
+                    () -> Locutus.imp().getNationDB().getActivityByDay(minTime, creationTurnById.keySet())
             );
         }
         // Compute days this specific nation was inactive since its creation
