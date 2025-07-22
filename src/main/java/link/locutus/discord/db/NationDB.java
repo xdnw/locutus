@@ -4132,6 +4132,39 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
     }
 
+    public Map<Long, Set<Integer>> getActivityByDay(long minDate, Set<Integer> nationIds) {
+        if (nationIds == null || nationIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        // If small enough, filter in SQL
+        if (nationIds.size() <= 1000) {
+            long minTurn = TimeUtil.getTurn(minDate);
+            List<Integer> sortedIds = new IntArrayList(nationIds);
+            Collections.sort(sortedIds);
+            String inClause = sortedIds.stream()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(",", "(", ")"));
+            String sql = "SELECT nation, (`turn`/12) FROM ACTIVITY WHERE turn > ? AND nation IN " + inClause;
+            try (PreparedStatement stmt = prepareQuery(sql)) {
+                stmt.setLong(1, minTurn);
+                Map<Long, Set<Integer>> result = new Long2ObjectOpenHashMap<>();
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        int id = rs.getInt(1);
+                        long day = rs.getLong(2);
+                        result.computeIfAbsent(day, f -> new IntArraySet()).add(id);
+                    }
+                }
+                return result;
+            } catch (SQLException e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+        }
+        // Otherwise defer to predicate-based filtering
+        return getActivityByDay(minDate, nationIds::contains);
+    }
+
     public Map<Long, Set<Integer>> getActivityByDay(long minDate, Predicate<Integer> allowNation) {
         long minTurn = TimeUtil.getTurn(minDate);
         try (PreparedStatement stmt = prepareQuery("select nation, (`turn`/12) FROM ACTIVITY WHERE turn > ?")) {
