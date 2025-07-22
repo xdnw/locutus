@@ -422,7 +422,7 @@ public class GrantCmd extends Command {
                 ref = CM.grant.build.cmd
                         .receivers(me.getUrl())
                         .build(arg)
-                        .is_new_city(amt == 1 ? "true" : null)
+                        .is_new_city(amt == 1 ? "true" : "false")
                         .city_ids(amt == Double.MAX_VALUE || amt <= 1 ? null : String.valueOf((int) amt))
                         .grant_infra(noInfra ? "false" : "true")
                         .grant_land(noLand ? "false" : "true")
