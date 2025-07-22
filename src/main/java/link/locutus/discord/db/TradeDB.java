@@ -131,7 +131,7 @@ public class TradeDB extends DBMainV2 {
 
     public Map.Entry<double[], Long> loadGameAverages() {
         try (ResultSet rs = getDb().selectBuilder("TRADE_AVERAGE")
-                .select("prices", "turn")
+                .select(new String[]{"prices", "turn"})
                 .where(QueryCondition.equals("id", 1))
                 .limit(1)
                 .executeRaw()) {

@@ -98,7 +98,6 @@ public enum  NationColor implements NationList {
     public static record RevenueCapInfo(double aggregateRevenue, int nations, double averageRevenue, int cap) {}
 
     public static RevenueCapInfo calculateColorRevenueCap(Map<NationColor, Set<DBNation>> nationsByColor) {
-        double oneTurn = 1 / 12d;
         double revenueTotal = 0;
         int totalNations = 0;
         for (Map.Entry<NationColor, Set<DBNation>> entry : nationsByColor.entrySet()) {
@@ -106,18 +105,17 @@ public enum  NationColor implements NationList {
             Set<DBNation> nationsOnColor = entry.getValue();
             if (color == GRAY || color == BEIGE) continue;
 
-            double totalRevenue = 0;
             for (DBNation nation : nationsOnColor) {
                 if (nation.getAlliance_id() == 0 || nation.getVm_turns() > 0) continue;
                 double[] revenue = nation.getRevenue();
-                double dnr = Locutus.imp().getTradeManager().getGamePrice(revenue) * oneTurn;
-                totalRevenue += dnr;
+                double dnr = Locutus.imp().getTradeManager().getGamePrice(revenue);
+                revenueTotal += dnr;
                 totalNations++;
             }
         }
         double averageDNR = revenueTotal / totalNations;
         double colorRevenueCap = Math.round(averageDNR * 18d / totalNations);
-        int cap = Math.toIntExact(java.lang.Math.round(colorRevenueCap));
+        int cap = Math.toIntExact(Math.round(colorRevenueCap));
         return new RevenueCapInfo(revenueTotal, totalNations, averageDNR, cap);
     }
 
@@ -148,8 +146,6 @@ public enum  NationColor implements NationList {
      * @return entry(growthTurnBonus, recruitTurnBonus)
      */
     public TurnBonusInfo getTurnBonus(Map<NationColor, Set<DBNation>> nationsByColor, int newTurnBonusCap, int totalNationsLessThanC21) {
-        double oneTurn = 1 / 12d;
-
         Set<DBNation> nationsOnColor = nationsByColor.getOrDefault(this, Collections.emptySet());
         int nationsOnColorCount = 0;
         int totalNationsLessThanC21OnColor = 0;
@@ -157,7 +153,7 @@ public enum  NationColor implements NationList {
         for (DBNation nation : nationsOnColor) {
             if (nation.getAlliance_id() == 0 || nation.getVm_turns() > 0) continue;
             double[] revenue = nation.getRevenue();
-            double dnr = Locutus.imp().getTradeManager().getGamePrice(revenue) * oneTurn;
+            double dnr = Locutus.imp().getTradeManager().getGamePrice(revenue);
             totalDNROfColor += dnr;
             nationsOnColorCount++;
 

@@ -204,6 +204,7 @@ public class UtilityCommands {
         } else {
             lines.append(MathMan.format(oldCapInfo.cap()));
         }
+        lines.append("\n");
 
         // int nations, int nationsBelowC21, double aggregateDNR, double averageDNR, int growthTurnBonus, int growthTurnBonusUncapped, int recruitTurnBonus
         sheet.addRow(List.of(
@@ -242,6 +243,7 @@ public class UtilityCommands {
             } else {
                 lines.append(MathMan.format(oldTotal));
             }
+            lines.append("\n");
 
             lines.append("-# - nations: ");
             if (oldNationsOnColor != newNationsOnColor) {
@@ -301,7 +303,7 @@ public class UtilityCommands {
         sheet.updateWrite();
         sheet.attach(io.create(), "colors").append(lines.toString()).send();
 
-        return lines.toString();
+        return null;
     }
 
     @Command(desc = "list channels", viewable = true)
