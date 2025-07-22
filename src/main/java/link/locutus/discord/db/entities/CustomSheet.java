@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities;
 
+import it.unimi.dsi.fastutil.objects.Object2BooleanLinkedOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -76,7 +77,7 @@ public class CustomSheet {
         List<Future<?>> writeTasks = new ArrayList<>();
         ExecutorService executor = Locutus.imp().getExecutor();
         sheet.reset();
-        Map<String, Boolean> tabsCreated = new LinkedHashMap<>();
+        Map<String, Boolean> tabsCreated = new Object2BooleanLinkedOpenHashMap<>();
         Future<?> createTabsFuture = executor.submit(() -> {
             try {
                 Set<String> customTabsKeys = customTabs.keySet();

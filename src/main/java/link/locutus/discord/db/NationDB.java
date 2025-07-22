@@ -4144,7 +4144,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                     int id = rs.getInt(1);
                     if (!allowNation.test(id)) continue;
                     long day = rs.getLong(2);
-                    result.computeIfAbsent(day, f -> new IntOpenHashSet()).add(id);
+                    result.computeIfAbsent(day, f -> new IntArraySet()).add(id);
                 }
             }
             return result;

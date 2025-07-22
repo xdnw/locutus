@@ -1126,7 +1126,7 @@ public class GuildKey {
 
         @Override
         public String help() {
-            return "Whether members's withdraw limit ignores their expiring grants (true/false)";
+            return "Whether members's withdraw limit ignores their expiring/decaying grants (true/false)";
         }
     }.setupRequirements(f -> f.requiresCoalition(Coalition.OFFSHORE).requiresOffshore());
     public static GuildSetting<Boolean> DISPLAY_ITEMIZED_DEPOSITS = new GuildBooleanSetting(GuildSettingCategory.BANK_INFO) {

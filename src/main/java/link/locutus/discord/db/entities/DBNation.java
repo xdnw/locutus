@@ -3,6 +3,7 @@ package link.locutus.discord.db.entities;
 import com.google.gson.JsonSyntaxException;
 import com.politicsandwar.graphql.model.*;
 import it.unimi.dsi.fastutil.ints.*;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -362,6 +363,59 @@ public abstract class DBNation implements NationOrAlliance {
     @Command(desc = "If the nation has a project")
     public boolean hasProject(Project project) {
         return (this.data()._projects() & (1L << project.ordinal())) != 0;
+    }
+
+    @Command(desc = "Number of days since creation this nation has not logged in for")
+    public int daysSinceCreationNotLoggedIn(ValueStore store) {
+        // Scope across all DBNation instances in this run
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "inactiveDays");
+        List<DBNation> nations = scoped.getList(this);
+
+        Map<Long, Set<Integer>> activityByDay;
+        Map<Integer, Long> creationTurnById = new Int2LongOpenHashMap();
+        if (nations.size() == 1) {
+            long minTurn = TimeUtil.getTurn(getDate());
+            Set<Long> days = Locutus.imp().getNationDB().getActivityByDay(getId(), minTurn);
+            activityByDay = new Long2ObjectOpenHashMap<>();
+            for (long day : days) {
+                activityByDay.computeIfAbsent(day, k -> new IntArraySet()).add(getId());
+            }
+            creationTurnById.put(getId(), minTurn);
+        } else {
+            // Gather each nation’s creation turn and find the global minimum
+            long minTurn = Long.MAX_VALUE;
+            for (DBNation nation : nations) {
+                // replace _creationDate() with your actual creation timestamp field (epoch ms)
+                long creationMs = nation.getDate();
+                long creationTurn = TimeUtil.getTurn(creationMs);
+                creationTurnById.put(nation.data()._nationId(), creationTurn);
+                minTurn = Math.min(minTurn, creationTurn);
+            }
+
+            long minTime = TimeUtil.getTimeFromTurn(minTurn);
+
+            // Bulk fetch activity days for all nations from the earliest creation turn
+            activityByDay = scoped.getGlobal(
+                    () -> Locutus.imp().getNationDB().getActivityByDay(minTime, creationTurnById::containsKey)
+            );
+        }
+        // Compute days this specific nation was inactive since its creation
+        int selfId = data()._nationId();
+        long selfCreationTurn = creationTurnById.get(selfId);
+        long todayTurn = TimeUtil.getTurn(System.currentTimeMillis());
+        int inactiveCount = 0;
+        long dayCreated = TimeUtil.getDayFromTurn(selfCreationTurn) + 1;
+        long today = TimeUtil.getDay();
+        for (long day = dayCreated; day < today; day++) {
+            Set<Integer> activeNations = activityByDay.get(day);
+            if (activeNations == null || !activeNations.contains(selfId)) {
+                inactiveCount++;
+            }
+        }
+        if (lastActiveMs() < TimeUtil.getTimeFromDay(today)) {
+            inactiveCount++;
+        }
+        return inactiveCount;
     }
 
     @Command(desc = "Can build project (meets requirements, free slot, doesn't have project)")
