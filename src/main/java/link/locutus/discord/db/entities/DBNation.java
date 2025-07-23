@@ -373,7 +373,7 @@ public abstract class DBNation implements NationOrAlliance {
 
         Map<Long, Set<Integer>> activityByDay;
         Map<Integer, Long> creationTurnById = new Int2LongOpenHashMap();
-        if (nations.size() == 1) {
+        if (nations.size() == 1 || nations.isEmpty()) {
             long minTurn = TimeUtil.getTurn(getDate());
             Set<Long> days = Locutus.imp().getNationDB().getActivityByDay(getId(), minTurn);
             activityByDay = new Long2ObjectOpenHashMap<>();
@@ -388,7 +388,7 @@ public abstract class DBNation implements NationOrAlliance {
                 // replace _creationDate() with your actual creation timestamp field (epoch ms)
                 long creationMs = nation.getDate();
                 long creationTurn = TimeUtil.getTurn(creationMs);
-                creationTurnById.put(nation.data()._nationId(), creationTurn);
+                creationTurnById.put(nation.getId(), creationTurn);
                 minTurn = Math.min(minTurn, creationTurn);
             }
 
@@ -401,8 +401,8 @@ public abstract class DBNation implements NationOrAlliance {
         }
         // Compute days this specific nation was inactive since its creation
         int selfId = data()._nationId();
-        long selfCreationTurn = creationTurnById.get(selfId);
-        long todayTurn = TimeUtil.getTurn(System.currentTimeMillis());
+        long selfCreationTurn = TimeUtil.getTurn(getDate());
+        long todayTurn = TimeUtil.getTurn();
         int inactiveCount = 0;
         long dayCreated = TimeUtil.getDayFromTurn(selfCreationTurn) + 1;
         long today = TimeUtil.getDay();
