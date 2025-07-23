@@ -17,12 +17,15 @@ import link.locutus.discord.db.*;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.discord.GuildShardManager;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.scheduler.ThrowingSupplier;
 import link.locutus.discord.util.trade.TradeManager;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.requests.GatewayIntent;
+import net.dv8tion.jda.api.sharding.DefaultShardManager;
+import net.dv8tion.jda.api.sharding.DefaultShardManagerBuilder;
 import net.dv8tion.jda.api.utils.ChunkingFilter;
 import net.dv8tion.jda.api.utils.Compression;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
@@ -380,9 +383,16 @@ public class PreLoader implements ILoader {
         return builder.toString();
     }
 
+    private GuildShardManager build() {
+        if (Settings.INSTANCE.SHARDS > 1) {
+            return new GuildShardManager(buildShardManager());
+        } else {
+            return new GuildShardManager(buildJDA());
+        }
+    }
+
     private JDA buildJDA() throws ExecutionException, InterruptedException {
-        JDABuilder builder = JDABuilder.createLight(Settings.INSTANCE.BOT_TOKEN, GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_MESSAGES, GatewayIntent.DIRECT_MESSAGES)
-                .useSharding(0, 1);
+        JDABuilder builder = JDABuilder.createLight(Settings.INSTANCE.BOT_TOKEN, GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_MESSAGES, GatewayIntent.DIRECT_MESSAGES);
         if (Settings.INSTANCE.ENABLED_COMPONENTS.SLASH_COMMANDS) {
             SlashCommandManager slash = getSlashCommandManager();
             if (slash != null) {
@@ -430,6 +440,60 @@ public class PreLoader implements ILoader {
             builder.enableCache(CacheFlag.EMOJI);
         }
         return builder.build();
+    }
+
+    private DefaultShardManager buildShardManager() throws ExecutionException, InterruptedException {
+        DefaultShardManagerBuilder builder = DefaultShardManagerBuilder.createLight(Settings.INSTANCE.BOT_TOKEN, GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_MESSAGES, GatewayIntent.DIRECT_MESSAGES);
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.SLASH_COMMANDS) {
+            SlashCommandManager slash = getSlashCommandManager();
+            if (slash != null) {
+                builder.addEventListeners(slash);
+            }
+        }
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.MESSAGE_COMMANDS) {
+            builder.addEventListeners(locutus);
+        }
+        builder
+                .setChunkingFilter(ChunkingFilter.NONE)
+                .setBulkDeleteSplittingEnabled(false)
+                .setCompression(Compression.ZLIB)
+                .setLargeThreshold(250)
+                .setAutoReconnect(true)
+                .setMemberCachePolicy(MemberCachePolicy.ALL);
+        if (Settings.INSTANCE.DISCORD.INTENTS.GUILD_MEMBERS) {
+            builder.enableIntents(GatewayIntent.GUILD_MEMBERS);
+        }
+        if (Settings.INSTANCE.DISCORD.INTENTS.MESSAGE_CONTENT) {
+            builder.enableIntents(GatewayIntent.MESSAGE_CONTENT);
+        }
+        if (Settings.INSTANCE.DISCORD.INTENTS.GUILD_PRESENCES) {
+            builder.enableIntents(GatewayIntent.GUILD_PRESENCES);
+        }
+        if (Settings.INSTANCE.DISCORD.INTENTS.GUILD_MESSAGES) {
+            builder.enableIntents(GatewayIntent.GUILD_MESSAGES);
+        }
+        if (Settings.INSTANCE.DISCORD.INTENTS.GUILD_MESSAGE_REACTIONS) {
+            builder.enableIntents(GatewayIntent.GUILD_MESSAGE_REACTIONS);
+        }
+        if (Settings.INSTANCE.DISCORD.INTENTS.DIRECT_MESSAGES) {
+            builder.enableIntents(GatewayIntent.DIRECT_MESSAGES);
+        }
+        if (Settings.INSTANCE.DISCORD.INTENTS.EMOJI) {
+            builder.enableIntents(GatewayIntent.GUILD_EXPRESSIONS);
+        }
+        if (Settings.INSTANCE.DISCORD.CACHE.MEMBER_OVERRIDES) {
+            builder.enableCache(CacheFlag.MEMBER_OVERRIDES);
+        }
+        if (Settings.INSTANCE.DISCORD.CACHE.ONLINE_STATUS) {
+            builder.enableCache(CacheFlag.ONLINE_STATUS);
+        }
+        if (Settings.INSTANCE.DISCORD.CACHE.EMOTE) {
+            builder.enableCache(CacheFlag.EMOJI);
+        }
+        return builder
+                .setShardsTotal(Settings.INSTANCE.DISCORD.SHARDS)
+                .setShards(0, Settings.INSTANCE.DISCORD.SHARDS - 1)
+                .build();
     }
 
     @Override
