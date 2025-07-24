@@ -511,25 +511,29 @@ public class Grant {
             throw new IllegalArgumentException("The argument `ping_when_sent` can only be used with a single receiver");
         }
 
-        BiFunction<DBNation, double[] , double[]> onlyMissingFunc = (nation, resourcesArr) -> {
+        BiFunction<DBNation, double[] , TransferResult> onlyMissingFunc = (nation, resourcesArr) -> {
             double[] costApplyMissing = resourcesArr.clone();
             if (onlySendMissingFunds) {
                 if (!db.isAllianceId(nation.getAlliance_id())) {
                     throw new IllegalArgumentException("Nation " + nation.getMarkdownUrl() + " is not in an alliance registered to this guild (currently: " + db.getAllianceIds() + ")");
                 }
                 Map<ResourceType, Double> stockpile = nation.getStockpile();
+                if (stockpile == null) {
+                    return new TransferResult(OffshoreInstance.TransferStatus.ALLIANCE_ACCESS, nation, resourcesArr, baseNote.withValue().toString())
+                            .addMessage( "Alliance information access is disabled from their **account** page");
+                }
                 for (Map.Entry<ResourceType, Double> entry : stockpile.entrySet()) {
                     if (entry.getValue() > 0) {
                         double newAmt = Math.max(0, costApplyMissing[entry.getKey().ordinal()] - entry.getValue());
                         if (newAmt <= 0) {
-                            costApplyMissing[entry.getKey().ordinal()] = 0;
+                            resourcesArr[entry.getKey().ordinal()] = 0;
                         } else {
-                            costApplyMissing[entry.getKey().ordinal()] = newAmt;
+                            resourcesArr[entry.getKey().ordinal()] = newAmt;
                         }
                     }
                 }
             }
-            return costApplyMissing;
+            return null;
         };
 
         List<TransferResult> errors = new ArrayList<>();
@@ -597,7 +601,7 @@ public class Grant {
                 }
                 DepositType.DepositTypeInfo note = grant.getType();
                 DepositType type = note.getType();
-                double[] resources = grant.cost();
+                double[] resources = grant.cost().clone();
                 if (ResourceType.isZero(resources)) {
                     errors.add(new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), baseNote.withValue().toString()).addMessage(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN.getMessage()));
                     continue;
@@ -609,14 +613,18 @@ public class Grant {
                 grantByReceiver.put(receiver, grant);
 
                 if (sheet != null) {
-                    double[] costApplyMissing = onlyMissingFunc.apply(receiver, resources);
-                    if (ResourceType.isZero(costApplyMissing)) {
+                    TransferResult abort = onlyMissingFunc.apply(receiver, resources);
+                    if (abort != null) {
+                        errors.add(abort);
+                        continue;
+                    }
+                    if (ResourceType.isZero(resources)) {
                         errors.add(new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new HashMap<>(), baseNote.withValue().toString()).addMessage(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN.getMessage()));
                         continue;
                     }
                     row.add(grant.getInstructions());
-                    row.add(ResourceType.convertedTotal(costApplyMissing));
-                    row.add(ResourceType.toString(costApplyMissing));
+                    row.add(ResourceType.convertedTotal(resources));
+                    row.add(ResourceType.toString(resources));
                     row.add(note.toString());
                 }
 
@@ -654,12 +662,18 @@ public class Grant {
             }
             DBNation receiver = receivers.iterator().next();
             Grant grant = grantByReceiver.get(receiver);
-            double[] resources = onlyMissingFunc.apply(receiver, grant.cost());
+            double[] original = grant.cost();
+            double[] toSend = original.clone();
+            TransferResult abort = onlyMissingFunc.apply(receiver, toSend);
+            if (abort != null) {
+                io.create().embed(abort.toTitleString(), abort.toEmbedString()).send();
+                return null;
+            }
 
             JSONObject transferCmd = CM.transfer.resources.cmd
                     .receiver(receiver.getUrl())
                     .bank_note(bank_note.toString())
-                    .transfer(ResourceType.toString(resources))
+                    .transfer(ResourceType.toString(toSend))
                     .nation_account(nation_account != null ? nation_account.getQualifiedId() : null)
                     .ingame_bank(ingame_bank != null ? ingame_bank.getQualifiedId() : null)
                     .offshore_account(offshore_account != null ? offshore_account.getQualifiedId() : null)
@@ -675,7 +689,7 @@ public class Grant {
                     .calling_command(command.toString())
                     .toJson();
             StringBuilder msg = new StringBuilder();
-            msg.append(ResourceType.toString(resources)).append("\n")
+            msg.append(ResourceType.toString(toSend)).append("\n")
                     .append("Current values for: " + receiver.getNation()).append('\n')
                     .append("Cities: " + receiver.getCities()).append('\n')
                     .append("Infra: " + receiver.getAvg_infra()).append('\n');

@@ -19,6 +19,18 @@ public class TransferResult {
     private final double[] amount;
     private final String note;
 
+    public TransferResult(OffshoreInstance.TransferStatus status, NationOrAllianceOrGuild receiver, Map<ResourceType, Double> amount, String note) {
+        this(status, receiver, ResourceType.resourcesToArray(amount), note);
+    }
+
+    public TransferResult(OffshoreInstance.TransferStatus status, NationOrAllianceOrGuild receiver, double[] amount, String note) {
+        this.status = status;
+        this.receiver = receiver;
+        this.resultMessage = new ArrayList<>();
+        this.amount = amount;
+        this.note = note;
+    }
+
     public static Map<OffshoreInstance.TransferStatus, Integer> count(Collection<TransferResult> list) {
         Map<OffshoreInstance.TransferStatus, Integer> map = new HashMap<>();
         for (TransferResult result : list) {
@@ -69,10 +81,6 @@ public class TransferResult {
         return KeyValue.of(title, body);
     }
 
-    public TransferResult(OffshoreInstance.TransferStatus status, NationOrAllianceOrGuild receiver, Map<ResourceType, Double> amount, String note) {
-        this(status, receiver, ResourceType.resourcesToArray(amount), note);
-    }
-
     public static Map<NationOrAllianceOrGuild, TransferResult> toMap(List<TransferResult> list) {
         Map<NationOrAllianceOrGuild, TransferResult> errors = new LinkedHashMap<>();
         for (TransferResult result : list) {
@@ -91,14 +99,6 @@ public class TransferResult {
 
     public void setStatus(OffshoreInstance.TransferStatus status) {
         this.status = status;
-    }
-
-    public TransferResult(OffshoreInstance.TransferStatus status, NationOrAllianceOrGuild receiver, double[] amount, String note) {
-        this.status = status;
-        this.receiver = receiver;
-        this.resultMessage = new ArrayList<>();
-        this.amount = amount;
-        this.note = note;
     }
 
     public TransferResult addMessage(String... messages) {
