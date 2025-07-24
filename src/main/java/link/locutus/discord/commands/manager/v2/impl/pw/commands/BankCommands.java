@@ -1567,7 +1567,7 @@ public class BankCommands {
             return "No nations to process." + StringMan.join(footer, "\n");
         }
 
-        if (nations.getNations().size() > 100 && db.isValidAlliance()) {
+        if (nations.getNations().size() > 100 && !db.isValidAlliance()) {
             throw new IllegalArgumentException("Too many nations: " + nations.getNations().size() + " (max: 100 outside of an alliance guild)");
         }
 
