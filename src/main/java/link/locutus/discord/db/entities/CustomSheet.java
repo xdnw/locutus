@@ -3,6 +3,7 @@ package link.locutus.discord.db.entities;
 import it.unimi.dsi.fastutil.objects.Object2BooleanLinkedOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
@@ -131,12 +132,13 @@ public class CustomSheet {
 
                     // get write cache
                     PlaceholderCache<?> cache = new PlaceholderCache<>(selection);
-                    store.addProvider(Key.of(PlaceholderCache.class, ph.getType()), cache);
+                    LocalValueStore tabStore = new LocalValueStore<>(store);
+                    tabStore.addProvider(Key.of(PlaceholderCache.class, ph.getType()), cache);
 
                     List<Function<Object, String>> functions = new ArrayList<>();
                     for (String column : columns) {
                         try {
-                            Function<Object, String> function = ph.getFormatFunction(store, column, true);
+                            Function<Object, String> function = ph.getFormatFunction(tabStore, column, true);
                             functions.add(function);
                         } catch (IllegalArgumentException e) {
                             e.printStackTrace();
