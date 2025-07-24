@@ -83,7 +83,7 @@ public class BankPages {
         List<List<String>> rows = new ArrayList<>();
         for (DBNation nation : nations) {
             List<String> row = new ArrayList<>(header);
-            Map<DepositType, double[]> deposits = nation.getDeposits(db, tracked, !noTaxBase, !ignoreOffset, -1, 0L, true);
+            Map<DepositType, double[]> deposits = nation.getDeposits(db, tracked, !noTaxBase, !ignoreOffset, -1, 0L, Long.MAX_VALUE, true);
 
             row.set(0, MarkupUtil.htmlUrl(nation.getNation(), nation.getUrl()));
             row.set(1, MathMan.format(nation.getCities()));
@@ -97,7 +97,7 @@ public class BankPages {
             for (double[] value : deposits.values()) total = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, total, value);
             row.set(7, MathMan.format(ResourceType.convertedTotal(total)));
 
-            List<Transaction2> transactions = nation.getTransactions(-1, true);
+            List<Transaction2> transactions = nation.getTransactions(-1, true, 0L, Long.MAX_VALUE);
 
             long lastDeposit = 0;
             for (Transaction2 transaction : transactions) {

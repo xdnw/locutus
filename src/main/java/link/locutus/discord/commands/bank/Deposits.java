@@ -71,6 +71,7 @@ public class Deposits extends Command {
         banker.setMeta(NationMeta.INTERVIEW_DEPOSITS, (byte) 1);
 
         long cutOff = 0;
+        long endTime = Long.MAX_VALUE;
         Iterator<String> iterator = args.iterator();
         while (iterator.hasNext()) {
             String arg = iterator.next();
@@ -81,6 +82,15 @@ public class Deposits extends Command {
 
                 cutOff = TimeUtil.parseDate(TimeUtil.MMDDYYYY_HH_MM_A, dateStr);
                 if (equal) cutOff -= 1;
+                iterator.remove();
+            }
+            if (arg.startsWith("date<")) {
+                String dateStr = arg.split("<")[1];
+                boolean equal = dateStr.startsWith("=");
+                if (equal) dateStr = dateStr.substring(1);
+
+                endTime = TimeUtil.parseDate(TimeUtil.MMDDYYYY_HH_MM_A, dateStr);
+                if (equal) endTime += 1;
                 iterator.remove();
             }
         }
@@ -98,6 +108,7 @@ public class Deposits extends Command {
                 (args.get(0).equalsIgnoreCase("*")) ? guildDb : PWBindings.nationOrAllianceOrGuildOrTaxId(args.get(0)),
                 args.size() == 2 ? PWBindings.alliances(guild, args.get(1), author, me) : null,
                 cutOff != 0 ? cutOff : null,
+                endTime != Long.MAX_VALUE ? endTime : null,
                 flags.contains('b'),
                 flags.contains('o'),
                 flags.contains('t'),

@@ -486,14 +486,13 @@ public abstract class AGrantTemplate<T> {
             }
         }));
 
-        List<Transaction2> transfers = receiver == null ? Collections.emptyList() : receiver.getTransactions(template == null || !confirmed ? -1 : 0, true);
-        long latest = !transfers.isEmpty() ? transfers.stream().mapToLong(Transaction2::getDate).max().getAsLong() : 0L;
-        // require no new transfers
+        Transaction2 latestTx = receiver == null ? null : Locutus.imp().getBankDB().getLatestWithdrawal(receiver.getId(), 1);
+        long latest = latestTx == null ? 0L : latestTx.getDate();
         list.add(new Grant.Requirement("Nation must NOT receive a transfer whilst this grant is being sent. Please try again", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                List<Transaction2> newTransfers = receiver.getTransactions(template == null || !confirmed ? -1 : 0, true);
-                long newLatest = newTransfers.size() > 0 ? newTransfers.stream().mapToLong(Transaction2::getDate).max().getAsLong() : 0L;
+                Transaction2 newLatestTx = Locutus.imp().getBankDB().getLatestWithdrawal(nation.getId(), 1);
+                long newLatest = newLatestTx == null ? 0L : newLatestTx.getDate();
                 return latest == newLatest;
             }
         }));

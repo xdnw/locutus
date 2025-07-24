@@ -1973,7 +1973,7 @@ public class BankCommands {
                 }
             }
         }
-        Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, 0, 0, true);
+        Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, 0, 0, Long.MAX_VALUE, true);
 
         double[] toAdd = depoByType.get(from);
         if (toAdd == null || ResourceType.isZero(toAdd)) {
@@ -2034,7 +2034,7 @@ public class BankCommands {
                 start = System.currentTimeMillis();
                 io.updateOptionally(msgFuture, "Resetting deposits for " + nation.getMarkdownUrl());
             }
-            Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, force && !updateBulk ? 0L : -1L, 0, true);
+            Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, force && !updateBulk ? 0L : -1L, 0, Long.MAX_VALUE, true);
 
             double[] deposits = depoByType.get(DepositType.DEPOSIT);
             if (deposits != null && !ignoreBankDeposits && !ResourceType.isZero(deposits)) {
@@ -2062,7 +2062,7 @@ public class BankCommands {
 
             double[] grant = depoByType.get(DepositType.GRANT);
             if (grant != null && !ignoreGrants && !ResourceType.isZero(grant)) {
-                List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, true, true, -1, 0, true);
+                List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, true, true, -1, 0, Long.MAX_VALUE, true);
                 for (Map.Entry<Integer, Transaction2> entry : transactions) {
                     Transaction2 tx = entry.getValue();
                     if (tx.note == null || (tx.receiver_id != nation.getNation_id() && tx.sender_id != nation.getNation_id()) || (!tx.note.contains("#expire") && !tx.note.contains("#decay")))
@@ -3008,11 +3008,11 @@ public class BankCommands {
 
                 double[] depo;
                 if (depositType != null) {
-                    Map<DepositType, double[]> depoByCategory = nation.getDeposits(db, null, true, true, -1, 0L, false);
+                    Map<DepositType, double[]> depoByCategory = nation.getDeposits(db, null, true, true, -1, 0L, Long.MAX_VALUE, false);
                     depo = depoByCategory.get(depositType.type);
                     if (depo == null) continue;
                 } else {
-                    depo = nation.getNetDeposits(db, null, true, true, includeGrants, -1, 0L, false);
+                    depo = nation.getNetDeposits(db, null, true, true, includeGrants, -1, 0L, Long.MAX_VALUE, false);
                 }
                 double[] amtAddArr = ResourceType.getBuffer();
                 boolean add = false;
@@ -3120,7 +3120,7 @@ public class BankCommands {
 
         List<Transaction2> transactions = new ArrayList<>();
         for (DBNation nation : nations) {
-            List<Transaction2> offsets = db.getDepositOffsetTransactions(nation.getNation_id());
+            List<Transaction2> offsets = db.getDepositOffsetTransactions((long) nation.getNation_id(), startTime, endTime);
             transactions.addAll(offsets);
         }
         Long finalStartTime = startTime;
@@ -3160,11 +3160,11 @@ public class BankCommands {
         return null;
     }
 
-    public static List<Transaction2> getRecords(GuildDB db, User user, boolean includeTaxes, boolean useTaxBase, boolean useOffset, long timeframe, NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild, boolean onlyOffshoreTransfers) {
+    public static List<Transaction2> getRecords(GuildDB db, User user, boolean includeTaxes, boolean useTaxBase, boolean useOffset, long start, long end, NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild, boolean onlyOffshoreTransfers) {
         List<Transaction2> transactions = new ArrayList<>();
         if (nationOrAllianceOrGuild.isNation()) {
             DBNation nation = nationOrAllianceOrGuild.asNation();
-            List<Map.Entry<Integer, Transaction2>> natTrans = nation.getTransactions(db, null, includeTaxes, useTaxBase, useOffset, 0, timeframe, false);
+            List<Map.Entry<Integer, Transaction2>> natTrans = nation.getTransactions(db, null, includeTaxes, useTaxBase, useOffset, 0, start, end, false);
             for (Map.Entry<Integer, Transaction2> entry : natTrans) {
                 transactions.add(entry.getValue());
             }
@@ -3174,11 +3174,11 @@ public class BankCommands {
             Set<Integer> aaIds = db.getAllianceIds();
             OffshoreInstance offshore = db.getOffshore();
             if (aaIds.contains(alliance.getAlliance_id()) && offshore != null) {
-                transactions.addAll(offshore.getTransactionsAA(aaIds, true));
+                transactions.addAll(offshore.getTransactionsAA(aaIds, true, start, end));
             } else if (!aaIds.isEmpty() && db.getOffshore() != null && aaIds.contains(db.getOffshore().getAllianceId()) && offshore != null) {
-                transactions.addAll(offshore.getTransactionsAA(alliance.getAlliance_id(), true));
+                transactions.addAll(offshore.getTransactionsAA(alliance.getAlliance_id(), true, start, end));
             } else {
-                List<Transaction2> txToAdd = (db.getTransactionsById(alliance.getAlliance_id(), 2));
+                List<Transaction2> txToAdd = (db.getTransactionsById(alliance.getAlliance_id(), 2, start, end));
                 Set<Integer> hasAdmin = new IntOpenHashSet();
                 boolean globalAdmin = Roles.ECON_STAFF.hasOnRoot(user);
                 if (user != null && db != null) {
@@ -3212,9 +3212,9 @@ public class BankCommands {
             GuildDB offshoreDb = offshoreEntry.getKey();
             if (otherDB.getIdLong() == db.getIdLong() || (offshoreDb == db && onlyOffshoreTransfers)) {
                 OffshoreInstance offshore = db.getOffshore();
-                transactions.addAll(offshore.getTransactionsGuild(otherDB.getIdLong(), true));
+                transactions.addAll(offshore.getTransactionsGuild(otherDB.getIdLong(), true, start, end));
             } else {
-                transactions.addAll(db.getTransactionsById(otherDB.getGuild().getIdLong(), 3));
+                transactions.addAll(db.getTransactionsById(otherDB.getGuild().getIdLong(), 3, start, end));
             }
         } else if (nationOrAllianceOrGuild.isTaxid()) {
             throw new IllegalArgumentException("Not implemented");
@@ -3230,7 +3230,8 @@ public class BankCommands {
     public String transactions(@Me IMessageIO channel, @Me GuildDB db, @Me @Default User user, @Me DBNation me,
                                @AllowDeleted NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild,
                                @Arg(value = "Only show transactions after this time", group = 0)
-                               @Default("%epoch%") @Timestamp long timeframe,
+                               @Default @Timestamp Long start_time,
+                               @Default @Timestamp Long end_time,
                                @Arg(value = "Do NOT include the tax record resources below the internal tax rate\n" +
                                        "Default: False", group = 1)
                                @Default("false") boolean useTaxBase,
@@ -3245,7 +3246,9 @@ public class BankCommands {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
         if (onlyOffshoreTransfers && nationOrAllianceOrGuild.isNation()) return "Only Alliance/Guilds can have an offshore account";
 
-        List<Transaction2> transactions = getRecords(db, user, true, useTaxBase, useOffset, timeframe, nationOrAllianceOrGuild, onlyOffshoreTransfers);
+        List<Transaction2> transactions = getRecords(db, user, true, useTaxBase, useOffset,
+                start_time == null ? 0 : start_time, end_time == null ? Long.MAX_VALUE : end_time,
+                nationOrAllianceOrGuild, onlyOffshoreTransfers);
         sheet.addTransactionsList(channel, transactions, true);
         return null;
     }
@@ -3972,7 +3975,13 @@ public class BankCommands {
                                   @Arg(value = "Only include transfers after this time", group = 0)
                                       @Switch("c")
                                       @Timestamp
-                                      Long timeCutoff,
+                                      Long start_time,
+
+                                  @Arg(value = "Only include transfers after this time", group = 0)
+                                      @Switch("et")
+                                      @Timestamp
+                                      Long end_time,
+
                                   @Arg(value = "Allow checking deleted records", group = 0)
                                       @Switch("z")
                                       boolean allowCheckDeleted,
@@ -4013,7 +4022,8 @@ public class BankCommands {
             if (showCategories == null) {
             showCategories = (db.getOrNull(GuildKey.DISPLAY_ITEMIZED_DEPOSITS) == Boolean.TRUE);
         }
-        if (timeCutoff == null) timeCutoff = 0L;
+        if (start_time == null) start_time = 0L;
+        if (end_time == null) end_time = Long.MAX_VALUE;
         Set<Long> offshoreIds = offshores == null ? null : offshores.stream().map(NationOrAllianceOrGuild::getIdLong).collect(Collectors.toSet());
         if (offshoreIds != null) offshoreIds = PW.expandCoalition(offshoreIds);
 
@@ -4069,7 +4079,7 @@ public class BankCommands {
         } else if (nationOrAllianceOrGuild.isNation()) {
             DBNation nation = nationOrAllianceOrGuild.asNation();
             if (nation != me && !Roles.INTERNAL_AFFAIRS.has(author, guild) && !Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild) && !Roles.ECON.has(author, guild) && !Roles.ECON_STAFF.has(author, guild)) return "You do not have permission to check other nation's deposits";
-            List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, offshoreIds, !includeBaseTaxes, !ignoreInternalOffsets, 0L, timeCutoff, true);
+            List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, offshoreIds, !includeBaseTaxes, !ignoreInternalOffsets, 0L, start_time, end_time, true);
             accountDeposits = PW.sumNationTransactions(nation, db, offshoreIds, transactions, includeExpired, includeIgnored, f -> true);
 
             if (show_expiring_records) {
@@ -4164,7 +4174,7 @@ public class BankCommands {
             }
         } else if (nationOrAllianceOrGuild.isTaxid()) {
             TaxBracket bracket = nationOrAllianceOrGuild.asBracket();
-            Map<DepositType, double[]> deposits = db.getTaxBracketDeposits(bracket.taxId, timeCutoff, includeExpired, includeIgnored);
+            Map<DepositType, double[]> deposits = db.getTaxBracketDeposits(bracket.taxId, start_time, end_time, includeExpired, includeIgnored);
             accountDeposits.putAll(deposits);
 
             if (showCategories) {
@@ -4285,8 +4295,8 @@ public class BankCommands {
                                     nationOrAllianceOrGuild.getQualifiedId())
                                     .offshores(
                                             offshores == null || offshores.isEmpty() ? null : StringMan.join(offshores.stream().map(DBAlliance::getId).toList(), ",")
-                                    ).timeCutoff(
-                                    timeCutoff != null && timeCutoff > 0 ? "timestamp:" + timeCutoff : null
+                                    ).start_time(start_time > 0 ? "timestamp:" + start_time : null
+                                    ).end_time(end_time > 0 ? "timestamp:" + end_time : null
                                     ).includeBaseTaxes(
                                     includeBaseTaxes ? "true" : null
                                     ).ignoreInternalOffsets(

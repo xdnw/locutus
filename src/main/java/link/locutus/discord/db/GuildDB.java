@@ -896,12 +896,18 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         }
     }
 
-    public List<Transaction2> getTransactionsById(long senderOrReceiverId, int type) {
+    public List<Transaction2> getTransactionsById(long senderOrReceiverId, int type, long start, long end) {
         GuildDB delegate = getDelegateServer();
-        if (delegate != null) return delegate.getTransactionsById(senderOrReceiverId, type);
+        if (delegate != null) return delegate.getTransactionsById(senderOrReceiverId, type, start, end);
         List<Transaction2> list = new ObjectArrayList<>();
 
         String query = "select * FROM INTERNAL_TRANSACTIONS2 WHERE ((sender_id = ? AND sender_TYPE = ?) OR (receiver_id = ? AND receiver_type = ?))";
+        if (start > 0) {
+            query += " AND tx_datetime >= ?";
+        }
+        if (end < Long.MAX_VALUE) {
+            query += " AND tx_datetime <= ?";
+        }
 
         query(query, new ThrowingConsumer<PreparedStatement>() {
             @Override
@@ -1692,13 +1698,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return result;
     }
 
-    public Map<DepositType, double[]> getTaxBracketDeposits(int taxId, long cutOff, boolean includeExpired, boolean includeIgnored) {
-        List<TaxDeposit> records;
-        if (cutOff == 0) {
-            records = Locutus.imp().getBankDB().getTaxesByBracket(taxId);
-        } else {
-            records = Locutus.imp().getBankDB().getTaxesByBracket(taxId, cutOff);
-        }
+    public Map<DepositType, double[]> getTaxBracketDeposits(int taxId, long start, long end, boolean includeExpired, boolean includeIgnored) {
+        List<TaxDeposit> records = Locutus.imp().getBankDB().getTaxesByBracket(taxId, start, end);
         Set<Integer> allowedAAIds = getAllianceIds(true);
 
         double[] deposits = ResourceType.getBuffer();
@@ -2216,7 +2217,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
     public List<Map.Entry<Integer, Transaction2>> getDepositOffsetTransactionsTaxId(int tax_id) {
-        List<Transaction2> records = getDepositOffsetTransactions(tax_id, 4);
+        List<Transaction2> records = getDepositOffsetTransactions(tax_id, 4, 0, Long.MAX_VALUE);
         List<Map.Entry<Integer, Transaction2>> result = new ArrayList<>(records.size());
         for (Transaction2 record : records) {
             if (record.sender_id != tax_id && record.receiver_id != tax_id) continue;
@@ -2226,28 +2227,26 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return result;
     }
 
-    public List<Transaction2> getDepositOffsetTransactions(long id) {
+    public List<Transaction2> getDepositOffsetTransactions(long id, long start, long end) {
         long sender_id = Math.abs(id);
 
-        // nation_id = 1
-        // alliance_id = 2
-        // guild_id = 3
-        // tax_id = 4
         int sender_type;
         if (sender_id > Integer.MAX_VALUE) {
             sender_type = id > 0 ? 3 : 4;
         } else {
             sender_type = id >= 0 ? 1 : 2;
         }
-        return getDepositOffsetTransactions(sender_id, sender_type);
+        return getDepositOffsetTransactions(sender_id, sender_type, start, end);
     }
 
-    public List<Transaction2> getDepositOffsetTransactions(long sender_id, int sender_type) {
-        Map<ResourceType, Map<String, Double>> legacyOffset = sender_type <= 3 ? getDepositOffset(sender_type == 2 ? -sender_id : sender_id) : new Object2ObjectOpenHashMap<>();
-        List<Transaction2> legacyTransfers = getDepositOffsetTransactionsLegacy(sender_id, sender_type, legacyOffset);
+    public List<Transaction2> getDepositOffsetTransactions(long sender_id, int sender_type, long start, long end) {
+        List<Transaction2> transfers = getTransactionsById(sender_id, sender_type, start, end);
 
-        List<Transaction2> transfers = getTransactionsById(sender_id, sender_type);
-        transfers.addAll(legacyTransfers);
+        if (start == 0) {
+            Map<ResourceType, Map<String, Double>> legacyOffset = sender_type <= 3 ? getDepositOffset(sender_type == 2 ? -sender_id : sender_id) : new Object2ObjectOpenHashMap<>();
+            List<Transaction2> legacyTransfers = getDepositOffsetTransactionsLegacy(sender_id, sender_type, legacyOffset);
+            transfers.addAll(legacyTransfers);
+        }
 
         for (Transaction2 transfer : transfers) {
             transfer.tx_id = -1;

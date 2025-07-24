@@ -432,7 +432,7 @@ public class UnsortedCommands {
             header.add("" + bracket.getAlliance_id());
             header.add("" + bracket.getNations().size());
 
-            Map<DepositType, double[]> depositsByCat = db.getTaxBracketDeposits(bracket.getId(), 0L, false, false);
+            Map<DepositType, double[]> depositsByCat = db.getTaxBracketDeposits(bracket.getId(), 0L, Long.MAX_VALUE, false, false);
             double[] tax = depositsByCat.getOrDefault(DepositType.TAX, ResourceType.getBuffer());
             double[] deposits = depositsByCat.getOrDefault(DepositType.DEPOSIT, ResourceType.getBuffer());
             header.add(WebUtil.GSON.toJson(ResourceType.resourcesToMap(tax)));

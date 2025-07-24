@@ -200,6 +200,11 @@ public class NationCommands {
         }
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="daysSinceCreationNotLoggedIn")
+        public static class daysSinceCreationNotLoggedIn extends CommandRef {
+            public static final daysSinceCreationNotLoggedIn cmd = new daysSinceCreationNotLoggedIn();
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="daysSinceLastAircraftBuy")
         public static class daysSinceLastAircraftBuy extends CommandRef {
             public static final daysSinceLastAircraftBuy cmd = new daysSinceLastAircraftBuy();

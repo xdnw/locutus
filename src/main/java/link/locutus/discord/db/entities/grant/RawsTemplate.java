@@ -132,7 +132,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
         Map<ResourceType, Double> stockpile = receiver.getStockpile();
         Map<ResourceType, Double> needed = receiver.getResourcesNeeded(stockpile, parsed, false);
 
-        for (Transaction2 record : receiver.getTransactions(-1, true)) {
+        for (Transaction2 record : receiver.getTransactions(-1, true, 0L, Long.MAX_VALUE)) {
             if(record.tx_datetime > cutoff && record.note != null && record.sender_id == receiver.getId()) {
                 Map<DepositType, Object> noteMap = record.getNoteMap();
                 if (noteMap.containsKey(DepositType.RAWS) || noteMap.containsKey(DepositType.TAX)) {

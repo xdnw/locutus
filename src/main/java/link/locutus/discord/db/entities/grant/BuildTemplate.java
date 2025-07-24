@@ -385,7 +385,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                 long lastProject = 0;
                 long lastInfra = 0;
                 // get transfers
-                List<Map.Entry<Integer, Transaction2>> transactions = receiver.getTransactions(db, null, false, false, false, -1, 0, true);
+                List<Map.Entry<Integer, Transaction2>> transactions = receiver.getTransactions(db, null, false, false, false, -1, 0, Long.MAX_VALUE, true);
                 for (Map.Entry<Integer, Transaction2> entry : transactions) {
                     Transaction2 tx = entry.getValue();
                     if (tx.receiver_id != receiver.getId()) continue;

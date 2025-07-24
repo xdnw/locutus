@@ -127,6 +127,8 @@ public enum MilitaryUnit {
     private Int2DoubleFunction peaceUpkeepRedConv;
     private Research capacityResearch;
     private int capacityAmount;
+    private Research rebuyResearch;
+    private int rebuyAmount;
 
     MilitaryUnit(String name, String emoji, double score, double[] cost, double[] peacetimeUpkeep, double multiplyWartimeUpkeep, double[] consumption) {
         this.name = name;
@@ -160,7 +162,12 @@ public enum MilitaryUnit {
         this.capacityAmount = capacity;
     }
 
-    public void setCostResearch(Research research, double[] costReduction, TriConsumer<Integer, Integer, double[]> warUpkeepRed, TriConsumer<Integer, Integer, double[]> peaceUpkeepRed, Int2DoubleFunction warUpkeepRedConv, Int2DoubleFunction peaceUpkeepRedConv) {
+    public void setRebuyResearch(Research research, int amt) {
+        this.rebuyResearch = research;
+        this.rebuyAmount = amt;
+    }
+
+    public void setCostResearch(Research research, double[] costReduction) {
         this.costReducer = research;
         this.upkeepReducer = research;
 
@@ -172,7 +179,9 @@ public enum MilitaryUnit {
         costReductionSalvage[ALUMINUM.ordinal()] = costReduction[ALUMINUM.ordinal()] * 0.05;
         costReductionSalvage[STEEL.ordinal()] = costReduction[STEEL.ordinal()] * 0.05;
         this.costReductionSalvageConverted = ResourceType.convertedCostLazy(costReductionSalvage);
+    }
 
+    public void setUpkeepResearch(TriConsumer<Integer, Integer, double[]> warUpkeepRed, TriConsumer<Integer, Integer, double[]> peaceUpkeepRed, Int2DoubleFunction warUpkeepRedConv, Int2DoubleFunction peaceUpkeepRedConv) {
         this.warUpkeepRed = warUpkeepRed;
         this.peaceUpkeepRed = peaceUpkeepRed;
         this.warUpkeepRedConv = warUpkeepRedConv;
@@ -190,10 +199,10 @@ public enum MilitaryUnit {
 
     @Command(desc = "Get the max unit buys per day for a number of cities")
     public int getMaxPerDay(int cities) {
-        return getMaxPerDay(cities, f -> false);
+        return getMaxPerDay(cities, f -> false, f -> 0);
     }
 
-    public int getMaxPerDay(int cities, Predicate<Project> hasProject) {
+    public int getMaxPerDay(int cities, Predicate<Project> hasProject, Function<Research, Integer> getResearch) {
         MilitaryBuilding building = getBuilding();
         int cap;
         if (building != null) {
@@ -220,6 +229,7 @@ public enum MilitaryUnit {
             }
             return cap;
         }
+        Research research = this.rebuyResearch;
         return cap;
     }
 

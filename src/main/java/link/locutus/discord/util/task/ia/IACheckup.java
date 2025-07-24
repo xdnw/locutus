@@ -172,7 +172,7 @@ public class IACheckup {
 
         List<Transaction2> transactions = memberTransfers.computeIfAbsent(nation, f -> {
             try {
-                return nation.getTransactions(fast || inactive ? -1L : 1, false);
+                return nation.getTransactions(fast || inactive ? -1L : 1, false, 0, Long.MAX_VALUE);
             } catch (RuntimeException e) {
                 e.printStackTrace();
                 return Locutus.imp().getBankDB().getTransactionsByNation(nation.getNation_id());
