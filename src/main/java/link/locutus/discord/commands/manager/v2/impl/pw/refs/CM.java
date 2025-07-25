@@ -10286,6 +10286,18 @@ public class CM {
             }
 
             }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="autoTab")
+            public static class auto_tab extends CommandRef {
+                public static final auto_tab cmd = new auto_tab();
+            public auto_tab sheet(String value) {
+                return set("sheet", value);
+            }
+
+            public auto_tab saveSheet(String value) {
+                return set("saveSheet", value);
+            }
+
+            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="fromFile")
             public static class from_file extends CommandRef {
                 public static final from_file cmd = new from_file();
