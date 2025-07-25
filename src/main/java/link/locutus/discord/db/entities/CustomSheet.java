@@ -1,12 +1,13 @@
 package link.locutus.discord.db.entities;
 
-import it.unimi.dsi.fastutil.objects.Object2BooleanLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.sheet.SpreadSheet;
 
@@ -73,7 +74,8 @@ public class CustomSheet {
 
     public List<String> update(ValueStore store, Map<String, Map.Entry<SelectionAlias, SheetTemplate>> customTabs) throws GeneralSecurityException, IOException {
         SpreadSheet sheet = SpreadSheet.create(sheetId);
-        List<String> errors = new ArrayList<>();
+        List<String> messageList = new ObjectArrayList<>();
+        Map<String, List<String>> messageGroups = new Object2ObjectLinkedOpenHashMap<>();
 
         List<Future<?>> writeTasks = new ArrayList<>();
         ExecutorService executor = Locutus.imp().getExecutor();
@@ -94,7 +96,9 @@ public class CustomSheet {
                 throw new RuntimeException(e);
             }
         });
-        Set<String> tabsUpdated = new HashSet<>();
+        Set<String> tabsUpdated = new ObjectOpenHashSet<>();
+        List<Map.Entry<String, Long>> slowPlaceholders = new ObjectArrayList<>();
+
         for (Map.Entry<String, Map.Entry<SelectionAlias, SheetTemplate>> entry : customTabs.entrySet()) {
             String tabName = entry.getKey();
             Map.Entry<SelectionAlias, SheetTemplate> value = entry.getValue();
@@ -103,18 +107,18 @@ public class CustomSheet {
 
             Class type = alias.getType();
             if (!template.getType().equals(alias.getType())) {
-                errors.add("[Tab: `" + tabName + "`] Incompatible types for `select:" + alias.getName() + "` and `template:" + template.getName() + "` | " +
+                messageList.add("[Tab: `" + tabName + "`] Incompatible types for `select:" + alias.getName() + "` and `template:" + template.getName() + "` | " +
                         "`" + alias.getType().getSimpleName() + "` != " +  "`" + template.getType().getSimpleName() + "`");
                 continue;
             }
 
             Placeholders<Object, Object> ph = Locutus.cmd().getV2().getPlaceholders().get(type);
             if (ph == null) {
-                errors.add("[Tab: `" + tabName + "`] Invalid type: `" + type.getSimpleName() + "`");
+                messageList.add("[Tab: `" + tabName + "`] Invalid type: `" + type.getSimpleName() + "`");
                 continue;
             }
 
-            Map<String, Integer> maxErrors = new HashMap<>();
+            Map<String, Integer> maxErrors = new Object2IntLinkedOpenHashMap<>();
             Future<?> future = executor.submit(() -> {
                 try {
                     Object modifier = alias.getModifier() == null ? null : ph.parseModifierLegacy(store, alias.getModifier());
@@ -142,10 +146,11 @@ public class CustomSheet {
                             functions.add(function);
                         } catch (IllegalArgumentException e) {
                             e.printStackTrace();
-                            errors.add("[Tab: `" + tabName + "`,Column:`" + column + "`] " + StringMan.stripApiKey(e.getMessage()));
+                            messageList.add("[Tab: `" + tabName + "`,Column:`" + column + "`] " + StringMan.stripApiKey(e.getMessage()));
                             functions.add(null);
                         }
                     }
+                    long[] timePerColumn = new long[columns.size()];
                     for (Object o : selection) {
                         for (int i = 0; i < columns.size(); i++) {
                             Function<Object, String> function = functions.get(i);
@@ -153,10 +158,16 @@ public class CustomSheet {
                                 header.set(i, "");
                                 continue;
                             }
+                            long start = System.currentTimeMillis();
                             try {
                                 String value1 = function.apply(o);
+                                long diff = System.currentTimeMillis() - start;
+                                timePerColumn[i] += diff;
                                 header.set(i, value1 == null ? "" : value1);
                             } catch (Throwable e) {
+                                long diff = System.currentTimeMillis() - start;
+                                timePerColumn[i] += diff;
+
                                 Throwable t = e;
                                 header.set(i, "");
                                 while (t.getCause() != null && t.getCause() != t) {
@@ -164,27 +175,33 @@ public class CustomSheet {
                                 }
                                 int currentErrors = maxErrors.merge(tabName, 1, Integer::sum);
                                 if (currentErrors == 25) {
-                                    errors.add("[Tab: `" + tabName + "`] Too many errors, skipping the rest.");
+                                    String msgWithPlaceholder = "Tabs: {value}; contained too many errors, skipping the rest.";
+                                    messageGroups.computeIfAbsent(msgWithPlaceholder, f -> new ObjectArrayList<>()).add(tabName);
                                 } else if (currentErrors < 25) {
                                     t.printStackTrace();
                                     String column = columns.get(i);
                                     String elemStr = ph.getName(o);
-                                    errors.add("[Tab: `" + tabName + "`,Column:`" + column + "`,Elem:`" + elemStr + "`] " + StringMan.stripApiKey(t.getMessage()));
+                                    messageList.add("[Tab: `" + tabName + "`,Column:`" + column + "`,Elem:`" + elemStr + "`] " + StringMan.stripApiKey(t.getMessage()));
                                 }
                             }
                         }
                         sheet.addRow(tabName, header);
                     }
                     if (selection.isEmpty()) {
-                        errors.add("[Tab: `" + tabName + "`] No elements found for selection: `" + alias.getSelection() + "`");
+                        messageList.add("[Tab: `" + tabName + "`] No elements found for selection: `" + alias.getSelection() + "`");
+                    }
+                    for (int i = 0; i < timePerColumn.length; i++) {
+                        if (timePerColumn[i] > 200) {
+                            slowPlaceholders.add(new AbstractMap.SimpleEntry<>(columns.get(i), timePerColumn[i]));
+                        }
                     }
                     createTabsFuture.get();
                     sheet.updateWrite(tabName);
-                    errors.add("[Tab: `" + tabName + "`] Finished update.");
+                    messageGroups.computeIfAbsent("Tabs: {value}, updated successfully.", f -> new ObjectArrayList<>()).add(tabName);
                     tabsUpdated.add(tabName.toLowerCase(Locale.ROOT));
                 } catch (Exception e) {
                     e.printStackTrace();
-                    errors.add("[Tab: `" + tabName + "`] " + StringMan.stripApiKey(e.getMessage()));
+                    messageList.add("[Tab: `" + tabName + "`] " + StringMan.stripApiKey(e.getMessage()));
                 }
             });
             writeTasks.add(future);
@@ -193,15 +210,34 @@ public class CustomSheet {
             try {
                 writeTask.get();
             } catch (Exception e) {
-                errors.add(StringMan.stripApiKey(e.getMessage()));
+                messageList.add(StringMan.stripApiKey(e.getMessage()));
             }
         }
         for (Map.Entry<String, Boolean> entry : tabsCreated.entrySet()) {
             if (tabsUpdated.contains(entry.getKey().toLowerCase(Locale.ROOT))) {
                 continue;
             }
-            errors.add("[Tab: `" + entry.getKey() + "`] Exists in the google sheet, but has no template.");
+            messageGroups.computeIfAbsent("Tabs: {value}, exists in the google sheet, but has no template.", f -> new ObjectArrayList<>()).add(entry.getKey());
         }
-        return errors;
+        if (tabsUpdated.size() > 1) {
+            messageList.add("To update only a single tab: " + CM.sheet_custom.auto_tab.cmd.toSlashMention());
+        }
+        for (Map.Entry<String, List<String>> stringListEntry : messageGroups.entrySet()) {
+            String key = stringListEntry.getKey();
+            List<String> value = stringListEntry.getValue();
+            String joinedTabs = "`" + String.join("`, `", value) + "`";
+            messageList.add(key.replace("{value}", joinedTabs));
+        }
+        if (!slowPlaceholders.isEmpty()) {
+            slowPlaceholders.sort((a, b) -> Long.compare(b.getValue(), a.getValue()));
+            StringBuilder slowPlaceholdersMessage = new StringBuilder("Timing information:\n");
+            for (Map.Entry<String, Long> entry : slowPlaceholders) {
+                slowPlaceholdersMessage.append(" - `").append(entry.getKey()).append("`: ").append(entry.getValue()).append("ms\n");
+            }
+            messageList.add(slowPlaceholdersMessage.toString());
+        }
+
+
+        return messageList;
     }
 }
