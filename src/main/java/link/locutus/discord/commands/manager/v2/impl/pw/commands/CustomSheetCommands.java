@@ -5,13 +5,7 @@ import de.siegmar.fastcsv.reader.CsvReader;
 import de.siegmar.fastcsv.reader.CsvRow;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.CreateSheet;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
-import link.locutus.discord.commands.manager.v2.binding.annotation.PlaceholderType;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -28,6 +22,7 @@ import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Message;
@@ -38,16 +33,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
-import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiPredicate;
 
 import static link.locutus.discord.config.Messages.TAB_TYPE;
 
@@ -370,11 +359,32 @@ public class CustomSheetCommands {
     }
 
     @Command(desc = """
+            Update a spreadsheet's tab from a url
+            The tab specified by the URL (`#guid`) must be named a valid selection, prefixed by the type e.g. `nation:*`
+            The first row must have placeholders in each column, such as `{nation}` `{cities}` `{score}`""")
+    public String autoTab(ValueStore store, @Me GuildDB db, SpreadSheet sheet, @Switch("s") boolean saveSheet) throws GeneralSecurityException, IOException {
+        String defaultTab = sheet.getDefaultTab();
+        Integer defaultTabId = sheet.getDefaultTabId();
+        if (defaultTab == null && defaultTabId == null) {
+            throw new IllegalArgumentException("No tab specified in the sheet url you provided. Please copy a google sheet tab URL with a `#guid` provided");
+        }
+        return autoPredicate(store, db, sheet, saveSheet, (id, name) -> {
+            return (defaultTabId != null && id != null && id.equals(defaultTabId)) ||
+                     (defaultTab != null && name != null && name.equalsIgnoreCase(defaultTab)) ||
+                     (defaultTabId == null && defaultTab == null && id != null && id.equals(0));
+        });
+    }
+
+    @Command(desc = """
             Generate or update a spreadsheet from a url
             Each tab must be a valid selection, prefixed by the type e.g. `nation:*`
             The first row must have placeholders in each column, such as `{nation}` `{cities}` `{score}`""")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
     public String auto(ValueStore store, @Me GuildDB db, SpreadSheet sheet, @Switch("s") boolean saveSheet) throws GeneralSecurityException, IOException {
+        return autoPredicate(store, db, sheet, saveSheet, (_, _) -> true);
+    }
+
+    private String autoPredicate(ValueStore store, @Me GuildDB db, SpreadSheet sheet, @Switch("s") boolean saveSheet, BiPredicate<Integer, String> allowTab) throws GeneralSecurityException, IOException {
         CustomSheetManager manager = db.getSheetManager();
         PlaceholdersMap phMap = Locutus.cmd().getV2().getPlaceholders();
         List<String> errors = new ArrayList<>();
@@ -406,6 +416,9 @@ public class CustomSheetCommands {
 
         Map<String, SelectionAlias> customTabsToFetch = new LinkedHashMap<>();
         for (Map.Entry<Integer, String> entry : tabs.entrySet()) {
+            if (!allowTab.test(entry.getKey(), entry.getValue())) {
+                continue;
+            }
             String tabName = entry.getValue();
             SelectionAlias selection;
             try {

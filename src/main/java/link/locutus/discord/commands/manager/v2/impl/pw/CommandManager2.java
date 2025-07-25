@@ -274,6 +274,8 @@ public class CommandManager2 {
         getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "info", "info");
         getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "list", "list");
         getCommands().registerMethod(new CustomSheetCommands(), List.of("sheet_custom"), "fromFile", "from_file");
+        getCommands().registerMethod(new CustomSheetCommands(), List.of("sheet_custom"), "autoTab", "auto_tab");
+
         getCommands().registerMethod(new StatCommands(), List.of("alliance", "stats"), "compareStats", "coalition_metric_by_turn");
         getCommands().registerMethod(new StatCommands(), List.of("alliance", "stats"), "allianceStats", "metrics_by_turn");
         getCommands().registerMethod(new StatCommands(), List.of("alliance", "stats"), "compareTierStats", "tier_by_coalition");

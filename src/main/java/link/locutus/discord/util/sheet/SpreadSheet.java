@@ -681,6 +681,10 @@ public class SpreadSheet {
         return defaultTab;
     }
 
+    public Integer getDefaultTabId() {
+        return defaultTabId;
+    }
+
     public String getDefaultTab(boolean useFirstTabIfNone) {
         if ((defaultTab == null || defaultTab.isEmpty()) && useFirstTabIfNone) {
             if (service == null) {
