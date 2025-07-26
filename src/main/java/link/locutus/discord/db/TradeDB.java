@@ -2,6 +2,7 @@ package link.locutus.discord.db;
 
 import com.ptsmods.mysqlw.query.QueryCondition;
 import com.ptsmods.mysqlw.query.QueryConditions;
+import com.ptsmods.mysqlw.query.QueryOrder;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TableIndex;
@@ -26,6 +27,7 @@ import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
+import link.locutus.discord.util.trade.TradeManager;
 import net.dv8tion.jda.api.entities.User;
 
 import java.sql.*;
@@ -126,6 +128,168 @@ public class TradeDB extends DBMainV2 {
                     "turn BIGINT NOT NULL" +
                     ");";
             executeStmt(gameAverages);
+        }
+
+        {
+            String weeklyAverages = "CREATE TABLE IF NOT EXISTS TRADE_WEEKLY_AVERAGE (" +
+                    "type INT NOT NULL," +
+                    "day INT NOT NULL," +
+                    "high DOUBLE NOT NULL," +
+                    "low DOUBLE NOT NULL," +
+                    "PRIMARY KEY(type, day)" +
+                    ");";
+            executeStmt(weeklyAverages);
+        }
+    }
+
+    private long[] lastDayWeeklyAverage = new long[ResourceType.values.length];
+
+    public double getWeeklyAverage(ResourceType type, long date, double defaultValue) {
+        long day = TimeUtil.getDay(date);
+        long today = TimeUtil.getDay();
+        if (date == today) {
+            return defaultValue;
+        }
+        long latestDayCalculated = lastDayWeeklyAverage[type.ordinal()];
+        if (latestDayCalculated == -1) {
+            latestDayCalculated = getLatestWeeklyAverageDay(type);
+            lastDayWeeklyAverage[type.ordinal()] = latestDayCalculated;
+        }
+        if (latestDayCalculated != today) {
+            recalculateWeeklyAverage(type, day, latestDayCalculated, today);
+        }
+        com.ptsmods.mysqlw.query.builder.SelectBuilder builder = getDb().selectBuilder("TRADE_WEEKLY_AVERAGE")
+                .select("high")
+                .select("low")
+                .where(QueryCondition.equals("type", type.ordinal()))
+                .where(QueryCondition.equals("day", day))
+                .limit(1);
+        try (ResultSet rs = builder.executeRaw()) {
+            if (rs.next()) {
+                return rs.getDouble(1);
+            } else {
+                return defaultValue;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return defaultValue;
+        }
+    }
+
+    public long getLatestWeeklyAverageDay(ResourceType type) {
+        SelectBuilder builder = getDb().selectBuilder("TRADE_WEEKLY_AVERAGE")
+                .select("MAX(day)")
+                .where(QueryCondition.equals("type", type.ordinal()))
+                .limit(1);
+        try (ResultSet rs = builder.executeRaw()) {
+            if (rs.next()) {
+                long maxDay = rs.getLong(1);
+                if (!rs.wasNull()) return maxDay;
+            }
+            SelectBuilder tradesBuilder = getDb().selectBuilder("TRADES")
+                    .select("MIN(date)")
+                    .where(QueryCondition.equals("resource", type.ordinal()))
+                    .limit(1);
+            try (ResultSet tradesRs = tradesBuilder.executeRaw()) {
+                if (tradesRs.next()) {
+                    long minDate = tradesRs.getLong(1);
+                    if (!tradesRs.wasNull()) {
+                        return TimeUtil.getDay(minDate) + 7;
+                    }
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            return 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return -1;
+    }
+
+    private void saveWeeklyAverage(ResourceType type, long day, double high, double low) {
+        try (PreparedStatement stmt = getConnection().prepareStatement(
+                "INSERT OR REPLACE INTO TRADE_WEEKLY_AVERAGE (type, day, high, low) VALUES (?, ?, ?, ?)"
+        )) {
+            stmt.setObject(1, type.ordinal());
+            stmt.setObject(2, day);
+            stmt.setObject(3, high);
+            stmt.setObject(4, low);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void recalculateWeeklyAverage(ResourceType type, long returnValueForDay, long latestDayCalculated, long today) {
+        long start = TimeUtil.getTimeFromDay(latestDayCalculated) - TimeUnit.DAYS.toMillis(7);
+        long end = TimeUtil.getTimeFromDay(today);
+
+        // Iterate over the trades in
+        com.ptsmods.mysqlw.query.builder.SelectBuilder builder = getDb().selectBuilder("TRADES")
+                .select("*")
+                .where(QueryCondition.equals("resource", type.ordinal()))
+                .where(QueryCondition.greaterEqual("date", start))
+                .where(QueryCondition.less("date", end))
+                .order("date", QueryOrder.OrderDirection.ASC);
+
+        long[] highCount = new long[7];
+        long[] lowCount = new long[7];
+        long[] highSum = new long[7];
+        long[] lowSum = new long[7];
+        long[] slotDays  = new long[7];
+        Arrays.fill(slotDays, -1);
+
+        Consumer<Long> saveAverages = day -> {
+            long highCountTotal = 0;
+            long lowCountTotal = 0;
+            long highSumTotal = 0;
+            long lowSumTotal = 0;
+            for (int i = 0; i < 7; i++) {
+                if (slotDays[i] == -1) continue; // skip empty slots
+                highCountTotal += highCount[i];
+                lowCountTotal += lowCount[i];
+                highSumTotal += highSum[i];
+                lowSumTotal += lowSum[i];
+            }
+            double highAvg = highCountTotal > 0 ? highSumTotal / (double) highCountTotal : 0;
+            double lowAvg = lowCountTotal > 0 ? lowSumTotal / (double) lowCountTotal : 0;
+            saveWeeklyAverage(type, day, highAvg, lowAvg);
+        };
+
+        long dayCursor = -1;
+        int slotCursor = -1;
+        try (ResultSet rs = builder.executeRaw()) {
+            while (rs.next()) {
+                DBTrade trade = new DBTrade(rs);
+                if (!TradeManager.isValidPPU(trade.getResource(), trade.getPpu())) continue;
+                long day = TimeUtil.getDay(trade.getDate());
+                if (day != dayCursor) {
+                    if (dayCursor != -1 && slotDays[slotCursor] != -1) saveAverages.accept(dayCursor);
+
+                    dayCursor = day;
+                    slotCursor = (int) (day % 7);
+                    slotDays[slotCursor] = day;
+                    highCount[slotCursor] = 0;
+                    lowCount[slotCursor]  = 0;
+                    highSum[slotCursor]   = 0;
+                    lowSum[slotCursor]    = 0;
+                }
+                long qty = trade.getQuantity();
+                long weighted = trade.getPpu() * qty;
+                if (trade.isBuy()) {
+                    lowCount[slotCursor] += qty;
+                    lowSum[slotCursor]   += weighted;
+                } else {
+                    highCount[slotCursor] += qty;
+                    highSum[slotCursor]   += weighted;
+                }
+            }
+            saveAverages.accept(dayCursor);
+            lastDayWeeklyAverage[type.ordinal()] = today;
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
     }
 

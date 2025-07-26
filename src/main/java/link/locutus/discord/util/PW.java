@@ -841,8 +841,7 @@ public final class PW {
                     }
                     convertCached.add((byte) resource.ordinal());
 
-                    List<DBTrade> trades = tradeDb.getTrades(resource, start, date);
-                    Double avg = Locutus.imp().getTradeManager().getAverage(trades).getKey().get(resource);
+                    Double avg = Locutus.imp().getTradeManager().getWeeklyAverage(resource, date);
                     if (avg != null) {
                         cashValue += amt * avg * rate;
                     }

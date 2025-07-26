@@ -405,6 +405,14 @@ public class TradeManager {
         });
     }
 
+    public static boolean isValidPPU(ResourceType type, int price) {
+        int factor = type == ResourceType.FOOD ? 1 : 25;
+        if (price <= 20 * factor || price > (type == ResourceType.FOOD ? 500 : 10000)) {
+            return false;
+        }
+        return true;
+    }
+
     public Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> getAverage(List<DBTrade> trades, Function<ResourceType, Integer> minF, Function<ResourceType, Integer> maxF) {
         long[][] ppuHigh = new long[ResourceType.values.length][];
         long[][] ppuLow = new long[ResourceType.values.length][];
@@ -431,8 +439,7 @@ public class TradeManager {
 
         for (DBTrade offer : trades) {
             ResourceType type = offer.getResource();
-            int factor = type == ResourceType.FOOD ? 1 : 25;
-            if (offer.getPpu() <= 20 * factor || offer.getPpu() > (type == ResourceType.FOOD ? 500 : 10000)) {
+            if (!isValidPPU(type, offer.getPpu())) {
                 continue;
             }
             long[] ppuArr;

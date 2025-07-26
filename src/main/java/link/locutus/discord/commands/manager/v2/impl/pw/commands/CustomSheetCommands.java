@@ -530,7 +530,7 @@ public class CustomSheetCommands {
         }
 
         StringBuilder response = new StringBuilder();
-        messageList.addAll(custom.update(store, customTabs));
+        messageList.addAll(custom.update(custom.getSheet(), store, customTabs));
         response.append("**Result**:\n- ").append(StringMan.join(toErrorList.get(), "\n- ")).append("\n");
         response.append("Url: <").append(custom.getUrl()).append(">\n");
         if (saveSheet) {

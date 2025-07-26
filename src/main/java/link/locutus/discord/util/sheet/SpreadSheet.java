@@ -59,7 +59,7 @@ public class SpreadSheet {
 3. Click Create Credentials > OAuth client ID.
 4. Click Application type > Desktop app (or web application).
 5. Download the credentials and save it to `config/credentials-sheets.json`""";
-    private static final PassiveExpiringMap<String, SpreadSheet> CACHE = new PassiveExpiringMap<String, SpreadSheet>(5, TimeUnit.MINUTES);
+    private static final PassiveExpiringMap<String, SpreadSheet> CACHE = new PassiveExpiringMap<String, SpreadSheet>(30, TimeUnit.MINUTES);
 
     public static boolean isSheet(String arg) {
         return arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:");
@@ -310,21 +310,27 @@ public class SpreadSheet {
     }
 
     private static SpreadSheet create(SheetId id, Sheets api) throws GeneralSecurityException, IOException {
-        SpreadSheet cached = CACHE.get(id.id);
-        if (cached == null) {
-            cached = new SpreadSheet(id.id, api);
-            CACHE.put(id.id, cached);
+        SpreadSheet cached;
+        synchronized (CACHE) {
+            cached = CACHE.get(id.id);
+            if (cached == null) {
+                cached = new SpreadSheet(id.id, api);
+                CACHE.put(id.id, cached);
+            } else {
+                CACHE.put(id.id, cached); // Reset expiration
+            }
         }
-        if (id.tabId != null) {
-            cached.setDefaultTab(id.tabId);
-        } else if (id.tabName != null) {
-            cached.setDefaultTab(id.tabName, id.tabId);
-        } else {
-            cached.setDefaultTab("", null);
+        synchronized (cached) {
+            if (id.tabId != null) {
+                cached.setDefaultTab(id.tabId);
+            } else if (id.tabName != null) {
+                cached.setDefaultTab(id.tabName, id.tabId);
+            } else {
+                cached.setDefaultTab("", null);
+            }
         }
         return cached;
     }
-
     private static final String APPLICATION_NAME = "Spreadsheet";
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final String TOKENS_DIRECTORY_PATH = "config" + java.io.File.separator + "tokens";
@@ -843,6 +849,7 @@ public class SpreadSheet {
             String tabName = entry.getKey();
             updateWrite(tabName);
         }
+        reset();
     }
 
     public void updateWrite(String tabName) throws IOException {
