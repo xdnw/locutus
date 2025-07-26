@@ -406,11 +406,10 @@ public class TradeManager {
     }
 
     public static boolean isValidPPU(ResourceType type, int price) {
-        int factor = type == ResourceType.FOOD ? 1 : 25;
-        if (price <= 20 * factor || price > (type == ResourceType.FOOD ? 500 : 10000)) {
-            return false;
+        if (type == ResourceType.FOOD) {
+            return (price > 20 && price <= 500);
         }
-        return true;
+        return price > 20 * 25 && price < 10000;
     }
 
     public Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> getAverage(List<DBTrade> trades, Function<ResourceType, Integer> minF, Function<ResourceType, Integer> maxF) {

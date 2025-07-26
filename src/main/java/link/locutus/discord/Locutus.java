@@ -465,6 +465,7 @@ public final class Locutus extends ListenerAdapter {
         Locutus instance = Locutus.create().start();
         Settings.INSTANCE.save(Settings.INSTANCE.getDefaultFile());
     }
+
     public WarDB getWarDb() {
         return loader.getWarDB();
     }
@@ -475,6 +476,10 @@ public final class Locutus extends ListenerAdapter {
 
     public TradeManager getTradeManager() {
         return loader.getTradeManager();
+    }
+
+    public TradeDB getTradeDB() {
+        return getTradeManager().getTradeDb();
     }
 
     public CommandManager getCommandManager() {

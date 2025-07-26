@@ -142,27 +142,31 @@ public class TradeDB extends DBMainV2 {
         }
     }
 
-    private long[] lastDayWeeklyAverage = new long[ResourceType.values.length];
+    private final long[] lastDayWeeklyAverage = new long[ResourceType.values.length];
 
-    public double getWeeklyAverage(ResourceType type, long date, double defaultValue) {
+    public Double getWeeklyAverage(ResourceType type, long date, Double defaultValue) {
         long day = TimeUtil.getDay(date);
         long today = TimeUtil.getDay();
         if (date == today) {
             return defaultValue;
         }
         long latestDayCalculated = lastDayWeeklyAverage[type.ordinal()];
-        if (latestDayCalculated == -1) {
-            latestDayCalculated = getLatestWeeklyAverageDay(type);
-            lastDayWeeklyAverage[type.ordinal()] = latestDayCalculated;
-        }
-        if (latestDayCalculated != today) {
-            recalculateWeeklyAverage(type, day, latestDayCalculated, today);
+        if (latestDayCalculated == -1 || latestDayCalculated != today) {
+            synchronized (lastDayWeeklyAverage) {
+                latestDayCalculated = lastDayWeeklyAverage[type.ordinal()];
+                if (latestDayCalculated == -1) {
+                    latestDayCalculated = getLatestWeeklyAverageDay(type);
+                    lastDayWeeklyAverage[type.ordinal()] = latestDayCalculated;
+                }
+                if (latestDayCalculated != today) {
+                    recalculateWeeklyAverage(type, day, latestDayCalculated, today);
+                }
+            }
         }
         com.ptsmods.mysqlw.query.builder.SelectBuilder builder = getDb().selectBuilder("TRADE_WEEKLY_AVERAGE")
                 .select("high")
                 .select("low")
-                .where(QueryCondition.equals("type", type.ordinal()))
-                .where(QueryCondition.equals("day", day))
+                .where(QueryCondition.equals("type", type.ordinal()).and(QueryCondition.equals("day", day)))
                 .limit(1);
         try (ResultSet rs = builder.executeRaw()) {
             if (rs.next()) {
@@ -177,37 +181,40 @@ public class TradeDB extends DBMainV2 {
     }
 
     public long getLatestWeeklyAverageDay(ResourceType type) {
-        SelectBuilder builder = getDb().selectBuilder("TRADE_WEEKLY_AVERAGE")
-                .select("MAX(day)")
-                .where(QueryCondition.equals("type", type.ordinal()))
-                .limit(1);
-        try (ResultSet rs = builder.executeRaw()) {
-            if (rs.next()) {
-                long maxDay = rs.getLong(1);
-                if (!rs.wasNull()) return maxDay;
+        String queryPrimary = "SELECT MAX(day) FROM TRADE_WEEKLY_AVERAGE WHERE type = ? LIMIT 1";
+        try (PreparedStatement stmt = getConnection().prepareStatement(queryPrimary)) {
+            stmt.setObject(1, type.ordinal());
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    long maxDay = rs.getLong(1);
+                    if (!rs.wasNull()) return maxDay;
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
             }
-            SelectBuilder tradesBuilder = getDb().selectBuilder("TRADES")
-                    .select("MIN(date)")
-                    .where(QueryCondition.equals("resource", type.ordinal()))
-                    .limit(1);
-            try (ResultSet tradesRs = tradesBuilder.executeRaw()) {
-                if (tradesRs.next()) {
-                    long minDate = tradesRs.getLong(1);
-                    if (!tradesRs.wasNull()) {
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        String queryFallback = "SELECT MIN(date) FROM TRADES WHERE resource = ? LIMIT 1";
+        try (PreparedStatement stmt = getConnection().prepareStatement(queryFallback)) {
+            stmt.setObject(1, type.ordinal());
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    long minDate = rs.getLong(1);
+                    if (!rs.wasNull()) {
                         return TimeUtil.getDay(minDate) + 7;
                     }
                 }
             } catch (SQLException e) {
                 e.printStackTrace();
             }
-            return 0;
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return -1;
     }
 
-    private void saveWeeklyAverage(ResourceType type, long day, double high, double low) {
+    private synchronized void saveWeeklyAverage(ResourceType type, long day, double high, double low) {
         try (PreparedStatement stmt = getConnection().prepareStatement(
                 "INSERT OR REPLACE INTO TRADE_WEEKLY_AVERAGE (type, day, high, low) VALUES (?, ?, ?, ?)"
         )) {
@@ -229,9 +236,9 @@ public class TradeDB extends DBMainV2 {
         // Iterate over the trades in
         com.ptsmods.mysqlw.query.builder.SelectBuilder builder = getDb().selectBuilder("TRADES")
                 .select("*")
-                .where(QueryCondition.equals("resource", type.ordinal()))
-                .where(QueryCondition.greaterEqual("date", start))
-                .where(QueryCondition.less("date", end))
+                .where(QueryCondition.equals("resource", type.ordinal()).and(
+                        QueryCondition.greaterEqual("date", start)
+                ).and(QueryCondition.less("date", end)))
                 .order("date", QueryOrder.OrderDirection.ASC);
 
         long[] highCount = new long[7];
@@ -864,8 +871,7 @@ public class TradeDB extends DBMainV2 {
 
     public List<TradeSubscription> getSubscriptions(long userId) {
         return getSubscriptions(f ->
-                f.where(QueryCondition.equals("user", userId))
-                        .where(QueryCondition.greater("date", System.currentTimeMillis()))
+                f.where(QueryCondition.equals("user", userId).and(QueryCondition.greater("date", System.currentTimeMillis())))
         );
     }
 

@@ -806,8 +806,9 @@ public final class PW {
                     .hashString(Settings.INSTANCE.CONVERSION_SECRET + record.tx_id, StandardCharsets.UTF_8)
                     .toString());
             boolean hasHash = false;
+            String hash = null;
             if (value instanceof Number n) {
-                String hash = getHash.get();
+                if (hash == null) hash = getHash.get();
                 if (record.note.contains(hash)) {
                     cashValue = n.doubleValue();
                     hasHash = true;
@@ -841,7 +842,7 @@ public final class PW {
                     }
                     convertCached.add((byte) resource.ordinal());
 
-                    Double avg = Locutus.imp().getTradeManager().getWeeklyAverage(resource, date);
+                    Double avg = Locutus.imp().getTradeDB().getWeeklyAverage(resource, date, null);
                     if (avg != null) {
                         cashValue += amt * avg * rate;
                     }
@@ -851,12 +852,13 @@ public final class PW {
                 }
                 if (!hasHash)
                 {
-                    // set hash
-                    String hash = getHash.get();
+                    if (hash == null) hash = getHash.get();
                     String note = record.note;
-                    note = note.replaceAll("#cash[^ ]+", "#cash=" + MathMan.format(cashValue));
+                    note = note.toLowerCase(Locale.ROOT).replaceAll("#cash[^ ]*", "#cash=" + MathMan.format(cashValue).replace(",", ""));
+                    note = note.replaceAll("#[a-f0-9]{32}", "");
+                    note = note.replaceAll("\\s+", " ").trim();
                     note += " #" + hash;
-                    record.note = note;
+                    record.note = note.trim();
 
                     if (record.isInternal()) {
                         guildDB.updateNote(record.original_id, record.note);
