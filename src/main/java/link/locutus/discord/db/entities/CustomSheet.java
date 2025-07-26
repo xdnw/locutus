@@ -17,6 +17,7 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class CustomSheet {
@@ -83,7 +84,20 @@ public class CustomSheet {
     public List<String> update(SpreadSheet sheet, ValueStore store, Map<String, Map.Entry<SelectionAlias, SheetTemplate>> customTabs) throws GeneralSecurityException, IOException {
         synchronized (sheet) {
             List<String> messageList = new ObjectArrayList<>();
-            Map<String, List<String>> messageGroups = new Object2ObjectLinkedOpenHashMap<>();
+            Map<String, List<String>> errorGroups = new Object2ObjectLinkedOpenHashMap<>();
+            Supplier<List<String>> toErrorList = () -> {
+                List<String> errors = new ArrayList<>();
+                for (Map.Entry<String, List<String>> entry : errorGroups.entrySet()) {
+                    String key = entry.getKey();
+                    List<String> values = entry.getValue();
+                    if (values.isEmpty()) {
+                        continue;
+                    }
+                    String error = key.replace("{value}", "`" + StringMan.join(values, "`,`") + "`");
+                    errors.add(error);
+                }
+                return errors;
+            };
 
             List<Future<?>> writeTasks = new ArrayList<>();
             ExecutorService executor = Locutus.imp().getExecutor();
@@ -184,7 +198,7 @@ public class CustomSheet {
                                     int currentErrors = maxErrors.merge(tabName, 1, Integer::sum);
                                     if (currentErrors == 25) {
                                         String msgWithPlaceholder = "Tabs: {value}; contained too many errors, skipping the rest.";
-                                        messageGroups.computeIfAbsent(msgWithPlaceholder, f -> new ObjectArrayList<>()).add(tabName);
+                                        errorGroups.computeIfAbsent(msgWithPlaceholder, f -> new ObjectArrayList<>()).add(tabName);
                                     } else if (currentErrors < 25) {
                                         t.printStackTrace();
                                         String column = columns.get(i);
@@ -205,7 +219,7 @@ public class CustomSheet {
                         }
                         createTabsFuture.get();
                         sheet.updateWrite(tabName);
-                        messageGroups.computeIfAbsent("Tabs: {value}, updated successfully.", f -> new ObjectArrayList<>()).add(tabName);
+                        errorGroups.computeIfAbsent("Tabs: {value}, updated successfully.", f -> new ObjectArrayList<>()).add(tabName);
                         tabsUpdated.add(tabName.toLowerCase(Locale.ROOT));
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -225,12 +239,12 @@ public class CustomSheet {
                 if (tabsUpdated.contains(entry.getKey().toLowerCase(Locale.ROOT))) {
                     continue;
                 }
-                messageGroups.computeIfAbsent("Tabs: {value}, exists in the google sheet, but has no template.", f -> new ObjectArrayList<>()).add(entry.getKey());
+                errorGroups.computeIfAbsent("Tabs: {value}, exists in the google sheet, but has no template.", f -> new ObjectArrayList<>()).add(entry.getKey());
             }
             if (tabsUpdated.size() > 1) {
                 messageList.add("To update only a single tab: " + CM.sheet_custom.auto_tab.cmd.toSlashMention());
             }
-            for (Map.Entry<String, List<String>> stringListEntry : messageGroups.entrySet()) {
+            for (Map.Entry<String, List<String>> stringListEntry : errorGroups.entrySet()) {
                 String key = stringListEntry.getKey();
                 List<String> value = stringListEntry.getValue();
                 String joinedTabs = "`" + String.join("`, `", value) + "`";
@@ -247,7 +261,7 @@ public class CustomSheet {
 
             sheet.reset();
 
-            return messageList;
+            return toErrorList.get();
         }
     }
 }
