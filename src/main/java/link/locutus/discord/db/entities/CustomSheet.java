@@ -86,7 +86,7 @@ public class CustomSheet {
             List<String> messageList = new ObjectArrayList<>();
             Map<String, List<String>> errorGroups = new Object2ObjectLinkedOpenHashMap<>();
             Supplier<List<String>> toErrorList = () -> {
-                List<String> errors = new ArrayList<>();
+                List<String> errors = new ArrayList<>(messageList);
                 for (Map.Entry<String, List<String>> entry : errorGroups.entrySet()) {
                     String key = entry.getKey();
                     List<String> values = entry.getValue();
