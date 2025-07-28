@@ -409,7 +409,7 @@ public class TradeManager {
         if (type == ResourceType.FOOD) {
             return (price > 20 && price <= 500);
         }
-        return price > 20 * 25 && price < 10000;
+        return price > 500 && price < 10000;
     }
 
     public Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> getAverage(List<DBTrade> trades, Function<ResourceType, Integer> minF, Function<ResourceType, Integer> maxF) {

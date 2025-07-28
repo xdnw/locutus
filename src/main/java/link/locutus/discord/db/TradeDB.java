@@ -8,6 +8,7 @@ import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TableIndex;
 import com.ptsmods.mysqlw.table.TablePreset;
 import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.NationColor;
@@ -37,6 +38,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public class TradeDB extends DBMainV2 {
     public TradeDB() throws SQLException, ClassNotFoundException {
@@ -131,11 +133,13 @@ public class TradeDB extends DBMainV2 {
         }
 
         {
-            String weeklyAverages = "CREATE TABLE IF NOT EXISTS TRADE_WEEKLY_AVERAGE (" +
+            String weeklyAverages = "CREATE TABLE IF NOT EXISTS TRADE_WEEKLY_AVERAGE_2 (" +
                     "type INT NOT NULL," +
                     "day INT NOT NULL," +
                     "high DOUBLE NOT NULL," +
                     "low DOUBLE NOT NULL," +
+                    "qty_high BIGINT NOT NULL," +
+                    "qty_low BIGINT NOT NULL," +
                     "PRIMARY KEY(type, day)" +
                     ");";
             executeStmt(weeklyAverages);
@@ -159,11 +163,11 @@ public class TradeDB extends DBMainV2 {
                     lastDayWeeklyAverage[type.ordinal()] = latestDayCalculated;
                 }
                 if (latestDayCalculated != today) {
-                    recalculateWeeklyAverage(type, day, latestDayCalculated, today);
+                    recalculateWeeklyAverage(type, latestDayCalculated, today);
                 }
             }
         }
-        com.ptsmods.mysqlw.query.builder.SelectBuilder builder = getDb().selectBuilder("TRADE_WEEKLY_AVERAGE")
+        com.ptsmods.mysqlw.query.builder.SelectBuilder builder = getDb().selectBuilder("TRADE_WEEKLY_AVERAGE_2")
                 .select("high")
                 .select("low")
                 .where(QueryCondition.equals("type", type.ordinal()).and(QueryCondition.equals("day", day)))
@@ -180,8 +184,148 @@ public class TradeDB extends DBMainV2 {
         }
     }
 
+    private void updateTradeAverageIfOutdated(Collection<ResourceType> types) {
+        if (types.isEmpty()) return;
+        long today = TimeUtil.getDay();
+        Supplier<Boolean> isUpdated = () -> {
+            for (ResourceType type : types) {
+                if (lastDayWeeklyAverage[type.ordinal()] != today) {
+                    return true;
+                }
+            }
+            return false;
+        };
+        if (!isUpdated.get()) {
+            synchronized (lastDayWeeklyAverage) {
+                if (!isUpdated.get()) {
+                    // update
+                    for (ResourceType type : types) {
+                        long latestDayCalculated = lastDayWeeklyAverage[type.ordinal()];
+                        if (latestDayCalculated != today) {
+                            recalculateWeeklyAverage(type, latestDayCalculated, today);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public Map<Long, double[]> getMarginsByDay(List<ResourceType> types, long startDay, long endDay, boolean percent) {
+        if (types.isEmpty()) return Collections.emptyMap();
+
+        updateTradeAverageIfOutdated(types);
+        Map<Long, double[]> marginsByDay = new Long2ObjectOpenHashMap<>();
+        SelectBuilder builder = getDb().selectBuilder("TRADE_WEEKLY_AVERAGE_2")
+                .select("day")
+                .select("high")
+                .select("low");
+        QueryConditions typeCondition;
+        if (types.size() == 1) {
+            ResourceType type = types.iterator().next();
+            typeCondition = QueryCondition.equals("type", type.ordinal());
+        } else {
+            List<Integer> typesSorted = new ArrayList<>(types.size());
+            for (ResourceType type : types) {
+                typesSorted.add(type.ordinal());
+            }
+            Collections.sort(typesSorted);
+            typeCondition = QueryCondition.in("type", typesSorted.toArray(new Integer[0]));
+        }
+        QueryConditions fullCondition = typeCondition
+                .and(QueryCondition.greaterEqual("day", startDay))
+                .and(QueryCondition.lessEqual("day", endDay));
+        builder.where(fullCondition);
+        try (ResultSet rs = builder.executeRaw()) {
+            while (rs.next()) {
+                long day = rs.getLong(1);
+                double high = rs.getDouble(2);
+                double low = rs.getDouble(3);
+                if (rs.wasNull()) continue; // skip null values
+                if (high < 0 || low < 0) continue; // skip negative values
+                double[] margins = marginsByDay.computeIfAbsent(day, k -> new double[types.size()]);
+                int index = 0;
+                for (ResourceType type : types) {
+                    if (type == ResourceType.MONEY) continue; // skip money
+                    double margin = high - low;
+                    if (percent) margin = 100 * margin / high;
+                    margins[index++] = margin;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        // add current day
+        double[] currentMargins = new double[types.size()];
+        for (int i = 0; i < types.size(); i++) {
+            ResourceType type = types.get(i);
+            double high = Locutus.imp().getTradeManager().getHighAvg(type);
+            double low = Locutus.imp().getTradeManager().getLowAvg(type);
+            if (high < 0 || low < 0) continue; // skip negative values
+            double margin = high - low;
+            if (percent) margin = 100 * margin / high;
+            currentMargins[i] = margin;
+        }
+        long today = TimeUtil.getDay();
+        marginsByDay.put(today, currentMargins);
+        return marginsByDay;
+    }
+
+    public Map<Long, double[]> getAverageByDay(List<ResourceType> types, long startDay, long endDay) {
+        updateTradeAverageIfOutdated(types);
+
+        Map<Long, double[]> averagesByDay = new Long2ObjectOpenHashMap<>();
+        List<Integer> typeOrdinals = new ArrayList<>(types.size());
+        for (ResourceType type : types) typeOrdinals.add(type.ordinal());
+
+        SelectBuilder builder = getDb().selectBuilder("TRADE_WEEKLY_AVERAGE_2")
+                .select("day")
+                .select("type")
+                .select("high")
+                .select("low")
+                .select("qty_high")
+                .select("qty_low");
+        QueryConditions typeCondition;
+        if (types.size() == 1) {
+            ResourceType type = types.iterator().next();
+            typeCondition = QueryCondition.equals("type", type.ordinal());
+        } else {
+            List<Integer> typesSorted = new ArrayList<>(types.size());
+            for (ResourceType type : types) {
+                typesSorted.add(type.ordinal());
+            }
+            Collections.sort(typesSorted);
+            typeCondition = QueryCondition.in("type", typesSorted.toArray(new Integer[0]));
+        }
+        QueryConditions fullCondition = typeCondition
+                .and(QueryCondition.greaterEqual("day", startDay))
+                .and(QueryCondition.lessEqual("day", endDay));
+        builder.where(fullCondition);
+
+        try (ResultSet rs = builder.executeRaw()) {
+            while (rs.next()) {
+                long day = rs.getLong(1);
+                int typeIdx = typeOrdinals.indexOf(rs.getInt(2));
+                double high = rs.getDouble(3);
+                double low = rs.getDouble(4);
+                long qtyHigh = rs.getLong(5);
+                long qtyLow = rs.getLong(6);
+                if (typeIdx < 0) continue;
+                double[] avgs = averagesByDay.computeIfAbsent(day, k -> new double[types.size()]);
+                long totalQty = qtyHigh + qtyLow;
+                if (totalQty > 0) {
+                    avgs[typeIdx] = (high * qtyHigh + low * qtyLow) / totalQty;
+                } else {
+                    avgs[typeIdx] = 0.0;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return averagesByDay;
+    }
+
     public long getLatestWeeklyAverageDay(ResourceType type) {
-        String queryPrimary = "SELECT MAX(day) FROM TRADE_WEEKLY_AVERAGE WHERE type = ? LIMIT 1";
+        String queryPrimary = "SELECT MAX(day) FROM TRADE_WEEKLY_AVERAGE_2 WHERE type = ? LIMIT 1";
         try (PreparedStatement stmt = getConnection().prepareStatement(queryPrimary)) {
             stmt.setObject(1, type.ordinal());
             try (ResultSet rs = stmt.executeQuery()) {
@@ -214,14 +358,16 @@ public class TradeDB extends DBMainV2 {
         return -1;
     }
 
-    private synchronized void saveWeeklyAverage(ResourceType type, long day, double high, double low) {
+    private synchronized void saveWeeklyAverage(ResourceType type, long day, double high, double low, long qtyHigh, long qtyLow) {
         try (PreparedStatement stmt = getConnection().prepareStatement(
-                "INSERT OR REPLACE INTO TRADE_WEEKLY_AVERAGE (type, day, high, low) VALUES (?, ?, ?, ?)"
+                "INSERT OR REPLACE INTO TRADE_WEEKLY_AVERAGE_2 (type, day, high, low, qty_high, qty_low) VALUES (?, ?, ?, ?, ?, ?)"
         )) {
             stmt.setObject(1, type.ordinal());
             stmt.setObject(2, day);
             stmt.setObject(3, high);
             stmt.setObject(4, low);
+            stmt.setObject(5, qtyHigh);
+            stmt.setObject(6, qtyLow);
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -229,7 +375,7 @@ public class TradeDB extends DBMainV2 {
         }
     }
 
-    private void recalculateWeeklyAverage(ResourceType type, long returnValueForDay, long latestDayCalculated, long today) {
+    private void recalculateWeeklyAverage(ResourceType type, long latestDayCalculated, long today) {
         long start = TimeUtil.getTimeFromDay(latestDayCalculated) - TimeUnit.DAYS.toMillis(7);
         long end = TimeUtil.getTimeFromDay(today);
 
@@ -262,7 +408,7 @@ public class TradeDB extends DBMainV2 {
             }
             double highAvg = highCountTotal > 0 ? highSumTotal / (double) highCountTotal : 0;
             double lowAvg = lowCountTotal > 0 ? lowSumTotal / (double) lowCountTotal : 0;
-            saveWeeklyAverage(type, day, highAvg, lowAvg);
+            saveWeeklyAverage(type, day, highAvg, lowAvg, highCountTotal, lowCountTotal);
         };
 
         long dayCursor = -1;

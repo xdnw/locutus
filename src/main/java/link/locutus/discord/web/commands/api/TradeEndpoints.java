@@ -1,6 +1,5 @@
 package link.locutus.discord.web.commands.api;
 
-import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -14,7 +13,9 @@ import link.locutus.discord.web.commands.ReturnType;
 import link.locutus.discord.web.commands.binding.value_types.GraphType;
 import link.locutus.discord.web.commands.binding.value_types.WebGraph;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class TradeEndpoints {
@@ -27,27 +28,23 @@ public class TradeEndpoints {
             throw new IllegalArgumentException("No valid resources");
         }
 
-        long start = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days);
+        long end = System.currentTimeMillis();
+        long start = end - TimeUnit.DAYS.toMillis(days);
 
-        Map<ResourceType, Map<Long, Double>> avgByRss = new HashMap<>();
         long minDay = Long.MAX_VALUE;
         long maxDay = Long.MIN_VALUE;
 
         List<String> labels = new ObjectArrayList<>();
-
-        for (ResourceType type : resources) {
+        List<ResourceType> resourceList = new ObjectArrayList<>(resources);
+        for (ResourceType type : resourceList) {
             labels.add(type.name());
-            // long minDate, ResourceType type, int minQuantity, int min, int max
-            double curAvg = manager.getHighAvg(type);
-            int min = (int) (curAvg * 0.2);
-            int max = (int) (curAvg * 5);
+        }
 
-            Map<Long, Double> averages = tradeDB.getAverage(start, type, 15, min, max);
 
-            avgByRss.put(type, averages);
-
-            minDay = Math.min(minDay, Collections.min(averages.keySet()));
-            maxDay = Collections.max(averages.keySet());
+        Map<Long, double[]> averagesByDay = tradeDB.getAverageByDay(resourceList, TimeUtil.getDay(start), TimeUtil.getDay(end));
+        for (Map.Entry<Long, double[]> entry : averagesByDay.entrySet()) {
+            minDay = Math.min(minDay, entry.getKey());
+            maxDay = Math.max(maxDay, entry.getKey());
         }
 
         WebGraph result = new WebGraph();
@@ -60,11 +57,12 @@ public class TradeEndpoints {
         }
 
         data.add((List) timestampsJson);
-        for (ResourceType type : resources) {
-            Map<Long, Double> avgByDay = avgByRss.get(type);
+        for (int i = 0; i < resourceList.size(); i++) {
+            ResourceType type = resourceList.get(i);
             LongArrayList rssData = new LongArrayList();
             for (long day = minDay; day <= maxDay; day++) {
-                Long price = avgByDay.getOrDefault(day, 0d).longValue();
+                double[] avgByDay = averagesByDay.get(day);
+                long price = avgByDay == null ? 0 : Math.round(avgByDay[i]);
                 rssData.add(price);
             }
             data.add((List) rssData);
