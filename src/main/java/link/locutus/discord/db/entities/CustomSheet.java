@@ -86,7 +86,7 @@ public class CustomSheet {
             List<String> messageList = new ObjectArrayList<>();
             Map<String, List<String>> errorGroups = new Object2ObjectLinkedOpenHashMap<>();
             Supplier<List<String>> toErrorList = () -> {
-                List<String> errors = new ArrayList<>();
+                List<String> errors = new ArrayList<>(messageList);
                 for (Map.Entry<String, List<String>> entry : errorGroups.entrySet()) {
                     String key = entry.getKey();
                     List<String> values = entry.getValue();
@@ -243,12 +243,6 @@ public class CustomSheet {
             }
             if (tabsUpdated.size() > 1) {
                 messageList.add("To update only a single tab: " + CM.sheet_custom.auto_tab.cmd.toSlashMention());
-            }
-            for (Map.Entry<String, List<String>> stringListEntry : errorGroups.entrySet()) {
-                String key = stringListEntry.getKey();
-                List<String> value = stringListEntry.getValue();
-                String joinedTabs = "`" + String.join("`, `", value) + "`";
-                messageList.add(key.replace("{value}", joinedTabs));
             }
             if (!slowPlaceholders.isEmpty()) {
                 slowPlaceholders.sort((a, b) -> Long.compare(b.getValue(), a.getValue()));
