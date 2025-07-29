@@ -2305,25 +2305,43 @@ public class BankCommands {
 //            result = new KeyValue<>(OffshoreInstance.TransferStatus.OTHER, e.getMessage());
             result = new TransferResult(OffshoreInstance.TransferStatus.OTHER, receiver, transfer, bank_note.toString()).addMessage(e.getMessage());
         }
-        if (result.getStatus() == OffshoreInstance.TransferStatus.CONFIRMATION) {
+        OffshoreInstance.TransferStatus status = result.getStatus();
+        IMessageBuilder msg;
+        if (status == OffshoreInstance.TransferStatus.CONFIRMATION) {
             String worth = "$" + MathMan.format(ResourceType.convertedTotal(transfer));
             String title = "Send (worth: " + worth + ") to " + receiver.getTypePrefix() + ":" + receiver.getName();
             if (receiver.isNation()) {
                 title += " | " + receiver.asNation().getAlliance();
             }
-            channel.create().confirmation(title, result.getMessageJoined(false), command, "force", "Send").cancelButton().send();
-            return null;
+            msg = channel.create().confirmation(title, result.getMessageJoined(false), command, "force", "Send").cancelButton();
+        } else {
+            msg = channel.create();
+            String body = result.toEmbedString();
+            String footer = null;
+
+
+            if (status.isSuccess() && ping_when_sent && receiver.isNation()) {
+                User user = receiver.asNation().getUser();
+                if (user != null) {
+                    MessageChannel notify = guildDb.getResourceChannel(receiver.getAlliance_id());
+                    if (notify == null) notify = guildDb.getResourceChannel(0);
+                    if (notify != null) {
+                        DiscordUtil.sendMessage(notify, user.getAsMention() + " " + result.getMessageJoined(false));
+                    } else {
+                        footer = user.getAsMention();
+                    }
+                }
+            }
+            msg.embed(result.toTitleString(), body);
+            if (footer != null) {
+                msg.append(footer);
+            }
         }
-
-        IMessageBuilder msg = channel.create();
-        String body = result.toEmbedString();
-        String footer = null;
-
-        OffshoreInstance.TransferStatus status = result.getStatus();
-        boolean allowGrant = status == OffshoreInstance.TransferStatus.INSUFFICIENT_FUNDS ||
+        boolean isFailed = status == OffshoreInstance.TransferStatus.INSUFFICIENT_FUNDS ||
                 status == OffshoreInstance.TransferStatus.GRANT_REQUIREMENT ||
                 status == OffshoreInstance.TransferStatus.AUTHORIZATION;
-        if (!status.isSuccess() && allowGrant) {
+        if (!ping_when_sent && (isFailed || status == OffshoreInstance.TransferStatus.CONFIRMATION)) {
+
             MessageChannel grantChannel = GuildKey.GRANT_REQUEST_CHANNEL.getOrNull(guildDb);
             if (grantChannel != null) {
                 if (calling_command == null) {
@@ -2335,24 +2353,9 @@ public class BankCommands {
                         .estimate_amount(ResourceType.toString(transfer))
                         .command(calling_command.toString());
                 msg = msg.modal(CommandBehavior.DELETE_BUTTONS, reqCmd, "request grant");
-            } else {
+            } else if (!status.isSuccess() && isFailed) {
                 msg.append("\nTo enable grant requests: " + CM.settings_bank_info.GRANT_REQUEST_CHANNEL.cmd.toSlashMention());
             }
-        } else if (status.isSuccess() && ping_when_sent && receiver.isNation()) {
-            User user = receiver.asNation().getUser();
-            if (user != null) {
-                MessageChannel notify = guildDb.getResourceChannel(receiver.getAlliance_id());
-                if (notify == null) notify = guildDb.getResourceChannel(0);
-                if (notify != null) {
-                    DiscordUtil.sendMessage(notify, user.getAsMention() + " " + result.getMessageJoined(false));
-                } else {
-                    footer = user.getAsMention();
-                }
-            }
-        }
-        msg.embed(result.toTitleString(), body);
-        if (footer != null) {
-            msg.append(footer);
         }
 
         msg.send();

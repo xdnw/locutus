@@ -1,5 +1,6 @@
 package link.locutus.discord.util;
 
+import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
 import link.locutus.discord.Logg;
 import link.locutus.discord.network.IProxy;
 import link.locutus.discord.network.PassthroughProxy;
@@ -8,22 +9,8 @@ import link.locutus.discord.util.io.PageRequestQueue;
 import org.eclipse.jetty.util.UrlEncoded;
 import org.jsoup.Connection;
 
-import java.nio.channels.Channels;
-
-import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
-import java.net.CookieManager;
-import java.net.HttpCookie;
-import java.net.HttpURLConnection;
-import java.net.URI;
-import java.net.URL;
-import java.net.URLConnection;
-import java.nio.ByteBuffer;
-import java.nio.channels.ReadableByteChannel;
+import java.io.*;
+import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -164,25 +151,38 @@ public final class FileUtil {
                 try {
                     URL website = new URL(requestURL);
                     URLConnection connection = website.openConnection();
-                    try {
-                        try (ReadableByteChannel channel = Channels.newChannel(connection.getInputStream())) {
-                            ByteBuffer buffer = ByteBuffer.allocate(1024);
-                            StringBuilder response = new StringBuilder();
-
-                            while (channel.read(buffer) != -1) {
-                                buffer.flip();
-                                while (buffer.hasRemaining()) {
-                                    response.append((char) buffer.get());
-                                }
-                                buffer.clear();
-                            }
-                            return response.toString();
+                    try (InputStream inputStream = new URL(requestURL).openStream();
+                        FastByteArrayOutputStream baos = new FastByteArrayOutputStream()) {
+                        byte[] buffer = new byte[4096];
+                        int n;
+                        while ((n = inputStream.read(buffer)) != -1) {
+                            baos.write(buffer, 0, n);
                         }
+                        return new String(baos.array, 0, baos.length, StandardCharsets.UTF_8);
                     } catch (IOException e) {
                         check409Error(connection);
                         e.printStackTrace();
                         throw new RuntimeException(e);
                     }
+//                    try {
+//                        try (ReadableByteChannel channel = Channels.newChannel(connection.getInputStream())) {
+//                            ByteBuffer buffer = ByteBuffer.allocate(1024);
+//                            StringBuilder response = new StringBuilder();
+//
+//                            while (channel.read(buffer) != -1) {
+//                                buffer.flip();
+//                                while (buffer.hasRemaining()) {
+//                                    response.append((char) buffer.get());
+//                                }
+//                                buffer.clear();
+//                            }
+//                            return response.toString();
+//                        }
+//                    } catch (IOException e) {
+//                        check409Error(connection);
+//                        e.printStackTrace();
+//                        throw new RuntimeException(e);
+//                    }
                 } catch (IOException e) {
                     e.printStackTrace();
                     throw new RuntimeException(e);
