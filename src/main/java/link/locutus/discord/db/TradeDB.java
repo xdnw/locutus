@@ -190,10 +190,10 @@ public class TradeDB extends DBMainV2 {
         Supplier<Boolean> isUpdated = () -> {
             for (ResourceType type : types) {
                 if (lastDayWeeklyAverage[type.ordinal()] != today) {
-                    return true;
+                    return false;
                 }
             }
-            return false;
+            return true;
         };
         if (!isUpdated.get()) {
             synchronized (lastDayWeeklyAverage) {
@@ -271,6 +271,7 @@ public class TradeDB extends DBMainV2 {
     }
 
     public Map<Long, double[]> getAverageByDay(List<ResourceType> types, long startDay, long endDay) {
+        System.out.println("UPDATING AVERAGE");
         updateTradeAverageIfOutdated(types);
 
         Map<Long, double[]> averagesByDay = new Long2ObjectOpenHashMap<>();
