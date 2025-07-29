@@ -655,7 +655,7 @@ public class GuildKey {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
-        public String RECRUIT_MESSAGE_CONTENT(@Me GuildDB db, @Me User user, String message) {
+        public String RECRUIT_MESSAGE_CONTENT(@Me GuildDB db, @Me User user, @AllowAttachment String message) {
             boolean containsHtml = HTML_TAG_PATTERN.matcher(message).find();
             if (!containsHtml) {
                 message = MarkupUtil.markdownToHTML(MarkupUtil.formatDiscordMarkdown(message, db == null ? null : db.getGuild()));

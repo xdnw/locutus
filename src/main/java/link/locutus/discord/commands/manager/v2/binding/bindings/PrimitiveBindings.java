@@ -9,7 +9,9 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
+import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.math.ScriptUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -72,6 +74,23 @@ public class PrimitiveBindings extends BindingHelper {
 
     @Binding(examples = "hello", value = "A single line of text")
     public static String String(String input, @Default ParameterData param) {
+        if (param != null && param.getAnnotation(AllowAttachment.class) != null) {
+            System.out.println("ALLOW ATTACHMENT: " + input);
+            String discordCdnPattern = "^https://cdn\\.discordapp\\.com/attachments/\\d+/\\d+/[^\\s]+\\.txt[^\\s]*$";
+            if (input.matches(discordCdnPattern)) {
+                try {
+                    String content = FileUtil.readStringFromURL(PagePriority.TOKEN, input);
+                    if (content != null) {
+                        return content;
+                    } else {
+                        throw new IllegalArgumentException("Failed to read content from URL: `" + input + "`");
+                    }
+                } catch (Exception e) {
+                    throw new IllegalArgumentException("Failed to read content from URL: `" + input + "` - " + e.getMessage());
+                }
+            }
+        }
+
         Filter annotation = param == null ? null : param.getAnnotation(Filter.class);
         if (annotation != null && !input.matches(annotation.value())) {
             throw new IllegalArgumentException("Input: `" + input + "` does not match: `" + annotation.value() + "`");
