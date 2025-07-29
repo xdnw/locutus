@@ -2318,8 +2318,6 @@ public class BankCommands {
             msg = channel.create();
             String body = result.toEmbedString();
             String footer = null;
-
-
             if (status.isSuccess() && ping_when_sent && receiver.isNation()) {
                 User user = receiver.asNation().getUser();
                 if (user != null) {
