@@ -385,9 +385,21 @@ public class PreLoader implements ILoader {
 
     private GuildShardManager build() {
         if (Settings.INSTANCE.SHARDS > 1) {
-            return new GuildShardManager(buildShardManager());
+            try {
+                return new GuildShardManager(buildShardManager());
+            } catch (ExecutionException e) {
+                throw new RuntimeException(e);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         } else {
-            return new GuildShardManager(buildJDA());
+            try {
+                return new GuildShardManager(buildJDA());
+            } catch (ExecutionException e) {
+                throw new RuntimeException(e);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 

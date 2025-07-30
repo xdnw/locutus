@@ -356,9 +356,11 @@ public class SlashCommandManager extends ListenerAdapter {
         return toRegister;
     }
 
-    public void registerCommandData(JDA jda) {
+    public void registerCommandData(GuildShardManager manager) {
         List<CommandData> generate = generateCommandData();
-        registerCommandData(jda, generate);
+        for (JDA jda : manager.getApis()) {
+            registerCommandData(jda, generate);
+        }
     }
 
     public void register(Guild guild) {

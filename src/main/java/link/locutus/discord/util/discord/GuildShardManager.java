@@ -1,7 +1,6 @@
 package link.locutus.discord.util.discord;
 
 import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -11,17 +10,39 @@ import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.SelfUser;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
-import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.sharding.DefaultShardManager;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 public class GuildShardManager {
-    private List<JDA> instances = new ArrayList<>();
+    private final DefaultShardManager defaultShardManager;
+    private List<JDA> instances = new ObjectArrayList<>();
     private Map<Long, JDA> discordAPIMap = new ConcurrentHashMap<>();
+
+    public GuildShardManager(JDA jda) {
+        this.instances.add(jda);
+        defaultShardManager = null;
+        for (Guild guild : jda.getGuilds()) {
+            this.discordAPIMap.put(guild.getIdLong(), jda);
+        }
+    }
+
+    public GuildShardManager(DefaultShardManager defaultShardManager) {
+        this.defaultShardManager = defaultShardManager;
+        for (JDA shard : defaultShardManager.getShards()) {
+            this.instances.add(shard);
+            for (Guild guild : shard.getGuilds()) {
+                this.discordAPIMap.put(guild.getIdLong(), shard);
+            }
+        }
+
+    }
 
     public void add(long guildId, JDA instance) {
         this.discordAPIMap.put(guildId, instance);
@@ -30,11 +51,6 @@ public class GuildShardManager {
     public JDA getApiByGuildId(long guildId) {
         JDA jda = discordAPIMap.get(guildId);
         return jda;
-    }
-
-
-    public void put(JDA instance) {
-        instances.add(instance);
     }
 
     public void put(long guildId, JDA instance) {
@@ -213,5 +229,24 @@ public class GuildShardManager {
             users.addAll(jda.getUsers());
         }
         return users;
+    }
+
+    public JDA.Status getStatus() {
+        JDA.Status status = null;
+        for (JDA instance : instances) {
+            JDA.Status curr = instance.getStatus();
+            if (status == null || curr.ordinal() < status.ordinal()) {
+                status = curr;
+            }
+        }
+        return status;
+    }
+
+    public SelfUser getSelfUser() {
+        for (JDA jda : instances) {
+            SelfUser selfUser = jda.getSelfUser();
+            if (selfUser != null) return selfUser;
+        }
+        return null;
     }
 }
