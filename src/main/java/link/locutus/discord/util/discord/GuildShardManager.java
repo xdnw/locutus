@@ -14,14 +14,14 @@ import net.dv8tion.jda.api.entities.SelfUser;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
-import net.dv8tion.jda.api.sharding.DefaultShardManager;
+import net.dv8tion.jda.api.sharding.ShardManager;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 public class GuildShardManager {
-    private final DefaultShardManager defaultShardManager;
+    private final ShardManager defaultShardManager;
     private List<JDA> instances = new ObjectArrayList<>();
     private Map<Long, JDA> discordAPIMap = new ConcurrentHashMap<>();
 
@@ -33,7 +33,7 @@ public class GuildShardManager {
         }
     }
 
-    public GuildShardManager(DefaultShardManager defaultShardManager) {
+    public GuildShardManager(ShardManager defaultShardManager) {
         this.defaultShardManager = defaultShardManager;
         for (JDA shard : defaultShardManager.getShards()) {
             this.instances.add(shard);

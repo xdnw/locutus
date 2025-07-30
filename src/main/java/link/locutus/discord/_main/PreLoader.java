@@ -24,8 +24,8 @@ import link.locutus.discord.util.trade.TradeManager;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.requests.GatewayIntent;
-import net.dv8tion.jda.api.sharding.DefaultShardManager;
 import net.dv8tion.jda.api.sharding.DefaultShardManagerBuilder;
+import net.dv8tion.jda.api.sharding.ShardManager;
 import net.dv8tion.jda.api.utils.ChunkingFilter;
 import net.dv8tion.jda.api.utils.Compression;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
@@ -55,7 +55,7 @@ public class PreLoader implements ILoader {
     private volatile FinalizedLoader finalized;
     // fields
     private final Future<SlashCommandManager> slashCommandManager;
-    private final Future<JDA> jda;
+    private final Future<GuildShardManager> shardManager;
 
     private final Future<ForumDB> forumDb;
     private final Future<DiscordDB> discordDB;
@@ -92,7 +92,7 @@ public class PreLoader implements ILoader {
                 return new SlashCommandManager(Settings.INSTANCE.ENABLED_COMPONENTS.REGISTER_ADMIN_SLASH_COMMANDS, () -> Locutus.cmd().getV2());
             }
         }, false);
-        this.jda = add("Discord Hook", this::buildJDA, false);
+        this.shardManager = add("Discord Hook", this::buildJdaOrShard, false);
         this.awaitBackup = !Settings.INSTANCE.BACKUP.SCRIPT.isEmpty();
         if (awaitBackup) {
             backup = add("Backup", () -> {
@@ -383,7 +383,7 @@ public class PreLoader implements ILoader {
         return builder.toString();
     }
 
-    private GuildShardManager build() {
+    private GuildShardManager buildJdaOrShard() {
         if (Settings.INSTANCE.SHARDS > 1) {
             try {
                 return new GuildShardManager(buildShardManager());
@@ -454,7 +454,7 @@ public class PreLoader implements ILoader {
         return builder.build();
     }
 
-    private DefaultShardManager buildShardManager() throws ExecutionException, InterruptedException {
+    private ShardManager buildShardManager() throws ExecutionException, InterruptedException {
         DefaultShardManagerBuilder builder = DefaultShardManagerBuilder.createLight(Settings.INSTANCE.BOT_TOKEN, GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_MESSAGES, GatewayIntent.DIRECT_MESSAGES);
         if (Settings.INSTANCE.ENABLED_COMPONENTS.SLASH_COMMANDS) {
             SlashCommandManager slash = getSlashCommandManager();
@@ -503,8 +503,8 @@ public class PreLoader implements ILoader {
             builder.enableCache(CacheFlag.EMOJI);
         }
         return builder
-                .setShardsTotal(Settings.INSTANCE.DISCORD.SHARDS)
-                .setShards(0, Settings.INSTANCE.DISCORD.SHARDS - 1)
+                .setShardsTotal(Settings.INSTANCE.SHARDS)
+                .setShards(0, Settings.INSTANCE.SHARDS - 1)
                 .build();
     }
 
@@ -514,8 +514,8 @@ public class PreLoader implements ILoader {
     }
 
     @Override
-    public JDA getJda() {
-        return FileUtil.get(jda);
+    public GuildShardManager getShardManager() {
+        return FileUtil.get(shardManager);
     }
 
     @Override
