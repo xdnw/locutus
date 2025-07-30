@@ -1768,6 +1768,9 @@ public abstract class DBNation implements NationOrAlliance {
             }
         }
         if (update) {
+            if (true) {
+                throw new UnsupportedOperationException("TEMPORARILY DISABLED");
+            }
             return updateTransactions(priority);
         }
         return Locutus.imp().getBankDB().getTransactionsByNation(data()._nationId(), start, end);
@@ -2383,8 +2386,11 @@ public abstract class DBNation implements NationOrAlliance {
         return getDeposits(db, tracked, useTaxBase, offset, updateThreshold, start, end, false, false, f -> true, priority);
     }
     public Map<DepositType, double[]> getDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long start, long end, boolean forceIncludeExpired, boolean forceIncludeIgnored, Predicate<Transaction2> filter, boolean priority) {
+        long timingMs = System.currentTimeMillis();
         List<Map.Entry<Integer, Transaction2>> transactions = getTransactions(db, tracked, useTaxBase, offset, updateThreshold, start, end, priority);
+        timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("txTotal = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
         Map<DepositType, double[]> sum = PW.sumNationTransactions(this, db, tracked, transactions, forceIncludeExpired, forceIncludeIgnored, filter);
+        timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("sumTotal = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
         return sum;
     }
 
@@ -2397,9 +2403,11 @@ public abstract class DBNation implements NationOrAlliance {
             tracked = db.getTrackedBanks();
         }
 
-        List<Transaction2> transactions = new ArrayList<>();
+        long timingMs = System.currentTimeMillis();
+        List<Transaction2> transactions = new ObjectArrayList<>();
         if (offset) {
             List<Transaction2> offsets = db.getDepositOffsetTransactions(getNation_id(), start, end);
+            timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Diff1 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
             transactions.addAll(offsets);
         }
 
@@ -2411,11 +2419,16 @@ public abstract class DBNation implements NationOrAlliance {
         } else {
             defTaxBase = new int[]{0, 0};
         }
+        timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Diff2 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
+
         boolean includeNoInternal = defTaxBase[0] == 100 && defTaxBase[1] == 100;
         boolean includeMaxInternal = false;
 
         Set<Integer> finalTracked = tracked.stream().filter(f -> f <= Integer.MAX_VALUE).map(Long::intValue).collect(Collectors.toSet());
+
+        timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Diff3 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
         List<TaxDeposit> taxes = includeTaxes ? Locutus.imp().getBankDB().getTaxesPaid(getNation_id(), finalTracked, includeNoInternal, includeMaxInternal, start, end) : new ArrayList<>();
+        timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Diff4 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
 
         for (TaxDeposit deposit : taxes) {
             int internalMoneyRate = useTaxBase ? deposit.internalMoneyRate : 0;
@@ -2437,9 +2450,11 @@ public abstract class DBNation implements NationOrAlliance {
             Transaction2 transaction = new Transaction2(deposit);
             transactions.add(transaction);
         }
-
+        timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Diff5 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
         List<Transaction2> records = getTransactions(updateThreshold, priority, start, end);
+        timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Diff6 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
         transactions.addAll(records);
+        timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Diff7 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
 
         List<Map.Entry<Integer, Transaction2>> result = new ObjectArrayList<>();
 
@@ -2466,7 +2481,7 @@ public abstract class DBNation implements NationOrAlliance {
 
             result.add(new KeyValue<>(sign, record));
         }
-
+        timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Diff8 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
         return result;
     }
 

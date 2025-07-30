@@ -1188,7 +1188,7 @@ public class OffshoreInstance {
                 case CONFIRMATION:
                 default:
                 case OTHER:
-                    log(senderDB, banker, receiver, "Unknown result: " + result + " | <@" + Locutus.loader().getAdminUserId() + ">");
+                    log(senderDB, banker, receiver, "Unknown result: " + result.toLineString() + " | <@" + Locutus.loader().getAdminUserId() + ">");
                 case ESCROWED:
                 case SUCCESS:
                 case SENT_TO_ALLIANCE_BANK: {
@@ -1227,7 +1227,7 @@ public class OffshoreInstance {
                             body.append("`").append(result.getMessageJoined(true)).append("`\n");
                             for (Map.Entry<NationOrAllianceOrGuild, double[]> entry : addBalanceResult.entrySet()) {
                                 NationOrAllianceOrGuild account = entry.getKey();
-                                body.append("\n- `!addbalance " + account.getTypePrefix() + ":" + account.getIdLong() + " " + ResourceType.toString(entry.getValue()) + " #deposit");
+                                body.append("\n- `!addbalance " + account.getTypePrefix() + ":" + account.getIdLong() + " " + ResourceType.toString(entry.getValue()) + " #deposit`");
                             }
                             body.append("\n<@" + Locutus.loader().getAdminUserId() + ">");
                             log(senderDB, banker, receiver, title + ": " + body.toString());

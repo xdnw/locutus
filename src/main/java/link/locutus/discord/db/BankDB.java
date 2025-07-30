@@ -2,14 +2,13 @@ package link.locutus.discord.db;
 
 import com.politicsandwar.graphql.model.*;
 import com.politicsandwar.graphql.model.SortOrder;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.entities.BankRecord;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DiscordMeta;
@@ -126,7 +125,170 @@ public class BankDB extends DBMainV3 {
         createTableWithIndexes(LOOT_DIFF_BY_TAX_ID);
         createTableWithIndexes(TAX_ESTIMATE);
         createTableWithIndexes(TAX_DEPOSITS_DATE);
+
+        {
+            String createTableSQL = "CREATE TABLE IF NOT EXISTS TAX_SUMMARY (" +
+                    "nation_id INTEGER NOT NULL," +
+                    "alliance_id INTEGER NOT NULL," +
+                    "no_internal BLOB NOT NULL," +
+                    "internal_applied BLOB NOT NULL," +
+                    "internal_unapplied BLOB NOT NULL," +
+                    "date BIGINT NOT NULL," +
+                    "PRIMARY KEY (nation_id, alliance_id)" +
+                    ")";
+            ctx().createTableIfNotExists(createTableSQL)
+                    .execute();
+        }
     }
+
+    private final Map<Integer, Long> lastTaxSummaryUpdateByAlliance = new Int2LongOpenHashMap();
+    private final Map<Integer, Long> lastTaxRecordDateByAlliance = new Int2LongOpenHashMap();
+
+    private void loadRecordDate(Set<Integer> allianceIds) {
+        @NotNull SelectJoinStep<Record2<Integer, Long>> select = ctx().select(
+                        TAX_DEPOSITS_DATE.ALLIANCE,
+                        DSL.max(TAX_DEPOSITS_DATE.DATE).as("maxDate")
+                )
+                .from(TAX_DEPOSITS_DATE);
+        @NotNull SelectConditionStep<Record2<Integer, Long>> where;
+        if (allianceIds.size() == 1) {
+            where = select.where(TAX_DEPOSITS_DATE.ALLIANCE.eq(allianceIds.iterator().next()));
+
+        } else {
+            List<Integer> toLoadSorted = new IntArrayList(allianceIds);
+            toLoadSorted.sort(Comparator.naturalOrder());
+            where = select.where(TAX_DEPOSITS_DATE.ALLIANCE.in(toLoadSorted));
+        }
+        where.groupBy(TAX_DEPOSITS_DATE.ALLIANCE)
+                .fetch()
+                .forEach(r ->
+                        lastTaxRecordDateByAlliance.put(
+                                r.get(TAX_DEPOSITS_DATE.ALLIANCE),
+                                r.get("maxDate", Long.class)
+                        )
+                );
+        allianceIds.forEach(aid ->
+                lastTaxRecordDateByAlliance.computeIfAbsent(aid, k -> -1L)
+        );
+    }
+
+    private void loadSummaryDate(Set<Integer> allianceIds, Set<Integer> toUpdate) {
+        // TODO just generate the classes with ai instead of using jooq generatorm, since that may be quicker
+        // TODO FIXME, add table (jooq)
+        // TODO FIXME us eq if allianceIds.size() == 1, otherwise use in
+//        ctx().select(
+//                        TAX_SUMMARY.ALLIANCE_ID,
+//                        DSL.max(TAX_SUMMARY.DATE).as("sumDate")
+//                )
+//                .from(TAX_SUMMARY)
+//                .where(TAX_SUMMARY.ALLIANCE_ID.in(allianceIds))
+//                .groupBy(TAX_SUMMARY.ALLIANCE_ID)
+//                .fetch()
+//                .forEach(r ->
+//                        lastTaxSummaryUpdateByAlliance.put(
+//                                r.get(TAX_SUMMARY.ALLIANCE_ID),
+//                                r.get("sumDate", Long.class)
+//                        )
+//                );
+        // any alliance with no existing summary row gets -1
+        for (int aid : allianceIds) {
+            long date = lastTaxSummaryUpdateByAlliance.computeIfAbsent(aid, k -> -1L);
+            // if outdated (as in below lastTaxRecordDateByAlliance), add to toUpdate
+            if (date < lastTaxRecordDateByAlliance.getOrDefault(aid, Long.MIN_VALUE)) {
+                toUpdate.add(aid);
+            }
+        }
+    }
+
+    private void checkUpdateTaxSummary(Set<Integer> allianceIds) {
+        synchronized (lastTaxSummaryUpdateByAlliance) {
+            // determine which alliances need to load record dates or summaries, or update
+            Set<Integer> toLoadRecordDate = new IntArraySet();
+            Set<Integer> toLoadSummary = new IntArraySet();
+            Set<Integer> toUpdate = new IntArraySet();
+
+            for (int allianceId : allianceIds) {
+                long lastTaxSummaryUpdate = lastTaxSummaryUpdateByAlliance.getOrDefault(allianceId, Long.MIN_VALUE);
+                long lastTaxRecordDate = lastTaxRecordDateByAlliance.getOrDefault(allianceId, Long.MIN_VALUE);
+
+                if (lastTaxSummaryUpdate == Long.MIN_VALUE) {
+                    toLoadSummary.add(allianceId);
+                } else if (lastTaxSummaryUpdate < lastTaxRecordDate) {
+                    toUpdate.add(allianceId);
+                }
+                if (lastTaxRecordDate == -1) {
+                    toLoadRecordDate.add(allianceId);
+                }
+            }
+            if (!toLoadRecordDate.isEmpty()) {
+                loadRecordDate(toLoadRecordDate);
+            }
+            if (!toLoadSummary.isEmpty()) {
+                loadSummaryDate(toLoadSummary, toUpdate);
+            }
+
+            // alliance -> nation -> TaxRecordSummary
+            Map<Integer, Map<Integer, TaxRecordSummary>> summaryByAlliance = new Int2ObjectOpenHashMap<>();
+            { // Load the summaries from TAX_SUMMARY
+                // nation_id
+                // alliance_id
+                // no_internal ArrayUtil.toDoubleArray(the bytes) to double[]
+                // internal_applied ArrayUtil.toDoubleArray(the bytes) to double[]
+                // internal_unapplied ArrayUtil.toDoubleArray(the bytes) to double[]
+            }
+
+            if (!toUpdate.isEmpty()) {
+                boolean[] hasUpdated = {false};
+                // The alliance ids where a value >0 for date is present in lastTaxSummaryUpdateByAlliance
+                Set<Integer> hasDate = new IntOpenHashSet();
+                long earliestDate = Long.MAX_VALUE;
+
+                // the alliance ids where no date is present or its = 0
+                Set<Integer> hasNoDate = new IntOpenHashSet();
+
+                // TODO: Loop over the alliances to add to either hasDate or hasNoDate and set the earliestDate value
+
+                // The function that calculates the summary for each tax deposit record
+                Consumer<TaxDepositsDateRecord> apply = new Consumer<TaxDepositsDateRecord>() {
+                    @Override
+                    public void accept(TaxDepositsDateRecord record) {
+                        long aaSummaryDate = lastTaxSummaryUpdateByAlliance.getOrDefault(record.getAlliance(), Long.MIN_VALUE);
+                        if (record.getDate() <= aaSummaryDate) {
+                            return;
+                        }
+                        Map<Integer, TaxRecordSummary> aaSummary = summaryByAlliance.computeIfAbsent(record.getAlliance(), k -> new Int2ObjectOpenHashMap<>());
+                        TaxRecordSummary natSummary = aaSummary.computeIfAbsent(record.getNation(), k -> new TaxRecordSummary(
+                                ResourceType.getBuffer(),
+                                ResourceType.getBuffer(),
+                                ResourceType.getBuffer(),
+                                true
+                        ));
+                        // determine the type, then update it
+                        // leave this incomplete for now, I will implement the logic later
+
+                        // set the new lastTaxSummaryUpdateByAlliance value
+                        long newLastUpdate = Math.max(aaSummaryDate, record.getDate());
+                        lastTaxSummaryUpdateByAlliance.put(record.getAlliance(), newLastUpdate);
+                        hasUpdated[0] = true;
+                    }
+                };
+
+                // Iterate over the tax records for both cases (two sql queries)
+                // Then call the apply function for each record
+
+                // TODO: if hasDate is not empty, query the TAX_DEPOSITS_DATE table for the tax records after date
+
+                // TODO: if hasNoDate is not empty, query the TAX_DEPOSITS_DATE table for all tax records
+
+                if (hasUpdated[0]) {
+                    // save the new summaries to the TAX_SUMMARY table
+                    // set the lastTaxSummaryUpdateByAlliance for each alliance to the new value
+                }
+            }
+        }
+    }
+
+    private record TaxRecordSummary(double[] no_internal, double[] internal_applied, double[] internal_unapplied, boolean dirty) {}
 
     public Transaction2 getLatestTransaction() {
         List<Transaction2> latestList = getTransactions(null, TRANSACTIONS_2.TX_ID.desc(), 1);
@@ -821,7 +983,14 @@ public class BankDB extends DBMainV3 {
     }
 
     public void deleteTaxDeposits(int allianceId, long date) {
-        ctx().deleteFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.ALLIANCE.eq(allianceId).and(TAX_DEPOSITS_DATE.DATE.eq(date))).execute();
+        ctx().deleteFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.ALLIANCE.eq(allianceId).and(TAX_DEPOSITS_DATE.DATE.ge(date))).execute();
+        ctx().execute("DELETE FROM `TAX_SUMMARY` WHERE alliance = ? AND date >= ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, allianceId);
+            stmt.setLong(2, date);
+        });
+        synchronized (lastTaxSummaryUpdateByAlliance) {
+            lastTaxSummaryUpdateByAlliance.remove(allianceId);
+        }
     }
 
     public synchronized void addTaxDeposits(Collection<TaxDeposit> records) {
@@ -854,6 +1023,11 @@ public class BankDB extends DBMainV3 {
             dbRecord.setTaxId(record.tax_id);
 
             dbRecords.add(dbRecord);
+            synchronized (lastTaxSummaryUpdateByAlliance) {
+                long prev = lastTaxRecordDateByAlliance.getOrDefault(record.allianceId, Long.MIN_VALUE);
+                long updated = Math.max(prev, record.date);
+                lastTaxRecordDateByAlliance.put(record.allianceId, updated);
+            }
         }
         if (dbRecords.size() != 1) {
             try {
@@ -886,6 +1060,12 @@ public class BankDB extends DBMainV3 {
 
     public void clearTaxDeposits(int allianceId) {
         ctx().deleteFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.ALLIANCE.eq(allianceId)).execute();
+        ctx().execute("DELETE FROM `TAX_SUMMARY` WHERE alliance = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, allianceId);
+        });
+        synchronized (lastTaxSummaryUpdateByAlliance) {
+            lastTaxSummaryUpdateByAlliance.remove(allianceId);
+        }
     }
 
     public Map<Integer, TaxBracket> getTaxBracketsFromDeposits() {
