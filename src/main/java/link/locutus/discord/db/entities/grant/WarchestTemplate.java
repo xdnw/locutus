@@ -255,7 +255,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
         // received #warchest
         double[] received = ResourceType.getBuffer();
 
-        for (Transaction2 record : receiver.getTransactions(-1, true)) {
+        for (Transaction2 record : receiver.getTransactions(-1, true, 0L, Long.MAX_VALUE)) {
             if(record.tx_datetime > cutoff && record.note != null && record.sender_id == receiver.getId()) {
                 if (record.getNoteMap().get(DepositType.WARCHEST) != null) {
                     received = ResourceType.add(received, record.resources);

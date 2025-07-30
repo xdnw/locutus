@@ -533,6 +533,41 @@ public class BankDB extends DBMainV3 {
         return list;
     }
 
+    public Transaction2 getLatestDeposit(int id, int type) {
+        Condition condition = TRANSACTIONS_2.SENDER_ID.eq((long) id).and(TRANSACTIONS_2.SENDER_TYPE.eq(type));
+        List<Transaction2> transactions = getTransactions(condition, TRANSACTIONS_2.TX_ID.desc(), 1);
+        return transactions.isEmpty() ? null : transactions.getFirst();
+    }
+
+    public Transaction2 getLatestWithdrawal(int id, int type) {
+        Condition condition = TRANSACTIONS_2.RECEIVER_ID.eq((long) id).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(type));
+        List<Transaction2> transactions = getTransactions(condition, TRANSACTIONS_2.TX_ID.desc(), 1);
+        return transactions.isEmpty() ? null : transactions.getFirst();
+    }
+
+    public Transaction2 getLatestSelfWithdrawal(int nationId) {
+        Condition condition = TRANSACTIONS_2.RECEIVER_ID.eq((long) nationId).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(1))
+                .and(TRANSACTIONS_2.SENDER_TYPE.eq(2))
+                .and(lower(TRANSACTIONS_2.NOTE).like("%#banker=" + nationId + "%"));
+        List<Transaction2> transactions = getTransactions(condition, TRANSACTIONS_2.TX_ID.desc(), 1);
+        return transactions.isEmpty() ? null : transactions.getFirst();
+    }
+
+    public List<Transaction2> getTransactionsByNation(int nation, long start, long end) {
+        if (start < 0) start = 0;
+        Condition condition = DSL.or(
+                TRANSACTIONS_2.SENDER_ID.eq((long) nation).and(TRANSACTIONS_2.SENDER_TYPE.eq(1)),
+                TRANSACTIONS_2.RECEIVER_ID.eq((long) nation).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(1))
+        );
+        if (start > 0) {
+            condition = condition.and(TRANSACTIONS_2.TX_DATETIME.ge(start));
+        }
+        if (end != Long.MAX_VALUE) {
+            condition = condition.and(TRANSACTIONS_2.TX_DATETIME.le(end));
+        }
+        return getTransactions(condition, TRANSACTIONS_2.TX_ID.desc(), null);
+    }
+
     public List<Transaction2> getTransactionsByNote(String note) {
         note = note.toLowerCase(Locale.ROOT);
         return getTransactions(lower(TRANSACTIONS_2.NOTE).like("%" + note + "%"));
@@ -629,7 +664,7 @@ public class BankDB extends DBMainV3 {
         return list;
     }
 
-    public List<TaxDeposit> getTaxesPaid(int nation, Set<Integer> alliances, boolean includeNoInternal, boolean includeMaxInternal, long cutoff) {
+    public List<TaxDeposit> getTaxesPaid(int nation, Set<Integer> alliances, boolean includeNoInternal, boolean includeMaxInternal, long start, long end) {
         List<TaxDeposit> list = new ObjectArrayList<>();
         @NotNull SelectWhereStep<TaxDepositsDateRecord> select = ctx().selectFrom(TAX_DEPOSITS_DATE);
         Condition where = TAX_DEPOSITS_DATE.NATION.eq(nation);
@@ -639,8 +674,11 @@ public class BankDB extends DBMainV3 {
         if (!includeMaxInternal) {
             where = where.and(TAX_DEPOSITS_DATE.INTERNAL_TAXRATE.ne((int) MathMan.pairByte(100, 100)));
         }
-        if (cutoff > 0) {
-            where = where.and(TAX_DEPOSITS_DATE.DATE.ge(cutoff));
+        if (start > 0) {
+            where = where.and(TAX_DEPOSITS_DATE.DATE.ge(start));
+        }
+        if (end != Long.MAX_VALUE) {
+            where = where.and(TAX_DEPOSITS_DATE.DATE.le(end));
         }
         if (alliances.size() == 1) {
             where = where.and(TAX_DEPOSITS_DATE.ALLIANCE.eq(alliances.iterator().next()));
@@ -690,14 +728,19 @@ public class BankDB extends DBMainV3 {
     }
 
     public List<TaxDeposit> getTaxesByBracket(int tax_id) {
-        List<TaxDeposit> list = new ObjectArrayList<>();
-        ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.TAX_ID.eq(tax_id)).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
-        return list;
+        return getTaxesByBracket(tax_id, 0, Long.MAX_VALUE);
     }
 
-    public List<TaxDeposit> getTaxesByBracket(int tax_id, long afterDate) {
+    public List<TaxDeposit> getTaxesByBracket(int tax_id, long start, long end) {
         List<TaxDeposit> list = new ObjectArrayList<>();
-        ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.TAX_ID.eq(tax_id).and(TAX_DEPOSITS_DATE.DATE.ge(afterDate))).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
+        @NotNull SelectConditionStep<TaxDepositsDateRecord> condition = ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.TAX_ID.eq(tax_id));
+        if (start > 0) {
+            condition = condition.and(TAX_DEPOSITS_DATE.DATE.ge(start));
+        }
+        if (end != Long.MAX_VALUE) {
+            condition = condition.and(TAX_DEPOSITS_DATE.DATE.le(end));
+        }
+        condition.fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
         return list;
     }
 

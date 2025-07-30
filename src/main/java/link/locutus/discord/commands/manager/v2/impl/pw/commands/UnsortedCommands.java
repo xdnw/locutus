@@ -432,7 +432,7 @@ public class UnsortedCommands {
             header.add("" + bracket.getAlliance_id());
             header.add("" + bracket.getNations().size());
 
-            Map<DepositType, double[]> depositsByCat = db.getTaxBracketDeposits(bracket.getId(), 0L, false, false);
+            Map<DepositType, double[]> depositsByCat = db.getTaxBracketDeposits(bracket.getId(), 0L, Long.MAX_VALUE, false, false);
             double[] tax = depositsByCat.getOrDefault(DepositType.TAX, ResourceType.getBuffer());
             double[] deposits = depositsByCat.getOrDefault(DepositType.DEPOSIT, ResourceType.getBuffer());
             header.add(WebUtil.GSON.toJson(ResourceType.resourcesToMap(tax)));
@@ -513,7 +513,7 @@ public class UnsortedCommands {
             }
             totals = nation.getStockpile();
             if (totals == null) {
-                return "No stockpile found for " + nation.getMarkdownUrl() + ". Have they disabled alliance information access?";
+                return "No stockpile found for " + nation.getMarkdownUrl() + ". Have they disabled alliance information access on their **account** page?";
             }
 
             Map<ResourceType, Double> warchest = db.getPerCityWarchest(nation);
@@ -524,12 +524,10 @@ public class UnsortedCommands {
                 double[] totalsArray = ResourceType.resourcesToArray(totals);
                 double[] excess = ResourceType.subtract(totalsArray.clone(), required);
                 double[] shortage = ResourceType.subtract(required, totalsArray.clone());
-                // remove negatives
                 for (int i = 0; i < excess.length; i++) {
                     if (excess[i] < 0) excess[i] = 0;
                     if (shortage[i] < 0) shortage[i] = 0;
                 }
-                // if not empty, append to wcInfo
                 if (!ResourceType.isZero(shortage)) {
                     wcInfo.append("Missing Warchest:\n```").append(ResourceType.toString(shortage)).append("```\n");
                 }

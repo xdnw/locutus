@@ -2321,9 +2321,9 @@ public class AdminCommands {
 
             List<Transaction2> transactions;
             if (!aaIds.isEmpty()) {
-                transactions = offshore.getTransactionsAA(aaIds, false);
+                transactions = offshore.getTransactionsAA(aaIds, false, 0, Long.MAX_VALUE);
             } else {
-                transactions = offshore.getTransactionsGuild(id, false);
+                transactions = offshore.getTransactionsGuild(id, false, 0L, Long.MAX_VALUE);
             }
             transactions.removeIf(f -> f.tx_datetime > System.currentTimeMillis());
             transactions.removeIf(f -> f.receiver_id == f.banker_nation && f.tx_id > 0);

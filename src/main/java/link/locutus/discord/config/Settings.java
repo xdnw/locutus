@@ -192,7 +192,7 @@ public class Settings extends Config {
     }
 
     @Comment({
-            "Artificual intelligence is used for features such as natural language responses, search and image processing",
+            "Settings for repeating tasks, if they are enabled in `enabled-components`",
     })
     public static class TASKS {
         @Comment("If any turn related tasks are run (default: true)")

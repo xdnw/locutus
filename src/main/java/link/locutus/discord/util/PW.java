@@ -13,11 +13,7 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
-import link.locutus.discord.apiv1.enums.Continent;
-import link.locutus.discord.apiv1.enums.DepositType;
-import link.locutus.discord.apiv1.enums.DomesticPolicy;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.ICity;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.*;
@@ -810,8 +806,9 @@ public final class PW {
                     .hashString(Settings.INSTANCE.CONVERSION_SECRET + record.tx_id, StandardCharsets.UTF_8)
                     .toString());
             boolean hasHash = false;
+            String hash = null;
             if (value instanceof Number n) {
-                String hash = getHash.get();
+                if (hash == null) hash = getHash.get();
                 if (record.note.contains(hash)) {
                     cashValue = n.doubleValue();
                     hasHash = true;
@@ -845,8 +842,7 @@ public final class PW {
                     }
                     convertCached.add((byte) resource.ordinal());
 
-                    List<DBTrade> trades = tradeDb.getTrades(resource, start, date);
-                    Double avg = Locutus.imp().getTradeManager().getAverage(trades).getKey().get(resource);
+                    Double avg = Locutus.imp().getTradeDB().getWeeklyAverage(resource, date, null);
                     if (avg != null) {
                         cashValue += amt * avg * rate;
                     }
@@ -856,12 +852,13 @@ public final class PW {
                 }
                 if (!hasHash)
                 {
-                    // set hash
-                    String hash = getHash.get();
+                    if (hash == null) hash = getHash.get();
                     String note = record.note;
-                    note = note.replaceAll("#cash[^ ]+", "#cash=" + MathMan.format(cashValue));
+                    note = note.toLowerCase(Locale.ROOT).replaceAll("#cash[^ ]*", "#cash=" + MathMan.format(cashValue).replace(",", ""));
+                    note = note.replaceAll("#[a-f0-9]{32}", "");
+                    note = note.replaceAll("\\s+", " ").trim();
                     note += " #" + hash;
-                    record.note = note;
+                    record.note = note.trim();
 
                     if (record.isInternal()) {
                         guildDB.updateNote(record.original_id, record.note);
@@ -1311,11 +1308,12 @@ public final class PW {
     }
 
     public static double estimateScore(NationDB db, DBNation nation) {
-        return estimateScore(db, nation, null, null, null, null);
+        return estimateScore(db, nation, null, null, null, null, null);
     }
 
-    public static double estimateScore(NationDB db, DBNation nation, MMRDouble mmr, Double infra, Integer projects, Integer cities) {
+    public static double estimateScore(NationDB db, DBNation nation, MMRDouble mmr, Double infra, Integer projects, Integer cities, Integer researchBits) {
         if (projects == null) projects = nation.getNumProjects();
+        if (researchBits == null) researchBits = nation.getResearchBits();
         if (infra == null) {
             infra = 0d;
             for (DBCity city : db.getCitiesV3(nation.getNation_id()).values()) {
@@ -1325,6 +1323,16 @@ public final class PW {
         if (cities == null) cities = nation.getCities();
 
         double base = 10;
+
+        if (researchBits > 0) {
+            for (Research rs : Research.values) {
+                int level = rs.getLevel(researchBits);
+                if (level > 0) {
+                    base += rs.getScore() * level;
+                }
+            }
+        }
+
         base += projects * Projects.getScore();
         base += (cities - 1) * 100;
         base += infra / 40d;

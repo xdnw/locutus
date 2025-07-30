@@ -6,6 +6,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongDoubleImmutablePair;
 import it.unimi.dsi.fastutil.longs.LongDoublePair;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -238,14 +239,14 @@ public class OffshoreInstance {
 //        return PW.resourcesToMap(resources);
 //    }
 
-    public synchronized List<Transaction2> getTransactionsGuild(long guildId, boolean force) {
+    public synchronized List<Transaction2> getTransactionsGuild(long guildId, boolean force, long start, long end) {
         if (force || outOfSync.get()) sync();
 
         List<Transaction2> transactions = new ObjectArrayList<>();
-        transactions.addAll(getOffshoreTransactions(guildId, 3));
+        transactions.addAll(getOffshoreTransactions(guildId, 3, start, end));
 
         GuildDB db = getGuildDB();
-        List<Transaction2> offset = db.getDepositOffsetTransactions(guildId);
+        List<Transaction2> offset = db.getDepositOffsetTransactions(guildId, start, end);
         transactions.addAll(offset);
 
         return transactions;
@@ -255,14 +256,14 @@ public class OffshoreInstance {
         if (!getGuildDB().getCoalitionRaw(Coalition.OFFSHORING).contains(guildId)) {
             throw new IllegalArgumentException("Guild " + guildId + " is not offshoring with " + getGuildDB().getGuild());
         }
-        List<Transaction2> toProcess = getTransactionsGuild(guildId, force);
+        List<Transaction2> toProcess = getTransactionsGuild(guildId, force, 0L, Long.MAX_VALUE);
 
         Map<ResourceType, Double> result = ResourceType.resourcesToMap(getTotal(getOffshoreAAIds(), toProcess, guildId, 3));
         return result;
     }
 
-    public synchronized List<Transaction2> getTransactionsAA(int allianceId, boolean force) {
-        return getTransactionsAA(Collections.singleton(allianceId), force);
+    public synchronized List<Transaction2> getTransactionsAA(int allianceId, boolean force, long start, long end) {
+        return getTransactionsAA(Collections.singleton(allianceId), force, start, end);
     }
 
     public static Predicate<Transaction2> getFilter(long id, int type) {
@@ -313,21 +314,22 @@ public class OffshoreInstance {
         };
     }
 
-    private List<Transaction2> getOffshoreTransactions(long id, int type) {
+    private List<Transaction2> getOffshoreTransactions(long id, int type, long start, long end) {
         Set<Integer> offshoreIds = getOffshoreAAIds();
         Predicate<Transaction2> filter = getFilter(id, type);
-        List<Transaction2> result = Locutus.imp().getBankDB().getAllianceTransactions(offshoreIds, true, filter);
-        return result;
+        if (start != 0) filter = filter.and(tx -> tx.tx_datetime >= start);
+        if (end != Long.MAX_VALUE) filter = filter.and(tx -> tx.tx_datetime <= end);
+        return Locutus.imp().getBankDB().getAllianceTransactions(offshoreIds, true, filter);
     }
 
-    public synchronized List<Transaction2> getTransactionsAA(Set<Integer> allianceId, boolean force) {
+    public synchronized List<Transaction2> getTransactionsAA(Set<Integer> allianceId, boolean force, long start, long end) {
         if (force || outOfSync.get()) sync();
 
         GuildDB db = getGuildDB();
         List<Transaction2> toProcess = new ObjectArrayList<>();
         for (int id : allianceId) {
-            toProcess.addAll(getOffshoreTransactions((long) id, 2));
-            toProcess.addAll(db.getDepositOffsetTransactions(-id));
+            toProcess.addAll(getOffshoreTransactions((long) id, 2, start, end));
+            toProcess.addAll(db.getDepositOffsetTransactions(-id, start, end));
         }
         return toProcess;
     }
@@ -340,7 +342,7 @@ public class OffshoreInstance {
         Set<Integer> allowed = getGuildDB().getCoalition(Coalition.OFFSHORING);
         allianceIds.removeIf(f -> !allowed.contains(f));
         if (allianceIds.isEmpty()) return new HashMap<>();
-        List<Transaction2> toProcess = getTransactionsAA(allianceIds, force);
+        List<Transaction2> toProcess = getTransactionsAA(allianceIds, force, 0, Long.MAX_VALUE);
         Set<Long> allianceIdsLong = allianceIds.stream().map(Integer::longValue).collect(Collectors.toSet());
         double[] sum = getTotal(getOffshoreAAIds(), toProcess, allianceIdsLong, 2);
         return ResourceType.resourcesToMap(sum);
@@ -729,7 +731,7 @@ public class OffshoreInstance {
 
                 boolean hasEcon = allowedIds.containsValue(AccessType.ECON);
                 if (!hasEcon || requireConfirmation) {
-                    Map<DepositType, double[]> bracketDeposits = senderDB.getTaxBracketDeposits(tax_account.taxId, 0L, false, false);
+                    Map<DepositType, double[]> bracketDeposits = senderDB.getTaxBracketDeposits(tax_account.taxId, 0L, Long.MAX_VALUE, false, false);
                     double[] taxDeposits = bracketDeposits.get(DepositType.TAX);
                     double[] taxDepositsNormalized = PW.normalize(taxDeposits);
                     double taxDepoValue = ResourceType.convertedTotal(taxDepositsNormalized);
@@ -1728,7 +1730,7 @@ public class OffshoreInstance {
     }
 
     public Map<NationOrAllianceOrGuild, double[]> getDepositsByAA(GuildDB guildDb, Predicate<Integer> allowedAlliances, boolean update) {
-        Map<NationOrAllianceOrGuild, double[]> result = new LinkedHashMap<>();
+        Map<NationOrAllianceOrGuild, double[]> result = new Object2ObjectLinkedOpenHashMap<>();
 
         GuildDB delegate = guildDb.getDelegateServer();
         if (delegate != null) {

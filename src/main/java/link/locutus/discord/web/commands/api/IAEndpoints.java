@@ -218,7 +218,7 @@ public class IAEndpoints extends PageHelper {
             result.no_access_msg = e.getMessage();
         }
 
-        Map<DepositType, double[]> breakdown = nation.getDeposits(db, null, true, true, -1, 0, false);
+        Map<DepositType, double[]> breakdown = nation.getDeposits(db, null, true, true, -1, 0, Long.MAX_VALUE, false);
         boolean includeGrants = db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW_IGNORES_GRANTS) == Boolean.FALSE;
         double[] total = ResourceType.getBuffer();
         for (Map.Entry<DepositType, double[]> entry : breakdown.entrySet()) {
@@ -340,7 +340,7 @@ public class IAEndpoints extends PageHelper {
         else if (nation.getId() != me.getId() && user == null || !Roles.ECON_STAFF.has(user, db.getGuild())) {
             throw new IllegalArgumentException("You can only view your own bank records.");
         }
-        List<Transaction2> transactions = BankCommands.getRecords(db, null, true, true, true, 0, nation, false);
+        List<Transaction2> transactions = BankCommands.getRecords(db, null, true, true, true, 0, Long.MAX_VALUE, nation, false);
         List<List<Object>> cells = SpreadSheet.generateTransactionsListCells(transactions, true, false);
         return new WebTable(cells, null, null);
     }

@@ -3637,7 +3637,11 @@ public class GrantCommands {
         if (nation.getId() == receiver.getId() && receiver.isNation()) {
             sb.append("[REQUESTING NATION]\n");
         } else {
-            sb.append(nation.getMarkdownUrl()).append(" | ").append(nation.getAllianceUrlMarkup()).append("\n");
+            sb.append(receiver.getMarkdownUrl());
+            if (receiver instanceof DBNation recNation) {
+                sb.append(" | ").append(recNation.getAllianceUrlMarkup());
+            }
+            sb.append("\n");
         }
         sb.append("**Reason:** `").append(reason).append("`\n");
         sb.append("**Date Requested:** ").append(DiscordUtil.timestamp(now, null)).append("\n");

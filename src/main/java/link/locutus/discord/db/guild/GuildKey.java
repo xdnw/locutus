@@ -655,7 +655,7 @@ public class GuildKey {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
-        public String RECRUIT_MESSAGE_CONTENT(@Me GuildDB db, @Me User user, String message) {
+        public String RECRUIT_MESSAGE_CONTENT(@Me GuildDB db, @Me User user, @AllowAttachment String message) {
             boolean containsHtml = HTML_TAG_PATTERN.matcher(message).find();
             if (!containsHtml) {
                 message = MarkupUtil.markdownToHTML(MarkupUtil.formatDiscordMarkdown(message, db == null ? null : db.getGuild()));
@@ -666,7 +666,8 @@ public class GuildKey {
         @Override
         public String help() {
             return "The recruit message body\n" +
-                    "Must also set " + RECRUIT_MESSAGE_OUTPUT.getCommandMention();
+                    "Must also set " + RECRUIT_MESSAGE_OUTPUT.getCommandMention() + "\n" +
+                    "Note: Provide a discord attachment url for the value to set a message longer than " + Message.MAX_CONTENT_LENGTH + " characters";
         }
 
         @Override

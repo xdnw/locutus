@@ -1708,8 +1708,12 @@ public class IACommands {
                 response.append("Set internal taxrate to " + internalTaxRate + "\n");
             }
 
-            boolean result = alliance.setTaxBracket(bracket, nation);
-            response.append("Set bracket to " + bracket + " for " + nation.getNation() + ": " + result).append("\n");
+            try {
+                boolean result = alliance.setTaxBracket(bracket, nation);
+                response.append("Set bracket to " + bracket + " for " + nation.getNation() + ": " + result).append("\n");
+            } catch (RuntimeException e) {
+                response.append("Failed to set bracket for " + nation.getNation() + ": " + e.getMessage()).append("\n");
+            }
         }
         response.append("\nSee also: " + CM.tax.set_from_sheet.cmd.toSlashMention());
         return response.toString();

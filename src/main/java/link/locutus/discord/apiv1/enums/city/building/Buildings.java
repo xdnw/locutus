@@ -1,7 +1,5 @@
 package link.locutus.discord.apiv1.enums.city.building;
 
-import static link.locutus.discord.apiv1.enums.Continent.*;
-
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -12,32 +10,17 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.scheduler.KeyValue;
 
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
-import static link.locutus.discord.apiv1.enums.ResourceType.ALUMINUM;
-import static link.locutus.discord.apiv1.enums.ResourceType.BAUXITE;
-import static link.locutus.discord.apiv1.enums.ResourceType.COAL;
-import static link.locutus.discord.apiv1.enums.ResourceType.FOOD;
-import static link.locutus.discord.apiv1.enums.ResourceType.GASOLINE;
-import static link.locutus.discord.apiv1.enums.ResourceType.IRON;
-import static link.locutus.discord.apiv1.enums.ResourceType.LEAD;
-import static link.locutus.discord.apiv1.enums.ResourceType.MONEY;
-import static link.locutus.discord.apiv1.enums.ResourceType.MUNITIONS;
-import static link.locutus.discord.apiv1.enums.ResourceType.OIL;
-import static link.locutus.discord.apiv1.enums.ResourceType.STEEL;
-import static link.locutus.discord.apiv1.enums.ResourceType.URANIUM;
+import static link.locutus.discord.apiv1.enums.Continent.*;
+import static link.locutus.discord.apiv1.enums.ResourceType.*;
 
 public class Buildings {
     public final static PowerBuilding COAL_POWER = new BuildingBuilder("impCoalpower").cost(MONEY, 5000).pollution(8).upkeep(MONEY, 1200).power(COAL, 1.2d, 100, 500);
     public final static PowerBuilding OIL_POWER = new BuildingBuilder("impOilpower").cost(MONEY, 7000).pollution(6).upkeep(MONEY, 1800).power(OIL, 1.2d, 100, 500);
-    public final static PowerBuilding NUCLEAR_POWER = new BuildingBuilder("impNuclearpower").cost(MONEY, 500000).upkeep(MONEY, 10500).cost(STEEL, 100).power(URANIUM, 2.4d, 1000, 2000);
+    public final static PowerBuilding NUCLEAR_POWER = new BuildingBuilder("impNuclearpower").cost(MONEY, 500000).upkeep(MONEY, 10500).cost(STEEL, 100).power(URANIUM, 3.125, 1000, 2000);
     public final static PowerBuilding WIND_POWER = new BuildingBuilder("impWindpower").cost(MONEY, 30000).cost(ALUMINUM, 25).upkeep(MONEY, 500).power(null, 0, 250, 250);
     public final static ResourceBuilding COAL_MINE = new BuildingBuilder("impCoalmine").cost(MONEY, 1000).pollution(12).upkeep(MONEY, 400).cap(10).resource(COAL).continents(NORTH_AMERICA, EUROPE, AUSTRALIA, ANTARCTICA);
     public final static ResourceBuilding OIL_WELL = new BuildingBuilder("impOilwell").cost(MONEY, 1500).pollution(12).upkeep(MONEY, 600).cap(10).resource(OIL).continents(SOUTH_AMERICA, AFRICA, ASIA, ANTARCTICA);

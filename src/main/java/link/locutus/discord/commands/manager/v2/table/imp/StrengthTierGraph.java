@@ -28,8 +28,8 @@ public class StrengthTierGraph extends SimpleTable<Void> {
         int maxScore = 0;
         int minScore = Integer.MAX_VALUE;
         for (DBNation nation : allNations) {
-            maxScore = (int) Math.max(maxScore, nation.estimateScore(col1MMR, col1Infra, null, null));
-            minScore = (int) Math.min(minScore, nation.estimateScore(col2MMR, col2Infra, null, null));
+            maxScore = (int) Math.max(maxScore, nation.estimateScore(col1MMR, col1Infra, null, null, null));
+            minScore = (int) Math.min(minScore, nation.estimateScore(col2MMR, col2Infra, null, null, null));
         }
         this.maxScore = maxScore;
         this.minScore = minScore;
@@ -41,10 +41,10 @@ public class StrengthTierGraph extends SimpleTable<Void> {
         this.coal2StrSpread = new double[coal2Str.length];
 
         for (DBNation nation : coalition1Nations) {
-            coal1Str[(int) (nation.estimateScore(col1MMR, col1Infra, null, null) * PW.WAR_RANGE_MIN_MODIFIER)] += nation.getStrengthMMR(col1MMR);
+            coal1Str[(int) (nation.estimateScore(col1MMR, col1Infra, null, null, null) * PW.WAR_RANGE_MIN_MODIFIER)] += nation.getStrengthMMR(col1MMR);
         }
         for (DBNation nation : coalition2Nations) {
-            coal2Str[(int) (nation.estimateScore(col2MMR, col2Infra, null, null) * PW.WAR_RANGE_MIN_MODIFIER)] += nation.getStrengthMMR(col2MMR);
+            coal2Str[(int) (nation.estimateScore(col2MMR, col2Infra, null, null, null) * PW.WAR_RANGE_MIN_MODIFIER)] += nation.getStrengthMMR(col2MMR);
         }
         for (int min = 10; min < coal1Str.length; min++) {
             double val = coal1Str[min];

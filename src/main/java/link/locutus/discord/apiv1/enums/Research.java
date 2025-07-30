@@ -18,16 +18,13 @@ public enum Research {
 
     // Decrease soldier cost by $0.1 and tank cost by $1 and 0.01 Steel, Reduce Soldier upkeep cost by $0.02 at peace, and $0.03 at war,
     // Increase the number of soldiers each ton of food feeds by 10 at peace, and 15 at war. It also reduces Tank upkeep by $1 at peace, and $1.5 at war
-    GROUND_COST(ResearchGroup.GROUND, null, Map.of(
+    GROUND_EFFICIENCY(ResearchGroup.GROUND, 3, null, Map.of(
+            MilitaryUnit.SOLDIER, 2000,
+            MilitaryUnit.TANK, 100
+    ), Map.of(
             MilitaryUnit.SOLDIER, Map.of(ResourceType.MONEY, 0.1),
             MilitaryUnit.TANK, Map.of(ResourceType.MONEY, 1.0, ResourceType.STEEL, 0.01)
-    ), Map.of(
-            MilitaryUnit.SOLDIER, Map.of(ResourceType.MONEY, 0.04),
-            MilitaryUnit.TANK, Map.of(ResourceType.MONEY, 2.0)
-    ), Map.of(
-            MilitaryUnit.SOLDIER, Map.of(ResourceType.MONEY, 0.06),
-            MilitaryUnit.TANK, Map.of(ResourceType.MONEY, 3.0)
-    )) {
+    ), null, null) {
         @Override
         protected TriConsumer<Integer, Integer, double[]> applyUpkeepReduction(MilitaryUnit unit, boolean war) {
             if (unit == MilitaryUnit.SOLDIER) {
@@ -85,27 +82,37 @@ public enum Research {
         }
     },
     // Decrease plane cost by $50 and 0.2 Aluminium, Reduce plane upkeep cost by $15 at peace, and $10 at war
-    AIR_COST(ResearchGroup.AIR, null, Map.of(
-            MilitaryUnit.AIRCRAFT, Map.of(ResourceType.MONEY, 50.0, ResourceType.ALUMINUM, 0.2)
+    AIR_EFFICIENCY(ResearchGroup.AIR, 4, null, Map.of(
+            MilitaryUnit.AIRCRAFT, 6
     ), Map.of(
+            MilitaryUnit.AIRCRAFT, Map.of(ResourceType.MONEY, 50.0, ResourceType.ALUMINUM, 0.2)
+    ), null, null),
+    // Decrease ship cost by $500 and 0.5 Steel, Reduce ship upkeep cost by $30 at peace, and $50 at war
+    NAVAL_EFFICIENCY(ResearchGroup.NAVAL, 2, null, Map.of(
+            MilitaryUnit.SHIP, 2
+    ), Map.of(
+            MilitaryUnit.SHIP, Map.of(ResourceType.MONEY, 500.0, ResourceType.STEEL, 0.5)
+    ), null, null),
+    // Increase max soldier count by 3000 and max tank count by 250
+    GROUND_CAPACITY(ResearchGroup.GROUND, 3, Map.of(MilitaryUnit.SOLDIER, 3000, MilitaryUnit.TANK, 250), null, null, Map.of(
+            MilitaryUnit.SOLDIER, Map.of(ResourceType.MONEY, 0.04),
+            MilitaryUnit.TANK, Map.of(ResourceType.MONEY, 2.0)
+    ), Map.of(
+            MilitaryUnit.SOLDIER, Map.of(ResourceType.MONEY, 0.06),
+            MilitaryUnit.TANK, Map.of(ResourceType.MONEY, 3.0)
+    )),
+    // Increase max plane count by 15
+    AIR_CAPACITY(ResearchGroup.AIR, 4, Map.of(MilitaryUnit.AIRCRAFT, 15), null, null, Map.of(
             MilitaryUnit.AIRCRAFT, Map.of(ResourceType.MONEY, 30.0)
     ), Map.of(
             MilitaryUnit.AIRCRAFT, Map.of(ResourceType.MONEY, 20.0)
     )),
-    // Decrease ship cost by $500 and 0.5 Steel, Reduce ship upkeep cost by $30 at peace, and $50 at war
-    NAVAL_COST(ResearchGroup.NAVAL, null, Map.of(
-            MilitaryUnit.SHIP, Map.of(ResourceType.MONEY, 500.0, ResourceType.STEEL, 0.5)
-    ), Map.of(
+    // Increase max ship count by 5
+    NAVAL_CAPACITY(ResearchGroup.NAVAL, 2, Map.of(MilitaryUnit.SHIP, 5), null, null, Map.of(
             MilitaryUnit.SHIP, Map.of(ResourceType.MONEY, 60.0)
     ), Map.of(
             MilitaryUnit.SHIP, Map.of(ResourceType.MONEY, 100.0)
     )),
-    // Increase max soldier count by 3000 and max tank count by 250
-    GROUND_CAPACITY(ResearchGroup.GROUND, Map.of(MilitaryUnit.SOLDIER, 3000, MilitaryUnit.TANK, 250), null, null, null),
-    // Increase max plane count by 15
-    AIR_CAPACITY(ResearchGroup.AIR, Map.of(MilitaryUnit.AIRCRAFT, 15), null, null, null),
-    // Increase max ship count by 5
-    NAVAL_CAPACITY(ResearchGroup.NAVAL, Map.of(MilitaryUnit.SHIP, 5), null, null, null),
 
     ;
 
@@ -119,15 +126,18 @@ public enum Research {
     private final Map<MilitaryUnit, Map<ResourceType, Double>> costDecrease;
     private final Map<MilitaryUnit, Map<ResourceType, Double>> upkeepPeaceDecrease;
     private final Map<MilitaryUnit, Map<ResourceType, Double>> upkeepWarDecrease;
+    private final int score;
 
     // 1 Food per +10	1 Food per +15
 
-    Research(ResearchGroup group,
+    Research(ResearchGroup group, int score,
              Map<MilitaryUnit, Integer> capacityIncrease,
+             Map<MilitaryUnit, Integer> rebuyIncrease,
              Map<MilitaryUnit, Map<ResourceType, Double>> costDecrease,
              Map<MilitaryUnit, Map<ResourceType, Double>> upkeepPeaceDecrease,
                 Map<MilitaryUnit, Map<ResourceType, Double>> upkeepWarDecrease) {
         this.group = group;
+        this.score = score;
         this.capacityIncrease = capacityIncrease;
         this.costDecrease = costDecrease;
         this.upkeepPeaceDecrease = upkeepPeaceDecrease;
@@ -138,14 +148,23 @@ public enum Research {
                 double[] costDecreaseArr = ResourceType.resourcesToArray(entry.getValue());
                 MilitaryUnit unit = entry.getKey();
 
+                unit.setCostResearch(this, costDecreaseArr);
+            }
+        }
+        if (upkeepPeaceDecrease != null) {
+
+            for (Map.Entry<MilitaryUnit, Map<ResourceType, Double>> entry : upkeepPeaceDecrease.entrySet()) {
+                MilitaryUnit unit = entry.getKey();
+
                 TriConsumer<Integer, Integer, double[]> upkeepWar = applyUpkeepReduction(unit, true);
                 TriConsumer<Integer, Integer, double[]> upkeepPeace = applyUpkeepReduction(unit, false);
                 Int2DoubleFunction upkeepWarConverted = applyUpkeepReductionConverted(unit, true);
                 Int2DoubleFunction upkeepPeaceConverted = applyUpkeepReductionConverted(unit, false);
 
-                unit.setCostResearch(this, costDecreaseArr, upkeepWar, upkeepPeace, upkeepWarConverted, upkeepPeaceConverted);
+                unit.setUpkeepResearch(upkeepPeace, upkeepWar, upkeepPeaceConverted, upkeepWarConverted);
             }
         }
+
         if (capacityIncrease != null) {
             for (Map.Entry<MilitaryUnit, Integer> entry : capacityIncrease.entrySet()) {
                 MilitaryUnit unit = entry.getKey();
@@ -153,6 +172,17 @@ public enum Research {
                 unit.setCapacityResearch(this, capacity);
             }
         }
+        if (rebuyIncrease != null) {
+            for (Map.Entry<MilitaryUnit, Integer> entry : rebuyIncrease.entrySet()) {
+                MilitaryUnit unit = entry.getKey();
+                int rebuy = entry.getValue();
+                unit.setRebuyResearch(this, rebuy);
+            }
+        }
+    }
+
+    public int getScore() {
+        return score;
     }
 
     protected TriConsumer<Integer, Integer, double[]> applyUpkeepReduction(MilitaryUnit unit, boolean war) {
@@ -312,11 +342,11 @@ public enum Research {
     public static int toBits(MilitaryResearch apiResearch) {
         int bits = 0;
         bits += apiResearch.getGround_capacity() << (GROUND_CAPACITY.ordinal() * 5);
-        bits += apiResearch.getGround_cost() << (GROUND_COST.ordinal() * 5);
+        bits += apiResearch.getGround_cost() << (GROUND_EFFICIENCY.ordinal() * 5);
         bits += apiResearch.getAir_capacity() << (AIR_CAPACITY.ordinal() * 5);
-        bits += apiResearch.getAir_cost() << (AIR_COST.ordinal() * 5);
+        bits += apiResearch.getAir_cost() << (AIR_EFFICIENCY.ordinal() * 5);
         bits += apiResearch.getNaval_capacity() << (NAVAL_CAPACITY.ordinal() * 5);
-        bits += apiResearch.getNaval_cost() << (NAVAL_COST.ordinal() * 5);
+        bits += apiResearch.getNaval_cost() << (NAVAL_EFFICIENCY.ordinal() * 5);
         return bits;
     }
 

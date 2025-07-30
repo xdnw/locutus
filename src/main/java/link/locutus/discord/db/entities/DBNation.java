@@ -5,6 +5,7 @@ import com.politicsandwar.graphql.model.*;
 import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -373,7 +374,7 @@ public abstract class DBNation implements NationOrAlliance {
 
         Map<Long, Set<Integer>> activityByDay;
         Map<Integer, Long> creationTurnById = new Int2LongOpenHashMap();
-        if (nations.size() == 1) {
+        if (nations.size() == 1 || nations.isEmpty()) {
             long minTurn = TimeUtil.getTurn(getDate());
             Set<Long> days = Locutus.imp().getNationDB().getActivityByDay(getId(), minTurn);
             activityByDay = new Long2ObjectOpenHashMap<>();
@@ -388,7 +389,7 @@ public abstract class DBNation implements NationOrAlliance {
                 // replace _creationDate() with your actual creation timestamp field (epoch ms)
                 long creationMs = nation.getDate();
                 long creationTurn = TimeUtil.getTurn(creationMs);
-                creationTurnById.put(nation.data()._nationId(), creationTurn);
+                creationTurnById.put(nation.getId(), creationTurn);
                 minTurn = Math.min(minTurn, creationTurn);
             }
 
@@ -401,8 +402,8 @@ public abstract class DBNation implements NationOrAlliance {
         }
         // Compute days this specific nation was inactive since its creation
         int selfId = data()._nationId();
-        long selfCreationTurn = creationTurnById.get(selfId);
-        long todayTurn = TimeUtil.getTurn(System.currentTimeMillis());
+        long selfCreationTurn = TimeUtil.getTurn(getDate());
+        long todayTurn = TimeUtil.getTurn();
         int inactiveCount = 0;
         long dayCreated = TimeUtil.getDayFromTurn(selfCreationTurn) + 1;
         long today = TimeUtil.getDay();
@@ -550,13 +551,8 @@ public abstract class DBNation implements NationOrAlliance {
 
         long checkBankCutoff = currentDate - TimeUnit.DAYS.toMillis(60);
         if (data()._cities() > 10 && lastLootDate < checkBankCutoff) {
-            List<Transaction2> transactions = getTransactions(Long.MAX_VALUE, true);
-            long recent = 0;
-            for (Transaction2 transaction : transactions) {
-                if (transaction.receiver_id != getNation_id()) {
-                    recent = Math.max(recent, transaction.tx_datetime);
-                }
-            }
+            Transaction2 tx = Locutus.imp().getBankDB().getLatestDeposit(getId(), 1);
+            long recent = tx != null ? tx.tx_datetime : 0;
             if (recent > 0) {
                 lastLootDate = Math.max(lastLootDate, recent);
             }
@@ -1608,24 +1604,24 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     public double[] getNetDeposits(GuildDB db, boolean includeGrants, boolean priority) throws IOException {
-        return getNetDeposits(db, null, true, true, includeGrants, 0L, 0L, priority);
+        return getNetDeposits(db, null, true, true, includeGrants, 0L, 0L, Long.MAX_VALUE, priority);
     }
 
     public double[] getNetDeposits(GuildDB db, boolean includeGrants, long updateThreshold, boolean priority) throws IOException {
-        return getNetDeposits(db, null, true, true, includeGrants, updateThreshold, 0L, priority);
+        return getNetDeposits(db, null, true, true, includeGrants, updateThreshold, 0L, Long.MAX_VALUE, priority);
     }
 
     public double[] getNetDeposits(GuildDB db, long updateThreshold, boolean priority) throws IOException {
-        return getNetDeposits(db, null, true, true, updateThreshold, 0L, priority);
+        return getNetDeposits(db, null, true, true, updateThreshold, 0L, Long.MAX_VALUE, priority);
     }
 
-    public double[] getNetDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff, boolean priority) throws IOException {
+    public double[] getNetDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long start, long end, boolean priority) throws IOException {
         boolean includeGrants = db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW_IGNORES_GRANTS) == Boolean.FALSE;
-        return getNetDeposits(db, tracked, useTaxBase, offset, includeGrants, updateThreshold, cutOff, priority);
+        return getNetDeposits(db, tracked, useTaxBase, offset, includeGrants, updateThreshold, start, end, priority);
     }
 
-    public double[] getNetDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, boolean includeGrants, long updateThreshold, long cutOff, boolean priority) throws IOException {
-        Map<DepositType, double[]> result = getDeposits(db, tracked, useTaxBase, offset, updateThreshold, cutOff, priority);
+    public double[] getNetDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, boolean includeGrants, long updateThreshold, long start, long end, boolean priority) throws IOException {
+        Map<DepositType, double[]> result = getDeposits(db, tracked, useTaxBase, offset, updateThreshold, start, end, priority);
         double[] total = new double[ResourceType.values.length];
         for (Map.Entry<DepositType, double[]> entry : result.entrySet()) {
             if (includeGrants || entry.getKey() != DepositType.GRANT) {
@@ -1653,7 +1649,7 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     public List<Transaction2> getTransactions(boolean priority) {
-        return getTransactions(0, priority);
+        return getTransactions(0, priority, 0, Long.MAX_VALUE);
     }
 
     public List<Transaction2> updateTransactions(boolean priority) {
@@ -1741,12 +1737,8 @@ public abstract class DBNation implements NationOrAlliance {
     @Command(desc = "Unix timestamp when last deposited in a bank")
     public long lastBankDeposit() {
         if (getPositionEnum().id <= Rank.APPLICANT.id) return 0;
-        List<Transaction2> transactions = getTransactions(Long.MAX_VALUE, false);
-        long max = 0;
-        for (Transaction2 transaction : transactions) {
-            if (transaction.receiver_id == data()._allianceId() && transaction.isReceiverAA()) max = Math.max(max, transaction.tx_datetime);
-        }
-        return max;
+        Transaction2 tx = Locutus.imp().getBankDB().getLatestDeposit(getId(), 1);
+        return tx == null ? 0 : tx.tx_datetime;
     }
 
     @Command(desc = "Days since they last withdrew from their own deposits")
@@ -1757,14 +1749,8 @@ public abstract class DBNation implements NationOrAlliance {
     @Command(desc = "Unix timestamp when they last withdrew from their own deposits")
     public long lastSelfWithdrawal() {
         if (getPositionEnum().id <= Rank.APPLICANT.id) return 0;
-        List<Transaction2> transactions = getTransactions(Long.MAX_VALUE, false);
-        long max = 0;
-        for (Transaction2 transaction : transactions) {
-            if (transaction.isSelfWithdrawal(this)) {
-                max = Math.max(max, transaction.tx_datetime);
-            }
-        }
-        return max;
+        Transaction2 tx = Locutus.imp().getBankDB().getLatestSelfWithdrawal(getId());
+        return tx == null ? 0 : tx.tx_datetime;
     }
 
     /**
@@ -1772,7 +1758,7 @@ public abstract class DBNation implements NationOrAlliance {
      * @param updateThreshold = -1 is no update, 0 = always update
      * @return
      */
-    public List<Transaction2> getTransactions(long updateThreshold, boolean priority) {
+    public List<Transaction2> getTransactions(long updateThreshold, boolean priority, long start, long end) {
         boolean update = updateThreshold == 0;
         if (!update && updateThreshold > 0) {
             Transaction2 tx = Locutus.imp().getBankDB().getLatestTransaction();
@@ -1784,7 +1770,7 @@ public abstract class DBNation implements NationOrAlliance {
         if (update) {
             return updateTransactions(priority);
         }
-        return Locutus.imp().getBankDB().getTransactionsByNation(data()._nationId());
+        return Locutus.imp().getBankDB().getTransactionsByNation(data()._nationId(), start, end);
     }
 
     public Map<Long, Long> getLoginNotifyMap() {
@@ -2318,7 +2304,7 @@ public abstract class DBNation implements NationOrAlliance {
         if (end == null) end = Long.MAX_VALUE;
         ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getDeposits");
         Set<Long> tracked = scoped.getGlobal(db::getTrackedBanks);
-        List<Map.Entry<Integer, Transaction2>> transactions = getTransactions(db, tracked, !ignoreOffsets, !ignoreOffsets, -1L, start, false);
+        List<Map.Entry<Integer, Transaction2>> transactions = getTransactions(db, tracked, !ignoreOffsets, !ignoreOffsets, -1L, start, end, false);
         if (filter != null) {
             transactions.removeIf(f -> !filter.test(f.getValue()));
         }
@@ -2393,27 +2379,27 @@ public abstract class DBNation implements NationOrAlliance {
      * @param updateThreshold use 0l for force update
      * @return
      */
-    public Map<DepositType, double[]> getDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff, boolean priority) {
-        return getDeposits(db, tracked, useTaxBase, offset, updateThreshold, cutOff, false, false, f -> true, priority);
+    public Map<DepositType, double[]> getDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long start, long end, boolean priority) {
+        return getDeposits(db, tracked, useTaxBase, offset, updateThreshold, start, end, false, false, f -> true, priority);
     }
-    public Map<DepositType, double[]> getDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff, boolean forceIncludeExpired, boolean forceIncludeIgnored, Predicate<Transaction2> filter, boolean priority) {
-        List<Map.Entry<Integer, Transaction2>> transactions = getTransactions(db, tracked, useTaxBase, offset, updateThreshold, cutOff, priority);
+    public Map<DepositType, double[]> getDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long start, long end, boolean forceIncludeExpired, boolean forceIncludeIgnored, Predicate<Transaction2> filter, boolean priority) {
+        List<Map.Entry<Integer, Transaction2>> transactions = getTransactions(db, tracked, useTaxBase, offset, updateThreshold, start, end, priority);
         Map<DepositType, double[]> sum = PW.sumNationTransactions(this, db, tracked, transactions, forceIncludeExpired, forceIncludeIgnored, filter);
         return sum;
     }
 
-    public List<Map.Entry<Integer, Transaction2>> getTransactions(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff, boolean priority) {
-        return getTransactions(db, tracked, true, useTaxBase, offset, updateThreshold, cutOff, priority);
+    public List<Map.Entry<Integer, Transaction2>> getTransactions(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long start, long end, boolean priority) {
+        return getTransactions(db, tracked, true, useTaxBase, offset, updateThreshold, start, end, priority);
     }
 
-    public List<Map.Entry<Integer, Transaction2>> getTransactions(GuildDB db, Set<Long> tracked, boolean includeTaxes, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff, boolean priority) {
+    public List<Map.Entry<Integer, Transaction2>> getTransactions(GuildDB db, Set<Long> tracked, boolean includeTaxes, boolean useTaxBase, boolean offset, long updateThreshold, long start, long end, boolean priority) {
         if (tracked == null) {
             tracked = db.getTrackedBanks();
         }
 
         List<Transaction2> transactions = new ArrayList<>();
         if (offset) {
-            List<Transaction2> offsets = db.getDepositOffsetTransactions(getNation_id());
+            List<Transaction2> offsets = db.getDepositOffsetTransactions(getNation_id(), start, end);
             transactions.addAll(offsets);
         }
 
@@ -2429,10 +2415,9 @@ public abstract class DBNation implements NationOrAlliance {
         boolean includeMaxInternal = false;
 
         Set<Integer> finalTracked = tracked.stream().filter(f -> f <= Integer.MAX_VALUE).map(Long::intValue).collect(Collectors.toSet());
-        List<TaxDeposit> taxes = includeTaxes ? Locutus.imp().getBankDB().getTaxesPaid(getNation_id(), finalTracked, includeNoInternal, includeMaxInternal, cutOff) : new ArrayList<>();
+        List<TaxDeposit> taxes = includeTaxes ? Locutus.imp().getBankDB().getTaxesPaid(getNation_id(), finalTracked, includeNoInternal, includeMaxInternal, start, end) : new ArrayList<>();
 
         for (TaxDeposit deposit : taxes) {
-            if (deposit.date < cutOff) continue;
             int internalMoneyRate = useTaxBase ? deposit.internalMoneyRate : 0;
             int internalResourceRate = useTaxBase ? deposit.internalResourceRate : 0;
             if (internalMoneyRate < 0 || internalMoneyRate > 100) internalMoneyRate = defTaxBase[0];
@@ -2453,15 +2438,13 @@ public abstract class DBNation implements NationOrAlliance {
             transactions.add(transaction);
         }
 
-        List<Transaction2> records = getTransactions(updateThreshold, priority);
+        List<Transaction2> records = getTransactions(updateThreshold, priority, start, end);
         transactions.addAll(records);
 
-        List<Map.Entry<Integer, Transaction2>> result = new ArrayList<>();
+        List<Map.Entry<Integer, Transaction2>> result = new ObjectArrayList<>();
 
         outer:
         for (Transaction2 record : transactions) {
-            if (record.tx_datetime < cutOff) continue;
-
             Long otherId = null;
 
             if (((record.isSenderGuild() || record.isSenderAA()) && tracked.contains(record.sender_id))
@@ -2566,8 +2549,8 @@ public abstract class DBNation implements NationOrAlliance {
         return data()._score();
     }
 
-    public double estimateScore(MMRDouble mmr, Double infra, Integer projects, Integer cities) {
-        return PW.estimateScore(Locutus.imp().getNationDB(), this, mmr, infra, projects, cities);
+    public double estimateScore(MMRDouble mmr, Double infra, Integer projects, Integer cities, Integer researchBits) {
+        return PW.estimateScore(Locutus.imp().getNationDB(), this, mmr, infra, projects, cities, researchBits);
     }
 
     public void setScore(double score) {
@@ -3999,7 +3982,7 @@ public abstract class DBNation implements NationOrAlliance {
         }
 
         int numPurchased = Math.max(0, currentAmt - previousAmt + lostInAttacks[0]);
-        int maxPerDay = unit.getMaxPerDay(data()._cities(), this::hasProject);
+        int maxPerDay = unit.getMaxPerDay(data()._cities(), this::hasProject, this::getResearch);
         return Math.max(0, maxPerDay - numPurchased);
     }
 
@@ -5242,7 +5225,7 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     public double estimateScore(double infra) {
-        return estimateScore(null, infra, null, null);
+        return estimateScore(null, infra, null, null, null);
     }
 
     public Map<ResourceType, Double> checkExcessResources(GuildDB db, Map<ResourceType, Double> stockpile) {
@@ -5801,7 +5784,7 @@ public abstract class DBNation implements NationOrAlliance {
         caps[1] = Buildings.FACTORY.getUnitDailyBuy() * Buildings.FACTORY.cap(this::hasProject) * getCities();
         caps[2] = Buildings.HANGAR.getUnitDailyBuy() * Buildings.HANGAR.cap(this::hasProject) * getCities();
         caps[3] = Buildings.DRYDOCK.getUnitDailyBuy() * Buildings.DRYDOCK.cap(this::hasProject) * getCities();
-        caps[4] = MilitaryUnit.MISSILE.getMaxPerDay(getCities(), this::hasProject);
+        caps[4] = MilitaryUnit.MISSILE.getMaxPerDay(getCities(), this::hasProject, this::getResearch);
         caps[5] = 1;
 
         Map<Integer, Long> result = new HashMap<>();
@@ -5935,7 +5918,7 @@ public abstract class DBNation implements NationOrAlliance {
         int warBonus = this.data()._warsWon() + this.data()._warsLost() >= 100 ? 1 : 0;
         int projectBonus = (hasProject(Projects.RESEARCH_AND_DEVELOPMENT_CENTER) ? 2 : 0) +
                 (hasProject(Projects.MILITARY_RESEARCH_CENTER) ? 2 : 0);
-        return ((int) getInfra() / 5000) + 1 + warBonus + projectBonus;
+        return ((int) getInfra() / 4000) + 1 + warBonus + projectBonus;
     }
 
 //    public void setSpy_kills(int spy_kills) {

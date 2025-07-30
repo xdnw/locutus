@@ -2421,7 +2421,7 @@ public class PlaceholdersMap {
                             // get guild db
                             if (nationOrAllianceOrGuild.isNation()) {
                                 DBNation nation = nationOrAllianceOrGuild.asNation();
-                                List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, !excludeTaxes, !includeFullTaxes, !excludeOffset, -1, startTime, false);
+                                List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, !excludeTaxes, !includeFullTaxes, !excludeOffset, -1, startTime, endTime, false);
                                 return transactions.stream()
                                         .filter(f -> filterFinal.test(f.getValue()))
                                         .map(Map.Entry::getValue)
@@ -2434,9 +2434,9 @@ public class PlaceholdersMap {
                                 List<Transaction2> transfers;
                                 if (db.isOffshore()) {
                                     if (nationOrAllianceOrGuild.isAlliance()) {
-                                        transfers = offshore.getTransactionsAA(nationOrAllianceOrGuild.getId(), false);
+                                        transfers = offshore.getTransactionsAA(nationOrAllianceOrGuild.getId(), false, startTime, endTime);
                                     } else {
-                                        transfers = offshore.getTransactionsGuild(nationOrAllianceOrGuild.getIdLong(), false);
+                                        transfers = offshore.getTransactionsGuild(nationOrAllianceOrGuild.getIdLong(), false, startTime, endTime);
                                     }
                                 } else {
                                     if (nationOrAllianceOrGuild.isAlliance()) {
@@ -2444,13 +2444,13 @@ public class PlaceholdersMap {
                                         if (!db.isAllianceId(aa.getId())) {
                                             throw new IllegalArgumentException("The alliance " + aa.getMarkdownUrl() + " is not registered to this guild " + guild.toString());
                                         }
-                                        transfers = offshore.getTransactionsAA(aa.getId(), false);
+                                        transfers = offshore.getTransactionsAA(aa.getId(), false, startTime, endTime);
                                     } else {
                                         GuildDB account = nationOrAllianceOrGuild.asGuild();
                                         if (account != db) {
                                             throw new IllegalArgumentException("You cannot check the balance of " + account.getGuild() + " from this guild " + guild.toString());
                                         }
-                                        transfers = offshore.getTransactionsGuild(account.getIdLong(), false);
+                                        transfers = offshore.getTransactionsGuild(account.getIdLong(), false, startTime, endTime);
                                     }
                                 }
                                 return transfers.stream()

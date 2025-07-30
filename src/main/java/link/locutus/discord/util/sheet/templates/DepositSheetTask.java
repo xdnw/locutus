@@ -19,7 +19,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.RecursiveTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -81,7 +80,7 @@ public class DepositSheetTask implements Callable<NationBalanceRow> {
         // --- Logic from the original loop body ---
         List<Object> row = new ObjectArrayList<>(rowSize);
 
-        List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, tracked, useTaxBase, useOffset, (!force || updateBulk) ? -1 : 0L, 0L, false);
+        List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, tracked, useTaxBase, useOffset, (!force || updateBulk) ? -1 : 0L, 0L, Long.MAX_VALUE, false);
         List<Map.Entry<Integer, Transaction2>> flowTransfers = transactions;
         if (useFlowNote != null) {
             flowTransfers = flowTransfers.stream().filter(f -> f.getValue().getNoteMap().containsKey(useFlowNote)).toList();

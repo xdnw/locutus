@@ -198,6 +198,6 @@ public class Messages {
             # Response
             ```""";
 
-    public static String TAB_TYPE = "Tab `{tab_name}` is not a valid type. Use e.g. `nation:YOUR_SELECTION`\n" +
+    public static String TAB_TYPE = "The tabs {value} are not a valid type. Use e.g. `nation:YOUR_SELECTION`\n" +
             "See: <https://github.com/xdnw/locutus/wiki/custom_spreadsheets#selection-types>";
 }

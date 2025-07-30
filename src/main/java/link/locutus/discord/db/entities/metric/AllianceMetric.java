@@ -1023,35 +1023,35 @@ public enum AllianceMetric implements IAllianceMetric {
         }
     },
 
-    GROUND_COST_AVG(true, SI_UNIT) {
+    GROUND_EFFICIENCY_AVG(true, SI_UNIT) {
         @Override
         public Double apply(DBAlliance alliance) {
             double total = 0;
             Set<DBNation> nations = alliance.getMemberDBNations();
             for (DBNation nation : nations) {
-                total += nation.getResearch(Research.GROUND_COST);
+                total += nation.getResearch(Research.GROUND_EFFICIENCY);
             }
             return total / nations.size();
         }
     },
-    AIR_COST_AVG(true, SI_UNIT) {
+    AIR_EFFICIENCY_AVG(true, SI_UNIT) {
         @Override
         public Double apply(DBAlliance alliance) {
             double total = 0;
             Set<DBNation> nations = alliance.getMemberDBNations();
             for (DBNation nation : nations) {
-                total += nation.getResearch(Research.AIR_COST);
+                total += nation.getResearch(Research.AIR_EFFICIENCY);
             }
             return total / nations.size();
         }
     },
-    NAVAL_COST_AVG(true, SI_UNIT) {
+    NAVAL_EFFICIENCY_AVG(true, SI_UNIT) {
         @Override
         public Double apply(DBAlliance alliance) {
             double total = 0;
             Set<DBNation> nations = alliance.getMemberDBNations();
             for (DBNation nation : nations) {
-                total += nation.getResearch(Research.NAVAL_COST);
+                total += nation.getResearch(Research.NAVAL_EFFICIENCY);
             }
             return total / nations.size();
         }

@@ -174,6 +174,7 @@ public class PreLoader implements ILoader {
         }
         if (Settings.INSTANCE.CONVERSION_SECRET.equalsIgnoreCase("TODO") || Settings.INSTANCE.CONVERSION_SECRET.equalsIgnoreCase("some-keyword")) {
             Settings.INSTANCE.CONVERSION_SECRET = UUID.randomUUID().toString();
+            Settings.INSTANCE.save(Settings.INSTANCE.getDefaultFile());
         }
         this.apiV2 = add("PW-API V2", () -> {
             List<String> pool = new ArrayList<>();

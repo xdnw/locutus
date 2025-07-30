@@ -1016,7 +1016,7 @@ public class UtilityCommands {
                     "Nation Details",
                     "Military Units",
                     "Infrastructure Details",
-                    "MMR Details"
+                    "MMR / Research"
             }
     )
     public String score(
@@ -1031,7 +1031,8 @@ public class UtilityCommands {
             @Arg(value = "Number of projects", group = 1) @Switch("p") Integer projects,
             @Arg(value = "Average infrastructure per city", group = 2) @Switch("a") Integer avg_infra,
             @Arg(value = "Total infrastructure", group = 2) @Switch("i") Integer infraTotal,
-            @Arg(value = "Unit MMR value", group = 3) @Switch("mmr") MMRDouble builtMMR
+            @Arg(value = "Unit MMR value", group = 3) @Switch("mmr") MMRDouble builtMMR,
+            @Arg(value = "Military research levels", group = 3) @Switch("r") Map<Research, Integer> research
     ) {
         if (nation == null) {
             nation = new SimpleDBNation(new DBNationData());
@@ -1045,6 +1046,9 @@ public class UtilityCommands {
             nation = nation.copy();
         }
 
+        if (research != null) {
+            nation.edit().setResearchBits(Research.toBits(research));
+        }
         if (cities != null) nation.setCities(cities);
         if (soldiers != null) nation.setSoldiers(soldiers);
         if (tanks != null) nation.setTanks(tanks);

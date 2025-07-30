@@ -333,7 +333,7 @@ public enum InterviewQuestion implements Question {
             GuildDB db = Locutus.imp().getGuildDB(guild);
             Set<Integer> aaIds = db.getAllianceIds();
             if (!aaIds.isEmpty()) {
-                List<Transaction2> transactions = me.getTransactions(0, false);
+                List<Transaction2> transactions = me.getTransactions(0, false, 0, Long.MAX_VALUE);
                 for (Transaction2 transaction : transactions) {
                     if (aaIds.contains((int) transaction.receiver_id)) return true;
                 }
@@ -359,7 +359,7 @@ public enum InterviewQuestion implements Question {
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             GuildDB db = Locutus.imp().getGuildDB(guild);
             if (db.hasAlliance()) {
-                List<Transaction2> transactions = me.getTransactions(0, false);
+                List<Transaction2> transactions = me.getTransactions(0, false, 0, Long.MAX_VALUE);
                 for (Transaction2 transaction : transactions) {
                     if (Objects.equals(transaction.receiver_id, me.getNation_id())) return true;
                 }

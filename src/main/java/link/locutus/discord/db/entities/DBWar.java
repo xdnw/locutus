@@ -60,17 +60,17 @@ public class DBWar {
             DBNation att = getNation(true);
             DBNation def = getNation(false);
             if (att != null) {
-                int r1 = att.getResearch(Research.GROUND_COST); // 5 bits of info
-                int r2 = att.getResearch(Research.AIR_COST); // 5 bits of info
-                int r3 = att.getResearch(Research.NAVAL_COST); // 5 bits of info
+                int r1 = att.getResearch(Research.GROUND_EFFICIENCY); // 5 bits of info
+                int r2 = att.getResearch(Research.AIR_EFFICIENCY); // 5 bits of info
+                int r3 = att.getResearch(Research.NAVAL_EFFICIENCY); // 5 bits of info
                 costBits = r1 | (r2 << 5) | (r3 << 10);
             } else {
                 costBits = 0;
             }
             if (def != null) {
-                int r1 = def.getResearch(Research.GROUND_COST); // 5 bits of info
-                int r2 = def.getResearch(Research.AIR_COST); // 5 bits of info
-                int r3 = def.getResearch(Research.NAVAL_COST); // 5 bits of info
+                int r1 = def.getResearch(Research.GROUND_EFFICIENCY); // 5 bits of info
+                int r2 = def.getResearch(Research.AIR_EFFICIENCY); // 5 bits of info
+                int r3 = def.getResearch(Research.NAVAL_EFFICIENCY); // 5 bits of info
                 costBits |= (r1 << 15) | (r2 << 20) | (r3 << 25);
             }
         }
@@ -124,9 +124,9 @@ public class DBWar {
     public int getAttResearch(Research research) {
         if (costBits <= 0) return 0;
         return switch (research) {
-            case GROUND_COST -> costBits & 0b11111;
-            case AIR_COST -> (costBits >> 5) & 0b11111;
-            case NAVAL_COST -> (costBits >> 10) & 0b11111;
+            case GROUND_EFFICIENCY -> costBits & 0b11111;
+            case AIR_EFFICIENCY -> (costBits >> 5) & 0b11111;
+            case NAVAL_EFFICIENCY -> (costBits >> 10) & 0b11111;
             default -> 0;
         };
     }
@@ -135,9 +135,9 @@ public class DBWar {
     public int getDefResearch(Research research) {
         if (costBits <= 0) return 0;
         return switch (research) {
-            case GROUND_COST -> (costBits >> 15) & 0b11111;
-            case AIR_COST -> (costBits >> 20) & 0b11111;
-            case NAVAL_COST -> (costBits >> 25) & 0b11111;
+            case GROUND_EFFICIENCY -> (costBits >> 15) & 0b11111;
+            case AIR_EFFICIENCY -> (costBits >> 20) & 0b11111;
+            case NAVAL_EFFICIENCY -> (costBits >> 25) & 0b11111;
             default -> 0;
         };
     }
