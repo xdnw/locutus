@@ -13,6 +13,7 @@ import org.example.jooq.bank.tables.Subscriptions;
 import org.example.jooq.bank.tables.TaxBrackets;
 import org.example.jooq.bank.tables.TaxDepositsDate;
 import org.example.jooq.bank.tables.TaxEstimate;
+import org.example.jooq.bank.tables.TaxSummary;
 import org.example.jooq.bank.tables.TransactionsAlliance_2;
 import org.example.jooq.bank.tables.Transactions_2;
 import org.jooq.Catalog;
@@ -64,6 +65,10 @@ public class DefaultSchema extends SchemaImpl {
     public final TaxEstimate TAX_ESTIMATE = TaxEstimate.TAX_ESTIMATE;
 
     /**
+     * The table <code>TAX_SUMMARY</code>.
+     */
+    public final TaxSummary TAX_SUMMARY = TaxSummary.TAX_SUMMARY;
+    /**
      * The table <code>TRANSACTIONS_2</code>.
      */
     public final Transactions_2 TRANSACTIONS_2 = Transactions_2.TRANSACTIONS_2;
@@ -95,6 +100,7 @@ public class DefaultSchema extends SchemaImpl {
             TaxBrackets.TAX_BRACKETS,
             TaxDepositsDate.TAX_DEPOSITS_DATE,
             TaxEstimate.TAX_ESTIMATE,
+            TaxSummary.TAX_SUMMARY,
             Transactions_2.TRANSACTIONS_2,
             TransactionsAlliance_2.TRANSACTIONS_ALLIANCE_2
         );

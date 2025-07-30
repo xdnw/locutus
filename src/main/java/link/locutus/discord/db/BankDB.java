@@ -33,6 +33,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jooq.*;
 import org.jooq.Record;
 import org.jooq.impl.DSL;
+import org.jooq.impl.SQLDataType;
 
 import java.io.IOException;
 import java.lang.ref.Reference;
@@ -127,17 +128,16 @@ public class BankDB extends DBMainV3 {
         createTableWithIndexes(TAX_DEPOSITS_DATE);
 
         {
-            String createTableSQL = "CREATE TABLE IF NOT EXISTS TAX_SUMMARY (" +
-                    "nation_id INTEGER NOT NULL," +
-                    "alliance_id INTEGER NOT NULL," +
-                    "no_internal BLOB NOT NULL," +
-                    "internal_applied BLOB NOT NULL," +
-                    "internal_unapplied BLOB NOT NULL," +
-                    "date BIGINT NOT NULL," +
-                    "PRIMARY KEY (nation_id, alliance_id)" +
-                    ")";
-            ctx().createTableIfNotExists(createTableSQL)
-                    .execute();
+            ctx()
+            .createTableIfNotExists("TAX_SUMMARY")
+            .column("nation_id", SQLDataType.INTEGER.nullable(false))
+            .column("alliance_id", SQLDataType.INTEGER.nullable(false))
+            .column("no_internal", SQLDataType.BLOB.nullable(true))
+            .column("internal_applied", SQLDataType.BLOB.nullable(true))
+            .column("internal_unapplied", SQLDataType.BLOB.nullable(true))
+            .column("date", SQLDataType.BIGINT.nullable(false))
+            .constraint(DSL.constraint().primaryKey("nation_id", "alliance_id"))
+            .execute();
         }
     }
 
@@ -173,7 +173,6 @@ public class BankDB extends DBMainV3 {
     }
 
     private void loadSummaryDate(Set<Integer> allianceIds, Set<Integer> toUpdate) {
-        // TODO just generate the classes with ai instead of using jooq generatorm, since that may be quicker
         // TODO FIXME, add table (jooq)
         // TODO FIXME us eq if allianceIds.size() == 1, otherwise use in
 //        ctx().select(

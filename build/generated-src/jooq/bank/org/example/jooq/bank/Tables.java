@@ -10,6 +10,7 @@ import org.example.jooq.bank.tables.Subscriptions;
 import org.example.jooq.bank.tables.TaxBrackets;
 import org.example.jooq.bank.tables.TaxDepositsDate;
 import org.example.jooq.bank.tables.TaxEstimate;
+import org.example.jooq.bank.tables.TaxSummary;
 import org.example.jooq.bank.tables.TransactionsAlliance_2;
 import org.example.jooq.bank.tables.Transactions_2;
 
@@ -50,6 +51,10 @@ public class Tables {
      */
     public static final TaxEstimate TAX_ESTIMATE = TaxEstimate.TAX_ESTIMATE;
 
+    /**
+     * The table <code>TAX_SUMMARY</code>.
+     */
+    public static final TaxSummary TAX_SUMMARY = TaxSummary.TAX_SUMMARY;
     /**
      * The table <code>TRANSACTIONS_2</code>.
      */

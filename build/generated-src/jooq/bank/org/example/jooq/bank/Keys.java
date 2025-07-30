@@ -16,6 +16,7 @@ import org.example.jooq.bank.tables.records.SubscriptionsRecord;
 import org.example.jooq.bank.tables.records.TaxBracketsRecord;
 import org.example.jooq.bank.tables.records.TaxDepositsDateRecord;
 import org.example.jooq.bank.tables.records.TaxEstimateRecord;
+import org.example.jooq.bank.tables.records.TaxSummaryRecord;
 import org.example.jooq.bank.tables.records.TransactionsAlliance_2Record;
 import org.example.jooq.bank.tables.records.Transactions_2Record;
 import org.jooq.TableField;
@@ -40,6 +41,7 @@ public class Keys {
     public static final UniqueKey<TaxBracketsRecord> TAX_BRACKETS__PK_TAX_BRACKETS = Internal.createUniqueKey(TaxBrackets.TAX_BRACKETS, DSL.name("pk_TAX_BRACKETS"), new TableField[] { TaxBrackets.TAX_BRACKETS.ID }, true);
     public static final UniqueKey<TaxDepositsDateRecord> TAX_DEPOSITS_DATE__PK_TAX_DEPOSITS_DATE = Internal.createUniqueKey(TaxDepositsDate.TAX_DEPOSITS_DATE, DSL.name("pk_TAX_DEPOSITS_DATE"), new TableField[] { TaxDepositsDate.TAX_DEPOSITS_DATE.ALLIANCE, TaxDepositsDate.TAX_DEPOSITS_DATE.DATE, TaxDepositsDate.TAX_DEPOSITS_DATE.NATION }, true);
     public static final UniqueKey<TaxEstimateRecord> TAX_ESTIMATE__PK_TAX_ESTIMATE = Internal.createUniqueKey(TaxEstimate.TAX_ESTIMATE, DSL.name("pk_tax_estimate"), new TableField[] { TaxEstimate.TAX_ESTIMATE.TAX_ID }, true);
+    public static final UniqueKey<TaxSummaryRecord> TAX_SUMMARY__PK_TAX_SUMMARY = Internal.createUniqueKey(TaxSummary.TAX_SUMMARY, DSL.name("pk_TAX_SUMMARY"), new TableField[] { TaxSummary.TAX_SUMMARY.NATION_ID, TaxSummary.TAX_SUMMARY.ALLIANCE_ID }, true);
     public static final UniqueKey<Transactions_2Record> TRANSACTIONS_2__PK_TRANSACTIONS_2 = Internal.createUniqueKey(Transactions_2.TRANSACTIONS_2, DSL.name("pk_TRANSACTIONS_2"), new TableField[] { Transactions_2.TRANSACTIONS_2.TX_ID }, true);
     public static final UniqueKey<TransactionsAlliance_2Record> TRANSACTIONS_ALLIANCE_2__PK_TRANSACTIONS_ALLIANCE_2 = Internal.createUniqueKey(TransactionsAlliance_2.TRANSACTIONS_ALLIANCE_2, DSL.name("pk_TRANSACTIONS_ALLIANCE_2"), new TableField[] { TransactionsAlliance_2.TRANSACTIONS_ALLIANCE_2.TX_ID }, true);
 }
