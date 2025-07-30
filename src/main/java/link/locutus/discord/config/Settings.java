@@ -38,6 +38,10 @@ public class Settings extends Config {
             "Found on the OAuth2 section of the Discord Developer Portal"})
     public String CLIENT_SECRET = "";
 
+    @Comment({"Number of discord shards to use",
+    "Only required for bots in more than 2,500 servers"})
+    public int SHARDS = 1;
+
     @Comment({"The guild id of the management server for this bot (you should be owner here)",
     "See: https://support.discord.com/hc/en-us/articles/206346498"})
     public long ROOT_SERVER = 0;

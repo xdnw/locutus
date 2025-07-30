@@ -222,32 +222,31 @@ public final class Locutus extends ListenerAdapter {
         }
         Logg.text("Registered event listener (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
         if (Settings.INSTANCE.ENABLED_COMPONENTS.DISCORD_BOT) {
-            JDA jda = loader.getJda();
+            this.manager.init(loader.getShardManager());
             try {
                 SlashCommandManager slashCommands = loader.getSlashCommandManager();
                 if (slashCommands != null) {
-                    executor.submit(() -> slashCommands.registerCommandData(jda));
+                    executor.submit(() -> slashCommands.registerCommandData(manager));
                 }
             } catch (Throwable e) {
                 // sometimes happen when discord api is spotty / timeout
                 e.printStackTrace();
                 Logg.text("Failed to update slash commands: " + e.getMessage());
             }
-            setSelfUser(jda);
-            manager.put(jda);
+            setSelfUser(manager);
 //            jda.awaitStatus(JDA.Status.LOADING_SUBSYSTEMS);
-            Logg.text("Discord Gateway: " + jda.getStatus() + " (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
+            Logg.text("Discord Gateway: " + manager.getStatus() + " (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
             try {
-                jda.awaitReady();
+                manager.awaitReady();
             } catch (IllegalArgumentException e) {
                 e.printStackTrace();
             }
-            Logg.text("Discord Gateway: " + jda.getStatus() + " (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
-            setSelfUser(jda);
+            Logg.text("Discord Gateway: " + manager.getStatus() + " (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
+            setSelfUser(manager);
             if (Settings.INSTANCE.ENABLED_COMPONENTS.CREATE_DATABASES_ON_STARTUP) {
                 initDBPartial(true);
             }
-            Logg.text("Initialized Guild Databases " + jda.getStatus() + " (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
+            Logg.text("Initialized Guild Databases " + manager.getStatus() + " (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
             Guild rootGuild = manager.getGuildById(Settings.INSTANCE.ROOT_SERVER);
             if (rootGuild != null) {
                 this.server = rootGuild;
@@ -337,8 +336,8 @@ public final class Locutus extends ListenerAdapter {
         manager.put(event.getGuild().getIdLong(), event.getJDA());
     }
 
-    private void setSelfUser(JDA jda) {
-        SelfUser self = jda.getSelfUser();
+    private void setSelfUser(GuildShardManager manager) {
+        SelfUser self = manager.getSelfUser();
         if (self != null) {
             long appId = self.getApplicationIdLong();
             if (appId > 0) {

@@ -17,12 +17,15 @@ import link.locutus.discord.db.*;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.discord.GuildShardManager;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.scheduler.ThrowingSupplier;
 import link.locutus.discord.util.trade.TradeManager;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.requests.GatewayIntent;
+import net.dv8tion.jda.api.sharding.DefaultShardManagerBuilder;
+import net.dv8tion.jda.api.sharding.ShardManager;
 import net.dv8tion.jda.api.utils.ChunkingFilter;
 import net.dv8tion.jda.api.utils.Compression;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
@@ -52,7 +55,7 @@ public class PreLoader implements ILoader {
     private volatile FinalizedLoader finalized;
     // fields
     private final Future<SlashCommandManager> slashCommandManager;
-    private final Future<JDA> jda;
+    private final Future<GuildShardManager> shardManager;
 
     private final Future<ForumDB> forumDb;
     private final Future<DiscordDB> discordDB;
@@ -89,7 +92,7 @@ public class PreLoader implements ILoader {
                 return new SlashCommandManager(Settings.INSTANCE.ENABLED_COMPONENTS.REGISTER_ADMIN_SLASH_COMMANDS, () -> Locutus.cmd().getV2());
             }
         }, false);
-        this.jda = add("Discord Hook", this::buildJDA, false);
+        this.shardManager = add("Discord Hook", this::buildJdaOrShard, false);
         this.awaitBackup = !Settings.INSTANCE.BACKUP.SCRIPT.isEmpty();
         if (awaitBackup) {
             backup = add("Backup", () -> {
@@ -381,6 +384,26 @@ public class PreLoader implements ILoader {
         return builder.toString();
     }
 
+    private GuildShardManager buildJdaOrShard() {
+        if (Settings.INSTANCE.SHARDS > 1) {
+            try {
+                return new GuildShardManager(buildShardManager());
+            } catch (ExecutionException e) {
+                throw new RuntimeException(e);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        } else {
+            try {
+                return new GuildShardManager(buildJDA());
+            } catch (ExecutionException e) {
+                throw new RuntimeException(e);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
     private JDA buildJDA() throws ExecutionException, InterruptedException {
         JDABuilder builder = JDABuilder.createLight(Settings.INSTANCE.BOT_TOKEN, GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_MESSAGES, GatewayIntent.DIRECT_MESSAGES);
         if (Settings.INSTANCE.ENABLED_COMPONENTS.SLASH_COMMANDS) {
@@ -432,14 +455,68 @@ public class PreLoader implements ILoader {
         return builder.build();
     }
 
+    private ShardManager buildShardManager() throws ExecutionException, InterruptedException {
+        DefaultShardManagerBuilder builder = DefaultShardManagerBuilder.createLight(Settings.INSTANCE.BOT_TOKEN, GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_MESSAGES, GatewayIntent.DIRECT_MESSAGES);
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.SLASH_COMMANDS) {
+            SlashCommandManager slash = getSlashCommandManager();
+            if (slash != null) {
+                builder.addEventListeners(slash);
+            }
+        }
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.MESSAGE_COMMANDS) {
+            builder.addEventListeners(locutus);
+        }
+        builder
+                .setChunkingFilter(ChunkingFilter.NONE)
+                .setBulkDeleteSplittingEnabled(false)
+                .setCompression(Compression.ZLIB)
+                .setLargeThreshold(250)
+                .setAutoReconnect(true)
+                .setMemberCachePolicy(MemberCachePolicy.ALL);
+        if (Settings.INSTANCE.DISCORD.INTENTS.GUILD_MEMBERS) {
+            builder.enableIntents(GatewayIntent.GUILD_MEMBERS);
+        }
+        if (Settings.INSTANCE.DISCORD.INTENTS.MESSAGE_CONTENT) {
+            builder.enableIntents(GatewayIntent.MESSAGE_CONTENT);
+        }
+        if (Settings.INSTANCE.DISCORD.INTENTS.GUILD_PRESENCES) {
+            builder.enableIntents(GatewayIntent.GUILD_PRESENCES);
+        }
+        if (Settings.INSTANCE.DISCORD.INTENTS.GUILD_MESSAGES) {
+            builder.enableIntents(GatewayIntent.GUILD_MESSAGES);
+        }
+        if (Settings.INSTANCE.DISCORD.INTENTS.GUILD_MESSAGE_REACTIONS) {
+            builder.enableIntents(GatewayIntent.GUILD_MESSAGE_REACTIONS);
+        }
+        if (Settings.INSTANCE.DISCORD.INTENTS.DIRECT_MESSAGES) {
+            builder.enableIntents(GatewayIntent.DIRECT_MESSAGES);
+        }
+        if (Settings.INSTANCE.DISCORD.INTENTS.EMOJI) {
+            builder.enableIntents(GatewayIntent.GUILD_EXPRESSIONS);
+        }
+        if (Settings.INSTANCE.DISCORD.CACHE.MEMBER_OVERRIDES) {
+            builder.enableCache(CacheFlag.MEMBER_OVERRIDES);
+        }
+        if (Settings.INSTANCE.DISCORD.CACHE.ONLINE_STATUS) {
+            builder.enableCache(CacheFlag.ONLINE_STATUS);
+        }
+        if (Settings.INSTANCE.DISCORD.CACHE.EMOTE) {
+            builder.enableCache(CacheFlag.EMOJI);
+        }
+        return builder
+                .setShardsTotal(Settings.INSTANCE.SHARDS)
+                .setShards(0, Settings.INSTANCE.SHARDS - 1)
+                .build();
+    }
+
     @Override
     public SlashCommandManager getSlashCommandManager() {
         return FileUtil.get(slashCommandManager);
     }
 
     @Override
-    public JDA getJda() {
-        return FileUtil.get(jda);
+    public GuildShardManager getShardManager() {
+        return FileUtil.get(shardManager);
     }
 
     @Override
