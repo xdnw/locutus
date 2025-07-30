@@ -21,9 +21,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 public class GuildShardManager {
-    private final ShardManager defaultShardManager;
-    private List<JDA> instances = new ObjectArrayList<>();
-    private Map<Long, JDA> discordAPIMap = new ConcurrentHashMap<>();
+    private ShardManager defaultShardManager;
+    private final Set<JDA> instances = new ObjectLinkedOpenHashSet<>();
+    private final Map<Long, JDA> discordAPIMap = new ConcurrentHashMap<>();
+
+    public GuildShardManager() {
+
+    }
 
     public GuildShardManager(JDA jda) {
         this.instances.add(jda);
@@ -42,6 +46,12 @@ public class GuildShardManager {
             }
         }
 
+    }
+
+    public void init(GuildShardManager other) {
+        this.defaultShardManager = other.defaultShardManager;
+        this.instances.addAll(other.instances);
+        this.discordAPIMap.putAll(other.discordAPIMap);
     }
 
     public void add(long guildId, JDA instance) {
@@ -180,7 +190,7 @@ public class GuildShardManager {
     public <T,V> V get(Function<JDA, V> get) {
         if (instances.isEmpty()) return null;
         if (instances.size() == 1) {
-            V value = get.apply(instances.get(0));
+            V value = get.apply(instances.iterator().next());
             return value;
         }
         for (JDA jda : instances) {

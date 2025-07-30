@@ -108,7 +108,7 @@ public final class Locutus extends ListenerAdapter {
 
     private final EventBus eventBus;
 
-    private GuildShardManager manager;
+    private final GuildShardManager manager = new GuildShardManager();
     private GuildCustomMessageHandler messageHandler;
     private DataDumpParser dataDumpParser;
 
@@ -222,7 +222,7 @@ public final class Locutus extends ListenerAdapter {
         }
         Logg.text("Registered event listener (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
         if (Settings.INSTANCE.ENABLED_COMPONENTS.DISCORD_BOT) {
-            this.manager = loader.getShardManager();
+            this.manager.init(loader.getShardManager());
             try {
                 SlashCommandManager slashCommands = loader.getSlashCommandManager();
                 if (slashCommands != null) {
