@@ -4297,7 +4297,7 @@ public class BankCommands {
                                     .offshores(
                                             offshores == null || offshores.isEmpty() ? null : StringMan.join(offshores.stream().map(DBAlliance::getId).toList(), ",")
                                     ).start_time(start_time > 0 ? "timestamp:" + start_time : null
-                                    ).end_time(end_time > 0 ? "timestamp:" + end_time : null
+                                    ).end_time(end_time != Long.MAX_VALUE ? "timestamp:" + end_time : null
                                     ).includeBaseTaxes(
                                     includeBaseTaxes ? "true" : null
                                     ).ignoreInternalOffsets(
