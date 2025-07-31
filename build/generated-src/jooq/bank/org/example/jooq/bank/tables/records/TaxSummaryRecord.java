@@ -48,10 +48,25 @@ public class TaxSummaryRecord extends UpdatableRecordImpl<TaxSummaryRecord> {
     }
 
     /**
+     * Setter for <code>TAX_SUMMARY.tax_base</code>.
+     */
+    public TaxSummaryRecord setTaxBase(Integer value) {
+        set(2, value);
+        return this;
+    }
+
+    /**
+     * Getter for <code>TAX_SUMMARY.tax_base</code>.
+     */
+    public Integer getTaxBase() {
+        return (Integer) get(2);
+    }
+
+    /**
      * Setter for <code>TAX_SUMMARY.no_internal_applied</code>.
      */
     public TaxSummaryRecord setNoInternalApplied(byte[] value) {
-        set(2, value);
+        set(3, value);
         return this;
     }
 
@@ -59,14 +74,14 @@ public class TaxSummaryRecord extends UpdatableRecordImpl<TaxSummaryRecord> {
      * Getter for <code>TAX_SUMMARY.no_internal_applied</code>.
      */
     public byte[] getNoInternalApplied() {
-        return (byte[]) get(2);
+        return (byte[]) get(3);
     }
 
     /**
      * Setter for <code>TAX_SUMMARY.no_internal_unapplied</code>.
      */
     public TaxSummaryRecord setNoInternalUnapplied(byte[] value) {
-        set(3, value);
+        set(4, value);
         return this;
     }
 
@@ -74,14 +89,14 @@ public class TaxSummaryRecord extends UpdatableRecordImpl<TaxSummaryRecord> {
      * Getter for <code>TAX_SUMMARY.no_internal_unapplied</code>.
      */
     public byte[] getNoInternalUnapplied() {
-        return (byte[]) get(3);
+        return (byte[]) get(4);
     }
 
     /**
      * Setter for <code>TAX_SUMMARY.internal_applied</code>.
      */
     public TaxSummaryRecord setInternalApplied(byte[] value) {
-        set(4, value);
+        set(5, value);
         return this;
     }
 
@@ -89,14 +104,14 @@ public class TaxSummaryRecord extends UpdatableRecordImpl<TaxSummaryRecord> {
      * Getter for <code>TAX_SUMMARY.internal_applied</code>.
      */
     public byte[] getInternalApplied() {
-        return (byte[]) get(4);
+        return (byte[]) get(5);
     }
 
     /**
      * Setter for <code>TAX_SUMMARY.internal_unapplied</code>.
      */
     public TaxSummaryRecord setInternalUnapplied(byte[] value) {
-        set(5, value);
+        set(6, value);
         return this;
     }
 
@@ -104,14 +119,14 @@ public class TaxSummaryRecord extends UpdatableRecordImpl<TaxSummaryRecord> {
      * Getter for <code>TAX_SUMMARY.internal_unapplied</code>.
      */
     public byte[] getInternalUnapplied() {
-        return (byte[]) get(5);
+        return (byte[]) get(6);
     }
 
     /**
      * Setter for <code>TAX_SUMMARY.date</code>.
      */
     public TaxSummaryRecord setDate(Long value) {
-        set(6, value);
+        set(7, value);
         return this;
     }
 
@@ -119,7 +134,7 @@ public class TaxSummaryRecord extends UpdatableRecordImpl<TaxSummaryRecord> {
      * Getter for <code>TAX_SUMMARY.date</code>.
      */
     public Long getDate() {
-        return (Long) get(6);
+        return (Long) get(7);
     }
 
     // -------------------------------------------------------------------------
@@ -145,11 +160,12 @@ public class TaxSummaryRecord extends UpdatableRecordImpl<TaxSummaryRecord> {
     /**
      * Create a detached, initialised TaxSummaryRecord
      */
-    public TaxSummaryRecord(Integer nationId, Integer allianceId, byte[] noInternalApplied, byte[] noInternalUnapplied, byte[] internalApplied, byte[] internalUnapplied, Long date) {
+    public TaxSummaryRecord(Integer nationId, Integer allianceId, Integer taxBase, byte[] noInternalApplied, byte[] noInternalUnapplied, byte[] internalApplied, byte[] internalUnapplied, Long date) {
         super(TaxSummary.TAX_SUMMARY);
 
         setNationId(nationId);
         setAllianceId(allianceId);
+        setTaxBase(taxBase);
         setNoInternalApplied(noInternalApplied);
         setNoInternalUnapplied(noInternalUnapplied);
         setInternalApplied(internalApplied);
@@ -167,6 +183,7 @@ public class TaxSummaryRecord extends UpdatableRecordImpl<TaxSummaryRecord> {
         if (value != null) {
             setNationId(value.getNationId());
             setAllianceId(value.getAllianceId());
+            setTaxBase(value.getTaxBase());
             setNoInternalApplied(value.getNoInternalApplied());
             setNoInternalUnapplied(value.getNoInternalUnapplied());
             setInternalApplied(value.getInternalApplied());

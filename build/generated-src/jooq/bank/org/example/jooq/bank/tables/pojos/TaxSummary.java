@@ -18,6 +18,7 @@ public class TaxSummary implements Serializable {
 
     private final Integer nationId;
     private final Integer allianceId;
+    private final Integer taxBase;
     private final byte[] noInternalApplied;
     private final byte[] noInternalUnapplied;
     private final byte[] internalApplied;
@@ -27,6 +28,7 @@ public class TaxSummary implements Serializable {
     public TaxSummary(TaxSummary value) {
         this.nationId = value.nationId;
         this.allianceId = value.allianceId;
+        this.taxBase = value.taxBase;
         this.noInternalApplied = value.noInternalApplied;
         this.noInternalUnapplied = value.noInternalUnapplied;
         this.internalApplied = value.internalApplied;
@@ -37,6 +39,7 @@ public class TaxSummary implements Serializable {
     public TaxSummary(
         Integer nationId,
         Integer allianceId,
+        Integer taxBase,
         byte[] noInternalApplied,
         byte[] noInternalUnapplied,
         byte[] internalApplied,
@@ -45,6 +48,7 @@ public class TaxSummary implements Serializable {
     ) {
         this.nationId = nationId;
         this.allianceId = allianceId;
+        this.taxBase = taxBase;
         this.noInternalApplied = noInternalApplied;
         this.noInternalUnapplied = noInternalUnapplied;
         this.internalApplied = internalApplied;
@@ -64,6 +68,13 @@ public class TaxSummary implements Serializable {
      */
     public Integer getAllianceId() {
         return this.allianceId;
+    }
+
+    /**
+     * Getter for <code>TAX_SUMMARY.tax_base</code>.
+     */
+    public Integer getTaxBase() {
+        return this.taxBase;
     }
 
     /**
@@ -122,6 +133,12 @@ public class TaxSummary implements Serializable {
         }
         else if (!this.allianceId.equals(other.allianceId))
             return false;
+        if (this.taxBase == null) {
+            if (other.taxBase != null)
+                return false;
+        }
+        else if (!this.taxBase.equals(other.taxBase))
+            return false;
         if (this.noInternalApplied == null) {
             if (other.noInternalApplied != null)
                 return false;
@@ -161,6 +178,7 @@ public class TaxSummary implements Serializable {
         int result = 1;
         result = prime * result + ((this.nationId == null) ? 0 : this.nationId.hashCode());
         result = prime * result + ((this.allianceId == null) ? 0 : this.allianceId.hashCode());
+        result = prime * result + ((this.taxBase == null) ? 0 : this.taxBase.hashCode());
         result = prime * result + ((this.noInternalApplied == null) ? 0 : Arrays.hashCode(this.noInternalApplied));
         result = prime * result + ((this.noInternalUnapplied == null) ? 0 : Arrays.hashCode(this.noInternalUnapplied));
         result = prime * result + ((this.internalApplied == null) ? 0 : Arrays.hashCode(this.internalApplied));
@@ -175,6 +193,7 @@ public class TaxSummary implements Serializable {
 
         sb.append(nationId);
         sb.append(", ").append(allianceId);
+        sb.append(", ").append(taxBase);
         sb.append(", ").append("[binary...]");
         sb.append(", ").append("[binary...]");
         sb.append(", ").append("[binary...]");

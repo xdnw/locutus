@@ -59,6 +59,11 @@ public class TaxSummary extends TableImpl<TaxSummaryRecord> {
     public final TableField<TaxSummaryRecord, Integer> ALLIANCE_ID = createField(DSL.name("alliance_id"), SQLDataType.INTEGER.nullable(false), this, "");
 
     /**
+     * The column <code>TAX_SUMMARY.tax_base</code>.
+     */
+    public final TableField<TaxSummaryRecord, Integer> TAX_BASE = createField(DSL.name("tax_base"), SQLDataType.INTEGER.nullable(false), this, "");
+
+    /**
      * The column <code>TAX_SUMMARY.no_internal_applied</code>.
      */
     public final TableField<TaxSummaryRecord, byte[]> NO_INTERNAL_APPLIED = createField(DSL.name("no_internal_applied"), SQLDataType.BLOB, this, "");
