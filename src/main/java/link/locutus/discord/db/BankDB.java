@@ -131,6 +131,7 @@ public class BankDB extends DBMainV3 {
                     .createTableIfNotExists("TAX_SUMMARY")
                     .column("nation_id", SQLDataType.INTEGER.nullable(false))
                     .column("alliance_id", SQLDataType.INTEGER.nullable(false))
+                    .column("tax_base", SQLDataType.INTEGER.nullable(false))
                     .column("no_internal_applied", SQLDataType.BLOB.nullable(true))
                     .column("no_internal_unapplied", SQLDataType.BLOB.nullable(true))
                     .column("internal_applied", SQLDataType.BLOB.nullable(true))
@@ -205,7 +206,7 @@ public class BankDB extends DBMainV3 {
         }
     }
 
-    private void checkUpdateTaxSummary(Set<Integer> allianceIds) {
+    private void checkUpdateTaxSummary(Set<Integer> allianceIds, int[] taxBase) {
         synchronized (lastTaxSummaryUpdateByAlliance) {
             // determine which alliances need to load record dates or summaries, or update
             Set<Integer> toLoadRecordDate = new IntArraySet();
@@ -244,12 +245,14 @@ public class BankDB extends DBMainV3 {
                     stream.forEach(rs -> {
                         int aid = rs.getAllianceId();
                         int nid = rs.getNationId();
-                        double[] noInternal      = ArrayUtil.toDoubleArray(rs.getNoInternal());
+                        short taxBasePair = 0; // TODO FIXME
+                        double[] noInternalApplied = ArrayUtil.toDoubleArray(rs.getNoInternalApplied());
+                        double[] noInternalUnapplied = ArrayUtil.toDoubleArray(rs.getNoInternalUnapplied());
                         double[] internalApplied = ArrayUtil.toDoubleArray(rs.getInternalApplied());
-                        double[] internalUnappl  = ArrayUtil.toDoubleArray(rs.getInternalUnapplied());
+                        double[] internalUnappl = ArrayUtil.toDoubleArray(rs.getInternalUnapplied());
                         summaryByAlliance
                                 .computeIfAbsent(aid, k -> new Int2ObjectOpenHashMap<>())
-                                .put(nid, new TaxRecordSummary(noInternal, internalApplied, internalUnappl, false));
+                                .put(nid, new TaxRecordSummary(taxBasePair, noInternalApplied, noInternalUnapplied, internalApplied, internalUnappl, false));
                     });
                 }
             }
@@ -274,6 +277,9 @@ public class BankDB extends DBMainV3 {
 
                     Map<Integer, TaxRecordSummary> natMap = summaryByAlliance.computeIfAbsent(aid, k -> new Int2ObjectOpenHashMap<>());
                     TaxRecordSummary natSummary = natMap.computeIfAbsent(record.getNation(), k -> new TaxRecordSummary(
+                            // TODO FIXME
+                            (short) 0,
+                            ResourceType.getBuffer(),
                             ResourceType.getBuffer(),
                             ResourceType.getBuffer(),
                             ResourceType.getBuffer(),
@@ -295,8 +301,9 @@ public class BankDB extends DBMainV3 {
 
                     // double[] no_internal, double[] internal_applied, double[] internal_unapplied, boolean dirty
                     if (internalMoneyRate == -1) {
+                        // TODO FIXME taxBase
                         // add money to no_internal
-                        natSummary.no_internal[ResourceType.MONEY.ordinal()] += deposit[ResourceType.MONEY.ordinal()];
+//                        natSummary.no_internal[ResourceType.MONEY.ordinal()] += deposit[ResourceType.MONEY.ordinal()];
 //                        ResourceType.add()
                     } else {
                         // add money to internal_applied AND internal_unapplied
@@ -306,11 +313,12 @@ public class BankDB extends DBMainV3 {
                         natSummary.internal_unapplied[ResourceType.MONEY.ordinal()] += deposit[ResourceType.MONEY.ordinal()];
                     }
                     if (internalResourceRate == -1) {
+                        // TODO FIXME taxBase
                         // add resources (not money) to no_internal
-                        for (ResourceType type : ResourceType.values()) {
-                            if (type == ResourceType.MONEY) continue;
-                            natSummary.no_internal[type.ordinal()] += deposit[type.ordinal()];
-                        }
+//                        for (ResourceType type : ResourceType.values()) {
+//                            if (type == ResourceType.MONEY) continue;
+//                            natSummary.no_internal[type.ordinal()] += deposit[type.ordinal()];
+//                        }
                     } else {
                         // add resources (not money) to internal_applied AND internal_unapplied
                         // unapplied is the raw amount, applied is the amount calculating the internal rate
@@ -380,7 +388,8 @@ public class BankDB extends DBMainV3 {
                                 TAX_SUMMARY.ALLIANCE_ID,
                                 TAX_SUMMARY.NATION_ID,
                                 TAX_SUMMARY.DATE,
-                                TAX_SUMMARY.NO_INTERNAL,
+                                TAX_SUMMARY.NO_INTERNAL_APPLIED,
+                                TAX_SUMMARY.NO_INTERNAL_UNAPPLIED,
                                 TAX_SUMMARY.INTERNAL_APPLIED,
                                 TAX_SUMMARY.INTERNAL_UNAPPLIED
                         );
@@ -399,7 +408,8 @@ public class BankDB extends DBMainV3 {
                                 allianceId,
                                 nationId,
                                 date,
-                                ArrayUtil.toByteArray(summary.no_internal),
+                                ArrayUtil.toByteArray(summary.no_internal_applied),
+                                ArrayUtil.toByteArray(summary.no_internal_unapplied),
                                 ArrayUtil.toByteArray(summary.internal_applied),
                                 ArrayUtil.toByteArray(summary.internal_unapplied)
                         );
@@ -410,7 +420,8 @@ public class BankDB extends DBMainV3 {
                 insert.onConflict(TAX_SUMMARY.ALLIANCE_ID, TAX_SUMMARY.NATION_ID)
                         .doUpdate()
                         .set(TAX_SUMMARY.DATE,           DSL.excluded(TAX_SUMMARY.DATE))
-                        .set(TAX_SUMMARY.NO_INTERNAL,    DSL.excluded(TAX_SUMMARY.NO_INTERNAL))
+                        .set(TAX_SUMMARY.NO_INTERNAL_APPLIED,    DSL.excluded(TAX_SUMMARY.NO_INTERNAL_APPLIED))
+                        .set(TAX_SUMMARY.NO_INTERNAL_UNAPPLIED,    DSL.excluded(TAX_SUMMARY.NO_INTERNAL_UNAPPLIED))
                         .set(TAX_SUMMARY.INTERNAL_APPLIED,   DSL.excluded(TAX_SUMMARY.INTERNAL_APPLIED))
                         .set(TAX_SUMMARY.INTERNAL_UNAPPLIED, DSL.excluded(TAX_SUMMARY.INTERNAL_UNAPPLIED))
                         .execute();
