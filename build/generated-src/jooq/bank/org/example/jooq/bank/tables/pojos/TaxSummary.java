@@ -18,7 +18,8 @@ public class TaxSummary implements Serializable {
 
     private final Integer nationId;
     private final Integer allianceId;
-    private final byte[] noInternal;
+    private final byte[] noInternalApplied;
+    private final byte[] noInternalUnapplied;
     private final byte[] internalApplied;
     private final byte[] internalUnapplied;
     private final Long date;
@@ -26,7 +27,8 @@ public class TaxSummary implements Serializable {
     public TaxSummary(TaxSummary value) {
         this.nationId = value.nationId;
         this.allianceId = value.allianceId;
-        this.noInternal = value.noInternal;
+        this.noInternalApplied = value.noInternalApplied;
+        this.noInternalUnapplied = value.noInternalUnapplied;
         this.internalApplied = value.internalApplied;
         this.internalUnapplied = value.internalUnapplied;
         this.date = value.date;
@@ -35,14 +37,16 @@ public class TaxSummary implements Serializable {
     public TaxSummary(
         Integer nationId,
         Integer allianceId,
-        byte[] noInternal,
+        byte[] noInternalApplied,
+        byte[] noInternalUnapplied,
         byte[] internalApplied,
         byte[] internalUnapplied,
         Long date
     ) {
         this.nationId = nationId;
         this.allianceId = allianceId;
-        this.noInternal = noInternal;
+        this.noInternalApplied = noInternalApplied;
+        this.noInternalUnapplied = noInternalUnapplied;
         this.internalApplied = internalApplied;
         this.internalUnapplied = internalUnapplied;
         this.date = date;
@@ -63,10 +67,17 @@ public class TaxSummary implements Serializable {
     }
 
     /**
-     * Getter for <code>TAX_SUMMARY.no_internal</code>.
+     * Getter for <code>TAX_SUMMARY.no_internal_applied</code>.
      */
-    public byte[] getNoInternal() {
-        return this.noInternal;
+    public byte[] getNoInternalApplied() {
+        return this.noInternalApplied;
+    }
+
+    /**
+     * Getter for <code>TAX_SUMMARY.no_internal_unapplied</code>.
+     */
+    public byte[] getNoInternalUnapplied() {
+        return this.noInternalUnapplied;
     }
 
     /**
@@ -111,11 +122,17 @@ public class TaxSummary implements Serializable {
         }
         else if (!this.allianceId.equals(other.allianceId))
             return false;
-        if (this.noInternal == null) {
-            if (other.noInternal != null)
+        if (this.noInternalApplied == null) {
+            if (other.noInternalApplied != null)
                 return false;
         }
-        else if (!Arrays.equals(this.noInternal, other.noInternal))
+        else if (!Arrays.equals(this.noInternalApplied, other.noInternalApplied))
+            return false;
+        if (this.noInternalUnapplied == null) {
+            if (other.noInternalUnapplied != null)
+                return false;
+        }
+        else if (!Arrays.equals(this.noInternalUnapplied, other.noInternalUnapplied))
             return false;
         if (this.internalApplied == null) {
             if (other.internalApplied != null)
@@ -144,7 +161,8 @@ public class TaxSummary implements Serializable {
         int result = 1;
         result = prime * result + ((this.nationId == null) ? 0 : this.nationId.hashCode());
         result = prime * result + ((this.allianceId == null) ? 0 : this.allianceId.hashCode());
-        result = prime * result + ((this.noInternal == null) ? 0 : Arrays.hashCode(this.noInternal));
+        result = prime * result + ((this.noInternalApplied == null) ? 0 : Arrays.hashCode(this.noInternalApplied));
+        result = prime * result + ((this.noInternalUnapplied == null) ? 0 : Arrays.hashCode(this.noInternalUnapplied));
         result = prime * result + ((this.internalApplied == null) ? 0 : Arrays.hashCode(this.internalApplied));
         result = prime * result + ((this.internalUnapplied == null) ? 0 : Arrays.hashCode(this.internalUnapplied));
         result = prime * result + ((this.date == null) ? 0 : this.date.hashCode());
@@ -157,6 +175,7 @@ public class TaxSummary implements Serializable {
 
         sb.append(nationId);
         sb.append(", ").append(allianceId);
+        sb.append(", ").append("[binary...]");
         sb.append(", ").append("[binary...]");
         sb.append(", ").append("[binary...]");
         sb.append(", ").append("[binary...]");
