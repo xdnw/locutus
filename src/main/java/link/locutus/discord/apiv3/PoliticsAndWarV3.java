@@ -120,7 +120,8 @@ public class PoliticsAndWarV3 {
         } else {
             validKeysStr = keys.stream().map(key -> PW.getMarkdownUrl(key.getNationId(), false)).collect(Collectors.joining(","));
         }
-        message = "Error accessing `" + alliancePermission.name() + "`" + (message == null || message.isEmpty() ? "" : " " + message) + ". Using keys: " + validKeysStr + "\n";
+        message = "Error accessing `" + alliancePermission.name() + "`" + (message == null || message.isEmpty() ? "" : " " + message) + ". Using keys: " + validKeysStr + "\n" +
+                "Make sure the required `scopes` and `whitelisted access` are enabled on the **Account** page";
         throw new IllegalArgumentException(message);
     }
 

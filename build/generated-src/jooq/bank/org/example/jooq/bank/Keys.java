@@ -9,6 +9,7 @@ import org.example.jooq.bank.tables.Subscriptions;
 import org.example.jooq.bank.tables.TaxBrackets;
 import org.example.jooq.bank.tables.TaxDepositsDate;
 import org.example.jooq.bank.tables.TaxEstimate;
+import org.example.jooq.bank.tables.TaxSummary;
 import org.example.jooq.bank.tables.TransactionsAlliance_2;
 import org.example.jooq.bank.tables.Transactions_2;
 import org.example.jooq.bank.tables.records.LootDiffByTaxIdRecord;

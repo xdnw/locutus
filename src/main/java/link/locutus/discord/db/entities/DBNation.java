@@ -10,6 +10,7 @@ import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
+import link.locutus.discord._test._Custom;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -1768,7 +1769,7 @@ public abstract class DBNation implements NationOrAlliance {
             }
         }
         if (update) {
-            if (true) {
+            if (_Custom.TEST) {
                 throw new UnsupportedOperationException("TEMPORARILY DISABLED");
             }
             return updateTransactions(priority);
