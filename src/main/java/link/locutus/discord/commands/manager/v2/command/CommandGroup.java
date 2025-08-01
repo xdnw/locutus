@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.command;
 
+import com.google.common.base.Predicates;
 import gg.jte.generated.precompiled.command.JtecommandgroupGenerated;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -327,8 +328,8 @@ public class CommandGroup implements ICommandGroup {
         }
 
         if (!ignoreMissingMapping) {
-            Set<Method> legacyMethod = commands.getParametricCallables(f -> true).stream().map(ParametricCallable::getMethod).collect(Collectors.toSet());
-            Set<Method> currentMethods = getParametricCallables(f -> true).stream().map(ParametricCallable::getMethod).collect(Collectors.toSet());
+            Set<Method> legacyMethod = commands.getParametricCallables(Predicates.alwaysTrue()).stream().map(ParametricCallable::getMethod).collect(Collectors.toSet());
+            Set<Method> currentMethods = getParametricCallables(Predicates.alwaysTrue()).stream().map(ParametricCallable::getMethod).collect(Collectors.toSet());
             for (Method method : legacyMethod) {
                 if (!currentMethods.contains(method)) {
                     throw new IllegalArgumentException("Could not find mapping for method " + method.getName() + " | " + StringMan.getString(method.getGenericParameterTypes()) + " please add it to the commands.yml file or register it after legacy remapping.");
@@ -341,7 +342,7 @@ public class CommandGroup implements ICommandGroup {
         Map<Class<?>, Object> instanceCache = new HashMap<>();
         register(remapping, new ArrayList<>(), instanceCache, true);
 
-        Set<ParametricCallable> allRegistered = getParametricCallables(f -> true);
+        Set<ParametricCallable> allRegistered = getParametricCallables(Predicates.alwaysTrue());
         Set<Method> registeredMethods = new HashSet<>();
         for (ParametricCallable callable : allRegistered) {
             if (callable.getMethod() != null) {
@@ -461,7 +462,7 @@ public class CommandGroup implements ICommandGroup {
     public void checkUnregisteredMethods(boolean throwError) {
         Set<Class> classes = new HashSet<>();
         Set<Method> methods = new HashSet<>();
-        for (ParametricCallable callable : getParametricCallables(f -> true)) {
+        for (ParametricCallable callable : getParametricCallables(Predicates.alwaysTrue())) {
             Method method = callable.getMethod();
             if (methods.contains(method)) continue;
             methods.add(method);

@@ -1,6 +1,7 @@
 
 package link.locutus.discord.util.offshore;
 
+import com.google.common.base.Predicates;
 import com.politicsandwar.graphql.model.Bankrec;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
@@ -879,7 +880,7 @@ public class OffshoreInstance {
             boolean hasEcon = allowedIds.containsValue(AccessType.ECON);
 
             if (nationAccount != null && !depositType.isIgnored() && (banker == null || !hasEcon)) {
-                double[] myNewDeposits = nationAccount.getNetDeposits(senderDB, !ignoreGrants, -1L, true);
+                double[] myNewDeposits = nationAccount.getNetDeposits(null, senderDB, !ignoreGrants, -1L, true);
                 // ensure myDeposits and myNewDeposits difference is amount
                 double[] diff = ResourceType.getBuffer();
                 for (int i = 0; i < amount.length; i++) {
@@ -1359,7 +1360,7 @@ public class OffshoreInstance {
     }
 
     private Map.Entry<double[], TransferResult> checkNationDeposits(GuildDB senderDB, DBNation nationAccount, Map<Long, AccessType> allowedIds, NationOrAlliance receiver, double[] amount, double txValue, DepositType.DepositTypeInfo depositType, boolean ignoreGrants, boolean allowNegative, StringBuilder reqMsg, boolean update, boolean allowUpdate) throws IOException {
-        double[] myDeposits = nationAccount.getNetDeposits(senderDB, !ignoreGrants, update ? 0L : -1, true);
+        double[] myDeposits = nationAccount.getNetDeposits(null, senderDB, !ignoreGrants, update ? 0L : -1, true);
         double[] myDepositsNormalized = PW.normalize(myDeposits);
         double myDepoValue = ResourceType.convertedTotal(myDepositsNormalized, false);
         double[] depoArr = (myDepoValue < txValue ? myDepositsNormalized : myDeposits);
@@ -1766,7 +1767,7 @@ public class OffshoreInstance {
     }
 
     public double[] getDeposits(GuildDB guildDb, boolean update) {
-        Map<NationOrAllianceOrGuild, double[]> byAA = getDepositsByAA(guildDb, f -> true, update);
+        Map<NationOrAllianceOrGuild, double[]> byAA = getDepositsByAA(guildDb, Predicates.alwaysTrue(), update);
         double[] deposits = ResourceType.getBuffer();
         byAA.forEach((a, b) -> ResourceType.add(deposits, b));
         return deposits;

@@ -1,5 +1,6 @@
 package link.locutus.discord.apiv1.enums.city.building;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -226,12 +227,12 @@ public class Buildings {
             for (int i = 0; i < BUILDINGS.length; i++) {
                 Building building = BUILDINGS[i];
                 HASHCODES[i] = total;
-                total += building.cap(f -> true);
+                total += building.cap(Predicates.alwaysTrue());
             }
 
             List<Building> pollutionBuildings = new ArrayList<>();
             for (Building building : buildingsList) {
-                int pollution = building.pollution(f -> false);
+                int pollution = building.pollution(Predicates.alwaysFalse());
                 if (pollution != 0) {
                     pollutionBuildings.add(building);
                 }

@@ -1,5 +1,6 @@
 package link.locutus.discord.db;
 
+import com.google.common.base.Predicates;
 import com.politicsandwar.graphql.model.*;
 import com.politicsandwar.graphql.model.SortOrder;
 import it.unimi.dsi.fastutil.ints.*;
@@ -192,6 +193,52 @@ public class BankDB extends DBMainV3 {
         }
     }
 
+    public Map<Integer, double[]> getAppliedTaxDeposits(Set<Integer> nationIds, Set<Integer> allianceIds, int[] taxBase) {
+        if (nationIds.isEmpty() || allianceIds.isEmpty()) return new Int2ObjectOpenHashMap<>();
+        checkUpdateTaxSummary(allianceIds, taxBase);
+        try (Stream<Record3<Integer, byte[], byte[]>> stream = ctx().select(TAX_SUMMARY.NATION_ID, TAX_SUMMARY.NO_INTERNAL_APPLIED, TAX_SUMMARY.INTERNAL_APPLIED)
+                .from(TAX_SUMMARY)
+                .where(nationIds.size() == 1 ?
+                        TAX_SUMMARY.NATION_ID.eq(nationIds.iterator().next()) :
+                        TAX_SUMMARY.NATION_ID.in(nationIds))
+                .and(allianceIds.size() == 1 ?
+                        TAX_SUMMARY.ALLIANCE_ID.eq(allianceIds.iterator().next()) :
+                        TAX_SUMMARY.ALLIANCE_ID.in(allianceIds))
+                .fetchStream()) {
+            Map<Integer, double[]> result = new Int2ObjectOpenHashMap<>();
+            stream.forEach(rs -> {
+                int nationId = rs.get(TAX_SUMMARY.NATION_ID);
+                double[] added = result.computeIfAbsent(nationId, k -> ResourceType.getBuffer());
+                ResourceType.add(added, ArrayUtil.toDoubleArray(rs.get(TAX_SUMMARY.NO_INTERNAL_APPLIED)));
+                ResourceType.add(added, ArrayUtil.toDoubleArray(rs.get(TAX_SUMMARY.INTERNAL_APPLIED)));
+            });
+            return result;
+        }
+    }
+
+    public Map<Integer, double[]> getUnappliedTaxDeposits(Set<Integer> nationIds, Set<Integer> allianceIds, int[] taxBase) {
+        if (nationIds.isEmpty() || allianceIds.isEmpty()) return new Int2ObjectOpenHashMap<>();
+        checkUpdateTaxSummary(allianceIds, taxBase);
+        try (Stream<Record3<Integer, byte[], byte[]>> stream = ctx().select(TAX_SUMMARY.NATION_ID, TAX_SUMMARY.NO_INTERNAL_UNAPPLIED, TAX_SUMMARY.INTERNAL_UNAPPLIED)
+                .from(TAX_SUMMARY)
+                .where(nationIds.size() == 1 ?
+                        TAX_SUMMARY.NATION_ID.eq(nationIds.iterator().next()) :
+                        TAX_SUMMARY.NATION_ID.in(nationIds))
+                .and(allianceIds.size() == 1 ?
+                        TAX_SUMMARY.ALLIANCE_ID.eq(allianceIds.iterator().next()) :
+                        TAX_SUMMARY.ALLIANCE_ID.in(allianceIds))
+                .fetchStream()) {
+            Map<Integer, double[]> result = new Int2ObjectOpenHashMap<>();
+            stream.forEach(rs -> {
+                int nationId = rs.get(TAX_SUMMARY.NATION_ID);
+                double[] added = result.computeIfAbsent(nationId, k -> ResourceType.getBuffer());
+                ResourceType.add(added, ArrayUtil.toDoubleArray(rs.get(TAX_SUMMARY.NO_INTERNAL_UNAPPLIED)));
+                ResourceType.add(added, ArrayUtil.toDoubleArray(rs.get(TAX_SUMMARY.INTERNAL_UNAPPLIED)));
+            });
+            return result;
+        }
+    }
+
     private void checkUpdateTaxSummary(Set<Integer> allianceIds, int[] taxBase) {
         short guildTaxPair = MathMan.pairByte(taxBase[0], taxBase[1]);
         synchronized (lastTaxSummaryUpdateByAlliance) {
@@ -235,6 +282,10 @@ public class BankDB extends DBMainV3 {
                 loadSummaryDate(toLoadSummary, toUpdate);
             }
 
+            if (toUpdate.isEmpty()) {
+                return;
+            }
+
             // alliance -> nation -> TaxRecordSummary
             Map<Integer, Map<Integer, TaxRecordSummary>> summaryByAlliance = new Int2ObjectOpenHashMap<>();
             { // Load the summaries from TAX_SUMMARY
@@ -257,10 +308,6 @@ public class BankDB extends DBMainV3 {
                                 .put(nid, new TaxRecordSummary(taxPair, noInternalApplied, noInternalUnapplied, internalApplied, internalUnappl, false));
                     });
                 }
-            }
-
-            if (toUpdate.isEmpty()) {
-                return;
             }
 
             Map<Integer, Long> newTaxSummaryUpdateByAlliance = new Int2LongOpenHashMap();
@@ -419,15 +466,17 @@ public class BankDB extends DBMainV3 {
                     }
                 }
 
-                // 2. Single upsert with ON CONFLICT … DO UPDATE
-                insert.onConflict(TAX_SUMMARY.ALLIANCE_ID, TAX_SUMMARY.NATION_ID)
-                        .doUpdate()
-                        .set(TAX_SUMMARY.DATE,           DSL.excluded(TAX_SUMMARY.DATE))
-                        .set(TAX_SUMMARY.NO_INTERNAL_APPLIED,    DSL.excluded(TAX_SUMMARY.NO_INTERNAL_APPLIED))
-                        .set(TAX_SUMMARY.NO_INTERNAL_UNAPPLIED,    DSL.excluded(TAX_SUMMARY.NO_INTERNAL_UNAPPLIED))
-                        .set(TAX_SUMMARY.INTERNAL_APPLIED,   DSL.excluded(TAX_SUMMARY.INTERNAL_APPLIED))
-                        .set(TAX_SUMMARY.INTERNAL_UNAPPLIED, DSL.excluded(TAX_SUMMARY.INTERNAL_UNAPPLIED))
-                        .execute();
+                synchronized (this) {
+                    // 2. Single upsert with ON CONFLICT … DO UPDATE
+                    insert.onConflict(TAX_SUMMARY.ALLIANCE_ID, TAX_SUMMARY.NATION_ID)
+                            .doUpdate()
+                            .set(TAX_SUMMARY.DATE, DSL.excluded(TAX_SUMMARY.DATE))
+                            .set(TAX_SUMMARY.NO_INTERNAL_APPLIED, DSL.excluded(TAX_SUMMARY.NO_INTERNAL_APPLIED))
+                            .set(TAX_SUMMARY.NO_INTERNAL_UNAPPLIED, DSL.excluded(TAX_SUMMARY.NO_INTERNAL_UNAPPLIED))
+                            .set(TAX_SUMMARY.INTERNAL_APPLIED, DSL.excluded(TAX_SUMMARY.INTERNAL_APPLIED))
+                            .set(TAX_SUMMARY.INTERNAL_UNAPPLIED, DSL.excluded(TAX_SUMMARY.INTERNAL_UNAPPLIED))
+                            .execute();
+                }
             }
         }
     }
@@ -577,7 +626,7 @@ public class BankDB extends DBMainV3 {
         if (banker != null && banker.isEmpty()) banker = null;
         if (sender == null && receiver == null && banker == null) throw new IllegalArgumentException("Please provide at least one of sender, receiver, or banker");
 
-        Predicate<Transaction2> filter = f -> true;
+        Predicate<Transaction2> filter = Predicates.alwaysTrue();
 
         Condition condition = null;
         if (sender != null) {

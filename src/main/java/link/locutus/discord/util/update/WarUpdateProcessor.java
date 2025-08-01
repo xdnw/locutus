@@ -1,5 +1,6 @@
 package link.locutus.discord.util.update;
 
+import com.google.common.base.Predicates;
 import com.google.common.eventbus.Subscribe;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
@@ -134,7 +135,7 @@ public class WarUpdateProcessor {
                 for (Map.Entry<DBWar, DBWar> entry : wars) {
                     DBWar previous = entry.getKey();
                     DBWar current = entry.getValue();
-                    conflictManager.updateWar(previous, current, f -> true);
+                    conflictManager.updateWar(previous, current, Predicates.alwaysTrue());
                 }
             } catch (Throwable e) {
                 e.printStackTrace();

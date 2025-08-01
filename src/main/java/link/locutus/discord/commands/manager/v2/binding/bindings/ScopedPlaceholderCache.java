@@ -11,11 +11,11 @@ import java.util.function.Supplier;
 
 public class ScopedPlaceholderCache<T> {
     private final PlaceholderCache<T> cache;
-    private final String method;
+    private final MethodIdentity methodIdentity;
 
-    public ScopedPlaceholderCache(PlaceholderCache<T> cache, String method) {
+    public ScopedPlaceholderCache(PlaceholderCache<T> cache, MethodIdentity methodIdentity) {
         this.cache = cache;
-        this.method = method;
+        this.methodIdentity = methodIdentity;
     }
 
     public List<T> getList(T def) {
@@ -26,7 +26,7 @@ public class ScopedPlaceholderCache<T> {
         if (cache == null) {
             return create.get();
         }
-        return (V) cache.cacheGlobal.computeIfAbsent(method, k -> create.get());
+        return (V) cache.cacheGlobal.computeIfAbsent(methodIdentity, k -> create.get());
     }
 
     public <V> V get(T obj, Function<List<T>, List<V>> getAll) {
@@ -56,7 +56,7 @@ public class ScopedPlaceholderCache<T> {
             }
             return getSingle.apply(obj);
         }
-        Map<T, Object> map = cache.cacheInstance.computeIfAbsent(method, o -> {
+        Map<T, Object> map = cache.cacheInstance.computeIfAbsent(methodIdentity, o -> {
             Map<T, Object> data = new Object2ObjectOpenHashMap<>();
             if (cache.list != null) {
                 if (cache.list.size() == 1 && getSingle != null) {

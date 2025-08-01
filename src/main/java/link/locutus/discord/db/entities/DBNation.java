@@ -25,6 +25,7 @@ import link.locutus.discord.apiv3.enums.GameTimers;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.binding.bindings.MethodIdentity;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.ScopedPlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
@@ -107,6 +108,8 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+
+import static link.locutus.discord.commands.manager.v2.binding.bindings.MethodEnum.*;
 
 public abstract class DBNation implements NationOrAlliance {
     public static DBNation getByUser(User user) {
@@ -370,7 +373,7 @@ public abstract class DBNation implements NationOrAlliance {
     @Command(desc = "Number of days since creation this nation has not logged in for")
     public int daysSinceCreationNotLoggedIn(ValueStore store) {
         // Scope across all DBNation instances in this run
-        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "inactiveDays");
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, daysSinceCreationNotLoggedIn.get());
         List<DBNation> nations = scoped.getList(this);
 
         Map<Long, Set<Integer>> activityByDay;
@@ -426,7 +429,7 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     private Map.Entry<Object, String> getAuditRaw(ValueStore store, @Me GuildDB db, IACheckup.AuditType audit) throws IOException, ExecutionException, InterruptedException {
-        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getAudit");
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, getAuditRaw.of(audit));
         List<DBNation> nations = scoped.getList(this);
         AllianceList aaList = db.getAllianceList().subList(nations);
         IACheckup checkup = scoped.getGlobal((ThrowingSupplier<IACheckup>)
@@ -1600,29 +1603,29 @@ public abstract class DBNation implements NationOrAlliance {
         this.edit().setSpies(spies);
     }
 
-    public double[] getNetDeposits(GuildDB db, boolean priority) throws IOException {
-        return getNetDeposits(db, 0L, priority);
+    public double[] getNetDeposits(ValueStore store, GuildDB db, boolean priority) throws IOException {
+        return getNetDeposits(store, db, 0L, priority);
     }
 
-    public double[] getNetDeposits(GuildDB db, boolean includeGrants, boolean priority) throws IOException {
-        return getNetDeposits(db, null, true, true, includeGrants, 0L, 0L, Long.MAX_VALUE, priority);
+    public double[] getNetDeposits(ValueStore store, GuildDB db, boolean includeGrants, boolean priority) throws IOException {
+        return getNetDeposits(store, db, null, true, true, includeGrants, 0L, 0L, Long.MAX_VALUE, priority);
     }
 
-    public double[] getNetDeposits(GuildDB db, boolean includeGrants, long updateThreshold, boolean priority) throws IOException {
-        return getNetDeposits(db, null, true, true, includeGrants, updateThreshold, 0L, Long.MAX_VALUE, priority);
+    public double[] getNetDeposits(ValueStore store, GuildDB db, boolean includeGrants, long updateThreshold, boolean priority) throws IOException {
+        return getNetDeposits(store, db, null, true, true, includeGrants, updateThreshold, 0L, Long.MAX_VALUE, priority);
     }
 
-    public double[] getNetDeposits(GuildDB db, long updateThreshold, boolean priority) throws IOException {
-        return getNetDeposits(db, null, true, true, updateThreshold, 0L, Long.MAX_VALUE, priority);
+    public double[] getNetDeposits(ValueStore store, GuildDB db, long updateThreshold, boolean priority) throws IOException {
+        return getNetDeposits(store, db, null, true, true, updateThreshold, 0L, Long.MAX_VALUE, priority);
     }
 
-    public double[] getNetDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long start, long end, boolean priority) throws IOException {
+    public double[] getNetDeposits(ValueStore store, GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long start, long end, boolean priority) throws IOException {
         boolean includeGrants = db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW_IGNORES_GRANTS) == Boolean.FALSE;
-        return getNetDeposits(db, tracked, useTaxBase, offset, includeGrants, updateThreshold, start, end, priority);
+        return getNetDeposits(store, db, tracked, useTaxBase, offset, includeGrants, updateThreshold, start, end, priority);
     }
 
-    public double[] getNetDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, boolean includeGrants, long updateThreshold, long start, long end, boolean priority) throws IOException {
-        Map<DepositType, double[]> result = getDeposits(db, tracked, useTaxBase, offset, updateThreshold, start, end, priority);
+    public double[] getNetDeposits(ValueStore store, GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, boolean includeGrants, long updateThreshold, long start, long end, boolean priority) throws IOException {
+        Map<DepositType, double[]> result = getDeposits(store, db, tracked, useTaxBase, offset, updateThreshold, start, end, priority);
         double[] total = new double[ResourceType.values.length];
         for (Map.Entry<DepositType, double[]> entry : result.entrySet()) {
             if (includeGrants || entry.getKey() != DepositType.GRANT) {
@@ -1635,18 +1638,18 @@ public abstract class DBNation implements NationOrAlliance {
 
     @Command
     @RolePermission(Roles.ECON_STAFF)
-    public double getNetDepositsConverted(@Me GuildDB db) throws IOException {
-        return getNetDepositsConverted(db, -1);
+    public double getNetDepositsConverted(ValueStore store, @Me GuildDB db) throws IOException {
+        return getNetDepositsConverted(store, db, -1);
     }
 
-    public double getNetDepositsConverted(GuildDB db, long updateThreshold) throws IOException {
-        return ResourceType.convertedTotal(getNetDeposits(db, updateThreshold, false));
+    public double getNetDepositsConverted(ValueStore store, GuildDB db, long updateThreshold) throws IOException {
+        return ResourceType.convertedTotal(getNetDeposits(store, db, updateThreshold, false));
     }
 
     @Command(desc = "Net nation deposits with their alliance guild divided by their city count")
     @RolePermission(Roles.ECON)
-    public double getDepositValuePerCity(@Me GuildDB db) throws IOException {
-        return getNetDepositsConverted(db) / data()._cities();
+    public double getDepositValuePerCity(ValueStore store, @Me GuildDB db) throws IOException {
+        return getNetDepositsConverted(store, db) / data()._cities();
     }
 
     public List<Transaction2> getTransactions(boolean priority) {
@@ -2265,7 +2268,7 @@ public abstract class DBNation implements NationOrAlliance {
         if (getPositionEnum().id <= Rank.APPLICANT.id) {
             throw new IllegalArgumentException("Nation " + data()._nation() + " is not a member");
         }
-        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getStockpile");
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, getStockpile.get());
         return scoped.getMap(this,
                 (ThrowingFunction<List<DBNation>, Map<DBNation, Map<ResourceType, Double>>>)
                         f -> db.getAllianceList().subList(f).getMemberStockpile(),
@@ -2306,13 +2309,7 @@ public abstract class DBNation implements NationOrAlliance {
     ) {
         if (start == null) start = 0L;
         if (end == null) end = Long.MAX_VALUE;
-        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getDeposits");
-        Set<Long> tracked = scoped.getGlobal(db::getTrackedBanks);
-        List<Map.Entry<Integer, Transaction2>> transactions = getTransactions(db, tracked, !ignoreOffsets, !ignoreOffsets, -1L, start, end, false);
-        if (filter != null) {
-            transactions.removeIf(f -> !filter.test(f.getValue()));
-        }
-        Map<DepositType, double[]> sum = PW.sumNationTransactions(this, db, null, transactions, includeExpired, includeIgnored, filter);
+        Map<DepositType, double[]> sum = getDeposits(store, db, null, true, !ignoreBaseTaxrate, !ignoreOffsets, -1L, start, end, includeExpired, includeIgnored, filter, false);
         double[] total = ResourceType.getBuffer();
         for (Map.Entry<DepositType, double[]> entry : sum.entrySet()) {
             if (excludeTypes != null && excludeTypes.contains(entry.getKey())) continue;
@@ -2383,20 +2380,35 @@ public abstract class DBNation implements NationOrAlliance {
      * @param updateThreshold use 0l for force update
      * @return
      */
-    public Map<DepositType, double[]> getDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long start, long end, boolean priority) {
-        return getDeposits(db, tracked, useTaxBase, offset, updateThreshold, start, end, false, false, f -> true, priority);
+    public Map<DepositType, double[]> getDeposits(ValueStore store, GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long start, long end, boolean priority) {
+        return getDeposits(store, db, tracked, true, useTaxBase, offset, updateThreshold, start, end, false, false, null, priority);
     }
-    public Map<DepositType, double[]> getDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long start, long end, boolean forceIncludeExpired, boolean forceIncludeIgnored, Predicate<Transaction2> filter, boolean priority) {
+    public Map<DepositType, double[]> getDeposits(ValueStore store, GuildDB db, Set<Long> tracked, boolean includeTaxes, boolean useTaxBase, boolean offset, long updateThreshold, long start, long end, boolean forceIncludeExpired, boolean forceIncludeIgnored, Predicate<Transaction2> filter, boolean priority) {
+
+//        ScopedPlaceholderCache<GuildDB> scoped = PlaceholderCache.getScoped(store, GuildDB.class, getTrackedBanks.get());
+//        Set<Long> tracked = scoped.getGlobal(db::getTrackedBanks);
+        // Doesn't work because the scope provided is likely to be DBNation, not GuildDB
+
         long timingMs = System.currentTimeMillis();
-        List<Map.Entry<Integer, Transaction2>> transactions = getTransactions(db, tracked, useTaxBase, offset, updateThreshold, start, end, priority);
+        List<Map.Entry<Integer, Transaction2>> transactions = getTransactions(db, tracked, includeTaxes, useTaxBase, offset, updateThreshold, start, end, priority);
         timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("txTotal = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
         Map<DepositType, double[]> sum = PW.sumNationTransactions(this, db, tracked, transactions, forceIncludeExpired, forceIncludeIgnored, filter);
         timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("sumTotal = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
         return sum;
-    }
-
-    public List<Map.Entry<Integer, Transaction2>> getTransactions(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long start, long end, boolean priority) {
-        return getTransactions(db, tracked, true, useTaxBase, offset, updateThreshold, start, end, priority);
+//        String funcStr = "getDeposits:" + db.getIdLong() + filter.hashCode();
+//        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getDeposits");
+//        Boolean verified = scoped.getMap(this,
+//                (ThrowingFunction<List<DBNation>, Map<DBNation, Boolean>>) f -> {
+//                    Set<Integer> nationIds = new IntOpenHashSet(f.size());
+//                    for (DBNation nation : f) nationIds.add(nation.getNation_id());
+//                    Set<Integer> verifiedSet = Locutus.imp().getDiscordDB().getVerified(nationIds);
+//                    Map<DBNation, Boolean> result = new Object2BooleanOpenHashMap<>(f.size());
+//                    for (DBNation nation : f) {
+//                        result.put(nation, verifiedSet.contains(nation.getNation_id()));
+//                    }
+//                    return result;
+//                });
+//        return verified != null && verified;
     }
 
     public List<Map.Entry<Integer, Transaction2>> getTransactions(GuildDB db, Set<Long> tracked, boolean includeTaxes, boolean useTaxBase, boolean offset, long updateThreshold, long start, long end, boolean priority) {
@@ -2425,10 +2437,10 @@ public abstract class DBNation implements NationOrAlliance {
         boolean includeNoInternal = defTaxBase[0] == 100 && defTaxBase[1] == 100;
         boolean includeMaxInternal = false;
 
-        Set<Integer> finalTracked = tracked.stream().filter(f -> f <= Integer.MAX_VALUE).map(Long::intValue).collect(Collectors.toSet());
+        Set<Integer> finalTracked = tracked.stream().filter(f -> f <= Integer.MAX_VALUE && db.isAllianceId(f.intValue())).map(Long::intValue).collect(Collectors.toSet());
 
         timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Diff3 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
-        List<TaxDeposit> taxes = includeTaxes ? Locutus.imp().getBankDB().getTaxesPaid(getNation_id(), finalTracked, includeNoInternal, includeMaxInternal, start, end) : new ArrayList<>();
+        List<TaxDeposit> taxes = includeTaxes ? Locutus.imp().getBankDB().getTaxesPaid(getNation_id(), finalTracked, includeNoInternal, includeMaxInternal, start, end) : Collections.emptyList();
         timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Diff4 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
 
         for (TaxDeposit deposit : taxes) {
@@ -3652,7 +3664,7 @@ public abstract class DBNation implements NationOrAlliance {
 
     @Command(desc = "If the user has provided IRL identity verification to the game")
     public boolean hasProvidedIdentity(ValueStore store) {
-        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "hasProvidedIdentity");
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, hasProvidedIdentity.get());
         Boolean verified = scoped.getMap(this,
                 (ThrowingFunction<List<DBNation>, Map<DBNation, Boolean>>) f -> {
                     Set<Integer> nationIds = new IntOpenHashSet(f.size());
@@ -5106,8 +5118,8 @@ public abstract class DBNation implements NationOrAlliance {
 
     @Command(desc = "Get resource quantity for this nation")
     public long getTradeQuantity(ValueStore store, long dateStart, @Default Long dateEnd, @NoFormat @Default Set<ResourceType> types, @NoFormat @Default Predicate<DBTrade> filter, @Switch("n") boolean net) {
-        String funcStr = "getTradeQuantity(" + dateStart + "," + dateEnd + "," + StringMan.getString(types) + "," + filter + ")";
-        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, funcStr);
+        MethodIdentity funcId = getTradeQuantity.of(dateStart, dateEnd, types, filter, net);
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, funcId);
 
         if (dateEnd == null) dateEnd = getSnapshot() == null ? Long.MAX_VALUE : getSnapshot();
         List<DBNation> nations = scoped.getList(this);
@@ -5144,8 +5156,8 @@ public abstract class DBNation implements NationOrAlliance {
 
     @Command(desc = "Get resource quantity for this nation")
     public long getTradeAvgPpu(ValueStore store, long dateStart, @Default Long dateEnd, @NoFormat @Default Set<ResourceType> types, @NoFormat @Default Predicate<DBTrade> filter) {
-        String funcStr = "getTradeAvgPpu(" + dateStart + "," + dateEnd + "," + StringMan.getString(types) + "," + filter + ")";
-        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, funcStr);
+        MethodIdentity funcId = getTradeAvgPpu.of(dateStart, dateEnd, types, filter);
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, funcId);
 
         if (dateEnd == null) dateEnd = getSnapshot() == null ? Long.MAX_VALUE : getSnapshot();
         List<DBNation> nations = scoped.getList(this);
@@ -5184,8 +5196,8 @@ public abstract class DBNation implements NationOrAlliance {
 
     @Command(desc = "Get resource quantity for this nation")
     public double getTradeValue(ValueStore store, long dateStart, @Default Long dateEnd, @NoFormat @Default Set<ResourceType> types, @NoFormat @Default Predicate<DBTrade> filter) {
-        String funcStr = "getTradeQuantity(" + dateStart + "," + dateEnd + "," + StringMan.getString(types) + "," + filter + ")";
-        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, funcStr);
+        MethodIdentity funcId = getTradeValue.of(dateStart, dateEnd, types, filter);
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, funcId);
 
         if (dateEnd == null) dateEnd = getSnapshot() == null ? Long.MAX_VALUE : getSnapshot();
         List<DBNation> nations = scoped.getList(this);
@@ -5520,7 +5532,7 @@ public abstract class DBNation implements NationOrAlliance {
     @Command(desc = "Get unix timestamp of when a unit was purchased last")
     @RolePermission(Roles.MILCOM)
     public Long getLastUnitBuy(ValueStore store, MilitaryUnit unit) {
-        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getLastUnitBuy");
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, getLastUnitBuy.get());
         Map<MilitaryUnit, Long> byUnit = scoped.getMap(this,
         (ThrowingFunction<List<DBNation>, Map<DBNation, Map<MilitaryUnit, Long>>>) f -> {
             Set<Integer> nationIds = new IntOpenHashSet(f.size());
@@ -5774,7 +5786,7 @@ public abstract class DBNation implements NationOrAlliance {
         if (getPositionEnum().id < Rank.APPLICANT.id || !db.isAllianceId(data()._allianceId())) {
             return -1;
         }
-        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getUpdateTZ");
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, getUpdateTZ.get());
         List<DBNation> nations = scoped.getList(this);
         Map<Integer, Double> update = scoped.getGlobal(() -> db.getAllianceList().subList(nations).fetchUpdateTz(new HashSet<>(nations)));
         return update.getOrDefault(data()._nationId(), -1d);
@@ -5787,7 +5799,7 @@ public abstract class DBNation implements NationOrAlliance {
         if (getPositionEnum().id < Rank.APPLICANT.id || !db.isAllianceId(data()._allianceId())) {
             return -1;
         }
-        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getFreeOffSpyOps");
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, getFreeOffSpyOps.get());
         List<DBNation> nations = scoped.getList(this);
         Map<DBNation, Integer> update = scoped.getGlobal(() -> db.getAllianceList().subList(nations).updateOffSpyOps());
         return update.getOrDefault(this, -1);

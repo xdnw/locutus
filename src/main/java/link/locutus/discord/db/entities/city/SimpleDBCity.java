@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities.city;
 
+import com.google.common.base.Predicates;
 import com.politicsandwar.graphql.model.City;
 import link.locutus.discord.apiv1.enums.city.ICity;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -80,7 +81,7 @@ public class SimpleDBCity extends DBCity {
         this.setInfra_cents((int) Math.round(city.getInfra() * 100));
         this.setLand_cents((int) Math.round(city.getLand() * 100));
         this.setBuildings3(city.getBuildings().clone());
-        this.setPowered(city.getMetrics(f -> false).powered);
+        this.setPowered(city.getMetrics(Predicates.alwaysFalse()).powered);
     }
 
     public void setPowered(boolean powered) {

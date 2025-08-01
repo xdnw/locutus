@@ -1,6 +1,7 @@
 package link.locutus.discord.apiv1.enums.city.building;
 
 import com.google.common.base.CaseFormat;
+import com.google.common.base.Predicates;
 import link.locutus.discord.apiv1.enums.BuildingType;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -11,7 +12,6 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.db.entities.DBNation;
-
 
 import java.util.Arrays;
 import java.util.List;
@@ -71,12 +71,12 @@ public interface Building {
 
     @Command(desc = "Get the upkeep of this building for a specific resource")
     default double getUpkeep(ResourceType type, @NoFormat @Default Predicate<Project> hasProject) {
-        return upkeep(type, hasProject == null ? f -> false : hasProject);
+        return upkeep(type, hasProject == null ? Predicates.alwaysFalse() : hasProject);
     }
 
     @Command(desc = "Get the upkeep resources of this building")
     default Map<ResourceType, Double> getUpkeepMap(@NoFormat @Default Predicate<Project> hasProject) {
-        Predicate<Project> hasProject1 = hasProject == null ? f -> false : hasProject;
+        Predicate<Project> hasProject1 = hasProject == null ? Predicates.alwaysFalse() : hasProject;
         return Arrays.stream(ResourceType.values).collect(Collectors.toMap(type -> type, type -> getUpkeep(type, hasProject1)));
     }
 
@@ -85,7 +85,7 @@ public interface Building {
 
     @Command(desc = "Get max number of this building that can be built (per city)")
     default int getCap(@NoFormat @Default Predicate<Project> hasProject) {
-        return cap(hasProject == null ? f -> false : hasProject);
+        return cap(hasProject == null ? Predicates.alwaysFalse() : hasProject);
     }
 
     /**
@@ -97,7 +97,7 @@ public interface Building {
 
     @Command(desc = "Get the pollution created by this building")
     default int getPollution(@NoFormat @Default Predicate<Project> hasProject) {
-        return pollution(hasProject == null ? f -> false : hasProject);
+        return pollution(hasProject == null ? Predicates.alwaysFalse() : hasProject);
     }
 
     int pollution(Predicate<Project> hasProject);

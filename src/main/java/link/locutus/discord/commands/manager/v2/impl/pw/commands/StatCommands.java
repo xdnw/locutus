@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.google.common.base.Predicates;
 import com.politicsandwar.graphql.model.BBGame;
 import com.ptsmods.mysqlw.query.QueryCondition;
 import de.erichseifert.gral.data.DataTable;
@@ -20,10 +21,11 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
-import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
+import link.locutus.discord.commands.manager.v2.builder.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
@@ -33,13 +35,12 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeD
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.commands.manager.v2.table.imp.*;
-import link.locutus.discord.commands.rankings.WarCostAB;
-import link.locutus.discord.commands.rankings.WarCostRanking;
-import link.locutus.discord.commands.manager.v2.builder.*;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
+import link.locutus.discord.commands.manager.v2.table.imp.*;
+import link.locutus.discord.commands.rankings.WarCostAB;
+import link.locutus.discord.commands.rankings.WarCostRanking;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BaseballDB;
 import link.locutus.discord.db.GuildDB;
@@ -78,8 +79,8 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.List;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -924,7 +925,7 @@ public class StatCommands {
 //                    int defId = attack.getDefender_id();
 //
 //                    if (lastDay != day) {
-//                        nations = parser.getNations(day, true, true, f -> true, f -> true, f -> true)
+//                        nations = parser.getNations(day, true, true, Predicates.alwaysTrue(), Predicates.alwaysTrue(), Predicates.alwaysTrue())
 //                    }
 //                    // check beige
 //                }
@@ -2567,7 +2568,7 @@ public class StatCommands {
         DataDumpParser dumper = Locutus.imp().getDataDumper(true).load();
 
         AtomicLong start = new AtomicLong(System.currentTimeMillis());
-        dumper.iterateAll(f -> true, (h, r) -> {
+        dumper.iterateAll(Predicates.alwaysTrue(), (h, r) -> {
             r.required(h.alliance_position, h.alliance_id, h.nation_id, h.alliance);
         }, null, (day, r) -> {
             Rank position = r.header.alliance_position.get();
@@ -2715,7 +2716,7 @@ public class StatCommands {
             @Switch("o") boolean only_off_wars,
             @Switch("d") boolean only_def_wars) {
         Set<Integer> allianceIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
-        AttackQuery query = Locutus.imp().getWarDb().queryAttacks().withActiveWars(f -> true, f -> {
+        AttackQuery query = Locutus.imp().getWarDb().queryAttacks().withActiveWars(Predicates.alwaysTrue(), f -> {
             if (!only_def_wars && allianceIds.contains(f.getAttacker_aa())) return true;
             if (!only_off_wars && allianceIds.contains(f.getDefender_aa())) return true;
             return false;

@@ -3,6 +3,8 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -99,7 +101,7 @@ public class TaxBracketSheet extends Command {
         db.getAutoRoleTask().updateTaxRoles(nations);
 
         long threshold = flags.contains('f') ? 0 : Long.MAX_VALUE;
-
+        ValueStore<DBNation> cache = PlaceholderCache.createCache(nations.keySet(), DBNation.class);
         for (Map.Entry<DBNation, TaxBracket> entry : nations.entrySet()) {
             TaxBracket bracket = entry.getValue();
             DBNation nation = entry.getKey();
@@ -110,7 +112,7 @@ public class TaxBracketSheet extends Command {
             header.set(1, Rank.byId(nation.getPosition()).name());
             header.set(2, nation.getCities());
             header.set(3, nation.getAgeDays());
-            header.set(4, String.format("%.2f", nation.getNetDepositsConverted(db, threshold)));
+            header.set(4, String.format("%.2f", nation.getNetDepositsConverted(cache, db, threshold)));
             header.set(5, bracket.taxId + "");
             header.set(6, bracket.moneyRate + "/" + bracket.rssRate);
 

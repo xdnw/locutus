@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Research;
@@ -99,7 +100,7 @@ public class DBNationCache {
                         hasProjects = parent::hasProject;
                         getResearch = parent::getResearch;
                     } else if (current > previous) {
-                        hasProjects = f -> true;
+                        hasProjects = Predicates.alwaysTrue();
                         getResearch = f -> 20;
                     } else {
                         // Don't check if there is no buy and project info isn't updated

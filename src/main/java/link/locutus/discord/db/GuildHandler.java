@@ -696,7 +696,7 @@ public class GuildHandler {
 
         if (user != null && current.active_m() < 2880) {
             try {
-                double[] depoTotal = current.getNetDeposits(db, false);
+                double[] depoTotal = current.getNetDeposits(null, db, false);
                 body.append("\n\nPlease check the following:\n" +
                         "- Discord roles\n" +
                         "- Deposits: `" + ResourceType.toString(depoTotal) + "` worth: ~$" + MathMan.format(ResourceType.convertedTotal(depoTotal)));

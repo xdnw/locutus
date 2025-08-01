@@ -2,6 +2,7 @@ package link.locutus.discord.db.conflict;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Predicates;
 import com.google.common.eventbus.Subscribe;
 import com.ptsmods.mysqlw.Database;
 import it.unimi.dsi.fastutil.ints.*;
@@ -41,17 +42,7 @@ import java.io.File;
 import java.io.IOException;
 import java.sql.*;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
@@ -341,7 +332,7 @@ public class ConflictManager {
         AbstractCursor attack = event.getAttack();
         DBWar war = event.getWar();
         if (war != null) {
-            updateAttack(war, attack, f -> true, f -> {
+            updateAttack(war, attack, Predicates.alwaysTrue(), f -> {
                 AttackTypeSubCategory cat = f.getSubCategory(DBNation::getActive_m);
                 saveSubTypes(Map.of(attack.getWar_attack_id(), cat == null ? -1 : (byte) cat.ordinal()));
                 return cat;
@@ -573,7 +564,7 @@ public class ConflictManager {
                 wars.add(war);
             }
         }
-        db.iterateWarAttacks(wars, f -> true, f -> true, (war, attack) -> {
+        db.iterateWarAttacks(wars, Predicates.alwaysTrue(), Predicates.alwaysTrue(), (war, attack) -> {
             long turn = TimeUtil.getTurn(attack.getDate());
             if (TimeUtil.getTurn(war.getDate()) <= turn) {
                 conflict.updateAttack(war, attack, turn, f -> null);
@@ -612,7 +603,7 @@ public class ConflictManager {
             } else {
                 startMs = 0;
                 endMs = Long.MAX_VALUE;
-                allowedConflicts = f -> true;
+                allowedConflicts = Predicates.alwaysTrue();
             }
 
             Set<DBWar> wars = new ObjectOpenHashSet<>();
@@ -655,7 +646,7 @@ public class ConflictManager {
                         return 20000;
                     }
                 };
-                db.iterateWarAttacks(wars, f -> true, f -> true, (war, attack) -> {
+                db.iterateWarAttacks(wars, Predicates.alwaysTrue(), Predicates.alwaysTrue(), (war, attack) -> {
                     if (TimeUtil.getTurn(war.getDate()) <= TimeUtil.getTurn(attack.getDate())) {
                         updateAttack(war, attack, allowedConflicts, new Function<IAttack, AttackTypeSubCategory>() {
                             @Override
@@ -1060,7 +1051,7 @@ public class ConflictManager {
     }
 
     public void saveDataCsvAllianceNames() throws IOException, ParseException {
-        Locutus.imp().getDataDumper(true).load().iterateAll(f -> true,
+        Locutus.imp().getDataDumper(true).load().iterateAll(Predicates.alwaysTrue(),
                 (h, r) -> r.required(h.alliance_id, h.alliance),
                 null,
                 (day, r) -> {

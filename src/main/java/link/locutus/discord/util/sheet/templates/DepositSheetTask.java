@@ -1,5 +1,6 @@
 package link.locutus.discord.util.sheet.templates;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.FlowType;
@@ -34,6 +35,7 @@ public class DepositSheetTask implements Callable<NationBalanceRow> {
     private final boolean updateBulk;
     private final boolean force;
     private final DepositType useFlowNote;
+    private final boolean includeTaxes;
     private final boolean includeExpired;
     private final boolean includeIgnored;
     private final int rowSize; // Assuming header structure is fixed
@@ -48,7 +50,7 @@ public class DepositSheetTask implements Callable<NationBalanceRow> {
     private final AtomicLong lastUpdateTimestamp;
 
 
-    public DepositSheetTask(DBNation nation, GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean useOffset,
+    public DepositSheetTask(DBNation nation, GuildDB db, Set<Long> tracked, boolean includeTaxes, boolean useTaxBase, boolean useOffset,
                             boolean updateBulk, boolean force, DepositType useFlowNote, boolean includeExpired,
                             boolean includeIgnored, int rowSize, boolean noGrants, boolean noLoans,
                             boolean noTaxes, boolean noDeposits, AtomicInteger processedCount, int totalNations,
@@ -56,6 +58,7 @@ public class DepositSheetTask implements Callable<NationBalanceRow> {
         this.nation = nation;
         this.db = db;
         this.tracked = tracked;
+        this.includeTaxes = includeTaxes;
         this.useTaxBase = useTaxBase;
         this.useOffset = useOffset;
         this.updateBulk = updateBulk;
@@ -80,7 +83,7 @@ public class DepositSheetTask implements Callable<NationBalanceRow> {
         // --- Logic from the original loop body ---
         List<Object> row = new ObjectArrayList<>(rowSize);
 
-        List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, tracked, useTaxBase, useOffset, (!force || updateBulk) ? -1 : 0L, 0L, Long.MAX_VALUE, false);
+        List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, tracked, includeTaxes, useTaxBase, useOffset, (!force || updateBulk) ? -1 : 0L, 0L, Long.MAX_VALUE, false);
         List<Map.Entry<Integer, Transaction2>> flowTransfers = transactions;
         if (useFlowNote != null) {
             flowTransfers = flowTransfers.stream().filter(f -> f.getValue().getNoteMap().containsKey(useFlowNote)).toList();
@@ -89,7 +92,7 @@ public class DepositSheetTask implements Callable<NationBalanceRow> {
         double[] withdrawal = FlowType.WITHDRAWAL.getTotal(flowTransfers, nation.getId());
         double[] deposit = FlowType.DEPOSIT.getTotal(flowTransfers, nation.getId());
 
-        Map<DepositType, double[]> deposits = PW.sumNationTransactions(nation, db, tracked, transactions, includeExpired, includeIgnored, f -> true);
+        Map<DepositType, double[]> deposits = PW.sumNationTransactions(nation, db, tracked, transactions, includeExpired, includeIgnored, Predicates.alwaysTrue());
         double[] buffer = ResourceType.getBuffer();
 
         row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));

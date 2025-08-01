@@ -2471,7 +2471,7 @@ public class GrantCommands {
 //
 //                        // if amount is uneven
 //                        if (amount % 50 != 0) {
-//                            grant.addRequirement(new Grant.Requirement("Amount must be a multiple of 50", false, f -> false));
+//                            grant.addRequirement(new Grant.Requirement("Amount must be a multiple of 50", false, Predicates.alwaysFalse()));
 //                        }
 //
 //                        if (amount >= 1500) {
@@ -2520,7 +2520,7 @@ public class GrantCommands {
 //                        // MMR of build matches required MMR
 //                    case UNIT:
 //                    case RESOURCES: {
-//                        grant.addRequirement(new Grant.Requirement("Amount must be a multiple of 50", econGov, f -> false));
+//                        grant.addRequirement(new Grant.Requirement("Amount must be a multiple of 50", econGov, Predicates.alwaysFalse()));
 //                        GuildMessageChannel channel = db.getOrNull(GuildKey.RESOURCE_REQUEST_CHANNEL);
 //                        if (channel != null) {
 //                            throw new IllegalArgumentException("Please use " + CM.transfer.self.cmd.toSlashMention() + " or `" + Settings.commandPrefix(true) + "disburse` in " + channel.getAsMention() + " to request funds from your deposits");
@@ -3645,7 +3645,7 @@ public class GrantCommands {
         }
         sb.append("**Reason:** `").append(reason).append("`\n");
         sb.append("**Date Requested:** ").append(DiscordUtil.timestamp(now, null)).append("\n");
-        double[] deposits = nation.getNetDeposits(db, -1, false);
+        double[] deposits = nation.getNetDeposits(null, db, -1, false);
         sb.append("**Nation Balance:** worth `~$").append(MathMan.format(ResourceType.convertedTotal(deposits))).append("`\n");
         sb.append("- `").append(ResourceType.toString(deposits)).append("`\n");
         sb.append("**Command:**\n```json\n").append(command.toString(2)).append("```\n");

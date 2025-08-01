@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
@@ -214,7 +215,7 @@ public class CustomBounty {
                 switch (entry.getKey()) {
                     case SOLDIER, TANK, AIRCRAFT, SHIP -> {
                         MilitaryBuilding building = entry.getKey().getBuilding();
-                        int max = building.getUnitCap() * building.cap(f -> true) * largestEnemyCity;
+                        int max = building.getUnitCap() * building.cap(Predicates.alwaysTrue()) * largestEnemyCity;
                         if (entry.getValue() > max * 1.25) {
                             throw new IllegalArgumentException("`unitAttacks` " + entry.getKey() + " attacks must be less than or equal to " + max);
                         }

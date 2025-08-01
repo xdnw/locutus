@@ -1,5 +1,6 @@
 package link.locutus.discord.util.battle;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -446,7 +447,7 @@ public class BlitzGenerator {
 
     public Map<DBNation, List<DBNation>> assignEasyTargets(double maxCityRatio, double maxGroundRatio, double maxAirRatio) {
         init();
-//        int airCap = Buildings.HANGAR.perDay() * Buildings.HANGAR.cap(f -> false);
+//        int airCap = Buildings.HANGAR.perDay() * Buildings.HANGAR.cap(Predicates.alwaysFalse());
 //        colA.removeIf(n -> n.getAircraft() < airCap * n.getCities() * 0.8);
 
         Map<DBNation, List<DBNation>> attPool = new HashMap<>(); // Pool of nations that could be used as targets
@@ -974,7 +975,7 @@ public class BlitzGenerator {
     }
 
     public static double getBaseStrength(int cities) {
-        int max = Buildings.HANGAR.cap(f -> false) * Buildings.HANGAR.getUnitCap() * cities;
+        int max = Buildings.HANGAR.cap(Predicates.alwaysFalse()) * Buildings.HANGAR.getUnitCap() * cities;
         return max / 2d;
     }
 
@@ -986,8 +987,8 @@ public class BlitzGenerator {
         double aircraft;
         double tanks;
         if (mmrOverride != null) {
-            aircraft = (mmrOverride.get(MilitaryUnit.AIRCRAFT) / 5d) * Buildings.HANGAR.cap(f -> false) * Buildings.HANGAR.getUnitCap() * nation.getCities();
-            tanks = (mmrOverride.get(MilitaryUnit.TANK) / 5d) * Buildings.FACTORY.cap(f -> false) * Buildings.FACTORY.getUnitCap() * nation.getCities();
+            aircraft = (mmrOverride.get(MilitaryUnit.AIRCRAFT) / 5d) * Buildings.HANGAR.cap(Predicates.alwaysFalse()) * Buildings.HANGAR.getUnitCap() * nation.getCities();
+            tanks = (mmrOverride.get(MilitaryUnit.TANK) / 5d) * Buildings.FACTORY.cap(Predicates.alwaysFalse()) * Buildings.FACTORY.getUnitCap() * nation.getCities();
         } else {
             aircraft = nation.getAircraft();
             tanks = nation.getTanks();
@@ -996,7 +997,7 @@ public class BlitzGenerator {
     }
 
     public static double getAirStrength(DBNation nation, double aircraft, double tanks) {
-        int max = Buildings.HANGAR.cap(f -> false) * Buildings.HANGAR.getUnitCap() * nation.getCities();
+        int max = Buildings.HANGAR.cap(Predicates.alwaysFalse()) * Buildings.HANGAR.getUnitCap() * nation.getCities();
         double str = aircraft + max / 2d;
         str += tanks / 32d;
 

@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.google.common.base.Predicates;
 import com.google.common.collect.Maps;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
@@ -1084,7 +1085,7 @@ public class TradeCommands {
                     errors.add("Duplicate guild: " + otherDb.getGuild());
                     continue;
                 }
-                Map<NationOrAllianceOrGuild, double[]> byAA = offshore.getDepositsByAA(otherDb, f -> true, false);
+                Map<NationOrAllianceOrGuild, double[]> byAA = offshore.getDepositsByAA(otherDb, Predicates.alwaysTrue(), false);
                 double[] deposits = ResourceType.getBuffer();
                 byAA.forEach((a, b) -> ResourceType.add(deposits, b));
                 allDeposits = ResourceType.add(allDeposits, deposits);

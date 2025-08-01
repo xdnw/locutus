@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities.metric;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -8,10 +9,10 @@ import link.locutus.discord.apiv3.csv.column.NumberColumn;
 import link.locutus.discord.apiv3.csv.header.CityHeaderReader;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
 import link.locutus.discord.apiv3.csv.header.NationHeaderReader;
-import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 
 import java.util.List;
 import java.util.Map;
@@ -41,11 +42,11 @@ public class CountNationMetric implements IAllianceMetric {
     }
 
     public CountNationMetric(Function<DBNation, Number> countNation, Function<NationHeader, ? extends NumberColumn<DBNation, ? extends Number>> getHeader) {
-        this(countNation, getHeader, AllianceMetricMode.TOTAL, f -> true);
+        this(countNation, getHeader, AllianceMetricMode.TOTAL, Predicates.alwaysTrue());
     }
 
     public CountNationMetric(Function<DBNation, Number> countNation, Function<NationHeader, ? extends NumberColumn<DBNation, ? extends Number>> getHeader, AllianceMetricMode mode) {
-        this(countNation, getHeader, mode, f -> true);
+        this(countNation, getHeader, mode, Predicates.alwaysTrue());
     }
 
     public CountNationMetric(Function<DBNation, Number> countNation, Function<NationHeader, ? extends NumberColumn<DBNation, ? extends Number>> getHeader, AllianceMetricMode mode, Predicate<DBNation> filter) {

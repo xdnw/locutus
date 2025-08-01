@@ -1,5 +1,6 @@
 package link.locutus.discord.db;
 
+import com.google.common.base.Predicates;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.politicsandwar.graphql.model.*;
@@ -16,19 +17,24 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.domains.subdomains.SAllianceContainer;
+import link.locutus.discord.apiv1.domains.subdomains.SCityContainer;
 import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
+import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.apiv1.enums.DomesticPolicy;
+import link.locutus.discord.apiv1.enums.WarPolicy;
+import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
+import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.file.CitiesFile;
 import link.locutus.discord.apiv3.csv.file.NationsFile;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.apiv3.subscription.PnwPusherShardManager;
 import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.apiv1.enums.city.project.Project;
-import link.locutus.discord.apiv1.enums.city.project.Projects;
-import link.locutus.discord.apiv3.enums.AlliancePermission;
-import link.locutus.discord.apiv3.enums.NationLootType;
-import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.entities.city.SimpleDBCity;
@@ -41,44 +47,37 @@ import link.locutus.discord.event.Event;
 import link.locutus.discord.event.alliance.AllianceCreateEvent;
 import link.locutus.discord.event.alliance.AllianceDeleteEvent;
 import link.locutus.discord.event.bank.LootInfoEvent;
-import link.locutus.discord.event.city.*;
+import link.locutus.discord.event.city.CityCreateEvent;
+import link.locutus.discord.event.city.CityDeleteEvent;
+import link.locutus.discord.event.city.CityInfraDamageEvent;
+import link.locutus.discord.event.city.CityNukeEvent;
 import link.locutus.discord.event.nation.*;
 import link.locutus.discord.event.position.PositionCreateEvent;
 import link.locutus.discord.event.position.PositionDeleteEvent;
 import link.locutus.discord.event.treasure.TreasureUpdateEvent;
 import link.locutus.discord.event.treaty.*;
 import link.locutus.discord.pnw.PNWUser;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
+import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
-import link.locutus.discord.util.*;
-import link.locutus.discord.util.math.ArrayUtil;
-import link.locutus.discord.apiv1.domains.subdomains.SCityContainer;
-import link.locutus.discord.apiv1.enums.Continent;
-import link.locutus.discord.apiv1.enums.DomesticPolicy;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.NationColor;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.TreatyType;
-import link.locutus.discord.apiv1.enums.WarPolicy;
-import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.util.scheduler.ThrowingTriConsumer;
 import org.apache.commons.lang3.tuple.Triple;
 
 import java.io.IOException;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Types;
+import java.sql.*;
 import java.text.ParseException;
 import java.util.*;
+import java.util.Date;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.*;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -808,7 +807,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public void updateTreaties(List<com.politicsandwar.graphql.model.Treaty> treatiesV3, Consumer<Event> eventConsumer, boolean deleteMissing) {
-        updateTreaties(treatiesV3, eventConsumer, deleteMissing ? f -> true : f -> deleteMissing);
+        updateTreaties(treatiesV3, eventConsumer, deleteMissing ? Predicates.alwaysTrue() : f -> deleteMissing);
     }
 
     public void updateTreaties(List<com.politicsandwar.graphql.model.Treaty> treatiesV3, Consumer<Event> eventConsumer, Predicate<Treaty> deleteMissing) {
@@ -4933,7 +4932,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     public Map<Integer, JavaCity> toJavaCity(Map<Integer, DBCity> cities) {
         Map<Integer, JavaCity> result = new HashMap<>();
         for (Map.Entry<Integer, DBCity> entry : cities.entrySet()) {
-            result.put(entry.getKey(), entry.getValue().toJavaCity(f -> false));
+            result.put(entry.getKey(), entry.getValue().toJavaCity(Predicates.alwaysFalse()));
         }
         return result;
     }

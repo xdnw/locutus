@@ -1,5 +1,6 @@
 package link.locutus.discord.apiv1.enums;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.Int2DoubleFunction;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -17,7 +18,9 @@ import link.locutus.discord.util.scheduler.TriConsumer;
 import java.util.Collection;
 import java.util.EnumMap;
 import java.util.Map;
-import java.util.function.*;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 import static link.locutus.discord.apiv1.enums.ResourceType.*;
 
@@ -199,7 +202,7 @@ public enum MilitaryUnit {
 
     @Command(desc = "Get the max unit buys per day for a number of cities")
     public int getMaxPerDay(int cities) {
-        return getMaxPerDay(cities, f -> false, f -> 0);
+        return getMaxPerDay(cities, Predicates.alwaysFalse(), f -> 0);
     }
 
     public int getMaxPerDay(int cities, Predicate<Project> hasProject, Function<Research, Integer> getResearch) {

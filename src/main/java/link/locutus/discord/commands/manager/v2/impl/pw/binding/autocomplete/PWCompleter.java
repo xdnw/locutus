@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete;
 
+import com.google.common.base.Predicates;
 import com.google.gson.reflect.TypeToken;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
@@ -33,15 +34,9 @@ import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.metric.OrbisMetric;
 import link.locutus.discord.db.entities.newsletter.Newsletter;
 import link.locutus.discord.db.entities.newsletter.NewsletterManager;
-import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.pnw.AllianceList;
-import link.locutus.discord.pnw.BeigeReason;
-import link.locutus.discord.pnw.CityRanges;
-import link.locutus.discord.pnw.GuildOrAlliance;
-import link.locutus.discord.pnw.NationOrAlliance;
-import link.locutus.discord.pnw.NationOrAllianceOrGuild;
-import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
+import link.locutus.discord.db.guild.GuildSetting;
+import link.locutus.discord.pnw.*;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AutoAuditType;
 import link.locutus.discord.util.MathMan;
@@ -163,7 +158,7 @@ public class PWCompleter extends BindingHelper {
     @Autocomplete
     @Binding(types={CommandCallable.class})
     public List<String> command(String input) {
-        List<ParametricCallable> options = new ArrayList<>(Locutus.imp().getCommandManager().getV2().getCommands().getParametricCallables(f -> true));
+        List<ParametricCallable> options = new ArrayList<>(Locutus.imp().getCommandManager().getV2().getCommands().getParametricCallables(Predicates.alwaysTrue()));
         List<String> optionsStr = options.stream().map(CommandCallable::getFullPath).toList();
         return StringMan.getClosest(input, optionsStr, f -> f, OptionData.MAX_CHOICES, true);
     }

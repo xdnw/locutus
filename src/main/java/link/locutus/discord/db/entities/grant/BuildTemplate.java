@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities.grant;
 
+import com.google.common.base.Predicates;
 import com.google.gson.reflect.TypeToken;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.apiv1.enums.DepositType;
@@ -7,8 +8,8 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBCity;
@@ -23,12 +24,7 @@ import javax.annotation.Nullable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -287,8 +283,8 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                 if (amt < 0) {
                     throw new IllegalArgumentException("Build has negative " + building.name() + " buildings");
                 }
-                if (amt > building.getCap(f -> true)) {
-                    throw new IllegalArgumentException("Build has more than " + building.getCap(f -> true) + " " + building.name() + " buildings");
+                if (amt > building.getCap(Predicates.alwaysTrue())) {
+                    throw new IllegalArgumentException("Build has more than " + building.getCap(Predicates.alwaysTrue()) + " " + building.name() + " buildings");
                 }
             }
             // no more than 2 power plants
@@ -305,17 +301,17 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                 throw new IllegalArgumentException("Build has more than 8 oil power");
             }
             // 5,5,5,3 max military buildings
-            if (jc.getBuilding(Buildings.BARRACKS) > Buildings.BARRACKS.cap(f -> true)) {
-                throw new IllegalArgumentException("Build has more than " + Buildings.BARRACKS.cap(f -> true) + " barracks");
+            if (jc.getBuilding(Buildings.BARRACKS) > Buildings.BARRACKS.cap(Predicates.alwaysTrue())) {
+                throw new IllegalArgumentException("Build has more than " + Buildings.BARRACKS.cap(Predicates.alwaysTrue()) + " barracks");
             }
-            if (jc.getBuilding(Buildings.FACTORY) > Buildings.FACTORY.cap(f -> true)) {
-                throw new IllegalArgumentException("Build has more than " + Buildings.FACTORY.cap(f -> true) + " factories");
+            if (jc.getBuilding(Buildings.FACTORY) > Buildings.FACTORY.cap(Predicates.alwaysTrue())) {
+                throw new IllegalArgumentException("Build has more than " + Buildings.FACTORY.cap(Predicates.alwaysTrue()) + " factories");
             }
-            if (jc.getBuilding(Buildings.HANGAR) > Buildings.HANGAR.cap(f -> true)) {
-                throw new IllegalArgumentException("Build has more than " + Buildings.HANGAR.cap(f -> true) + " hangars");
+            if (jc.getBuilding(Buildings.HANGAR) > Buildings.HANGAR.cap(Predicates.alwaysTrue())) {
+                throw new IllegalArgumentException("Build has more than " + Buildings.HANGAR.cap(Predicates.alwaysTrue()) + " hangars");
             }
-            if (jc.getBuilding(Buildings.DRYDOCK) > Buildings.DRYDOCK.cap(f -> true)) {
-                throw new IllegalArgumentException("Build has more than " + Buildings.DRYDOCK.cap(f -> true) + " drydocks");
+            if (jc.getBuilding(Buildings.DRYDOCK) > Buildings.DRYDOCK.cap(Predicates.alwaysTrue())) {
+                throw new IllegalArgumentException("Build has more than " + Buildings.DRYDOCK.cap(Predicates.alwaysTrue()) + " drydocks");
             }
         }
         // return map of city and build

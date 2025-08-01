@@ -1676,7 +1676,7 @@ public class IACommands {
             throw new IllegalArgumentException(response.toString());
         }
 
-
+        ValueStore<DBNation> cache = PlaceholderCache.createCache(nations, DBNation.class);
         StringBuilder response = new StringBuilder();
         for (DBNation nation : nations) {
             if (aaId != nation.getAlliance_id()) {
@@ -1694,7 +1694,7 @@ public class IACommands {
             }
 
             if (!isGov) {
-                double depo = me.getNetDepositsConverted(db);
+                double depo = me.getNetDepositsConverted(cache, db);
                 if (depo < -200_000_000) {
                     if (bracket.moneyRate < 100 || bracket.rssRate < 100) {
                         response.append(nation.getNation() + ": Nations in >200m debt must have a gov change their tax rate").append("\n");

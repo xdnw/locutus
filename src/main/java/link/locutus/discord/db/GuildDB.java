@@ -1,5 +1,6 @@
 package link.locutus.discord.db;
 
+import com.google.common.base.Predicates;
 import com.google.common.eventbus.AsyncEventBus;
 import com.google.common.eventbus.EventBus;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -519,7 +520,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             return "No escrowed resources found.";
         }
 
-        double[] deposits = nation.getNetDeposits(this, false, false);
+        double[] deposits = nation.getNetDeposits(null, this, false, false);
 
         User user = nation.getUser();
 
@@ -1731,7 +1732,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         List<Map.Entry<Integer, Transaction2>> offset = getDepositOffsetTransactionsTaxId(taxId);
         if (!offset.isEmpty()) {
             Set<Long> allowedIdsLong = allowedAAIds.stream().map(f -> (long) f).collect(Collectors.toSet());
-            Map<DepositType, double[]> sum = PW.sumNationTransactions(null, this, allowedIdsLong, offset, includeExpired, includeIgnored, f -> true);
+            Map<DepositType, double[]> sum = PW.sumNationTransactions(null, this, allowedIdsLong, offset, includeExpired, includeIgnored, Predicates.alwaysTrue());
             for (Map.Entry<DepositType, double[]> entry : sum.entrySet()) {
                 ResourceType.add(result.computeIfAbsent(entry.getKey(), f -> ResourceType.getBuffer()), entry.getValue());
             }

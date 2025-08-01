@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
@@ -18,8 +19,10 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -1272,8 +1275,10 @@ public class BankCommands {
         }
 
         Map<DBNation, double[]> amountToSetOrAdd = new LinkedHashMap<>();
+        Set<DBNation> nationSet = nations.getNations();
+        ValueStore<DBNation> cache = PlaceholderCache.createCache(nationSet, DBNation.class);
 
-        for (DBNation nation : nations.getNations()) {
+        for (DBNation nation : nationSet) {
             double[] amount = ResourceType.getBuffer();
             if (amountBase != null) {
                 amount = ResourceType.resourcesToArray(amountBase);
@@ -1313,7 +1318,7 @@ public class BankCommands {
             }
 
             if (subtractDeposits) {
-                double[] deposits = nation.getNetDeposits(db, -1L, true);
+                double[] deposits = nation.getNetDeposits(cache, db, -1L, true);
                 for (int i = 0; i < deposits.length; i++) {
                     double amt = deposits[i];
                     if (amt > 0) {
@@ -1723,7 +1728,7 @@ public class BankCommands {
         Function<DBNation, Map<ResourceType, Double>> wcReqFunc = f -> {
             return perCityWarchest != null ? perCityWarchest : db.getPerCityWarchest(f);
         };
-
+        ValueStore<DBNation> cache = PlaceholderCache.createCache(nations, DBNation.class);
         for (DBNation nation : nations) {
             Map<ResourceType, Double> myStockpile = stockpiles.get(nation);
             if (myStockpile == null) {
@@ -1734,7 +1739,7 @@ public class BankCommands {
             double[] total = stockpileArr2.clone();
             double[] depo = ResourceType.getBuffer();
             if (!ignoreDeposits) {
-                depo = nation.getNetDeposits(db, includeGrants, forceUpdate ? 0L : -1L, false);
+                depo = nation.getNetDeposits(cache, db, includeGrants, forceUpdate ? 0L : -1L, false);
                 if (!doNotNormalizeDeposits) {
                     depo = PW.normalize(depo);
                 }
@@ -1973,7 +1978,7 @@ public class BankCommands {
                 }
             }
         }
-        Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, 0, 0, Long.MAX_VALUE, true);
+        Map<DepositType, double[]> depoByType = nation.getDeposits(null, db, null, true, true, 0, 0, Long.MAX_VALUE, true);
 
         double[] toAdd = depoByType.get(from);
         if (toAdd == null || ResourceType.isZero(toAdd)) {
@@ -2028,13 +2033,14 @@ public class BankCommands {
 
         CompletableFuture<IMessageBuilder> msgFuture = io.send("Please wait...");
         long start = System.currentTimeMillis();
-
-        for (DBNation nation : nations.getNations()) {
+        Set<DBNation> nationSet = nations.getNations();
+        ValueStore<DBNation> cache = PlaceholderCache.createCache(nationSet, DBNation.class);
+        for (DBNation nation : nationSet) {
             if (start + 5000 < System.currentTimeMillis()) {
                 start = System.currentTimeMillis();
                 io.updateOptionally(msgFuture, "Resetting deposits for " + nation.getMarkdownUrl());
             }
-            Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, force && !updateBulk ? 0L : -1L, 0, Long.MAX_VALUE, true);
+            Map<DepositType, double[]> depoByType = nation.getDeposits(cache, db, null, true, true, force && !updateBulk ? 0L : -1L, 0, Long.MAX_VALUE, true);
 
             double[] deposits = depoByType.get(DepositType.DEPOSIT);
             if (deposits != null && !ignoreBankDeposits && !ResourceType.isZero(deposits)) {
@@ -2062,7 +2068,7 @@ public class BankCommands {
 
             double[] grant = depoByType.get(DepositType.GRANT);
             if (grant != null && !ignoreGrants && !ResourceType.isZero(grant)) {
-                List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, true, true, -1, 0, Long.MAX_VALUE, true);
+                List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, true, true, true, -1, 0, Long.MAX_VALUE, true);
                 for (Map.Entry<Integer, Transaction2> entry : transactions) {
                     Transaction2 tx = entry.getValue();
                     if (tx.note == null || (tx.receiver_id != nation.getNation_id() && tx.sender_id != nation.getNation_id()) || (!tx.note.contains("#expire") && !tx.note.contains("#decay")))
@@ -2646,7 +2652,7 @@ public class BankCommands {
             Set<Long> finalTracked = tracked;
             List<Callable<NationBalanceRow>> tasks = nations.stream()
                     .map(nation -> new DepositSheetTask(
-                            nation, db, finalTracked, useTaxBase, useOffset, updateBulk, force,
+                            nation, db, finalTracked, true, useTaxBase, useOffset, updateBulk, force,
                             useFlowNote, includeExpired, includeIgnored, header.size(),
                             noGrants, noLoans, noTaxes, noDeposits,
                             processedCount, totalNationsCount, channel, msgFuture, lastUpdateTimestamp))
@@ -3003,17 +3009,18 @@ public class BankCommands {
         StringBuilder body = new StringBuilder();
 
         Object lock = isMe && force ? OffshoreInstance.BANK_LOCK : new Object();
+        ValueStore<DBNation> cache = PlaceholderCache.createCache(nations, DBNation.class);
         synchronized (lock) {
             for (DBNation nation : nations) {
                 Function<ResourceType, Double> rateFinal = conversionRate == null ? db.getConversionRate(nation) : conversionRate;
 
                 double[] depo;
                 if (depositType != null) {
-                    Map<DepositType, double[]> depoByCategory = nation.getDeposits(db, null, true, true, -1, 0L, Long.MAX_VALUE, false);
+                    Map<DepositType, double[]> depoByCategory = nation.getDeposits(cache, db, null, true, true, -1, 0L, Long.MAX_VALUE, false);
                     depo = depoByCategory.get(depositType.type);
                     if (depo == null) continue;
                 } else {
-                    depo = nation.getNetDeposits(db, null, true, true, includeGrants, -1, 0L, Long.MAX_VALUE, false);
+                    depo = nation.getNetDeposits(cache, db, null, true, true, includeGrants, -1, 0L, Long.MAX_VALUE, false);
                 }
                 double[] amtAddArr = ResourceType.getBuffer();
                 boolean add = false;
@@ -4080,8 +4087,8 @@ public class BankCommands {
         } else if (nationOrAllianceOrGuild.isNation()) {
             DBNation nation = nationOrAllianceOrGuild.asNation();
             if (nation != me && !Roles.INTERNAL_AFFAIRS.has(author, guild) && !Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild) && !Roles.ECON.has(author, guild) && !Roles.ECON_STAFF.has(author, guild)) return "You do not have permission to check other nation's deposits";
-            List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, offshoreIds, !includeBaseTaxes, !ignoreInternalOffsets, 0L, start_time, end_time, true);
-            accountDeposits = PW.sumNationTransactions(nation, db, offshoreIds, transactions, includeExpired, includeIgnored, f -> true);
+            List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, offshoreIds, true, !includeBaseTaxes, !ignoreInternalOffsets, 0L, start_time, end_time, true);
+            accountDeposits = PW.sumNationTransactions(nation, db, offshoreIds, transactions, includeExpired, includeIgnored, Predicates.alwaysTrue());
 
             if (show_expiring_records) {
                 long now = System.currentTimeMillis();
@@ -4578,7 +4585,7 @@ public class BankCommands {
         db.getAutoRoleTask().updateTaxRoles(nations);
 
         long threshold = force ? 0 : Long.MAX_VALUE;
-
+        ValueStore<DBNation> cache = PlaceholderCache.createCache(nations.keySet(), DBNation.class);
         for (Map.Entry<DBNation, TaxBracket> entry : nations.entrySet()) {
             TaxBracket bracket = entry.getValue();
             DBNation nation = entry.getKey();
@@ -4589,7 +4596,7 @@ public class BankCommands {
             header.set(1, Rank.byId(nation.getPosition()).name());
             header.set(2, nation.getCities());
             header.set(3, nation.getAgeDays());
-            header.set(4, String.format("%.2f", nation.getNetDepositsConverted(db, threshold)));
+            header.set(4, String.format("%.2f", nation.getNetDepositsConverted(cache, db, threshold)));
             header.set(5, bracket.taxId + "");
             header.set(6, bracket.moneyRate + "/" + bracket.rssRate);
 
@@ -4817,7 +4824,7 @@ public class BankCommands {
 
 
                 OffshoreInstance offshoreInstance = offshoreDB.getOffshore();
-                Map<NationOrAllianceOrGuild, double[]> depoByAccount = offshoreInstance.getDepositsByAA(root, f -> true, true);
+                Map<NationOrAllianceOrGuild, double[]> depoByAccount = offshoreInstance.getDepositsByAA(root, Predicates.alwaysTrue(), true);
 
                 boolean hasDepoToReset = depoByAccount.values().stream().anyMatch(depo -> !ResourceType.isZero(depo));
                 if (hasDepoToReset && !hasAdmin && importAccount) {

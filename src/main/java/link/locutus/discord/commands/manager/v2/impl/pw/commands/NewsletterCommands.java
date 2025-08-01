@@ -1,17 +1,12 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsGuild;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -24,11 +19,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.GoogleDoc;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.requests.restaction.pagination.MessagePaginationAction;
@@ -42,24 +33,24 @@ import java.util.stream.Collectors;
 
 public class NewsletterCommands {
 
-    public static void main(String[] args) {
-        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
-        Settings.WEB.CHAT_EXPORTER exportSettings = Settings.INSTANCE.WEB.CHAT_EXPORTER;
-        Set<Long> channels = new LongLinkedOpenHashSet(exportSettings.NEWS_CHANNELS);
-
-        // C:\DCE-CLI\DiscordChatExporter.Cli.exe export -t TOKEN -c CHANNEL -f Json --after "2019-09-17 23:34" --utc -o "TODO"
-        // if I want media
-        // --media --reuse-media --media-dir "TODO"
-        String exeFile = exportSettings.LOCATION;
-        List<String> command = Arrays.asList("export");
-
-        // Fetch last export date
-        // for each channel
-        // fetch the name of the channel (else, unknown)
-        // Export the channel
-        // aggregate it with the existing one
-        // set the new export date
-    }
+//    public static void main(String[] args) {
+//        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
+//        Settings.WEB.CHAT_EXPORTER exportSettings = Settings.INSTANCE.WEB.CHAT_EXPORTER;
+//        Set<Long> channels = new LongLinkedOpenHashSet(exportSettings.NEWS_CHANNELS);
+//
+//        // C:\DCE-CLI\DiscordChatExporter.Cli.exe export -t TOKEN -c CHANNEL -f Json --after "2019-09-17 23:34" --utc -o "TODO"
+//        // if I want media
+//        // --media --reuse-media --media-dir "TODO"
+//        String exeFile = exportSettings.LOCATION;
+//        List<String> command = Arrays.asList("export");
+//
+//        // Fetch last export date
+//        // for each channel
+//        // fetch the name of the channel (else, unknown)
+//        // Export the channel
+//        // aggregate it with the existing one
+//        // set the new export date
+//    }
 
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS})
     @Command(desc = "Create a new newsletter with a name\n" +

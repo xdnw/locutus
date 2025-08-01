@@ -1,5 +1,6 @@
 package link.locutus.discord.util.update;
 
+import com.google.common.base.Predicates;
 import com.google.common.eventbus.Subscribe;
 import com.politicsandwar.graphql.model.BBGame;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -482,7 +483,7 @@ public class LootEstimateTracker {
             }
         }
 
-        for (DBNation nation : Locutus.imp().getNationDB().getNationsMatching(f -> true)) {
+        for (DBNation nation : Locutus.imp().getNationDB().getNationsMatching(Predicates.alwaysTrue())) {
             if (nation.getVm_turns() > 0) {
                 LootEstimate estimate = getOrCreate(nation.getId());
                 if (estimate != null) {

@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
@@ -19,8 +20,8 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.AllianceInstance
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.SheetTemplate;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.SheetTemplate;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -217,7 +218,7 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance, Long> {
     @Override
     protected Predicate<DBAlliance> parseSingleFilter(ValueStore store, String input) {
         if (input.equalsIgnoreCase("*")) {
-            return f -> true;
+            return Predicates.alwaysTrue();
         }
         Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
         GuildDB db = guild == null ? null : Locutus.imp().getGuildDB(guild);

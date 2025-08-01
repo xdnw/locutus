@@ -1,5 +1,6 @@
 package link.locutus.discord.pnw;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -11,27 +12,14 @@ import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TaxDeposit;
-import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBAlliancePosition;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.TaxBracket;
-import link.locutus.discord.db.entities.Treaty;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import net.dv8tion.jda.api.entities.User;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -143,7 +131,7 @@ public class AllianceList {
     }
 
     public Map<DBNation, Map<ResourceType, Double>> getMemberStockpile() throws IOException {
-        return getMemberStockpile(f -> true);
+        return getMemberStockpile(Predicates.alwaysTrue());
     }
 
     public Map<DBNation, Map<ResourceType, Double>> getMemberStockpile(Predicate<DBNation> fetchNation) throws IOException {

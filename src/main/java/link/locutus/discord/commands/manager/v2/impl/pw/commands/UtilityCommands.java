@@ -17,6 +17,7 @@ import link.locutus.discord.apiv1.enums.city.project.RoiResult;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.header.NationHeaderReader;
 import link.locutus.discord.apiv3.enums.NationLootType;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
@@ -2190,9 +2191,9 @@ public class UtilityCommands {
 
         Map<ResourceType, Double> total = new HashMap<>();
         Map<DBNation, Map<ResourceType, Double>> transfers = new HashMap<>();
-
+        ValueStore<DBNation> cache = PlaceholderCache.createCache(nations, DBNation.class);
         for (DBNation nation : nations) {
-            Map<ResourceType, Double> deposits = ResourceType.resourcesToMap(nation.getNetDeposits(db, false));
+            Map<ResourceType, Double> deposits = ResourceType.resourcesToMap(nation.getNetDeposits(cache, db, false));
             deposits.remove(ResourceType.CREDITS);
             deposits = PW.normalize(deposits);
 
@@ -2973,7 +2974,7 @@ public class UtilityCommands {
 //            throw new IllegalArgumentException("No spare improvements slots with build of MMR: " + origin.getMMR() + " and infra: " + MathMan.format(infraRequiredFinal));
 //        }
 //
-//        Predicate<Project> hasProject = forceProjects != null ? f -> forceProjects.contains(f) : f -> false;
+//        Predicate<Project> hasProject = forceProjects != null ? f -> forceProjects.contains(f) : Predicates.alwaysFalse();
 //        if (originNation != null) hasProject = hasProject.or(originNation::hasProject);
 //        hasProject = Projects.optimize(hasProject);
 //

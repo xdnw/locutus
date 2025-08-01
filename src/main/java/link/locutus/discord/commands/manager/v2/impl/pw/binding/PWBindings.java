@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -8,39 +9,36 @@ import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
+import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.NationLootType;
+import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.bindings.MathOperation;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
-import link.locutus.discord.commands.manager.v2.command.CommandCallable;
-import link.locutus.discord.commands.manager.v2.command.ICommand;
-import link.locutus.discord.commands.manager.v2.command.ICommandGroup;
-import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.command.ParameterData;
+import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationModifier;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
-import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
-import link.locutus.discord.commands.war.WarCatReason;
-import link.locutus.discord.commands.war.WarRoom;
-import link.locutus.discord.db.conflict.Conflict;
-import link.locutus.discord.db.conflict.ConflictManager;
-import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
-import link.locutus.discord.commands.war.WarCategory;
-import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.NationDepositLimit;
-import link.locutus.discord.commands.manager.v2.binding.bindings.MathOperation;
-import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
+import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationModifier;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.stock.StockDB;
+import link.locutus.discord.commands.war.WarCatReason;
+import link.locutus.discord.commands.war.WarCategory;
+import link.locutus.discord.commands.war.WarRoom;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.*;
+import link.locutus.discord.db.conflict.Conflict;
+import link.locutus.discord.db.conflict.ConflictManager;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.db.entities.grant.AGrantTemplate;
@@ -49,18 +47,14 @@ import link.locutus.discord.db.entities.grant.TemplateTypes;
 import link.locutus.discord.db.entities.metric.*;
 import link.locutus.discord.db.entities.newsletter.Newsletter;
 import link.locutus.discord.db.entities.newsletter.NewsletterManager;
-import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildSettingCategory;
 import link.locutus.discord.event.mail.MailReceivedEvent;
 import link.locutus.discord.pnw.*;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.AutoAuditType;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.SpyCount;
-import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
@@ -68,12 +62,10 @@ import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.util.task.mail.Mail;
 import link.locutus.discord.util.trade.TradeManager;
-import link.locutus.discord.apiv1.enums.city.project.Project;
-import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.StandardGuildMessageChannel;
 
 import java.io.IOException;
@@ -536,7 +528,7 @@ public class PWBindings extends BindingHelper {
                 nation = nation2;
                 Locutus.imp().getNationDB().markCityDirty(nationId, cityEntry.getId(), System.currentTimeMillis());
             }
-            build = cityEntry.toJavaCity(nation == null ? f -> false : nation::hasProject).toCityBuild();
+            build = cityEntry.toJavaCity(nation == null ? Predicates.alwaysFalse() : nation::hasProject).toCityBuild();
             build.setCity_id(cityEntry.getId());
         }
         if (json == null) json = "";
@@ -1282,7 +1274,7 @@ public class PWBindings extends BindingHelper {
     @Binding
     @Me
     public double[] deposits2(@Me GuildDB db, @Me DBNation nation) throws IOException {
-        return nation.getNetDeposits(db, false);
+        return nation.getNetDeposits(null, db, false);
     }
 
     @Binding

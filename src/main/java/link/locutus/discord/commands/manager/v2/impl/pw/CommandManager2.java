@@ -2,12 +2,16 @@ package link.locutus.discord.commands.manager.v2.impl.pw;
 
 import ai.djl.MalformedModelException;
 import ai.djl.repository.zoo.ModelNotFoundException;
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.commands.manager.v2.binding.*;
-import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveValidators;
@@ -16,11 +20,7 @@ import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore
 import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.GPTBindings;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NewsletterBindings;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.PermissionBinding;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.SheetBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
@@ -41,7 +41,10 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.WebUtil;
-import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONObject;
 
@@ -73,7 +76,7 @@ public class CommandManager2 {
         Map<String, Object> optionsData = new LinkedHashMap<>();
 
         Set<Parser> parsers = new ObjectLinkedOpenHashSet<>();
-        for (ParametricCallable callable : commands.getParametricCallables(f -> true)) {
+        for (ParametricCallable callable : commands.getParametricCallables(Predicates.alwaysTrue())) {
             for (ParameterData param : callable.getUserParameters()) {
                 Parser<?> parser = param.getBinding();
                 Binding binding = parser.getKey().getBinding();

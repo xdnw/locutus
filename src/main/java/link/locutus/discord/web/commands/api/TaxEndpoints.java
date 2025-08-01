@@ -1,5 +1,6 @@
 package link.locutus.discord.web.commands.api;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -35,7 +36,7 @@ public class TaxEndpoints {
         List<String> errors = new ArrayList<>();
         Predicate<Integer> allowedNations;
         if (nationList == null) {
-            allowedNations = f -> true;
+            allowedNations = Predicates.alwaysTrue();
         } else {
             allowedNations = id -> {
                 DBNation nation = DBNation.getById(id);

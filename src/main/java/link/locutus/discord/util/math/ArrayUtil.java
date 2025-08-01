@@ -1,5 +1,6 @@
 package link.locutus.discord.util.math;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
@@ -1605,17 +1606,17 @@ public class ArrayUtil {
 //            }
 //        }
 
-        String input = StringMan.wrapHashFunctions("*,#tanks=0,(#aircraftpct<30|#active_m>11000)", f -> true);
+        String input = StringMan.wrapHashFunctions("*,#tanks=0,(#aircraftpct<30|#active_m>11000)", Predicates.alwaysTrue());
         // private static <T> ParseResult<T> parseTokens(String input, Function<String, Set<T>> parseSet2, Function<String, Predicate<T>> parseElemPredicate, Function<String, Predicate<T>> parseFilter) {
         ParseResult<Object> test = parseTokens(input, null, new Function<String, Predicate<Object>>() {
             @Override
             public Predicate<Object> apply(String s) {
-                return f -> true;
+                return Predicates.alwaysTrue();
             }
         }, new Function<String, Predicate<Object>>() {
             @Override
             public Predicate<Object> apply(String s) {
-                return f -> true;
+                return Predicates.alwaysTrue();
             }
         });
     }

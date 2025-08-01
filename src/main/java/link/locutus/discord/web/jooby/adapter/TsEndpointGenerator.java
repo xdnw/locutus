@@ -1,5 +1,6 @@
 package link.locutus.discord.web.jooby.adapter;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
@@ -80,7 +81,7 @@ public class TsEndpointGenerator {
     private static String generateEndpointConstants(CommandGroup api) {
         StringBuilder output = new StringBuilder();
         List<String> endpoints = new ArrayList<>();
-        for (ParametricCallable cmd : api.getParametricCallables(f -> true)) {
+        for (ParametricCallable cmd : api.getParametricCallables(Predicates.alwaysTrue())) {
             TsEndpoint endpoint = generateTsEndpoint(cmd);
             endpoints.add(endpoint.name);
             output.append(endpoint.declaration).append("\n\n");

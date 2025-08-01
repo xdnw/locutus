@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.bank;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import link.locutus.discord.Locutus;
@@ -681,7 +682,7 @@ public class GrantCmd extends Command {
                     case AIRCRAFT:
                     case SHIP:
                         MilitaryBuilding building = unit.getBuilding();
-                        max = building.cap(f -> false) * building.getUnitCap() * me.getCities();
+                        max = building.cap(Predicates.alwaysFalse()) * building.getUnitCap() * me.getCities();
                         break;
                     case SPIES:
                         max = Projects.INTELLIGENCE_AGENCY.get(me) > 0 ? 60 : 50;

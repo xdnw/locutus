@@ -218,7 +218,7 @@ public class IAEndpoints extends PageHelper {
             result.no_access_msg = e.getMessage();
         }
 
-        Map<DepositType, double[]> breakdown = nation.getDeposits(db, null, true, true, -1, 0, Long.MAX_VALUE, false);
+        Map<DepositType, double[]> breakdown = nation.getDeposits(null, db, null, true, true, -1, 0, Long.MAX_VALUE, false);
         boolean includeGrants = db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW_IGNORES_GRANTS) == Boolean.FALSE;
         double[] total = ResourceType.getBuffer();
         for (Map.Entry<DepositType, double[]> entry : breakdown.entrySet()) {

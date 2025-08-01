@@ -1,5 +1,6 @@
 package link.locutus.discord.apiv3.csv;
 
+import com.google.common.base.Predicates;
 import com.politicsandwar.graphql.model.WarAttack;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -71,7 +72,7 @@ public class DataUtil {
 
         if (fileDay == -1 || fileDay != currentDay && (fileDay < minDay || minDay < 0)) {
             // Recreate the ranges
-            Map<Integer, List<Map.Entry<Integer, Integer>>> ranges = getVMRanges(f -> true, f -> true, true);
+            Map<Integer, List<Map.Entry<Integer, Integer>>> ranges = getVMRanges(Predicates.alwaysTrue(), Predicates.alwaysTrue(), true);
             List<Integer> nationIdsSorted = new ObjectArrayList<>(ranges.keySet());
             nationIdsSorted.sort(Integer::compareTo);
 
@@ -224,7 +225,7 @@ public class DataUtil {
 
     public Map<Long, Map<Integer, Byte>> backCalculateCityCounts() throws IOException, ParseException {
         Map<Long, Map<Integer, Byte>> cityCountsByDay = new Long2ObjectOpenHashMap<>();
-        parser.iterateAll(f -> true,
+        parser.iterateAll(Predicates.alwaysTrue(),
                 (h, r) -> r.required(h.nation_id, h.cities),
                 null,
                 (day, r) -> {
@@ -477,7 +478,7 @@ public class DataUtil {
 //        long diff1 = System.currentTimeMillis() - start2;
 //
 //        long cutoff = minDate - TimeUnit.DAYS.toMillis(20);
-//        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(cutoff, f -> true, f -> f.getAttack_type() == AttackType.NUKE && f.getSuccess() != SuccessType.UTTER_FAILURE);
+//        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(cutoff, Predicates.alwaysTrue(), f -> f.getAttack_type() == AttackType.NUKE && f.getSuccess() != SuccessType.UTTER_FAILURE);
 //        attacks.sort(Comparator.comparingLong(AbstractCursor::getDate));
 //
 //        long currTurn = TimeUtil.getTurn();
@@ -496,7 +497,7 @@ public class DataUtil {
 
     //    public void printActiveCitiesByDay() throws IOException {
 //        List<String> result = new ArrayList<>();
-//        Map<Long, Set<Integer>> activeByDay = Locutus.imp().getNationDB().getActivityByDay(0, f -> true);
+//        Map<Long, Set<Integer>> activeByDay = Locutus.imp().getNationDB().getActivityByDay(0, Predicates.alwaysTrue());
 //        for (Map.Entry<Long, NationsFile> entry : nationFilesByDay.entrySet()) {
 //            NationsFile file = entry
 //            long day = entry.getKey();
@@ -878,7 +879,7 @@ public class DataUtil {
 //            Map<Integer, DBNation> dayNations = parseNationFile(nationFile, day, id -> {
 //                LootEntry minEntry = minLootDate.get(id);
 //                return minEntry == null || minEntry.getDate() - twoDays <= currentTimestamp;
-//            }, f -> true, true, false);
+//            }, Predicates.alwaysTrue(), true, false);
 //            Map<Integer, Map<Integer, DBCity>> dayCities = parseCitiesFile(cityFile, dayNations::containsKey);
 //            Map<Integer, Map<Integer, JavaCity>> javaCities = new Int2ObjectOpenHashMap<>();
 //            for (Map.Entry<Integer, Map<Integer, DBCity>> nationCityEntry : dayCities.entrySet()) {

@@ -1,11 +1,13 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -14,27 +16,14 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Messages;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.ReportManager;
-import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBBan;
-import link.locutus.discord.db.entities.DBLoan;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.DiscordBan;
-import link.locutus.discord.db.entities.LoanManager;
-import link.locutus.discord.db.entities.LoginFactor;
-import link.locutus.discord.db.entities.LoginFactorResult;
-import link.locutus.discord.db.entities.NationMeta;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.nation.DBNationData;
 import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.AlertUtil;
-import link.locutus.discord.util.ImageUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.User;
@@ -50,17 +39,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
+import static link.locutus.discord.apiv1.enums.ResourceType.resourcesToArray;
 import static link.locutus.discord.apiv1.enums.ResourceType.subtract;
 import static link.locutus.discord.db.guild.GuildKey.REPORT_ALERT_CHANNEL;
 import static link.locutus.discord.util.MarkupUtil.sheetUrl;
-import static link.locutus.discord.util.PW.getAllianceUrl;
-import static link.locutus.discord.util.PW.getName;
-import static link.locutus.discord.util.PW.getNationUrl;
-import static link.locutus.discord.apiv1.enums.ResourceType.resourcesToArray;
-import static link.locutus.discord.util.discord.DiscordUtil.getGuildName;
-import static link.locutus.discord.util.discord.DiscordUtil.getGuildUrl;
-import static link.locutus.discord.util.discord.DiscordUtil.getUserName;
-import static link.locutus.discord.util.discord.DiscordUtil.userUrl;
+import static link.locutus.discord.util.PW.*;
+import static link.locutus.discord.util.discord.DiscordUtil.*;
 
 public class ReportCommands {
     @Command(desc=  "Generate a sheet of all the community reports for players", viewable = true)

@@ -11,6 +11,8 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -38,6 +40,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class ROI extends Command {
     public ROI() {
@@ -273,9 +276,13 @@ public class ROI extends Command {
 
             ));
             sheet.setHeader(header);
+
+            Set<DBNation> nationsInResult = roiMap.stream().map(f -> f.nation).collect(Collectors.toSet());
+            ValueStore<DBNation> cache = PlaceholderCache.createCache(nationsInResult, DBNation.class);
+
             for (ROIResult result : roiMap) {
                 DBNation nation = result.nation;
-                Map<ResourceType, Double> deposits = ResourceType.resourcesToMap(nation.getNetDeposits(guildDb, false));
+                Map<ResourceType, Double> deposits = ResourceType.resourcesToMap(nation.getNetDeposits(cache, guildDb, false));
                 double depositsConverted = ResourceType.convertedTotal(deposits);
 
                 header.clear();

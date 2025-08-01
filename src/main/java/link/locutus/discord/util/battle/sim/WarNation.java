@@ -1,13 +1,14 @@
 package link.locutus.discord.util.battle.sim;
 
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.nation.DBNationData;
-import link.locutus.discord.db.entities.nation.SimpleDBNation;
-import link.locutus.discord.util.PW;
+import com.google.common.base.Predicates;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.nation.DBNationData;
+import link.locutus.discord.db.entities.nation.SimpleDBNation;
+import link.locutus.discord.util.PW;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -40,10 +41,10 @@ public class WarNation {
         nation1.setMissiles(0);
         nation1.setNukes(0);
         nation1.setWarPolicy(WarPolicy.PIRATE);
-        int soldierMax = Buildings.BARRACKS.getUnitCap() * Buildings.BARRACKS.cap(f -> false) * 100;
-        int tankMax = Buildings.FACTORY.getUnitCap() * Buildings.FACTORY.cap(f -> false) * 100;
-        int airMax = Buildings.HANGAR.getUnitCap() * Buildings.HANGAR.cap(f -> false) * 100;
-        int shipMax = Buildings.DRYDOCK.getUnitCap() * Buildings.DRYDOCK.cap(f -> false) * 100;
+        int soldierMax = Buildings.BARRACKS.getUnitCap() * Buildings.BARRACKS.cap(Predicates.alwaysFalse()) * 100;
+        int tankMax = Buildings.FACTORY.getUnitCap() * Buildings.FACTORY.cap(Predicates.alwaysFalse()) * 100;
+        int airMax = Buildings.HANGAR.getUnitCap() * Buildings.HANGAR.cap(Predicates.alwaysFalse()) * 100;
+        int shipMax = Buildings.DRYDOCK.getUnitCap() * Buildings.DRYDOCK.cap(Predicates.alwaysFalse()) * 100;
 
         nation1.setSoldiers(soldierMax);
         nation1.setTanks(tankMax);

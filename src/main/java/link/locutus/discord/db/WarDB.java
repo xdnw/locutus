@@ -1,5 +1,6 @@
 package link.locutus.discord.db;
 
+import com.google.common.base.Predicates;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Lists;
 import com.politicsandwar.graphql.model.*;
@@ -1263,7 +1264,7 @@ public class WarDB extends DBMainV2 {
         long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(12);
 
         List<Integer> attackIds = new ArrayList<>();
-        iterateAttacks(cutoff, Long.MAX_VALUE, f -> true, (war, attack) -> {
+        iterateAttacks(cutoff, Long.MAX_VALUE, Predicates.alwaysTrue(), (war, attack) -> {
             if (attack.getAttack_type() == AttackType.NUKE && attack.getSuccess() != SuccessType.UTTER_FAILURE) {
                 attackIds.add(attack.getWar_attack_id());
             }
@@ -2416,7 +2417,7 @@ public class WarDB extends DBMainV2 {
     }
 
     public Set<DBWar> getActiveWarsByAlliance(Set<Integer> attackerAA, Set<Integer> defenderAA) {
-        return activeWars.getActiveWars(f -> true, f -> (attackerAA == null || attackerAA.contains(f.getAttacker_aa())) && (defenderAA == null || defenderAA.contains(f.getDefender_aa())));
+        return activeWars.getActiveWars(Predicates.alwaysTrue(), f -> (attackerAA == null || attackerAA.contains(f.getAttacker_aa())) && (defenderAA == null || defenderAA.contains(f.getDefender_aa())));
     }
 
     public Set<DBWar> getWarsByAlliance(int attacker) {
@@ -2503,7 +2504,7 @@ public class WarDB extends DBMainV2 {
         // ordinal to boolean array
         boolean[] warStatuses = WarStatus.toArray(statuses);
         // enum set?
-        return activeWars.getActiveWars(f -> true, f -> (alliances.contains(f.getAttacker_aa()) || alliances.contains(f.getDefender_aa())) && warStatuses[f.getStatus().ordinal()]);
+        return activeWars.getActiveWars(Predicates.alwaysTrue(), f -> (alliances.contains(f.getAttacker_aa()) || alliances.contains(f.getDefender_aa())) && warStatuses[f.getStatus().ordinal()]);
     }
 
     public Set<DBWar> getWarByStatus(WarStatus... statuses) {
@@ -2542,7 +2543,7 @@ public class WarDB extends DBMainV2 {
 
         Predicate<DBWar> datePredicate;
         if (start <= 0 && end >= Long.MAX_VALUE) {
-            datePredicate = f -> true;
+            datePredicate = Predicates.alwaysTrue();
         } else if (start <= 0) {
             datePredicate = f -> f.getDate() < end;
         } else if (end >= Long.MAX_VALUE) {
@@ -2811,7 +2812,7 @@ public class WarDB extends DBMainV2 {
                 }
                 return false;
             }
-        }, f -> false, (w, a) -> {});
+        }, Predicates.alwaysFalse(), (w, a) -> {});
         return latest[0];
     }
 
@@ -2867,7 +2868,7 @@ public class WarDB extends DBMainV2 {
         } else {
             PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
             newAttacks = v3
-                    .fetchAttacksSince(maxId, f -> true)
+                    .fetchAttacksSince(maxId, Predicates.alwaysTrue())
                     .stream().map(f -> factory.load(f, true)).toList();
         }
 

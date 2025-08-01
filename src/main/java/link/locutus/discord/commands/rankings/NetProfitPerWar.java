@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.rankings;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -7,12 +8,12 @@ import link.locutus.discord.apiv1.enums.WarCostMode;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.builder.NumericGroupRankBuilder;
+import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
+import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
-import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
@@ -54,7 +55,7 @@ public class NetProfitPerWar extends Command {
         Set<Integer> AAs = null;
         String id = "AA";
 
-        Predicate<DBWar> warFilter = f -> true;
+        Predicate<DBWar> warFilter = Predicates.alwaysTrue();
         for (String arg : args) {
             if (MathMan.isInteger(arg)) {
                 days = Integer.parseInt(arg);
@@ -81,7 +82,7 @@ public class NetProfitPerWar extends Command {
         Set<Integer> finalAAs = AAs;
 
         Predicate<DBWar> finalWarFilter = warFilter;
-//        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs, Long.MAX_VALUE, f -> f.possibleEndDate() >= cutoffMs && finalWarFilter.test(f), f -> true);
+//        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs, Long.MAX_VALUE, f -> f.possibleEndDate() >= cutoffMs && finalWarFilter.test(f), Predicates.alwaysTrue());
 
         SummedMapRankBuilder<Integer, Number> byNation = new RankBuilder<>((Consumer<Consumer<Map.Entry<DBWar, AbstractCursor>>>) f -> Locutus.imp().getWarDb()
             .iterateAttacks(cutoffMs, Long.MAX_VALUE, w -> w.possibleEndDate() >= cutoffMs && finalWarFilter.test(w), null,

@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities.metric;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -28,7 +29,7 @@ public class UnitPctMetric implements IAllianceMetric {
     public Double apply(DBAlliance alliance) {
         DBNation total = alliance.getMembersTotal();
         MilitaryBuilding building = unit.getBuilding();
-        return (double) total.getUnits(unit) / (total.getCities() * building.cap(f -> false) * building.getUnitCap());
+        return (double) total.getUnits(unit) / (total.getCities() * building.cap(Predicates.alwaysFalse()) * building.getUnitCap());
     }
 
     private final Map<Integer, Integer> unitsByAA = new Int2IntOpenHashMap();
@@ -56,7 +57,7 @@ public class UnitPctMetric implements IAllianceMetric {
     @Override
     public Map<Integer, Double> getDayValue(DataDumpImporter importer, long day) {
         MilitaryBuilding building = unit.getBuilding();
-        int unitsPerCity = building.cap(f -> false) * building.getUnitCap();
+        int unitsPerCity = building.cap(Predicates.alwaysFalse()) * building.getUnitCap();
         Map<Integer, Double> result = unitsByAA.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, f -> (double) f.getValue() / (citiesByAA.get(f.getKey()) * unitsPerCity)));
         unitsByAA.clear();
         citiesByAA.clear();

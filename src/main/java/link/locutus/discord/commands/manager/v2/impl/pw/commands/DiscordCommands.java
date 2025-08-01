@@ -717,7 +717,7 @@ public class DiscordCommands {
     public String viewFlow(@Me GuildDB db, DBNation nation, DepositType note) {
 
         // public List<Map.Entry<Integer, Transaction2>> getTransactions(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff, boolean priority) {
-        List<Map.Entry<Integer, Transaction2>> transfers = nation.getTransactions(db, null, false, true, 0, 0, Long.MAX_VALUE, true);
+        List<Map.Entry<Integer, Transaction2>> transfers = nation.getTransactions(db, null, false, false, true, 0, 0, Long.MAX_VALUE, true);
 
         if (note != null) {
             transfers.removeIf(f -> !f.getValue().getNoteMap().containsKey(note));

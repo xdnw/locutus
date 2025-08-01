@@ -1,5 +1,6 @@
 package link.locutus.discord.util.trade;
 
+import com.google.common.base.Predicates;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -777,7 +778,7 @@ public class TradeManager {
             List<Trade> fetched = new ArrayList<>();
 
             if (fetchNewTradesNextTick) {
-                List<Trade> trades = api.fetchTradesWithInfo(f -> f.setMin_id(latestId + 1), f -> true);
+                List<Trade> trades = api.fetchTradesWithInfo(f -> f.setMin_id(latestId + 1), Predicates.alwaysTrue());
                 fetched.addAll(trades);
 
                 fetchedNewTrades = true;
@@ -798,7 +799,7 @@ public class TradeManager {
                 api.iterateIdChunks(idsToFetch, 999, new Consumer<List<Integer>>() {
                     @Override
                     public void accept(List<Integer> integers) {
-                        List<Trade> trades = api.fetchTradesWithInfo(f -> f.setId(integers), f -> true);
+                        List<Trade> trades = api.fetchTradesWithInfo(f -> f.setId(integers), Predicates.alwaysTrue());
                         fetched.addAll(trades);
                     }
                 });

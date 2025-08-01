@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -486,7 +487,7 @@ public class PlaceholdersMap {
             @Override
             protected Predicate<NationOrAlliance> parseSingleFilter(ValueStore store, String input) {
                 if (input.equalsIgnoreCase("*")) {
-                    return f -> true;
+                    return Predicates.alwaysTrue();
                 }
                 Predicate<DBNation> predicate = nationPlaceholders.parseSingleFilter(store, input);
                 return new Predicate<NationOrAlliance>() {
@@ -577,7 +578,7 @@ public class PlaceholdersMap {
                     return Set.of(guild);
                 }, (ThrowingTriFunction<Placeholders<GuildDB, Void>, ValueStore, String, Predicate<GuildDB>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) {
-                return f -> true;
+                return Predicates.alwaysTrue();
             }
             if (SpreadSheet.isSheet(input)) {
                 Set<Long> sheet = SpreadSheet.parseSheet(input, List.of("guild"), true,
@@ -663,7 +664,7 @@ public class PlaceholdersMap {
                     }
                     return Set.of(PWBindings.ban(guild, input));
                 }, (ThrowingTriFunction<Placeholders<DBBan, Void>, ValueStore, String, Predicate<DBBan>>) (inst, store, input) -> {
-                    if (input.equalsIgnoreCase("*")) return f -> true;
+                    if (input.equalsIgnoreCase("*")) return Predicates.alwaysTrue();
                     if (SpreadSheet.isSheet(input)) {
                         Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
                         Set<Integer> sheet = SpreadSheet.parseSheet(input, List.of("bans"), true,
@@ -812,7 +813,7 @@ public class PlaceholdersMap {
                     }
                     return result;
                 }, (ThrowingTriFunction<Placeholders<NationList, NationModifier>, ValueStore, String, Predicate<NationList>>) (inst, store, input) -> {
-            if (input.equalsIgnoreCase("*")) return f -> true;
+            if (input.equalsIgnoreCase("*")) return Predicates.alwaysTrue();
             throw new IllegalArgumentException("NationList predicates other than `*` are unsupported. Please use DBNation instead");
         }, new Function<NationList, String>() {
             @Override
@@ -936,7 +937,7 @@ public class PlaceholdersMap {
     }
 
     private Predicate<TextChannelWrapper> parseChannelPredicate(Guild guild, String input) {
-        if (input.equals("*")) return f -> true;
+        if (input.equals("*")) return Predicates.alwaysTrue();
         Long channelId = DiscordUtil.getChannelId(guild, input);
         if (channelId != null) {
             return f -> f.getId() == channelId;
@@ -1041,7 +1042,7 @@ public class PlaceholdersMap {
                     }
                     return parseUserSingle(guild, input);
                 }, (ThrowingTriFunction<Placeholders<UserWrapper, Void>, ValueStore, String, Predicate<UserWrapper>>) (inst, store, input) -> {
-            if (input.equalsIgnoreCase("*")) return f -> true;
+            if (input.equalsIgnoreCase("*")) return Predicates.alwaysTrue();
 
             GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), true);
             Guild guild = db.getGuild();
@@ -1134,7 +1135,7 @@ public class PlaceholdersMap {
                     }
                     return parseChannelSingle(guild, input);
                 }, (ThrowingTriFunction<Placeholders<TextChannelWrapper, Void>, ValueStore, String, Predicate<TextChannelWrapper>>) (inst, store, input) -> {
-            if (input.equalsIgnoreCase("*")) return f -> true;
+            if (input.equalsIgnoreCase("*")) return Predicates.alwaysTrue();
 
             GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), true);
             Guild guild = db.getGuild();
@@ -1228,7 +1229,7 @@ public class PlaceholdersMap {
                     }
                     return parseCitiesSingle(store, input);
                 }, (ThrowingTriFunction<Placeholders<DBCity, Void>, ValueStore, String, Predicate<DBCity>>) (inst, store, input) -> {
-            if (input.equalsIgnoreCase("*")) return f -> true;
+            if (input.equalsIgnoreCase("*")) return Predicates.alwaysTrue();
             if (MathMan.isInteger(input) || input.contains("/city/id=")) {
                 DBCity city = PWBindings.cityUrl(input);
                 return f -> f.getId() == city.getId();
@@ -1322,10 +1323,10 @@ public class PlaceholdersMap {
             if (canSee) {
                 allowAlliance = aaIds::contains;
             } else {
-                allowAlliance = f -> false;
+                allowAlliance = Predicates.alwaysFalse();
             }
         } else {
-            allowAlliance = f -> false;
+            allowAlliance = Predicates.alwaysFalse();
         }
         return f -> {
             if (f.isSenderNation() || f.isReceiverNation()) {
@@ -1448,7 +1449,7 @@ public class PlaceholdersMap {
                     return getTaxes(store, null, null, ids, null);
 
                 }, (ThrowingTriFunction<Placeholders<TaxDeposit, Void>, ValueStore, String, Predicate<TaxDeposit>>) (inst, store, input) -> {
-            if (input.equalsIgnoreCase("*")) return f -> true;
+            if (input.equalsIgnoreCase("*")) return Predicates.alwaysTrue();
             if (SpreadSheet.isSheet(input)) {
                 Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
                 Set<Integer> ids = new IntOpenHashSet();
@@ -1563,7 +1564,7 @@ public class PlaceholdersMap {
                     }
                     return Set.of(PWBindings.conflict(manager, input));
                 }, (ThrowingTriFunction<Placeholders<Conflict, Void>, ValueStore, String, Predicate<Conflict>>) (inst, store, input) -> {
-            if (input.equalsIgnoreCase("*")) return f -> true;
+            if (input.equalsIgnoreCase("*")) return Predicates.alwaysTrue();
             ConflictManager cMan = Locutus.imp().getWarDb().getConflicts();
             if (SpreadSheet.isSheet(input)) {
                 Set<Conflict> conflicts = SpreadSheet.parseSheet(input, List.of("conflict"), true, (type, str) -> PWBindings.conflict(cMan, str));
@@ -1649,7 +1650,7 @@ public class PlaceholdersMap {
                     }
                     return Set.of(PWBindings.key(input));
                 }, (ThrowingTriFunction<Placeholders<GuildSetting, Void>, ValueStore, String, Predicate<GuildSetting>>) (inst, store, input) -> {
-            if (input.equalsIgnoreCase("*")) return f -> true;
+            if (input.equalsIgnoreCase("*")) return Predicates.alwaysTrue();
             if (SpreadSheet.isSheet(input)) {
                 Set<GuildSetting> settings = SpreadSheet.parseSheet(input, List.of("setting"), true, (type, str) -> PWBindings.key(str));
                 Set<GuildSetting> ids = new ObjectOpenHashSet<>(settings);
@@ -1801,7 +1802,7 @@ public class PlaceholdersMap {
                     Set<Integer> aaIds = natOrAA.stream().filter(NationOrAlliance::isAlliance).map(NationOrAlliance::getId).collect(Collectors.toSet());
                     return getAttacks(Set.of(), Set.of(), nationIds, aaIds);
                 }, (ThrowingTriFunction<Placeholders<IAttack, Void>, ValueStore, String, Predicate<IAttack>>) (inst, store, input) -> {
-            if (input.equalsIgnoreCase("*")) return f -> true;
+            if (input.equalsIgnoreCase("*")) return Predicates.alwaysTrue();
             if (SpreadSheet.isSheet(input)) {
                 Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
                 Set<Integer> attackIds = new IntOpenHashSet();
@@ -1852,7 +1853,7 @@ public class PlaceholdersMap {
                     };
                     filter = filter == null ? aaFilter : filter.or(aaFilter);
                 }
-                if (filter == null) filter = f -> false;
+                if (filter == null) filter = Predicates.alwaysFalse();
                 return filter;
             }
             if (input.contains("/war/id=")) {
@@ -1990,7 +1991,7 @@ public class PlaceholdersMap {
                     Set<Integer> aaIds = natOrAA.stream().filter(NationOrAlliance::isAlliance).map(NationOrAlliance::getId).collect(Collectors.toSet());
                     return Locutus.imp().getWarDb().getWarsForNationOrAlliance(natIds, aaIds);
                 }, (ThrowingTriFunction<Placeholders<DBWar, Void>, ValueStore, String, Predicate<DBWar>>) (inst, store, input) -> {
-            if (input.equalsIgnoreCase("*")) return f -> true;
+            if (input.equalsIgnoreCase("*")) return Predicates.alwaysTrue();
             if (SpreadSheet.isSheet(input)) {
                 Set<Integer> warIds = new IntOpenHashSet();
                 SpreadSheet.parseSheet(input, List.of("id", "war_id"), true, (type, str) -> {
@@ -2117,7 +2118,7 @@ public class PlaceholdersMap {
                     return bracketSingle(store2, db, input);
                 }, (ThrowingTriFunction<Placeholders<TaxBracket, Void>, ValueStore, String, Predicate<TaxBracket>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) {
-                return f -> true;
+                return Predicates.alwaysTrue();
             }
             if (SpreadSheet.isSheet(input)) {
                 Set<Integer> ids = SpreadSheet.parseSheet(input, List.of("id"), true, (type, str) -> Integer.parseInt(str));
@@ -2219,7 +2220,7 @@ public class PlaceholdersMap {
                     throw new IllegalArgumentException("Only trade ids are supported, not `" + input + "`");
                 }, (ThrowingTriFunction<Placeholders<DBTrade, Void>, ValueStore, String, Predicate<DBTrade>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) {
-                return f -> true;
+                return Predicates.alwaysTrue();
             }
             if (SpreadSheet.isSheet(input)) {
                 Set<Integer> ids = SpreadSheet.parseSheet(input, List.of("id"), true, (type, str) -> Integer.parseInt(str));
@@ -2400,7 +2401,7 @@ public class PlaceholdersMap {
                             NationOrAllianceOrGuild nationOrAllianceOrGuild = nationOrAllianceOrGuildStr == null ? null :
                                     PWBindings.nationOrAllianceOrGuild(nationOrAllianceOrGuildStr);
 
-                            Predicate<Transaction2> transactionFilter = json.has("transactionFilter") ? parseFilter(store, json.getString("transactionFilter")) : f -> true;
+                            Predicate<Transaction2> transactionFilter = json.has("transactionFilter") ? parseFilter(store, json.getString("transactionFilter")) : Predicates.alwaysTrue();
 
                             long startTime = json.has("startTime") ? PrimitiveBindings.timestamp(json.getString("startTime")) : 0;
 
@@ -2557,7 +2558,7 @@ public class PlaceholdersMap {
                     }
                     return bountySet;
                 }, (ThrowingTriFunction<Placeholders<DBBounty, Void>, ValueStore, String, Predicate<DBBounty>>) (inst, store, input) -> {
-            if (input.equalsIgnoreCase("*")) return f -> true;
+            if (input.equalsIgnoreCase("*")) return Predicates.alwaysTrue();
             if (SpreadSheet.isSheet(input)) {
                 Set<Integer> sheet = SpreadSheet.parseSheet(input, List.of("bounty"), true,
                         (type, str) -> PrimitiveBindings.Integer(str));
@@ -2669,7 +2670,7 @@ public class PlaceholdersMap {
                         return (aa1.contains(f.getFromId())) && (aa2.contains(f.getToId())) || (aa1.contains(f.getToId())) && (aa2.contains(f.getFromId()));
                     });
                 }, (ThrowingTriFunction<Placeholders<Treaty, Void>, ValueStore, String, Predicate<Treaty>>) (inst, store, input) -> {
-            if (input.equalsIgnoreCase("*")) return f -> true;
+            if (input.equalsIgnoreCase("*")) return Predicates.alwaysTrue();
             if (SpreadSheet.isSheet(input)) {
                 Set<Treaty> sheet = SpreadSheet.parseSheet(input, List.of("treaty"), true,
                         (type, str) -> PWBindings.treaty(str));

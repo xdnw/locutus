@@ -2,6 +2,7 @@ package link.locutus.discord.web.jooby;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Predicates;
 import gg.jte.generated.precompiled.JtealertGenerated;
 import gg.jte.generated.precompiled.JteerrorGenerated;
 import io.javalin.http.*;
@@ -9,12 +10,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
-import link.locutus.discord.commands.manager.v2.binding.Key;
-import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
-import link.locutus.discord.commands.manager.v2.binding.Parser;
-import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
-import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.WebStore;
+import link.locutus.discord.commands.manager.v2.binding.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
@@ -40,7 +36,8 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.WebUtil;
-import link.locutus.discord.web.commands.*;
+import link.locutus.discord.web.commands.HtmlInput;
+import link.locutus.discord.web.commands.WebIO;
 import link.locutus.discord.web.commands.alliance.AlliancePages;
 import link.locutus.discord.web.commands.api.*;
 import link.locutus.discord.web.commands.binding.*;
@@ -133,7 +130,7 @@ public class PageHandler implements Handler {
         this.commands.registerCommands(this);
 
         Map<String, ParametricCallable> legacy = new HashMap<>();
-        for (ParametricCallable f : Locutus.cmd().getV2().getCommands().getParametricCallables(f -> true)) {
+        for (ParametricCallable f : Locutus.cmd().getV2().getCommands().getParametricCallables(Predicates.alwaysTrue())) {
             String name = f.getMethod().getName().toLowerCase();
             legacy.put(name, f);
         }
@@ -201,7 +198,7 @@ public class PageHandler implements Handler {
     //    private Schema generateSchema() {
 //        CommandGroup api = (CommandGroup) commands.get("api");
 //        Set<Class<?>> schemaClasses = new ObjectLinkedOpenHashSet<>();
-//        for (ParametricCallable cmd : api.getParametricCallables(f -> true)) {
+//        for (ParametricCallable cmd : api.getParametricCallables(Predicates.alwaysTrue())) {
 //            Method method = cmd.getMethod();
 //            ReturnType returnType = method.getAnnotation(ReturnType.class);
 //            if (returnType == null) throw new IllegalArgumentException("No return type for " + method.getName() + " in " + method.getDeclaringClass().getSimpleName());
