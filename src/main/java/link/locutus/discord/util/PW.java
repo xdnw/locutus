@@ -847,10 +847,10 @@ public final class PW {
                 {
                     if (hash == null) hash = getHash.get();
                     String note = record.note;
-                    note = note.toLowerCase(Locale.ROOT).replaceAll("#cash[^ ]*", "#cash=" + MathMan.format(cashValue).replace(",", ""));
+                    note = note.toLowerCase(Locale.ROOT).replaceAll("#cash[^ ]*", "");
                     note = note.replaceAll("#[a-f0-9]{32}", "");
                     note = note.replaceAll("\\s+", " ").trim();
-                    note += " #" + hash;
+                    note += " #" + hash + " " + "#cash=" + MathMan.format(cashValue).replace(",", "");
                     record.note = note.trim();
 
                     if (record.isInternal()) {
