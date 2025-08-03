@@ -8,8 +8,11 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.politicsandwar.graphql.model.GameInfo;
 import it.unimi.dsi.fastutil.bytes.ByteOpenHashSet;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
@@ -28,12 +31,14 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.file.NationsFileSnapshot;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.stock.Exchange;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
+import link.locutus.discord.db.TaxDeposit;
 import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
@@ -59,13 +64,12 @@ import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
+import java.util.function.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 
 public final class PW {
@@ -539,6 +543,143 @@ public final class PW {
         return "sphere:" + getName(sphereId, true);
     }
 
+    public static Map<DBNation, Map<DepositType, double[]>> fetchDeposits(GuildDB db, Collection<DBNation> nations, Set<Long> tracked,
+                                                                          boolean includeTaxes,
+                                                                          boolean useTaxBase,
+                                                                          boolean offset,
+                                                                          long start,
+                                                                          long end,
+                                                                          boolean forceIncludeExpired,
+                                                                          boolean forceIncludeIgnored,
+                                                                          Predicate<Transaction2> filter,
+                                                                          boolean update,
+                                                                          boolean priority) {
+        // sorted linked hash set fastutil
+        List<Integer> nationIdsSorted = new IntArrayList(nations.size());
+        for (DBNation nation : nations) {
+            nationIdsSorted.add(nation.getNation_id());
+        }
+        nationIdsSorted.sort(Comparator.naturalOrder());
+        Set<Integer> nationIds = new IntLinkedOpenHashSet(nationIdsSorted);
+
+        Future<?> updateFuture = null;
+        if (update) {
+            updateFuture = Locutus.imp().runEventsAsync(events -> Locutus.imp().getBankDB().updateBankRecsAuto(nationIds, priority, events));
+        }
+        if (tracked == null) {
+            tracked = db.getTrackedBanks();
+        }
+        Map<Integer, Map<DepositType, double[]>> results = new Int2ObjectOpenHashMap<>();
+        Map<Integer, BiConsumer<Integer, Transaction2>> adderByNation = new Int2ObjectOpenHashMap<>();
+        Set<Long> finalTracked = tracked;
+
+        Function<Integer, BiConsumer<Integer, Transaction2>> getAdder = (nationId) -> {
+            BiConsumer<Integer, Transaction2> adder = adderByNation.get(nationId);
+            if (adder != null) return adder;
+            Map<DepositType, double[]> result = results.computeIfAbsent(nationId, k -> new EnumMap<>(DepositType.class));
+            DBNation nation = DBNation.getOrCreate(nationId);
+            BiConsumer<Integer, Transaction2> parent = PW.createSumNationTransactions(nation, db, finalTracked, forceIncludeExpired, forceIncludeIgnored, filter, result);
+            adderByNation.put(nationId, parent);
+            return parent;
+        };
+
+        Consumer<Transaction2> applyAdder = (tx) -> {
+            int nationId;
+            if (tx.sender_type == 1) {
+                if (tx.receiver_type == 1) {
+                    return; // Ignore transactions between nations
+                }
+                nationId = Math.toIntExact(tx.sender_id);
+            } else if (tx.receiver_type == 1) {
+                nationId = Math.toIntExact(tx.receiver_id);
+            } else {
+                return; // Ignore transactions that does not involve a nation
+            }
+            BiConsumer<Integer, Transaction2> adder = getAdder.apply(nationId);
+            Integer sign = PW.getSign(tx, nationId, finalTracked);
+            if (sign == null) return; // Ignore transactions that are not in a tracked alliance/guild
+            adder.accept(sign, tx);
+        };
+
+        if (offset) {
+            db.iterateTransactionsByIds(nationIds, 1, start, end, applyAdder);
+        }
+
+        if (includeTaxes) { // Taxes
+            int[] guildTaxBase = new int[]{100, 100};
+            TaxRate defTaxBaseRate = db.getOrNull(GuildKey.TAX_BASE);
+            if (defTaxBaseRate != null) {
+                guildTaxBase[0] = defTaxBaseRate.money;
+                guildTaxBase[1] = defTaxBaseRate.resources;
+            }
+
+            Set<Integer> trackForTaxes = tracked.stream().filter(f -> f <= Integer.MAX_VALUE && db.isAllianceId(f.intValue())).map(Long::intValue).collect(Collectors.toSet());
+            DepositType note = DepositType.TAX;
+
+            if (start == 0 && end == Long.MAX_VALUE) {
+                Map<Integer, double[]> appliedDeposits = Locutus.imp().getBankDB().getAppliedTaxDeposits(nationIds, trackForTaxes, guildTaxBase, useTaxBase);
+                for (Map.Entry<Integer, double[]> entry : appliedDeposits.entrySet()) {
+                    int nationId = entry.getKey();
+                    double[] taxAmt = entry.getValue();
+                    if (ResourceType.isZero(taxAmt)) continue;
+
+                    double[] depos = results.computeIfAbsent(nationId, k -> new EnumMap<>(DepositType.class)).computeIfAbsent(note, f -> ResourceType.getBuffer());
+                    ResourceType.add(depos, taxAmt);
+                }
+            } else {
+                int[] defTaxBase = guildTaxBase.clone();
+                if (!useTaxBase) {
+                    defTaxBase[0] = 0;
+                    defTaxBase[1] = 0;
+                }
+
+                boolean includeNoInternal = defTaxBase[0] == 100 && defTaxBase[1] == 100;
+                boolean includeMaxInternal = false;
+                Locutus.imp().getBankDB().iterateTaxesPaid(nationIds, trackForTaxes, includeNoInternal, includeMaxInternal, start, end, new Consumer<TaxDeposit>() {
+                    @Override
+                    public void accept(TaxDeposit deposit) {
+                        int internalMoneyRate = useTaxBase ? deposit.internalMoneyRate : 0;
+                        int internalResourceRate = useTaxBase ? deposit.internalResourceRate : 0;
+                        if (internalMoneyRate < 0 || internalMoneyRate > 100) internalMoneyRate = defTaxBase[0];
+                        if (internalResourceRate < 0 || internalResourceRate > 100) internalResourceRate = defTaxBase[1];
+
+                        double pctMoney = (deposit.moneyRate > internalMoneyRate ?
+                                Math.max(0, (deposit.moneyRate - internalMoneyRate) / (double) deposit.moneyRate)
+                                : 0);
+                        double pctRss = (deposit.resourceRate > internalResourceRate ?
+                                Math.max(0, (deposit.resourceRate - internalResourceRate) / (double) deposit.resourceRate)
+                                : 0);
+
+                        deposit.resources[0] *= pctMoney;
+                        for (int i = 1; i < deposit.resources.length; i++) {
+                            deposit.resources[i] *= pctRss;
+                        }
+                        Transaction2 transaction = new Transaction2(deposit);
+                        applyAdder.accept(transaction);
+                    }
+                });
+            }
+        }
+
+        { // Transactions
+            if (updateFuture != null) {
+                FileUtil.get(updateFuture);
+            }
+            Locutus.imp().getBankDB().iterateNationTransfersByNation(start, end, nationIds, (id, tx) -> {
+                applyAdder.accept(tx);
+            });
+        }
+
+        Map<DBNation, Map<DepositType, double[]>> resultInstance = new Object2ObjectOpenHashMap<>();
+        for (Map.Entry<Integer, Map<DepositType, double[]>> entry : results.entrySet()) {
+            int nationId = entry.getKey();
+            Map<DepositType, double[]> deposits = entry.getValue();
+            DBNation nation = DBNation.getOrCreate(nationId);
+            resultInstance.put(nation, deposits);
+        }
+        return resultInstance;
+    }
+
     public static Map<DepositType, double[]> sumNationTransactions(DBNation nation, GuildDB guildDB, Set<Long> tracked, List<Map.Entry<Integer, Transaction2>> transactionsEntries) {
         return sumNationTransactions(nation, guildDB, tracked, transactionsEntries, false, false, Predicates.alwaysTrue());
     }
@@ -550,20 +691,58 @@ public final class PW {
      * @return
      */
     public static Map<DepositType, double[]> sumNationTransactions(DBNation nation, GuildDB guildDB, Set<Long> tracked, List<Map.Entry<Integer, Transaction2>> transactionsEntries, boolean forceIncludeExpired, boolean forceIncludeIgnored, Predicate<Transaction2> filter) {
-        long start = System.currentTimeMillis();
         Map<DepositType, double[]> result = new EnumMap<>(DepositType.class);
+        BiConsumer<Integer, Transaction2> forEach = createSumNationTransactions(nation, guildDB, tracked, forceIncludeExpired, forceIncludeIgnored, filter, result);
+        long start = System.currentTimeMillis();
+        for (Map.Entry<Integer, Transaction2> entry : transactionsEntries) {
+            int sign = entry.getKey();
+            Transaction2 record = entry.getValue();
+            forEach.accept(sign, record);
+        }
+        long diff = System.currentTimeMillis() - start;
+        if (diff > 50) {
+            Logg.info("Summed " + transactionsEntries.size() + " transactions in " + diff + "ms");
+        }
+        return result;
+
+    }
+
+    public static Integer getSign(Transaction2 record, int nationId, Set<Long> tracked) {
+//        Long otherId = null;
+        if (((record.isSenderGuild() || record.isSenderAA()) && tracked.contains(record.sender_id))
+                || (record.sender_type == 0 && record.sender_id == 0 && record.tx_id == -1)) {
+//            otherId = record.sender_id;
+        } else if (((record.isReceiverGuild() || record.isReceiverAA()) && tracked.contains(record.receiver_id))
+                || (record.receiver_type == 0 && record.receiver_id == 0 && record.tx_id == -1)) {
+//            otherId = record.receiver_id;
+        } else {
+            return null;
+        }
+
+        int sign;
+        if (record.sender_id == nationId && record.sender_type == 1) {
+            return 1;
+        } else {
+            return -1;
+        }
+    }
+
+    public static BiConsumer<Integer, Transaction2> createSumNationTransactions(DBNation nation, GuildDB guildDB, Set<Long> tracked, boolean forceIncludeExpired, boolean forceIncludeIgnored, Predicate<Transaction2> filter, Map<DepositType, double[]> result) {
+        long start = System.currentTimeMillis();
 
         boolean allowExpiryDefault = (guildDB.getOrNull(GuildKey.RESOURCE_CONVERSION) == Boolean.TRUE) || guildDB.getIdLong() == 790253684537688086L;
         long allowExpiryCutoff = 1635910300000L;
-        Predicate<Transaction2> allowExpiry = transaction2 ->
-                allowExpiryDefault || transaction2.tx_datetime > allowExpiryCutoff;
-
+        Predicate<Transaction2> allowExpiry;
         if (forceIncludeExpired) allowExpiry = Predicates.alwaysFalse();
+        else {
+            allowExpiry = transaction2 ->
+                    allowExpiryDefault || transaction2.tx_datetime > allowExpiryCutoff;
+        }
 
         if (tracked == null) {
             tracked = guildDB.getTrackedBanks();
         }
-        long forceRssConversionAfter = 0;
+        long forceRssConversionAfter;
         long allowConversionDefaultCutoff = 1735265627000L;
         boolean allowConversionDefault = guildDB.getOrNull(GuildKey.RESOURCE_CONVERSION) == Boolean.TRUE;
         if (allowConversionDefault && nation != null) {
@@ -583,29 +762,31 @@ public final class PW {
             if (allowConversionDefault) {
                 Long convertDate = GuildKey.FORCE_RSS_CONVERSION.getOrNull(guildDB);
                 if (convertDate != null) forceRssConversionAfter = convertDate;
+                else {
+                    forceRssConversionAfter = 0;
+                }
+            } else {
+                forceRssConversionAfter = 0;
             }
+        } else {
+            forceRssConversionAfter = 0;
         }
 
         Function<ResourceType, Double> rateFunc = guildDB.getConversionRate(nation);
 
-        for (Map.Entry<Integer, Transaction2> entry : transactionsEntries) {
-            int sign = entry.getKey();
-            Transaction2 record = entry.getValue();
-            if (filter != null && !filter.test(record)) continue;
+        Set<Long> finalTracked = tracked;
+        boolean finalAllowConversionDefault = allowConversionDefault;
+        return (sign, record) -> {
+            if (filter != null && !filter.test(record)) return;
 
             boolean isOffshoreSender = (record.sender_type == 2 || record.sender_type == 3) && record.receiver_type == 1;
 
-            boolean allowConversion = (allowConversionDefault && record.tx_datetime > allowConversionDefaultCutoff) || (record.tx_id != -1 && isOffshoreSender);
+            boolean allowConversion = (finalAllowConversionDefault && record.tx_datetime > allowConversionDefaultCutoff) || (record.tx_id != -1 && isOffshoreSender);
             boolean allowArbitraryConversion = record.tx_id != -1 && isOffshoreSender;
 
             Predicate<Transaction2> allowExpiryFinal = isOffshoreSender || record.isInternal() ? allowExpiry : Predicates.alwaysFalse();
-            PW.processDeposit(record, guildDB, tracked, sign, result, record.resources, record.tx_datetime, allowExpiryFinal, allowConversion, allowArbitraryConversion, true, forceIncludeIgnored, rateFunc, forceRssConversionAfter);
-        }
-        long diff = System.currentTimeMillis() - start;
-        if (diff > 50) {
-            Logg.info("Summed " + transactionsEntries.size() + " transactions in " + diff + "ms");
-        }
-        return result;
+            PW.processDeposit(record, guildDB, finalTracked, sign, result, record.resources, record.tx_datetime, allowExpiryFinal, allowConversion, allowArbitraryConversion, true, forceIncludeIgnored, rateFunc, forceRssConversionAfter);
+        };
     }
 
     public static boolean aboveMMR(String currentMMR, String requiredMMR) {
@@ -809,6 +990,7 @@ public final class PW {
             }
 
             if (cashValue == null) {
+
                 long oneWeek = TimeUnit.DAYS.toMillis(7);
                 long start = date - oneWeek;
                 TradeDB tradeDb = Locutus.imp().getTradeManager().getTradeDb();
@@ -816,6 +998,7 @@ public final class PW {
                 Set<Byte> convertCached = null;
                 boolean setConvert = false;
                 cashValue = 0d;
+                long timingMs = System.currentTimeMillis();
                 for (int i = 0; i < amount.length; i++) {
                     ResourceType resource = ResourceType.values[i];
                     double amt = amount[i];
@@ -834,8 +1017,9 @@ public final class PW {
                         convertCached = new ByteOpenHashSet();
                     }
                     convertCached.add((byte) resource.ordinal());
-
+                    timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Cash1 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
                     Double avg = tradeDb.getWeeklyAverage(resource, date, null);
+                    timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Cash2 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
                     if (avg != null) {
                         cashValue += amt * avg * rate;
                     }
@@ -845,7 +1029,9 @@ public final class PW {
                 }
                 if (!hasHash)
                 {
+                    timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Cash3 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
                     if (hash == null) hash = getHash.get();
+
                     String note = record.note;
                     note = note.toLowerCase(Locale.ROOT).replaceAll("#cash[^ ]*", "");
                     note = note.replaceAll("#[a-f0-9]{32}", "");
@@ -853,10 +1039,13 @@ public final class PW {
                     note += " #" + hash + " " + "#cash=" + MathMan.format(cashValue).replace(",", "");
                     record.note = note.trim();
 
+                    timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Cash4 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
                     if (record.isInternal()) {
                         guildDB.updateNote(record.original_id, record.note);
+                        timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Cash5 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
                     } else {
                         Locutus.imp().getBankDB().addTransaction(record, false);
+                        timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Cash6 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
                     }
                 }
             }

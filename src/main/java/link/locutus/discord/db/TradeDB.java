@@ -147,6 +147,9 @@ public class TradeDB extends DBMainV2 {
     }
 
     private final long[] lastDayWeeklyAverage = new long[ResourceType.values.length];
+    {
+        Arrays.fill(lastDayWeeklyAverage, -1);
+    }
 
     public Double getWeeklyAverage(ResourceType type, long date, Double defaultValue) {
         long day = TimeUtil.getDay(date);
@@ -154,16 +157,21 @@ public class TradeDB extends DBMainV2 {
         if (date == today) {
             return defaultValue;
         }
+        long timingMs = System.currentTimeMillis();
         long latestDayCalculated = lastDayWeeklyAverage[type.ordinal()];
         if (latestDayCalculated == -1 || latestDayCalculated != today) {
             synchronized (lastDayWeeklyAverage) {
                 latestDayCalculated = lastDayWeeklyAverage[type.ordinal()];
                 if (latestDayCalculated == -1) {
+                    timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("WeekAvg1 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
                     latestDayCalculated = getLatestWeeklyAverageDay(type);
+                    timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("WeekAvg2 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
                     lastDayWeeklyAverage[type.ordinal()] = latestDayCalculated;
                 }
                 if (latestDayCalculated != today) {
+                    timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("WeekAvg3 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
                     recalculateWeeklyAverage(type, latestDayCalculated, today);
+                    timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("WeekAvg4 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
                 }
             }
         }
@@ -172,10 +180,13 @@ public class TradeDB extends DBMainV2 {
                 .select("low")
                 .where(QueryCondition.equals("type", type.ordinal()).and(QueryCondition.equals("day", day)))
                 .limit(1);
+        timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("WeekAvg5 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
         try (ResultSet rs = builder.executeRaw()) {
             if (rs.next()) {
+                timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("WeekAvg6 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
                 return rs.getDouble(1);
             } else {
+                timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("WeekAvg7 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
                 return defaultValue;
             }
         } catch (SQLException e) {
@@ -377,6 +388,7 @@ public class TradeDB extends DBMainV2 {
     }
 
     private void recalculateWeeklyAverage(ResourceType type, long latestDayCalculated, long today) {
+        System.out.println("Recalculating weekly average since " + (TimeUtil.getDay() - latestDayCalculated) + " | " + latestDayCalculated + " | " + type);
         long start = TimeUtil.getTimeFromDay(latestDayCalculated) - TimeUnit.DAYS.toMillis(7);
         long end = TimeUtil.getTimeFromDay(today);
 
@@ -411,7 +423,6 @@ public class TradeDB extends DBMainV2 {
             double lowAvg = lowCountTotal > 0 ? lowSumTotal / (double) lowCountTotal : 0;
             saveWeeklyAverage(type, day, highAvg, lowAvg, highCountTotal, lowCountTotal);
         };
-
         long dayCursor = -1;
         int slotCursor = -1;
         try (ResultSet rs = builder.executeRaw()) {

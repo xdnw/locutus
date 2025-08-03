@@ -515,10 +515,10 @@ public final class Locutus extends ListenerAdapter {
         return loader.getForumDB();
     }
 
-    public void runEventsAsync(ThrowingConsumer<Consumer<Event>> eventHandler) {
+    public Future<?> runEventsAsync(ThrowingConsumer<Consumer<Event>> eventHandler) {
         Collection<Event> events = new ObjectArrayList<>(0);
         eventHandler.accept(events::add);
-        runEventsAsync(events);
+        return runEventsAsync(events);
     }
 
     public <T> T returnEventsAsync(ThrowingFunction<Consumer<Event>, T> eventHandler) {
@@ -528,9 +528,9 @@ public final class Locutus extends ListenerAdapter {
         return result;
     }
 
-    public void runEventsAsync(Collection<Event> events) {
-        if (events.isEmpty()) return;
-        getExecutor().submit(new CaughtRunnable() {
+    public Future<?> runEventsAsync(Collection<Event> events) {
+        if (events.isEmpty()) return null;
+        return getExecutor().submit(new CaughtRunnable() {
             @Override
             public void runUnsafe() {
                 for (Event event : events) event.post();

@@ -1,23 +1,29 @@
 package link.locutus.discord.db.entities;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 import com.politicsandwar.graphql.model.*;
 import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord._test._Custom;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.WarType;
+import link.locutus.discord.apiv1.enums.city.JavaCity;
+import link.locutus.discord.apiv1.enums.city.building.Building;
+import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.building.PowerBuilding;
+import link.locutus.discord.apiv1.enums.city.building.ResourceBuilding;
+import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.ApiKeyPermission;
@@ -29,13 +35,14 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.MethodIdentity;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.ScopedPlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
-import link.locutus.discord.commands.manager.v2.command.*;
+import link.locutus.discord.commands.manager.v2.command.StringMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.StringMessageIO;
 import link.locutus.discord.commands.manager.v2.command.shrink.EmptyShrink;
 import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.*;
 import link.locutus.discord.db.entities.nation.DBNationData;
@@ -69,15 +76,6 @@ import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.util.update.NationUpdateProcessor;
 import link.locutus.discord.web.jooby.handler.CommandResult;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
-import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.apiv1.enums.city.building.Building;
-import link.locutus.discord.apiv1.enums.city.building.Buildings;
-import link.locutus.discord.apiv1.enums.city.building.ResourceBuilding;
-import link.locutus.discord.apiv1.enums.city.project.Project;
-import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -102,11 +100,7 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
+import java.util.function.*;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.commands.manager.v2.binding.bindings.MethodEnum.*;
@@ -2384,31 +2378,21 @@ public abstract class DBNation implements NationOrAlliance {
         return getDeposits(store, db, tracked, true, useTaxBase, offset, updateThreshold, start, end, false, false, null, priority);
     }
     public Map<DepositType, double[]> getDeposits(ValueStore store, GuildDB db, Set<Long> tracked, boolean includeTaxes, boolean useTaxBase, boolean offset, long updateThreshold, long start, long end, boolean forceIncludeExpired, boolean forceIncludeIgnored, Predicate<Transaction2> filter, boolean priority) {
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, getDeposits.get());
 
-//        ScopedPlaceholderCache<GuildDB> scoped = PlaceholderCache.getScoped(store, GuildDB.class, getTrackedBanks.get());
-//        Set<Long> tracked = scoped.getGlobal(db::getTrackedBanks);
-        // Doesn't work because the scope provided is likely to be DBNation, not GuildDB
-
-        long timingMs = System.currentTimeMillis();
-        List<Map.Entry<Integer, Transaction2>> transactions = getTransactions(db, tracked, includeTaxes, useTaxBase, offset, updateThreshold, start, end, priority);
-        timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("txTotal = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
-        Map<DepositType, double[]> sum = PW.sumNationTransactions(this, db, tracked, transactions, forceIncludeExpired, forceIncludeIgnored, filter);
-        timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("sumTotal = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
-        return sum;
-//        String funcStr = "getDeposits:" + db.getIdLong() + filter.hashCode();
-//        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getDeposits");
-//        Boolean verified = scoped.getMap(this,
-//                (ThrowingFunction<List<DBNation>, Map<DBNation, Boolean>>) f -> {
-//                    Set<Integer> nationIds = new IntOpenHashSet(f.size());
-//                    for (DBNation nation : f) nationIds.add(nation.getNation_id());
-//                    Set<Integer> verifiedSet = Locutus.imp().getDiscordDB().getVerified(nationIds);
-//                    Map<DBNation, Boolean> result = new Object2BooleanOpenHashMap<>(f.size());
-//                    for (DBNation nation : f) {
-//                        result.put(nation, verifiedSet.contains(nation.getNation_id()));
-//                    }
-//                    return result;
-//                });
-//        return verified != null && verified;
+        Map<DepositType, double[]> depo = scoped.getMap(this,
+                (ThrowingFunction<List<DBNation>, Map<DBNation, Map<DepositType, double[]>>>) nations -> {
+                    Set<Integer> nationIds = new IntOpenHashSet(nations.size());
+                    for (DBNation nation : nations) {
+                        nationIds.add(nation.getId());
+                    }
+                    Set<Long> trackedFinal = tracked;
+                    if (trackedFinal == null) {
+                        trackedFinal = db.getTrackedBanks();
+                    }
+                    return PW.fetchDeposits(db, nations, trackedFinal, includeTaxes, useTaxBase, offset, start, end, forceIncludeExpired, forceIncludeIgnored, null, updateThreshold == 0L, priority);
+                });
+        return depo;
     }
 
     public List<Map.Entry<Integer, Transaction2>> getTransactions(GuildDB db, Set<Long> tracked, boolean includeTaxes, boolean useTaxBase, boolean offset, long updateThreshold, long start, long end, boolean priority) {
@@ -2425,10 +2409,13 @@ public abstract class DBNation implements NationOrAlliance {
         }
 
 
-        int[] defTaxBase = new int[]{100, 100};
+        int[] defTaxBase;
         if (useTaxBase) {
             TaxRate defTaxBaseTmp = db.getOrNull(GuildKey.TAX_BASE);
             if (defTaxBaseTmp != null) defTaxBase = new int[]{defTaxBaseTmp.money, defTaxBaseTmp.resources};
+            else {
+                defTaxBase = new int[]{100, 100};
+            }
         } else {
             defTaxBase = new int[]{0, 0};
         }
@@ -2440,28 +2427,31 @@ public abstract class DBNation implements NationOrAlliance {
         Set<Integer> finalTracked = tracked.stream().filter(f -> f <= Integer.MAX_VALUE && db.isAllianceId(f.intValue())).map(Long::intValue).collect(Collectors.toSet());
 
         timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Diff3 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
-        List<TaxDeposit> taxes = includeTaxes ? Locutus.imp().getBankDB().getTaxesPaid(getNation_id(), finalTracked, includeNoInternal, includeMaxInternal, start, end) : Collections.emptyList();
-        timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Diff4 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
 
-        for (TaxDeposit deposit : taxes) {
-            int internalMoneyRate = useTaxBase ? deposit.internalMoneyRate : 0;
-            int internalResourceRate = useTaxBase ? deposit.internalResourceRate : 0;
-            if (internalMoneyRate < 0 || internalMoneyRate > 100) internalMoneyRate = defTaxBase[0];
-            if (internalResourceRate < 0 || internalResourceRate > 100) internalResourceRate = defTaxBase[1];
+        if (includeTaxes) {
+            Locutus.imp().getBankDB().iterateTaxesPaid(Set.of(getNation_id()), finalTracked, includeNoInternal, includeMaxInternal, start, end, new Consumer<TaxDeposit>() {
+                @Override
+                public void accept(TaxDeposit deposit) {
+                    int internalMoneyRate = useTaxBase ? deposit.internalMoneyRate : 0;
+                    int internalResourceRate = useTaxBase ? deposit.internalResourceRate : 0;
+                    if (internalMoneyRate < 0 || internalMoneyRate > 100) internalMoneyRate = defTaxBase[0];
+                    if (internalResourceRate < 0 || internalResourceRate > 100) internalResourceRate = defTaxBase[1];
 
-            double pctMoney = (deposit.moneyRate > internalMoneyRate ?
-                    Math.max(0, (deposit.moneyRate - internalMoneyRate) / (double) deposit.moneyRate)
-                    : 0);
-            double pctRss = (deposit.resourceRate > internalResourceRate ?
-                    Math.max(0, (deposit.resourceRate - internalResourceRate) / (double) deposit.resourceRate)
-                    : 0);
+                    double pctMoney = (deposit.moneyRate > internalMoneyRate ?
+                            Math.max(0, (deposit.moneyRate - internalMoneyRate) / (double) deposit.moneyRate)
+                            : 0);
+                    double pctRss = (deposit.resourceRate > internalResourceRate ?
+                            Math.max(0, (deposit.resourceRate - internalResourceRate) / (double) deposit.resourceRate)
+                            : 0);
 
-            deposit.resources[0] *= pctMoney;
-            for (int i = 1; i < deposit.resources.length; i++) {
-                deposit.resources[i] *= pctRss;
-            }
-            Transaction2 transaction = new Transaction2(deposit);
-            transactions.add(transaction);
+                    deposit.resources[0] *= pctMoney;
+                    for (int i = 1; i < deposit.resources.length; i++) {
+                        deposit.resources[i] *= pctRss;
+                    }
+                    Transaction2 transaction = new Transaction2(deposit);
+                    transactions.add(transaction);
+                }
+            });
         }
         timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Diff5 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
         List<Transaction2> records = getTransactions(updateThreshold, priority, start, end);
@@ -2473,25 +2463,8 @@ public abstract class DBNation implements NationOrAlliance {
 
         outer:
         for (Transaction2 record : transactions) {
-            Long otherId = null;
-
-            if (((record.isSenderGuild() || record.isSenderAA()) && tracked.contains(record.sender_id))
-                    || (record.sender_type == 0 && record.sender_id == 0 && record.tx_id == -1)) {
-                otherId = record.sender_id;
-            } else if (((record.isReceiverGuild() || record.isReceiverAA()) && tracked.contains(record.receiver_id))
-                    || (record.receiver_type == 0 && record.receiver_id == 0 && record.tx_id == -1)) {
-                otherId = record.receiver_id;
-            }
-
-            if (otherId == null) continue;
-
-            int sign;
-            if (record.sender_id == data()._nationId() && record.sender_type == 1) {
-                sign = 1;
-            } else {
-                sign = -1;
-            }
-
+            Integer sign = PW.getSign(record, data()._nationId(), tracked);
+            if (sign == null) continue; // Not a tracked bank
             result.add(new KeyValue<>(sign, record));
         }
         timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Diff8 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();

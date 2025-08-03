@@ -44,6 +44,7 @@ import java.sql.SQLException;
 import java.util.*;
 import java.util.Comparator;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -193,7 +194,7 @@ public class BankDB extends DBMainV3 {
         }
     }
 
-    public Map<Integer, double[]> getAppliedTaxDeposits(Set<Integer> nationIds, Set<Integer> allianceIds, int[] taxBase) {
+    public Map<Integer, double[]> getAppliedTaxDeposits(Set<Integer> nationIds, Set<Integer> allianceIds, int[] taxBase, boolean includeBaseTaxes) {
         if (nationIds.isEmpty() || allianceIds.isEmpty()) return new Int2ObjectOpenHashMap<>();
         checkUpdateTaxSummary(allianceIds, taxBase);
         try (Stream<Record3<Integer, byte[], byte[]>> stream = ctx().select(TAX_SUMMARY.NATION_ID, TAX_SUMMARY.NO_INTERNAL_APPLIED, TAX_SUMMARY.INTERNAL_APPLIED)
@@ -209,7 +210,7 @@ public class BankDB extends DBMainV3 {
             stream.forEach(rs -> {
                 int nationId = rs.get(TAX_SUMMARY.NATION_ID);
                 double[] added = result.computeIfAbsent(nationId, k -> ResourceType.getBuffer());
-                ResourceType.add(added, ArrayUtil.toDoubleArray(rs.get(TAX_SUMMARY.NO_INTERNAL_APPLIED)));
+                if (includeBaseTaxes) ResourceType.add(added, ArrayUtil.toDoubleArray(rs.get(TAX_SUMMARY.NO_INTERNAL_APPLIED)));
                 ResourceType.add(added, ArrayUtil.toDoubleArray(rs.get(TAX_SUMMARY.INTERNAL_APPLIED)));
             });
             return result;
@@ -481,6 +482,7 @@ public class BankDB extends DBMainV3 {
         }
     }
 
+
     public Transaction2 getLatestTransaction() {
         List<Transaction2> latestList = getTransactions(null, TRANSACTIONS_2.TX_ID.desc(), 1);
         return latestList.isEmpty() ? null : latestList.get(0);
@@ -508,6 +510,16 @@ public class BankDB extends DBMainV3 {
 //        List<BankRecord> records = api.getBankRecords(nationId, priority);
 //        saveBankRecsV2(records, eventConsumer);
 //    }
+
+    public void updateBankRecsAuto(Set<Integer> nations, boolean priority, Consumer<Event> eventConsumer) {
+        if (Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS > 0) {
+            updateBankRecs(priority, eventConsumer);
+        } else {
+            for (int nationId : nations) {
+                updateBankRecs(nationId, priority, eventConsumer);
+            }
+        }
+    }
 
     public void updateBankRecs(boolean priority, Consumer<Event> eventConsumer) {
         ByteBuffer info = Locutus.imp().getDiscordDB().getInfo(DiscordMeta.BANK_RECS_SEQUENTIAL, 0);
@@ -820,27 +832,59 @@ public class BankDB extends DBMainV3 {
         ), TRANSACTIONS_2.TX_ID.desc(), null);
     }
 
-    public Map<Integer, List<Transaction2>> getNationTransfersByNation(long minDateMs, Set<Integer> nationIds) {
-        Map<Integer, List<Transaction2>> result = new HashMap<>();
-
-        List<Transaction2> transactions = getTransactions(TRANSACTIONS_2.TX_DATETIME.ge(minDateMs).and(
-                (TRANSACTIONS_2.RECEIVER_ID.in(nationIds).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(1))).or
-                        (TRANSACTIONS_2.SENDER_ID.in(nationIds).and(TRANSACTIONS_2.SENDER_TYPE.eq(1)))
-        ), TRANSACTIONS_2.TX_ID.desc(), null);
-
-
-        for (Transaction2 transfer : transactions) {
-            // add to result map
-            int nationId = (int) (transfer.sender_type == 1 ? transfer.sender_id : transfer.receiver_id);
-            List<Transaction2> list = result.get(nationId);
-            if (list == null) {
-                result.put(nationId, list = new ArrayList<>());
-            }
-            list.add(transfer);
-        }
+    public Map<Integer, List<Transaction2>> getNationTransfersByNation(long start, long end, Set<Integer> nationIds) {
+        Map<Integer, List<Transaction2>> result = new Int2ObjectOpenHashMap<>();
+        iterateNationTransfersByNation(start, end, nationIds, (nationId, transfer) -> {
+            result.computeIfAbsent(nationId, k -> new ArrayList<>()).add(transfer);
+        });
         return result;
     }
-    //
+
+    public void iterateNationTransfersByNation(long start, long end, Set<Integer> nationIds, BiConsumer<Integer, Transaction2> consumer) {
+        if (nationIds.isEmpty()) {
+            return; // no nations, no transfers
+        }
+
+        Condition condition = null;
+        if (start > 0) {
+            condition = TRANSACTIONS_2.TX_DATETIME.ge(start);
+        }
+        if (end != Long.MAX_VALUE) {
+            condition = and(condition, TRANSACTIONS_2.TX_DATETIME.le(end));
+        }
+        if (nationIds.size() == 1) {
+            int nationId = nationIds.iterator().next();
+            condition = and(condition, DSL.or(
+                    TRANSACTIONS_2.RECEIVER_ID.eq((long) nationId).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(1)),
+                    TRANSACTIONS_2.SENDER_ID.eq((long) nationId).and(TRANSACTIONS_2.SENDER_TYPE.eq(1))
+            ));
+        } else {
+            condition = and(condition, DSL.or(
+                    TRANSACTIONS_2.RECEIVER_ID.in(nationIds).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(1)),
+                    TRANSACTIONS_2.SENDER_ID.in(nationIds).and(TRANSACTIONS_2.SENDER_TYPE.eq(1))
+            ));
+        }
+        ctx().selectFrom(TRANSACTIONS_2)
+        .where(condition)
+        .orderBy(TRANSACTIONS_2.TX_ID.desc())
+        .fetchStream()
+        .forEach(record -> {
+            Transaction2 transfer = Transaction2.fromTX2Table((Transactions_2Record) record);
+            int nationId;
+            if (transfer.sender_type == 1) {
+                if (transfer.receiver_type == 1) {
+                    return; // ignore because nation to nation transfer
+                }
+                nationId = (int) transfer.sender_id;
+            } else if (transfer.receiver_type == 1) {
+                nationId = (int) transfer.receiver_id;
+            } else {
+                return; // not a nation transfer
+            }
+            consumer.accept(nationId, transfer);
+        });
+    }
+
     public List<Transaction2> getAllianceTransfers(int allianceId, long minDateMs) {
         return getTransactions(TRANSACTIONS_2.TX_DATETIME.ge(minDateMs).and(
                 (TRANSACTIONS_2.RECEIVER_ID.eq((long) allianceId).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(2))).or
@@ -1017,10 +1061,13 @@ public class BankDB extends DBMainV3 {
         return list;
     }
 
-    public List<TaxDeposit> getTaxesPaid(int nation, Set<Integer> alliances, boolean includeNoInternal, boolean includeMaxInternal, long start, long end) {
-        List<TaxDeposit> list = new ObjectArrayList<>();
+    public void iterateTaxesPaid(Set<Integer> nationIds, Set<Integer> alliances, boolean includeNoInternal, boolean includeMaxInternal, long start, long end, Consumer<TaxDeposit> consumer) {
+        if (nationIds.isEmpty()) return;
+
         @NotNull SelectWhereStep<TaxDepositsDateRecord> select = ctx().selectFrom(TAX_DEPOSITS_DATE);
-        Condition where = TAX_DEPOSITS_DATE.NATION.eq(nation);
+        Condition where = nationIds.size() == 1 ?
+                TAX_DEPOSITS_DATE.NATION.eq(nationIds.iterator().next()) :
+                TAX_DEPOSITS_DATE.NATION.in(nationIds);
         if (!includeNoInternal) {
             where = where.and(TAX_DEPOSITS_DATE.INTERNAL_TAXRATE.ne(-1));
         }
@@ -1039,8 +1086,11 @@ public class BankDB extends DBMainV3 {
             where = where.and(TAX_DEPOSITS_DATE.ALLIANCE.in(alliances));
         }
 
-        select.where(where).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
-        return list;
+        try (Stream<TaxDepositsDateRecord> stream = select.where(where).stream()) {
+            stream.forEach(rs -> {
+                consumer.accept(TaxDeposit.of(rs));
+            });
+        }
     }
 
     public List<TaxDeposit> getTaxesByIds(Collection<Integer> ids) {
