@@ -2421,7 +2421,7 @@ public abstract class DBNation implements NationOrAlliance {
         }
         timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Diff2 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
 
-        boolean includeNoInternal = defTaxBase[0] == 100 && defTaxBase[1] == 100;
+        boolean includeNoInternal = defTaxBase[0] != 100 || defTaxBase[1] != 100;
         boolean includeMaxInternal = false;
 
         Set<Integer> finalTracked = tracked.stream().filter(f -> f <= Integer.MAX_VALUE && db.isAllianceId(f.intValue())).map(Long::intValue).collect(Collectors.toSet());

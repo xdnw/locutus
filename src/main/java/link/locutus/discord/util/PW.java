@@ -31,7 +31,6 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.file.NationsFileSnapshot;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.stock.Exchange;
@@ -616,6 +615,9 @@ public final class PW {
             Set<Integer> trackForTaxes = tracked.stream().filter(f -> f <= Integer.MAX_VALUE && db.isAllianceId(f.intValue())).map(Long::intValue).collect(Collectors.toSet());
             DepositType note = DepositType.TAX;
 
+            Map<Integer, double[]> amt1 = new Int2ObjectOpenHashMap<>();
+            Map<Integer, double[]> amt2 = new Int2ObjectOpenHashMap<>();
+
             if (start == 0 && end == Long.MAX_VALUE) {
                 Map<Integer, double[]> appliedDeposits = Locutus.imp().getBankDB().getAppliedTaxDeposits(nationIds, trackForTaxes, guildTaxBase, useTaxBase);
                 for (Map.Entry<Integer, double[]> entry : appliedDeposits.entrySet()) {
@@ -633,7 +635,7 @@ public final class PW {
                     defTaxBase[1] = 0;
                 }
 
-                boolean includeNoInternal = defTaxBase[0] == 100 && defTaxBase[1] == 100;
+                boolean includeNoInternal = defTaxBase[0] != 100 || defTaxBase[1] != 100;
                 boolean includeMaxInternal = false;
                 Locutus.imp().getBankDB().iterateTaxesPaid(nationIds, trackForTaxes, includeNoInternal, includeMaxInternal, start, end, new Consumer<TaxDeposit>() {
                     @Override
@@ -660,6 +662,7 @@ public final class PW {
                 });
             }
         }
+
 
         { // Transactions
             if (updateFuture != null) {
