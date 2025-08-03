@@ -670,7 +670,7 @@ public final class PW {
             }
             Locutus.imp().getBankDB().iterateNationTransfersByNation(start, end, nationIds, (id, tx) -> {
                 applyAdder.accept(tx);
-            });
+            }, false);
         }
 
         Map<DBNation, Map<DepositType, double[]>> resultInstance = new Object2ObjectOpenHashMap<>();

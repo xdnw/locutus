@@ -874,14 +874,48 @@ public class BankDB extends DBMainV3 {
         Map<Integer, List<Transaction2>> result = new Int2ObjectOpenHashMap<>();
         iterateNationTransfersByNation(start, end, nationIds, (nationId, transfer) -> {
             result.computeIfAbsent(nationId, k -> new ArrayList<>()).add(transfer);
-        });
+        }, true);
         return result;
     }
 
-    public void iterateNationTransfersByNation(long start, long end, Set<Integer> nationIds, BiConsumer<Integer, Transaction2> consumer) {
+    public void iterateNationTransfersByNation(long start, long end, Set<Integer> nationIds, BiConsumer<Integer, Transaction2> consumer, boolean ordered) {
         if (nationIds.isEmpty()) {
             return; // no nations, no transfers
         }
+
+        Consumer<SelectGroupByStep<Transactions_2Record>> handleFetch = sel -> {
+            int fetchSize = nationIds.size() > 1 ? 4096 : 512;
+            @NotNull ResultQuery<Transactions_2Record> preCursor = (ordered ? sel.orderBy(TRANSACTIONS_2.TX_ID.desc()) : sel).fetchSize(fetchSize).poolable(true);
+            if (!ordered) {
+                preCursor = preCursor.resultSetConcurrency(ResultSet.CONCUR_READ_ONLY);
+            }
+            try (Stream<Transactions_2Record> recordStream = preCursor.fetchStream()) {
+                Stream<Transactions_2Record> workStream = ordered
+                        ? recordStream
+                        : recordStream.parallel();
+
+                BiConsumer<Integer, Transaction2> consumerFinal = ordered ? consumer : (nationId, transfer) -> {
+                    synchronized (consumer) {
+                        consumer.accept(nationId, transfer);
+                    }
+                };
+                workStream.forEach(record -> {
+                    Transaction2 transfer = Transaction2.fromTX2Table((Transactions_2Record) record);
+                    int nationId;
+                    if (transfer.sender_type == 1) {
+                        if (transfer.receiver_type == 1) {
+                            return; // ignore because nation to nation transfer
+                        }
+                        nationId = (int) transfer.sender_id;
+                    } else if (transfer.receiver_type == 1) {
+                        nationId = (int) transfer.receiver_id;
+                    } else {
+                        return; // not a nation transfer
+                    }
+                    consumerFinal.accept(nationId, transfer);
+                });
+            }
+        };
 
         Condition condition = null;
         if (start > 0) {
@@ -890,6 +924,7 @@ public class BankDB extends DBMainV3 {
         if (end != Long.MAX_VALUE) {
             condition = and(condition, TRANSACTIONS_2.TX_DATETIME.le(end));
         }
+
         if (nationIds.size() == 1) {
             int nationId = nationIds.iterator().next();
             condition = and(condition, DSL.or(
@@ -897,30 +932,37 @@ public class BankDB extends DBMainV3 {
                     TRANSACTIONS_2.SENDER_ID.eq((long) nationId).and(TRANSACTIONS_2.SENDER_TYPE.eq(1))
             ));
         } else {
+            List<Integer> nationIdsSorted = new IntArrayList(nationIds);
+            nationIdsSorted.sort(Comparator.naturalOrder());
+            if (!ordered) {
+                // do multiple fetches to avoid index issues from the OR IN combination below
+
+                @NotNull Condition condition1 = and(condition, (TRANSACTIONS_2.RECEIVER_TYPE.eq(1)))
+                        .and(TRANSACTIONS_2.RECEIVER_ID.in(nationIdsSorted));
+                @NotNull Condition condition2 = and(condition, (TRANSACTIONS_2.SENDER_TYPE.eq(1)))
+                        .and(TRANSACTIONS_2.SENDER_ID.in(nationIdsSorted));
+
+                Consumer<Condition> fetchConsumer = cond -> {
+                    @NotNull SelectGroupByStep<Transactions_2Record> sel = ctx().selectFrom(TRANSACTIONS_2)
+                            .where(cond);
+                    handleFetch.accept(sel);
+                };
+                fetchConsumer.accept(condition1);
+                fetchConsumer.accept(condition2);
+
+                return;
+            }
+
+
             condition = and(condition, DSL.or(
-                    TRANSACTIONS_2.RECEIVER_ID.in(nationIds).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(1)),
-                    TRANSACTIONS_2.SENDER_ID.in(nationIds).and(TRANSACTIONS_2.SENDER_TYPE.eq(1))
+                    TRANSACTIONS_2.RECEIVER_ID.in(nationIdsSorted).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(1)),
+                    TRANSACTIONS_2.SENDER_ID.in(nationIdsSorted).and(TRANSACTIONS_2.SENDER_TYPE.eq(1))
             ));
         }
-        ctx().selectFrom(TRANSACTIONS_2)
-        .where(condition)
-        .orderBy(TRANSACTIONS_2.TX_ID.desc())
-        .fetchStream()
-        .forEach(record -> {
-            Transaction2 transfer = Transaction2.fromTX2Table((Transactions_2Record) record);
-            int nationId;
-            if (transfer.sender_type == 1) {
-                if (transfer.receiver_type == 1) {
-                    return; // ignore because nation to nation transfer
-                }
-                nationId = (int) transfer.sender_id;
-            } else if (transfer.receiver_type == 1) {
-                nationId = (int) transfer.receiver_id;
-            } else {
-                return; // not a nation transfer
-            }
-            consumer.accept(nationId, transfer);
-        });
+
+        @NotNull SelectGroupByStep<Transactions_2Record> sel = ctx().selectFrom(TRANSACTIONS_2)
+                .where(condition);
+        handleFetch.accept(sel);
     }
 
     public List<Transaction2> getAllianceTransfers(int allianceId, long minDateMs) {

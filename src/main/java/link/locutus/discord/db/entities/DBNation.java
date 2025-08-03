@@ -9,7 +9,6 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
-import link.locutus.discord._test._Custom;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
 import link.locutus.discord.apiv1.enums.*;
@@ -1766,9 +1765,6 @@ public abstract class DBNation implements NationOrAlliance {
             }
         }
         if (update) {
-            if (_Custom.TEST) {
-                throw new UnsupportedOperationException("TEMPORARILY DISABLED");
-            }
             return updateTransactions(priority);
         }
         return Locutus.imp().getBankDB().getTransactionsByNation(data()._nationId(), start, end);
