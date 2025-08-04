@@ -149,6 +149,14 @@ public class TimeUtil {
             double nums = Double.parseDouble(value.replaceAll("[^\\d.]", ""));
             String letters = value.replaceAll("[^a-z]", "");
             switch (letters) {
+                case "year":
+                case "years":
+                case "yr":
+                case "yrs":
+                case "year(s)":
+                case "y":
+                    time += TimeUnit.DAYS.toSeconds(365) * nums;
+                    break;
                 case "month(s)":
                 case "months":
                     time += TimeUnit.DAYS.toSeconds(30) * nums;
