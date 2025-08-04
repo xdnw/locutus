@@ -1622,7 +1622,7 @@ public class GuildKey {
         @Override
         public String help() {
             return """
-                    If set, all allowed resources will be converted to cash at the rates set, regardless of #cash being present as a note
+                    If set, upon depositing, all allowed resources will be converted to cash at the rates set, regardless of #cash being present as a note
                     This is performed when deposits are checked, and only to new deposits
                     Requires resource conversion to be enabled for the nation
                     If no RESOURCE_CONVERSION role is set, then this applies to everyone

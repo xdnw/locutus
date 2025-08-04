@@ -776,7 +776,7 @@ public final class PW {
                     continue;
             }
         }
-        if (allowConversion && forceConvertRssAfter > 0 && date > forceConvertRssAfter) {
+        if (record.receiver_type != 1 && allowConversion && forceConvertRssAfter > 0 && date > forceConvertRssAfter) {
             applyCashConversion(guildDB, allowArbitraryConversion, notes3, amount, null, record, date, rates);
         }
         double[] rss = result.computeIfAbsent(type, f -> ResourceType.getBuffer());

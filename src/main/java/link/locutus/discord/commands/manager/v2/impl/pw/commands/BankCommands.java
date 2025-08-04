@@ -4155,12 +4155,14 @@ public class BankCommands {
                 .setGetExpiring(getExpiring)
                 .getResult().getOrDefault(nation, new Object2ObjectOpenHashMap<>());
 
-            if (sheet != null && hasRow[0]) {
-                sheet.updateClearCurrentTab();
-                sheet.updateWrite();
-                sheet.attach(msg, "expire_records");
-            } else {
-                footers.add("No remaining expiring records found");
+            if (sheet != null) {
+                if (hasRow[0]) {
+                    sheet.updateClearCurrentTab();
+                    sheet.updateWrite();
+                    sheet.attach(msg, "expire_records");
+                } else {
+                    footers.add("No remaining expiring records found");
+                }
             }
 
             if (!hideEscrowed) {
