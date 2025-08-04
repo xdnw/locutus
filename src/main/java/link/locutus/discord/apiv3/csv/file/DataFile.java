@@ -41,6 +41,14 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
     private final Supplier<H> createHeader;
     private volatile H globalHeader;
 
+    public File getCsvFile() {
+        return csvFile;
+    }
+
+    public File getBinFile() {
+        return binFile;
+    }
+
     public static boolean isValidName(File file, String requirePrefix) {
         String[] split = file.getName().split("\\.", 2);
         if (split.length != 2) return false;
