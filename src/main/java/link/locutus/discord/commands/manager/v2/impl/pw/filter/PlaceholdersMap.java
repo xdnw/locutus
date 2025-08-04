@@ -306,6 +306,7 @@ public class PlaceholdersMap {
     }
 
     private Set<NationOrAlliance> nationOrAlliancesSingle(ValueStore store, String input, boolean allowStar) {
+        input = input.trim();
         GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), false);
         Guild guild = db == null ? null : db.getGuild();
         DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
