@@ -26,7 +26,6 @@ import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
-import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -115,7 +114,7 @@ public class MailTargets extends Command {
         allAttackers.addAll(warAttDefMap.keySet());
         allAttackers.addAll(spyAttDefMap.keySet());
 
-        String date = TimeUtil.YYYY_MM_DD.format(ZonedDateTime.now());
+        String date = TimeUtil.format(TimeUtil.YYYY_MM_DD, System.currentTimeMillis());
         String subject = "Targets-" + date + "/" + channel.getIdLong();
 
         String blurb = """

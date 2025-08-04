@@ -184,7 +184,7 @@ public class SpreadSheet {
             }
             header.set(0, record.tx_id);
             header.set(1, type);
-            header.set(2, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(record.tx_datetime)));
+            header.set(2, TimeUtil.format(TimeUtil.YYYY_MM_DD_HH_MM_SS, record.tx_datetime));
             header.set(3, record.sender_id + "");
             header.set(4, record.sender_type);
             header.set(5, record.receiver_id + "");

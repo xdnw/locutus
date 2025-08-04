@@ -82,7 +82,7 @@ public class UnitHistory extends Command {
         for (Map.Entry<Long, Integer> entry : history) {
             if (previous != null) {
                 long timestamp = previous.getKey();
-                String dateStr = TimeUtil.format(TimeUtil.MMDDYYYY_HH_MM_A, new Date(timestamp));
+                String dateStr = TimeUtil.format(TimeUtil.MMDDYYYY_HH_MM_A, timestamp);
 
                 int from = entry.getValue();
                 int to = previous.getValue();
@@ -97,7 +97,7 @@ public class UnitHistory extends Command {
         }
         if (previous != null) {
             long timestamp = previous.getKey();
-            String dateStr = TimeUtil.format(TimeUtil.MMDDYYYY_HH_MM_A, new Date(timestamp));
+            String dateStr = TimeUtil.format(TimeUtil.MMDDYYYY_HH_MM_A, timestamp);
 
             int to = previous.getValue();
             String from = "?";

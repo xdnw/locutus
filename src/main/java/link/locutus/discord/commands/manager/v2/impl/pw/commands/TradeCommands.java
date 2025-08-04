@@ -1510,7 +1510,7 @@ public class TradeCommands {
                     String msg = buySell + " " + subscription.getResource().name().toLowerCase() + " " + operator + " " + subscription.getPpu();
 
                     body.append('\n').append(msg);
-                    String dateStr = TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(subscription.getDate())) + " (UTC)";
+                    String dateStr = TimeUtil.format(TimeUtil.YYYY_MM_DD_HH_MM_SS, subscription.getDate()) + " (UTC)";
                     body.append(" until ").append(dateStr);
                 }
             }

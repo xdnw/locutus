@@ -1615,7 +1615,7 @@ public class GuildKey {
 
         @Override
         public String toReadableString(GuildDB db, Long value) {
-            if (value != null && value > 0) return "after:" + value + " (" + TimeUtil.YYYY_MM_DD_HH_MM_SS_A.format(value) + ")";
+            if (value != null && value > 0) return "after:" + value + " (" + TimeUtil.format(TimeUtil.YYYY_MM_DD_HH_MM_SS_A, value) + ")";
             return super.toReadableString(db, value);
         }
 

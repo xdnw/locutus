@@ -73,6 +73,7 @@ import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.text.SimpleDateFormat;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -2571,8 +2572,8 @@ public class WarCommands {
         List<String> header = new ArrayList<>(Arrays.asList("nation", "alliance", "cities"));
         for (long timeUnit = startUnit; timeUnit <= endUnit; timeUnit++) {
             long time = by_turn ? TimeUtil.getTimeFromTurn(timeUnit) : TimeUtil.getTimeFromDay(timeUnit);
-            SimpleDateFormat format = by_turn ? TimeUtil.DD_MM_YYYY_HH : TimeUtil.DD_MM_YYYY;
-            header.add(format.format(new Date(time)));
+            DateTimeFormatter format = by_turn ? TimeUtil.DD_MM_YYYY_HH : TimeUtil.DD_MM_YYYY;
+            header.add(TimeUtil.format(format, time));
         }
 
         sheet.setHeader(header);
@@ -2690,8 +2691,8 @@ public class WarCommands {
         List<String> header = new ArrayList<>(Arrays.asList("nation", "alliance", "cities"));
         for (long timeUnit = startUnit; timeUnit <= endUnit; timeUnit++) {
             long time = by_turn ? TimeUtil.getTimeFromTurn(timeUnit) : TimeUtil.getTimeFromDay(timeUnit);
-            SimpleDateFormat format = by_turn ? TimeUtil.DD_MM_YYYY_HH : TimeUtil.DD_MM_YYYY;
-            header.add(format.format(new Date(time)));
+            DateTimeFormatter format = by_turn ? TimeUtil.DD_MM_YYYY_HH : TimeUtil.DD_MM_YYYY;
+            header.add(TimeUtil.format(format, (time)));
         }
 
         sheet.setHeader(header);
@@ -2780,8 +2781,8 @@ public class WarCommands {
         List<String> header = new ArrayList<>(Arrays.asList("nation", "alliance", "cities"));
         for (long timeUnit = startUnit; timeUnit <= endUnit; timeUnit++) {
             long time = by_turn ? TimeUtil.getTimeFromTurn(timeUnit) : TimeUtil.getTimeFromDay(timeUnit);
-            SimpleDateFormat format = by_turn ? TimeUtil.DD_MM_YYYY_HH : TimeUtil.DD_MM_YYYY;
-            header.add(format.format(new Date(time)));
+            DateTimeFormatter format = by_turn ? TimeUtil.DD_MM_YYYY_HH : TimeUtil.DD_MM_YYYY;
+            header.add(TimeUtil.format(format, (time)));
         }
 
         sheet.setHeader(header);
@@ -3146,7 +3147,7 @@ public class WarCommands {
             Map.Entry<Long, Rank> dateRank = entry.getValue();
             Long date = dateRank.getKey();
 
-            String dateStr = TimeUtil.YYYY_MM_DD_HH_MM_A.format(new Date(date));
+            String dateStr = TimeUtil.format(TimeUtil.YYYY_MM_DD_HH_MM_A, date);
             Rank rank = dateRank.getValue();
 
             ArrayList<Object> row = new ArrayList<>();
@@ -3653,7 +3654,7 @@ public class WarCommands {
             }
         }
 
-        String date = TimeUtil.YYYY_MM_DD.format(ZonedDateTime.now());
+        String date = TimeUtil.format(TimeUtil.YYYY_MM_DD, System.currentTimeMillis());
         String subject = "Targets-" + date + "/" + channel.getIdLong();
 
         String blurb = """

@@ -21,7 +21,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.ref.SoftReference;
 import java.nio.file.Files;
-import java.text.ParseException;
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -88,11 +87,7 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
 
     public static long parseDateFromFile(String fileName) {
         String dateStr = fileName.replace("nations-", "").replace("cities-", "").replace(".csv", "").replace(".bin", "");
-        try {
-            return TimeUtil.YYYY_MM_DD_FORMAT.parse(dateStr).toInstant().toEpochMilli();
-        } catch (ParseException e) {
-            throw new RuntimeException(e);
-        }
+        return TimeUtil.parseDate(TimeUtil.YYYY_MM_DD_FORMAT, dateStr);
     }
 
     public long getDate() {
@@ -114,7 +109,7 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
         return globalHeader;
     }
 
-    private void readAllCsv(File file, ThrowingBiConsumer<List<String>, CloseableIterator<CsvRow>> onEach) throws IOException {
+    private static void readAllCsv(File file, ThrowingBiConsumer<List<String>, CloseableIterator<CsvRow>> onEach) throws IOException {
         try (CsvReader reader = CsvReader.builder().fieldSeparator(',').quoteCharacter('"').build(file.toPath())) {
             try (CloseableIterator<CsvRow> iter = reader.iterator()) {
                 CsvRow header = iter.next();
@@ -220,39 +215,6 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
         }
         return binFile;
     }
-
-//    public void testCsv() throws IOException {
-//        readAllCsv(csvFile, (csvHeader, row) -> {
-//            while (row.hasNext()) {
-//                CsvRow csvRow = row.next();
-//            }
-//        });
-//    }
-//
-//    public void testRead() throws IOException {
-//        File file = getCompressedFile(true, false);
-//        byte[] decompressed = ArrayUtil.decompressLZ4(Files.readAllBytes(file.toPath()));
-//
-//        // read with gzip, ignore all data
-//        int fileSize = 524288;
-//        try (DataInputStream dis = new DataInputStream(new LZ4BlockInputStream(new FastBufferedInputStream(new FileInputStream(file), fileSize)))) {
-//            // skip all
-//            ObjectArrayList<ColumnInfo<T, Object>> allColumns = new ObjectArrayList<>(headers.values());
-//            int rowBytes = 0;
-//            int size = dis.readInt();
-//            for (int i = 0; i < size; i++) {
-//                boolean hasIndex = dis.readBoolean();
-//                if (hasIndex) {
-//                    ColumnInfo<T, Object> column = allColumns.get(i);
-//                    rowBytes += column.getBytes();
-//                }
-//            }
-//            int numLines = IOUtil.readVarInt(dis);
-//            for (int i = 0; i < numLines; i++) {
-//                dis.skipBytes(rowBytes);
-//            }
-//        }
-//    }
 
     public class Builder {
         private final H header;

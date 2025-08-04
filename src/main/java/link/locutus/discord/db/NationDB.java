@@ -70,6 +70,7 @@ import org.apache.commons.lang3.tuple.Triple;
 import java.io.IOException;
 import java.sql.*;
 import java.text.ParseException;
+import java.time.Instant;
 import java.util.*;
 import java.util.Date;
 import java.util.concurrent.ConcurrentHashMap;
@@ -1870,7 +1871,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                         alliance.getAcronym(),
                         alliance.getScore(),
                         alliance.getColor(),
-                        TimeUtil.YYYY_MM_DD_HH_MM_SS.parse(alliance.getFounddate()).toInstant(), // TODO parse
+                        Instant.ofEpochMilli(TimeUtil.parseDate(TimeUtil.YYYY_MM_DD_HH_MM_SS, alliance.getFounddate())), // TODO parse
                         null,
                         null,
                         null,
@@ -1906,7 +1907,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             Set<Integer> updated = processUpdatedAlliances(adaptedList, eventConsumer);
             // TODO handle deletion later
 
-        } catch (IOException | ParseException e) {
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }

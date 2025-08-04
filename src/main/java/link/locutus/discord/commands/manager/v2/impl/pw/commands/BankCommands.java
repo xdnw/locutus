@@ -2487,7 +2487,7 @@ public class BankCommands {
             escrowHeader.set(2, nation.getAgeDays());
 
             long expireEpoch = escrowedPair.getValue();
-            String expires = expireEpoch == 0 ? "never" : TimeUtil.YYYY_MM_DD_HH_MM_SS.format(expireEpoch);
+            String expires = expireEpoch == 0 ? "never" : TimeUtil.format(TimeUtil.YYYY_MM_DD_HH_MM_SS, expireEpoch);
             escrowHeader.set(3, expires);
 
             double value = ResourceType.convertedTotal(escrowedPair.getKey());
@@ -3818,7 +3818,7 @@ public class BankCommands {
         for (TaxDeposit tax : taxes) {
             if (tax.date < startDate || tax.date > endDate) continue;
             header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
-            header.set(1, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(tax.date)));
+            header.set(1, TimeUtil.format(TimeUtil.YYYY_MM_DD_HH_MM_SS, tax.date));
             header.set(2, tax.moneyRate + "/" + tax.resourceRate);
             header.set(3, tax.internalMoneyRate + "/" + tax.internalResourceRate);
             int i = 0;
@@ -4108,8 +4108,8 @@ public class BankCommands {
 
                     List<Object> row = new ObjectArrayList<>();
                     row.add(sign);
-                    row.add(TimeUtil.YYYY_MM_DD_HH_MM_SS.format(dateVal));
-                    row.add(TimeUtil.YYYY_MM_DD_HH_MM_SS.format(record.tx_datetime));
+                    row.add(TimeUtil.format(TimeUtil.YYYY_MM_DD_HH_MM_SS, dateVal));
+                    row.add(TimeUtil.format(TimeUtil.YYYY_MM_DD_HH_MM_SS, record.tx_datetime));
                     row.add(ResourceType.convertedTotal(record.resources));
 
                     if (dateVal != null) {

@@ -1149,7 +1149,7 @@ public class AdminCommands {
             List<DBSpyUpdate> activity = Locutus.imp().getNationDB().getSpyActivityByNation(nation.getNation_id(), cutoff);
             for (DBSpyUpdate update : activity) {
                 header.set(0, String.valueOf(nation.getNation_id()));
-                header.set(1, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(update.timestamp)));
+                header.set(1, TimeUtil.format(TimeUtil.YYYY_MM_DD_HH_MM_SS, update.timestamp));
                 sheet.addRow(header);
             }
         }

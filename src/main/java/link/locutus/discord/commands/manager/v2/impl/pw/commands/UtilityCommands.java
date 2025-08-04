@@ -2508,7 +2508,7 @@ public class UtilityCommands {
 
         Function<Integer, String> dayToString = day -> {
             if (day == Integer.MAX_VALUE) return "Present";
-            return TimeUtil.DD_MM_YYYY.format(new Date(TimeUtil.getTimeFromDay(day)));
+            return TimeUtil.format(TimeUtil.DD_MM_YYYY, TimeUtil.getTimeFromDay(day));
         };
 
         if (sheet == null && nations.size() > 5) {
@@ -2656,7 +2656,7 @@ public class UtilityCommands {
 //                    };
 //                    long timeMs = TimeUtil.getTimeFromDay(day);
 //                    changesByNation.computeIfAbsent(nation.getNation_id(), k -> new ArrayList<>())
-//                            .add(new String[]{TimeUtil.DD_MM_YYYY.format(new Date(timeMs)), statusString});
+//                            .add(new String[]{TimeUtil.format(TimeUtil.DD_MM_YYYY, timeMs), statusString});
 //                }
 //                lastStatus = currentStatus;
 //            }

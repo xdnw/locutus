@@ -2517,7 +2517,7 @@ public class StatCommands {
 
         int mergedAA = sorted.keySet().iterator().next();
         int mergedAAAmt = sorted.values().iterator().next();
-        String dayStr = TimeUtil.YYYY_MM_DD_FORMAT.format(new Date(TimeUtil.getTimeFromDay(day)));
+        String dayStr = TimeUtil.format(TimeUtil.YYYY_MM_DD_FORMAT, TimeUtil.getTimeFromDay(day));
         List<String> row = new ArrayList<>(Arrays.asList(
                 MarkupUtil.sheetUrl(aaNames.getOrDefault(aaId, "AA:" + aaId), PW.getAllianceUrl(aaId)),
                 dayStr,

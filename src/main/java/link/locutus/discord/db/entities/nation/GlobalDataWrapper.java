@@ -28,7 +28,7 @@ public class GlobalDataWrapper<T extends DataHeader> extends DataWrapper<T> {
         try {
             return get.read(data, get.getOffset() + offset);
         } catch (IOException e) {
-            String timeFormat = TimeUtil.DD_MM_YY.format(getDate());
+            String timeFormat = TimeUtil.format(TimeUtil.DD_MM_YY, getDate());
             throw new RuntimeException(this.getHeader().getAliases() + " @ " + timeFormat + " | " + e.getMessage(), e);
         }
     }

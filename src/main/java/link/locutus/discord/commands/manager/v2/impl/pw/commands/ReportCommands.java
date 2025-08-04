@@ -268,9 +268,9 @@ public class ReportCommands {
             header.set(4, ResourceType.toString(loan.paid));
             header.set(5, ResourceType.toString(loan.remaining));
             header.set(6, loan.status.name());
-            header.set(7, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(loan.dueDate)));
-            header.set(8, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(loan.loanDate)));
-            header.set(9, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(loan.date_submitted)));
+            header.set(7, TimeUtil.format(TimeUtil.YYYY_MM_DD_HH_MM_SS, loan.dueDate));
+            header.set(8, TimeUtil.format(TimeUtil.YYYY_MM_DD_HH_MM_SS, loan.loanDate));
+            header.set(9, TimeUtil.format(TimeUtil.YYYY_MM_DD_HH_MM_SS, loan.date_submitted));
 
             if (loan.remaining != null) {
                 total = ResourceType.add(total, loan.remaining);
@@ -706,8 +706,8 @@ public class ReportCommands {
 
             DBLoan.Status status = statusStr == null || statusStr.isEmpty() ? defaultStatus : DBLoan.Status.valueOf(statusStr.toUpperCase());
 
-            long loanDate = TimeUtil.YYYY_MM_DD_HH_MM_SS.parse(loanDateStr).getTime();
-            long dueDate = dueDateStr == null ? 0 : TimeUtil.YYYY_MM_DD_HH_MM_SS.parse(dueDateStr).getTime();
+            long loanDate = TimeUtil.parseDate(TimeUtil.YYYY_MM_DD_HH_MM_SS, loanDateStr);
+            long dueDate = dueDateStr == null ? 0 : TimeUtil.parseDate(TimeUtil.YYYY_MM_DD_HH_MM_SS, dueDateStr);
 
             DBLoan loan = new DBLoan(
                     loanerGuildOrAA,

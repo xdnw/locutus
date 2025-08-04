@@ -659,7 +659,7 @@ public class TradeManager {
 //
 //                    for (int i = 0; i < totals.size(); i++) {
 //                        long volume = Long.parseLong(totals.get(i).getAsString());
-//                        long date = TimeUtil.YYYY_MM_DD_HH_MM_SS.parse(dates.get(i).getAsString()).getTime();
+//                        long date = TimeUtil.parseDate(TimeUtil.YYYY_MM_DD_HH_MM_SS, dates.get(i).getAsString());
 //                        result.put(date, volume);
 //                    }
 //

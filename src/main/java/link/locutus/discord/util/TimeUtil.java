@@ -3,56 +3,50 @@ package link.locutus.discord.util;
 import link.locutus.discord.config.Settings;
 
 import java.io.File;
-import java.text.DateFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.Date;
 import java.util.Locale;
-import java.util.TimeZone;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class TimeUtil {
-    public static final SimpleDateFormat MMDD_HH_MM_A = new SimpleDateFormat("MM/dd h:mm a", Locale.ENGLISH);
-    public static final SimpleDateFormat MMDDYYYY_HH_MM_A = new SimpleDateFormat("MM/dd/yyyy h:mm a", Locale.ENGLISH);
-    public static final SimpleDateFormat YYYY_MM_DD_HH_MM_SS = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH);
-    public static final SimpleDateFormat YYYY_MM_DDTHH_MM_SSX = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssX", Locale.ENGLISH);
-    public static final SimpleDateFormat YYYY_MM_DD_HH_MM_SS_A = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss a", Locale.ENGLISH);
+    public static final DateTimeFormatter MMDD_HH_MM_A = DateTimeFormatter.ofPattern("MM/dd h:mm a", Locale.ENGLISH);
+    public static final DateTimeFormatter MMDDYYYY_HH_MM_A = DateTimeFormatter.ofPattern("MM/dd/yyyy h:mm a", Locale.ENGLISH);
+    public static final DateTimeFormatter YYYY_MM_DD_HH_MM_SS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH);
+    public static final DateTimeFormatter YYYY_MM_DDTHH_MM_SSX = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ssX", Locale.ENGLISH);
+    public static final DateTimeFormatter YYYY_MM_DD_HH_MM_SS_A = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss a", Locale.ENGLISH);
 
-    public static final SimpleDateFormat F_YYYY_MM_DD = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH);
+    public static final DateTimeFormatter F_YYYY_MM_DD = DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ENGLISH);
 
-    public static final SimpleDateFormat YYYY_MM_DD_HH_MM_A = new SimpleDateFormat("yyyy-MM-dd hh:mm a", Locale.ENGLISH);
+    public static final DateTimeFormatter YYYY_MM_DD_HH_MM_A = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm a", Locale.ENGLISH);
 
-    public static final SimpleDateFormat WAR_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX", Locale.ENGLISH);
-    public static final SimpleDateFormat DD_MM_YY = new SimpleDateFormat("dd/MM/yy", Locale.ENGLISH);
-    public static final SimpleDateFormat DD_MM_YYYY = new SimpleDateFormat("dd/MM/yyyy", Locale.ENGLISH);
-    public static final SimpleDateFormat YYYY_MM_DD_FORMAT = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH);
+    public static final DateTimeFormatter WAR_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX", Locale.ENGLISH);
+    public static final DateTimeFormatter DD_MM_YY = DateTimeFormatter.ofPattern("dd/MM/yy", Locale.ENGLISH);
+    public static final DateTimeFormatter DD_MM_YYYY = DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.ENGLISH);
+    public static final DateTimeFormatter YYYY_MM_DD_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ENGLISH);
 
     public static final DateTimeFormatter YYYY_MM_DD = DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ENGLISH);
-    public static final SimpleDateFormat DD_MM_YYYY_HH = new SimpleDateFormat("dd/MM/yyyy HH", Locale.ENGLISH);
+    public static final DateTimeFormatter DD_MM_YYYY_HH = DateTimeFormatter.ofPattern("dd/MM/yyyy HH", Locale.ENGLISH);
 
-
-    static {
-        MMDD_HH_MM_A.setTimeZone(TimeZone.getTimeZone("UTC"));
-        YYYY_MM_DD_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
-        MMDDYYYY_HH_MM_A.setTimeZone(TimeZone.getTimeZone("UTC"));
-        YYYY_MM_DD_HH_MM_SS.setTimeZone(TimeZone.getTimeZone("UTC"));
-        YYYY_MM_DDTHH_MM_SSX.setTimeZone(TimeZone.getTimeZone("UTC"));
-        YYYY_MM_DD_HH_MM_SS_A.setTimeZone(TimeZone.getTimeZone("UTC"));
-        YYYY_MM_DD_HH_MM_A.setTimeZone(TimeZone.getTimeZone("UTC"));
-        F_YYYY_MM_DD.setTimeZone(TimeZone.getTimeZone("UTC"));
-        WAR_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
-        DD_MM_YY.setTimeZone(TimeZone.getTimeZone("UTC"));
-        DD_MM_YYYY.setTimeZone(TimeZone.getTimeZone("UTC"));
-        DD_MM_YYYY_HH.setTimeZone(TimeZone.getTimeZone("UTC"));
-    }
+//    static {
+//        MMDD_HH_MM_A.setTimeZone(TimeZone.getTimeZone("UTC"));
+//        YYYY_MM_DD_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
+//        MMDDYYYY_HH_MM_A.setTimeZone(TimeZone.getTimeZone("UTC"));
+//        YYYY_MM_DD_HH_MM_SS.setTimeZone(TimeZone.getTimeZone("UTC"));
+//        YYYY_MM_DDTHH_MM_SSX.setTimeZone(TimeZone.getTimeZone("UTC"));
+//        YYYY_MM_DD_HH_MM_SS_A.setTimeZone(TimeZone.getTimeZone("UTC"));
+//        YYYY_MM_DD_HH_MM_A.setTimeZone(TimeZone.getTimeZone("UTC"));
+//        F_YYYY_MM_DD.setTimeZone(TimeZone.getTimeZone("UTC"));
+//        WAR_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
+//        DD_MM_YY.setTimeZone(TimeZone.getTimeZone("UTC"));
+//        DD_MM_YYYY.setTimeZone(TimeZone.getTimeZone("UTC"));
+//        DD_MM_YYYY_HH.setTimeZone(TimeZone.getTimeZone("UTC"));
+//    }
 
     private static long calcTurn() {
         if (Settings.INSTANCE.TEST) {
@@ -359,29 +353,26 @@ public class TimeUtil {
         return 16482268800000L / 11L;
     }
 
-    public static long parseDate(DateFormat format, String dateStr) {
-        return parseDate(format, dateStr, false);
+    public static long parseDate(DateTimeFormatter formatter, String dateStr) {
+        LocalDateTime ldt = LocalDateTime.parse(dateStr, formatter);
+        return ldt.atZone(ZoneOffset.UTC).toInstant().toEpochMilli();
     }
 
-    public static String format(DateFormat format, Date date) {
-        synchronized (format) {
-            return format.format(date);
-        }
+    public static long parseDateSetYear(DateTimeFormatter formatter, String dateStr) {
+        LocalDateTime ldt = LocalDateTime.parse(dateStr, formatter);
+        int currentYear = LocalDateTime.now(ZoneOffset.UTC).getYear();
+        ldt = ldt.withYear(currentYear);
+        return ldt.atZone(ZoneOffset.UTC).toInstant().toEpochMilli();
     }
 
-    public static long parseDate(DateFormat format, String dateStr, boolean setYear) {
-        try {
-            synchronized (format) {
-                Date date = format.parse(dateStr);
-                if (setYear) {
-//                    int CAL_YEAR = Calendar.YEAR;
-                    date.setYear(LocalDateTime.now(ZoneOffset.UTC).getYear() - 1900);
-                }
-                return date.getTime();
-            }
-        } catch (ParseException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }
+    public static String format(DateTimeFormatter formatter, long timestamp) {
+        ZonedDateTime utcDateTime = Instant.ofEpochMilli(timestamp).atZone(ZoneOffset.UTC);
+        return formatter.format(utcDateTime);
     }
+
+//    public static String format(DateFormat format, Date date) {
+//        synchronized (format) {
+//            return format.format(date);
+//        }
+//    }
 }

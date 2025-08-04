@@ -1312,7 +1312,7 @@ public class UnsortedCommands {
         for (Map.Entry<Long, Integer> entry : history) {
             if (previous != null) {
                 long timestamp = previous.getKey();
-                String dateStr = TimeUtil.format(TimeUtil.MMDDYYYY_HH_MM_A, new Date(timestamp));
+                String dateStr = TimeUtil.format(TimeUtil.MMDDYYYY_HH_MM_A, timestamp);
 
                 int from = entry.getValue();
                 int to = previous.getValue();
@@ -1324,7 +1324,7 @@ public class UnsortedCommands {
         }
         if (previous != null) {
             long timestamp = previous.getKey();
-            String dateStr = TimeUtil.format(TimeUtil.MMDDYYYY_HH_MM_A, new Date(timestamp));
+            String dateStr = TimeUtil.format(TimeUtil.MMDDYYYY_HH_MM_A, timestamp);
 
             int to = previous.getValue();
             String from = "?";
@@ -1495,7 +1495,7 @@ public class UnsortedCommands {
             String dcStr = "UTC" + (offset >= 0 ? "+" : "") + offset + " (turn " + entry.getKey() + ")";
             Long turn = entry.getValue();
             long timestamp = TimeUtil.getTimeFromTurn(turn);
-            String dateStr = TimeUtil.format(TimeUtil.MMDDYYYY_HH_MM_A, new Date(timestamp));
+            String dateStr = TimeUtil.format(TimeUtil.MMDDYYYY_HH_MM_A, timestamp);
             body.append(dateStr + " | " + dcStr + "\n");
         }
         body.append("\n\n**Guess**: turn " + nation.getDc_turn());
@@ -1613,7 +1613,7 @@ public class UnsortedCommands {
                 header.set(2, r.getFromRank().name());
                 header.set(3, MarkupUtil.sheetUrl(PW.getName(r.getToId(), true), PW.getAllianceUrl(r.getToId())));
                 header.set(4, r.getToRank().name());
-                header.set(5, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(r.getDate())));
+                header.set(5, TimeUtil.format(TimeUtil.YYYY_MM_DD_HH_MM_SS, r.getDate()));
                 sheet.addRow(header);
             }
 

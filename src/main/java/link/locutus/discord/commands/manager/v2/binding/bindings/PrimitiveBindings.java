@@ -239,9 +239,9 @@ public class PrimitiveBindings extends BindingHelper {
                 String full = split[0] + "/" + split[1] + "/" + split[2];
                 long time;
                 if (split[2].length() == 2) {
-                    time = TimeUtil.parseDate(TimeUtil.DD_MM_YY, full, false);
+                    time = TimeUtil.parseDate(TimeUtil.DD_MM_YY, full);
                 } else {
-                    time = TimeUtil.parseDate(TimeUtil.DD_MM_YYYY, full, false);
+                    time = TimeUtil.parseDate(TimeUtil.DD_MM_YYYY, full);
                 }
                 return System.currentTimeMillis() - time;
             } else {
@@ -268,9 +268,9 @@ public class PrimitiveBindings extends BindingHelper {
             if (split.length == 3) {
                 String full = split[0] + "/" + split[1] + "/" + split[2];
                 if (split[2].length() == 2) {
-                    return TimeUtil.parseDate(TimeUtil.DD_MM_YY, full, false);
+                    return TimeUtil.parseDate(TimeUtil.DD_MM_YY, full);
                 } else {
-                    return TimeUtil.parseDate(TimeUtil.DD_MM_YYYY, full, false);
+                    return TimeUtil.parseDate(TimeUtil.DD_MM_YYYY, full);
                 }
             } else {
                 throw new IllegalArgumentException("Invalid time format: " + argument);

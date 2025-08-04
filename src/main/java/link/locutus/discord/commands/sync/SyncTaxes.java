@@ -256,7 +256,7 @@ public class SyncTaxes extends Command {
                 }
             }
 
-            header.add(TimeUtil.format(TimeUtil.MMDDYYYY_HH_MM_A, new Date(deposit.date)));
+            header.add(TimeUtil.format(TimeUtil.MMDDYYYY_HH_MM_A, deposit.date));
             header.add(total);
             header.add(totalScaled);
 

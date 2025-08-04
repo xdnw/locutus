@@ -190,8 +190,8 @@ public class NewsletterCommands {
         if (sendSince == 0) sendSince = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7);
         long now = endDate == null ? System.currentTimeMillis() : endDate;
 
-        String fromStr = TimeUtil.DD_MM_YYYY_HH.format(new Date(sendSince));
-        String toStr = TimeUtil.DD_MM_YYYY_HH.format(new Date(now));
+        String fromStr = TimeUtil.format(TimeUtil.DD_MM_YYYY_HH, sendSince);
+        String toStr = TimeUtil.format(TimeUtil.DD_MM_YYYY_HH, now);
 
         Set<Integer> subscribed = manager.getSubscribedNations(newsletter.getId());
         if (document != null) {
@@ -253,7 +253,7 @@ public class NewsletterCommands {
                 content = template.replace("{avatar}", avatarUrl)
                         .replace("{content}", content)
                         .replace("{username}", username)
-                        .replace("{date}", TimeUtil.DD_MM_YYYY_HH.format(new Date(date))).replace("\n[ ]+", "");
+                        .replace("{date}", TimeUtil.format(TimeUtil.DD_MM_YYYY_HH, date)).replace("\n[ ]+", "");
                 messages.computeIfAbsent(channel, f -> new ArrayList<>()).add(content);
             }
         }

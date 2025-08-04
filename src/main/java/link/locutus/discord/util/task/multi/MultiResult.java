@@ -235,7 +235,7 @@ public class MultiResult {
 
     private static long parseDate(String dateStr) throws ParseException {
         if (dateStr.equalsIgnoreCase("N/A")) return 0;
-        return TimeUtil.YYYY_MM_DD_HH_MM_SS_A.parse(dateStr).getTime();
+        return TimeUtil.parseDate(TimeUtil.YYYY_MM_DD_HH_MM_SS_A, dateStr);
     }
 
     private static void parseTrades(Element table, List<SameNetworkTrade> trades) throws ParseException {
@@ -248,7 +248,7 @@ public class MultiResult {
 
             int sellingNation = parseIdFromLink(cols.get(0));
             int buyingNation = parseIdFromLink(cols.get(1));
-            long dateOffered = TimeUtil.MMDDYYYY_HH_MM_A.parse(cols.get(2).text()).getTime();
+            long dateOffered = TimeUtil.parseDate(TimeUtil.MMDDYYYY_HH_MM_A, cols.get(2).text());
             ResourceType resource = parseResourceType(cols.get(3).select("img").attr("src"));
             int amount = Integer.parseInt(cols.get(3).text().replaceAll("[^\\d]", ""));
             String ppuText = cols.get(4).text();

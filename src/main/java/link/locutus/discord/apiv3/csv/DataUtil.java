@@ -733,7 +733,7 @@ public class DataUtil {
 //                long timeStamp = TimeUtil.getTimeFromDay(entry.getKey());
 //                // date string from unix
 //                ZonedDateTime time = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timeStamp), ZoneOffset.UTC);;
-//                String timeStr = TimeUtil.YYYY_MM_DD.format(time);
+//                String timeStr = TimeUtil.format(TimeUtil.YYYY_MM_DD, time);
 //                // avg farms
 //                data.put(1, numFarms / (double) numNations);
 //                // avg land

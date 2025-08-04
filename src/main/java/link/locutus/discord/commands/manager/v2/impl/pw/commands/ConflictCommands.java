@@ -247,11 +247,11 @@ public class ConflictCommands {
         for (Map.Entry<Integer, Conflict> entry : conflicts.entrySet()) {
             Conflict conflict = entry.getValue();
             response.append("**# " + conflict.getId() + ": ").append(conflict.getName()).append("** - ")
-                    .append(TimeUtil.DD_MM_YYYY.format(TimeUtil.getTimeFromTurn(conflict.getStartTurn()))).append(" - ");
+                    .append(TimeUtil.format(TimeUtil.DD_MM_YYYY, TimeUtil.getTimeFromTurn(conflict.getStartTurn()))).append(" - ");
             if (conflict.getEndTurn() == Long.MAX_VALUE) {
                 response.append("Present");
             } else {
-                response.append(TimeUtil.DD_MM_YYYY.format(TimeUtil.getTimeFromTurn(conflict.getEndTurn())));
+                response.append(TimeUtil.format(TimeUtil.DD_MM_YYYY, TimeUtil.getTimeFromTurn(conflict.getEndTurn())));
             }
             response.append("\n");
             response.append("- " + conflict.getTotalWars() + " wars\n");
@@ -279,11 +279,11 @@ public class ConflictCommands {
                 throw new IllegalArgumentException("Alliance " + alliance.getMarkdownUrl() + " is not in the conflict");
             }
             conflict.addParticipant(alliance.getAlliance_id(), side, null, time);
-            return "Set `" + conflict.getName() + "` end to " + TimeUtil.DD_MM_YYYY.format(time) + " for " + alliance.getMarkdownUrl();
+            return "Set `" + conflict.getName() + "` end to " + TimeUtil.format(TimeUtil.DD_MM_YYYY, time) + " for " + alliance.getMarkdownUrl();
         }
         conflict.setEnd(time);
         conflict.push(manager, null, false, true);
-        return "Set `" + conflict.getName() + "` end to " + TimeUtil.DD_MM_YYYY.format(time) +
+        return "Set `" + conflict.getName() + "` end to " + TimeUtil.format(TimeUtil.DD_MM_YYYY, time) +
                 "\nNote: this does not recalculate conflict data";
     }
 
@@ -307,11 +307,11 @@ public class ConflictCommands {
                 throw new IllegalArgumentException("Alliance " + alliance.getMarkdownUrl() + " is not in the conflict");
             }
             conflict.addParticipant(alliance.getAlliance_id(), side, time, null);
-            return "Set `" + conflict.getName() + "` start to " + TimeUtil.DD_MM_YYYY.format(time) + " for " + alliance.getMarkdownUrl();
+            return "Set `" + conflict.getName() + "` start to " + TimeUtil.format(TimeUtil.DD_MM_YYYY, time) + " for " + alliance.getMarkdownUrl();
         }
         conflict.setStart(time);
         conflict.push(manager, null, false, true);
-        return "Set `" + conflict.getName() + "` start to " + TimeUtil.DD_MM_YYYY.format(time) +
+        return "Set `" + conflict.getName() + "` start to " + TimeUtil.format(TimeUtil.DD_MM_YYYY, time) +
                 "\nNote: this does not recalculate conflict data";
     }
 
