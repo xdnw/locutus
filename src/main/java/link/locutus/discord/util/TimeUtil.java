@@ -8,6 +8,8 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.ChronoField;
 import java.time.temporal.ChronoUnit;
 import java.util.Locale;
 import java.util.concurrent.Executors;
@@ -15,38 +17,32 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class TimeUtil {
-    public static final DateTimeFormatter MMDD_HH_MM_A = DateTimeFormatter.ofPattern("MM/dd h:mm a", Locale.ENGLISH);
-    public static final DateTimeFormatter MMDDYYYY_HH_MM_A = DateTimeFormatter.ofPattern("MM/dd/yyyy h:mm a", Locale.ENGLISH);
-    public static final DateTimeFormatter YYYY_MM_DD_HH_MM_SS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH);
-    public static final DateTimeFormatter YYYY_MM_DDTHH_MM_SSX = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ssX", Locale.ENGLISH);
-    public static final DateTimeFormatter YYYY_MM_DD_HH_MM_SS_A = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss a", Locale.ENGLISH);
+    public static final DateTimeFormatter MMDD_HH_MM_A      = withOptionalTime("MM/dd h:mm a");
+    public static final DateTimeFormatter MMDDYYYY_HH_MM_A  = withOptionalTime("MM/dd/yyyy h:mm a");
+    public static final DateTimeFormatter YYYY_MM_DD_HH_MM_SS = withOptionalTime("yyyy-MM-dd HH:mm:ss");
+    public static final DateTimeFormatter YYYY_MM_DDTHH_MM_SSX = withOptionalTime("yyyy-MM-dd HH:mm:ssX");
+    public static final DateTimeFormatter YYYY_MM_DD_HH_MM_SS_A = withOptionalTime("yyyy-MM-dd hh:mm:ss a");
 
-    public static final DateTimeFormatter F_YYYY_MM_DD = DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ENGLISH);
+    public static final DateTimeFormatter F_YYYY_MM_DD      = withOptionalTime("yyyy-MM-dd");
+    public static final DateTimeFormatter YYYY_MM_DD_HH_MM_A = withOptionalTime("yyyy-MM-dd hh:mm a");
 
-    public static final DateTimeFormatter YYYY_MM_DD_HH_MM_A = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm a", Locale.ENGLISH);
+    public static final DateTimeFormatter WAR_FORMAT        = withOptionalTime("yyyy-MM-dd'T'HH:mm:ssX");
+    public static final DateTimeFormatter DD_MM_YY          = withOptionalTime("dd/MM/yy");
+    public static final DateTimeFormatter DD_MM_YYYY        = withOptionalTime("dd/MM/yyyy");
+    public static final DateTimeFormatter YYYY_MM_DD_FORMAT = withOptionalTime("yyyy-MM-dd");
 
-    public static final DateTimeFormatter WAR_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX", Locale.ENGLISH);
-    public static final DateTimeFormatter DD_MM_YY = DateTimeFormatter.ofPattern("dd/MM/yy", Locale.ENGLISH);
-    public static final DateTimeFormatter DD_MM_YYYY = DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.ENGLISH);
-    public static final DateTimeFormatter YYYY_MM_DD_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ENGLISH);
+    public static final DateTimeFormatter YYYY_MM_DD        = withOptionalTime("yyyy-MM-dd");
+    public static final DateTimeFormatter DD_MM_YYYY_HH     = withOptionalTime("dd/MM/yyyy HH");
 
-    public static final DateTimeFormatter YYYY_MM_DD = DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ENGLISH);
-    public static final DateTimeFormatter DD_MM_YYYY_HH = DateTimeFormatter.ofPattern("dd/MM/yyyy HH", Locale.ENGLISH);
-
-//    static {
-//        MMDD_HH_MM_A.setTimeZone(TimeZone.getTimeZone("UTC"));
-//        YYYY_MM_DD_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
-//        MMDDYYYY_HH_MM_A.setTimeZone(TimeZone.getTimeZone("UTC"));
-//        YYYY_MM_DD_HH_MM_SS.setTimeZone(TimeZone.getTimeZone("UTC"));
-//        YYYY_MM_DDTHH_MM_SSX.setTimeZone(TimeZone.getTimeZone("UTC"));
-//        YYYY_MM_DD_HH_MM_SS_A.setTimeZone(TimeZone.getTimeZone("UTC"));
-//        YYYY_MM_DD_HH_MM_A.setTimeZone(TimeZone.getTimeZone("UTC"));
-//        F_YYYY_MM_DD.setTimeZone(TimeZone.getTimeZone("UTC"));
-//        WAR_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
-//        DD_MM_YY.setTimeZone(TimeZone.getTimeZone("UTC"));
-//        DD_MM_YYYY.setTimeZone(TimeZone.getTimeZone("UTC"));
-//        DD_MM_YYYY_HH.setTimeZone(TimeZone.getTimeZone("UTC"));
-//    }
+    private static DateTimeFormatter withOptionalTime(String pattern) {
+        return new DateTimeFormatterBuilder()
+                .appendPattern(pattern)
+                // if time fields are missing, default to midnight
+                .parseDefaulting(ChronoField.HOUR_OF_DAY,    0)
+                .parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0)
+                .parseDefaulting(ChronoField.SECOND_OF_MINUTE, 0)
+                .toFormatter(Locale.ENGLISH);
+    }
 
     private static long calcTurn() {
         if (Settings.INSTANCE.TEST) {
@@ -354,11 +350,17 @@ public class TimeUtil {
     }
 
     public static long parseDate(DateTimeFormatter formatter, String dateStr) {
+        if (dateStr.startsWith("0000-00-00")) {
+            return 0L;  // or 0L for epoch
+        }
         LocalDateTime ldt = LocalDateTime.parse(dateStr, formatter);
         return ldt.atZone(ZoneOffset.UTC).toInstant().toEpochMilli();
     }
 
     public static long parseDateSetYear(DateTimeFormatter formatter, String dateStr) {
+        if (dateStr.startsWith("0000-00-00")) {
+            return 0L;  // or 0L for epoch
+        }
         LocalDateTime ldt = LocalDateTime.parse(dateStr, formatter);
         int currentYear = LocalDateTime.now(ZoneOffset.UTC).getYear();
         ldt = ldt.withYear(currentYear);

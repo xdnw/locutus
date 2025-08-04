@@ -84,9 +84,7 @@ public class NationUpdateProcessor {
         } else {
             Logg.text("Failed to fetch uid for " + nation.getNation_id() + " (not found)");
         }
-
-        result.research = Research.parseResearch(dom);
-
+//        result.research = Research.parseResearch(dom);
         return result;
     }
 

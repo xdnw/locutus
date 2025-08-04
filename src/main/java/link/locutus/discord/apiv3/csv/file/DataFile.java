@@ -194,7 +194,7 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
                             try {
                                 value = column.read(cell);
                             } catch (RuntimeException e) {
-                                System.err.println("Error reading column `" + column.getName() + "` in row " + (all.size() + 1) + ": " + cell + " in file: " + csvFile.getName());
+                                System.err.println("Error reading column `" + column.getName() + "/" + column.getIndex() + "` in row " + (all.size() + 1) + ": " + cell + " in file: " + csvFile.getName());
                                 throw e;
                             }
                             rowData.add(value);
