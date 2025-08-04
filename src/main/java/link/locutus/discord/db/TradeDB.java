@@ -157,21 +157,16 @@ public class TradeDB extends DBMainV2 {
         if (date == today) {
             return defaultValue;
         }
-        long timingMs = System.currentTimeMillis();
         long latestDayCalculated = lastDayWeeklyAverage[type.ordinal()];
         if (latestDayCalculated == -1 || latestDayCalculated != today) {
             synchronized (lastDayWeeklyAverage) {
                 latestDayCalculated = lastDayWeeklyAverage[type.ordinal()];
                 if (latestDayCalculated == -1) {
-                    timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("WeekAvg1 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
                     latestDayCalculated = getLatestWeeklyAverageDay(type);
-                    timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("WeekAvg2 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
                     lastDayWeeklyAverage[type.ordinal()] = latestDayCalculated;
                 }
                 if (latestDayCalculated != today) {
-                    timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("WeekAvg3 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
                     recalculateWeeklyAverage(type, latestDayCalculated, today);
-                    timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("WeekAvg4 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
                 }
             }
         }
@@ -180,13 +175,10 @@ public class TradeDB extends DBMainV2 {
                 .select("low")
                 .where(QueryCondition.equals("type", type.ordinal()).and(QueryCondition.equals("day", day)))
                 .limit(1);
-        timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("WeekAvg5 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
         try (ResultSet rs = builder.executeRaw()) {
             if (rs.next()) {
-                timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("WeekAvg6 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
                 return rs.getDouble(1);
             } else {
-                timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("WeekAvg7 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
                 return defaultValue;
             }
         } catch (SQLException e) {

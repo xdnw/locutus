@@ -1167,7 +1167,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                     "`estimate_amount` BLOB NOT NULL, " +
                     "`date_created` BIGINT NOT NULL DEFAULT " + System.currentTimeMillis() + ")");
         }
-        importLegacyDepositOffset();
     }
 
     public List<GrantRequest> getGrantRequests() {
@@ -2282,7 +2281,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return transfers;
     }
 
-    private void importLegacyDepositOffset() {
+    public void importLegacyDepositOffset() {
         try {
             if (!tableExists("BANK_DEPOSIT")) return;
             Map<Integer, Map<String, double[]>> legacyOffset = new Int2ObjectOpenHashMap<>();

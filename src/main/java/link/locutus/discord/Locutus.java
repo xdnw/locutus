@@ -394,6 +394,7 @@ public final class Locutus extends ListenerAdapter {
 
             try {
                 db = new GuildDB(guild);
+                db.importLegacyDepositOffset();
                 guildDatabases.put(guild.getIdLong(), db);
                 return db;
             } catch (Throwable e) {

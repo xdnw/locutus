@@ -2404,11 +2404,9 @@ public abstract class DBNation implements NationOrAlliance {
             tracked = db.getTrackedBanks();
         }
 
-        long timingMs = System.currentTimeMillis();
         List<Transaction2> transactions = new ObjectArrayList<>();
         if (offset) {
             List<Transaction2> offsets = db.getDepositOffsetTransactions(getNation_id(), start, end);
-            timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Diff1 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
             transactions.addAll(offsets);
         }
 
@@ -2423,14 +2421,11 @@ public abstract class DBNation implements NationOrAlliance {
         } else {
             defTaxBase = new int[]{0, 0};
         }
-        timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Diff2 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
 
         boolean includeNoInternal = defTaxBase[0] != 100 || defTaxBase[1] != 100;
         boolean includeMaxInternal = false;
 
         Set<Integer> finalTracked = tracked.stream().filter(f -> f <= Integer.MAX_VALUE && db.isAllianceId(f.intValue())).map(Long::intValue).collect(Collectors.toSet());
-
-        timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Diff3 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
 
         if (includeTaxes) {
             Locutus.imp().getBankDB().iterateTaxesPaid(Set.of(getNation_id()), finalTracked, includeNoInternal, includeMaxInternal, start, end, new Consumer<TaxDeposit>() {
@@ -2457,11 +2452,8 @@ public abstract class DBNation implements NationOrAlliance {
                 }
             });
         }
-        timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Diff5 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
         List<Transaction2> records = getTransactions(updateThreshold, priority, start, end);
-        timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Diff6 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
         transactions.addAll(records);
-        timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Diff7 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
 
         List<Map.Entry<Integer, Transaction2>> result = new ObjectArrayList<>();
 
@@ -2471,7 +2463,6 @@ public abstract class DBNation implements NationOrAlliance {
             if (sign == null) continue; // Not a tracked bank
             result.add(new KeyValue<>(sign, record));
         }
-        timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Diff8 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
         return result;
     }
 

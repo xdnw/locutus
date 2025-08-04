@@ -854,7 +854,6 @@ public final class PW {
                 Set<Byte> convertCached = null;
                 boolean setConvert = false;
                 cashValue = 0d;
-                long timingMs = System.currentTimeMillis();
                 for (int i = 0; i < amount.length; i++) {
                     ResourceType resource = ResourceType.values[i];
                     double amt = amount[i];
@@ -873,9 +872,7 @@ public final class PW {
                         convertCached = new ByteOpenHashSet();
                     }
                     convertCached.add((byte) resource.ordinal());
-                    timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Cash1 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
                     Double avg = tradeDb.getWeeklyAverage(resource, date, null);
-                    timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Cash2 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
                     if (avg != null) {
                         cashValue += amt * avg * rate;
                     }
@@ -885,7 +882,6 @@ public final class PW {
                 }
                 if (!hasHash)
                 {
-                    timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Cash3 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
                     if (hash == null) hash = getHash.get();
 
                     String note = record.note;
@@ -895,13 +891,10 @@ public final class PW {
                     note += " #" + hash + " " + "#cash=" + MathMan.format(cashValue).replace(",", "");
                     record.note = note.trim();
 
-                    timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Cash4 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
                     if (record.isInternal()) {
                         guildDB.updateNote(record.original_id, record.note);
-                        timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Cash5 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
                     } else {
                         Locutus.imp().getBankDB().addTransaction(record, false);
-                        timingMs = (System.currentTimeMillis() - timingMs); if (timingMs > 0) System.out.println("Cash6 = " + timingMs + "ms"); timingMs = System.currentTimeMillis();
                     }
                 }
             }
