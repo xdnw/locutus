@@ -574,12 +574,16 @@ public final class PW {
         long allowConversionDefaultCutoff = 1735265627000L;
         boolean allowConversionDefault = guildDB.getOrNull(GuildKey.RESOURCE_CONVERSION) == Boolean.TRUE;
         if (allowConversionDefault && nation != null) {
-            Role role = Roles.RESOURCE_CONVERSION.toRole2(guildDB);
+            GuildDB delegate = guildDB.getDelegateServer();
+            if (delegate == null) {
+                delegate = guildDB;
+            }
+            Role role = Roles.RESOURCE_CONVERSION.toRole2(delegate);
             if (role != null) {
                 allowConversionDefault = false;
                 User user = nation.getUser();
                 if (user != null) {
-                    Member member = guildDB.getGuild().getMember(user);
+                    Member member = delegate.getGuild().getMember(user);
                     if (member != null) {
                         if (member.getUnsortedRoles().contains(role)) {
                             allowConversionDefault = true;

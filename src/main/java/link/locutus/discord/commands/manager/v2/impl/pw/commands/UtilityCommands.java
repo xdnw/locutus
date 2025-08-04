@@ -1414,7 +1414,7 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Add or remove the configured auto roles to all users in this discord guild")
-    @RolePermission(Roles.INTERNAL_AFFAIRS)
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, alliance = true, any = true)
     public static String autoroleall(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command, @Switch("f") boolean force) {
         IAutoRoleTask task = db.getAutoRoleTask();
         task.syncDB();

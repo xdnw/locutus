@@ -434,7 +434,7 @@ public class AdminCommands {
 
         @Command(desc = "Sync and debug war rooms",
     keywords = {WAR, ROOM, SYNC, CHANNEL, UPDATE, WARCAT, CATEGORY})
-    @RolePermission(Roles.ADMIN)
+    @RolePermission(value = {Roles.ADMIN, Roles.MILCOM}, any = true)
     public String syncWarrooms(@Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, @Switch("f") boolean force) throws IOException {
         long start = System.currentTimeMillis();
 
