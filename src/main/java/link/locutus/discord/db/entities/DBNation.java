@@ -3086,8 +3086,22 @@ public abstract class DBNation implements NationOrAlliance {
         return data()._nationId();
     }
 
-    public LootEntry getBeigeLoot() {
-        return Locutus.imp().getNationDB().getLoot(getNation_id());
+    public LootEntry getBeigeLoot(ValueStore store) {
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, getBeigeLoot.get());
+        return scoped.getMap(this,
+        (ThrowingFunction<List<DBNation>, Map<DBNation, LootEntry>>) f -> {
+            Set<Integer> ids = new IntArraySet();
+            for (DBNation nation : f) ids.add(nation.getId());
+            Map<Integer, LootEntry> map = Locutus.imp().getNationDB().getLootMap(ids);
+            Map<DBNation, LootEntry> result = new Object2ObjectOpenHashMap<>();
+            for (DBNation nation : f) {
+                LootEntry loot = map.get(nation.getNation_id());
+                if (loot != null) {
+                    result.put(nation, loot);
+                }
+            }
+            return result;
+        });
     }
 
     public String toMarkdown() {
@@ -3299,16 +3313,16 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Total stockpile value based on last war loss or espionage")
-    public double getBeigeLootTotal() {
-        LootEntry loot = getBeigeLoot();
+    public double getBeigeLootTotal(ValueStore store) {
+        LootEntry loot = getBeigeLoot(store);
         return loot == null ? 0 : ResourceType.convertedTotal(loot.getTotal_rss());
     }
 
     @Command(desc = "Estimated loot value including aliance bank loot when defeated in a raid war based on last war loss or espionage")
-    public double lootTotal() {
+    public double lootTotal(ValueStore store) {
         double[] knownResources = new double[ResourceType.values.length];
         double[] buffer = new double[knownResources.length];
-        LootEntry loot = getBeigeLoot();
+        LootEntry loot = getBeigeLoot(store);
         double convertedTotal = loot == null ? 0 : loot.convertedTotal() * 0.14 * lootModifier();
 
         if (getPosition() > 1 && data()._allianceId() != 0) {
@@ -3371,8 +3385,8 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     @Command
-    public Map<ResourceType, Double> getLootRevenueTotal() {
-        LootEntry loot = getBeigeLoot();
+    public Map<ResourceType, Double> getLootRevenueTotal(ValueStore store) {
+        LootEntry loot = getBeigeLoot(store);
         int turnsInactive = getTurnsInactiveForLoot(loot);
         double lootFactor = 0.14 * lootModifier();
 
@@ -3443,8 +3457,8 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     @Command
-    public double getLootRevenueConverted() {
-        return ResourceType.convertedTotal(getLootRevenueTotal());
+    public double getLootRevenueConverted(ValueStore store) {
+        return ResourceType.convertedTotal(getLootRevenueTotal(store));
     }
 
     public double estimateRssLootValue(double[] knownResources, LootEntry lootHistory, double[] buffer, boolean fetchStats) {

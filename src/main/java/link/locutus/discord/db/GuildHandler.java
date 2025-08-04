@@ -1599,34 +1599,29 @@ public class GuildHandler {
         onWarAlert(channel, wars, rateLimit, true);
 
         // TODO audit for raiding inactive with terrible loot
-        handleBadLootAudit(wars);
+//        handleBadLootAudit(wars);
     }
 
-    public void handleBadLootAudit(List<Map.Entry<DBWar, DBWar>> wars) {
-        if (true) return;
-        for (Map.Entry<DBWar, DBWar> entry : wars) {
-            DBWar war = entry.getValue();
-            if (entry.getKey() != null || war == null) continue;
-            DBNation defender = war.getNation(false);
-            if (defender == null) continue;
-            DBNation attacker = war.getNation(true);
-            if (attacker == null) continue;
-
-            LootEntry lootInfo = defender.getBeigeLoot();
-            if (lootInfo == null) continue;
-            if (defender.lastActiveMs() > lootInfo.getDate()) continue;
-
-            Set<DBNation> targets = Locutus.imp().getNationDB().getNationsMatching(f -> f.getAlliance_id() == 0 && attacker.isInWarRange(f));
-            if (targets.isEmpty()) continue;
-
-
-
-
-            double revenue = ResourceType.convertedTotal(defender.getRevenue());
-
-
-        }
-    }
+//    public void handleBadLootAudit(List<Map.Entry<DBWar, DBWar>> wars) {
+//        if (true) return;
+//        for (Map.Entry<DBWar, DBWar> entry : wars) {
+//            DBWar war = entry.getValue();
+//            if (entry.getKey() != null || war == null) continue;
+//            DBNation defender = war.getNation(false);
+//            if (defender == null) continue;
+//            DBNation attacker = war.getNation(true);
+//            if (attacker == null) continue;
+//
+//            LootEntry lootInfo = defender.getBeigeLoot();
+//            if (lootInfo == null) continue;
+//            if (defender.lastActiveMs() > lootInfo.getDate()) continue;
+//
+//            Set<DBNation> targets = Locutus.imp().getNationDB().getNationsMatching(f -> f.getAlliance_id() == 0 && attacker.isInWarRange(f));
+//            if (targets.isEmpty()) continue;
+//
+//            double revenue = ResourceType.convertedTotal(defender.getRevenue());
+//        }
+//    }
 
     public void onWarAlert(MessageChannel channel, List<Map.Entry<DBWar, DBWar>> wars, boolean rateLimit, boolean offensive) {
         if (wars.isEmpty()) return;

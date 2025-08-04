@@ -1,7 +1,9 @@
 package link.locutus.discord.commands.manager.v2.table.imp;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.db.entities.DBNation;
@@ -31,9 +33,10 @@ public class NthBeigeLoot extends SimpleTable<PriorityQueue<Double>> {
             }
         };
 
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nationsSet, DBNation.class);
         for (DBNation nation : nationsSet) {
             double score = nation.getScore();
-            double loot = nation.getBeigeLootTotal();
+            double loot = nation.getBeigeLootTotal(cacheStore);
             if (loot == 0) continue;
             int min = (int) (score / PW.WAR_RANGE_MAX_MODIFIER);
             int max = (int) (score / PW.WAR_RANGE_MIN_MODIFIER);

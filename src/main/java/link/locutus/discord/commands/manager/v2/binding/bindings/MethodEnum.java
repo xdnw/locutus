@@ -13,6 +13,8 @@ public enum MethodEnum {
     getUpdateTZ,
     getFreeOffSpyOps,
     getTradeValue,
+    getBeigeLoot,
+    lootTotal,
 
     // GuildDB methods
     getTrackedBanks,

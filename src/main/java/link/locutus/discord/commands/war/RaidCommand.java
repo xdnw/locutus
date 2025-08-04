@@ -10,6 +10,8 @@ import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
 import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
@@ -373,10 +375,11 @@ public class RaidCommand extends Command {
         Map<DBNation, Double> lootEst = new HashMap<>();
 
         long turn = TimeUtil.getTurn();
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(enemies, DBNation.class);
         for (DBNation enemy : enemies) {
             double value = 0;
             {
-                LootEntry loot = enemy.getBeigeLoot();
+                LootEntry loot = enemy.getBeigeLoot(cacheStore);
                 if (loot != null) {
                     double[] total = loot.getTotal_rss();
                     for (ResourceType type : ResourceType.values) {

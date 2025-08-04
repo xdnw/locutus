@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.csv.column.ProjectColumn;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
@@ -181,7 +182,7 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
     }
 
     @Override
-    public double lootTotal() {
+    public double lootTotal(ValueStore store) {
         throw unsupported();
     }
 

@@ -1473,6 +1473,8 @@ public class IACommands {
         Map<DBNation, List<Object>> rows = new HashMap<>();
         Map<DBNation, Double> loot = new Object2DoubleOpenHashMap<>();
 
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(attackers, DBNation.class);
+
         for (DBNation nation : attackers) {
             List<Object> row = new ArrayList<>();
             row.add(MarkupUtil.sheetUrl(nation.getNation(), PW.getUrl(nation.getNation_id(), false)));
@@ -1493,7 +1495,7 @@ public class IACommands {
                 boolean inactive = other.active_m() > TimeUnit.DAYS.toMinutes(5);
                 if (inactive) {
                     offInactive++;
-                    lootInactive += other.lootTotal();
+                    lootInactive += other.lootTotal(cacheStore);
                 }
             }
             row.add(offInactive + "");

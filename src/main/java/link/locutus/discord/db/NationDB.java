@@ -2621,6 +2621,11 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         this.loanManager = new LoanManager(this);
 
         createDeletionsTables();
+        purgeDeletedLootData();
+    }
+
+    private void purgeDeletedLootData() {
+        executeStmt("DELETE FROM NATION_LOOT3 WHERE id NOT IN (SELECT nation_id FROM NATIONS2);");
     }
 
     private void createKicksTable() {
@@ -3980,6 +3985,27 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
     }
 
+    public Map<Integer, LootEntry> getLootMap(Set<Integer> nationIds) {
+        if (nationIds.isEmpty()) return Collections.emptyMap();
+        if (nationIds.size() == 1) {
+            int nationId = nationIds.iterator().next();
+            LootEntry entry = getLoot(nationId);
+            return entry == null ? Collections.emptyMap() : Map.of(nationId, entry);
+        }
+
+        List<Integer> nationIdsSorted = new IntArrayList(nationIds);
+        nationIdsSorted.sort(Comparator.naturalOrder());
+        String query = "SELECT * FROM NATION_LOOT3 WHERE id IN " + StringMan.getString(nationIdsSorted) + " ORDER BY `date` DESC";
+        Map<Integer, LootEntry> result = new Int2ObjectOpenHashMap<>();
+        query(query, (ThrowingConsumer<PreparedStatement>) stmt -> {},
+        (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                LootEntry entry = new LootEntry(rs);
+                result.putIfAbsent(entry.getId(), entry);
+            }
+        });
+        return result;
+    }
 
     public Map<Integer, LootEntry> getNationLootMap() {
         Map<Integer, LootEntry> result = new Int2ObjectOpenHashMap<>();

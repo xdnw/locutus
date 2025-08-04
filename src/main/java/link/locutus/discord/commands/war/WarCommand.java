@@ -2,8 +2,11 @@ package link.locutus.discord.commands.war;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -14,27 +17,20 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Activity;
 import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.apiv1.enums.city.building.Buildings;
+import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
-import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.BiFunction;
@@ -301,7 +297,11 @@ public class WarCommand extends Command {
                     int count = 0;
 
                     boolean isUpdeclare = false;
-
+                    List<DBNation> viewedNations = nationNetValues.subList(0, Math.min(num, nationNetValues.size()))
+                            .stream()
+                            .map(Map.Entry::getKey)
+                            .toList();
+                    ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(viewedNations, DBNation.class);
                     for (Map.Entry<DBNation, Double> nationNetValue : nationNetValues) {
                         if (count++ == num) break;
 
@@ -312,7 +312,7 @@ public class WarCommand extends Command {
                                 .append(" | " + String.format("%16s", nation.getNation()))
                                 .append(" | " + String.format("%16s", nation.getAllianceName()));
 
-                        double total = nation.lootTotal();
+                        double total = nation.lootTotal(cacheStore);
                         if (total != 0) {
                             response.append(": $" + MathMan.format(total));
                         }

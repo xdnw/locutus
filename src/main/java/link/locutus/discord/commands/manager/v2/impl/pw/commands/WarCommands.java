@@ -7,6 +7,7 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -239,7 +240,8 @@ public class WarCommands {
         targets.removeIf(f -> f.getVm_turns() > 14 * 12);
 
         if (requiredLoot != null && requiredLoot != 0) {
-            targets.removeIf(f -> f.lootTotal() < requiredLoot);
+            ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(targets, DBNation.class);
+            targets.removeIf(f -> f.lootTotal(cacheStore) < requiredLoot);
         }
 
         if (targets.isEmpty()) {
@@ -1061,6 +1063,10 @@ public class WarCommands {
         StringBuilder response = new StringBuilder();
         numResults = Math.min(numResults, 25);
 
+        List<DBNation> viewedNations = counterChance.subList(0, Math.min(numResults, counterChance.size()))
+                .stream().map(Map.Entry::getKey).toList();
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(viewedNations, DBNation.class);
+
         for (int i = 0; i < Math.min(numResults, counterChance.size()); i++) {
             Map.Entry<DBNation, Double> entry = counterChance.get(i);
             DBNation nation = entry.getKey();
@@ -1071,7 +1077,7 @@ public class WarCommands {
                     .append(" | " + String.format("%16s", nation.getNation()))
                     .append(" | " + String.format("%16s", nation.getAllianceName()));
 
-            double total = nation.lootTotal();
+            double total = nation.lootTotal(cacheStore);
             if (total != 0) {
                 response.append(": $" + MathMan.format(total));
             }
@@ -1256,6 +1262,12 @@ public class WarCommands {
 
         int count = 0;
 
+        List<DBNation> viewedNations = nationNetValues.stream()
+                .map(Map.Entry::getKey)
+                .limit(numResults)
+                .toList();
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(viewedNations, DBNation.class);
+
         for (Map.Entry<DBNation, Double> nationNetValue : nationNetValues) {
             if (count++ == numResults) break;
 
@@ -1266,7 +1278,7 @@ public class WarCommands {
                     .append(" | " + String.format("%16s", nation.getNation()))
                     .append(" | " + String.format("%16s", nation.getAllianceName()));
 
-            double total = nation.lootTotal();
+            double total = nation.lootTotal(cacheStore);
             if (total != 0) {
                 response.append(": $" + MathMan.format(total));
             }
@@ -1958,10 +1970,11 @@ public class WarCommands {
         }
 
         // sort targets by loot
-        List<DBNation> targetsSorted = new ArrayList<>(targets);
+        List<DBNation> targetsSorted = new ObjectArrayList<>(targets);
+        ValueStore<DBNation> targetCacheStore = PlaceholderCache.createCache(targets, DBNation.class);
         targetsSorted.sort((o1, o2) -> {
-            Map<ResourceType, Double> loot1 = o1.getLootRevenueTotal();
-            Map<ResourceType, Double> loot2 = o2.getLootRevenueTotal();
+            Map<ResourceType, Double> loot1 = o1.getLootRevenueTotal(targetCacheStore);
+            Map<ResourceType, Double> loot2 = o2.getLootRevenueTotal(targetCacheStore);
             double lootValue1 = ResourceType.convertedTotal(loot1);
             double lootValue2 = ResourceType.convertedTotal(loot2);
             return Double.compare(lootValue2, lootValue1);
@@ -2038,7 +2051,7 @@ public class WarCommands {
 
                 if (defender.getGroundStrength(true, false) > attacker.getGroundStrength(true, false) && defender.getAircraft() > attacker.getAircraft() * 0.33 && defender.getShips() > attacker.getShips() * 0.33) return 0d;
 
-                double[] loot = loots.computeIfAbsent(defender, f -> ResourceType.resourcesToArray(f.getLootRevenueTotal()));
+                double[] loot = loots.computeIfAbsent(defender, f -> ResourceType.resourcesToArray(f.getLootRevenueTotal(targetCacheStore)));
                 double lootValue = ResourceType.convertedTotal(loot);
 
                 double groundFactor = easyGroundLoot ? 1.1 : canGroundLoot ? 0.8 : 0;

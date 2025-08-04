@@ -591,7 +591,7 @@ public class NationUpdateProcessor {
         if (defender.getDef() > 2) return false;
         if (defender.active_m() > 260 * 60 * 24) return false;
         if (defender.isBeige()) return false;
-        double loot = defender.lootTotal();
+        double loot = defender.lootTotal(null);
         if (loot < 10000000) {
             return false;
         }
@@ -652,7 +652,7 @@ public class NationUpdateProcessor {
                     membersInRange++;
 
                     double requiredLoot = attacker.getBeigeAlertRequiredLoot();
-                    if (!LeavingBeigeAlert.testBeigeAlertAuto(attacker, defender, requiredLoot, mode, canRaid, scoreLeewayFunc, lootEstimateByNation, false)) {
+                    if (!LeavingBeigeAlert.testBeigeAlertAuto(null, attacker, defender, requiredLoot, mode, canRaid, scoreLeewayFunc, lootEstimateByNation, false)) {
                         continue;
                     }
 

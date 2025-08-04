@@ -285,7 +285,7 @@ public class DBWar {
             body = body.append(IShrink.of(enemy.getNation(), enemy.getMarkdownUrl()))
                     .append(IShrink.of("|", " | ")).append(IShrink.of(enemy.getAllianceName(), enemy.getAllianceUrlMarkup())).append(":");
             {
-                double lootValue = enemy.lootTotal();
+                double lootValue = enemy.lootTotal(null);
                 if (outputLootValue != null) {
                     outputLootValue.accept(lootValue);
                 }

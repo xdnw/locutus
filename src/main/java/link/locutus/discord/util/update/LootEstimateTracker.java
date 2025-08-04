@@ -127,7 +127,7 @@ public class LootEstimateTracker {
             }
         }
         if (newInstance) {
-            LootEntry loot = nation.getBeigeLoot();
+            LootEntry loot = nation.getBeigeLoot(null);
             if (loot != null) {
                 existing.min = loot.getTotal_rss().clone();
                 existing.max = loot.getTotal_rss().clone();
