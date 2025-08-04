@@ -23,14 +23,14 @@ import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
 public class ArrayUtil {
-    public static byte[] compressLZ4(byte[] data) {
+    public static byte[] compressLZ4(byte[] data, int len) {
         LZ4Factory factory = LZ4Factory.fastestInstance();
         LZ4Compressor compressor = factory.highCompressor(5);
-        int maxCompressedLength = compressor.maxCompressedLength(data.length);
+        int maxCompressedLength = compressor.maxCompressedLength(len);
         byte[] compressed = new byte[maxCompressedLength];
-        int compressedLength = compressor.compress(data, 0, data.length, compressed, 0, maxCompressedLength);
+        int compressedLength = compressor.compress(data, 0, len, compressed, 0, maxCompressedLength);
         ByteBuffer buffer = ByteBuffer.allocate(4 + compressedLength);
-        buffer.putInt(data.length);
+        buffer.putInt(len);
         buffer.put(compressed, 0, compressedLength);
         return buffer.array();
     }

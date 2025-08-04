@@ -9,6 +9,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.ResolverStyle;
 import java.time.temporal.ChronoField;
 import java.time.temporal.ChronoUnit;
 import java.util.Locale;
@@ -35,13 +36,42 @@ public class TimeUtil {
     public static final DateTimeFormatter DD_MM_YYYY_HH     = withOptionalTime("dd/MM/yyyy HH");
 
     private static DateTimeFormatter withOptionalTime(String pattern) {
-        return new DateTimeFormatterBuilder()
+        DateTimeFormatterBuilder b = new DateTimeFormatterBuilder()
+                .parseCaseInsensitive()
+                .parseLenient()
                 .appendPattern(pattern)
-                // if time fields are missing, default to midnight
-                .parseDefaulting(ChronoField.HOUR_OF_DAY,    0)
-                .parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0)
-                .parseDefaulting(ChronoField.SECOND_OF_MINUTE, 0)
-                .toFormatter(Locale.ENGLISH);
+                .parseDefaulting(ChronoField.MINUTE_OF_HOUR,     0)
+                .parseDefaulting(ChronoField.SECOND_OF_MINUTE,   0);
+
+        if (pattern.contains("H")) {
+            b.parseDefaulting(ChronoField.HOUR_OF_DAY, 0);
+        } else if (pattern.contains("h") && pattern.contains("a")) {
+            // use CLOCK_HOUR_OF_AMPM for 'hh' patterns
+            b.parseDefaulting(ChronoField.AMPM_OF_DAY,       0)
+                    .parseDefaulting(ChronoField.CLOCK_HOUR_OF_AMPM, 12);
+        } else {
+            b.parseDefaulting(ChronoField.HOUR_OF_DAY, 0);
+        }
+        return b.toFormatter(Locale.ENGLISH)
+                .withResolverStyle(ResolverStyle.LENIENT);
+    }
+
+    public static long parseDate(DateTimeFormatter formatter, String dateStr) {
+        if (dateStr.startsWith("0000-00-00")) {
+            return 0L;  // or 0L for epoch
+        }
+        LocalDateTime ldt = LocalDateTime.parse(dateStr.toUpperCase(Locale.ROOT), formatter);
+        return ldt.atZone(ZoneOffset.UTC).toInstant().toEpochMilli();
+    }
+
+    public static long parseDateSetYear(DateTimeFormatter formatter, String dateStr) {
+        if (dateStr.startsWith("0000-00-00")) {
+            return 0L;  // or 0L for epoch
+        }
+        LocalDateTime ldt = LocalDateTime.parse(dateStr.toUpperCase(Locale.ROOT), formatter);
+        int currentYear = LocalDateTime.now(ZoneOffset.UTC).getYear();
+        ldt = ldt.withYear(currentYear);
+        return ldt.atZone(ZoneOffset.UTC).toInstant().toEpochMilli();
     }
 
     private static long calcTurn() {
@@ -347,24 +377,6 @@ public class TimeUtil {
 
     public static long getOrigin() {
         return 16482268800000L / 11L;
-    }
-
-    public static long parseDate(DateTimeFormatter formatter, String dateStr) {
-        if (dateStr.startsWith("0000-00-00")) {
-            return 0L;  // or 0L for epoch
-        }
-        LocalDateTime ldt = LocalDateTime.parse(dateStr, formatter);
-        return ldt.atZone(ZoneOffset.UTC).toInstant().toEpochMilli();
-    }
-
-    public static long parseDateSetYear(DateTimeFormatter formatter, String dateStr) {
-        if (dateStr.startsWith("0000-00-00")) {
-            return 0L;  // or 0L for epoch
-        }
-        LocalDateTime ldt = LocalDateTime.parse(dateStr, formatter);
-        int currentYear = LocalDateTime.now(ZoneOffset.UTC).getYear();
-        ldt = ldt.withYear(currentYear);
-        return ldt.atZone(ZoneOffset.UTC).toInstant().toEpochMilli();
     }
 
     public static String format(DateTimeFormatter formatter, long timestamp) {
