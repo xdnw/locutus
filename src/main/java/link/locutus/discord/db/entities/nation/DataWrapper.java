@@ -16,6 +16,14 @@ public abstract class DataWrapper<T extends DataHeader> {
         this.date = date;
     }
 
+    public T getHeader() {
+        return header;
+    }
+
+    public long getDate() {
+        return date;
+    }
+
     public abstract Function<Integer, Map<Integer, DBCity>> getGetCities();
 
     public abstract <T, V> V get(ColumnInfo<T, V> get, int offset);

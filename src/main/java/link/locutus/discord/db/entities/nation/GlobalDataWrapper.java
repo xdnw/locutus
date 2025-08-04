@@ -3,6 +3,7 @@ package link.locutus.discord.db.entities.nation;
 import link.locutus.discord.apiv3.csv.ColumnInfo;
 import link.locutus.discord.apiv3.csv.header.DataHeader;
 import link.locutus.discord.db.entities.DBCity;
+import link.locutus.discord.util.TimeUtil;
 
 import java.io.IOException;
 import java.util.Map;
@@ -27,7 +28,8 @@ public class GlobalDataWrapper<T extends DataHeader> extends DataWrapper<T> {
         try {
             return get.read(data, get.getOffset() + offset);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            String timeFormat = TimeUtil.DD_MM_YY.format(getDate());
+            throw new RuntimeException(this.getHeader().getAliases() + " @ " + timeFormat + " | " + e.getMessage(), e);
         }
     }
 }

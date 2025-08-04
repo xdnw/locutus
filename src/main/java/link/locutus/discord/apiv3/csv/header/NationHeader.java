@@ -25,7 +25,7 @@ public class NationHeader extends DataHeader<DBNation> {
             try {
                 return TimeUtil.YYYY_MM_DD_HH_MM_SS.parse(string).toInstant().toEpochMilli();
             } catch (ParseException e) {
-                throw new RuntimeException(e);
+                throw new RuntimeException(e.getMessage(), e);
             }
         }
     };
