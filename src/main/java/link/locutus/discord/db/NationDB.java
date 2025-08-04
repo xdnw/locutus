@@ -4784,7 +4784,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     public List<AllianceChange> getRemovesByNation(int nationId, Long date) {
         try (PreparedStatement stmt = prepareQuery("select * FROM KICKS2 WHERE nation = ? " + (date != null && date != 0 ? "AND date > ? " : "") + "ORDER BY date DESC")) {
             stmt.setInt(1, nationId);
-            if (date != null) {
+            if (date != null && date != 0) {
                 stmt.setLong(2, date);
             }
 
