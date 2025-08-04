@@ -81,6 +81,12 @@ public class DataDumpParser {
         return this;
     }
 
+    public DataDumpParser loadDict() {
+        cityDict.load();
+        nationDict.load();
+        return this;
+    }
+
     public List<Long> getDays(boolean requireNations, boolean requireCities) {
         Set<Long> days = new LongOpenHashSet();
         if (requireNations) {
