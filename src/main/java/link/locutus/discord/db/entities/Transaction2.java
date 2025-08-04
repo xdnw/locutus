@@ -219,13 +219,13 @@ public class Transaction2 {
         return tx;
     }
 
-    public boolean isSelfWithdrawal(DBNation nation) {
+    public boolean isSelfWithdrawal(int nationId) {
         if (this.isSenderAA() && this.note != null) {
             Map<DepositType, Object> noteMap = getNoteMap();
             if (noteMap.containsKey(DepositType.DEPOSIT)) {
                 Object banker = noteMap.get(DepositType.BANKER);
                 if (banker instanceof Number n) {
-                    return n.intValue() == nation.getNation_id();
+                    return n.intValue() == nationId;
                 }
             }
         }

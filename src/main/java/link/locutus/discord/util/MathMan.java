@@ -35,10 +35,6 @@ public class MathMan {
         suffixes.put(1_000_000_000_000_000_000L, "E");
     }
 
-    public static void main(String[] args) {
-        System.out.println("PAIR " + pairByte(100, 100));
-    }
-
     public static Format toFormat(Function<Number, String> formatFunc) {
         return new Format() {
             @Override

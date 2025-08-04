@@ -199,11 +199,11 @@ public class BankDB extends DBMainV3 {
         }
     }
 
-    public Map<Integer, double[]> getAppliedTaxDeposits(Set<Integer> nationIds, Set<Integer> allianceIds, int[] taxBase, boolean includeBaseTaxes) {
+    public Map<Integer, double[]> getAppliedTaxDeposits(Set<Integer> nationIds, Set<Integer> allianceIds, int[] taxBase, boolean useTaxBase) {
         Map<Integer, double[]> result = new Int2ObjectOpenHashMap<>();
         if (nationIds.isEmpty() || allianceIds.isEmpty()) return result;
         checkUpdateTaxSummary(allianceIds, taxBase);
-        try (Stream<Record3<Integer, byte[], byte[]>> stream = ctx().select(TAX_SUMMARY.NATION_ID, TAX_SUMMARY.NO_INTERNAL_APPLIED, TAX_SUMMARY.INTERNAL_APPLIED)
+        try (Stream<Record3<Integer, byte[], byte[]>> stream = ctx().select(TAX_SUMMARY.NATION_ID, (useTaxBase ? TAX_SUMMARY.NO_INTERNAL_APPLIED : TAX_SUMMARY.NO_INTERNAL_UNAPPLIED), TAX_SUMMARY.INTERNAL_APPLIED)
                 .from(TAX_SUMMARY)
                 .where(nationIds.size() == 1 ?
                         TAX_SUMMARY.NATION_ID.eq(nationIds.iterator().next()) :
@@ -215,10 +215,14 @@ public class BankDB extends DBMainV3 {
             stream.forEach(rs -> {
                 int nationId = rs.get(TAX_SUMMARY.NATION_ID);
                 double[] added = result.computeIfAbsent(nationId, k -> ResourceType.getBuffer());
-                if (includeBaseTaxes) {
-                    double[] amt = ArrayUtil.toDoubleArray(rs.get(TAX_SUMMARY.NO_INTERNAL_APPLIED));
-                    ResourceType.add(added, amt);
+                double[] amtBase;
+                if (useTaxBase) {
+                    amtBase = ArrayUtil.toDoubleArray(rs.get(TAX_SUMMARY.NO_INTERNAL_APPLIED));
+                } else {
+                    amtBase = ArrayUtil.toDoubleArray(rs.get(TAX_SUMMARY.NO_INTERNAL_UNAPPLIED));
                 }
+                ResourceType.add(added, amtBase);
+
                 double[] amtInternal = ArrayUtil.toDoubleArray(rs.get(TAX_SUMMARY.INTERNAL_APPLIED));
                 ResourceType.add(added, amtInternal);
             });
@@ -277,7 +281,6 @@ public class BankDB extends DBMainV3 {
                     for (int allianceId : loadTaxBase) {
                         if (!lastTaxBaseByAlliance.containsKey(allianceId)) {
                             lastTaxBaseByAlliance.put(allianceId, guildTaxPair);
-                            System.out.println("LOAD TAX BASE FOR " + allianceId + " (no tax base found)");
                         }
                     }
                 }
@@ -430,7 +433,6 @@ public class BankDB extends DBMainV3 {
             for (int aid : toUpdate) {
                 long date = lastTaxSummaryUpdateByAlliance.getOrDefault(aid, -1L);
                 if (date > 0) {
-                    System.out.println("HAS TAX REC DATE FOR " + aid + " (date: " + date + ")");
                     hasDate.add(aid);
                     earliestDate = Math.min(earliestDate, date);
                 } else {
@@ -1641,7 +1643,6 @@ public class BankDB extends DBMainV3 {
         }
 
         if (includeLegacy && legacyExists) {
-            System.out.println("LEGACY EXISTS " + legacyExists);
             List<Transaction2> legacy = new ObjectArrayList<>();
             String inOrEqual = remaining.size() == 1 ? " = " + remaining.get(0) : " IN " + StringMan.getString(remaining);
             String query = "select * FROM TRANSACTIONS_ALLIANCE_2 WHERE ((sender_type = ? AND receiver_type = ? AND receiver_id " + inOrEqual + "))";

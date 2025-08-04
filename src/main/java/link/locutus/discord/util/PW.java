@@ -8,11 +8,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.politicsandwar.graphql.model.GameInfo;
 import it.unimi.dsi.fastutil.bytes.ByteOpenHashSet;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
@@ -37,7 +34,6 @@ import link.locutus.discord.commands.stock.Exchange;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
-import link.locutus.discord.db.TaxDeposit;
 import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
@@ -63,12 +59,10 @@ import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.Callable;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 
 public final class PW {
@@ -542,151 +536,6 @@ public final class PW {
         return "sphere:" + getName(sphereId, true);
     }
 
-    public static Map<DBNation, Map<DepositType, double[]>> fetchDeposits(GuildDB db, Collection<DBNation> nations, Set<Long> tracked,
-                                                                          boolean includeTaxes,
-                                                                          boolean useTaxBase,
-                                                                          boolean offset,
-                                                                          long start,
-                                                                          long end,
-                                                                          boolean forceIncludeExpired,
-                                                                          boolean forceIncludeIgnored,
-                                                                          Predicate<Transaction2> filter,
-                                                                          boolean update,
-                                                                          boolean priority) {
-        // sorted linked hash set fastutil
-        List<Integer> nationIdsSorted = new IntArrayList(nations.size());
-        for (DBNation nation : nations) {
-            nationIdsSorted.add(nation.getNation_id());
-        }
-        nationIdsSorted.sort(Comparator.naturalOrder());
-        Set<Integer> nationIds = new IntLinkedOpenHashSet(nationIdsSorted);
-
-        Future<?> updateFuture = null;
-        if (update) {
-            updateFuture = Locutus.imp().runEventsAsync(events -> Locutus.imp().getBankDB().updateBankRecsAuto(nationIds, priority, events));
-        }
-        if (tracked == null) {
-            tracked = db.getTrackedBanks();
-        }
-        Map<Integer, Map<DepositType, double[]>> results = new Int2ObjectOpenHashMap<>();
-        Map<Integer, BiConsumer<Integer, Transaction2>> adderByNation = new Int2ObjectOpenHashMap<>();
-        Set<Long> finalTracked = tracked;
-
-        Function<Integer, BiConsumer<Integer, Transaction2>> getAdder = (nationId) -> {
-            BiConsumer<Integer, Transaction2> adder = adderByNation.get(nationId);
-            if (adder != null) return adder;
-            Map<DepositType, double[]> result = results.computeIfAbsent(nationId, k -> new EnumMap<>(DepositType.class));
-            DBNation nation = DBNation.getOrCreate(nationId);
-            BiConsumer<Integer, Transaction2> parent = PW.createSumNationTransactions(nation, db, finalTracked, forceIncludeExpired, forceIncludeIgnored, filter, result);
-            adderByNation.put(nationId, parent);
-            return parent;
-        };
-
-        Consumer<Transaction2> applyAdder = (tx) -> {
-            int nationId;
-            if (tx.sender_type == 1) {
-                if (tx.receiver_type == 1) {
-                    return; // Ignore transactions between nations
-                }
-                nationId = Math.toIntExact(tx.sender_id);
-            } else if (tx.receiver_type == 1) {
-                nationId = Math.toIntExact(tx.receiver_id);
-            } else {
-                return; // Ignore transactions that does not involve a nation
-            }
-            BiConsumer<Integer, Transaction2> adder = getAdder.apply(nationId);
-            Integer sign = PW.getSign(tx, nationId, finalTracked);
-            if (sign == null) return; // Ignore transactions that are not in a tracked alliance/guild
-            adder.accept(sign, tx);
-        };
-
-        if (offset) {
-            db.iterateTransactionsByIds(nationIds, 1, start, end, applyAdder);
-        }
-
-        if (includeTaxes) { // Taxes
-            int[] guildTaxBase = new int[]{100, 100};
-            TaxRate defTaxBaseRate = db.getOrNull(GuildKey.TAX_BASE);
-            if (defTaxBaseRate != null) {
-                guildTaxBase[0] = defTaxBaseRate.money;
-                guildTaxBase[1] = defTaxBaseRate.resources;
-            }
-
-            Set<Integer> trackForTaxes = tracked.stream().filter(f -> f <= Integer.MAX_VALUE && db.isAllianceId(f.intValue())).map(Long::intValue).collect(Collectors.toSet());
-            DepositType note = DepositType.TAX;
-
-            Map<Integer, double[]> amt1 = new Int2ObjectOpenHashMap<>();
-            Map<Integer, double[]> amt2 = new Int2ObjectOpenHashMap<>();
-
-            if (start == 0 && end == Long.MAX_VALUE) {
-                Map<Integer, double[]> appliedDeposits = Locutus.imp().getBankDB().getAppliedTaxDeposits(nationIds, trackForTaxes, guildTaxBase, useTaxBase);
-                for (Map.Entry<Integer, double[]> entry : appliedDeposits.entrySet()) {
-                    int nationId = entry.getKey();
-                    double[] taxAmt = entry.getValue();
-                    if (ResourceType.isZero(taxAmt)) continue;
-
-                    double[] depos = results.computeIfAbsent(nationId, k -> new EnumMap<>(DepositType.class)).computeIfAbsent(note, f -> ResourceType.getBuffer());
-                    ResourceType.add(depos, taxAmt);
-                }
-            } else {
-                int[] defTaxBase = guildTaxBase.clone();
-                if (!useTaxBase) {
-                    defTaxBase[0] = 0;
-                    defTaxBase[1] = 0;
-                }
-
-                boolean includeNoInternal = defTaxBase[0] != 100 || defTaxBase[1] != 100;
-                boolean includeMaxInternal = false;
-                Locutus.imp().getBankDB().iterateTaxesPaid(nationIds, trackForTaxes, includeNoInternal, includeMaxInternal, start, end, new Consumer<TaxDeposit>() {
-                    @Override
-                    public void accept(TaxDeposit deposit) {
-                        int internalMoneyRate = useTaxBase ? deposit.internalMoneyRate : 0;
-                        int internalResourceRate = useTaxBase ? deposit.internalResourceRate : 0;
-                        if (internalMoneyRate < 0 || internalMoneyRate > 100) internalMoneyRate = defTaxBase[0];
-                        if (internalResourceRate < 0 || internalResourceRate > 100) internalResourceRate = defTaxBase[1];
-
-                        double pctMoney = (deposit.moneyRate > internalMoneyRate ?
-                                Math.max(0, (deposit.moneyRate - internalMoneyRate) / (double) deposit.moneyRate)
-                                : 0);
-                        double pctRss = (deposit.resourceRate > internalResourceRate ?
-                                Math.max(0, (deposit.resourceRate - internalResourceRate) / (double) deposit.resourceRate)
-                                : 0);
-
-                        deposit.resources[0] *= pctMoney;
-                        for (int i = 1; i < deposit.resources.length; i++) {
-                            deposit.resources[i] *= pctRss;
-                        }
-                        Transaction2 transaction = new Transaction2(deposit);
-                        applyAdder.accept(transaction);
-                    }
-                });
-            }
-        }
-
-
-        { // Transactions
-            if (updateFuture != null) {
-                FileUtil.get(updateFuture);
-            }
-            Locutus.imp().getBankDB().iterateNationTransfersByNation(start, end, nationIds, (id, tx) -> {
-                applyAdder.accept(tx);
-            }, false);
-        }
-
-        Map<DBNation, Map<DepositType, double[]>> resultInstance = new Object2ObjectOpenHashMap<>();
-        for (Map.Entry<Integer, Map<DepositType, double[]>> entry : results.entrySet()) {
-            int nationId = entry.getKey();
-            Map<DepositType, double[]> deposits = entry.getValue();
-            DBNation nation = DBNation.getOrCreate(nationId);
-            resultInstance.put(nation, deposits);
-        }
-        return resultInstance;
-    }
-
-    public static Map<DepositType, double[]> sumNationTransactions(DBNation nation, GuildDB guildDB, Set<Long> tracked, List<Map.Entry<Integer, Transaction2>> transactionsEntries) {
-        return sumNationTransactions(nation, guildDB, tracked, transactionsEntries, false, false, Predicates.alwaysTrue());
-    }
-
     /**
      * Sum the nation transactions (assumes all transactions are valid and should be added)
      * @param tracked
@@ -923,7 +772,7 @@ public final class PW {
                     continue;
             }
         }
-        if (allowConversion && forceConvertRssAfter > 0 && forceConvertRssAfter > date) {
+        if (allowConversion && forceConvertRssAfter > 0 && date > forceConvertRssAfter) {
             applyCashConversion(guildDB, allowArbitraryConversion, notes3, amount, null, record, date, rates);
         }
         double[] rss = result.computeIfAbsent(type, f -> ResourceType.getBuffer());

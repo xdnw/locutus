@@ -2378,17 +2378,25 @@ public abstract class DBNation implements NationOrAlliance {
 
         Map<DepositType, double[]> depo = scoped.getMap(this,
                 (ThrowingFunction<List<DBNation>, Map<DBNation, Map<DepositType, double[]>>>) nations -> {
-                    Set<Integer> nationIds = new IntOpenHashSet(nations.size());
-                    for (DBNation nation : nations) {
-                        nationIds.add(nation.getId());
-                    }
                     Set<Long> trackedFinal = tracked;
                     if (trackedFinal == null) {
                         trackedFinal = db.getTrackedBanks();
                     }
-                    return PW.fetchDeposits(db, nations, trackedFinal, includeTaxes, useTaxBase, offset, start, end, forceIncludeExpired, forceIncludeIgnored, null, updateThreshold == 0L, priority);
+
+                    return new FetchDeposit(db, nations)
+                        .setTracked(trackedFinal)
+                        .setUpdate(updateThreshold == 0L, priority)
+                        .setFilter(null)
+                        .setIncludeExpired(forceIncludeExpired)
+                        .setIncludeIgnored(forceIncludeIgnored)
+                        .setStart(start)
+                        .setEnd(end)
+                        .setOffset(offset)
+                        .setIncludeTaxes(includeTaxes)
+                        .setUseTaxBase(useTaxBase)
+                        .getResult();
                 });
-        return depo;
+        return depo == null ? new Object2ObjectOpenHashMap<>() : depo;
     }
 
     public List<Map.Entry<Integer, Transaction2>> getTransactions(GuildDB db, Set<Long> tracked, boolean includeTaxes, boolean useTaxBase, boolean offset, long updateThreshold, long start, long end, boolean priority) {

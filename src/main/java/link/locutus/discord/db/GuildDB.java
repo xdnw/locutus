@@ -918,6 +918,13 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                 stmt.setInt(2, type);
                 stmt.setLong(3, senderOrReceiverId);
                 stmt.setInt(4, type);
+                int i = 5;
+                if (start > 0) {
+                    stmt.setLong(i++, start);
+                }
+                if (end < Long.MAX_VALUE) {
+                    stmt.setLong(i++, end);
+                }
             }
         }, (ThrowingConsumer<ResultSet>) rs -> {
             while (rs.next()) {
@@ -928,14 +935,21 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
     public void iterateTransactionsByIds(Set<Integer> ids, int type, long start, long end, Consumer<Transaction2> consumer) {
+        if (ids.isEmpty()) return;
         GuildDB delegate = getDelegateServer();
         if (delegate != null) {
             delegate.iterateTransactionsByIds(ids, type, start, end, consumer);
             return;
         }
+        String inStr;
+        if (ids.size() == 1) {
+            inStr = "= " + ids.iterator().next();
+        } else {
+            inStr = "IN " + StringMan.getString(ids);
+        }
         StringBuilder query = new StringBuilder("select * FROM INTERNAL_TRANSACTIONS2 WHERE " +
-                "(sender_id IN " + StringMan.getString(ids) + " and sender_type = ?) OR " +
-                "(receiver_id IN " + StringMan.getString(ids) + " and receiver_type = ?)");
+                "(sender_id " + inStr + " and sender_type = ?) OR " +
+                "(receiver_id " + inStr + " and receiver_type = ?)");
         if (start > 0) {
             query.append(" AND tx_datetime >= ?");
         }

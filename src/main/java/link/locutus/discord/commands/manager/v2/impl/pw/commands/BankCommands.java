@@ -5,10 +5,7 @@ import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import it.unimi.dsi.fastutil.objects.Object2DoubleLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -53,7 +50,6 @@ import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.util.sheet.templates.DepositSheetTask;
 import link.locutus.discord.util.sheet.templates.NationBalanceRow;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
 import link.locutus.discord.util.task.mail.MailApiResponse;
@@ -80,9 +76,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.DoubleAccumulator;
-import java.util.function.DoubleBinaryOperator;
-import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.function.*;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.apiv1.enums.ResourceType.MONEY;
@@ -2628,10 +2622,8 @@ public class BankCommands {
         if (updateBulk) {
             Locutus.imp().runEventsAsync(events -> Locutus.imp().getBankDB().updateBankRecs(false, events));
         }
-        IMessageBuilder updateMsg = null;
         final AtomicLong last = new AtomicLong(System.currentTimeMillis());
 
-        ForkJoinPool pool = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
         AtomicInteger processedCount = new AtomicInteger(0);
         int totalNationsCount = nations.size();
         AtomicLong lastUpdateTimestamp = new AtomicLong(System.currentTimeMillis()); // For progress updates
@@ -2647,36 +2639,39 @@ public class BankCommands {
             aaTotalNetAccumulator[i] = new DoubleAccumulator(sum, identity);
         }
 
+        FetchDeposit depoTask = new FetchDeposit(db, nations)
+                .setFetchLastDeposit(true)
+                .setFetchLastSelfWithdrawal(true)
+                .setFlowNote(useFlowNote)
+                .setUpdate(true, false)
+                .setFilter(null)
+                .setIncludeExpired(includeExpired)
+                .setIncludeIgnored(includeIgnored)
+                .setStart(0L)
+                .setEnd(Long.MAX_VALUE)
+                .setOffset(useOffset)
+                .setIncludeTaxes(!noTaxes)
+                .setUseTaxBase(useTaxBase)
+                .execute();
 
-        try {
-            Set<Long> finalTracked = tracked;
-            List<Callable<NationBalanceRow>> tasks = nations.stream()
-                    .map(nation -> new DepositSheetTask(
-                            nation, db, finalTracked, true, useTaxBase, useOffset, updateBulk, force,
-                            useFlowNote, includeExpired, includeIgnored, header.size(),
-                            noGrants, noLoans, noTaxes, noDeposits,
-                            processedCount, totalNationsCount, channel, msgFuture, lastUpdateTimestamp))
-                    .collect(Collectors.toList());
-
-            // Invoke all tasks and wait for completion
-            List<NationBalanceRow> results = null;
-            try {
-                results = pool.invokeAll(tasks).stream()
-                        .map(task -> {
-                            try {
-                                return task.get();
-                            } catch (Exception e) {
-                                throw new RuntimeException(e);
-                            }
-                        })
-                        .toList();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+        Runnable updateProgress = () -> {
+            int count = processedCount.incrementAndGet();
+            long now = System.currentTimeMillis();
+            // Update message roughly every 5 seconds, avoiding contention on lastUpdateTimestamp
+            if (now - lastUpdateTimestamp.get() > 5000) {
+                if (lastUpdateTimestamp.compareAndSet(lastUpdateTimestamp.get(), now)) { // Only one thread updates
+                    String msg = String.format("Calculating... (%d/%d nations processed)", count, totalNationsCount);
+                    if (lastUpdateTimestamp.compareAndSet(lastUpdateTimestamp.get(), now)) { // Only one thread updates
+                        channel.updateOptionally(msgFuture, String.format("Calculating... (%d/%d nations processed)", count, totalNationsCount));
+                    }
+                }
             }
+        };
 
-            // Process results (add rows to sheet and accumulate totals)
-            for (NationBalanceRow result : results) {
-                // Add row to sheet (synchronized)
+        nations.parallelStream().map(nation ->
+                depoTask.createRow(nation, noGrants, noLoans, noTaxes, noDeposits)).forEach(new Consumer<NationBalanceRow>() {
+            @Override
+            public void accept(NationBalanceRow result) {
                 synchronized (sheet) {
                     sheet.addRow(result.row());
                 }
@@ -2691,18 +2686,13 @@ public class BankCommands {
                     aaTotalNetAccumulator[i].accumulate(result.total()[i]); // Use accumulate
                 }
             }
+        });
 
-            // Finalize totals after all tasks are complete
-            for (int i = 0; i < ResourceType.values().length; i++) {
-                aaTotalPositive[i] = aaTotalPositiveAccumulator[i].get();
-                aaTotalNet[i] = aaTotalNetAccumulator[i].get();
-            }
-
-
-        } finally {
-            pool.shutdown(); // Always shut down the pool
+        // Finalize totals after all tasks are complete
+        for (int i = 0; i < ResourceType.values().length; i++) {
+            aaTotalPositive[i] = aaTotalPositiveAccumulator[i].get();
+            aaTotalNet[i] = aaTotalNetAccumulator[i].get();
         }
-        if (updateMsg != null && updateMsg.getId() > 0) channel.delete(updateMsg.getId());
 
         StringBuilder footer = new StringBuilder();
 
@@ -3240,9 +3230,9 @@ public class BankCommands {
                                @Arg(value = "Only show transactions after this time", group = 0)
                                @Default @Timestamp Long start_time,
                                @Default @Timestamp Long end_time,
-                               @Arg(value = "Do NOT include the tax record resources below the internal tax rate\n" +
+                               @Arg(value = "Include the tax record resources below the internal tax rate\n" +
                                        "Default: False", group = 1)
-                               @Default("false") boolean useTaxBase,
+                               @Default("false") boolean includeTaxBase,
                                @Arg(value = "Include balance offset records (i.e. from commands)\n" +
                                        "Default: True", group = 1)
                                @Default("true") boolean useOffset,
@@ -3254,7 +3244,7 @@ public class BankCommands {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
         if (onlyOffshoreTransfers && nationOrAllianceOrGuild.isNation()) return "Only Alliance/Guilds can have an offshore account";
 
-        List<Transaction2> transactions = getRecords(db, user, true, useTaxBase, useOffset,
+        List<Transaction2> transactions = getRecords(db, user, true, !includeTaxBase, useOffset,
                 start_time == null ? 0 : start_time, end_time == null ? Long.MAX_VALUE : end_time,
                 nationOrAllianceOrGuild, onlyOffshoreTransfers);
         sheet.addTransactionsList(channel, transactions, true);
@@ -4087,12 +4077,15 @@ public class BankCommands {
         } else if (nationOrAllianceOrGuild.isNation()) {
             DBNation nation = nationOrAllianceOrGuild.asNation();
             if (nation != me && !Roles.INTERNAL_AFFAIRS.has(author, guild) && !Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild) && !Roles.ECON.has(author, guild) && !Roles.ECON_STAFF.has(author, guild)) return "You do not have permission to check other nation's deposits";
-            List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, offshoreIds, true, !includeBaseTaxes, !ignoreInternalOffsets, 0L, start_time, end_time, true);
-            accountDeposits = PW.sumNationTransactions(nation, db, offshoreIds, transactions, includeExpired, includeIgnored, Predicates.alwaysTrue());
 
+            BiConsumer<Transaction2, Long> getExpiring = null;
+            SpreadSheet sheet;
+            boolean[] hasRow = {false};
             if (show_expiring_records) {
+                Set<Long> offshoreIdsFinal = offshoreIds == null ? db.getTrackedBanks() : offshoreIds;
+
                 long now = System.currentTimeMillis();
-                SpreadSheet sheet = SpreadSheet.create(db, SheetKey.EXPIRE_RECORD_SHEET);
+                sheet = SpreadSheet.create(db, SheetKey.EXPIRE_RECORD_SHEET);
 
                 List<Object> header = new ObjectArrayList<>(Arrays.asList(
                         "sign",
@@ -4106,28 +4099,12 @@ public class BankCommands {
                 ));
                 sheet.setHeader(header);
 
-                boolean hasRow = false;
-
-                for (Map.Entry<Integer, Transaction2> entry : transactions) {
-                    Transaction2 record = entry.getValue();
-                    if (record.note == null || record.note.isEmpty()) continue;
-                    boolean isOffshoreSender = (record.sender_type == 2 || record.sender_type == 3) && record.receiver_type == 1;
-                    if (!isOffshoreSender && !record.isInternal()) continue;
-                    hasRow = true;
-                    int sign = entry.getKey();
-
-                    Map<DepositType, Object> noteMap = record.getNoteMap();
-                    Object expireVal = noteMap.get(DepositType.EXPIRE);
-                    Object decayVal = noteMap.get(DepositType.DECAY);
-                    Long dateVal;
-                    if (decayVal instanceof Number n) {
-                        dateVal = n.longValue();
-                    } else if (expireVal instanceof Number n) {
-                        dateVal = n.longValue();
-                    } else {
-                        continue;
-                    }
-                    if (dateVal <= now) continue;
+                getExpiring = (record, dateVal) -> {
+                    Integer sign = PW.getSign(record, nation.getId(), offshoreIdsFinal);
+                    if (sign == null) return; // not for this nation
+                    hasRow[0] = true;
+                    if (dateVal <= now) return;
+                    Long decayVal = (Long) record.getNoteMap().get(DepositType.DECAY);
 
                     List<Object> row = new ObjectArrayList<>();
                     row.add(sign);
@@ -4135,7 +4112,7 @@ public class BankCommands {
                     row.add(TimeUtil.YYYY_MM_DD_HH_MM_SS.format(record.tx_datetime));
                     row.add(ResourceType.convertedTotal(record.resources));
 
-                    if (decayVal != null) {
+                    if (dateVal != null) {
                         double[] principal = record.resources.clone();
                         double decayFactor = 1 - ((now - record.tx_datetime) / (double) (dateVal - record.tx_datetime));
                         double[] remaining = PW.multiply(principal.clone(), decayFactor);
@@ -4159,15 +4136,31 @@ public class BankCommands {
                         row.add(ResourceType.toString(record.resources));
                     }
                     sheet.addRow(row);
-                }
-                if (hasRow) {
-                    sheet.updateClearCurrentTab();
-                    sheet.updateWrite();
+                };
+            } else {
+                sheet = null;
+            }
 
-                    sheet.attach(msg, "expire_records");
-                } else {
-                    footers.add("No remaining expiring records found");
-                }
+            accountDeposits = new FetchDeposit(db, Set.of(nation))
+                .setTracked(offshoreIds)
+                .setUpdate(true, true)
+                .setFilter(null)
+                .setIncludeExpired(includeExpired)
+                .setIncludeIgnored(includeIgnored)
+                .setStart(start_time)
+                .setEnd(end_time)
+                .setOffset(!ignoreInternalOffsets)
+                .setIncludeTaxes(true)
+                .setUseTaxBase(!includeBaseTaxes)
+                .setGetExpiring(getExpiring)
+                .getResult().getOrDefault(nation, new Object2ObjectOpenHashMap<>());
+
+            if (sheet != null && hasRow[0]) {
+                sheet.updateClearCurrentTab();
+                sheet.updateWrite();
+                sheet.attach(msg, "expire_records");
+            } else {
+                footers.add("No remaining expiring records found");
             }
 
             if (!hideEscrowed) {
