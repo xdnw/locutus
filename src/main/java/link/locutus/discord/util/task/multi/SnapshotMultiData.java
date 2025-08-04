@@ -68,8 +68,7 @@ public class SnapshotMultiData {
 
     public SnapshotMultiData() throws IOException, ParseException {
         Map<Continent, Map<Long, AtomicInteger>> mostCommonLocationPairs = new Object2ObjectOpenHashMap<>();
-        DataDumpParser snapshot = Locutus.imp().getDataDumper(true);
-        snapshot.load();
+        DataDumpParser snapshot = Locutus.imp().getDataDumper(true).load().loadDict();
 
         List<Long> days = snapshot.getDays(true, false);
         long lastDay = days.get(days.size() - 1);
