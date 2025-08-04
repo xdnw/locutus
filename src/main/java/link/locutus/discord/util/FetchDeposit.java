@@ -364,7 +364,7 @@ public class FetchDeposit {
     public NationBalanceRow createRow(DBNation nation, boolean noGrants, boolean noLoans, boolean noTaxes, boolean noDeposits) {
         List<Object> row = new ObjectArrayList<>();
 
-        Map<DepositType, double[]> deposits = getResult().getOrDefault(nation.getId(), Collections.emptyMap());
+        Map<DepositType, double[]> deposits = getResult().getOrDefault(nation, Collections.emptyMap());
         double[] buffer = ResourceType.getBuffer();
 
         row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
