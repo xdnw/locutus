@@ -85,13 +85,16 @@ public final class PW {
         public static final class Building {
             public static int SIZE = 27;
         }
+
+        private static final int NUKE_TURN_MAX = 11 * 12;
+        private static final double NUKE_POLLUTION_MAX = 400;
+
         public static int getNukePollution(int nukeTurn) {
             int pollution = 0;
-            double pollutionMax = 400d;
-            int turnsMax = 11 * 12;
             long turns = TimeUtil.getTurn() - nukeTurn;
-            if (turns < turnsMax) {
-                double nukePollution = (turnsMax - turns) * pollutionMax / (turnsMax);
+            if (turns < NUKE_TURN_MAX) {
+                double pollutionMax = 400d;
+                double nukePollution = (NUKE_TURN_MAX - turns) * NUKE_POLLUTION_MAX / (NUKE_TURN_MAX);
                 if (nukePollution > 0) {
                     pollution += (int) nukePollution;
                 }

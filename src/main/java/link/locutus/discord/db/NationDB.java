@@ -509,12 +509,16 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
         for (int id : ids) {
             DBAlliance alliance = getAlliance(id);
-            if (alliance != null && eventConsumer != null) {
-                // mark all nations dirty
-                for (DBNation nation : getNationsMatching(f -> f.getAlliance_id() == id)) {
-                    markNationDirty(nation.getId());
+            if (alliance != null) {
+                alliance.markTreasuresDirty();
+                if (eventConsumer != null) {
+
+                    // mark all nations dirty
+                    for (DBNation nation : getNationsMatching(f -> f.getAlliance_id() == id)) {
+                        markNationDirty(nation.getId());
+                    }
+                    eventConsumer.accept(new AllianceDeleteEvent(alliance));
                 }
-                eventConsumer.accept(new AllianceDeleteEvent(alliance));
             }
             synchronized (nationsByAlliance) {
                 Map<Integer, DBNation> nations = nationsByAlliance.remove(id);
@@ -1920,16 +1924,23 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 }
             }
             Set<Integer> dirtyNationCities = new IntOpenHashSet();
+            Set<Integer> clearAllianceTreasures = null;
             for (SNationContainer nation : nations) {
                 DBNation existing = getNationById(nation.getNationid());
                 if (existing == null) {
                     existing = new SimpleDBNation(new DBNationData());
                     existing.updateNationInfo(nation, null);
+
                     synchronized (nationsById) {
                         nationsById.put(existing.getNation_id(), existing);
                         if (existing.getAlliance_id() != 0) {
                             synchronized (nationsByAlliance) {
-                                nationsByAlliance.computeIfAbsent(existing.getAlliance_id(), f -> new Int2ObjectOpenHashMap<>()).put(existing.getNation_id(), existing);
+                                DBNation prev = nationsByAlliance.computeIfAbsent(existing.getAlliance_id(), f -> new Int2ObjectOpenHashMap<>())
+                                        .put(existing.getNation_id(), existing);
+                                if (existing.getNumTreasures() > 0) {
+                                    if (clearAllianceTreasures == null) clearAllianceTreasures = new IntOpenHashSet();
+                                    clearAllianceTreasures.add(existing.getAlliance_id());
+                                }
                             }
                         }
                     }
@@ -1941,14 +1952,38 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 } else {
                     expected.remove(existing.getNation_id());
                     int oldAAId = existing.getAlliance_id();
+                    int oldPosition = existing.getPosition();
+                    long oldVm = existing.getLeaving_vm();
                     if (existing.updateNationInfo(nation, eventConsumer)) {
                         if (oldAAId != existing.getAlliance_id()) {
                             processNationAllianceChange(oldAAId, existing);
+                        }
+                        if ((oldPosition > Rank.APPLICANT.id && existing.getPosition() <= Rank.APPLICANT.id)
+                        || oldAAId != existing.getAlliance_id() || oldVm != existing.getLeaving_vm()) {
+                            if (existing.getNumTreasures() > 0) {
+                                if (clearAllianceTreasures == null) clearAllianceTreasures = new IntOpenHashSet();
+                                clearAllianceTreasures.add(existing.getAlliance_id());
+                                if (oldAAId != existing.getAlliance_id()) {
+                                    DBAlliance oldAlliance = getAlliance(oldAAId);
+                                    if (oldAlliance != null) {
+                                        oldAlliance.markTreasuresDirty();
+                                    }
+                                }
+                            }
                         }
 //                        dirtyNations.add(existing.getNation_id());
                         toSave.add(existing);
                     } else if (Math.round(100 * nation.getInfrastructure()) != Math.round(100 * existing.getInfra())) {
                         dirtyNationCities.add(existing.getNation_id());
+                    }
+                }
+            }
+
+            if (clearAllianceTreasures != null) {
+                synchronized (alliancesById) {
+                    for (int id : clearAllianceTreasures) {
+                        DBAlliance alliance = alliancesById.get(id);
+                        if (alliance != null) alliance.markTreasuresDirty();
                     }
                 }
             }
@@ -2362,7 +2397,20 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             markDirty.set(true);
             base = new SimpleDBNation(new DBNationData());
         }
+        int prevPosition = base.getPosition();
+        int prevAA = base.getAlliance_id();
+        long prevVm = base.getLeaving_vm();
         if (base.updateNationInfo(copyOriginal, nation, eventConsumer)) {
+            if ((prevPosition > Rank.APPLICANT.id && base.getPosition() <= Rank.APPLICANT.id) || prevVm < base.getLeaving_vm() || prevAA != base.getAlliance_id()) {
+                synchronized (alliancesById) {
+                    DBAlliance alliance = alliancesById.get(prevAA);
+                    if (alliance != null) alliance.markTreasuresDirty();
+                    if (prevAA != base.getAlliance_id()) {
+                        alliance = alliancesById.get(base.getAlliance_id());
+                        if (alliance != null) alliance.markTreasuresDirty();
+                    }
+                }
+            }
             markDirty.set(true);
         }
         processNationAllianceChange(copyOriginal, base);
@@ -3038,6 +3086,14 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 }
             }
             return count;
+        }
+    }
+
+    public int getNumTreasures(int nationId) {
+        synchronized (treasuresByNation) {
+            Set<DBTreasure> treasures = treasuresByNation.get(nationId);
+            if (treasures == null) return 0;
+            return treasures.size();
         }
     }
 
@@ -5190,6 +5246,14 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 nation = nationsById.get(id);
             }
             if (nation != null) {
+                if (nation.getAlliance_id() > 0 && nation.getNumTreasures() > 0) {
+                    synchronized (alliancesById) {
+                        DBAlliance alliance = alliancesById.get(nation.getAlliance_id());
+                        if (alliance != null) {
+                            alliance.markTreasuresDirty();
+                        }
+                    }
+                }
                 if (nation.getDate() + TimeUnit.MINUTES.toMillis(30) > System.currentTimeMillis()) {
                     // don't delete new nations
                     iter.remove();

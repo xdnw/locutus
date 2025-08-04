@@ -488,6 +488,11 @@ public abstract class DBNation implements NationOrAlliance {
         return Locutus.imp().getNationDB().getTreasure(data()._nationId());
     }
 
+    @Command(desc = "Get the number of treasures in this nation")
+    public int getNumTreasures() {
+        return Locutus.imp().getNationDB().getNumTreasures(data()._nationId());
+    }
+
     @Command(desc = "How many days the treasure is in said nation")
     public long treasureDays() {
         long max = 0;
@@ -1047,7 +1052,7 @@ public abstract class DBNation implements NationOrAlliance {
         if (nation.getAllianceposition() != null && (this.data()._rank() == null || this.data()._rank().id != nation.getAllianceposition())) {
             dirty = true;
             if (copyOriginal == null && eventConsumer != null) copyOriginal = copy();
-            this.edit().setRank(Rank.byId(nation.getAllianceposition()));
+            this.setPosition(Rank.byId(nation.getAllianceposition()));
             if (eventConsumer != null) eventConsumer.accept(new NationChangeRankEvent(copyOriginal, this));
         }
         if (nation.getCities() != null && this.data()._cities() != nation.getCities()) {

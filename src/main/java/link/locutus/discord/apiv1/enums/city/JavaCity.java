@@ -136,20 +136,22 @@ public class JavaCity implements IMutableCity {
             if (hasProject.test(Projects.SPECIALIZED_POLICE_TRAINING_PROGRAM)) {
                 commerce += 4;
             }
-            int maxCommerce;
-            if (hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER)) {
-                commerce++;
-                if (hasProject.test(Projects.TELECOMMUNICATIONS_SATELLITE)) {
-                    commerce += 2;
-                    maxCommerce = 125;
+            if (commerce > 100) {
+                int maxCommerce;
+                if (hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER)) {
+                    commerce++;
+                    if (hasProject.test(Projects.TELECOMMUNICATIONS_SATELLITE)) {
+                        commerce += 2;
+                        maxCommerce = 125;
+                    } else {
+                        maxCommerce = 115;
+                    }
                 } else {
-                    maxCommerce = 115;
+                    maxCommerce = 100;
                 }
-            } else {
-                maxCommerce = 100;
-            }
-            if (commerce > maxCommerce) {
-                commerce = maxCommerce;
+                if (commerce > maxCommerce) {
+                    commerce = maxCommerce;
+                }
             }
 
             pollution = Math.max(0, pollution);

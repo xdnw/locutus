@@ -15,6 +15,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.Locale;
 import java.util.TimeZone;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class TimeUtil {
@@ -38,7 +40,6 @@ public class TimeUtil {
 
 
     static {
-
         MMDD_HH_MM_A.setTimeZone(TimeZone.getTimeZone("UTC"));
         YYYY_MM_DD_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
         MMDDYYYY_HH_MM_A.setTimeZone(TimeZone.getTimeZone("UTC"));
@@ -51,6 +52,59 @@ public class TimeUtil {
         DD_MM_YY.setTimeZone(TimeZone.getTimeZone("UTC"));
         DD_MM_YYYY.setTimeZone(TimeZone.getTimeZone("UTC"));
         DD_MM_YYYY_HH.setTimeZone(TimeZone.getTimeZone("UTC"));
+    }
+
+    private static long calcTurn() {
+        if (Settings.INSTANCE.TEST) {
+            long value = ChronoUnit.HOURS.between(Instant.EPOCH, Instant.now());
+            return CURRENT_TURN = value;
+        }
+        long now = System.currentTimeMillis();
+        long daysSince0 = TimeUnit.MILLISECONDS.toDays(now);
+        long hoursInCurrentDay = TimeUnit.MILLISECONDS.toHours(now % 86400000);
+        int turnsPerDay = 12;
+        return CURRENT_TURN = (hoursInCurrentDay / 2) + daysSince0 * turnsPerDay;
+    }
+
+    private static volatile long CURRENT_TURN = calcTurn();
+    private static final ScheduledExecutorService SCHEDULER = Executors.newSingleThreadScheduledExecutor();
+    private static volatile boolean nearTurnChange = false;
+
+    static {
+        // schedule precise turn updates
+        scheduleNextTurn();
+        // maintain a flag when within 5 seconds of a turn change
+        scheduleNearChange();
+    }
+
+    private static void scheduleNextTurn() {
+        long current = calcTurn();
+        long nextTime = getTimeFromTurn(current + 1);
+        long now = System.currentTimeMillis();
+        long delayToTurn = nextTime - now;
+        long delayToNear = Math.max(0, delayToTurn - 5);
+
+        // 5 ms before turn change
+        SCHEDULER.schedule(() -> nearTurnChange = true,
+                delayToNear, TimeUnit.MILLISECONDS);
+
+        // at turn change
+        SCHEDULER.schedule(() -> {
+            CURRENT_TURN = calcTurn();
+            nearTurnChange = false;
+            scheduleNextTurn();
+        }, delayToTurn, TimeUnit.MILLISECONDS);
+    }
+
+    private static void scheduleNearChange() {
+        SCHEDULER.scheduleAtFixedRate(() -> {
+            long nextTurnTime = getTimeFromTurn(CURRENT_TURN + 1);
+            nearTurnChange = nextTurnTime - System.currentTimeMillis() <= TimeUnit.SECONDS.toMillis(5);
+        }, 0, 1, TimeUnit.SECONDS);
+    }
+
+    public static long getTurn() {
+        return nearTurnChange ? calcTurn() : CURRENT_TURN;
     }
 
     public static String turnsToTime(long turns) {
@@ -221,18 +275,6 @@ public class TimeUtil {
             }
         }
 
-    }
-
-    public static long getTurn() {
-        if (Settings.INSTANCE.TEST) {
-            long value = ChronoUnit.HOURS.between(Instant.EPOCH, Instant.now());
-            return value;
-        }
-        long now = System.currentTimeMillis();
-        long daysSince0 = TimeUnit.MILLISECONDS.toDays(now);
-        long hoursInCurrentDay = TimeUnit.MILLISECONDS.toHours(now % 86400000);
-        int turnsPerDay = 12;
-        return (hoursInCurrentDay / 2) + daysSince0 * turnsPerDay;
     }
 
     public static long getTurn(Long timestamp) {

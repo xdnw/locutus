@@ -79,6 +79,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     private LootEntry lootEntry;
     private boolean cachedLootEntry;
     private Int2ObjectOpenHashMap<byte[]> metaCache = null;
+    private int treasureCount = -1;
 
     public DBAlliance(com.politicsandwar.graphql.model.Alliance alliance) {
         this.allianceId = alliance.getId();
@@ -106,7 +107,12 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     @Command(desc = "Number of treasures in the alliance")
     public int getNumTreasures() {
         if (allianceId == 0) return 0;
-        return Locutus.imp().getNationDB().countTreasures(allianceId);
+        if (treasureCount >= 0) return treasureCount;
+        return treasureCount = Locutus.imp().getNationDB().countTreasures(allianceId);
+    }
+
+    public void markTreasuresDirty() {
+        this.treasureCount = -1;
     }
 
     @Command(desc = "Treasure bonus (decimal percent between 0-1)")
