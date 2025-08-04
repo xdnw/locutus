@@ -187,9 +187,14 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
                         ObjectArrayList<Object> rowData = new ObjectArrayList<>(columnsInCsv.size());
                         for (ColumnInfo<T, Object> column : columnsInCsv) {
                             String cell = csvRow.getField(column.getIndex());
-                            Object value = column.read(cell);
+                            Object value;
+                            try {
+                                value = column.read(cell);
+                            } catch (RuntimeException e) {
+                                System.err.println("Error reading column `" + column.getName() + "` in row " + (all.size() + 1) + ": " + cell + " in file: " + csvFile.getName());
+                                throw e;
+                            }
                             rowData.add(value);
-
                         }
                         all.add(rowData);
                     }
