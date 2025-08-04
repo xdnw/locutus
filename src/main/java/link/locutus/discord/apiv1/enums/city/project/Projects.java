@@ -72,7 +72,6 @@ public class Projects {
                     null);
 
             double optimalProfit = profit.apply(optimal);
-            System.out.println(project.name() + " | " + optimalProfit + " | " + originRevenue);
             double revenuePerDay = Math.max(0, optimalProfit - originRevenue) * days * nation.getCities();
 
             // return revenue increase over now

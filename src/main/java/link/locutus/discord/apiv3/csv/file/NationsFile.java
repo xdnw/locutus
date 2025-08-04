@@ -43,7 +43,6 @@ public class NationsFile extends DataFile<DBNation, NationHeader, NationHeaderRe
 
             int rows = (data.length - colInfo.initialOffset) / bytesPerRow;
             int remainder = (data.length - colInfo.initialOffset) % bytesPerRow;
-            System.out.println("Rows: " + rows + ", Remainder: " + remainder + ", Bytes per row: " + bytesPerRow + " | in file: " + getCsvFile().getName());
 
             DataWrapper wrapper = new GlobalDataWrapper(getDate(), header, data, fetchCities);
 

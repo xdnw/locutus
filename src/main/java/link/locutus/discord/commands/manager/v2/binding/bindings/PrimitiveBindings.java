@@ -75,7 +75,6 @@ public class PrimitiveBindings extends BindingHelper {
     @Binding(examples = "hello", value = "A single line of text")
     public static String String(String input, @Default ParameterData param) {
         if (param != null && param.getAnnotation(AllowAttachment.class) != null) {
-            System.out.println("ALLOW ATTACHMENT: " + input);
             String discordCdnPattern = "^https://cdn\\.discordapp\\.com/attachments/\\d+/\\d+/[^\\s]+\\.txt[^\\s]*$";
             if (input.matches(discordCdnPattern)) {
                 try {

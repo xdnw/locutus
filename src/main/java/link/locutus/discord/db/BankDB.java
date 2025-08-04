@@ -60,9 +60,7 @@ public class BankDB extends DBMainV3 {
     public BankDB() throws SQLException, ClassNotFoundException {
         super(Settings.INSTANCE.DATABASE, "bank", false);
         try {
-            System.out.println("Checking for legacy transactions table...");
             this.legacyExists = tableExists("TRANSACTIONS_ALLIANCE_2");
-            System.out.println("Legacy transactions table exists: " + legacyExists);
         } catch (SQLException e) {
             e.printStackTrace();
             throw new RuntimeException(e);

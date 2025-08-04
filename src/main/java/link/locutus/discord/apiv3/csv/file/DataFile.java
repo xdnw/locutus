@@ -178,6 +178,15 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
                     writeOrder.removeIf(f -> !present.contains(f));
                 }
 
+//                {
+//                    long numWithIndex = headers.values().stream().filter(f -> f.getIndex() != -1).count();
+//                    int expected = columnsInCsv.size();
+//                    if (numWithIndex != expected) {
+//                        throw new IllegalStateException("Expected " + expected + " columns with index, but found " + numWithIndex + " in file: " + csvFile.getName());
+//                    }
+//                }
+
+                int numRows = 0;
                 FastByteArrayOutputStream baos = new FastByteArrayOutputStream();
                 try (DataOutputStream dos = new DataOutputStream(baos)) {
                     dos.writeInt(headers.size());
@@ -186,6 +195,7 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
                     }
                     List<List<Object>> all = new ObjectArrayList<>();
                     while (rows.hasNext()) {
+                        numRows++;
                         CsvRow csvRow = rows.next();
                         ObjectArrayList<Object> rowData = new ObjectArrayList<>(columnsInCsv.size());
                         for (ColumnInfo<T, Object> column : columnsInCsv) {
@@ -209,8 +219,13 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
                     }
                 }
 
-                baos.trim();
-                byte[] compressed = ArrayUtil.compressLZ4(baos.array);
+//                int headerSize = 4 + headers.size() + 4;
+//                int rowSize = columnsInCsv.stream().map(ColumnInfo::getBytes).reduce(0, Integer::sum);
+//                int expectedSize = headerSize + (numRows * rowSize);
+//                if (baos.length != expectedSize) {
+//                    throw new IllegalStateException("Expected " + expectedSize + " bytes, but got " + baos.length + " in file: " + csvFile.getName() + " (diff: " + (expectedSize - baos.length) + ")");
+//                }
+                byte[] compressed = ArrayUtil.compressLZ4(baos.array, baos.length);
                 try (FileOutputStream fos = new FileOutputStream(binFile)) {
                     fos.write(compressed);
                 }
