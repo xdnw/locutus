@@ -316,6 +316,7 @@ public class CommandManager2 {
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "bot"), "upsertCommands", "update_commands");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "syncCityAvg", "city_avg");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "syncAlliances", "alliances");
+        getCommands().registerMethod(new UnsortedCommands(), List.of("alliance", "stats"), "compareAlliancePositions", "compare_past_positions");
 
 //        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "openMenu", "open");
 //        getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "deleteMenu", "delete");

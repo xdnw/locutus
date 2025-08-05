@@ -1503,8 +1503,82 @@ public class UnsortedCommands {
         return null;
     }
 
+    @Command(desc = "Compare historical positions of nations then and now", viewable = true)
+    public static String compareAlliancePositions(@Me IMessageIO io, @Me @Default GuildDB db, @Me JSONObject command,
+                                                  @AllowDeleted Set<DBNation> nations,
+                                                  @Timestamp long snapshotDate) {
+
+        String filter = command.optString("nations", null);
+        Set<DBNation> thenNations = PW.getNationsSnapshot(nations, filter, snapshotDate, db == null ? null : db.getGuild(), true);
+        if (thenNations.isEmpty()) {
+            return "No nations found for that snapshot.";
+        }
+
+        // Sort the above by number of nations
+        List<DBNation> deleted = new ArrayList<>();
+        Map<Integer, List<DBNation>> byAlliance = new HashMap<>();
+
+        for (DBNation oldNation : thenNations) {
+            DBNation now = DBNation.getById(oldNation.getId());
+            if (now == null) {
+                deleted.add(oldNation);
+            } else {
+                byAlliance
+                        .computeIfAbsent(now.getAlliance_id(), k -> new ArrayList<>())
+                        .add(now);
+            }
+        }
+
+        List<String> lines = new ArrayList<>();
+
+        // Alliance groups (id > 0), sorted by size desc
+        byAlliance.entrySet().stream()
+                .filter(e -> e.getKey() != 0)
+                .sorted((a, b) -> Integer.compare(b.getValue().size(), a.getValue().size()))
+                .forEach(entry -> {
+                    DBAlliance aa = DBAlliance.getOrCreate(entry.getKey());
+                    List<DBNation> members = entry.getValue();
+                    long taxableCount = members.stream().filter(DBNation::isTaxable).count();
+                    long vmCount = members.stream().filter(n -> n.getVm_turns() > 0).count();
+                    lines.add(String.format(
+                            "- **%s**: %d (%d taxable, %d vm)",
+                            aa.getMarkdownUrl(), members.size(), taxableCount, vmCount));
+                });
+
+        // "Nones" group (alliance 0)
+        List<DBNation> none = byAlliance.getOrDefault(0, Collections.emptyList());
+        if (!none.isEmpty()) {
+            long taxableCount = none.stream().filter(DBNation::isTaxable).count();
+            long vmCount = none.stream().filter(n -> n.getVm_turns() > 0).count();
+            String detail = taxableCount > 0
+                    ? String.format(" (%d taxable, %d vm)", taxableCount, vmCount)
+                    : String.format(" (%d vm)", vmCount);
+            lines.add(String.format("- **AA:0**: %d%s", none.size(), detail));
+        }
+
+        // Deleted group
+        if (!deleted.isEmpty()) {
+            lines.add(String.format("- **<Deleted>**: %d", deleted.size()));
+        }
+
+        long originalCount = thenNations.size();
+        long originalTaxable = thenNations.stream().filter(DBNation::isTaxable).count();
+        long originalVm = thenNations.stream().filter(n -> n.getVm_turns() > 0).count();
+
+        String timeStr = DiscordUtil.timestamp(snapshotDate, null);
+        String title = String.format("%d nations in %s: %s", originalCount, filter, timeStr);
+
+        StringBuilder desc = new StringBuilder();
+        desc.append("### __Then__\n");
+        desc.append(String.format("`" + filter + "`: %d nations (%d taxable, %d vm)\n", originalCount, originalTaxable, originalVm));
+        desc.append("\n----------------\n### __Now__\n");
+        lines.forEach(line -> desc.append(line).append("\n"));
+
+        io.create().embed(title, desc.toString().trim()).send();
+        return null;
+    }
+
     @Command(desc = "List the alliance rank changes of a nation or alliance members", viewable = true)
-    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public static String leftAA(@Me IMessageIO io, @Me @Default GuildDB db,
                          @AllowDeleted NationOrAlliance nationOrAlliance,
                          @Arg("Date to start from")
@@ -1563,6 +1637,7 @@ public class UnsortedCommands {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.DEPARTURES);
         }
+
         {
             long now = System.currentTimeMillis();
             StringBuilder response = new StringBuilder("Time\tNation\tActions\n");

@@ -1065,6 +1065,10 @@ public final class PW {
     }
 
     public static Set<DBNation> getNationsSnapshot(Collection<DBNation> nations, String filterStr, Long snapshotDate, Guild guild) {
+        return getNationsSnapshot(nations, filterStr, snapshotDate, guild, false);
+    }
+
+    public static Set<DBNation> getNationsSnapshot(Collection<DBNation> nations, String filterStr, Long snapshotDate, Guild guild, boolean loadVm) {
         if (snapshotDate == null) return nations instanceof Set<DBNation> ? (Set<DBNation>) nations : new ObjectOpenHashSet<>(nations);
         NationPlaceholders ph = Locutus.cmd().getV2().getNationPlaceholders();
 
@@ -1072,7 +1076,7 @@ public final class PW {
         long day = TimeUtil.getDay(snapshotDate);
         try {
             ValueStore store = ph.createLocals(guild, null, null);
-            NationsFileSnapshot snapshot = dumper.getSnapshotDelegate(day, true, false);
+            NationsFileSnapshot snapshot = dumper.getSnapshotDelegate(day, true, loadVm);
             Set<DBNation> result = ph.parseSet(store, filterStr, snapshot, true);
             return result;
         } catch (IOException | ParseException e) {
