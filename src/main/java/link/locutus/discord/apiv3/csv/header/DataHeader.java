@@ -45,16 +45,21 @@ public abstract class DataHeader<T> {
                 List<ColumnInfo<T, Object>> validColumns = new ObjectArrayList<>();
                 int i = 0;
 
+                if (numHeaders > headers.size()) {
+                    throw new IllegalStateException("Number of headers in file (" + numHeaders + ") exceeds number of headers defined in class (" + headers.size() + ")");
+                } else {
+                }
+
                 List<ColumnInfo<T, Object>> headersArr = new ObjectArrayList<>(headers.values());
                 for (int j = 0; j < numHeaders; j++) {
                     ColumnInfo<T, Object> col = headersArr.get(j);
                     col.setCachedValue(null);
                     boolean hasIndex = decompressed[index++] != 0;
                     if (hasIndex) {
-                        int bytes = col.getBytes();
+                        validColumns.add(col);
                         col.setIndex(i, headerInfo.bytesPerRow);
                         col.setCachedValue(null);
-                        headerInfo.bytesPerRow += bytes;
+                        headerInfo.bytesPerRow += col.getBytes();
                         i++;
                     } else {
                         col.setIndex(-1, -1);
