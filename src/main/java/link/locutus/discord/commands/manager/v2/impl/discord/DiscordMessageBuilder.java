@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.discord;
 
 import com.google.gson.JsonObject;
+import it.unimi.dsi.fastutil.Pair;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.commands.manager.v2.command.AMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -11,19 +12,16 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.buttons.Button;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import net.dv8tion.jda.api.utils.messages.MessageEditBuilder;
 import net.dv8tion.jda.api.utils.messages.MessageEditData;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.utils.URLEncodedUtils;
-import org.apache.http.message.BasicNameValuePair;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -32,6 +30,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static link.locutus.discord.util.discord.DiscordUtil.EMBED_META_URL;
 import static net.dv8tion.jda.api.components.buttons.Button.ID_MAX_LENGTH;
 
 public class DiscordMessageBuilder extends AMessageBuilder {
@@ -148,14 +147,19 @@ public class DiscordMessageBuilder extends AMessageBuilder {
             if (!remapLongCommands.isEmpty()) {
                 MessageEmbed embed = discEmbeds.get(0);
                 EmbedBuilder builder = new EmbedBuilder(embed);
-                List<NameValuePair> pairs = remapLongCommands.entrySet().stream()
-                        .map((Function<Map.Entry<String, String>, NameValuePair>)
-                                e -> new BasicNameValuePair(e.getKey(), e.getValue()))
-                        .collect(Collectors.toList());
-                String query = URLEncodedUtils.format(pairs, "UTF-8");
-                builder.setThumbnail("https://example.com?" + query);
+//                List<NameValuePair> pairs = remapLongCommands.entrySet().stream()
+//                        .map((Function<Map.Entry<String, String>, NameValuePair>)
+//                                e -> new BasicNameValuePair(e.getKey(), e.getValue()))
+//                        .collect(Collectors.toList());
+//                String query = URLEncodedUtils.format(pairs, "UTF-8");
+                Pair<String, String> encodedPair = DiscordUtil.encodeCommands(remapLongCommands, MessageEmbed.URL_MAX_LENGTH - EMBED_META_URL.length());
+                if (encodedPair.first() != null) {
+                    builder.setThumbnail(EMBED_META_URL + encodedPair.first());
+                }
+                if (encodedPair.second() != null) {
+                    builder.setImage(EMBED_META_URL + encodedPair.second());
+                }
                 discEmbeds.set(0, builder.build());
-//            embed.setImage("https://example.com?" + query);
             }
             discBuilder.setEmbeds(discEmbeds);
         } else if (!remapLongCommands.isEmpty()) {
@@ -220,15 +224,14 @@ public class DiscordMessageBuilder extends AMessageBuilder {
                 }
             }
             if (!remapLongCommands.isEmpty()) {
-                EmbedBuilder lastEmbedBuilder = toAdd.get(toAdd.size() - 1);
-                List<NameValuePair> pairs = remapLongCommands.entrySet().stream()
-                        .map((Function<Map.Entry<String, String>, NameValuePair>)
-                                e -> new BasicNameValuePair(e.getKey(), e.getValue()))
-                        .collect(Collectors.toList());
-                String query = URLEncodedUtils.format(pairs, "UTF-8");
-                List<MessageEmbed> latestEmbeds = latest.getEmbeds();
-
-                lastEmbedBuilder.setThumbnail("https://example.com?" + query);
+                EmbedBuilder builder = toAdd.get(toAdd.size() - 1);
+                Pair<String, String> encodedPair = DiscordUtil.encodeCommands(remapLongCommands, MessageEmbed.URL_MAX_LENGTH - EMBED_META_URL.length());
+                if (encodedPair.first() != null) {
+                    builder.setThumbnail(EMBED_META_URL + encodedPair.first());
+                }
+                if (encodedPair.second() != null) {
+                    builder.setImage(EMBED_META_URL + encodedPair.second());
+                }
             }
             for (int i = 0; i < toAdd.size(); i++) {
                 EmbedBuilder builder = toAdd.get(i);

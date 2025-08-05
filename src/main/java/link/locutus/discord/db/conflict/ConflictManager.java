@@ -1,7 +1,6 @@
 package link.locutus.discord.db.conflict;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Predicates;
 import com.google.common.eventbus.Subscribe;
 import com.ptsmods.mysqlw.Database;
@@ -36,7 +35,6 @@ import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.web.jooby.AwsManager;
 import link.locutus.discord.web.jooby.JteUtil;
-import org.msgpack.jackson.dataformat.MessagePackFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -64,16 +62,10 @@ public class ConflictManager {
     private long lastTurn = 0;
     private final Map<Integer, Set<Integer>> activeConflictOrdByAllianceId = new Int2ObjectOpenHashMap<>();
     private final Map<Long, Map<Integer, int[]>> mapTurnAllianceConflictOrd = new Long2ObjectOpenHashMap<>();
-    private final ObjectMapper serializer;
 
     public ConflictManager(WarDB db) {
         this.db = db;
         this.aws = setupAws();
-        this.serializer = new ObjectMapper(new MessagePackFactory());
-    }
-
-    public ObjectMapper getSerializer() {
-        return serializer;
     }
 
     private AwsManager setupAws() {
@@ -1512,7 +1504,7 @@ public class ConflictManager {
         root.put("source_names", getSourceNames(sourceSets.keySet()));
 
         try {
-            return JteUtil.compress(serializer.writeValueAsBytes(root));
+            return JteUtil.compress(JteUtil.getSerializer().writeValueAsBytes(root));
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }

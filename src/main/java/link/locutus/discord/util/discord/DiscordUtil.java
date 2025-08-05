@@ -3,6 +3,8 @@ package link.locutus.discord.util.discord;
 import club.minnced.discord.webhook.WebhookClient;
 import club.minnced.discord.webhook.WebhookClientBuilder;
 import club.minnced.discord.webhook.send.WebhookEmbed;
+import com.google.common.base.Charsets;
+import it.unimi.dsi.fastutil.Pair;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
@@ -18,56 +20,39 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.INationSnapshot;
-import link.locutus.discord.db.entities.*;
-import link.locutus.discord.db.entities.nation.DBNationData;
-import link.locutus.discord.db.entities.nation.SimpleDBNation;
+import link.locutus.discord.db.entities.Activity;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.InterviewMessage;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.PNWUser;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
-import com.google.common.base.Charsets;
+import link.locutus.discord.util.*;
+import link.locutus.discord.util.scheduler.KeyValue;
+import link.locutus.discord.web.jooby.JteUtil;
 import net.dv8tion.jda.api.components.buttons.Button;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.StandardGuildMessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.utils.FileUpload;
-import net.dv8tion.jda.internal.entities.UserImpl;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
-import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 import org.jsoup.internal.StringUtil;
 
-import java.awt.Color;
+import java.awt.*;
 import java.nio.charset.StandardCharsets;
-import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Matcher;
@@ -624,6 +609,65 @@ public class DiscordUtil {
         return commands;
     }
 
+    private static Map<String, String> decodeUrlToCommands(String url) {
+        if (url == null || url.isEmpty()) {
+            return null;
+        }
+        boolean isType2 = false;
+        String placeholder = LEGACY_EMBED_META_URL;
+        if (!url.startsWith(placeholder)) {
+            placeholder = EMBED_META_URL;
+            if (!url.startsWith(placeholder)) {
+                return null;
+            }
+            isType2 = true;
+        }
+        String query = url.substring(placeholder.length());
+        if (isType2) {
+            return JteUtil.decompressToObject(Url3986Encoder.decode(query), Map.class);
+        }
+
+        List<NameValuePair> entries = URLEncodedUtils.parse(query, Charsets.UTF_8);
+        Map<String, String> map = new LinkedHashMap<>();
+        for (NameValuePair entry : entries) {
+            map.put(entry.getName(), entry.getValue());
+        }
+        return map;
+    }
+
+    public static Pair<String, String> encodeCommands(Map<String, String> commands, int maxLength) {
+        String encoded = Url3986Encoder.encode(JteUtil.compress(commands));
+        if (encoded.length() <= maxLength) {
+            return Pair.of(encoded, null);
+        }
+
+        List<Map.Entry<String, String>> entries = new ArrayList<>(commands.entrySet());
+        int n = entries.size();
+
+        for (int split = 1; split < n; split++) {
+            Map<String, String> firstMap = new LinkedHashMap<>();
+            Map<String, String> secondMap = new LinkedHashMap<>();
+
+            for (int i = 0; i < n; i++) {
+                Map.Entry<String, String> e = entries.get(i);
+                if (i < split) firstMap.put(e.getKey(), e.getValue());
+                else           secondMap.put(e.getKey(), e.getValue());
+            }
+
+            String enc1 = Url3986Encoder.encode(JteUtil.compress(firstMap));
+            String enc2 = Url3986Encoder.encode(JteUtil.compress(secondMap));
+
+            if (enc1.length() <= maxLength && enc2.length() <= maxLength) {
+                return Pair.of(enc1, enc2);
+            }
+        }
+
+        throw new IllegalArgumentException("Unable to split encoded commands within maxLength");
+    }
+
+    public static final String LEGACY_EMBED_META_URL = "https://example.com?";
+    public static final String EMBED_META_URL = "https://g.co?";
+
     public static Map<String, String> getReactions(MessageEmbed embed) {
         MessageEmbed.ImageInfo img = embed.getImage();
         MessageEmbed.Thumbnail thumb = embed.getThumbnail();
@@ -631,22 +675,16 @@ public class DiscordUtil {
             return null;
         }
 
-        String url = thumb != null && thumb.getUrl() != null && !thumb.getUrl().isEmpty() ? thumb.getUrl() : img.getUrl();
-        if (url == null) {
+        Map<String, String> data1 = decodeUrlToCommands(thumb == null ? null : thumb.getUrl());
+        Map<String, String> data2 = decodeUrlToCommands(img == null ? null : img.getUrl());
+        if (data1 == null && data2 == null) {
             return null;
         }
-
-        String placeholder = "https://example.com?";
-        if (!url.startsWith(placeholder)) {
-            return null;
-        }
-        String query = url.substring(placeholder.length());
-        List<NameValuePair> entries = URLEncodedUtils.parse(query, Charsets.UTF_8);
-        Map<String, String> map = new LinkedHashMap<>();
-        for (NameValuePair entry : entries) {
-            map.put(entry.getName(), entry.getValue());
-        }
-        return map;
+        if (data1 == null) return data2;
+        if (data2 == null) return data1;
+        Map<String, String> combined = new LinkedHashMap<>(data1);
+        combined.putAll(data2);
+        return combined;
     }
 
     public static Map.Entry<Integer, Integer> getCityRange(String name) {

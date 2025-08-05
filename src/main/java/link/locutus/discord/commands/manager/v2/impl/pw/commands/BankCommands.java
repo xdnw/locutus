@@ -2313,7 +2313,7 @@ public class BankCommands {
             if (receiver.isNation()) {
                 title += " | " + receiver.asNation().getAlliance();
             }
-            msg = channel.create().confirmation(title, result.getMessageJoined(false), command, "force", "Send").cancelButton();
+            msg = channel.create().confirmation(title, result.getMessageJoined(false), command, "force", "Send");
         } else {
             msg = channel.create();
             String body = result.toEmbedString();
@@ -2343,7 +2343,7 @@ public class BankCommands {
             MessageChannel grantChannel = GuildKey.GRANT_REQUEST_CHANNEL.getOrNull(guildDb);
             if (grantChannel != null) {
                 if (calling_command == null) {
-                    calling_command = command;
+                    calling_command = GrantCommands.sanitizeGrantRequestCommand(command);
                 }
                 CM.grant.request.create reqCmd = CM.grant.request.create.cmd
                         .reason("")

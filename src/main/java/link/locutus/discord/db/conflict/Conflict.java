@@ -343,7 +343,7 @@ public class Conflict {
 
         root.put("coalitions", coalitions);
         try {
-            return graphStatsGzip = JteUtil.compress(manager.getSerializer().writeValueAsBytes(root));
+            return graphStatsGzip = JteUtil.compress(JteUtil.getSerializer().writeValueAsBytes(root));
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -426,7 +426,7 @@ public class Conflict {
                 root.put("header_type", new ObjectArrayList<>(damageHeader.keySet().stream().map(f -> f.isCount() ? 1 : 0).toList()));
                 root.put("war_web", warsVsAllianceJson());
                 root.put("update_ms", System.currentTimeMillis());
-                byte[] compressed = JteUtil.compress(manager.getSerializer().writeValueAsBytes(root));
+                byte[] compressed = JteUtil.compress(JteUtil.getSerializer().writeValueAsBytes(root));
                 flatStatsGzip = compressed;
                 return compressed;
             } catch (JsonProcessingException e) {
