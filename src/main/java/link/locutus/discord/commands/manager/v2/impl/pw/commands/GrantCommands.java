@@ -649,7 +649,7 @@ public class GrantCommands {
                         cost = grantTo.calculateCost(empty);
                         grant.setInstructions(grantTo.instructions(-1, empty, ResourceType.getBuffer()));
                     } else {
-                        boolean hasDiffBuildings = true;
+                        boolean hasDiffBuildings = false;
                         Map<Integer, JavaCity> grantFrom = new LinkedHashMap<>();
                         for (Map.Entry<Integer, JavaCity> entry : receiver.getCityMap(receivers.size() == 1).entrySet()) {
                             JavaCity city = entry.getValue();
@@ -659,7 +659,7 @@ public class GrantCommands {
                             if (city.equals(grantTo)) {
                                 continue;
                             }
-                            hasDiffBuildings = false;
+                            hasDiffBuildings = true;
                             double[] buffer = grantTo.calculateCost(city, ResourceType.getBuffer(), grantInfra, grantLand);
                             ResourceType.add(cost, buffer);
                             for (ResourceType type : ResourceType.values) {
