@@ -559,8 +559,8 @@ public class CustomSheetCommands {
             Import a JSON object with columns into a spreadsheet
             The JSON must be in the format:
             {
-                "tab1": ["value1", "value2"],
-                "tab2": ["value3", "value4"]
+                "tab1": ["{column1}", "{column2}"],
+                "tab2": ["{column3}", "{column4}"]
             }
             The keys will be the tab names, and the values will be the column names""")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
