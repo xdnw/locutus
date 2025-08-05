@@ -119,10 +119,14 @@ public class DataDumpParser {
     public long getMinDay() {
         long min = Long.MAX_VALUE;
         if (nationFilesByDay != null) {
-            min = Math.min(min, nationFilesByDay.keySet().stream().min(Long::compareTo).orElse(Long.MAX_VALUE));
+            synchronized (nationFilesByDay) {
+                min = Math.min(min, nationFilesByDay.keySet().stream().min(Long::compareTo).orElse(Long.MAX_VALUE));
+            }
         }
         if (cityFilesByDay != null) {
-            min = Math.min(min, cityFilesByDay.keySet().stream().min(Long::compareTo).orElse(Long.MAX_VALUE));
+            synchronized (cityFilesByDay) {
+                min = Math.min(min, cityFilesByDay.keySet().stream().min(Long::compareTo).orElse(Long.MAX_VALUE));
+            }
         }
         return min;
     }
@@ -145,6 +149,7 @@ public class DataDumpParser {
 
     public void withNationFile(long day, Consumer<NationsFile> withFile) throws IOException, ParseException {
         downloadNationFilesByDay();
+        if (nationFilesByDay == null) return;
         synchronized (nationFilesByDay) {
             NationsFile nationFile = nationFilesByDay.get(day);
             if (nationFile != null) {
@@ -251,15 +256,21 @@ public class DataDumpParser {
     }
 
     private <T, H extends DataHeader<T>, U extends DataReader<H>, F extends DataFile<T, H, U>> F getNearest(Map<Long, F> map, long day) {
-        F exact = map.get(day);
+        if (map == null) return null;
+        F exact;
+        synchronized (map) {
+            exact = map.get(day);
+        }
         if (exact != null) return exact;
         F nearest = null;
         long nearestDiff = Long.MAX_VALUE;
-        for (Map.Entry<Long, F> entry : map.entrySet()) {
-            long diff = Math.abs(entry.getKey() - day);
-            if (diff < nearestDiff) {
-                nearestDiff = diff;
-                nearest = entry.getValue();
+        synchronized (map) {
+            for (Map.Entry<Long, F> entry : map.entrySet()) {
+                long diff = Math.abs(entry.getKey() - day);
+                if (diff < nearestDiff) {
+                    nearestDiff = diff;
+                    nearest = entry.getValue();
+                }
             }
         }
         return nearest;
