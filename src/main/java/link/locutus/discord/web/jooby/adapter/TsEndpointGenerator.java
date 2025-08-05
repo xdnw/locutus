@@ -34,7 +34,7 @@ import java.util.function.Function;
 public class TsEndpointGenerator {
     public static void writeFiles(PageHandler handler, File outputDir) throws IOException {
         if (outputDir == null) {
-            outputDir = new File("../lc_web_test/src/");
+            outputDir = new File("../lc_cmd_react/src/");
         }
         CommandGroup api = (CommandGroup) handler.getCommands().get("api");
         {
