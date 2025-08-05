@@ -1305,6 +1305,18 @@ public class CM {
                 }
 
                 }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="compareAlliancePositions")
+                public static class compare_past_positions extends CommandRef {
+                    public static final compare_past_positions cmd = new compare_past_positions();
+                public compare_past_positions nations(String value) {
+                    return set("nations", value);
+                }
+
+                public compare_past_positions snapshotDate(String value) {
+                    return set("snapshotDate", value);
+                }
+
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="counterStats")
                 public static class counterStats extends CommandRef {
                     public static final counterStats cmd = new counterStats();
@@ -2135,8 +2147,8 @@ public class CM {
                 return set("end_time", value);
             }
 
-            public records useTaxBase(String value) {
-                return set("useTaxBase", value);
+            public records includeTaxBase(String value) {
+                return set("includeTaxBase", value);
             }
 
             public records useOffset(String value) {
@@ -4178,6 +4190,10 @@ public class CM {
                     return set("outputChannel", value);
                 }
 
+                public deposits behavior(String value) {
+                    return set("behavior", value);
+                }
+
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.EmbedCommands.class,method="econPanel")
                 public static class econ_gov extends CommandRef {
@@ -4246,6 +4262,10 @@ public class CM {
                     return set("outputChannel", value);
                 }
 
+                public raid behavior(String value) {
+                    return set("behavior", value);
+                }
+
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.EmbedCommands.class,method="spyEnemy")
                 public static class spy_enemy extends CommandRef {
@@ -4276,6 +4296,10 @@ public class CM {
 
                 public spy_sheets spySheet(String value) {
                     return set("spySheet", value);
+                }
+
+                public spy_sheets behavior(String value) {
+                    return set("behavior", value);
                 }
 
                 }
@@ -10311,6 +10335,18 @@ public class CM {
 
             public from_file index(String value) {
                 return set("index", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="importSheetJsonColumns")
+            public static class import_json extends CommandRef {
+                public static final import_json cmd = new import_json();
+            public import_json sheet(String value) {
+                return set("sheet", value);
+            }
+
+            public import_json json(String value) {
+                return set("json", value);
             }
 
             }

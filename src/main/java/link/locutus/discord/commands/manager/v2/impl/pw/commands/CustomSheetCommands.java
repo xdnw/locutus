@@ -538,9 +538,9 @@ public class CustomSheetCommands {
         response.append("**Result**:\n- ").append(StringMan.join(toErrorList.get(), "\n- ")).append("\n");
         response.append("Url: <").append(custom.getUrl()).append(">\n");
         if (saveSheet) {
-            response.append("Saved sheet: `").append(custom.getName()).append("`");
+            response.append("Saved sheet: `").append(custom.getName()).append("`\n");
         }
-        IMessageBuilder msg = io.create().append(response.toString());
+        IMessageBuilder msg = io.create();
         if (!exportColumns.isEmpty()) {
             int numTabsWithPlaceholders = (int) exportColumns.values().stream()
                     .filter(col -> col.stream().anyMatch(s -> s.contains("{") && s.contains("}")))
@@ -549,8 +549,9 @@ public class CustomSheetCommands {
             String exportJson = prettyGson.toJson(exportColumns);
             String fileName = "tabs_" + exportColumns.size() + "_hascolumns_" + numTabsWithPlaceholders + ".json";
             msg.file(fileName, exportJson.getBytes(StandardCharsets.UTF_8));
+            response.append("See: " + CM.sheet_custom.import_json.cmd.toSlashMention() + " to import tab names and header column from json file");
         }
-        msg.send();
+        msg.append(response.toString()).send();
         return null;
     }
 

@@ -1009,6 +1009,11 @@ public class NationCommands {
             public static final getNumResearch cmd = new getNumResearch();
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getNumTreasures")
+        public static class getNumTreasures extends CommandRef {
+            public static final getNumTreasures cmd = new getNumTreasures();
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getNumWars")
         public static class getNumWars extends CommandRef {
             public static final getNumWars cmd = new getNumWars();
