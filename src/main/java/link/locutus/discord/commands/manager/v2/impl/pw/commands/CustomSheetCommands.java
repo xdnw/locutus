@@ -564,8 +564,8 @@ public class CustomSheetCommands {
             }
             The keys will be the tab names, and the values will be the column names""")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String importSheetJsonColumns(SpreadSheet sheet, JSONObject json) throws IOException {
-        Map<String, List<String>> columns = new Gson().fromJson(json.toString(), Map.class);
+    public String importSheetJsonColumns(SpreadSheet sheet, String json) throws IOException {
+        Map<String, List<String>> columns = new Gson().fromJson(json, Map.class);
         if (columns == null || columns.isEmpty()) {
             throw new IllegalArgumentException("No columns found in the JSON");
         }
