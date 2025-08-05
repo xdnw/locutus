@@ -275,58 +275,74 @@ public class DataDumpParser {
 
     private Map<Long, NationsFile> downloadNationFilesByDay() throws IOException, ParseException {
         if (nationFilesByDay == null) {
-            if (!nationDir.exists()) {
-                nationDir.mkdirs();
-            }
-            nationFilesByDay = new Long2ObjectLinkedOpenHashMap<>();
+            synchronized (this) {
+                if (nationFilesByDay == null) {
+                    if (!nationDir.exists()) {
+                        nationDir.mkdirs();
+                    }
+                    nationFilesByDay = new Long2ObjectLinkedOpenHashMap<>();
 
-            String prefix = "nations";
-            for (File file : nationDir.listFiles()) {
-                if (!DataFile.isValidName(file, prefix)) continue;
-                NationsFile natFile = new NationsFile(file, nationDict);
-                long day = natFile.getDay();
-                nationFilesByDay.putIfAbsent(day, natFile);
+                    String prefix = "nations";
+                    for (File file : nationDir.listFiles()) {
+                        if (!DataFile.isValidName(file, prefix)) continue;
+                        NationsFile natFile = new NationsFile(file, nationDict);
+                        long day = natFile.getDay();
+                        nationFilesByDay.putIfAbsent(day, natFile);
+                    }
+                    lastUpdatedNations = nationFilesByDay.keySet().stream().max(Long::compareTo).orElse(0L);
+                }
+                }
             }
-            lastUpdatedNations = nationFilesByDay.keySet().stream().max(Long::compareTo).orElse(0L);
-        }
         long currentDay = TimeUtil.getDay();
         if (currentDay > lastUpdatedNations) {
-            Map<Long, File> downloaded = load(Settings.PNW_URL() + "/data/nations/", new File(Settings.INSTANCE.DATABASE.DATA_DUMP.NATIONS));
-            downloaded.forEach((time, file) -> {
-                long day = TimeUtil.getDay(time);
-                NationsFile natFile = new NationsFile(file, nationDict);
-                nationFilesByDay.putIfAbsent(day, natFile);
-            });
-            lastUpdatedNations = currentDay;
+            synchronized (this) {
+                if (currentDay > lastUpdatedNations) {
+                    Map<Long, File> downloaded = load(Settings.PNW_URL() + "/data/nations/", new File(Settings.INSTANCE.DATABASE.DATA_DUMP.NATIONS));
+                    downloaded.forEach((time, file) -> {
+                        long day = TimeUtil.getDay(time);
+                        NationsFile natFile = new NationsFile(file, nationDict);
+                        nationFilesByDay.putIfAbsent(day, natFile);
+                    });
+                    lastUpdatedNations = currentDay;
+                }
+            }
         }
         return nationFilesByDay;
     }
 
     private Map<Long, CitiesFile> downloadCityFilesByDay() throws IOException, ParseException {
         if (cityFilesByDay == null) {
-            if (!cityDir.exists()) {
-                cityDir.mkdirs();
-            }
-            cityFilesByDay = new Long2ObjectLinkedOpenHashMap<>();
+            synchronized (this) {
+                if (cityFilesByDay == null) {
+                    if (!cityDir.exists()) {
+                        cityDir.mkdirs();
+                    }
+                    cityFilesByDay = new Long2ObjectLinkedOpenHashMap<>();
 
-            String prefix = "cities";
-            for (File file : cityDir.listFiles()) {
-                if (!DataFile.isValidName(file, prefix)) continue;
-                CitiesFile cityFile = new CitiesFile(file, cityDict);
-                long day = cityFile.getDay();
-                cityFilesByDay.putIfAbsent(day, cityFile);
+                    String prefix = "cities";
+                    for (File file : cityDir.listFiles()) {
+                        if (!DataFile.isValidName(file, prefix)) continue;
+                        CitiesFile cityFile = new CitiesFile(file, cityDict);
+                        long day = cityFile.getDay();
+                        cityFilesByDay.putIfAbsent(day, cityFile);
+                    }
+                    lastUpdatedCities = cityFilesByDay.keySet().stream().max(Long::compareTo).orElse(0L);
+                }
             }
-            lastUpdatedCities = cityFilesByDay.keySet().stream().max(Long::compareTo).orElse(0L);
         }
         long currentDay = TimeUtil.getDay();
         if (currentDay > lastUpdatedCities) {
-            Map<Long, File> downloaded = load(Settings.PNW_URL() + "/data/cities/", new File(Settings.INSTANCE.DATABASE.DATA_DUMP.CITIES));
-            downloaded.forEach((time, file) -> {
-                long day = TimeUtil.getDay(time);
-                CitiesFile cityFile = new CitiesFile(file, cityDict);
-                cityFilesByDay.putIfAbsent(day, cityFile);
-            });
-            lastUpdatedCities = currentDay;
+            synchronized (this) {
+                if (currentDay > lastUpdatedCities) {
+                    Map<Long, File> downloaded = load(Settings.PNW_URL() + "/data/cities/", new File(Settings.INSTANCE.DATABASE.DATA_DUMP.CITIES));
+                    downloaded.forEach((time, file) -> {
+                        long day = TimeUtil.getDay(time);
+                        CitiesFile cityFile = new CitiesFile(file, cityDict);
+                        cityFilesByDay.putIfAbsent(day, cityFile);
+                    });
+                    lastUpdatedCities = currentDay;
+                }
+            }
         }
 
         return cityFilesByDay;
