@@ -77,11 +77,11 @@ public class CustomSheet {
         return response.toString();
     }
 
-    public List<String> update(ValueStore store) throws GeneralSecurityException, IOException {
-        return update(getSheet(), store, tabs);
+    public List<String> update(ValueStore store, Map<String, List<String>> exportColumns) throws GeneralSecurityException, IOException {
+        return update(getSheet(), store, tabs, exportColumns);
     }
 
-    public List<String> update(SpreadSheet sheet, ValueStore store, Map<String, Map.Entry<SelectionAlias, SheetTemplate>> customTabs) throws GeneralSecurityException, IOException {
+    public List<String> update(SpreadSheet sheet, ValueStore store, Map<String, Map.Entry<SelectionAlias, SheetTemplate>> customTabs, Map<String, List<String>> exportColumns) throws GeneralSecurityException, IOException {
         synchronized (sheet) {
             List<String> messageList = new ObjectArrayList<>();
             Map<String, List<String>> errorGroups = new Object2ObjectLinkedOpenHashMap<>();
@@ -146,6 +146,9 @@ public class CustomSheet {
                         Object modifier = alias.getModifier() == null ? null : ph.parseModifierLegacy(store, alias.getModifier());
                         Set<Object> selection = ph.deserializeSelection(store, alias.getSelection(), modifier);
                         List<String> columns = template.getColumns();
+
+                        if (exportColumns != null) exportColumns.put(tabName, columns);
+
                         List<Object> header = new ArrayList<>(columns);
                         for (int i = 0; i < header.size(); i++) {
                             if (header.get(i) instanceof String str && str.startsWith("=")) {

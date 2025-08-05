@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import de.siegmar.fastcsv.reader.CloseableIterator;
 import de.siegmar.fastcsv.reader.CsvReader;
 import de.siegmar.fastcsv.reader.CsvRow;
@@ -323,7 +325,7 @@ public class CustomSheetCommands {
             Tabs in the google sheet which aren't registered will be ignored""")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
     public String updateSheet(CustomSheet sheet, ValueStore store) throws GeneralSecurityException, IOException {
-        List<String> errors = sheet.update(store);
+        List<String> errors = sheet.update(store, null);
 
         StringBuilder result = new StringBuilder();
         result.append("Updating sheet: `").append(sheet.getName()).append("` (").append(sheet.getTabs().size()).append(" tabs)\n");
@@ -365,13 +367,13 @@ public class CustomSheetCommands {
             Update a spreadsheet's tab from a url
             The tab specified by the URL (`#guid`) must be named a valid selection, prefixed by the type e.g. `nation:*`
             The first row must have placeholders in each column, such as `{nation}` `{cities}` `{score}`""")
-    public String autoTab(ValueStore store, @Me GuildDB db, SpreadSheet sheet, @Switch("s") boolean saveSheet) throws GeneralSecurityException, IOException {
+    public String autoTab(ValueStore store, @Me IMessageIO io, @Me GuildDB db, SpreadSheet sheet, @Switch("s") boolean saveSheet) throws GeneralSecurityException, IOException {
         String defaultTab = sheet.getDefaultTab();
         Integer defaultTabId = sheet.getDefaultTabId();
         if (defaultTab == null && defaultTabId == null) {
             throw new IllegalArgumentException("No tab specified in the sheet url you provided. Please copy a google sheet tab URL with a `#guid` provided");
         }
-        return autoPredicate(store, db, sheet, saveSheet, (id, name) -> {
+        return autoPredicate(store, io, db, sheet, saveSheet, (id, name) -> {
             return (defaultTabId != null && id != null && id.equals(defaultTabId)) ||
                      (defaultTab != null && name != null && name.equalsIgnoreCase(defaultTab)) ||
                      (defaultTabId == null && defaultTab == null && id != null && id.equals(0));
@@ -383,11 +385,11 @@ public class CustomSheetCommands {
             Each tab must be a valid selection, prefixed by the type e.g. `nation:*`
             The first row must have placeholders in each column, such as `{nation}` `{cities}` `{score}`""")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String auto(ValueStore store, @Me GuildDB db, SpreadSheet sheet, @Switch("s") boolean saveSheet) throws GeneralSecurityException, IOException {
-        return autoPredicate(store, db, sheet, saveSheet, (_, _) -> true);
+    public String auto(ValueStore store, @Me IMessageIO io, @Me GuildDB db, SpreadSheet sheet, @Switch("s") boolean saveSheet) throws GeneralSecurityException, IOException {
+        return autoPredicate(store, io, db, sheet, saveSheet, (_, _) -> true);
     }
 
-    private String autoPredicate(ValueStore store, @Me GuildDB db, SpreadSheet sheet, @Switch("s") boolean saveSheet, BiPredicate<Integer, String> allowTab) throws GeneralSecurityException, IOException {
+    private String autoPredicate(ValueStore store, @Me IMessageIO io, @Me GuildDB db, SpreadSheet sheet, @Switch("s") boolean saveSheet, BiPredicate<Integer, String> allowTab) throws GeneralSecurityException, IOException {
         CustomSheetManager manager = db.getSheetManager();
         PlaceholdersMap phMap = Locutus.cmd().getV2().getPlaceholders();
 
@@ -417,6 +419,7 @@ public class CustomSheetCommands {
                     return "Sheet with name `" + name + "` already exists: <" + existing.getUrl() + ">. Please change the title of your spreadsheet to something unique or delete the existing sheet using ";
                 }
                 manager.addCustomSheet(name, sheet.getSpreadsheetId());
+                custom = manager.getCustomSheetById(sheet.getSpreadsheetId());
             } else {
                 custom = new CustomSheet(sheet.getTitle(), sheet.getSpreadsheetId(), new LinkedHashMap<>());
             }
@@ -530,13 +533,50 @@ public class CustomSheetCommands {
         }
 
         StringBuilder response = new StringBuilder();
-        messageList.addAll(custom.update(custom.getSheet(), store, customTabs));
+        Map<String, List<String>> exportColumns = new Object2ObjectLinkedOpenHashMap<>();
+        messageList.addAll(custom.update(custom.getSheet(), store, customTabs, exportColumns));
         response.append("**Result**:\n- ").append(StringMan.join(toErrorList.get(), "\n- ")).append("\n");
         response.append("Url: <").append(custom.getUrl()).append(">\n");
         if (saveSheet) {
             response.append("Saved sheet: `").append(custom.getName()).append("`");
         }
-        return response.toString();
+        IMessageBuilder msg = io.create().append(response.toString());
+        if (!exportColumns.isEmpty()) {
+            int numTabsWithPlaceholders = (int) exportColumns.values().stream()
+                    .filter(col -> col.stream().anyMatch(s -> s.contains("{") && s.contains("}")))
+                    .count();
+            Gson prettyGson = new GsonBuilder().setPrettyPrinting().create();
+            String exportJson = prettyGson.toJson(exportColumns);
+            String fileName = "tabs_" + exportColumns.size() + "_hascolumns_" + numTabsWithPlaceholders + ".json";
+            msg.file(fileName, exportJson.getBytes(StandardCharsets.UTF_8));
+        }
+        msg.send();
+        return null;
+    }
+
+    @Command(desc = """
+            Import a JSON object with columns into a spreadsheet
+            The JSON must be in the format:
+            {
+                "tab1": ["value1", "value2"],
+                "tab2": ["value3", "value4"]
+            }
+            The keys will be the tab names, and the values will be the column names""")
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+    public String importSheetJsonColumns(SpreadSheet sheet, JSONObject json) throws IOException {
+        Map<String, List<String>> columns = new Gson().fromJson(json.toString(), Map.class);
+        if (columns == null || columns.isEmpty()) {
+            throw new IllegalArgumentException("No columns found in the JSON");
+        }
+
+        sheet.reset();
+        columns.forEach((tabName, header) -> {
+            sheet.setDefaultTab(tabName, null);
+            sheet.setHeader(header);
+        });
+        sheet.updateWrite();
+
+        return "Imported columns to <" + sheet.getURL() + ">";
     }
 
     @Command(desc = """
