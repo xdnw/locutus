@@ -13,20 +13,25 @@ import link.locutus.discord.util.PW;
 import java.util.*;
 import java.util.function.*;
 
-public class CityNode implements INationCity {
+public final class CityNode implements INationCity {
     private final byte[] modifiable;
-    private double revenue = -1;
-    private int numBuildings;
-    private int commerce;
-    private int pollution;
+    private double revenueFull = Double.MIN_VALUE;
+    private double baseRevenue = 0;
+
+    private char numBuildings;
+    private byte commerce;
+    private char pollution;
 
     private int index;
 
     private final CachedCity cached;
 
-    private static int modIs = 4;
-    private static int modIe = Buildings.values().length - 4;
-    private static int LENGTH = modIe - modIs;
+    private static final int modIs = 4;
+    private static final int modIe = Buildings.values().length - 4;
+    private static final int LENGTH = modIe - modIs;
+    private static final int HOSPITAL_MOD_INDEX = Buildings.HOSPITAL.ordinal() - modIs;
+    private static final int POLICE_MOD_INDEX  = Buildings.POLICE_STATION.ordinal() - modIs;
+
 
     private static final BiFunction<CityNode, CachedCity, Integer>[] getNumBuildings;
     static {
@@ -88,13 +93,13 @@ public class CityNode implements INationCity {
         private final Consumer<CityNode>[] REMOVE_BUILDING;
 
         private final byte[] buildings;
-        private final int basePollution;
+        private final char basePollution;
         private final List<Building> existing;
         private final List<Building> buildable;
         private final Building[] buildableArr;
         private final Building[] buildablePollution;
         private final int maxCommerce;
-        private final int baseCommerce;
+        private final byte baseCommerce;
         private final double basePopulation;
         private final double ageBonus;
         private final double baseDisease;
@@ -109,7 +114,7 @@ public class CityNode implements INationCity {
         private final int ageDays;
         private final double buildingInfra;
         private final double land;
-        private final int numBuildings;
+        private final char numBuildings;
         private final Predicate<Project> hasProject;
         private final double rads;
         private final Continent continent;
@@ -117,6 +122,7 @@ public class CityNode implements INationCity {
         private final int maxSlots;
         private final double infraLow;
         private final double[][] modifiableProfit;
+        private final double[][] marginalProfit;
         private final long dateCreated;
         private int maxIndex;
 
@@ -169,7 +175,7 @@ public class CityNode implements INationCity {
             this.buildablePollution = Arrays.stream(buildableArr).filter(f -> f.pollution(hasProject) > 0).toArray(Building[]::new);
 
             this.maxCommerce = city.getMaxCommerce(hasProject);
-            this.baseCommerce = hasProject.test(Projects.TELECOMMUNICATIONS_SATELLITE) ? 2 : 0;
+            this.baseCommerce = (byte) (hasProject.test(Projects.TELECOMMUNICATIONS_SATELLITE) ? 2 : 0);
 
             this.basePopulation = this.infraLow * 100;
             this.ageBonus = (1 + Math.log(Math.max(1, city.getAgeDays())) * 0.0666666666666666666666666666666);
@@ -209,8 +215,8 @@ public class CityNode implements INationCity {
                     building.profit(continent, rads, -1L, hasProject, city, this.baseProfit, 12, num);
                 }
             }
-            this.numBuildings = numBuildings;
-            this.basePollution = basePollution;
+            this.numBuildings = (char) numBuildings;
+            this.basePollution = (char) basePollution;
             this.food = (Math.pow(basePopulation, 2)) / 125_000_000 + ((basePopulation) * (1 + Math.log(city.getAgeDays()) / 15d) - basePopulation) / 850;
             this.baseProfit[ResourceType.FOOD.ordinal()] -= food;
             baseProfitConverted -= ResourceType.convertedTotalNegative(ResourceType.FOOD, food);
@@ -219,6 +225,7 @@ public class CityNode implements INationCity {
             ADD_BUILDING = new Consumer[modIe - modIs];
             REMOVE_BUILDING = new Consumer[modIe - modIs];
             this.modifiableProfit = new double[modIe - modIs][];
+            this.marginalProfit = new double[modIe - modIs][];
 
             for (int i = modIs, j = 0; i < modIe; i++, j++) {
                 int finalJ = j;
@@ -233,68 +240,101 @@ public class CityNode implements INationCity {
                 for (int k = 0; k < cap; k++) {
                     profitConverted[k] = building.profitConverted(continent, rads, hasProject, this.land, k + 1);
                 }
+                double[] marginalProfitJ = new double[cap];
+                double lastMarginal = 0;
+                for (int k = 0; k < cap; k++) {
+                    double profit = profitConverted[k];
+                    marginalProfitJ[k] = profit - lastMarginal;
+                    lastMarginal = profit;
+                }
+
                 modifiableProfit[j] = profitConverted;
+                marginalProfit[j] = marginalProfitJ;
 
                 if (addCommerce != 0) {
                     if (addPollution != 0) {
                         ADD_BUILDING[j] = (n) -> {
+                            byte amt = n.modifiable[finalJ];
+                            n.baseRevenue += marginalProfitJ[amt];
+
                             n.commerce += addCommerce;
                             n.pollution += addPollution;
                             n.numBuildings++;
                             n.modifiable[finalJ]++;
-                            n.revenue = -1;
+                            n.revenueFull = Double.MIN_VALUE;
                         };
                         REMOVE_BUILDING[j] = (n) -> {
+                            byte amt = n.modifiable[finalJ];
+                            n.baseRevenue -= marginalProfitJ[amt - 1];
+
                             n.commerce -= addCommerce;
                             n.pollution -= addPollution;
                             n.numBuildings--;
                             n.modifiable[finalJ]--;
-                            n.revenue = -1;
+                            n.revenueFull = Double.MIN_VALUE;
                         };
                     } else {
                         ADD_BUILDING[j] = (n) -> {
+                            byte amt = n.modifiable[finalJ];
+                            n.baseRevenue += marginalProfitJ[amt];
+
                             n.commerce += addCommerce;
                             n.numBuildings++;
                             n.modifiable[finalJ]++;
-                            n.revenue = -1;
+                            n.revenueFull = Double.MIN_VALUE;
                         };
                         REMOVE_BUILDING[j] = (n) -> {
+                            byte amt = n.modifiable[finalJ];
+                            n.baseRevenue -= marginalProfitJ[amt - 1];
+
                             n.commerce -= addCommerce;
                             n.numBuildings--;
                             n.modifiable[finalJ]--;
-                            n.revenue = -1;
+                            n.revenueFull = Double.MIN_VALUE;
                         };
                     }
                 } else if (addPollution != 0) {
                     ADD_BUILDING[j] = (n) -> {
+                        byte amt = n.modifiable[finalJ];
+                        n.baseRevenue += marginalProfitJ[amt];
+
                         n.pollution += addPollution;
                         n.numBuildings++;
                         n.modifiable[finalJ]++;
-                        n.revenue = -1;
+                        n.revenueFull = Double.MIN_VALUE;
                     };
                     REMOVE_BUILDING[j] = (n) -> {
+                        byte amt = n.modifiable[finalJ];
+                        n.baseRevenue -= marginalProfitJ[amt - 1];
+
                         n.pollution -= addPollution;
                         n.numBuildings--;
                         n.modifiable[finalJ]--;
-                        n.revenue = -1;
+                        n.revenueFull = Double.MIN_VALUE;
                     };
                 } else {
                     ADD_BUILDING[j] = (n) -> {
+                        byte amt = n.modifiable[finalJ];
+                        n.baseRevenue += marginalProfitJ[amt];
+
                         n.numBuildings++;
                         n.modifiable[finalJ]++;
-                        n.revenue = -1;
+                        n.revenueFull = Double.MIN_VALUE;
                     };
                     REMOVE_BUILDING[j] = (n) -> {
+                        byte amt = n.modifiable[finalJ];
+                        n.baseRevenue -= marginalProfitJ[amt - 1];
+
                         n.numBuildings--;
                         n.modifiable[finalJ]--;
-                        n.revenue = -1;
+                        n.revenueFull = Double.MIN_VALUE;
                     };
                 }
             }
         }
 
         public CityNode create() {
-            CityNode node = new CityNode(this, new byte[LENGTH], numBuildings, baseCommerce, basePollution, 0);
+            CityNode node = new CityNode(this, new byte[LENGTH], numBuildings, baseCommerce, basePollution, 0d, 0);
             return node;
         }
 
@@ -331,17 +371,18 @@ public class CityNode implements INationCity {
         }
     }
 
-    public CityNode(CachedCity origin, byte[] modifiable, int numBuildings, int commerce, int pollution, int index) {
+    public CityNode(CachedCity origin, byte[] modifiable, char numBuildings, byte commerce, char pollution, double baseRevenue, int index) {
         this.cached = origin;
         this.modifiable = modifiable;
         this.numBuildings = numBuildings;
         this.commerce = commerce;
         this.pollution = pollution;
+        this.baseRevenue = baseRevenue;
         this.index = index;
     }
 
     public CityNode clone() {
-        return new CityNode(cached, modifiable.clone(), numBuildings, commerce, pollution, index);
+        return new CityNode(cached, modifiable.clone(), numBuildings, commerce, pollution, baseRevenue, index);
     }
 
     @Override
@@ -387,21 +428,7 @@ public class CityNode implements INationCity {
         cached.REMOVE_BUILDING[building.ordinal() - modIs].accept(this);
     }
 
-    public double getRevenueConverted() {
-        if (revenue != -1) {
-            return revenue;
-        }
-        int population = calcPopulation(cached.hasProject);
-        double revenue = cached.baseProfitConverted + cached.commerceIncome[commerce] * population;
-        for (int i = 0; i < modifiable.length; i++) {
-            byte amt = modifiable[i];
-            if (amt == 0) continue;
-            revenue += cached.modifiableProfit[i][amt - 1];
-        }
-        return this.revenue = revenue;
-    }
-
-    public double[] getProfit(double[] profitBuffer) {
+    public final double[] getProfit(double[] profitBuffer) {
         System.arraycopy(cached.baseProfit, 0, profitBuffer, 0, profitBuffer.length);
         int population = calcPopulation(cached.hasProject);
         double revenue = cached.baseProfitConverted + cached.commerceIncome[commerce] * population;
@@ -416,14 +443,37 @@ public class CityNode implements INationCity {
         return profitBuffer;
     }
 
+    public final double getRevenueConverted() {
+        if (revenueFull != Double.MIN_VALUE) {
+            return revenueFull;
+        }
+        CachedCity c        = cached;
+        byte[] mods         = modifiable;
+        double[][] mProfit  = c.modifiableProfit;
+        int pop             = calcPopulation();
+        double rev          = c.baseProfitConverted + c.commerceIncome[commerce] * pop;
+//        for (int i = 0, len = mods.length; i < len; i++) {
+//            int amt = mods[i];
+//            if (amt > 0) {
+//                rev += mProfit[i][amt - 1];
+//            }
+//        }
+        rev += baseRevenue;
+        return revenueFull = rev;
+    }
+
     @Override
     public int calcPopulation(Predicate<Project> hasProject) {
-        double disease = calcDisease(hasProject);
-        double crime = calcCrime(hasProject);
+        return calcPopulation();
+    }
+
+    public final int calcPopulation() {
+        double disease = calcDisease();
+        double crime = calcCrime();
         return calcPopulation(disease, crime);
     }
 
-    public int calcPopulation(double disease, double crime) {
+    public final int calcPopulation(double disease, double crime) {
         double diseaseDeaths = ((disease * 0.01) * cached.basePopulation);
         double crimeDeaths = Math.max((crime * 0.1) * cached.basePopulation - 25, 0);
         return (int) Math.max(10, ((cached.basePopulation - diseaseDeaths - crimeDeaths) * cached.ageBonus));
@@ -431,25 +481,34 @@ public class CityNode implements INationCity {
 
     @Override
     public double calcDisease(Predicate<Project> hasProject) {
-        int hospitals = this.modifiable[Buildings.HOSPITAL.ordinal() - modIs];
-        double pollutionModifier = pollution * 0.05;
+        return calcDisease();
+    }
+
+    public final double calcDisease() {
+        int hospitals        = modifiable[HOSPITAL_MOD_INDEX] & 0xFF;
+        double pollutionMod  = pollution * 0.05;
+        double base          = cached.baseDisease + pollutionMod;
+
         if (hospitals > 0) {
-            double hospitalModifier = hospitals * cached.hospitalPct;
-            return Math.max(0, cached.baseDisease - hospitalModifier + pollutionModifier);
-        } else {
-            return Math.max(0, cached.baseDisease + pollutionModifier);
+            base -= hospitals * cached.hospitalPct;
         }
+        return Math.max(0, base);
     }
 
     @Override
     public double calcCrime(Predicate<Project> hasProject) {
-        int police = this.modifiable[Buildings.POLICE_STATION.ordinal() - modIs];
+        return calcCrime();
+    }
+
+    public double calcCrime() {
+        int police           = modifiable[POLICE_MOD_INDEX] & 0xFF;
+        double crimeVal      = cached.crimeCache[commerce];
+
         if (police > 0) {
-            double policeMod = police * (cached.policePct);
-            return Math.max(0, cached.crimeCache[commerce] - policeMod);
-        } else {
-            return cached.crimeCache[commerce];
+            crimeVal -= police * cached.policePct;
+            if (crimeVal < 0) crimeVal = 0;
         }
+        return crimeVal;
     }
 
     @Override
