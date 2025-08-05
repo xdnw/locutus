@@ -315,6 +315,11 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
                 R reader = createReader.apply(header, date);
                 byte[] decompressed = getBytes();
                 Header<T> colInfo = header.readIndexes(decompressed);
+                int bytesOffset = 4 + colInfo.headers.length + 4; // initial offset + header size + number of rows
+                int remainder = (decompressed.length - bytesOffset) % colInfo.bytesPerRow;
+                if (remainder != 0) {
+                    throw new IllegalStateException("Data file " + filePart + " has a remainder of " + remainder + " bytes, expected multiple of " + colInfo.bytesPerRow);
+                }
 
                 Set<ColumnInfo<T, Object>> presetAndSpecified = new ObjectLinkedOpenHashSet<>();
                 for (ColumnInfo<T, Object> column : requiredColumns) {
