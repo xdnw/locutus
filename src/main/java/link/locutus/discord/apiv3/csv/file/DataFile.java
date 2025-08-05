@@ -18,7 +18,6 @@ import org.jgrapht.alg.util.Pair;
 
 import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.ref.SoftReference;
 import java.nio.file.Files;
@@ -150,6 +149,9 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
         }
 
         synchronized (this) {
+            if (binExists) {
+                return Pair.of(binFile, null);
+            }
             H parent = createHeader.get();
             Map<String, String> aliases = parent.getAliases();
             Map<String, ColumnInfo<T, Object>> headers = parent.createHeaders();
@@ -243,12 +245,8 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
                     }
                 }
                 byte[] compressed = ArrayUtil.compressLZ4(baos.array, baos.length);
-                try (FileOutputStream fos = new FileOutputStream(binFile)) {
-                    fos.write(compressed);
-                }
+                Files.write(binFile.toPath(), compressed);
                 output[0] = baos.array;
-
-
             });
             parent.getDictionary().save();
             binExists = true;
@@ -348,6 +346,8 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
                     if (remainder != 0) {
                         throw new IllegalStateException("Data file " + filePart + " has a remainder of " + remainder + " bytes, expected multiple of " + colInfo.bytesPerRow + " | Num columns " + colInfo.headers.length + " | Bytes per row " + colInfo.bytesPerRow + " | Total bytes " + decompressed.length);
                     } else {
+                        // print same info but no error
+//                        System.out.println("Success: Data file " + filePart + " has no remainder, expected multiple of " + colInfo.bytesPerRow + " | Num columns " + colInfo.headers.length + " | Bytes per row " + colInfo.bytesPerRow + " | Total bytes " + decompressed.length);
                     }
 
                     Set<ColumnInfo<T, Object>> presetAndSpecified = new ObjectLinkedOpenHashSet<>();

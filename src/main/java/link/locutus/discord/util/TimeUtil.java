@@ -1,6 +1,11 @@
 package link.locutus.discord.util;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import link.locutus.discord.config.Settings;
+import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
 import java.io.File;
 import java.time.Instant;
@@ -34,6 +39,41 @@ public class TimeUtil {
 
     public static final DateTimeFormatter YYYY_MM_DD        = withOptionalTime("yyyy-MM-dd");
     public static final DateTimeFormatter DD_MM_YYYY_HH     = withOptionalTime("dd/MM/yyyy HH");
+
+//    static class Wrapper {
+//        public Instant date;
+//    }
+//
+//    public static void main(String[] args) throws JsonProcessingException {
+//        ObjectMapper jacksonObjectMapper = Jackson2ObjectMapperBuilder.json().simpleDateFormat("yyyy-MM-dd")
+//                .featuresToEnable(DeserializationFeature.READ_DATE_TIMESTAMPS_AS_NANOSECONDS)
+//                .build();
+//        jacksonObjectMapper.configure(DeserializationFeature.READ_DATE_TIMESTAMPS_AS_NANOSECONDS,true);
+//        jacksonObjectMapper.configure(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY, true);
+//        SimpleModule module = new SimpleModule();
+//        // Fix for snapshots returning Object instead of Array of CityInfraDamage
+////        module.addDeserializer(CityInfraDamage.class, (JsonDeserializer<CityInfraDamage>) (Object) new CityInfraDamageDeserializer());
+//        jacksonObjectMapper.registerModule(module);
+//
+//        // test deserializing something containing a date: `2114-10-25T00:00:00+00:00`
+//        {
+//            String json = "\"2114-10-25T00:00:00+00:00\"";
+//            Instant actual = jacksonObjectMapper.readValue(json, Instant.class);
+//            Instant instant = Instant.parse("2114-10-25T00:00:00Z");
+//            System.out.println("Deserialized Instant: " + actual);
+//            System.out.println("Expected Instant: " + instant);
+//            System.out.println("Are they equal? " + actual.equals(instant));
+//        }
+//        {
+//            String json = "{\"date\":\"2114-10-25T00:00:00+00:00\"}";
+//            Wrapper wrapper = jacksonObjectMapper.readValue(json, Wrapper.class);
+//            Instant actual = wrapper.date;
+//            Instant instant = Instant.parse("2114-10-25T00:00:00Z");
+//            System.out.println("Deserialized Wrapper Instant: " + actual);
+//            System.out.println("Expected Instant: " + instant);
+//            System.out.println("Are they equal? " + actual.equals(instant));
+//        }
+//    }
 
     private static DateTimeFormatter withOptionalTime(String pattern) {
         DateTimeFormatterBuilder b = new DateTimeFormatterBuilder()

@@ -48,6 +48,7 @@ public abstract class DataHeader<T> {
                 if (numHeaders > headers.size()) {
                     throw new IllegalStateException("Number of headers in file (" + numHeaders + ") exceeds number of headers defined in class (" + headers.size() + ")");
                 } else {
+//                    System.out.println("Number of headers in file: " + numHeaders + ", defined in class: " + headers.size());
                 }
 
                 List<ColumnInfo<T, Object>> headersArr = new ObjectArrayList<>(headers.values());
