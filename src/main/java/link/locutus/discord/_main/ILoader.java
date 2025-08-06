@@ -7,8 +7,8 @@ import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
 import link.locutus.discord.commands.stock.StockDB;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.*;
+import link.locutus.discord.util.discord.GuildShardManager;
 import link.locutus.discord.util.trade.TradeManager;
-import net.dv8tion.jda.api.JDA;
 
 import javax.annotation.Nullable;
 
@@ -27,7 +27,8 @@ public interface ILoader {
     default long getAdminUserId() {
         return Settings.INSTANCE.ADMIN_USER_ID;
     }
-    JDA getJda();
+//    JDA getJda();
+    GuildShardManager getShardManager();
     SlashCommandManager getSlashCommandManager();
     CommandManager getCommandManager();
 

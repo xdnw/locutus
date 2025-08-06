@@ -1,5 +1,6 @@
 package link.locutus.discord.db;
 
+import com.google.common.base.Predicates;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.politicsandwar.graphql.model.*;
@@ -16,19 +17,24 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.domains.subdomains.SAllianceContainer;
+import link.locutus.discord.apiv1.domains.subdomains.SCityContainer;
 import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
+import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.apiv1.enums.DomesticPolicy;
+import link.locutus.discord.apiv1.enums.WarPolicy;
+import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
+import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.file.CitiesFile;
 import link.locutus.discord.apiv3.csv.file.NationsFile;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.apiv3.subscription.PnwPusherShardManager;
 import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.apiv1.enums.city.project.Project;
-import link.locutus.discord.apiv1.enums.city.project.Projects;
-import link.locutus.discord.apiv3.enums.AlliancePermission;
-import link.locutus.discord.apiv3.enums.NationLootType;
-import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.entities.city.SimpleDBCity;
@@ -41,44 +47,38 @@ import link.locutus.discord.event.Event;
 import link.locutus.discord.event.alliance.AllianceCreateEvent;
 import link.locutus.discord.event.alliance.AllianceDeleteEvent;
 import link.locutus.discord.event.bank.LootInfoEvent;
-import link.locutus.discord.event.city.*;
+import link.locutus.discord.event.city.CityCreateEvent;
+import link.locutus.discord.event.city.CityDeleteEvent;
+import link.locutus.discord.event.city.CityInfraDamageEvent;
+import link.locutus.discord.event.city.CityNukeEvent;
 import link.locutus.discord.event.nation.*;
 import link.locutus.discord.event.position.PositionCreateEvent;
 import link.locutus.discord.event.position.PositionDeleteEvent;
 import link.locutus.discord.event.treasure.TreasureUpdateEvent;
 import link.locutus.discord.event.treaty.*;
 import link.locutus.discord.pnw.PNWUser;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
+import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
-import link.locutus.discord.util.*;
-import link.locutus.discord.util.math.ArrayUtil;
-import link.locutus.discord.apiv1.domains.subdomains.SCityContainer;
-import link.locutus.discord.apiv1.enums.Continent;
-import link.locutus.discord.apiv1.enums.DomesticPolicy;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.NationColor;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.TreatyType;
-import link.locutus.discord.apiv1.enums.WarPolicy;
-import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.util.scheduler.ThrowingTriConsumer;
 import org.apache.commons.lang3.tuple.Triple;
 
 import java.io.IOException;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Types;
+import java.sql.*;
 import java.text.ParseException;
+import java.time.Instant;
 import java.util.*;
+import java.util.Date;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.*;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -510,12 +510,16 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
         for (int id : ids) {
             DBAlliance alliance = getAlliance(id);
-            if (alliance != null && eventConsumer != null) {
-                // mark all nations dirty
-                for (DBNation nation : getNationsMatching(f -> f.getAlliance_id() == id)) {
-                    markNationDirty(nation.getId());
+            if (alliance != null) {
+                alliance.markTreasuresDirty();
+                if (eventConsumer != null) {
+
+                    // mark all nations dirty
+                    for (DBNation nation : getNationsMatching(f -> f.getAlliance_id() == id)) {
+                        markNationDirty(nation.getId());
+                    }
+                    eventConsumer.accept(new AllianceDeleteEvent(alliance));
                 }
-                eventConsumer.accept(new AllianceDeleteEvent(alliance));
             }
             synchronized (nationsByAlliance) {
                 Map<Integer, DBNation> nations = nationsByAlliance.remove(id);
@@ -808,7 +812,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     }
 
     public void updateTreaties(List<com.politicsandwar.graphql.model.Treaty> treatiesV3, Consumer<Event> eventConsumer, boolean deleteMissing) {
-        updateTreaties(treatiesV3, eventConsumer, deleteMissing ? f -> true : f -> deleteMissing);
+        updateTreaties(treatiesV3, eventConsumer, deleteMissing ? Predicates.alwaysTrue() : f -> deleteMissing);
     }
 
     public void updateTreaties(List<com.politicsandwar.graphql.model.Treaty> treatiesV3, Consumer<Event> eventConsumer, Predicate<Treaty> deleteMissing) {
@@ -1875,7 +1879,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                         alliance.getAcronym(),
                         alliance.getScore(),
                         alliance.getColor(),
-                        TimeUtil.YYYY_MM_DD_HH_MM_SS.parse(alliance.getFounddate()).toInstant(), // TODO parse
+                        Instant.ofEpochMilli(TimeUtil.parseDate(TimeUtil.YYYY_MM_DD_HH_MM_SS, alliance.getFounddate())), // TODO parse
                         null,
                         null,
                         null,
@@ -1911,7 +1915,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             Set<Integer> updated = processUpdatedAlliances(adaptedList, eventConsumer);
             // TODO handle deletion later
 
-        } catch (IOException | ParseException e) {
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
@@ -1929,16 +1933,23 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 }
             }
             Set<Integer> dirtyNationCities = new IntOpenHashSet();
+            Set<Integer> clearAllianceTreasures = null;
             for (SNationContainer nation : nations) {
                 DBNation existing = getNationById(nation.getNationid());
                 if (existing == null) {
                     existing = new SimpleDBNation(new DBNationData());
                     existing.updateNationInfo(nation, null);
+
                     synchronized (nationsById) {
                         nationsById.put(existing.getNation_id(), existing);
                         if (existing.getAlliance_id() != 0) {
                             synchronized (nationsByAlliance) {
-                                nationsByAlliance.computeIfAbsent(existing.getAlliance_id(), f -> new Int2ObjectOpenHashMap<>()).put(existing.getNation_id(), existing);
+                                DBNation prev = nationsByAlliance.computeIfAbsent(existing.getAlliance_id(), f -> new Int2ObjectOpenHashMap<>())
+                                        .put(existing.getNation_id(), existing);
+                                if (existing.getNumTreasures() > 0) {
+                                    if (clearAllianceTreasures == null) clearAllianceTreasures = new IntOpenHashSet();
+                                    clearAllianceTreasures.add(existing.getAlliance_id());
+                                }
                             }
                         }
                     }
@@ -1950,14 +1961,38 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 } else {
                     expected.remove(existing.getNation_id());
                     int oldAAId = existing.getAlliance_id();
+                    int oldPosition = existing.getPosition();
+                    long oldVm = existing.getLeaving_vm();
                     if (existing.updateNationInfo(nation, eventConsumer)) {
                         if (oldAAId != existing.getAlliance_id()) {
                             processNationAllianceChange(oldAAId, existing);
+                        }
+                        if ((oldPosition > Rank.APPLICANT.id && existing.getPosition() <= Rank.APPLICANT.id)
+                        || oldAAId != existing.getAlliance_id() || oldVm != existing.getLeaving_vm()) {
+                            if (existing.getNumTreasures() > 0) {
+                                if (clearAllianceTreasures == null) clearAllianceTreasures = new IntOpenHashSet();
+                                clearAllianceTreasures.add(existing.getAlliance_id());
+                                if (oldAAId != existing.getAlliance_id()) {
+                                    DBAlliance oldAlliance = getAlliance(oldAAId);
+                                    if (oldAlliance != null) {
+                                        oldAlliance.markTreasuresDirty();
+                                    }
+                                }
+                            }
                         }
 //                        dirtyNations.add(existing.getNation_id());
                         toSave.add(existing);
                     } else if (Math.round(100 * nation.getInfrastructure()) != Math.round(100 * existing.getInfra())) {
                         dirtyNationCities.add(existing.getNation_id());
+                    }
+                }
+            }
+
+            if (clearAllianceTreasures != null) {
+                synchronized (alliancesById) {
+                    for (int id : clearAllianceTreasures) {
+                        DBAlliance alliance = alliancesById.get(id);
+                        if (alliance != null) alliance.markTreasuresDirty();
                     }
                 }
             }
@@ -2402,7 +2437,20 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             markDirty.set(true);
             base = new SimpleDBNation(new DBNationData());
         }
+        int prevPosition = base.getPosition();
+        int prevAA = base.getAlliance_id();
+        long prevVm = base.getLeaving_vm();
         if (base.updateNationInfo(copyOriginal, nation, eventConsumer)) {
+            if ((prevPosition > Rank.APPLICANT.id && base.getPosition() <= Rank.APPLICANT.id) || prevVm < base.getLeaving_vm() || prevAA != base.getAlliance_id()) {
+                synchronized (alliancesById) {
+                    DBAlliance alliance = alliancesById.get(prevAA);
+                    if (alliance != null) alliance.markTreasuresDirty();
+                    if (prevAA != base.getAlliance_id()) {
+                        alliance = alliancesById.get(base.getAlliance_id());
+                        if (alliance != null) alliance.markTreasuresDirty();
+                    }
+                }
+            }
             markDirty.set(true);
         }
         processNationAllianceChange(copyOriginal, base);
@@ -2661,6 +2709,11 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         this.loanManager = new LoanManager(this);
 
         createDeletionsTables();
+        purgeDeletedLootData();
+    }
+
+    private void purgeDeletedLootData() {
+        executeStmt("DELETE FROM NATION_LOOT3 WHERE id NOT IN (SELECT nation_id FROM NATIONS2);");
     }
 
     private void createKicksTable() {
@@ -3073,6 +3126,14 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 }
             }
             return count;
+        }
+    }
+
+    public int getNumTreasures(int nationId) {
+        synchronized (treasuresByNation) {
+            Set<DBTreasure> treasures = treasuresByNation.get(nationId);
+            if (treasures == null) return 0;
+            return treasures.size();
         }
     }
 
@@ -4020,6 +4081,27 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
     }
 
+    public Map<Integer, LootEntry> getLootMap(Set<Integer> nationIds) {
+        if (nationIds.isEmpty()) return Collections.emptyMap();
+        if (nationIds.size() == 1) {
+            int nationId = nationIds.iterator().next();
+            LootEntry entry = getLoot(nationId);
+            return entry == null ? Collections.emptyMap() : Map.of(nationId, entry);
+        }
+
+        List<Integer> nationIdsSorted = new IntArrayList(nationIds);
+        nationIdsSorted.sort(Comparator.naturalOrder());
+        String query = "SELECT * FROM NATION_LOOT3 WHERE id IN " + StringMan.getString(nationIdsSorted) + " ORDER BY `date` DESC";
+        Map<Integer, LootEntry> result = new Int2ObjectOpenHashMap<>();
+        query(query, (ThrowingConsumer<PreparedStatement>) stmt -> {},
+        (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                LootEntry entry = new LootEntry(rs);
+                result.putIfAbsent(entry.getId(), entry);
+            }
+        });
+        return result;
+    }
 
     public Map<Integer, LootEntry> getNationLootMap() {
         Map<Integer, LootEntry> result = new Int2ObjectOpenHashMap<>();
@@ -4171,6 +4253,39 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
     }
 
+    public Map<Long, Set<Integer>> getActivityByDay(long minDate, Set<Integer> nationIds) {
+        if (nationIds == null || nationIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        // If small enough, filter in SQL
+        if (nationIds.size() <= 1000) {
+            long minTurn = TimeUtil.getTurn(minDate);
+            List<Integer> sortedIds = new IntArrayList(nationIds);
+            Collections.sort(sortedIds);
+            String inClause = sortedIds.stream()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(",", "(", ")"));
+            String sql = "SELECT nation, (`turn`/12) FROM ACTIVITY WHERE turn > ? AND nation IN " + inClause;
+            try (PreparedStatement stmt = prepareQuery(sql)) {
+                stmt.setLong(1, minTurn);
+                Map<Long, Set<Integer>> result = new Long2ObjectOpenHashMap<>();
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        int id = rs.getInt(1);
+                        long day = rs.getLong(2);
+                        result.computeIfAbsent(day, f -> new IntArraySet()).add(id);
+                    }
+                }
+                return result;
+            } catch (SQLException e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+        }
+        // Otherwise defer to predicate-based filtering
+        return getActivityByDay(minDate, nationIds::contains);
+    }
+
     public Map<Long, Set<Integer>> getActivityByDay(long minDate, Predicate<Integer> allowNation) {
         long minTurn = TimeUtil.getTurn(minDate);
         try (PreparedStatement stmt = prepareQuery("select nation, (`turn`/12) FROM ACTIVITY WHERE turn > ?")) {
@@ -4183,7 +4298,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                     int id = rs.getInt(1);
                     if (!allowNation.test(id)) continue;
                     long day = rs.getLong(2);
-                    result.computeIfAbsent(day, f -> new IntOpenHashSet()).add(id);
+                    result.computeIfAbsent(day, f -> new IntArraySet()).add(id);
                 }
             }
             return result;
@@ -4791,7 +4906,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     public List<AllianceChange> getRemovesByNation(int nationId, Long date) {
         try (PreparedStatement stmt = prepareQuery("select * FROM KICKS2 WHERE nation = ? " + (date != null && date != 0 ? "AND date > ? " : "") + "ORDER BY date DESC")) {
             stmt.setInt(1, nationId);
-            if (date != null) {
+            if (date != null && date != 0) {
                 stmt.setLong(2, date);
             }
 
@@ -4939,7 +5054,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     public Map<Integer, JavaCity> toJavaCity(Map<Integer, DBCity> cities) {
         Map<Integer, JavaCity> result = new HashMap<>();
         for (Map.Entry<Integer, DBCity> entry : cities.entrySet()) {
-            result.put(entry.getKey(), entry.getValue().toJavaCity(f -> false));
+            result.put(entry.getKey(), entry.getValue().toJavaCity(Predicates.alwaysFalse()));
         }
         return result;
     }
@@ -5171,6 +5286,14 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 nation = nationsById.get(id);
             }
             if (nation != null) {
+                if (nation.getAlliance_id() > 0 && nation.getNumTreasures() > 0) {
+                    synchronized (alliancesById) {
+                        DBAlliance alliance = alliancesById.get(nation.getAlliance_id());
+                        if (alliance != null) {
+                            alliance.markTreasuresDirty();
+                        }
+                    }
+                }
                 if (nation.getDate() + TimeUnit.MINUTES.toMillis(30) > System.currentTimeMillis()) {
                     // don't delete new nations
                     iter.remove();

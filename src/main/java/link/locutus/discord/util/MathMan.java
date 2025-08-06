@@ -1,23 +1,21 @@
 package link.locutus.discord.util;
 
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.util.scheduler.KeyValue;
 import org.apache.commons.lang3.math.NumberUtils;
 
 import java.math.BigInteger;
-
-import link.locutus.discord.util.scheduler.KeyValue;
+import java.text.DecimalFormat;
+import java.text.FieldPosition;
+import java.text.Format;
+import java.text.ParsePosition;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.regex.PatternSyntaxException;
-
-import java.text.DecimalFormat;
-import java.text.FieldPosition;
-import java.text.Format;
-import java.text.ParsePosition;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 public class MathMan {
 
     private static final DecimalFormat DECIMAL_FORMAT = new DecimalFormat("#,###.00");

@@ -812,7 +812,7 @@ public class WebPWBindings extends WebBindingHelper {
             if (annotation.annotationType() == NationDepositLimit.class) {
                 DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class));
                 try {
-                    available = PW.normalize(me.getNetDeposits(db, true));
+                    available = PW.normalize(me.getNetDeposits(store, db, true));
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }

@@ -22,11 +22,7 @@ public class NationHeader extends DataHeader<DBNation> {
     public final LongColumn<DBNation> date_created = new LongColumn<>(this, DBNation::setDate) {
         @Override
         public Long read(String string) {
-            try {
-                return TimeUtil.YYYY_MM_DD_HH_MM_SS.parse(string).toInstant().toEpochMilli();
-            } catch (ParseException e) {
-                throw new RuntimeException(e);
-            }
+            return TimeUtil.parseDate(TimeUtil.YYYY_MM_DD_HH_MM_SS, string);
         }
     };
 //    public int continent;

@@ -154,7 +154,7 @@ public class SpyBlitzGenerator {
                         opNetDamage = opNetDamage * (1 - spyRatioFactor) + opNetDamage * spyRatio * spyRatioFactor;
                     }
                     if (operation == SpyCount.Operation.NUKE) {
-                        int perDay = MilitaryUnit.NUKE.getMaxPerDay(defender.getCities(), defender::hasProject);
+                        int perDay = MilitaryUnit.NUKE.getMaxPerDay(defender.getCities(), defender::hasProject, defender::getResearch);
                         if (defender.getNukes() <= perDay) {
                             ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
                             int minute = now.getHour() * 60 + now.getMinute();
@@ -168,7 +168,7 @@ public class SpyBlitzGenerator {
                         }
                     }
                     if (operation == SpyCount.Operation.MISSILE) {
-                        Integer missileCap = MilitaryUnit.MISSILE.getMaxPerDay(defender.getCities(), defender::hasProject);
+                        Integer missileCap = MilitaryUnit.MISSILE.getMaxPerDay(defender.getCities(), defender::hasProject, defender::getResearch);
                         if (defender.getMissiles() == missileCap) {
                             ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
                             int minute = now.getHour() * 60 + now.getMinute();

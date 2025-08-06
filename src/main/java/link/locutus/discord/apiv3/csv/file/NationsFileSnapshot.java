@@ -43,9 +43,11 @@ public class NationsFileSnapshot implements INationSnapshot {
     public NationsFileSnapshot loadVm(@Nullable Set<Integer> nationIds) throws IOException, ParseException {
         Set<Integer> missing = new IntOpenHashSet();
         if (nationIds != null) {
-            for (int id : nationIds) {
-                if (!nations.containsKey(id)) {
-                    missing.add(id);
+            synchronized (nations) {
+                for (int id : nationIds) {
+                    if (!nations.containsKey(id)) {
+                        missing.add(id);
+                    }
                 }
             }
             if (missing.isEmpty()) return this;
@@ -55,7 +57,9 @@ public class NationsFileSnapshot implements INationSnapshot {
         Map<Integer, List<Map.Entry<Integer, Integer>>> vmRanges = dumper.getUtil().getCachedVmRanged(day + 1, false);
         if (nationIds == null) {
             missing = dumper.getUtil().getVMNations(vmRanges, (int) day);
-            missing.removeIf(nations::containsKey);
+            synchronized (nations) {
+                missing.removeIf(nations::containsKey);
+            }
         }
 
         long timestamp = TimeUtil.getTimeFromDay(day);
@@ -96,20 +100,22 @@ public class NationsFileSnapshot implements INationSnapshot {
             tasks.add(executor.submit(() -> {
                 try {
                     Map<Integer, DBNationSnapshot> addNations = dumper.getNations(fetchDay);
-                    for (Map.Entry<Integer, DBNationSnapshot> entry2 : addNations.entrySet()) {
-                        int nationId = entry2.getKey();
-                        if (!ids.contains(nationId)) continue;
-                        DBNationSnapshot nation = entry2.getValue();
-                        // update VM turns
-                        long leavingVmMs = leavingVm.get(nationId);
-                        long enteredVmMs = enteredVm;
-                        int offset = nation.getOffset();
+                    synchronized (nations) {
+                        for (Map.Entry<Integer, DBNationSnapshot> entry2 : addNations.entrySet()) {
+                            int nationId = entry2.getKey();
+                            if (!ids.contains(nationId)) continue;
+                            DBNationSnapshot nation = entry2.getValue();
+                            // update VM turns
+                            long leavingVmMs = leavingVm.get(nationId);
+                            long enteredVmMs = enteredVm;
+                            int offset = nation.getOffset();
 
-                        GlobalDataWrapper<NationHeader> wrapper = (GlobalDataWrapper<NationHeader>) nation.getWrapper();
-                        DataWrapper<NationHeader> newWrapper = new GlobalDataWrapper<>(timestamp, wrapper.header, wrapper.data, wrapper.getCities);
+                            GlobalDataWrapper<NationHeader> wrapper = (GlobalDataWrapper<NationHeader>) nation.getWrapper();
+                            DataWrapper<NationHeader> newWrapper = new GlobalDataWrapper<>(timestamp, wrapper.header, wrapper.data, wrapper.getCities);
 
-                        DBNationSnapshotVm newNation = new DBNationSnapshotVm(newWrapper, nation.getOffset(), leavingVmMs, enteredVmMs);
-                        nations.put(nationId, newNation);
+                            DBNationSnapshotVm newNation = new DBNationSnapshotVm(newWrapper, nation.getOffset(), leavingVmMs, enteredVmMs);
+                            nations.put(nationId, newNation);
+                        }
                     }
                 } catch (IOException | ParseException e) {
                     e.printStackTrace();
@@ -125,35 +131,49 @@ public class NationsFileSnapshot implements INationSnapshot {
 
     @Override
     public DBNation getNationById(int id) {
-        return nations.get(id);
+        synchronized (nations) {
+            return nations.get(id);
+        }
     }
 
     @Override
     public Set<DBNation> getNationsByAlliance(Set<Integer> alliances) {
-        return nations.values().stream().filter(n -> alliances.contains(n.getAlliance_id())).collect(Collectors.toSet());
+        synchronized (nations) {
+            return nations.values().stream().filter(n -> alliances.contains(n.getAlliance_id())).collect(Collectors.toSet());
+        }
     }
 
     @Override
     public DBNation getNationByLeader(String input) {
-        return nations.values().stream().filter(n -> n.getLeader().equalsIgnoreCase(input)).findFirst().orElse(null);
+        synchronized (nations) {
+            return nations.values().stream().filter(n -> n.getLeader().equalsIgnoreCase(input)).findFirst().orElse(null);
+        }
     }
 
     public DBNation getNationByName(String input) {
-        return nations.values().stream().filter(n -> n.getName().equalsIgnoreCase(input)).findFirst().orElse(null);
+        synchronized (nations) {
+            return nations.values().stream().filter(n -> n.getName().equalsIgnoreCase(input)).findFirst().orElse(null);
+        }
     }
 
     @Override
     public Set<DBNation> getAllNations() {
-        return new ObjectOpenHashSet<>(nations.values());
+        synchronized (nations) {
+            return new ObjectOpenHashSet<>(nations.values());
+        }
     }
 
     @Override
     public Set<DBNation> getNationsByBracket(int taxId) {
-        return nations.values().stream().filter(n -> n.getTax_id() == taxId).collect(Collectors.toSet());
+        synchronized (nations) {
+            return nations.values().stream().filter(n -> n.getTax_id() == taxId).collect(Collectors.toSet());
+        }
     }
 
     @Override
     public Set<DBNation> getNationsByAlliance(int id) {
-        return nations.values().stream().filter(n -> n.getAlliance_id() == id).collect(Collectors.toSet());
+        synchronized (nations) {
+            return nations.values().stream().filter(n -> n.getAlliance_id() == id).collect(Collectors.toSet());
+        }
     }
 }

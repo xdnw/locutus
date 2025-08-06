@@ -1,5 +1,6 @@
 package link.locutus.discord.util;
 
+import com.google.common.base.Predicates;
 import com.google.gson.*;
 import com.opencsv.CSVWriter;
 import info.debatty.java.stringsimilarity.CharacterSubstitutionInterface;
@@ -249,7 +250,7 @@ public class StringMan {
         }
         List<String[]> replacementsSplit = getReplacementString(announcement, replacements);
         Set<String> results = new ObjectLinkedOpenHashSet<>();
-        replace(announcement, replacementsSplit, 0, 0, 0, -2, 0, requiredDiff, requiredDepth, requiredResults, results, 0, f -> true);
+        replace(announcement, replacementsSplit, 0, 0, 0, -2, 0, requiredDiff, requiredDepth, requiredResults, results, 0, Predicates.alwaysTrue());
         return results;
     }
 
@@ -300,7 +301,7 @@ public class StringMan {
     }
 
     public static String stacktraceToString(StackTraceElement[] elems) {
-        return stacktraceToString(elems, Integer.MAX_VALUE, f -> true);
+        return stacktraceToString(elems, Integer.MAX_VALUE, Predicates.alwaysTrue());
     }
 
     public static String stacktraceToString(StackTraceElement[] elems, int maxLines, Predicate<String> allowLine) {
@@ -316,7 +317,7 @@ public class StringMan {
     }
 
     public static Map.Entry<String, String> stacktraceToString(Throwable e) {
-        return stacktraceToString(e, Integer.MAX_VALUE, f -> true);
+        return stacktraceToString(e, Integer.MAX_VALUE, Predicates.alwaysTrue());
     }
 
     public static Map.Entry<String, String> stacktraceToString(Throwable e, int maxLines, Predicate<String> allowLine) {

@@ -7,8 +7,8 @@ import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
 import link.locutus.discord.commands.stock.StockDB;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.*;
+import link.locutus.discord.util.discord.GuildShardManager;
 import link.locutus.discord.util.trade.TradeManager;
-import net.dv8tion.jda.api.JDA;
 import org.jetbrains.annotations.Nullable;
 
 import java.sql.SQLException;
@@ -17,7 +17,7 @@ public class FinalizedLoader implements ILoader {
     private volatile BaseballDB baseBallDB;
 
     private final SlashCommandManager slashCommandManager;
-    private final JDA jda;
+    private final GuildShardManager shardManager;
     private final ForumDB forumDb;
     private final DiscordDB discordDB;
     private final NationDB nationDB;
@@ -32,7 +32,7 @@ public class FinalizedLoader implements ILoader {
 
     public FinalizedLoader(PreLoader loader) {
         this.slashCommandManager = loader.getSlashCommandManager();
-        this.jda = loader.getJda();
+        this.shardManager = loader.getShardManager();
         this.forumDb = loader.getForumDB();
         this.discordDB = loader.getDiscordDB();
         this.nationDB = loader.getNationDB();
@@ -78,8 +78,8 @@ public class FinalizedLoader implements ILoader {
     }
 
     @Override
-    public JDA getJda() {
-        return jda;
+    public GuildShardManager getShardManager() {
+        return this.shardManager;
     }
 
     @Override

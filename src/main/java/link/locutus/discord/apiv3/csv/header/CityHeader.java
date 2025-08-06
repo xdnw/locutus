@@ -6,8 +6,6 @@ import link.locutus.discord.apiv3.csv.file.Dictionary;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.util.TimeUtil;
 
-import java.text.ParseException;
-
 // city_id,nation_id,date_created,name,capital,infrastructure,maxinfra,land,oil_power_plants,wind_power_plants,coal_power_plants,nuclear_power_plants,coal_mines,oil_wells,uranium_mines,iron_mines,lead_mines,bauxite_mines,farms,police_stations,hospitals,recycling_centers,subway,supermarkets,banks,shopping_malls,stadiums,oil_refineries,aluminum_refineries,steel_mills,munitions_factories,barracks,factories,hangars,drydocks,last_nuke_date
 public class CityHeader extends DataHeader<DBCity> {
 
@@ -94,12 +92,8 @@ public class CityHeader extends DataHeader<DBCity> {
     }) {
         @Override
         public Integer read(String string) {
-            try {
-                long timeMs = TimeUtil.YYYY_MM_DD_FORMAT.parse(string).getTime();
-                return timeMs <= 0 ? 0 : (int) (TimeUtil.getTurn(timeMs) - TimeUtil.getTurn(TimeUtil.getOrigin()));
-            } catch (ParseException e) {
-                throw new RuntimeException(e);
-            }
+            long timeMs = TimeUtil.parseDate(TimeUtil.YYYY_MM_DD_FORMAT, string);
+            return timeMs <= 0 ? 0 : (int) (TimeUtil.getTurn(timeMs) - TimeUtil.getTurn(TimeUtil.getOrigin()));
         }
     };
 //    public int powered;  // boolean

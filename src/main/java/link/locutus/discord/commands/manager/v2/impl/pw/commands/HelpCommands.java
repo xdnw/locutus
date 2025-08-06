@@ -1,23 +1,14 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.google.common.base.Predicates;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.NationAttributeCallable;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
-import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
-import link.locutus.discord.commands.manager.v2.command.ICommand;
-import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
-import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.command.ParameterData;
-import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.gpt.ModerationResult;
@@ -74,7 +65,7 @@ public class HelpCommands {
         StringBuilder body = new StringBuilder(argument.getNameDescriptionAndExamples(false, true, true, true));
 
         CommandManager2 cmdManager = Locutus.imp().getCommandManager().getV2();
-        Set<ParametricCallable> allCommands = cmdManager.getCommands().getParametricCallables(f -> true);
+        Set<ParametricCallable> allCommands = cmdManager.getCommands().getParametricCallables(Predicates.alwaysTrue());
 
         List<ParametricCallable> hasArgument = new ArrayList<>();
         Set<Method> methods = new HashSet<>();

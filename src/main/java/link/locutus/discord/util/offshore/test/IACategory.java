@@ -807,11 +807,8 @@ public class IACategory {
                 if (Roles.GRADUATED.has(nation.getUser(), db.getGuild())) return false;
                 if (nation.getMeta(NationMeta.INTERVIEW_DEPOSITS) == null) return true;
                 if (db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW) == Boolean.TRUE) {
-                    List<Transaction2> transactions = nation.getTransactions(-1, false);
-                    for (Transaction2 transaction : transactions) {
-                        if(transaction.receiver_id == nation.getNation_id() && transaction.note.contains("#deposit")) {
-                            return false;
-                        }
+                    if (nation.lastBankDeposit() > 0) {
+                        return false;
                     }
                     User user = nation.getUser();
                     if (user == null) return false;

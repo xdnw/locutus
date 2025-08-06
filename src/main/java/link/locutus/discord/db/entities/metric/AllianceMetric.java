@@ -1,33 +1,26 @@
 package link.locutus.discord.db.entities.metric;
 
-import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
-import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
-import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import com.google.common.base.Predicates;
+import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
+import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.file.CitiesFile;
 import link.locutus.discord.apiv3.csv.file.NationsFile;
-import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.header.CityHeaderReader;
 import link.locutus.discord.apiv3.csv.header.NationHeaderReader;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
-import link.locutus.discord.db.entities.AttackCost;
-import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBCity;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.handlers.AttackQuery;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.TriConsumer;
@@ -562,8 +555,8 @@ public enum AllianceMetric implements IAllianceMetric {
         @Override
         public Double apply(DBAlliance alliance) {
             DBNation total = alliance.getMembersTotal();
-            double tankPct = (double) total.getTanks() / (total.getCities() * Buildings.FACTORY.cap(f -> false) * Buildings.FACTORY.getUnitCap());
-            double soldierPct = (double) total.getSoldiers() / (total.getCities() * Buildings.BARRACKS.cap(f -> false) * Buildings.BARRACKS.getUnitCap());
+            double tankPct = (double) total.getTanks() / (total.getCities() * Buildings.FACTORY.cap(Predicates.alwaysFalse()) * Buildings.FACTORY.getUnitCap());
+            double soldierPct = (double) total.getSoldiers() / (total.getCities() * Buildings.BARRACKS.cap(Predicates.alwaysFalse()) * Buildings.BARRACKS.getUnitCap());
             return (tankPct + soldierPct) / 2d;
         }
 
@@ -589,8 +582,8 @@ public enum AllianceMetric implements IAllianceMetric {
 
         @Override
         public Map<Integer, Double> getDayValue(DataDumpImporter importer, long day) {
-            int tankCap = Buildings.FACTORY.cap(f -> false) * Buildings.FACTORY.getUnitCap();
-            int soldierCap = Buildings.BARRACKS.cap(f -> false) * Buildings.BARRACKS.getUnitCap();
+            int tankCap = Buildings.FACTORY.cap(Predicates.alwaysFalse()) * Buildings.FACTORY.getUnitCap();
+            int soldierCap = Buildings.BARRACKS.cap(Predicates.alwaysFalse()) * Buildings.BARRACKS.getUnitCap();
             Map<Integer, Double> result = soldiersByAA.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, f -> {
                 int tanks = tanksByAA.get(f.getKey());
                 int soldiers = f.getValue();
@@ -1023,35 +1016,35 @@ public enum AllianceMetric implements IAllianceMetric {
         }
     },
 
-    GROUND_COST_AVG(true, SI_UNIT) {
+    GROUND_EFFICIENCY_AVG(true, SI_UNIT) {
         @Override
         public Double apply(DBAlliance alliance) {
             double total = 0;
             Set<DBNation> nations = alliance.getMemberDBNations();
             for (DBNation nation : nations) {
-                total += nation.getResearch(Research.GROUND_COST);
+                total += nation.getResearch(Research.GROUND_EFFICIENCY);
             }
             return total / nations.size();
         }
     },
-    AIR_COST_AVG(true, SI_UNIT) {
+    AIR_EFFICIENCY_AVG(true, SI_UNIT) {
         @Override
         public Double apply(DBAlliance alliance) {
             double total = 0;
             Set<DBNation> nations = alliance.getMemberDBNations();
             for (DBNation nation : nations) {
-                total += nation.getResearch(Research.AIR_COST);
+                total += nation.getResearch(Research.AIR_EFFICIENCY);
             }
             return total / nations.size();
         }
     },
-    NAVAL_COST_AVG(true, SI_UNIT) {
+    NAVAL_EFFICIENCY_AVG(true, SI_UNIT) {
         @Override
         public Double apply(DBAlliance alliance) {
             double total = 0;
             Set<DBNation> nations = alliance.getMemberDBNations();
             for (DBNation nation : nations) {
-                total += nation.getResearch(Research.NAVAL_COST);
+                total += nation.getResearch(Research.NAVAL_EFFICIENCY);
             }
             return total / nations.size();
         }
@@ -1131,7 +1124,7 @@ public enum AllianceMetric implements IAllianceMetric {
 //            System.out.println("Updating " + ((turn - startTurn)) + "/" + (currentTurn - startTurn) + " " + ((double) (turn - startTurn) / (currentTurn - startTurn) * 100) + "%");
 //            long start = TimeUtil.getTimeFromTurn(turn + 1) - TimeUnit.DAYS.toMillis(1);
 //            long end = TimeUtil.getTimeFromTurn(turn + 1);
-//            List<AbstractCursor> allAttacks = Locutus.imp().getWarDb().getAttacks(start, end, f -> true);
+//            List<AbstractCursor> allAttacks = Locutus.imp().getWarDb().getAttacks(start, end, Predicates.alwaysTrue());
 //            Map<Integer, Map<AbstractCursor, Boolean>> attacksByAA = new HashMap<>();
 //            for (AbstractCursor attack : allAttacks) {
 //                DBWar war = attack.getWar();
@@ -1259,7 +1252,7 @@ public enum AllianceMetric implements IAllianceMetric {
 
     public static synchronized Map.Entry<Integer, Integer> saveDataDump(DataDumpParser parser, List<IAllianceMetric> metrics, Predicate<Long> acceptDay, boolean overwrite, boolean saveAllTurns) throws IOException, ParseException {
         int[] count = {0, 0};
-        if (acceptDay == null) acceptDay = f -> true;
+        if (acceptDay == null) acceptDay = Predicates.alwaysTrue();
         List<AllianceMetricValue> values = new ArrayList<>();
         Runnable save = () -> {
             saveAll(values, overwrite);

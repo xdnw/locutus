@@ -6,7 +6,6 @@ import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
@@ -85,9 +84,7 @@ public class NationUpdateProcessor {
         } else {
             Logg.text("Failed to fetch uid for " + nation.getNation_id() + " (not found)");
         }
-
-        result.research = Research.parseResearch(dom);
-
+//        result.research = Research.parseResearch(dom);
         return result;
     }
 
@@ -592,7 +589,7 @@ public class NationUpdateProcessor {
         if (defender.getDef() > 2) return false;
         if (defender.active_m() > 260 * 60 * 24) return false;
         if (defender.isBeige()) return false;
-        double loot = defender.lootTotal();
+        double loot = defender.lootTotal(null);
         if (loot < 10000000) {
             return false;
         }
@@ -653,7 +650,7 @@ public class NationUpdateProcessor {
                     membersInRange++;
 
                     double requiredLoot = attacker.getBeigeAlertRequiredLoot();
-                    if (!LeavingBeigeAlert.testBeigeAlertAuto(attacker, defender, requiredLoot, mode, canRaid, scoreLeewayFunc, lootEstimateByNation, false)) {
+                    if (!LeavingBeigeAlert.testBeigeAlertAuto(null, attacker, defender, requiredLoot, mode, canRaid, scoreLeewayFunc, lootEstimateByNation, false)) {
                         continue;
                     }
 

@@ -434,7 +434,7 @@ public class AdminCommands {
 
         @Command(desc = "Sync and debug war rooms",
     keywords = {WAR, ROOM, SYNC, CHANNEL, UPDATE, WARCAT, CATEGORY})
-    @RolePermission(Roles.ADMIN)
+    @RolePermission(value = {Roles.ADMIN, Roles.MILCOM}, any = true)
     public String syncWarrooms(@Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, @Switch("f") boolean force) throws IOException {
         long start = System.currentTimeMillis();
 
@@ -1149,7 +1149,7 @@ public class AdminCommands {
             List<DBSpyUpdate> activity = Locutus.imp().getNationDB().getSpyActivityByNation(nation.getNation_id(), cutoff);
             for (DBSpyUpdate update : activity) {
                 header.set(0, String.valueOf(nation.getNation_id()));
-                header.set(1, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(update.timestamp)));
+                header.set(1, TimeUtil.format(TimeUtil.YYYY_MM_DD_HH_MM_SS, update.timestamp));
                 sheet.addRow(header);
             }
         }
@@ -2321,9 +2321,9 @@ public class AdminCommands {
 
             List<Transaction2> transactions;
             if (!aaIds.isEmpty()) {
-                transactions = offshore.getTransactionsAA(aaIds, false);
+                transactions = offshore.getTransactionsAA(aaIds, false, 0, Long.MAX_VALUE);
             } else {
-                transactions = offshore.getTransactionsGuild(id, false);
+                transactions = offshore.getTransactionsGuild(id, false, 0L, Long.MAX_VALUE);
             }
             transactions.removeIf(f -> f.tx_datetime > System.currentTimeMillis());
             transactions.removeIf(f -> f.receiver_id == f.banker_nation && f.tx_id > 0);

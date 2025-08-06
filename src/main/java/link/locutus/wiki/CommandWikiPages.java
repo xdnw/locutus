@@ -1,5 +1,6 @@
 package link.locutus.wiki;
 
+import com.google.common.base.Predicates;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -150,7 +151,7 @@ Message: `$who Rose -l`
 //        }
 
 
-        List<ParametricCallable> commands = new ArrayList<>(group.getParametricCallables(f -> true));
+        List<ParametricCallable> commands = new ArrayList<>(group.getParametricCallables(Predicates.alwaysTrue()));
         // has any @Ignore annotation
         commands.removeIf(f -> f.getAnnotations().stream().anyMatch(a -> a.annotationType().equals(Config.Ignore.class)));
         commands.removeIf(f -> {

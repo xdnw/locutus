@@ -3,10 +3,12 @@ package link.locutus.discord.web.commands.page;
 import gg.jte.generated.precompiled.JtebasictableGenerated;
 import gg.jte.generated.precompiled.bank.JtebankindexGenerated;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
@@ -79,11 +81,11 @@ public class BankPages {
         }
 
         double[] buffer = ResourceType.getBuffer();
-
+        ValueStore<DBNation> cache = PlaceholderCache.createCache(nations, DBNation.class);
         List<List<String>> rows = new ArrayList<>();
         for (DBNation nation : nations) {
             List<String> row = new ArrayList<>(header);
-            Map<DepositType, double[]> deposits = nation.getDeposits(db, tracked, !noTaxBase, !ignoreOffset, -1, 0L, true);
+            Map<DepositType, double[]> deposits = nation.getDeposits(cache, db, tracked, !noTaxBase, !ignoreOffset, -1, 0L, Long.MAX_VALUE, true);
 
             row.set(0, MarkupUtil.htmlUrl(nation.getNation(), nation.getUrl()));
             row.set(1, MathMan.format(nation.getCities()));
@@ -97,7 +99,7 @@ public class BankPages {
             for (double[] value : deposits.values()) total = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, total, value);
             row.set(7, MathMan.format(ResourceType.convertedTotal(total)));
 
-            List<Transaction2> transactions = nation.getTransactions(-1, true);
+            List<Transaction2> transactions = nation.getTransactions(-1, true, 0L, Long.MAX_VALUE);
 
             long lastDeposit = 0;
             for (Transaction2 transaction : transactions) {

@@ -62,7 +62,7 @@ public class Rebuy extends Command {
             String dcStr = "UTC" + (offset >= 0 ? "+" : "") + offset + " (turn " + entry.getKey() + ")";
             Long turn = entry.getValue();
             long timestamp = TimeUtil.getTimeFromTurn(turn);
-            String dateStr = TimeUtil.format(TimeUtil.MMDDYYYY_HH_MM_A, new Date(timestamp));
+            String dateStr = TimeUtil.format(TimeUtil.MMDDYYYY_HH_MM_A, timestamp);
             body.append(dateStr).append(" | ").append(dcStr).append("\n");
         }
 

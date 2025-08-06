@@ -120,7 +120,7 @@ public class ResearchTemplate extends AGrantTemplate<Void>{
             @Override
             public Boolean apply(DBNation nation) {
                 outer:
-                for (Transaction2 transaction : nation.getTransactions(-1, true)) {
+                for (Transaction2 transaction : nation.getTransactions(-1, true, 0L, Long.MAX_VALUE)) {
                     if (transaction.note == null) continue;
                     Map<DepositType, Object> noteMap = transaction.getNoteMap();
                     Object researchVal = noteMap.get(DepositType.RESEARCH);
@@ -189,7 +189,7 @@ public class ResearchTemplate extends AGrantTemplate<Void>{
             }
         }
         String findNote = "#research=";
-        for (Transaction2 transaction : receiver.getTransactions(-1, true)) {
+        for (Transaction2 transaction : receiver.getTransactions(-1, true, 0L, Long.MAX_VALUE)) {
             if (transaction.note == null) continue;
             String noteLower = transaction.note.toLowerCase();
             if (noteLower.contains(findNote)) {

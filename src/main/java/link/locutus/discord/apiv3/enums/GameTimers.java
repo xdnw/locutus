@@ -1,5 +1,6 @@
 package link.locutus.discord.apiv3.enums;
 
+import com.google.common.base.Predicates;
 import link.locutus.discord.db.entities.DBNation;
 
 import java.util.function.Predicate;
@@ -20,7 +21,7 @@ public enum GameTimers {
 
 
     GameTimers(int turns) {
-        this(turns, f -> true);
+        this(turns, Predicates.alwaysTrue());
     }
     GameTimers(int turns, Predicate<DBNation> applies) {
         this.turns = turns;

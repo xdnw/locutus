@@ -649,7 +649,7 @@ public class GrantCommands {
                         cost = grantTo.calculateCost(empty);
                         grant.setInstructions(grantTo.instructions(-1, empty, ResourceType.getBuffer()));
                     } else {
-                        boolean hasDiffBuildings = true;
+                        boolean hasDiffBuildings = false;
                         Map<Integer, JavaCity> grantFrom = new LinkedHashMap<>();
                         for (Map.Entry<Integer, JavaCity> entry : receiver.getCityMap(receivers.size() == 1).entrySet()) {
                             JavaCity city = entry.getValue();
@@ -659,7 +659,7 @@ public class GrantCommands {
                             if (city.equals(grantTo)) {
                                 continue;
                             }
-                            hasDiffBuildings = false;
+                            hasDiffBuildings = true;
                             double[] buffer = grantTo.calculateCost(city, ResourceType.getBuffer(), grantInfra, grantLand);
                             ResourceType.add(cost, buffer);
                             for (ResourceType type : ResourceType.values) {
@@ -2471,7 +2471,7 @@ public class GrantCommands {
 //
 //                        // if amount is uneven
 //                        if (amount % 50 != 0) {
-//                            grant.addRequirement(new Grant.Requirement("Amount must be a multiple of 50", false, f -> false));
+//                            grant.addRequirement(new Grant.Requirement("Amount must be a multiple of 50", false, Predicates.alwaysFalse()));
 //                        }
 //
 //                        if (amount >= 1500) {
@@ -2520,7 +2520,7 @@ public class GrantCommands {
 //                        // MMR of build matches required MMR
 //                    case UNIT:
 //                    case RESOURCES: {
-//                        grant.addRequirement(new Grant.Requirement("Amount must be a multiple of 50", econGov, f -> false));
+//                        grant.addRequirement(new Grant.Requirement("Amount must be a multiple of 50", econGov, Predicates.alwaysFalse()));
 //                        GuildMessageChannel channel = db.getOrNull(GuildKey.RESOURCE_REQUEST_CHANNEL);
 //                        if (channel != null) {
 //                            throw new IllegalArgumentException("Please use " + CM.transfer.self.cmd.toSlashMention() + " or `" + Settings.commandPrefix(true) + "disburse` in " + channel.getAsMention() + " to request funds from your deposits");
@@ -3565,6 +3565,27 @@ public class GrantCommands {
         return null;
     }
 
+    public static JSONObject sanitizeGrantRequestCommand(JSONObject command) {
+        Set<String> keysToRemove = Set.of(
+                "expire", "decay", "ignore", "bank_note", "tax_account", "use_receiver_tax_account",
+                "nation_account", "ingame_bank", "offshore_account",
+                "bypass_checks", "force", "deduct_as_cash"
+        );
+        List<String> toDelete = new ObjectArrayList<>();
+        for (String key : command.keySet()) {
+            for (String target : keysToRemove) {
+                if (key.equalsIgnoreCase(target)) {
+                    toDelete.add(key);
+                    break;
+                }
+            }
+        }
+        for (String key : toDelete) {
+            command.remove(key);
+        }
+        return command;
+    }
+
     @Command(desc = "Request a grant from the grant request channel")
     @RolePermission(value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON, Roles.ECON_STAFF, Roles.MEMBER}, any=true)
     public String grantRequest(@Me IMessageIO io, @Me @Default User user, @Me GuildDB db, @Me DBNation nation,
@@ -3583,25 +3604,8 @@ public class GrantCommands {
         if (role == null) {
             role = Roles.ECON.toRole2(db);
         }
-
         long now = System.currentTimeMillis();
-        Set<String> keysToRemove = Set.of(
-                "expire", "decay", "ignore", "bank_note", "tax_account", "use_receiver_tax_account",
-                "nation_account", "ingame_bank", "offshore_account",
-                "bypass_checks", "force", "deduct_as_cash"
-        );
-        List<String> toDelete = new ObjectArrayList<>();
-        for (String key : command.keySet()) {
-            for (String target : keysToRemove) {
-                if (key.equalsIgnoreCase(target)) {
-                    toDelete.add(key);
-                    break;
-                }
-            }
-        }
-        for (String key : toDelete) {
-            command.remove(key);
-        }
+        command = sanitizeGrantRequestCommand(command);
 
         boolean tax_account = GuildKey.GRANT_REQUEST_TAX_ACCOUNT.getOrNull(db) == Boolean.TRUE;
         if (tax_account) {
@@ -3637,11 +3641,15 @@ public class GrantCommands {
         if (nation.getId() == receiver.getId() && receiver.isNation()) {
             sb.append("[REQUESTING NATION]\n");
         } else {
-            sb.append(nation.getMarkdownUrl()).append(" | ").append(nation.getAllianceUrlMarkup()).append("\n");
+            sb.append(receiver.getMarkdownUrl());
+            if (receiver instanceof DBNation recNation) {
+                sb.append(" | ").append(recNation.getAllianceUrlMarkup());
+            }
+            sb.append("\n");
         }
         sb.append("**Reason:** `").append(reason).append("`\n");
         sb.append("**Date Requested:** ").append(DiscordUtil.timestamp(now, null)).append("\n");
-        double[] deposits = nation.getNetDeposits(db, -1, false);
+        double[] deposits = nation.getNetDeposits(null, db, -1, false);
         sb.append("**Nation Balance:** worth `~$").append(MathMan.format(ResourceType.convertedTotal(deposits))).append("`\n");
         sb.append("- `").append(ResourceType.toString(deposits)).append("`\n");
         sb.append("**Command:**\n```json\n").append(command.toString(2)).append("```\n");

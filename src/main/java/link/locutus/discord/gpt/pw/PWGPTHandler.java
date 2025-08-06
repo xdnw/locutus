@@ -2,6 +2,7 @@ package link.locutus.discord.gpt.pw;
 
 import ai.djl.MalformedModelException;
 import ai.djl.repository.zoo.ModelNotFoundException;
+import com.google.common.base.Predicates;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.gson.reflect.TypeToken;
@@ -14,12 +15,12 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.db.guild.GuildSetting;
+import link.locutus.discord.gpt.GptHandler;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
 import link.locutus.discord.gpt.imps.EmbeddingInfo;
 import link.locutus.discord.gpt.imps.EmbeddingType;
-import link.locutus.discord.gpt.GptHandler;
 import link.locutus.discord.gpt.imps.IEmbeddingAdapter;
 import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Guild;
@@ -28,12 +29,7 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
@@ -181,7 +177,7 @@ public class PWGPTHandler {
         EmbeddingSource source = sourceMap.get(EmbeddingType.Command);
         Set<Method> methods = new HashSet<>();
         Set<ParametricCallable> registerCommands = new HashSet<>();
-        for (ParametricCallable callable : cmdManager.getCommands().getParametricCallables(f -> true)) {
+        for (ParametricCallable callable : cmdManager.getCommands().getParametricCallables(Predicates.alwaysTrue())) {
             if (callable.simpleDesc().isEmpty()) continue;
             if (methods.contains(callable.getMethod())) continue;
             methods.add(callable.getMethod());

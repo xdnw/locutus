@@ -1,5 +1,6 @@
 package link.locutus.discord.util;
 
+import com.google.common.base.Predicates;
 import com.google.common.hash.Hashing;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.JsonElement;
@@ -13,14 +14,13 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
-import link.locutus.discord.apiv1.enums.Continent;
-import link.locutus.discord.apiv1.enums.DepositType;
-import link.locutus.discord.apiv1.enums.DomesticPolicy;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.ICity;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.apiv1.enums.city.building.*;
+import link.locutus.discord.apiv1.enums.city.building.Buildings;
+import link.locutus.discord.apiv1.enums.city.building.CommerceBuilding;
+import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
+import link.locutus.discord.apiv1.enums.city.building.ResourceBuilding;
 import link.locutus.discord.apiv1.enums.city.building.imp.APowerBuilding;
 import link.locutus.discord.apiv1.enums.city.building.imp.AResourceBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Project;
@@ -57,24 +57,10 @@ import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
+import java.util.function.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -99,13 +85,16 @@ public final class PW {
         public static final class Building {
             public static int SIZE = 27;
         }
+
+        private static final int NUKE_TURN_MAX = 11 * 12;
+        private static final double NUKE_POLLUTION_MAX = 400;
+
         public static int getNukePollution(int nukeTurn) {
             int pollution = 0;
-            double pollutionMax = 400d;
-            int turnsMax = 11 * 12;
             long turns = TimeUtil.getTurn() - nukeTurn;
-            if (turns < turnsMax) {
-                double nukePollution = (turnsMax - turns) * pollutionMax / (turnsMax);
+            if (turns < NUKE_TURN_MAX) {
+                double pollutionMax = 400d;
+                double nukePollution = (NUKE_TURN_MAX - turns) * NUKE_POLLUTION_MAX / (NUKE_TURN_MAX);
                 if (nukePollution > 0) {
                     pollution += (int) nukePollution;
                 }
@@ -550,10 +539,6 @@ public final class PW {
         return "sphere:" + getName(sphereId, true);
     }
 
-    public static Map<DepositType, double[]> sumNationTransactions(DBNation nation, GuildDB guildDB, Set<Long> tracked, List<Map.Entry<Integer, Transaction2>> transactionsEntries) {
-        return sumNationTransactions(nation, guildDB, tracked, transactionsEntries, false, false, f -> true);
-    }
-
     /**
      * Sum the nation transactions (assumes all transactions are valid and should be added)
      * @param tracked
@@ -561,29 +546,71 @@ public final class PW {
      * @return
      */
     public static Map<DepositType, double[]> sumNationTransactions(DBNation nation, GuildDB guildDB, Set<Long> tracked, List<Map.Entry<Integer, Transaction2>> transactionsEntries, boolean forceIncludeExpired, boolean forceIncludeIgnored, Predicate<Transaction2> filter) {
-        long start = System.currentTimeMillis();
         Map<DepositType, double[]> result = new EnumMap<>(DepositType.class);
+        BiConsumer<Integer, Transaction2> forEach = createSumNationTransactions(nation, guildDB, tracked, forceIncludeExpired, forceIncludeIgnored, filter, result);
+        long start = System.currentTimeMillis();
+        for (Map.Entry<Integer, Transaction2> entry : transactionsEntries) {
+            int sign = entry.getKey();
+            Transaction2 record = entry.getValue();
+            forEach.accept(sign, record);
+        }
+        long diff = System.currentTimeMillis() - start;
+        if (diff > 50) {
+            Logg.info("Summed " + transactionsEntries.size() + " transactions in " + diff + "ms");
+        }
+        return result;
+
+    }
+
+    public static Integer getSign(Transaction2 record, int nationId, Set<Long> tracked) {
+//        Long otherId = null;
+        if (((record.isSenderGuild() || record.isSenderAA()) && tracked.contains(record.sender_id))
+                || (record.sender_type == 0 && record.sender_id == 0 && record.tx_id == -1)) {
+//            otherId = record.sender_id;
+        } else if (((record.isReceiverGuild() || record.isReceiverAA()) && tracked.contains(record.receiver_id))
+                || (record.receiver_type == 0 && record.receiver_id == 0 && record.tx_id == -1)) {
+//            otherId = record.receiver_id;
+        } else {
+            return null;
+        }
+
+        int sign;
+        if (record.sender_id == nationId && record.sender_type == 1) {
+            return 1;
+        } else {
+            return -1;
+        }
+    }
+
+    public static BiConsumer<Integer, Transaction2> createSumNationTransactions(DBNation nation, GuildDB guildDB, Set<Long> tracked, boolean forceIncludeExpired, boolean forceIncludeIgnored, Predicate<Transaction2> filter, Map<DepositType, double[]> result) {
+        long start = System.currentTimeMillis();
 
         boolean allowExpiryDefault = (guildDB.getOrNull(GuildKey.RESOURCE_CONVERSION) == Boolean.TRUE) || guildDB.getIdLong() == 790253684537688086L;
         long allowExpiryCutoff = 1635910300000L;
-        Predicate<Transaction2> allowExpiry = transaction2 ->
-                allowExpiryDefault || transaction2.tx_datetime > allowExpiryCutoff;
-
-        if (forceIncludeExpired) allowExpiry = f -> false;
+        Predicate<Transaction2> allowExpiry;
+        if (forceIncludeExpired) allowExpiry = Predicates.alwaysFalse();
+        else {
+            allowExpiry = transaction2 ->
+                    allowExpiryDefault || transaction2.tx_datetime > allowExpiryCutoff;
+        }
 
         if (tracked == null) {
             tracked = guildDB.getTrackedBanks();
         }
-        long forceRssConversionAfter = 0;
+        long forceRssConversionAfter;
         long allowConversionDefaultCutoff = 1735265627000L;
         boolean allowConversionDefault = guildDB.getOrNull(GuildKey.RESOURCE_CONVERSION) == Boolean.TRUE;
         if (allowConversionDefault && nation != null) {
-            Role role = Roles.RESOURCE_CONVERSION.toRole2(guildDB);
+            GuildDB delegate = guildDB.getDelegateServer();
+            if (delegate == null) {
+                delegate = guildDB;
+            }
+            Role role = Roles.RESOURCE_CONVERSION.toRole2(delegate);
             if (role != null) {
                 allowConversionDefault = false;
                 User user = nation.getUser();
                 if (user != null) {
-                    Member member = guildDB.getGuild().getMember(user);
+                    Member member = delegate.getGuild().getMember(user);
                     if (member != null) {
                         if (member.getUnsortedRoles().contains(role)) {
                             allowConversionDefault = true;
@@ -594,29 +621,31 @@ public final class PW {
             if (allowConversionDefault) {
                 Long convertDate = GuildKey.FORCE_RSS_CONVERSION.getOrNull(guildDB);
                 if (convertDate != null) forceRssConversionAfter = convertDate;
+                else {
+                    forceRssConversionAfter = 0;
+                }
+            } else {
+                forceRssConversionAfter = 0;
             }
+        } else {
+            forceRssConversionAfter = 0;
         }
 
         Function<ResourceType, Double> rateFunc = guildDB.getConversionRate(nation);
 
-        for (Map.Entry<Integer, Transaction2> entry : transactionsEntries) {
-            int sign = entry.getKey();
-            Transaction2 record = entry.getValue();
-            if (!filter.test(record)) continue;
+        Set<Long> finalTracked = tracked;
+        boolean finalAllowConversionDefault = allowConversionDefault;
+        return (sign, record) -> {
+            if (filter != null && !filter.test(record)) return;
 
             boolean isOffshoreSender = (record.sender_type == 2 || record.sender_type == 3) && record.receiver_type == 1;
 
-            boolean allowConversion = (allowConversionDefault && record.tx_datetime > allowConversionDefaultCutoff) || (record.tx_id != -1 && isOffshoreSender);
+            boolean allowConversion = (finalAllowConversionDefault && record.tx_datetime > allowConversionDefaultCutoff) || (record.tx_id != -1 && isOffshoreSender);
             boolean allowArbitraryConversion = record.tx_id != -1 && isOffshoreSender;
 
-            Predicate<Transaction2> allowExpiryFinal = isOffshoreSender || record.isInternal() ? allowExpiry : f -> false;
-            PW.processDeposit(record, guildDB, tracked, sign, result, record.resources, record.tx_datetime, allowExpiryFinal, allowConversion, allowArbitraryConversion, true, forceIncludeIgnored, rateFunc, forceRssConversionAfter);
-        }
-        long diff = System.currentTimeMillis() - start;
-        if (diff > 50) {
-            Logg.info("Summed " + transactionsEntries.size() + " transactions in " + diff + "ms");
-        }
-        return result;
+            Predicate<Transaction2> allowExpiryFinal = isOffshoreSender || record.isInternal() ? allowExpiry : Predicates.alwaysFalse();
+            PW.processDeposit(record, guildDB, finalTracked, sign, result, record.resources, record.tx_datetime, allowExpiryFinal, allowConversion, allowArbitraryConversion, true, forceIncludeIgnored, rateFunc, forceRssConversionAfter);
+        };
     }
 
     public static boolean aboveMMR(String currentMMR, String requiredMMR) {
@@ -750,7 +779,7 @@ public final class PW {
                     continue;
             }
         }
-        if (allowConversion && forceConvertRssAfter > 0 && forceConvertRssAfter > date) {
+        if (record.receiver_type != 1 && allowConversion && forceConvertRssAfter > 0 && date > forceConvertRssAfter) {
             applyCashConversion(guildDB, allowArbitraryConversion, notes3, amount, null, record, date, rates);
         }
         double[] rss = result.computeIfAbsent(type, f -> ResourceType.getBuffer());
@@ -810,8 +839,9 @@ public final class PW {
                     .hashString(Settings.INSTANCE.CONVERSION_SECRET + record.tx_id, StandardCharsets.UTF_8)
                     .toString());
             boolean hasHash = false;
+            String hash = null;
             if (value instanceof Number n) {
-                String hash = getHash.get();
+                if (hash == null) hash = getHash.get();
                 if (record.note.contains(hash)) {
                     cashValue = n.doubleValue();
                     hasHash = true;
@@ -819,6 +849,7 @@ public final class PW {
             }
 
             if (cashValue == null) {
+
                 long oneWeek = TimeUnit.DAYS.toMillis(7);
                 long start = date - oneWeek;
                 TradeDB tradeDb = Locutus.imp().getTradeManager().getTradeDb();
@@ -844,9 +875,7 @@ public final class PW {
                         convertCached = new ByteOpenHashSet();
                     }
                     convertCached.add((byte) resource.ordinal());
-
-                    List<DBTrade> trades = tradeDb.getTrades(resource, start, date);
-                    Double avg = Locutus.imp().getTradeManager().getAverage(trades).getKey().get(resource);
+                    Double avg = tradeDb.getWeeklyAverage(resource, date, null);
                     if (avg != null) {
                         cashValue += amt * avg * rate;
                     }
@@ -856,12 +885,14 @@ public final class PW {
                 }
                 if (!hasHash)
                 {
-                    // set hash
-                    String hash = getHash.get();
+                    if (hash == null) hash = getHash.get();
+
                     String note = record.note;
-                    note = note.replaceAll("#cash[^ ]+", "#cash=" + MathMan.format(cashValue));
-                    note += " #" + hash;
-                    record.note = note;
+                    note = note.toLowerCase(Locale.ROOT).replaceAll("#cash[^ ]*", "");
+                    note = note.replaceAll("#[a-f0-9]{32}", "");
+                    note = note.replaceAll("\\s+", " ").trim();
+                    note += " #" + hash + " " + "#cash=" + MathMan.format(cashValue).replace(",", "");
+                    record.note = note.trim();
 
                     if (record.isInternal()) {
                         guildDB.updateNote(record.original_id, record.note);
@@ -1034,6 +1065,10 @@ public final class PW {
     }
 
     public static Set<DBNation> getNationsSnapshot(Collection<DBNation> nations, String filterStr, Long snapshotDate, Guild guild) {
+        return getNationsSnapshot(nations, filterStr, snapshotDate, guild, false);
+    }
+
+    public static Set<DBNation> getNationsSnapshot(Collection<DBNation> nations, String filterStr, Long snapshotDate, Guild guild, boolean loadVm) {
         if (snapshotDate == null) return nations instanceof Set<DBNation> ? (Set<DBNation>) nations : new ObjectOpenHashSet<>(nations);
         NationPlaceholders ph = Locutus.cmd().getV2().getNationPlaceholders();
 
@@ -1041,7 +1076,7 @@ public final class PW {
         long day = TimeUtil.getDay(snapshotDate);
         try {
             ValueStore store = ph.createLocals(guild, null, null);
-            NationsFileSnapshot snapshot = dumper.getSnapshotDelegate(day, true, false);
+            NationsFileSnapshot snapshot = dumper.getSnapshotDelegate(day, true, loadVm);
             Set<DBNation> result = ph.parseSet(store, filterStr, snapshot, true);
             return result;
         } catch (IOException | ParseException e) {
@@ -1311,11 +1346,12 @@ public final class PW {
     }
 
     public static double estimateScore(NationDB db, DBNation nation) {
-        return estimateScore(db, nation, null, null, null, null);
+        return estimateScore(db, nation, null, null, null, null, null);
     }
 
-    public static double estimateScore(NationDB db, DBNation nation, MMRDouble mmr, Double infra, Integer projects, Integer cities) {
+    public static double estimateScore(NationDB db, DBNation nation, MMRDouble mmr, Double infra, Integer projects, Integer cities, Integer researchBits) {
         if (projects == null) projects = nation.getNumProjects();
+        if (researchBits == null) researchBits = nation.getResearchBits();
         if (infra == null) {
             infra = 0d;
             for (DBCity city : db.getCitiesV3(nation.getNation_id()).values()) {
@@ -1325,6 +1361,16 @@ public final class PW {
         if (cities == null) cities = nation.getCities();
 
         double base = 10;
+
+        if (researchBits > 0) {
+            for (Research rs : Research.values) {
+                int level = rs.getLevel(researchBits);
+                if (level > 0) {
+                    base += rs.getScore() * level;
+                }
+            }
+        }
+
         base += projects * Projects.getScore();
         base += (cities - 1) * 100;
         base += infra / 40d;
@@ -1332,7 +1378,7 @@ public final class PW {
             if (unit == MilitaryUnit.INFRASTRUCTURE) continue;
             int amt;
             if (mmr != null && unit.getBuilding() != null) {
-                amt = (int) (mmr.getPercent(unit) * unit.getBuilding().getUnitCap() * unit.getBuilding().cap(f -> false) * cities);
+                amt = (int) (mmr.getPercent(unit) * unit.getBuilding().getUnitCap() * unit.getBuilding().cap(Predicates.alwaysFalse()) * cities);
             } else {
                 amt = nation.getUnits(unit);
             }

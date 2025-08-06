@@ -1,15 +1,16 @@
 package link.locutus.discord.web.test;
 
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.battle.sim.SimulatedWarNode;
-import link.locutus.discord.util.battle.sim.WarNation;
+import com.google.common.base.Predicates;
+import it.unimi.dsi.fastutil.io.FastBufferedOutputStream;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
-import it.unimi.dsi.fastutil.io.FastBufferedOutputStream;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.battle.sim.SimulatedWarNode;
+import link.locutus.discord.util.battle.sim.WarNation;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -189,10 +190,10 @@ public class ExportSim {
         nation1.setWarPolicy(WarPolicy.PIRATE);
         nation2.setWarPolicy(WarPolicy.PIRATE);
 
-        int soldierMax = Buildings.BARRACKS.getUnitCap() * Buildings.BARRACKS.cap(f -> false) * 100;
-        int tankMax = Buildings.FACTORY.getUnitCap() * Buildings.FACTORY.cap(f -> false) * 100;
-        int airMax = Buildings.HANGAR.getUnitCap() * Buildings.HANGAR.cap(f -> false) * 100;
-        int shipMax = Buildings.DRYDOCK.getUnitCap() * Buildings.DRYDOCK.cap(f -> false) * 100;
+        int soldierMax = Buildings.BARRACKS.getUnitCap() * Buildings.BARRACKS.cap(Predicates.alwaysFalse()) * 100;
+        int tankMax = Buildings.FACTORY.getUnitCap() * Buildings.FACTORY.cap(Predicates.alwaysFalse()) * 100;
+        int airMax = Buildings.HANGAR.getUnitCap() * Buildings.HANGAR.cap(Predicates.alwaysFalse()) * 100;
+        int shipMax = Buildings.DRYDOCK.getUnitCap() * Buildings.DRYDOCK.cap(Predicates.alwaysFalse()) * 100;
 
         nation2.setSoldiers(soldierMax);
         nation2.setTanks(tankMax);
@@ -275,10 +276,10 @@ public class ExportSim {
         nation1.setWarPolicy(WarPolicy.PIRATE);
         nation2.setWarPolicy(WarPolicy.PIRATE);
 
-        int soldierMax = Buildings.BARRACKS.getUnitCap() * Buildings.BARRACKS.cap(f -> false) * 100;
-        int tankMax = Buildings.FACTORY.getUnitCap() * Buildings.FACTORY.cap(f -> false) * 100;
-        int airMax = Buildings.HANGAR.getUnitCap() * Buildings.HANGAR.cap(f -> false) * 100;
-        int shipMax = Buildings.DRYDOCK.getUnitCap() * Buildings.DRYDOCK.cap(f -> false) * 100;
+        int soldierMax = Buildings.BARRACKS.getUnitCap() * Buildings.BARRACKS.cap(Predicates.alwaysFalse()) * 100;
+        int tankMax = Buildings.FACTORY.getUnitCap() * Buildings.FACTORY.cap(Predicates.alwaysFalse()) * 100;
+        int airMax = Buildings.HANGAR.getUnitCap() * Buildings.HANGAR.cap(Predicates.alwaysFalse()) * 100;
+        int shipMax = Buildings.DRYDOCK.getUnitCap() * Buildings.DRYDOCK.cap(Predicates.alwaysFalse()) * 100;
 
         nation2.setSoldiers(soldierMax);
         nation2.setTanks(tankMax);

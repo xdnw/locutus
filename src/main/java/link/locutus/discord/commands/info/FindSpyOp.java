@@ -61,7 +61,7 @@ public class FindSpyOp extends Command {
 
         String[] times = args.get(0).split(",");
         for (String timeStr : times) {
-            long timestamp = TimeUtil.parseDate(TimeUtil.MMDD_HH_MM_A, timeStr, true);
+            long timestamp = TimeUtil.parseDateSetYear(TimeUtil.MMDD_HH_MM_A, timeStr);
             List<DBSpyUpdate> updates = Locutus.imp().getNationDB().getSpyActivity(timestamp, interval);
             for (DBSpyUpdate update : updates) {
                 DBNation nation = DBNation.getById(update.nation_id);

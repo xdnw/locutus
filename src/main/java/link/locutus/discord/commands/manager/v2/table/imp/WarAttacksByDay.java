@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.table.imp;
 
+import com.google.common.base.Predicates;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -35,7 +36,7 @@ public class WarAttacksByDay extends SimpleTable<Void> {
             throw new IllegalArgumentException("Too many days.");
         }
 
-        Predicate<AttackType> allowedType = allowedTypes == null ? f -> true : allowedTypes::contains;
+        Predicate<AttackType> allowedType = allowedTypes == null ? Predicates.alwaysTrue() : allowedTypes::contains;
 
         Map<Integer, DBWar> wars;
         if (nations == null) {

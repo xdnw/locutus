@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities;
 
+import com.google.common.base.Predicates;
 import com.politicsandwar.graphql.model.City;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.SCityContainer;
@@ -367,7 +368,7 @@ public abstract class DBCity implements IMutableCity {
                 } else if (this.getInfra_cents() < previous.getInfra_cents() - 1) {
                     if (eventConsumer != null) {
                         if (previousClone == null) previousClone = new SimpleDBCity(previous);
-                        boolean isAttack = (this.toJavaCity(f -> false).getRequiredInfra() > this.getInfra_cents() * 0.01d);
+                        boolean isAttack = (this.toJavaCity(Predicates.alwaysFalse()).getRequiredInfra() > this.getInfra_cents() * 0.01d);
                         Event event;
                         if (isAttack) {
                             event = new CityInfraDamageEvent(nationId, previousClone, this);
@@ -482,7 +483,7 @@ public abstract class DBCity implements IMutableCity {
     }
 
     private Predicate<Project> getProjectPredicate() {
-        return getNation() == null ? f -> false : getNation()::hasProject;
+        return getNation() == null ? Predicates.alwaysFalse() : getNation()::hasProject;
     }
 
     @Command(desc = "Get city pollution")
@@ -600,7 +601,7 @@ public abstract class DBCity implements IMutableCity {
         Continent continent = nation == null ? Continent.NORTH_AMERICA : nation.getContinent();
         double rads = nation == null ? Locutus.imp().getTradeManager().getGlobalRadiation() : nation.getRads();
         long date = System.currentTimeMillis();
-        Predicate<Project> hasProject = nation == null ? f -> false : nation::hasProject;
+        Predicate<Project> hasProject = nation == null ? Predicates.alwaysFalse() : nation::hasProject;
         int numCities = nation == null ? 21 : nation.getCities();
         double grossModifier = nation == null ? 1 : nation.getGrossModifier();
         boolean forceUnpowered = false;
@@ -614,7 +615,7 @@ public abstract class DBCity implements IMutableCity {
         DBNation nation = getNation();
         Continent continent = nation == null ? Continent.NORTH_AMERICA : nation.getContinent();
         double rads = nation == null ? Locutus.imp().getTradeManager().getGlobalRadiation() : nation.getRads();
-        Predicate<Project> hasProject = nation == null ? f -> false : nation::hasProject;
+        Predicate<Project> hasProject = nation == null ? Predicates.alwaysFalse() : nation::hasProject;
         int numCities = nation == null ? 21 : nation.getCities();
         double grossModifier = nation == null ? 1 : nation.getGrossModifier();
         return PW.City.profitConverted(continent, rads, hasProject, numCities, grossModifier, this);

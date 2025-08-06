@@ -1,45 +1,34 @@
 package link.locutus.discord.web.commands.binding;
 
 import cn.easyproject.easyocr.ImageType;
+import com.google.common.base.Predicates;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.NationAttributeCallable;
-import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
-import link.locutus.discord.commands.manager.v2.command.CommandCallable;
-import link.locutus.discord.commands.manager.v2.command.ICommand;
-import link.locutus.discord.commands.manager.v2.command.ParameterData;
-import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.HtmlInput;
-import net.dv8tion.jda.api.entities.channel.attribute.IPositionableChannel;
-import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
-import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
-import net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel;
+import net.dv8tion.jda.api.entities.channel.attribute.IPositionableChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
-import java.awt.Font;
-import java.awt.GraphicsEnvironment;
-import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
+import java.awt.*;
+import java.util.*;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 public class DiscordWebBindings extends WebBindingHelper {
@@ -66,7 +55,7 @@ public class DiscordWebBindings extends WebBindingHelper {
     @HtmlInput
     @Binding(types = CommandCallable.class)
     public String command(@Me User user, @Default ParameterData param) {
-        List<CommandCallable> options = new ArrayList<>(Locutus.imp().getCommandManager().getV2().getCommands().getParametricCallables(f -> true));
+        List<CommandCallable> options = new ArrayList<>(Locutus.imp().getCommandManager().getV2().getCommands().getParametricCallables(Predicates.alwaysTrue()));
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             names.add(obj.getFullPath());
             subtext.add(obj.simpleDesc().split("\n")[0]);

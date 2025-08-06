@@ -1473,6 +1473,8 @@ public class IACommands {
         Map<DBNation, List<Object>> rows = new HashMap<>();
         Map<DBNation, Double> loot = new Object2DoubleOpenHashMap<>();
 
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(attackers, DBNation.class);
+
         for (DBNation nation : attackers) {
             List<Object> row = new ArrayList<>();
             row.add(MarkupUtil.sheetUrl(nation.getNation(), PW.getUrl(nation.getNation_id(), false)));
@@ -1493,7 +1495,7 @@ public class IACommands {
                 boolean inactive = other.active_m() > TimeUnit.DAYS.toMinutes(5);
                 if (inactive) {
                     offInactive++;
-                    lootInactive += other.lootTotal();
+                    lootInactive += other.lootTotal(cacheStore);
                 }
             }
             row.add(offInactive + "");
@@ -1676,7 +1678,7 @@ public class IACommands {
             throw new IllegalArgumentException(response.toString());
         }
 
-
+        ValueStore<DBNation> cache = PlaceholderCache.createCache(nations, DBNation.class);
         StringBuilder response = new StringBuilder();
         for (DBNation nation : nations) {
             if (aaId != nation.getAlliance_id()) {
@@ -1694,7 +1696,7 @@ public class IACommands {
             }
 
             if (!isGov) {
-                double depo = me.getNetDepositsConverted(db);
+                double depo = me.getNetDepositsConverted(cache, db);
                 if (depo < -200_000_000) {
                     if (bracket.moneyRate < 100 || bracket.rssRate < 100) {
                         response.append(nation.getNation() + ": Nations in >200m debt must have a gov change their tax rate").append("\n");
@@ -1708,8 +1710,12 @@ public class IACommands {
                 response.append("Set internal taxrate to " + internalTaxRate + "\n");
             }
 
-            boolean result = alliance.setTaxBracket(bracket, nation);
-            response.append("Set bracket to " + bracket + " for " + nation.getNation() + ": " + result).append("\n");
+            try {
+                boolean result = alliance.setTaxBracket(bracket, nation);
+                response.append("Set bracket to " + bracket + " for " + nation.getNation() + ": " + result).append("\n");
+            } catch (RuntimeException e) {
+                response.append("Failed to set bracket for " + nation.getNation() + ": " + e.getMessage()).append("\n");
+            }
         }
         response.append("\nSee also: " + CM.tax.set_from_sheet.cmd.toSlashMention());
         return response.toString();

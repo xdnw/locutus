@@ -1,10 +1,12 @@
 package link.locutus.discord.commands.manager.v2.table.imp;
 
+import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.db.TradeDB;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.web.commands.binding.value_types.GraphType;
 
@@ -22,40 +24,34 @@ public class StockpileValueByDay extends SimpleTable<Void> {
                                int numDays) {
         TradeManager manager = Locutus.imp().getTradeManager();
         TradeDB tradeDB = manager.getTradeDb();
-        Map<ResourceType, Map<Long, Double>> avgByRss = new HashMap<>();
         long minDay = Long.MAX_VALUE;
         long maxDay = Long.MIN_VALUE;
         List<ResourceType> resources = new ArrayList<>(Arrays.asList(ResourceType.values()));
         resources.remove(ResourceType.CREDITS);
         resources.remove(ResourceType.MONEY);
 
-        long start = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(numDays);
+        long end = System.currentTimeMillis();
+        long start = end - TimeUnit.DAYS.toMillis(numDays);
 
-        for (ResourceType type : resources) {
-            double curAvg = manager.getHighAvg(type);
-            int min = (int) (curAvg * 0.2);
-            int max = (int) (curAvg * 5);
-
-            Map<Long, Double> averages = tradeDB.getAverage(start, type, 15, min, max);
-
-            avgByRss.put(type, averages);
-
-            minDay = Math.min(minDay, Collections.min(averages.keySet()));
-            maxDay = Collections.max(averages.keySet());
+        Map<Long, double[]> averagesByDay = tradeDB.getAverageByDay(resources, TimeUtil.getDay(start), TimeUtil.getDay(end));
+        for (Map.Entry<Long, double[]> entry : averagesByDay.entrySet()) {
+            minDay = Math.min(minDay, entry.getKey());
+            maxDay = Math.max(maxDay, entry.getKey());
         }
 
-        valueByDay1 = new HashMap<>();
-        valueByDay2 = new HashMap<>();
+        valueByDay1 = new Long2DoubleOpenHashMap();
+        valueByDay2 = new Long2DoubleOpenHashMap();
 
         for (long day = minDay; day <= maxDay; day++) {
             double val1 = 0;
             double val2 = 0;
+            double[] byRss = averagesByDay.get(day);
+            if (byRss == null) continue;
 
-            for (ResourceType resource : resources) {
-                Double rssPrice = avgByRss.getOrDefault(resource, Collections.emptyMap()).get(day);
-                if (rssPrice == null) {
-                    continue;
-                }
+            for (int i = 0; i < resources.size(); i++) {
+                ResourceType resource = resources.get(i);
+                Double rssPrice = byRss[i];
+                if (rssPrice == null) continue;
 
                 val1 += rssPrice * stockpile1.getOrDefault(resource, 0d);
                 val2 += rssPrice * stockpile2.getOrDefault(resource, 0d);

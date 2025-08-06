@@ -3,7 +3,9 @@ package link.locutus.discord.web.commands.api;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsMemberIngameOrDiscord;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
@@ -218,7 +220,7 @@ public class IAEndpoints extends PageHelper {
             result.no_access_msg = e.getMessage();
         }
 
-        Map<DepositType, double[]> breakdown = nation.getDeposits(db, null, true, true, -1, 0, false);
+        Map<DepositType, double[]> breakdown = nation.getDeposits(null, db, null, true, true, -1, 0, Long.MAX_VALUE, false);
         boolean includeGrants = db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW_IGNORES_GRANTS) == Boolean.FALSE;
         double[] total = ResourceType.getBuffer();
         for (Map.Entry<DepositType, double[]> entry : breakdown.entrySet()) {
@@ -309,16 +311,21 @@ public class IAEndpoints extends PageHelper {
 
         Set<DBNation> nationsToBlitzWith = Set.of(nation);
         List<Map.Entry<DBNation, Double>> counterChance = getCounterChance(db, nations, num_results, ignore_dnr, includeAllies, Set.of(nation), maxRelativeTargetStrength, maxRelativeCounterStrength, false, ignoreODP, true);
+        List<DBNation> counterNations = counterChance.stream().map(Map.Entry::getKey).collect(Collectors.toList());
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(counterNations, DBNation.class);
+
         double myStrength = nationsToBlitzWith.stream().mapToDouble(f -> Math.pow(f.getStrength(), 3)).sum();
 
         if (counterChance.size() > num_results) {
             counterChance = counterChance.subList(0, num_results);
         }
+
+
         List<WebTarget> targets = new ObjectArrayList<>();
         for (Map.Entry<DBNation, Double> entry : counterChance) {
             DBNation other = entry.getKey();
             double strength = entry.getValue();
-            double loot = other.lootTotal();
+            double loot = other.lootTotal(cacheStore);
             targets.add(new WebTarget(other, loot, loot, 100 * strength / myStrength));
         }
         WebTargets result = targets(nation, targets);
@@ -340,7 +347,7 @@ public class IAEndpoints extends PageHelper {
         else if (nation.getId() != me.getId() && user == null || !Roles.ECON_STAFF.has(user, db.getGuild())) {
             throw new IllegalArgumentException("You can only view your own bank records.");
         }
-        List<Transaction2> transactions = BankCommands.getRecords(db, null, true, true, true, 0, nation, false);
+        List<Transaction2> transactions = BankCommands.getRecords(db, null, true, true, true, 0, Long.MAX_VALUE, nation, false);
         List<List<Object>> cells = SpreadSheet.generateTransactionsListCells(transactions, true, false);
         return new WebTable(cells, null, null);
     }

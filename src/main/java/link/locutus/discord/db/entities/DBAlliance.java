@@ -1,14 +1,13 @@
 package link.locutus.discord.db.entities;
 
-import com.politicsandwar.graphql.model.ApiKeyDetails;
-import com.politicsandwar.graphql.model.Bankrec;
-import com.politicsandwar.graphql.model.Nation;
-import com.politicsandwar.graphql.model.NationResponseProjection;
-import com.politicsandwar.graphql.model.NationsQueryRequest;
-import it.unimi.dsi.fastutil.ints.*;
+import com.google.common.base.Predicates;
+import com.politicsandwar.graphql.model.*;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.apiv1.domains.AllianceMembers;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -20,11 +19,11 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.ScopedPlaceholderCache;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
-import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.table.imp.CoalitionMetricsGraph;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
@@ -33,30 +32,20 @@ import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.TaxDeposit;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.metric.GrowthAsset;
-import link.locutus.discord.db.entities.metric.MembershipChangeReason;
 import link.locutus.discord.db.entities.metric.GrowthSummary;
+import link.locutus.discord.db.entities.metric.MembershipChangeReason;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.alliance.*;
-import link.locutus.discord.pnw.AllianceList;
-import link.locutus.discord.pnw.GuildOrAlliance;
-import link.locutus.discord.pnw.NationList;
-import link.locutus.discord.pnw.NationOrAlliance;
-import link.locutus.discord.pnw.SimpleNationList;
-import link.locutus.discord.util.FileUtil;
-import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.apiv1.domains.AllianceMembers;
+import link.locutus.discord.pnw.*;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingFunction;
-import link.locutus.discord.util.task.deprecated.GetTaxesTask;
 import link.locutus.discord.util.task.EditAllianceTask;
+import link.locutus.discord.util.task.deprecated.GetTaxesTask;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.binding.value_types.WebGraph;
 import org.springframework.web.client.HttpClientErrorException;
@@ -72,6 +61,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import static link.locutus.discord.commands.manager.v2.binding.bindings.MethodEnum.*;
 import static link.locutus.discord.util.MathMan.orElse;
 
 public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance {
@@ -89,6 +79,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     private LootEntry lootEntry;
     private boolean cachedLootEntry;
     private Int2ObjectOpenHashMap<byte[]> metaCache = null;
+    private int treasureCount = -1;
 
     public DBAlliance(com.politicsandwar.graphql.model.Alliance alliance) {
         this.allianceId = alliance.getId();
@@ -116,7 +107,12 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     @Command(desc = "Number of treasures in the alliance")
     public int getNumTreasures() {
         if (allianceId == 0) return 0;
-        return Locutus.imp().getNationDB().countTreasures(allianceId);
+        if (treasureCount >= 0) return treasureCount;
+        return treasureCount = Locutus.imp().getNationDB().countTreasures(allianceId);
+    }
+
+    public void markTreasuresDirty() {
+        this.treasureCount = -1;
     }
 
     @Command(desc = "Treasure bonus (decimal percent between 0-1)")
@@ -133,8 +129,8 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
             return metric.apply(this);
         }
         NationDB db = Locutus.imp().getNationDB();
-        String method = "metric" + (turn - TimeUtil.getTurn(TimeUtil.getOrigin())) + metric;
-        ScopedPlaceholderCache<DBAlliance> scoped = PlaceholderCache.getScoped(store, DBAlliance.class, method);
+//        String method = "metric" + (turn - TimeUtil.getTurn(TimeUtil.getOrigin())) + metric;
+        ScopedPlaceholderCache<DBAlliance> scoped = PlaceholderCache.getScoped(store, DBAlliance.class, getMetricAt.of(metric, date));
         Double value = scoped.getMap(this,
         (ThrowingFunction<List<DBAlliance>, Map<DBAlliance, Double>>)
         f -> {
@@ -157,7 +153,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 
     public Map<AllianceMetric, Map<Long, Double>> getMetricsAt(ValueStore store, Set<AllianceMetric> metrics, long turnStart, long turnEnd) {
         String method = "metrics" + metrics;
-        ScopedPlaceholderCache<DBAlliance> scoped = PlaceholderCache.getScoped(store, DBAlliance.class, method);
+        ScopedPlaceholderCache<DBAlliance> scoped = PlaceholderCache.getScoped(store, DBAlliance.class, getMetricsAt.of(metrics, turnStart, turnEnd));
         Map<AllianceMetric, Map<Long, Double>> result = scoped.getMap(this,
         (ThrowingFunction<List<DBAlliance>, Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>>>)
         f -> {
@@ -1264,7 +1260,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     public Map<DBNation, Map<ResourceType, Double>> getMemberStockpile() throws IOException {
-        return getMemberStockpile(f -> true);
+        return getMemberStockpile(Predicates.alwaysTrue());
     }
 
     public Map<DBNation, Map<ResourceType, Double>> getMemberStockpile(Predicate<DBNation> fetchNations) throws IOException {
@@ -1333,7 +1329,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     public void updateCities() throws IOException, ParseException {
-        updateCities(f -> true);
+        updateCities(Predicates.alwaysTrue());
     }
 
     public void updateCities(Predicate<DBNation> fetchNation) throws IOException {
@@ -1867,7 +1863,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     public GrowthSummary.AllianceGrowthSummary getGrowthSummary(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
         long dayStart = TimeUtil.getDay(start);
         long dayEnd = end == null ? TimeUtil.getDay() : TimeUtil.getDay(end);
-        ScopedPlaceholderCache<DBAlliance> scoped = PlaceholderCache.getScoped(store, DBAlliance.class, "growth_" + dayStart + "_" + dayEnd);
+        ScopedPlaceholderCache<DBAlliance> scoped = PlaceholderCache.getScoped(store, DBAlliance.class, getGrowthSummary.of(dayStart, dayEnd));
         GrowthSummary.AllianceGrowthSummary r = scoped.getMap(this,
         (ThrowingFunction<List<DBAlliance>, Map<DBAlliance, GrowthSummary.AllianceGrowthSummary>>)
         f -> {

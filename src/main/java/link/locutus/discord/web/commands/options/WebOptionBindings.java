@@ -1,5 +1,6 @@
 package link.locutus.discord.web.commands.options;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -14,9 +15,6 @@ import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.command.WebOption;
-import link.locutus.discord.db.entities.menu.AppMenu;
-import link.locutus.discord.db.entities.menu.MenuState;
-import link.locutus.discord.web.commands.binding.value_types.WebOptions;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
@@ -25,6 +23,8 @@ import link.locutus.discord.db.conflict.Conflict;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.grant.AGrantTemplate;
 import link.locutus.discord.db.entities.grant.GrantTemplateManager;
+import link.locutus.discord.db.entities.menu.AppMenu;
+import link.locutus.discord.db.entities.menu.MenuState;
 import link.locutus.discord.db.entities.newsletter.Newsletter;
 import link.locutus.discord.db.entities.newsletter.NewsletterManager;
 import link.locutus.discord.db.guild.GuildKey;
@@ -33,6 +33,7 @@ import link.locutus.discord.gpt.pw.GPTProvider;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.pnw.*;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.web.commands.binding.value_types.WebOptions;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
@@ -153,7 +154,7 @@ public class WebOptionBindings extends BindingHelper {
 //CommandCallable
     @Binding(types = ICommand.class)
     public WebOption getCommandCallable() {
-        List<ParametricCallable> options = new ArrayList<>(Locutus.imp().getCommandManager().getV2().getCommands().getParametricCallables(f -> true));
+        List<ParametricCallable> options = new ArrayList<>(Locutus.imp().getCommandManager().getV2().getCommands().getParametricCallables(Predicates.alwaysTrue()));
         return new WebOption(ICommand.class).setOptions(options.stream().map(CommandCallable::getFullPath).toList());
     }
 

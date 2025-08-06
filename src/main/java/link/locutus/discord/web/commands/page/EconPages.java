@@ -1,34 +1,25 @@
 package link.locutus.discord.web.commands.page;
 
+import com.google.common.base.Predicates;
 import gg.jte.generated.precompiled.guild.econ.JtetaxexpensesGenerated;
 import gg.jte.generated.precompiled.guild.econ.JtetaxexpensesbyturnGenerated;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TaxDeposit;
-import link.locutus.discord.db.entities.TaxBracket;
-import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.TaxBracket;
+import link.locutus.discord.db.entities.TaxRecordCategorizer2;
+import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.db.entities.TaxRecordCategorizer2;
 import net.dv8tion.jda.api.entities.Guild;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -44,7 +35,7 @@ public class EconPages {
             throw new IllegalArgumentException("Please pick either a moving average, or cumulative, not both");
 
         Predicate<Integer> isNationIdPermitted;
-        if (nationFilter == null) isNationIdPermitted = f -> true;
+        if (nationFilter == null) isNationIdPermitted = Predicates.alwaysTrue();
         else {
             Set<Integer> ids = nationFilter.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
             isNationIdPermitted = ids::contains;
@@ -123,7 +114,7 @@ public class EconPages {
         List<String> errors = new ArrayList<>();
         Predicate<Integer> allowedNations;
         if (nationList == null) {
-            allowedNations = f -> true;
+            allowedNations = Predicates.alwaysTrue();
         } else {
             allowedNations = id -> {
                 DBNation nation = DBNation.getById(id);

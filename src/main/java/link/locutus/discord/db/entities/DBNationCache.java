@@ -1,12 +1,15 @@
 package link.locutus.discord.db.entities;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.Research;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.util.TimeUtil;
 
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 public class DBNationCache {
@@ -91,17 +94,20 @@ public class DBNationCache {
                 if (unitBuys != null) {
                     // If the project has been updated recently, check their projects, otherwise be lenient and assume they have all projects
                     Predicate<Project> hasProjects;
+                    Function< Research, Integer> getResearch;
 
                     if (now - lastCheckProjectsMS < TimeUnit.MINUTES.toMillis(3)) {
                         hasProjects = parent::hasProject;
+                        getResearch = parent::getResearch;
                     } else if (current > previous) {
-                        hasProjects = f -> true;
+                        hasProjects = Predicates.alwaysTrue();
+                        getResearch = f -> 20;
                     } else {
                         // Don't check if there is no buy and project info isn't updated
                         return;
                     }
 
-                    int capFast = unit.getMaxPerDay(parent.getCities(), hasProjects);
+                    int capFast = unit.getMaxPerDay(parent.getCities(), hasProjects, getResearch);
                     int totalBought = unitBuys[index] + unitBuys[index + 7];
 
                     if (totalBought > capFast) {

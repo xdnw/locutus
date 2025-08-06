@@ -41,7 +41,7 @@ public class AlliancePages {
             int nationId = change.getNationId();
             DBNation nation = Locutus.imp().getNationDB().getNationById(nationId);
 
-            row.add(TimeUtil.YYYY_MM_DD_HH_MM_A.format(new Date(change.getDate())));
+            row.add(TimeUtil.format(TimeUtil.YYYY_MM_DD_HH_MM_A, change.getDate()));
             row.add(MarkupUtil.htmlUrl(PW.getName(nationId, false), PW.getUrl(nationId, false)));
             row.add(change.getToRank().name());
             if (nation != null) {

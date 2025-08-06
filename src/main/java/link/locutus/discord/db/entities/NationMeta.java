@@ -1,7 +1,8 @@
 package link.locutus.discord.db.entities;
 
-import link.locutus.discord.util.MathMan;
+import com.google.common.base.Predicates;
 import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.util.MathMan;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.Member;
 
@@ -167,7 +168,7 @@ public enum NationMeta {
             OnlineStatus status = f.getOnlineStatus();
             return status == OnlineStatus.ONLINE || status == OnlineStatus.IDLE || status == OnlineStatus.DO_NOT_DISTURB;
         }),
-        ANY(f -> true)
+        ANY(Predicates.alwaysTrue())
         ;
 
         private final Predicate<Member> applies;
@@ -182,11 +183,11 @@ public enum NationMeta {
     }
 
     public enum BeigeAlertMode {
-        NO_ALERTS(f -> false),
+        NO_ALERTS(Predicates.alwaysFalse()),
         INACTIVE_NONES(f -> f.active_m() > 10000 && f.getAlliance_id() == 0),
         NONES(f -> f.getAlliance_id() == 0),
         NONES_INACTIVE_APPS(f -> (f.getAlliance_id() == 0 || (f.active_m() > 10000 && f.getPosition() <= Rank.APPLICANT.id))),
-        ANYONE_NOT_BLACKLISTED(f -> true)
+        ANYONE_NOT_BLACKLISTED(Predicates.alwaysTrue())
 
         ;
 

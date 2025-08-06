@@ -222,32 +222,31 @@ public final class Locutus extends ListenerAdapter {
         }
         Logg.text("Registered event listener (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
         if (Settings.INSTANCE.ENABLED_COMPONENTS.DISCORD_BOT) {
-            JDA jda = loader.getJda();
+            this.manager.init(loader.getShardManager());
             try {
                 SlashCommandManager slashCommands = loader.getSlashCommandManager();
                 if (slashCommands != null) {
-                    executor.submit(() -> slashCommands.registerCommandData(jda));
+                    executor.submit(() -> slashCommands.registerCommandData(manager));
                 }
             } catch (Throwable e) {
                 // sometimes happen when discord api is spotty / timeout
                 e.printStackTrace();
                 Logg.text("Failed to update slash commands: " + e.getMessage());
             }
-            setSelfUser(jda);
-            manager.put(jda);
+            setSelfUser(manager);
 //            jda.awaitStatus(JDA.Status.LOADING_SUBSYSTEMS);
-            Logg.text("Discord Gateway: " + jda.getStatus() + " (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
+            Logg.text("Discord Gateway: " + manager.getStatus() + " (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
             try {
-                jda.awaitReady();
+                manager.awaitReady();
             } catch (IllegalArgumentException e) {
                 e.printStackTrace();
             }
-            Logg.text("Discord Gateway: " + jda.getStatus() + " (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
-            setSelfUser(jda);
+            Logg.text("Discord Gateway: " + manager.getStatus() + " (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
+            setSelfUser(manager);
             if (Settings.INSTANCE.ENABLED_COMPONENTS.CREATE_DATABASES_ON_STARTUP) {
                 initDBPartial(true);
             }
-            Logg.text("Initialized Guild Databases " + jda.getStatus() + " (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
+            Logg.text("Initialized Guild Databases " + manager.getStatus() + " (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
             Guild rootGuild = manager.getGuildById(Settings.INSTANCE.ROOT_SERVER);
             if (rootGuild != null) {
                 this.server = rootGuild;
@@ -337,8 +336,8 @@ public final class Locutus extends ListenerAdapter {
         manager.put(event.getGuild().getIdLong(), event.getJDA());
     }
 
-    private void setSelfUser(JDA jda) {
-        SelfUser self = jda.getSelfUser();
+    private void setSelfUser(GuildShardManager manager) {
+        SelfUser self = manager.getSelfUser();
         if (self != null) {
             long appId = self.getApplicationIdLong();
             if (appId > 0) {
@@ -395,6 +394,7 @@ public final class Locutus extends ListenerAdapter {
 
             try {
                 db = new GuildDB(guild);
+                db.importLegacyDepositOffset();
                 guildDatabases.put(guild.getIdLong(), db);
                 return db;
             } catch (Throwable e) {
@@ -465,6 +465,7 @@ public final class Locutus extends ListenerAdapter {
         Locutus instance = Locutus.create().start();
         Settings.INSTANCE.save(Settings.INSTANCE.getDefaultFile());
     }
+
     public WarDB getWarDb() {
         return loader.getWarDB();
     }
@@ -475,6 +476,10 @@ public final class Locutus extends ListenerAdapter {
 
     public TradeManager getTradeManager() {
         return loader.getTradeManager();
+    }
+
+    public TradeDB getTradeDB() {
+        return getTradeManager().getTradeDb();
     }
 
     public CommandManager getCommandManager() {
@@ -511,10 +516,10 @@ public final class Locutus extends ListenerAdapter {
         return loader.getForumDB();
     }
 
-    public void runEventsAsync(ThrowingConsumer<Consumer<Event>> eventHandler) {
+    public Future<?> runEventsAsync(ThrowingConsumer<Consumer<Event>> eventHandler) {
         Collection<Event> events = new ObjectArrayList<>(0);
         eventHandler.accept(events::add);
-        runEventsAsync(events);
+        return runEventsAsync(events);
     }
 
     public <T> T returnEventsAsync(ThrowingFunction<Consumer<Event>, T> eventHandler) {
@@ -524,9 +529,9 @@ public final class Locutus extends ListenerAdapter {
         return result;
     }
 
-    public void runEventsAsync(Collection<Event> events) {
-        if (events.isEmpty()) return;
-        getExecutor().submit(new CaughtRunnable() {
+    public Future<?> runEventsAsync(Collection<Event> events) {
+        if (events.isEmpty()) return null;
+        return getExecutor().submit(new CaughtRunnable() {
             @Override
             public void runUnsafe() {
                 for (Event event : events) event.post();

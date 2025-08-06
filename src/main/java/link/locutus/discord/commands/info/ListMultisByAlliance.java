@@ -88,7 +88,7 @@ public class ListMultisByAlliance extends Command {
             builder.put(offer.getSeller(), offer);
         }).get();
 
-        Map<Integer, List<Transaction2>> allTransfers = Locutus.imp().getBankDB().getNationTransfersByNation(0, multisByNation.keySet());
+        Map<Integer, List<Transaction2>> allTransfers = Locutus.imp().getBankDB().getNationTransfersByNation(0, Long.MAX_VALUE, multisByNation.keySet());
 
         StringBuilder response = new StringBuilder();
         int i = 0;

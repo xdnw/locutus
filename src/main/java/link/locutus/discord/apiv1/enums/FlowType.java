@@ -5,54 +5,45 @@ import link.locutus.discord.util.PW;
 
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiConsumer;
 
 public enum FlowType {
     INTERNAL {
         @Override
-        public double[] getTotal(List<Map.Entry<Integer, Transaction2>> transfers, int nationId) {
-            return ResourceType.builder().forEach(transfers, new BiConsumer<ResourceType.ResourcesBuilder, Map.Entry<Integer, Transaction2>>() {
-                @Override
-                public void accept(ResourceType.ResourcesBuilder r, Map.Entry<Integer, Transaction2> signTx) {
-                    Transaction2 tx = signTx.getValue();
-                    if (tx.sender_id == 0 || tx.receiver_id == 0) {
-                        r.add(PW.multiply(tx.resources.clone(), signTx.getKey()));
-                    }
-                }
-            }).build();
+        public double[] addTotal(double[] total, int sign, Transaction2 tx, int nationId) {
+            if (tx.sender_id == 0 || tx.receiver_id == 0) {
+                return ResourceType.add(total, PW.multiply(tx.resources.clone(), sign));
+            }
+            return total;
         }
     },
     WITHDRAWAL {
         @Override
-        public double[] getTotal(List<Map.Entry<Integer, Transaction2>> transfers, int nationId) {
-            return ResourceType.builder().forEach(transfers, new BiConsumer<ResourceType.ResourcesBuilder, Map.Entry<Integer, Transaction2>>() {
-                @Override
-                public void accept(ResourceType.ResourcesBuilder r, Map.Entry<Integer, Transaction2> signTx) {
-                    Transaction2 tx = signTx.getValue();
-                    if (tx.receiver_id == nationId && tx.isReceiverNation() && tx.sender_id != 0) {
-                        r.add(PW.multiply(tx.resources.clone(), -signTx.getKey()));
-                    }
-                }
-            }).build();
+        public double[] addTotal(double[] total, int sign, Transaction2 tx, int nationId) {
+            if (tx.receiver_id == nationId && tx.isReceiverNation() && tx.sender_id != 0) {
+                return ResourceType.add(total, PW.multiply(tx.resources.clone(), -sign));
+            }
+            return total;
         }
     },
     DEPOSIT {
         @Override
-        public double[] getTotal(List<Map.Entry<Integer, Transaction2>> transfers, int nationId) {
-            return ResourceType.builder().forEach(transfers, new BiConsumer<ResourceType.ResourcesBuilder, Map.Entry<Integer, Transaction2>>() {
-                @Override
-                public void accept(ResourceType.ResourcesBuilder r, Map.Entry<Integer, Transaction2> signTx) {
-                    Transaction2 tx = signTx.getValue();
-                    if (tx.sender_id == nationId && tx.isSenderNation() && tx.receiver_id != 0) {
-                        r.add(PW.multiply(tx.resources.clone(), signTx.getKey()));
-                    }
-                }
-            }).build();
+        public double[] addTotal(double[] total, int sign, Transaction2 tx, int nationId) {
+            if (tx.sender_id == nationId && tx.isSenderNation() && tx.receiver_id != 0) {
+                return ResourceType.add(total, PW.multiply(tx.resources.clone(), sign));
+            }
+            return total;
         }
-    },
+    };
 
-    ;
+    public static final FlowType[] VALUES = values();
 
-    public abstract double[] getTotal(List<Map.Entry<Integer, Transaction2>> transfers, int nationId);
+    public abstract double[] addTotal(double[] total, int sign, Transaction2 transfer, int nationId);
 
+    public double[] getTotal(List<Map.Entry<Integer, Transaction2>> transfers, int nationId) {
+        double[] total = ResourceType.getBuffer();
+        for (Map.Entry<Integer, Transaction2> entry : transfers) {
+            total = addTotal(total, entry.getKey(), entry.getValue(), nationId);
+        }
+        return total;
+    }
 }

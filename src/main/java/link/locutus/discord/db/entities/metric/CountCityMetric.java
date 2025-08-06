@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities.metric;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -33,11 +34,11 @@ public class CountCityMetric implements IAllianceMetric {
     }
 
     public CountCityMetric(Function<DBCity, Double> countCity, Function<CityHeader, ? extends NumberColumn<DBCity, ? extends Number>> getHeader) {
-        this(countCity, getHeader, AllianceMetricMode.TOTAL, f -> true);
+        this(countCity, getHeader, AllianceMetricMode.TOTAL, Predicates.alwaysTrue());
     }
 
     public CountCityMetric(Function<DBCity, Double> countCity, Function<CityHeader, ? extends NumberColumn<DBCity, ? extends Number>> getHeader, AllianceMetricMode mode) {
-        this(countCity, getHeader, mode, f -> true);
+        this(countCity, getHeader, mode, Predicates.alwaysTrue());
     }
 
     public CountCityMetric(Function<DBCity, Double> countCity, Function<CityHeader, ? extends NumberColumn<DBCity, ? extends Number>> getHeader, AllianceMetricMode mode, Predicate<DBNation> filter) {

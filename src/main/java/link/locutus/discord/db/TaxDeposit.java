@@ -13,7 +13,6 @@ import link.locutus.discord.util.math.ArrayUtil;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.Map;
 
 public class TaxDeposit {
@@ -88,7 +87,7 @@ public class TaxDeposit {
 
     @Command(desc = "Get the date formatted as dd/mm/yyyy hh")
     public String getDateStr() {
-        return TimeUtil.DD_MM_YYYY_HH.format(new Date(date));
+        return TimeUtil.format(TimeUtil.DD_MM_YYYY_HH, date);
     }
 
     @Command(desc = "Get id of the tax record")

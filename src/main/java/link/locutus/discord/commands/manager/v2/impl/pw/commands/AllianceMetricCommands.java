@@ -226,7 +226,7 @@ public class AllianceMetricCommands {
                 Map<Integer, DBNationSnapshot> nations = nf.readNations(cf);
 
                 System.out.println(
-                        TimeUtil.DD_MM_YYYY.format(TimeUtil.getTimeFromDay(day)) + "\t" +
+                        TimeUtil.format(TimeUtil.DD_MM_YYYY, TimeUtil.getTimeFromDay(day)) + "\t" +
                                 MathMan.format(ResourceType.convertedTotal(dailyOld)) + "\t" +
                                 MathMan.format(ResourceType.convertedTotal(dailyNew)) + "\t" +
                                 MathMan.format(citExpenses)
@@ -411,7 +411,7 @@ public class AllianceMetricCommands {
         for (Map.Entry<Long, double[]> entry : valuesByDay.entrySet()) {
             long day = entry.getKey();
             double[] values = entry.getValue();
-            String dateStr = TimeUtil.DD_MM_YYYY.format(TimeUtil.getTimeFromDay(day));
+            String dateStr = TimeUtil.format(TimeUtil.DD_MM_YYYY, TimeUtil.getTimeFromDay(day));
             String[] row = new String[header.size()];
             row[0] = dateStr;
             for (int i = 0; i < values.length; i++) {

@@ -337,7 +337,7 @@
 //                        cityV3.id = entry.getValue().getAsInt();
 //                        break;
 //                    case "date":
-//                        cityV3.created = TimeUtil.YYYY_MM_DD_FORMAT.parse(entry.getValue().getAsString()).getTime();
+//                        cityV3.created = TimeUtil.parseDate(TimeUtil.YYYY_MM_DD_FORMAT, entry.getValue().getAsString());
 //                        break;
 //                    case "infrastructure":
 //                        cityV3.infra = entry.getValue().getAsDouble();

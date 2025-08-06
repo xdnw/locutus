@@ -123,7 +123,7 @@ public class SendInternalTask {
             if (nationBalance != null) {
                 senderOffshore.disabledNations.put(senderNation.getId(), now);
                 senderDB.subtractBalance(now, senderNation, bankerNation.getNation_id(), "#deposit", amount);
-                double[] newBalance = senderNation.getNetDeposits(senderDB, -1, true);
+                double[] newBalance = senderNation.getNetDeposits(null, senderDB, -1, true);
                 TransferResult error = checkDiff(nationBalance, newBalance, senderNation);
                 if (error != null) return List.of(error);
             }
@@ -303,7 +303,7 @@ public class SendInternalTask {
 
     private double[] getNationBalance(boolean requireConfirmation) throws IOException {
         if (senderNation != null) {
-            double[] nationBalance = checkNotNull(senderNation.getNetDeposits(senderDB, requireConfirmation ? 0 : -1, true), "Sender nation balance cannot be null");
+            double[] nationBalance = checkNotNull(senderNation.getNetDeposits(null, senderDB, requireConfirmation ? 0 : -1, true), "Sender nation balance cannot be null");
             checkDeposits(nationBalance, amount, "nation", senderNation.getMarkdownUrl());
             return nationBalance;
         }

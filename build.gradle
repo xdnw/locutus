@@ -98,7 +98,7 @@ generateTypeScript {
     nullableAnnotations = ['org.checkerframework.checker.nullness.qual.Nullable']
     nullabilityDefinition = 'undefinedInlineUnion'
     // set output file
-    outputFile = file('../lc_web_test/src/lib/apitypes.d.ts')
+    outputFile = file('../lc_cmd_react/src/lib/apitypes.d.ts')
 }
 
 publishing {
@@ -146,7 +146,9 @@ dependencies {
 
     implementation 'com.google.http-client:google-http-client-jackson2:1.43.3'
 
-    implementation('org.xerial:sqlite-jdbc:3.46.1.0')
+    implementation('org.xerial:sqlite-jdbc:3.50.3.0')
+    jooqGenerator 'org.xerial:sqlite-jdbc:3.50.3.0'
+
     implementation 'com.google.code.gson:gson:2.8.9'
     implementation 'org.jsoup:jsoup:1.18.3'
     implementation 'org.bitbucket.cowwoc:diff-match-patch:1.2'
@@ -258,41 +260,6 @@ jooq {
     version = "3.19.13"  // default (can be omitted)
     edition = JooqEdition.OSS  // default (can be omitted)
     configurations {
-//        schema {
-//            generateSchemaSourceOnCompilation = true
-//            generationTool {
-//                jdbc {
-//                    driver = 'org.sqlite.JDBC'
-//                    url = 'jdbc:sqlite::memory:'
-//                }
-//                generator {
-//                    name = 'org.jooq.codegen.DefaultGenerator'
-//                    database {
-//                        name = 'org.jooq.meta.extensions.ddl.DDLDatabase'
-//                        properties {
-//                            property {
-//                                key = 'scripts'
-//                                value = 'src/main/resources/schema.sql'
-//                            }
-//                            property {
-//                                key = 'sort'
-//                                value = 'semantic'
-//                            }
-//                        }
-//                    }
-//                    generate {
-//                        deprecated = false
-//                        records = true
-//                        immutablePojos = true
-//                        fluentSetters = true
-//                    }
-//                    target {
-//                        packageName = 'org.example.jooq'
-//                        directory = 'src/main/java'
-//                    }
-//                }
-//            }
-//        }
         bank {
             generateSchemaSourceOnCompilation = false; // default (can be omitted)
             generationTool {

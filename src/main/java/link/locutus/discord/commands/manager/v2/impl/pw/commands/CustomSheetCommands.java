@@ -1,17 +1,15 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import de.siegmar.fastcsv.reader.CloseableIterator;
 import de.siegmar.fastcsv.reader.CsvReader;
 import de.siegmar.fastcsv.reader.CsvRow;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.CreateSheet;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
-import link.locutus.discord.commands.manager.v2.binding.annotation.PlaceholderType;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -28,6 +26,7 @@ import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Message;
@@ -38,16 +37,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
-import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiPredicate;
+import java.util.function.Supplier;
 
 import static link.locutus.discord.config.Messages.TAB_TYPE;
 
@@ -331,7 +325,7 @@ public class CustomSheetCommands {
             Tabs in the google sheet which aren't registered will be ignored""")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
     public String updateSheet(CustomSheet sheet, ValueStore store) throws GeneralSecurityException, IOException {
-        List<String> errors = sheet.update(store);
+        List<String> errors = sheet.update(store, null);
 
         StringBuilder result = new StringBuilder();
         result.append("Updating sheet: `").append(sheet.getName()).append("` (").append(sheet.getTabs().size()).append(" tabs)\n");
@@ -370,14 +364,52 @@ public class CustomSheetCommands {
     }
 
     @Command(desc = """
+            Update a spreadsheet's tab from a url
+            The tab specified by the URL (`#guid`) must be named a valid selection, prefixed by the type e.g. `nation:*`
+            The first row must have placeholders in each column, such as `{nation}` `{cities}` `{score}`""")
+    public String autoTab(ValueStore store, @Me IMessageIO io, @Me GuildDB db, SpreadSheet sheet, @Switch("s") boolean saveSheet) throws GeneralSecurityException, IOException {
+        String defaultTab = sheet.getDefaultTab();
+        Integer defaultTabId = sheet.getDefaultTabId();
+        if (defaultTab == null && defaultTabId == null) {
+            throw new IllegalArgumentException("No tab specified in the sheet url you provided. Please copy a google sheet tab URL with a `#guid` provided");
+        }
+        return autoPredicate(store, io, db, sheet, saveSheet, (id, name) -> {
+            return (defaultTabId != null && id != null && id.equals(defaultTabId)) ||
+                     (defaultTab != null && name != null && name.equalsIgnoreCase(defaultTab)) ||
+                     (defaultTabId == null && defaultTab == null && id != null && id.equals(0));
+        });
+    }
+
+    @Command(desc = """
             Generate or update a spreadsheet from a url
             Each tab must be a valid selection, prefixed by the type e.g. `nation:*`
             The first row must have placeholders in each column, such as `{nation}` `{cities}` `{score}`""")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String auto(ValueStore store, @Me GuildDB db, SpreadSheet sheet, @Switch("s") boolean saveSheet) throws GeneralSecurityException, IOException {
+    public String auto(ValueStore store, @Me IMessageIO io, @Me GuildDB db, SpreadSheet sheet, @Switch("s") boolean saveSheet) throws GeneralSecurityException, IOException {
+        return autoPredicate(store, io, db, sheet, saveSheet, (_, _) -> true);
+    }
+
+    private String autoPredicate(ValueStore store, @Me IMessageIO io, @Me GuildDB db, SpreadSheet sheet, @Switch("s") boolean saveSheet, BiPredicate<Integer, String> allowTab) throws GeneralSecurityException, IOException {
         CustomSheetManager manager = db.getSheetManager();
         PlaceholdersMap phMap = Locutus.cmd().getV2().getPlaceholders();
-        List<String> errors = new ArrayList<>();
+
+        List<String> messageList = new ObjectArrayList<>();
+        Map<String, List<String>> errorGroups = new Object2ObjectLinkedOpenHashMap<>();
+        Supplier<List<String>> toErrorList = () -> {
+            List<String> errors = new ArrayList<>(messageList);
+            for (Map.Entry<String, List<String>> entry : errorGroups.entrySet()) {
+                String key = entry.getKey();
+                List<String> values = entry.getValue();
+                if (values.isEmpty()) {
+                    continue;
+                }
+                String error = key.replace("{value}", "`" + StringMan.join(values, "`,`") + "`");
+                errors.add(error);
+            }
+            return errors;
+        };
+        Supplier<Boolean> hasErrors = () -> !messageList.isEmpty() || !errorGroups.isEmpty();
+
         CustomSheet custom = manager.getCustomSheetById(sheet.getSpreadsheetId());
         if (custom == null) {
             if (saveSheet) {
@@ -387,6 +419,7 @@ public class CustomSheetCommands {
                     return "Sheet with name `" + name + "` already exists: <" + existing.getUrl() + ">. Please change the title of your spreadsheet to something unique or delete the existing sheet using ";
                 }
                 manager.addCustomSheet(name, sheet.getSpreadsheetId());
+                custom = manager.getCustomSheetById(sheet.getSpreadsheetId());
             } else {
                 custom = new CustomSheet(sheet.getTitle(), sheet.getSpreadsheetId(), new LinkedHashMap<>());
             }
@@ -396,7 +429,7 @@ public class CustomSheetCommands {
             if (saveSheet) {
                 msg += "\nChanges will be saved";
             }
-            errors.add(msg);
+            messageList.add(msg);
         }
 
         Map<String, Map.Entry<SelectionAlias, SheetTemplate>> customTabs = new LinkedHashMap<>();
@@ -406,6 +439,9 @@ public class CustomSheetCommands {
 
         Map<String, SelectionAlias> customTabsToFetch = new LinkedHashMap<>();
         for (Map.Entry<Integer, String> entry : tabs.entrySet()) {
+            if (!allowTab.test(entry.getKey(), entry.getValue())) {
+                continue;
+            }
             String tabName = entry.getValue();
             SelectionAlias selection;
             try {
@@ -414,7 +450,7 @@ public class CustomSheetCommands {
                 int index = tabName.indexOf(":");
                 int barIndex = tabName.indexOf(" | ");
                 if (index == -1) {
-                    errors.add(TAB_TYPE.replace("{tab_name}", tabName) + " (1)");
+                    errorGroups.computeIfAbsent(TAB_TYPE, k -> new ObjectArrayList<>()).add(tabName);
                     continue;
                 }
                 String typeStr = tabName.substring(0, index);
@@ -425,7 +461,7 @@ public class CustomSheetCommands {
                 if (typeStr.contains("(")) {
                     int end = typeStr.indexOf(")");
                     if (end == -1) {
-                        errors.add(TAB_TYPE.replace("{tab_name}", tabName) + " (2)");
+                        errorGroups.computeIfAbsent(TAB_TYPE, k -> new ObjectArrayList<>()).add(tabName);
                         continue;
                     }
                     typeModifier = typeStr.substring(end + 1);
@@ -436,7 +472,7 @@ public class CustomSheetCommands {
                     try {
                         type = SheetBindings.type(typeStr);
                     } catch (IllegalArgumentException e2) {
-                        errors.add(e2.getMessage());
+                        messageList.add(e2.getMessage());
                         continue;
                     }
 
@@ -447,20 +483,21 @@ public class CustomSheetCommands {
                     selection = ph.getOrCreateSelection(db, selectionStr, typeModifier, saveSheet, createdSelection);
 
                     if (createdSelection.get() && saveSheet) {
-                        errors.add("Created and saved `" + selectionStr + "` as `" + selection.getName() + "` for type: `" + PlaceholdersMap.getClassName(selection.getType()) + "`. You may use this alias in commands and sheets\n" +
+                        messageList.add("Created and saved `" + selectionStr + "` as `" + selection.getName() + "` for type: `" + PlaceholdersMap.getClassName(selection.getType()) + "`. You may use this alias in commands and sheets\n" +
                                 "To rename: " + CM.selection_alias.rename.cmd.toSlashMention() + "\n" +
                                 "To list aliases: " + CM.selection_alias.list.cmd.toSlashMention());
                     }
                 } else if (custom != null){
                     Map.Entry<SelectionAlias, SheetTemplate> tab = custom.getTab(tabName);
                     if (tab == null) {
-                        errors.add(TAB_TYPE.replace("{tab_name}", tabName) + "\nNote: A saved sheet was found for this url, but no tab was registered to `" + tabName + "`." +
-                                "Create a tab with " + CM.sheet_custom.add_tab.cmd.toSlashMention());
+                        errorGroups.computeIfAbsent(TAB_TYPE, k -> new ObjectArrayList<>()).add(tabName);
+                        errorGroups.computeIfAbsent("Note: A saved sheet was found for this url, but no tabs were registered to `{value}`. " +
+                                "Create a tab with " + CM.sheet_custom.add_tab.cmd.toSlashMention(), k -> new ObjectArrayList<>()).add(tabName);
                         continue;
                     }
                     selection = tab.getKey();
                 } else {
-                    errors.add(TAB_TYPE.replace("{tab_name}", tabName));
+                    errorGroups.computeIfAbsent(TAB_TYPE, k -> new ObjectArrayList<>()).add(tabName);
                     continue;
                 }
             }
@@ -478,7 +515,7 @@ public class CustomSheetCommands {
             List<String> header = row == null || row.isEmpty() ? null : row.get(0).stream().map(o -> o == null ? "" : o.toString()).toList();
             SheetTemplate template = null;
             if (header == null || header.isEmpty()) {
-                errors.add("Tab `" + tabName + "` has no header row");
+                errorGroups.computeIfAbsent("Tabs: `{value}`; have no header row", k -> new ObjectArrayList<>()).add(tabName);
             } else {
                 AtomicBoolean createdTemplate = new AtomicBoolean();
                 template = ph.getOrCreateTemplate(db, header, false, createdTemplate);
@@ -491,18 +528,57 @@ public class CustomSheetCommands {
 
 
         if (customTabs.isEmpty()) {
-            errors.add("No tabs found. No tabs will be updated");
-            return "**Result**:\n- " + StringMan.join(errors, "\n- ");
+            messageList.add("No tabs found. No tabs will be updated");
+            return "**Result**:\n- " + StringMan.join(toErrorList.get(), "\n- ");
         }
 
         StringBuilder response = new StringBuilder();
-        errors.addAll(custom.update(store, customTabs));
-        response.append("**Result**:\n- ").append(StringMan.join(errors, "\n- ")).append("\n");
+        Map<String, List<String>> exportColumns = new Object2ObjectLinkedOpenHashMap<>();
+        messageList.addAll(custom.update(custom.getSheet(), store, customTabs, exportColumns));
+        response.append("**Result**:\n- ").append(StringMan.join(toErrorList.get(), "\n- ")).append("\n");
         response.append("Url: <").append(custom.getUrl()).append(">\n");
         if (saveSheet) {
-            response.append("Saved sheet: `").append(custom.getName()).append("`");
+            response.append("Saved sheet: `").append(custom.getName()).append("`\n");
         }
-        return response.toString();
+        IMessageBuilder msg = io.create();
+        if (!exportColumns.isEmpty()) {
+            int numTabsWithPlaceholders = (int) exportColumns.values().stream()
+                    .filter(col -> col.stream().anyMatch(s -> s.contains("{") && s.contains("}")))
+                    .count();
+            Gson prettyGson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
+            String exportJson = prettyGson.toJson(exportColumns);
+
+            String fileName = "tabs_" + exportColumns.size() + "_hascolumns_" + numTabsWithPlaceholders + ".json";
+            msg.file(fileName, exportJson);
+            response.append("See: " + CM.sheet_custom.import_json.cmd.toSlashMention() + " to import tab names and header column from json file");
+        }
+        msg.append(response.toString()).send();
+        return null;
+    }
+
+    @Command(desc = """
+            Import a JSON object with columns into a spreadsheet
+            The JSON must be in the format:
+            {
+                "tab1": ["{column1}", "{column2}"],
+                "tab2": ["{column3}", "{column4}"]
+            }
+            The keys will be the tab names, and the values will be the column names""")
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+    public String importSheetJsonColumns(SpreadSheet sheet, String json) throws IOException {
+        Map<String, List<String>> columns = new Gson().fromJson(json, Map.class);
+        if (columns == null || columns.isEmpty()) {
+            throw new IllegalArgumentException("No columns found in the JSON");
+        }
+
+        sheet.reset();
+        columns.forEach((tabName, header) -> {
+            sheet.setDefaultTab(tabName, null);
+            sheet.setHeader(header);
+        });
+        sheet.updateWrite();
+
+        return "Imported columns to <" + sheet.getURL() + ">";
     }
 
     @Command(desc = """

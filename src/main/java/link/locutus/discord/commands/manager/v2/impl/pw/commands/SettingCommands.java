@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 public class SettingCommands {
     private Map<SheetKey, String> getSheets(GuildDB db) {
@@ -225,19 +226,22 @@ public class SettingCommands {
             io.create().confirmation(title, body, command).send();
             return null;
         }
-        List<Transaction2> toOverwrite = db.getTransactionsByIds(nationIds, 2);
         StringBuilder tsv = new StringBuilder();
         tsv.append("tx_id\ttx_datetime\tsender_id\tsender_type\treceiver_id\treceiver_type\tbanker_nation_id\tnote\n");
-        for (Transaction2 transaction : toOverwrite) {
-            tsv.append(transaction.tx_id).append("\t");
-            tsv.append(transaction.tx_datetime).append("\t");
-            tsv.append(transaction.sender_id).append("\t");
-            tsv.append(transaction.sender_type).append("\t");
-            tsv.append(transaction.receiver_id).append("\t");
-            tsv.append(transaction.receiver_type).append("\t");
-            tsv.append(transaction.banker_nation).append("\t");
-            tsv.append(transaction.note).append("\n");
-        }
+
+        db.iterateTransactionsByIds(nationIds, 2, 0L, Long.MAX_VALUE, new Consumer<Transaction2>() {
+            @Override
+            public void accept(Transaction2 transaction) {
+                tsv.append(transaction.tx_id).append("\t");
+                tsv.append(transaction.tx_datetime).append("\t");
+                tsv.append(transaction.sender_id).append("\t");
+                tsv.append(transaction.sender_type).append("\t");
+                tsv.append(transaction.receiver_id).append("\t");
+                tsv.append(transaction.receiver_type).append("\t");
+                tsv.append(transaction.banker_nation).append("\t");
+                tsv.append(transaction.note).append("\n");
+            }
+        });
 
         io.create().append("Please wait...\nSee attached, the list of transactions being overwritten")
                 .file("transactions.tsv", tsv.toString()).send();

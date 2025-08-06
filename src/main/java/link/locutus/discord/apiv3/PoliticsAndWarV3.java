@@ -1,34 +1,37 @@
 package link.locutus.discord.apiv3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.common.base.CaseFormat;
-import com.google.gson.*;
+import com.google.common.base.Predicates;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.kobylynskyi.graphql.codegen.model.graphql.*;
+import com.politicsandwar.graphql.model.*;
+import graphql.GraphQLException;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.pnw.NationOrAlliance;
-import link.locutus.discord.util.*;
-import com.kobylynskyi.graphql.codegen.model.graphql.*;
-import com.politicsandwar.graphql.model.*;
-import link.locutus.discord.apiv1.core.ApiKeyPool;
-import graphql.GraphQLException;
+import link.locutus.discord.util.AlertUtil;
+import link.locutus.discord.util.FileUtil;
+import link.locutus.discord.util.PW;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.io.PagePriority;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.http.*;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestClientResponseException;
@@ -121,7 +124,7 @@ public class PoliticsAndWarV3 {
             validKeysStr = keys.stream().map(key -> PW.getMarkdownUrl(key.getNationId(), false)).collect(Collectors.joining(","));
         }
         message = "Error accessing `" + alliancePermission.name() + "`" + (message == null || message.isEmpty() ? "" : " " + message) + ". Using keys: " + validKeysStr + "\n" +
-                "API key scopes can be set on the account page: <" + Settings.PNW_URL() + "/account/>";
+                "Make sure the required `scopes` and `whitelisted access` are enabled on the **Account** page: <" + Settings.PNW_URL() + "/account/>";
         throw new IllegalArgumentException(message);
     }
 
@@ -589,7 +592,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<Bounty> fetchBounties(Consumer<BountiesQueryRequest> filter, Consumer<BountyResponseProjection> query) {
-        return fetchBounties(1000, filter, query, f -> ErrorResponse.THROW, f -> true);
+        return fetchBounties(1000, filter, query, f -> ErrorResponse.THROW, Predicates.alwaysTrue());
     }
 
     public List<Bounty> fetchBounties(int perPage, Consumer<BountiesQueryRequest> filter, Consumer<BountyResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Bounty> recResults) {
@@ -642,7 +645,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<BBGame> fetchBaseballGames(Consumer<Baseball_gamesQueryRequest> filter, Consumer<BBGameResponseProjection> query) {
-        return fetchBaseballGames(BASEBALL_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
+        return fetchBaseballGames(BASEBALL_PER_PAGE, filter, query, f -> ErrorResponse.THROW, Predicates.alwaysTrue());
     }
 
     public List<NationResourceStat> getNationResourceStats(long date) {
@@ -893,11 +896,11 @@ public class PoliticsAndWarV3 {
     }
 
     public List<WarAttack> fetchAttacks(Consumer<WarattacksQueryRequest> filter, ErrorResponse errorResponse) {
-        return fetchAttacks(ATTACKS_PER_PAGE, filter, warAttackInfo(), f -> errorResponse, f -> true);
+        return fetchAttacks(ATTACKS_PER_PAGE, filter, warAttackInfo(), f -> errorResponse, Predicates.alwaysTrue());
     }
 
     public List<WarAttack> fetchAttacks(Consumer<WarattacksQueryRequest> filter, Consumer<WarAttackResponseProjection> query) {
-        return fetchAttacks(ATTACKS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
+        return fetchAttacks(ATTACKS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, Predicates.alwaysTrue());
     }
 
     public List<WarAttack> fetchAttacks(int perPage, Consumer<WarattacksQueryRequest> filter, Consumer<WarAttackResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<WarAttack> recResults) {
@@ -948,11 +951,11 @@ public class PoliticsAndWarV3 {
             p.def_peace();
             p.winner_id();
             p.date();
-        }, f -> ErrorResponse.THROW, f -> true);
+        }, f -> ErrorResponse.THROW, Predicates.alwaysTrue());
     }
 
     public List<War> fetchWars(Consumer<WarsQueryRequest> filter, Consumer<WarResponseProjection> query) {
-        return fetchWars(WARS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
+        return fetchWars(WARS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, Predicates.alwaysTrue());
     }
 
     public List<War> fetchWars(int perPage, Consumer<WarsQueryRequest> filter, Consumer<WarResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<War> recResults) {
@@ -1036,7 +1039,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<City> fetchCities(boolean priority, Consumer<CitiesQueryRequest> filter, Consumer<CityResponseProjection> query) {
-        return fetchCities(priority, CITIES_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
+        return fetchCities(priority, CITIES_PER_PAGE, filter, query, f -> ErrorResponse.THROW, Predicates.alwaysTrue());
     }
 
     public List<City> fetchCities(boolean priority, int perPage, Consumer<CitiesQueryRequest> filter, Consumer<CityResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<City> recResults) {
@@ -1105,7 +1108,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<Bankrec> fetchBankRecs(boolean priority, Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query) {
-        return fetchBankRecs(priority, BANKRECS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
+        return fetchBankRecs(priority, BANKRECS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, Predicates.alwaysTrue());
     }
 
     public List<Bankrec> fetchBankRecs(boolean priority, Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query, Predicate<Bankrec> recResults) {
@@ -1123,7 +1126,7 @@ public class PoliticsAndWarV3 {
                 proj.id();
                 proj.bankrecs(input, bankProj);
             }
-        }, f -> ErrorResponse.THROW, f -> true);
+        }, f -> ErrorResponse.THROW, Predicates.alwaysTrue());
         if (alliance == null || alliance.size() != 1) {
             return null;
         }
@@ -1319,7 +1322,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<Nation> fetchNations(boolean priority, Consumer<NationsQueryRequest> filter, Consumer<NationResponseProjection> query) {
-        return fetchNations(priority, NATIONS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
+        return fetchNations(priority, NATIONS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, Predicates.alwaysTrue());
     }
     public List<Nation> fetchNations(boolean priority, int perPage, Consumer<NationsQueryRequest> filter, Consumer<NationResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Nation> nationResults) {
         List<Nation> allResults = new ObjectArrayList<>();
@@ -1439,11 +1442,11 @@ public class PoliticsAndWarV3 {
                     projection.color();
                 }
             }
-        }, f -> ErrorResponse.THROW, f -> true);
+        }, f -> ErrorResponse.THROW, Predicates.alwaysTrue());
     }
 
     public List<Alliance> fetchAlliances(boolean priority, Consumer<AlliancesQueryRequest> filter, Consumer<AllianceResponseProjection> query) {
-        return fetchAlliances(priority, ALLIANCES_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
+        return fetchAlliances(priority, ALLIANCES_PER_PAGE, filter, query, f -> ErrorResponse.THROW, Predicates.alwaysTrue());
     }
 
     public List<Alliance> fetchAlliances(boolean priority, int perPage, Consumer<AlliancesQueryRequest> filter, Consumer<AllianceResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Alliance> addEachResult) {
@@ -1516,7 +1519,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<Treaty> fetchTreaties(Consumer<TreatiesQueryRequest> filter, Consumer<TreatyResponseProjection> query) {
-        return fetchTreaties(TREATIES_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
+        return fetchTreaties(TREATIES_PER_PAGE, filter, query, f -> ErrorResponse.THROW, Predicates.alwaysTrue());
     }
 
     public List<Treaty> fetchTreaties(int perPage, Consumer<TreatiesQueryRequest> filter, Consumer<TreatyResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Treaty> addEachResult) {

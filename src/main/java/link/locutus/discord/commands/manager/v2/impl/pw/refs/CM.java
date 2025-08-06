@@ -616,6 +616,22 @@ public class CM {
                     public static final config cmd = new config();
 
                 }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="cullInactiveGuilds")
+                public static class cull_inactive_guilds extends CommandRef {
+                    public static final cull_inactive_guilds cmd = new cull_inactive_guilds();
+                public cull_inactive_guilds servers(String value) {
+                    return set("servers", value);
+                }
+
+                public cull_inactive_guilds sheet(String value) {
+                    return set("sheet", value);
+                }
+
+                public cull_inactive_guilds force(String value) {
+                    return set("force", value);
+                }
+
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="dumpWiki")
                 public static class export_wiki extends CommandRef {
                     public static final export_wiki cmd = new export_wiki();
@@ -1286,6 +1302,18 @@ public class CM {
 
                 public coalition_metric_by_turn attach_sheet(String value) {
                     return set("attach_sheet", value);
+                }
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="compareAlliancePositions")
+                public static class compare_past_positions extends CommandRef {
+                    public static final compare_past_positions cmd = new compare_past_positions();
+                public compare_past_positions nations(String value) {
+                    return set("nations", value);
+                }
+
+                public compare_past_positions snapshotDate(String value) {
+                    return set("snapshotDate", value);
                 }
 
                 }
@@ -2111,12 +2139,16 @@ public class CM {
                 return set("nationOrAllianceOrGuild", value);
             }
 
-            public records timeframe(String value) {
-                return set("timeframe", value);
+            public records start_time(String value) {
+                return set("start_time", value);
             }
 
-            public records useTaxBase(String value) {
-                return set("useTaxBase", value);
+            public records end_time(String value) {
+                return set("end_time", value);
+            }
+
+            public records includeTaxBase(String value) {
+                return set("includeTaxBase", value);
             }
 
             public records useOffset(String value) {
@@ -3110,6 +3142,10 @@ public class CM {
                 return set("set_gold", value);
             }
 
+            public revenue sheet(String value) {
+                return set("sheet", value);
+            }
+
             }
         }
         public static class conflict{
@@ -3661,8 +3697,16 @@ public class CM {
                 return set("offshores", value);
             }
 
-            public check timeCutoff(String value) {
-                return set("timeCutoff", value);
+            public check start_time(String value) {
+                return set("start_time", value);
+            }
+
+            public check end_time(String value) {
+                return set("end_time", value);
+            }
+
+            public check allowCheckDeleted(String value) {
+                return set("allowCheckDeleted", value);
             }
 
             public check includeBaseTaxes(String value) {
@@ -3673,14 +3717,6 @@ public class CM {
                 return set("ignoreInternalOffsets", value);
             }
 
-            public check showCategories(String value) {
-                return set("showCategories", value);
-            }
-
-            public check replyInDMs(String value) {
-                return set("replyInDMs", value);
-            }
-
             public check includeExpired(String value) {
                 return set("includeExpired", value);
             }
@@ -3689,12 +3725,16 @@ public class CM {
                 return set("includeIgnored", value);
             }
 
-            public check allowCheckDeleted(String value) {
-                return set("allowCheckDeleted", value);
-            }
-
             public check hideEscrowed(String value) {
                 return set("hideEscrowed", value);
+            }
+
+            public check showCategories(String value) {
+                return set("showCategories", value);
+            }
+
+            public check replyInDMs(String value) {
+                return set("replyInDMs", value);
             }
 
             public check show_expiring_records(String value) {
@@ -3817,6 +3857,10 @@ public class CM {
                 return set("offshores", value);
             }
 
+            public sheet includePastDepositors(String value) {
+                return set("includePastDepositors", value);
+            }
+
             public sheet ignoreTaxBase(String value) {
                 return set("ignoreTaxBase", value);
             }
@@ -3847,10 +3891,6 @@ public class CM {
 
             public sheet noDeposits(String value) {
                 return set("noDeposits", value);
-            }
-
-            public sheet includePastDepositors(String value) {
-                return set("includePastDepositors", value);
             }
 
             public sheet noEscrowSheet(String value) {
@@ -4150,6 +4190,10 @@ public class CM {
                     return set("outputChannel", value);
                 }
 
+                public deposits behavior(String value) {
+                    return set("behavior", value);
+                }
+
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.EmbedCommands.class,method="econPanel")
                 public static class econ_gov extends CommandRef {
@@ -4218,6 +4262,10 @@ public class CM {
                     return set("outputChannel", value);
                 }
 
+                public raid behavior(String value) {
+                    return set("behavior", value);
+                }
+
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.EmbedCommands.class,method="spyEnemy")
                 public static class spy_enemy extends CommandRef {
@@ -4248,6 +4296,10 @@ public class CM {
 
                 public spy_sheets spySheet(String value) {
                     return set("spySheet", value);
+                }
+
+                public spy_sheets behavior(String value) {
+                    return set("behavior", value);
                 }
 
                 }
@@ -6824,6 +6876,10 @@ public class CM {
                 return set("spySheet", value);
             }
 
+            public targets useLeader(String value) {
+                return set("useLeader", value);
+            }
+
             public targets allowedNations(String value) {
                 return set("allowedNations", value);
             }
@@ -6848,16 +6904,12 @@ public class CM {
                 return set("hideDefaultBlurb", value);
             }
 
-            public targets force(String value) {
-                return set("force", value);
-            }
-
-            public targets useLeader(String value) {
-                return set("useLeader", value);
-            }
-
             public targets dm(String value) {
                 return set("dm", value);
+            }
+
+            public targets force(String value) {
+                return set("force", value);
             }
 
             }
@@ -7363,6 +7415,10 @@ public class CM {
 
             public score builtMMR(String value) {
                 return set("builtMMR", value);
+            }
+
+            public score research(String value) {
+                return set("research", value);
             }
 
             }
@@ -10254,6 +10310,18 @@ public class CM {
             }
 
             }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="autoTab")
+            public static class auto_tab extends CommandRef {
+                public static final auto_tab cmd = new auto_tab();
+            public auto_tab sheet(String value) {
+                return set("sheet", value);
+            }
+
+            public auto_tab saveSheet(String value) {
+                return set("saveSheet", value);
+            }
+
+            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="fromFile")
             public static class from_file extends CommandRef {
                 public static final from_file cmd = new from_file();
@@ -10267,6 +10335,18 @@ public class CM {
 
             public from_file index(String value) {
                 return set("index", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="importSheetJsonColumns")
+            public static class import_json extends CommandRef {
+                public static final import_json cmd = new import_json();
+            public import_json sheet(String value) {
+                return set("sheet", value);
+            }
+
+            public import_json json(String value) {
+                return set("json", value);
             }
 
             }
@@ -13517,20 +13597,12 @@ public class CM {
                 return set("allowedTypes", value);
             }
 
-            public SpySheet forceUpdate(String value) {
-                return set("forceUpdate", value);
-            }
-
             public SpySheet checkEspionageSlots(String value) {
                 return set("checkEspionageSlots", value);
             }
 
             public SpySheet prioritizeKills(String value) {
                 return set("prioritizeKills", value);
-            }
-
-            public SpySheet sheet(String value) {
-                return set("sheet", value);
             }
 
             public SpySheet maxDef(String value) {
@@ -13545,6 +13617,10 @@ public class CM {
                 return set("removeSheets", value);
             }
 
+            public SpySheet sheet(String value) {
+                return set("sheet", value);
+            }
+
             public SpySheet prioritizeAlliances(String value) {
                 return set("prioritizeAlliances", value);
             }
@@ -13555,6 +13631,10 @@ public class CM {
 
             public SpySheet defenderWeighting(String value) {
                 return set("defenderWeighting", value);
+            }
+
+            public SpySheet forceUpdate(String value) {
+                return set("forceUpdate", value);
             }
 
             }
@@ -13931,12 +14011,24 @@ public class CM {
                 return set("me", value);
             }
 
+            public casualties selfIsDefender(String value) {
+                return set("selfIsDefender", value);
+            }
+
             public casualties attackerMilitary(String value) {
                 return set("attackerMilitary", value);
             }
 
             public casualties defenderMilitary(String value) {
                 return set("defenderMilitary", value);
+            }
+
+            public casualties unequipAttackerSoldiers(String value) {
+                return set("unequipAttackerSoldiers", value);
+            }
+
+            public casualties unequipDefenderSoldiers(String value) {
+                return set("unequipDefenderSoldiers", value);
             }
 
             public casualties attackerPolicy(String value) {
@@ -13961,18 +14053,6 @@ public class CM {
 
             public casualties att_ground_control(String value) {
                 return set("att_ground_control", value);
-            }
-
-            public casualties selfIsDefender(String value) {
-                return set("selfIsDefender", value);
-            }
-
-            public casualties unequipAttackerSoldiers(String value) {
-                return set("unequipAttackerSoldiers", value);
-            }
-
-            public casualties unequipDefenderSoldiers(String value) {
-                return set("unequipDefenderSoldiers", value);
             }
 
             public casualties attackerProjects(String value) {
@@ -14260,20 +14340,12 @@ public class CM {
                     return set("allowedTypes", value);
                 }
 
-                public generate forceUpdate(String value) {
-                    return set("forceUpdate", value);
-                }
-
                 public generate checkEspionageSlots(String value) {
                     return set("checkEspionageSlots", value);
                 }
 
                 public generate prioritizeKills(String value) {
                     return set("prioritizeKills", value);
-                }
-
-                public generate sheet(String value) {
-                    return set("sheet", value);
                 }
 
                 public generate maxDef(String value) {
@@ -14288,6 +14360,10 @@ public class CM {
                     return set("removeSheets", value);
                 }
 
+                public generate sheet(String value) {
+                    return set("sheet", value);
+                }
+
                 public generate prioritizeAlliances(String value) {
                     return set("prioritizeAlliances", value);
                 }
@@ -14298,6 +14374,10 @@ public class CM {
 
                 public generate defenderWeighting(String value) {
                     return set("defenderWeighting", value);
+                }
+
+                public generate forceUpdate(String value) {
+                    return set("forceUpdate", value);
                 }
 
                 }
@@ -14715,6 +14795,10 @@ public class CM {
                 return set("includeNegative", value);
             }
 
+            public findProducer includeInactive(String value) {
+                return set("includeInactive", value);
+            }
+
             public findProducer listByNation(String value) {
                 return set("listByNation", value);
             }
@@ -14723,16 +14807,12 @@ public class CM {
                 return set("listAverage", value);
             }
 
-            public findProducer uploadFile(String value) {
-                return set("uploadFile", value);
-            }
-
-            public findProducer includeInactive(String value) {
-                return set("includeInactive", value);
-            }
-
             public findProducer snapshotDate(String value) {
                 return set("snapshotDate", value);
+            }
+
+            public findProducer uploadFile(String value) {
+                return set("uploadFile", value);
             }
 
             public findProducer num_results(String value) {
@@ -16060,6 +16140,10 @@ public class CM {
                 return set("includeNegative", value);
             }
 
+            public findProducer includeInactive(String value) {
+                return set("includeInactive", value);
+            }
+
             public findProducer listByNation(String value) {
                 return set("listByNation", value);
             }
@@ -16068,16 +16152,12 @@ public class CM {
                 return set("listAverage", value);
             }
 
-            public findProducer uploadFile(String value) {
-                return set("uploadFile", value);
-            }
-
-            public findProducer includeInactive(String value) {
-                return set("includeInactive", value);
-            }
-
             public findProducer snapshotDate(String value) {
                 return set("snapshotDate", value);
+            }
+
+            public findProducer uploadFile(String value) {
+                return set("uploadFile", value);
             }
 
             public findProducer num_results(String value) {
@@ -17353,16 +17433,16 @@ public class CM {
                     return set("includeBeige", value);
                 }
 
-                public damage resultsInDm(String value) {
-                    return set("resultsInDm", value);
+                public damage relativeNavalStrength(String value) {
+                    return set("relativeNavalStrength", value);
                 }
 
                 public damage warRange(String value) {
                     return set("warRange", value);
                 }
 
-                public damage relativeNavalStrength(String value) {
-                    return set("relativeNavalStrength", value);
+                public damage resultsInDm(String value) {
+                    return set("resultsInDm", value);
                 }
 
                 }
@@ -17375,6 +17455,10 @@ public class CM {
 
                 public enemy numResults(String value) {
                     return set("numResults", value);
+                }
+
+                public enemy resultsInDm(String value) {
+                    return set("resultsInDm", value);
                 }
 
                 public enemy attackerScore(String value) {
@@ -17405,10 +17489,6 @@ public class CM {
                     return set("onlyLessCities", value);
                 }
 
-                public enemy resultsInDm(String value) {
-                    return set("resultsInDm", value);
-                }
-
                 public enemy includeStrong(String value) {
                     return set("includeStrong", value);
                 }
@@ -17425,6 +17505,10 @@ public class CM {
                     return set("numResults", value);
                 }
 
+                public raid nationScore(String value) {
+                    return set("nationScore", value);
+                }
+
                 public raid activeTimeCutoff(String value) {
                     return set("activeTimeCutoff", value);
                 }
@@ -17439,10 +17523,6 @@ public class CM {
 
                 public raid vmTurns(String value) {
                     return set("vmTurns", value);
-                }
-
-                public raid nationScore(String value) {
-                    return set("nationScore", value);
                 }
 
                 public raid defensiveSlots(String value) {

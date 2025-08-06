@@ -1,28 +1,25 @@
 package link.locutus.discord.db.entities;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
+import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
-import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.scheduler.TriFunction;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -99,7 +96,7 @@ public class AttackCost {
                                                  TriConsumer<DBWar, AbstractCursor, TriConsumer<DBWar, AbstractCursor, T>> groupBy,
 TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCost, Boolean>> addCost
                                                  ) {
-        if (attackFilter == null) attackFilter = f -> true;
+        if (attackFilter == null) attackFilter = Predicates.alwaysTrue();
         Map<T, AttackCost> resultByGroup = new Object2ObjectOpenHashMap<>();
         Map<T, Map<Integer, AttackCost>> pendingByWar = new Object2ObjectOpenHashMap<>();
 

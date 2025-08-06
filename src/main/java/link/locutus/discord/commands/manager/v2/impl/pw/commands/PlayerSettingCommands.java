@@ -272,7 +272,7 @@ public class PlayerSettingCommands {
                 name = String.format("[%s](%s)",
                         aaName, url);
             }
-            String dateStr = TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(sub.endDate)) + " (UTC)";
+            String dateStr = TimeUtil.format(TimeUtil.YYYY_MM_DD_HH_MM_SS, sub.endDate) + " (UTC)";
             String sendReceive = sub.isReceive ? "received" : "deposited";
 
             String title = name + " " + sendReceive + " > " + MathMan.format(sub.amount);

@@ -1,10 +1,12 @@
 package link.locutus.discord.commands.info;
 
+import link.locutus.discord.apiv1.enums.Research;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
@@ -16,9 +18,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class Score extends Command {
     public Score() {
@@ -39,7 +39,8 @@ public class Score extends Command {
         return "Calculate the score of various things. Each argument is option, and can go in any order e.g.\n" +
                 "`" + Settings.commandPrefix(true) + "score cities=10 projects=2 avg_infra=1.5k mmr=0251`\n" +
                 "You can also specify a nation to use as a base e.g.\n" +
-                "`" + Settings.commandPrefix(true) + "score 'Mountania' avg_infra=2000`";
+                "`" + Settings.commandPrefix(true) + "score 'Mountania' avg_infra=2000`\n" +
+                "To specify research, use e.g. `GROUND_COST=5,AIR_CAPACITY=2`";
     }
 
     @Override
@@ -71,6 +72,17 @@ public class Score extends Command {
             if (nationArg != null) {
                 nation = nationArg.copy();
                 iterator.remove();
+                continue;
+            }
+            String arg = next.toLowerCase(Locale.ROOT);
+            researchLoop:
+            for (Research research : Research.values) {
+                if (arg.contains(research.name().toLowerCase(Locale.ROOT))) {
+                    Map<Research, Integer> researchMap = PWBindings.research(arg);
+                    nation.edit().setResearchBits(Research.toBits(researchMap));
+                    iterator.remove();
+                    break researchLoop;
+                }
             }
         }
 

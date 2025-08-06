@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.db.TradeDB;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.web.commands.binding.value_types.GraphType;
 
@@ -14,9 +15,9 @@ import java.util.concurrent.TimeUnit;
 public class TradePriceByDay extends SimpleTable<Void> {
     private final long minDay;
     private final long maxDay;
-    private final Map<ResourceType, Map<Long, Double>> avgByRss;
     private final double[] buffer;
     private final List<ResourceType> rssList;
+    private final Map<Long, double[]> averagesByDay;
 
     public TradePriceByDay(Set<ResourceType> resources, int numDays) {
         if (numDays <= 1) throw new IllegalArgumentException("Invalid number of days");
@@ -25,25 +26,19 @@ public class TradePriceByDay extends SimpleTable<Void> {
         rssList.remove(ResourceType.MONEY);
         if (rssList.isEmpty()) throw new IllegalArgumentException("Invalid resources");
 
-        long start = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(numDays);
+        long end = System.currentTimeMillis();
+        long start = end - TimeUnit.DAYS.toMillis(numDays);
 
         TradeManager manager = Locutus.imp().getTradeManager();
         TradeDB tradeDB = manager.getTradeDb();
 
-        this.avgByRss = new HashMap<>();
         long minDay = Long.MAX_VALUE;
         long maxDay = Long.MIN_VALUE;
 
-        for (ResourceType type : rssList) {
-            double curAvg = manager.getHighAvg(type);
-            int min = (int) (curAvg * 0.2);
-            int max = (int) (curAvg * 5);
-
-            Map<Long, Double> averages = tradeDB.getAverage(start, type, 15, min, max);
-            avgByRss.put(type, averages);
-
-            minDay = Collections.min(averages.keySet());
-            maxDay = Collections.max(averages.keySet());
+        this.averagesByDay = tradeDB.getAverageByDay(rssList, TimeUtil.getDay(start), TimeUtil.getDay(end));
+        for (Map.Entry<Long, double[]> entry : averagesByDay.entrySet()) {
+            minDay = Math.min(minDay, entry.getKey());
+            maxDay = Math.max(maxDay, entry.getKey());
         }
 
         this.minDay = minDay;
@@ -71,10 +66,12 @@ public class TradePriceByDay extends SimpleTable<Void> {
 
     @Override
     public void add(long day, Void ignore) {
-        for (int i = 0; i < rssList.size(); i++) {
-            ResourceType type = rssList.get(i);
-            Double value = avgByRss.getOrDefault(type, Collections.emptyMap()).get(day);
-            if (value != null) buffer[i] = value;
+        double[] byRss = averagesByDay.get(day);
+        if (byRss != null) {
+            for (int i = 0; i < rssList.size(); i++) {
+                ResourceType type = rssList.get(i);
+                buffer[i] = byRss[i];
+            }
         }
         add(day - minDay, buffer);
     }

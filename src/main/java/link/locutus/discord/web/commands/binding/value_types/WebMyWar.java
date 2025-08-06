@@ -2,6 +2,7 @@ package link.locutus.discord.web.commands.binding.value_types;
 
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
@@ -37,13 +38,13 @@ public class WebMyWar {
     public boolean att_fortified;
     public boolean def_fortified;
 
-    public WebMyWar(GuildDB db, DBNation self, DBNation enemy, DBWar war, boolean isOffensive, Set<BeigeReason> reasons) {
+    public WebMyWar(ValueStore store, GuildDB db, DBNation self, DBNation enemy, DBWar war, boolean isOffensive, Set<BeigeReason> reasons) {
         this.id = war.getWarId();
         this.target = new WebTarget(enemy, 0, 0, 0);
         iron_dome = enemy.hasProject(Projects.IRON_DOME);
         vds = enemy.hasProject(Projects.VITAL_DEFENSE_SYSTEM);
 
-        double loot = enemy.lootTotal() * war.getWarType().lootModifier();
+        double loot = enemy.lootTotal(store) * war.getWarType().lootModifier();
         this.beigeReasons = new LinkedHashMap<>();
         if (reasons != null) {
             for (BeigeReason reason : reasons) {

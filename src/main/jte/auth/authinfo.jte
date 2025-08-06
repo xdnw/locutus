@@ -35,8 +35,7 @@
     <tr>
         <td>Expires</td>
         <td>
-            !{var instant = java.time.Instant.ofEpochMilli(auth.timestamp);}
-            ${link.locutus.discord.util.TimeUtil.YYYY_MM_DD_HH_MM_SS.format(java.util.Date.from(instant))}
+            ${link.locutus.discord.util.TimeUtil.format(link.locutus.discord.util.TimeUtil.YYYY_MM_DD_HH_MM_SS, auth.timestamp)}
         </td>
     </tr>
     <tr>

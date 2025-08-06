@@ -1,11 +1,16 @@
 package link.locutus.discord.db;
 
+import com.google.api.client.util.Base64;
+import com.google.api.client.util.Sets;
+import com.google.common.base.Predicates;
+import com.politicsandwar.graphql.model.ApiKeyDetails;
 import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
@@ -24,14 +29,10 @@ import link.locutus.discord.event.nation.NationRegisterEvent;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.offshore.EncryptionUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
-import link.locutus.discord.util.offshore.EncryptionUtil;
-import com.google.api.client.util.Base64;
-import com.google.api.client.util.Sets;
-import com.politicsandwar.graphql.model.ApiKeyDetails;
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import link.locutus.discord.util.task.multi.MultiResult;
 import link.locutus.discord.util.task.multi.NetworkRow;
 import link.locutus.discord.util.task.multi.SameNetworkTrade;
@@ -1097,7 +1098,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         Map<Integer, ApiKeyPool.ApiKey> result = new Int2ObjectOpenHashMap<>();
 
         long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7);
-        Predicate<DBNation> filter = filterInactive ? f -> f.getVm_turns() == 0 && f.lastActiveMs() > cutoff  : f -> true;
+        Predicate<DBNation> filter = filterInactive ? f -> f.getVm_turns() == 0 && f.lastActiveMs() > cutoff  : Predicates.alwaysTrue();
 
         try (PreparedStatement stmt = prepareQuery("select * FROM API_KEYS3 WHERE nation_id != ? AND api_key IS NOT NULL")) {
             stmt.setInt(1, Settings.INSTANCE.NATION_ID);

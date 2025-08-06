@@ -1,5 +1,7 @@
 package link.locutus.discord.web.jooby;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -8,6 +10,7 @@ import gg.jte.TemplateOutput;
 import gg.jte.html.OwaspHtmlTemplateOutput;
 import gg.jte.output.StringOutput;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import org.msgpack.jackson.dataformat.MessagePackFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -26,6 +29,19 @@ import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 public class JteUtil {
+
+    private static volatile ObjectMapper serializer;
+
+    public static ObjectMapper getSerializer() {
+        if (serializer == null) {
+            synchronized (JteUtil.class) {
+                if (serializer == null) {
+                    serializer = new ObjectMapper(new MessagePackFactory());
+                }
+            }
+        }
+        return serializer;
+    }
 
     public static String toB64(JsonObject json) {
         return Base64.getEncoder().encodeToString(json.toString().getBytes());
@@ -50,6 +66,14 @@ public class JteUtil {
         return compress(b64String.getBytes(StandardCharsets.UTF_8));
     }
 
+    public static byte[] compress(Object root) {
+        try {
+            return compress(JteUtil.getSerializer().writeValueAsBytes(root));
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public static byte[] compress(byte[] data) {
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -59,6 +83,15 @@ public class JteUtil {
             return baos.toByteArray();
         } catch (IOException e) {
             throw new RuntimeException("Failed to gzip string", e);
+        }
+    }
+
+    public static <T> T decompressToObject(byte[] bytes, Class<T> clazz) {
+        byte[] data = decompress(bytes);
+        try {
+            return getSerializer().readValue(data, clazz);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to deserialize object", e);
         }
     }
 

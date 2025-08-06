@@ -13,8 +13,8 @@ import java.util.Map;
 
 public class PlaceholderCache<T> {
     protected final List<T> list;
-    protected final Map<String, Map<T, Object>> cacheInstance = new Object2ObjectOpenHashMap<>();
-    protected final Map<String, Object> cacheGlobal = new Object2ObjectOpenHashMap<>();
+    protected final Map<MethodIdentity, Map<T, Object>> cacheInstance = new Object2ObjectOpenHashMap<>();
+    protected final Map<MethodIdentity, Object> cacheGlobal = new Object2ObjectOpenHashMap<>();
 
     public static <T> ValueStore<T> createCache(Collection<T> selection, Class<T> type) {
         ValueStore store = new SimpleValueStore();
@@ -37,35 +37,35 @@ public class PlaceholderCache<T> {
         return list;
     }
 
-    public static <T> ScopedPlaceholderCache<T> getScoped(ValueStore store, Class<T> clazz, String method) {
+    public static <T> ScopedPlaceholderCache<T> getScoped(ValueStore store, Class<T> clazz, MethodIdentity method) {
         PlaceholderCache<T> cache = store == null ? null : (PlaceholderCache<T>) store.getProvided(Key.of(PlaceholderCache.class, clazz), false);
         return getScoped(cache, method);
     }
 
-    public static <T> ScopedPlaceholderCache<T> getScoped(PlaceholderCache<T> cache, String method) {
+    public static <T> ScopedPlaceholderCache<T> getScoped(PlaceholderCache<T> cache, MethodIdentity method) {
         return new ScopedPlaceholderCache<T>(cache, method);
     }
 
-    public Object get(T object, String id) {
+    public Object get(T object, MethodIdentity id) {
         Map<T, Object> map = cacheInstance.computeIfAbsent(id, o -> new Object2ObjectOpenHashMap<>());
         return map.get(object);
     }
 
-    public boolean has(T object, String id) {
+    public boolean has(T object, MethodIdentity id) {
         Map<T, Object> map = cacheInstance.get(id);
         return map != null && map.containsKey(object);
     }
 
-    public void put(T object, String id, Object value) {
+    public void put(T object, MethodIdentity id, Object value) {
         Map<T, Object> map = cacheInstance.computeIfAbsent(id, o -> new Object2ObjectOpenHashMap<>());
         map.put(object, value);
     }
 
-    public Object getGlobal(String id) {
+    public Object getGlobal(MethodIdentity id) {
         return cacheGlobal.get(id);
     }
 
-    public void putGlobal(String id, Object value) {
+    public void putGlobal(MethodIdentity id, Object value) {
         cacheGlobal.put(id, value);
     }
 }

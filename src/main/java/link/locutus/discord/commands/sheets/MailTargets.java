@@ -18,21 +18,15 @@ import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.pnw.Spyop;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.battle.SpyBlitzGenerator;
+import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
-import java.time.ZonedDateTime;
-import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -120,7 +114,7 @@ public class MailTargets extends Command {
         allAttackers.addAll(warAttDefMap.keySet());
         allAttackers.addAll(spyAttDefMap.keySet());
 
-        String date = TimeUtil.YYYY_MM_DD.format(ZonedDateTime.now());
+        String date = TimeUtil.format(TimeUtil.YYYY_MM_DD, System.currentTimeMillis());
         String subject = "Targets-" + date + "/" + channel.getIdLong();
 
         String blurb = """

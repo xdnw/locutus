@@ -3,54 +3,163 @@ package link.locutus.discord.util;
 import link.locutus.discord.config.Settings;
 
 import java.io.File;
-import java.text.DateFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.ResolverStyle;
+import java.time.temporal.ChronoField;
 import java.time.temporal.ChronoUnit;
-import java.util.Date;
 import java.util.Locale;
-import java.util.TimeZone;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class TimeUtil {
-    public static final SimpleDateFormat MMDD_HH_MM_A = new SimpleDateFormat("MM/dd h:mm a", Locale.ENGLISH);
-    public static final SimpleDateFormat MMDDYYYY_HH_MM_A = new SimpleDateFormat("MM/dd/yyyy h:mm a", Locale.ENGLISH);
-    public static final SimpleDateFormat YYYY_MM_DD_HH_MM_SS = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH);
-    public static final SimpleDateFormat YYYY_MM_DDTHH_MM_SSX = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssX", Locale.ENGLISH);
-    public static final SimpleDateFormat YYYY_MM_DD_HH_MM_SS_A = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss a", Locale.ENGLISH);
+    public static final DateTimeFormatter MMDD_HH_MM_A      = withOptionalTime("MM/dd h:mm a");
+    public static final DateTimeFormatter MMDDYYYY_HH_MM_A  = withOptionalTime("MM/dd/yyyy h:mm a");
+    public static final DateTimeFormatter YYYY_MM_DD_HH_MM_SS = withOptionalTime("yyyy-MM-dd HH:mm:ss");
+    public static final DateTimeFormatter YYYY_MM_DDTHH_MM_SSX = withOptionalTime("yyyy-MM-dd HH:mm:ssX");
+    public static final DateTimeFormatter YYYY_MM_DD_HH_MM_SS_A = withOptionalTime("yyyy-MM-dd hh:mm:ss a");
 
-    public static final SimpleDateFormat F_YYYY_MM_DD = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH);
+    public static final DateTimeFormatter F_YYYY_MM_DD      = withOptionalTime("yyyy-MM-dd");
+    public static final DateTimeFormatter YYYY_MM_DD_HH_MM_A = withOptionalTime("yyyy-MM-dd hh:mm a");
 
-    public static final SimpleDateFormat YYYY_MM_DD_HH_MM_A = new SimpleDateFormat("yyyy-MM-dd hh:mm a", Locale.ENGLISH);
+    public static final DateTimeFormatter WAR_FORMAT        = withOptionalTime("yyyy-MM-dd'T'HH:mm:ssX");
+    public static final DateTimeFormatter DD_MM_YY          = withOptionalTime("dd/MM/yy");
+    public static final DateTimeFormatter DD_MM_YYYY        = withOptionalTime("dd/MM/yyyy");
+    public static final DateTimeFormatter YYYY_MM_DD_FORMAT = withOptionalTime("yyyy-MM-dd");
 
-    public static final SimpleDateFormat WAR_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX", Locale.ENGLISH);
-    public static final SimpleDateFormat DD_MM_YY = new SimpleDateFormat("dd/MM/yy", Locale.ENGLISH);
-    public static final SimpleDateFormat DD_MM_YYYY = new SimpleDateFormat("dd/MM/yyyy", Locale.ENGLISH);
-    public static final SimpleDateFormat YYYY_MM_DD_FORMAT = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH);
+    public static final DateTimeFormatter YYYY_MM_DD        = withOptionalTime("yyyy-MM-dd");
+    public static final DateTimeFormatter DD_MM_YYYY_HH     = withOptionalTime("dd/MM/yyyy HH");
 
-    public static final DateTimeFormatter YYYY_MM_DD = DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ENGLISH);
-    public static final SimpleDateFormat DD_MM_YYYY_HH = new SimpleDateFormat("dd/MM/yyyy HH", Locale.ENGLISH);
+//    static class Wrapper {
+//        public Instant date;
+//    }
+//
+//    public static void main(String[] args) throws JsonProcessingException {
+//        ObjectMapper jacksonObjectMapper = Jackson2ObjectMapperBuilder.json().simpleDateFormat("yyyy-MM-dd")
+//                .featuresToEnable(DeserializationFeature.READ_DATE_TIMESTAMPS_AS_NANOSECONDS)
+//                .build();
+//        jacksonObjectMapper.configure(DeserializationFeature.READ_DATE_TIMESTAMPS_AS_NANOSECONDS,true);
+//        jacksonObjectMapper.configure(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY, true);
+//        SimpleModule module = new SimpleModule();
+//        // Fix for snapshots returning Object instead of Array of CityInfraDamage
+////        module.addDeserializer(CityInfraDamage.class, (JsonDeserializer<CityInfraDamage>) (Object) new CityInfraDamageDeserializer());
+//        jacksonObjectMapper.registerModule(module);
+//
+//        // test deserializing something containing a date: `2114-10-25T00:00:00+00:00`
+//        {
+//            String json = "\"2114-10-25T00:00:00+00:00\"";
+//            Instant actual = jacksonObjectMapper.readValue(json, Instant.class);
+//            Instant instant = Instant.parse("2114-10-25T00:00:00Z");
+//            System.out.println("Deserialized Instant: " + actual);
+//            System.out.println("Expected Instant: " + instant);
+//            System.out.println("Are they equal? " + actual.equals(instant));
+//        }
+//        {
+//            String json = "{\"date\":\"2114-10-25T00:00:00+00:00\"}";
+//            Wrapper wrapper = jacksonObjectMapper.readValue(json, Wrapper.class);
+//            Instant actual = wrapper.date;
+//            Instant instant = Instant.parse("2114-10-25T00:00:00Z");
+//            System.out.println("Deserialized Wrapper Instant: " + actual);
+//            System.out.println("Expected Instant: " + instant);
+//            System.out.println("Are they equal? " + actual.equals(instant));
+//        }
+//    }
 
+    private static DateTimeFormatter withOptionalTime(String pattern) {
+        DateTimeFormatterBuilder b = new DateTimeFormatterBuilder()
+                .parseCaseInsensitive()
+                .parseLenient()
+                .appendPattern(pattern)
+                .parseDefaulting(ChronoField.MINUTE_OF_HOUR,     0)
+                .parseDefaulting(ChronoField.SECOND_OF_MINUTE,   0);
+
+        if (pattern.contains("H")) {
+            b.parseDefaulting(ChronoField.HOUR_OF_DAY, 0);
+        } else if (pattern.contains("h") && pattern.contains("a")) {
+            // use CLOCK_HOUR_OF_AMPM for 'hh' patterns
+            b.parseDefaulting(ChronoField.AMPM_OF_DAY,       0)
+                    .parseDefaulting(ChronoField.CLOCK_HOUR_OF_AMPM, 12);
+        } else {
+            b.parseDefaulting(ChronoField.HOUR_OF_DAY, 0);
+        }
+        return b.toFormatter(Locale.ENGLISH)
+                .withResolverStyle(ResolverStyle.LENIENT);
+    }
+
+    public static long parseDate(DateTimeFormatter formatter, String dateStr) {
+        if (dateStr.startsWith("0000-00-00")) {
+            return 0L;  // or 0L for epoch
+        }
+        LocalDateTime ldt = LocalDateTime.parse(dateStr.toUpperCase(Locale.ROOT), formatter);
+        return ldt.atZone(ZoneOffset.UTC).toInstant().toEpochMilli();
+    }
+
+    public static long parseDateSetYear(DateTimeFormatter formatter, String dateStr) {
+        if (dateStr.startsWith("0000-00-00")) {
+            return 0L;  // or 0L for epoch
+        }
+        LocalDateTime ldt = LocalDateTime.parse(dateStr.toUpperCase(Locale.ROOT), formatter);
+        int currentYear = LocalDateTime.now(ZoneOffset.UTC).getYear();
+        ldt = ldt.withYear(currentYear);
+        return ldt.atZone(ZoneOffset.UTC).toInstant().toEpochMilli();
+    }
+
+    private static long calcTurn() {
+        if (Settings.INSTANCE.TEST) {
+            long value = ChronoUnit.HOURS.between(Instant.EPOCH, Instant.now());
+            return CURRENT_TURN = value;
+        }
+        long now = System.currentTimeMillis();
+        long daysSince0 = TimeUnit.MILLISECONDS.toDays(now);
+        long hoursInCurrentDay = TimeUnit.MILLISECONDS.toHours(now % 86400000);
+        int turnsPerDay = 12;
+        return CURRENT_TURN = (hoursInCurrentDay / 2) + daysSince0 * turnsPerDay;
+    }
+
+    private static volatile long CURRENT_TURN = calcTurn();
+    private static final ScheduledExecutorService SCHEDULER = Executors.newSingleThreadScheduledExecutor();
+    private static volatile boolean nearTurnChange = false;
 
     static {
+        // schedule precise turn updates
+        scheduleNextTurn();
+        // maintain a flag when within 5 seconds of a turn change
+        scheduleNearChange();
+    }
 
-        MMDD_HH_MM_A.setTimeZone(TimeZone.getTimeZone("UTC"));
-        YYYY_MM_DD_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
-        MMDDYYYY_HH_MM_A.setTimeZone(TimeZone.getTimeZone("UTC"));
-        YYYY_MM_DD_HH_MM_SS.setTimeZone(TimeZone.getTimeZone("UTC"));
-        YYYY_MM_DDTHH_MM_SSX.setTimeZone(TimeZone.getTimeZone("UTC"));
-        YYYY_MM_DD_HH_MM_SS_A.setTimeZone(TimeZone.getTimeZone("UTC"));
-        YYYY_MM_DD_HH_MM_A.setTimeZone(TimeZone.getTimeZone("UTC"));
-        F_YYYY_MM_DD.setTimeZone(TimeZone.getTimeZone("UTC"));
-        WAR_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
-        DD_MM_YY.setTimeZone(TimeZone.getTimeZone("UTC"));
-        DD_MM_YYYY.setTimeZone(TimeZone.getTimeZone("UTC"));
-        DD_MM_YYYY_HH.setTimeZone(TimeZone.getTimeZone("UTC"));
+    private static void scheduleNextTurn() {
+        long current = calcTurn();
+        long nextTime = getTimeFromTurn(current + 1);
+        long now = System.currentTimeMillis();
+        long delayToTurn = nextTime - now;
+        long delayToNear = Math.max(0, delayToTurn - 5);
+
+        // 5 ms before turn change
+        SCHEDULER.schedule(() -> nearTurnChange = true,
+                delayToNear, TimeUnit.MILLISECONDS);
+
+        // at turn change
+        SCHEDULER.schedule(() -> {
+            CURRENT_TURN = calcTurn();
+            nearTurnChange = false;
+            scheduleNextTurn();
+        }, delayToTurn, TimeUnit.MILLISECONDS);
+    }
+
+    private static void scheduleNearChange() {
+        SCHEDULER.scheduleAtFixedRate(() -> {
+            long nextTurnTime = getTimeFromTurn(CURRENT_TURN + 1);
+            nearTurnChange = nextTurnTime - System.currentTimeMillis() <= TimeUnit.SECONDS.toMillis(5);
+        }, 0, 1, TimeUnit.SECONDS);
+    }
+
+    public static long getTurn() {
+        return nearTurnChange ? calcTurn() : CURRENT_TURN;
     }
 
     public static String turnsToTime(long turns) {
@@ -149,6 +258,14 @@ public class TimeUtil {
             double nums = Double.parseDouble(value.replaceAll("[^\\d.]", ""));
             String letters = value.replaceAll("[^a-z]", "");
             switch (letters) {
+                case "year":
+                case "years":
+                case "yr":
+                case "yrs":
+                case "year(s)":
+                case "y":
+                    time += TimeUnit.DAYS.toSeconds(365) * nums;
+                    break;
                 case "month(s)":
                 case "months":
                     time += TimeUnit.DAYS.toSeconds(30) * nums;
@@ -213,18 +330,6 @@ public class TimeUtil {
             }
         }
 
-    }
-
-    public static long getTurn() {
-        if (Settings.INSTANCE.TEST) {
-            long value = ChronoUnit.HOURS.between(Instant.EPOCH, Instant.now());
-            return value;
-        }
-        long now = System.currentTimeMillis();
-        long daysSince0 = TimeUnit.MILLISECONDS.toDays(now);
-        long hoursInCurrentDay = TimeUnit.MILLISECONDS.toHours(now % 86400000);
-        int turnsPerDay = 12;
-        return (hoursInCurrentDay / 2) + daysSince0 * turnsPerDay;
     }
 
     public static long getTurn(Long timestamp) {
@@ -309,29 +414,14 @@ public class TimeUtil {
         return 16482268800000L / 11L;
     }
 
-    public static long parseDate(DateFormat format, String dateStr) {
-        return parseDate(format, dateStr, false);
+    public static String format(DateTimeFormatter formatter, long timestamp) {
+        ZonedDateTime utcDateTime = Instant.ofEpochMilli(timestamp).atZone(ZoneOffset.UTC);
+        return formatter.format(utcDateTime);
     }
 
-    public static String format(DateFormat format, Date date) {
-        synchronized (format) {
-            return format.format(date);
-        }
-    }
-
-    public static long parseDate(DateFormat format, String dateStr, boolean setYear) {
-        try {
-            synchronized (format) {
-                Date date = format.parse(dateStr);
-                if (setYear) {
-//                    int CAL_YEAR = Calendar.YEAR;
-                    date.setYear(LocalDateTime.now(ZoneOffset.UTC).getYear() - 1900);
-                }
-                return date.getTime();
-            }
-        } catch (ParseException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }
-    }
+//    public static String format(DateFormat format, Date date) {
+//        synchronized (format) {
+//            return format.format(date);
+//        }
+//    }
 }

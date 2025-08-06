@@ -41,6 +41,9 @@ public class NationsFile extends DataFile<DBNation, NationHeader, NationHeaderRe
             Header<DBNation> colInfo = header.readIndexes(data);
             int bytesPerRow = colInfo.bytesPerRow;
 
+            int rows = (data.length - colInfo.initialOffset) / bytesPerRow;
+            int remainder = (data.length - colInfo.initialOffset) % bytesPerRow;
+
             DataWrapper wrapper = new GlobalDataWrapper(getDate(), header, data, fetchCities);
 
             Map<Integer, DBNationSnapshot> result = new Int2ObjectOpenHashMap<>();

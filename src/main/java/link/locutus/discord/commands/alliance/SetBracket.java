@@ -131,7 +131,7 @@ public class SetBracket extends Command {
         }
 
         if (!isGov) {
-            double depo = me.getNetDepositsConverted(db);
+            double depo = me.getNetDepositsConverted(null, db);
             if (depo < -200_000_000) {
                 if (bracket.moneyRate < 100 || bracket.rssRate < 100) {
                     return "Nations in >200m debt must have a gov change their tax rate";

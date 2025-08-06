@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
@@ -30,13 +31,7 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.Channel;
 import net.dv8tion.jda.api.entities.channel.ChannelType;
-import net.dv8tion.jda.api.entities.channel.concrete.Category;
-import net.dv8tion.jda.api.entities.channel.concrete.NewsChannel;
-import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
-import net.dv8tion.jda.api.entities.channel.concrete.StageChannel;
-import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-import net.dv8tion.jda.api.entities.channel.concrete.ThreadChannel;
-import net.dv8tion.jda.api.entities.channel.concrete.VoiceChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.*;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
@@ -166,7 +161,7 @@ public class SlashCommandManager extends ListenerAdapter {
 
     private Set<String> generateEphemeral(CommandGroup group) {
         Set<String> ephemeral = new ObjectOpenHashSet<>();
-        for (ParametricCallable cmd : group.getParametricCallables(f -> true)) {
+        for (ParametricCallable cmd : group.getParametricCallables(Predicates.alwaysTrue())) {
             if (cmd.getAnnotation(Ephemeral.class) != null) {
                 ephemeral.add(cmd.getFullPath().toLowerCase(Locale.ROOT));
             }
@@ -176,7 +171,7 @@ public class SlashCommandManager extends ListenerAdapter {
 
     public Set<String> generateUserCommands(CommandGroup group) {
         Set<String> cmds = new ObjectLinkedOpenHashSet<>();
-        for (ParametricCallable cmd : group.getParametricCallables(f -> true)) {
+        for (ParametricCallable cmd : group.getParametricCallables(Predicates.alwaysTrue())) {
             if (cmd.getAnnotation(UserCommand.class) != null) {
                 cmds.add(cmd.getFullPath().toLowerCase(Locale.ROOT));
             }
@@ -187,7 +182,7 @@ public class SlashCommandManager extends ListenerAdapter {
 
     public Set<String> generateMessageCommands(CommandGroup group) {
         Set<String> cmds = new ObjectLinkedOpenHashSet<>();
-        for (ParametricCallable cmd : group.getParametricCallables(f -> true)) {
+        for (ParametricCallable cmd : group.getParametricCallables(Predicates.alwaysTrue())) {
             if (cmd.getAnnotation(MessageCommand.class) != null) {
                 cmds.add(cmd.getFullPath().toLowerCase(Locale.ROOT));
             }
@@ -356,9 +351,11 @@ public class SlashCommandManager extends ListenerAdapter {
         return toRegister;
     }
 
-    public void registerCommandData(JDA jda) {
+    public void registerCommandData(GuildShardManager manager) {
         List<CommandData> generate = generateCommandData();
-        registerCommandData(jda, generate);
+        for (JDA jda : manager.getApis()) {
+            registerCommandData(jda, generate);
+        }
     }
 
     public void register(Guild guild) {

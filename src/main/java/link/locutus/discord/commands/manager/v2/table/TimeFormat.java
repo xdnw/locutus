@@ -3,7 +3,6 @@ package link.locutus.discord.commands.manager.v2.table;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;
 
-import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 public enum TimeFormat {
@@ -32,7 +31,7 @@ public enum TimeFormat {
             if (time < TimeUtil.getOrigin()) {
                 return TimeUtil.secToTime(TimeUnit.MILLISECONDS, time);
             }
-            return TimeUtil.DD_MM_YYYY_HH.format(new Date(time));
+            return TimeUtil.format(TimeUtil.DD_MM_YYYY_HH, time);
 
         }
     },
@@ -43,7 +42,7 @@ public enum TimeFormat {
             if (time < TimeUtil.getOrigin()) {
                 return TimeUtil.secToTime(TimeUnit.MILLISECONDS, time);
             }
-            return TimeUtil.DD_MM_YYYY_HH.format(new Date(time));
+            return TimeUtil.format(TimeUtil.DD_MM_YYYY_HH, time);
         }
     },
     MILLIS_TO_DATE(false) {
@@ -53,7 +52,7 @@ public enum TimeFormat {
             if (time < TimeUtil.getOrigin()) {
                 return TimeUtil.secToTime(TimeUnit.MILLISECONDS, time);
             }
-            return TimeUtil.DD_MM_YYYY_HH.format(new Date(time));
+            return TimeUtil.format(TimeUtil.DD_MM_YYYY_HH, time);
         }
     },
     SECONDS_TO_DATE(false) {
@@ -63,7 +62,7 @@ public enum TimeFormat {
             if (time < TimeUtil.getOrigin()) {
                 return TimeUtil.secToTime(TimeUnit.SECONDS, time);
             }
-            return TimeUtil.DD_MM_YYYY_HH.format(new Date(time));
+            return TimeUtil.format(TimeUtil.DD_MM_YYYY_HH, time);
         }
     },
     ;

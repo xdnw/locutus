@@ -126,7 +126,7 @@ public class DiscordCommands {
 
     @Command(desc = "Have the bot say the provided message, with placeholders replaced.")
     @NoFormat
-    public String say(NationPlaceholders placeholders, ValueStore store, @Me User author, @Me @Default DBNation me, @TextArea String msg) {
+    public String say(NationPlaceholders placeholders, ValueStore store, @Me User author, @Me @Default DBNation me, @AllowAttachment @TextArea String msg) {
         msg = DiscordUtil.trimContent(msg);
         msg = msg.replace("@", "@\u200B");
         msg = msg.replace("&", "&\u200B");
@@ -717,7 +717,7 @@ public class DiscordCommands {
     public String viewFlow(@Me GuildDB db, DBNation nation, DepositType note) {
 
         // public List<Map.Entry<Integer, Transaction2>> getTransactions(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff, boolean priority) {
-        List<Map.Entry<Integer, Transaction2>> transfers = nation.getTransactions(db, null, false, true, 0, 0, true);
+        List<Map.Entry<Integer, Transaction2>> transfers = nation.getTransactions(db, null, false, false, true, 0, 0, Long.MAX_VALUE, true);
 
         if (note != null) {
             transfers.removeIf(f -> !f.getValue().getNoteMap().containsKey(note));

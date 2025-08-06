@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.rankings;
 
+import com.google.common.base.Predicates;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.commands.manager.Command;
@@ -65,7 +66,7 @@ public class AllianceAttackTypeRanking extends Command {
         Map<Integer, Integer> totalAttacks = new HashMap<>();
         Map<Integer, Integer> attackOfType = new HashMap<>();
 
-        Locutus.imp().getWarDb().queryAttacks().withActiveWars(allowedNations::contains, f -> true).afterDate(cutoffMs).withTypes(type)
+        Locutus.imp().getWarDb().queryAttacks().withActiveWars(allowedNations::contains, Predicates.alwaysTrue()).afterDate(cutoffMs).withTypes(type)
         .iterateAttacks((war, attack) -> {
             DBNation nat = Locutus.imp().getNationDB().getNationById(attack.getAttacker_id());
             if (nat == null || nat.getAlliance_id() == 0 || nat.getPosition() <= 1) return;

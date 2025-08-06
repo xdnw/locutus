@@ -7,6 +7,7 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -72,6 +73,7 @@ import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.text.SimpleDateFormat;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -239,7 +241,8 @@ public class WarCommands {
         targets.removeIf(f -> f.getVm_turns() > 14 * 12);
 
         if (requiredLoot != null && requiredLoot != 0) {
-            targets.removeIf(f -> f.lootTotal() < requiredLoot);
+            ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(targets, DBNation.class);
+            targets.removeIf(f -> f.lootTotal(cacheStore) < requiredLoot);
         }
 
         if (targets.isEmpty()) {
@@ -1061,6 +1064,10 @@ public class WarCommands {
         StringBuilder response = new StringBuilder();
         numResults = Math.min(numResults, 25);
 
+        List<DBNation> viewedNations = counterChance.subList(0, Math.min(numResults, counterChance.size()))
+                .stream().map(Map.Entry::getKey).toList();
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(viewedNations, DBNation.class);
+
         for (int i = 0; i < Math.min(numResults, counterChance.size()); i++) {
             Map.Entry<DBNation, Double> entry = counterChance.get(i);
             DBNation nation = entry.getKey();
@@ -1071,7 +1078,7 @@ public class WarCommands {
                     .append(" | " + String.format("%16s", nation.getNation()))
                     .append(" | " + String.format("%16s", nation.getAllianceName()));
 
-            double total = nation.lootTotal();
+            double total = nation.lootTotal(cacheStore);
             if (total != 0) {
                 response.append(": $" + MathMan.format(total));
             }
@@ -1256,6 +1263,12 @@ public class WarCommands {
 
         int count = 0;
 
+        List<DBNation> viewedNations = nationNetValues.stream()
+                .map(Map.Entry::getKey)
+                .limit(numResults)
+                .toList();
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(viewedNations, DBNation.class);
+
         for (Map.Entry<DBNation, Double> nationNetValue : nationNetValues) {
             if (count++ == numResults) break;
 
@@ -1266,7 +1279,7 @@ public class WarCommands {
                     .append(" | " + String.format("%16s", nation.getNation()))
                     .append(" | " + String.format("%16s", nation.getAllianceName()));
 
-            double total = nation.lootTotal();
+            double total = nation.lootTotal(cacheStore);
             if (total != 0) {
                 response.append(": $" + MathMan.format(total));
             }
@@ -1796,13 +1809,13 @@ public class WarCommands {
             if (nation.getAircraft() == 0) opTypesList.remove(SpyCount.Operation.AIRCRAFT);
             if (nation.getShips() == 0) opTypesList.remove(SpyCount.Operation.SHIPS);
 
-            int maxMissile = MilitaryUnit.MISSILE.getMaxPerDay(nation.getCities(), nation::hasProject);
+            int maxMissile = MilitaryUnit.MISSILE.getMaxPerDay(nation.getCities(), nation::hasProject, nation::getResearch);
             if (opTypesList.contains(SpyCount.Operation.MISSILE) && nation.getMissiles() > 0 && nation.getMissiles() <= maxMissile) {
                 Map<Long, Integer> purchases = nation.getUnitPurchaseHistory(MilitaryUnit.MISSILE, dcTime);
                 if (!purchases.isEmpty()) opTypesList.remove(SpyCount.Operation.MISSILE);
             }
 
-            int maxNukes = MilitaryUnit.NUKE.getMaxPerDay(nation.getCities(), nation::hasProject);
+            int maxNukes = MilitaryUnit.NUKE.getMaxPerDay(nation.getCities(), nation::hasProject, nation::getResearch);
             if (opTypesList.contains(SpyCount.Operation.NUKE) && nation.getNukes() > 0 && nation.getNukes() <= maxNukes) {
                 Map<Long, Integer> purchases = nation.getUnitPurchaseHistory(MilitaryUnit.NUKE, dcTime);
                 if (!purchases.isEmpty()) opTypesList.remove(SpyCount.Operation.NUKE);
@@ -1958,10 +1971,11 @@ public class WarCommands {
         }
 
         // sort targets by loot
-        List<DBNation> targetsSorted = new ArrayList<>(targets);
+        List<DBNation> targetsSorted = new ObjectArrayList<>(targets);
+        ValueStore<DBNation> targetCacheStore = PlaceholderCache.createCache(targets, DBNation.class);
         targetsSorted.sort((o1, o2) -> {
-            Map<ResourceType, Double> loot1 = o1.getLootRevenueTotal();
-            Map<ResourceType, Double> loot2 = o2.getLootRevenueTotal();
+            Map<ResourceType, Double> loot1 = o1.getLootRevenueTotal(targetCacheStore);
+            Map<ResourceType, Double> loot2 = o2.getLootRevenueTotal(targetCacheStore);
             double lootValue1 = ResourceType.convertedTotal(loot1);
             double lootValue2 = ResourceType.convertedTotal(loot2);
             return Double.compare(lootValue2, lootValue1);
@@ -2038,7 +2052,7 @@ public class WarCommands {
 
                 if (defender.getGroundStrength(true, false) > attacker.getGroundStrength(true, false) && defender.getAircraft() > attacker.getAircraft() * 0.33 && defender.getShips() > attacker.getShips() * 0.33) return 0d;
 
-                double[] loot = loots.computeIfAbsent(defender, f -> ResourceType.resourcesToArray(f.getLootRevenueTotal()));
+                double[] loot = loots.computeIfAbsent(defender, f -> ResourceType.resourcesToArray(f.getLootRevenueTotal(targetCacheStore)));
                 double lootValue = ResourceType.convertedTotal(loot);
 
                 double groundFactor = easyGroundLoot ? 1.1 : canGroundLoot ? 0.8 : 0;
@@ -2558,8 +2572,8 @@ public class WarCommands {
         List<String> header = new ArrayList<>(Arrays.asList("nation", "alliance", "cities"));
         for (long timeUnit = startUnit; timeUnit <= endUnit; timeUnit++) {
             long time = by_turn ? TimeUtil.getTimeFromTurn(timeUnit) : TimeUtil.getTimeFromDay(timeUnit);
-            SimpleDateFormat format = by_turn ? TimeUtil.DD_MM_YYYY_HH : TimeUtil.DD_MM_YYYY;
-            header.add(format.format(new Date(time)));
+            DateTimeFormatter format = by_turn ? TimeUtil.DD_MM_YYYY_HH : TimeUtil.DD_MM_YYYY;
+            header.add(TimeUtil.format(format, time));
         }
 
         sheet.setHeader(header);
@@ -2677,8 +2691,8 @@ public class WarCommands {
         List<String> header = new ArrayList<>(Arrays.asList("nation", "alliance", "cities"));
         for (long timeUnit = startUnit; timeUnit <= endUnit; timeUnit++) {
             long time = by_turn ? TimeUtil.getTimeFromTurn(timeUnit) : TimeUtil.getTimeFromDay(timeUnit);
-            SimpleDateFormat format = by_turn ? TimeUtil.DD_MM_YYYY_HH : TimeUtil.DD_MM_YYYY;
-            header.add(format.format(new Date(time)));
+            DateTimeFormatter format = by_turn ? TimeUtil.DD_MM_YYYY_HH : TimeUtil.DD_MM_YYYY;
+            header.add(TimeUtil.format(format, (time)));
         }
 
         sheet.setHeader(header);
@@ -2767,8 +2781,8 @@ public class WarCommands {
         List<String> header = new ArrayList<>(Arrays.asList("nation", "alliance", "cities"));
         for (long timeUnit = startUnit; timeUnit <= endUnit; timeUnit++) {
             long time = by_turn ? TimeUtil.getTimeFromTurn(timeUnit) : TimeUtil.getTimeFromDay(timeUnit);
-            SimpleDateFormat format = by_turn ? TimeUtil.DD_MM_YYYY_HH : TimeUtil.DD_MM_YYYY;
-            header.add(format.format(new Date(time)));
+            DateTimeFormatter format = by_turn ? TimeUtil.DD_MM_YYYY_HH : TimeUtil.DD_MM_YYYY;
+            header.add(TimeUtil.format(format, (time)));
         }
 
         sheet.setHeader(header);
@@ -3133,7 +3147,7 @@ public class WarCommands {
             Map.Entry<Long, Rank> dateRank = entry.getValue();
             Long date = dateRank.getKey();
 
-            String dateStr = TimeUtil.YYYY_MM_DD_HH_MM_A.format(new Date(date));
+            String dateStr = TimeUtil.format(TimeUtil.YYYY_MM_DD_HH_MM_A, date);
             Rank rank = dateRank.getValue();
 
             ArrayList<Object> row = new ArrayList<>();
@@ -3640,7 +3654,7 @@ public class WarCommands {
             }
         }
 
-        String date = TimeUtil.YYYY_MM_DD.format(ZonedDateTime.now());
+        String date = TimeUtil.format(TimeUtil.YYYY_MM_DD, System.currentTimeMillis());
         String subject = "Targets-" + date + "/" + channel.getIdLong();
 
         String blurb = """
@@ -4444,7 +4458,7 @@ public class WarCommands {
         if (nation.getMissiles() > 0 || nation.getNukes() > 0) {
             long dcTime = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - (TimeUtil.getTurn() % 12));
 
-            int maxMissile = MilitaryUnit.MISSILE.getMaxPerDay(nation.getCities(), nation::hasProject);
+            int maxMissile = MilitaryUnit.MISSILE.getMaxPerDay(nation.getCities(), nation::hasProject, nation::getResearch);
             if (nation.getMissiles() <= maxMissile) {
                 Map<Long, Integer> purchases = nation.getUnitPurchaseHistory(MilitaryUnit.MISSILE, dcTime);
                 if (!purchases.isEmpty()) {
@@ -4452,7 +4466,7 @@ public class WarCommands {
                 }
             }
 
-            int maxNuke = MilitaryUnit.NUKE.getMaxPerDay(nation.getCities(), nation::hasProject);
+            int maxNuke = MilitaryUnit.NUKE.getMaxPerDay(nation.getCities(), nation::hasProject, nation::getResearch);
             if (nation.getNukes() <= maxMissile) {
                 Map<Long, Integer> purchases = nation.getUnitPurchaseHistory(MilitaryUnit.NUKE, dcTime);
                 if (!purchases.isEmpty()) {

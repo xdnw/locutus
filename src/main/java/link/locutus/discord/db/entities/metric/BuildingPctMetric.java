@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities.metric;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -35,7 +36,7 @@ public class BuildingPctMetric implements IAllianceMetric {
             count += nation.getBuildings(buildings);
             cities += nation.getCities();
         }
-        return count / (double) (cities * building.cap(f -> false));
+        return count / (double) (cities * building.cap(Predicates.alwaysFalse()));
     }
 
     private final Map<Integer, Integer> allianceByNationId = new Int2IntOpenHashMap();
@@ -74,7 +75,7 @@ public class BuildingPctMetric implements IAllianceMetric {
 
     @Override
     public Map<Integer, Double> getDayValue(DataDumpImporter importer, long day) {
-        int buildingsPerCity = building.cap(f -> false);
+        int buildingsPerCity = building.cap(Predicates.alwaysFalse());
         Map<Integer, Double> result = buildingsByAA.entrySet().stream().filter(f -> citiesByAA.containsKey(f.getKey())).collect(Collectors.toMap(Map.Entry::getKey, f -> (double) f.getValue() / (citiesByAA.get(f.getKey()) * buildingsPerCity)));
         allianceByNationId.clear();
         citiesByAA.clear();

@@ -9,6 +9,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.web.commands.binding.value_types.GraphType;
 
 import java.util.List;
@@ -17,7 +18,7 @@ import java.util.Set;
 
 public class TradeMarginByDay extends SimpleTable<Void> {
 
-    private final Map<Long, double[]> marginsByDay = new Long2ObjectOpenHashMap<>();
+    private Map<Long, double[]> marginsByDay = new Long2ObjectOpenHashMap<>();
     private final List<ResourceType> resourceTypes;
     private final double[] empty;
     private long minDay;
@@ -46,30 +47,14 @@ public class TradeMarginByDay extends SimpleTable<Void> {
         this.minDay = Long.MAX_VALUE;
         this.maxDay = 0;
 
-        Locutus.imp().getTradeManager().getTradeDb().forEachTradesByDay(
-                resources, start, end,
-                (day, offers) -> {
-                    if (offers.isEmpty()) return;
-                    minDay = Math.min(minDay, day);
-                    maxDay = Math.max(maxDay, day);
+        long startDay = TimeUtil.getDay(start);
+        long endDay = TimeUtil.getDay(end);
+        this.marginsByDay = Locutus.imp().getTradeDB().getMarginsByDay(resourceTypes, startDay, endDay, percent);
+        for (Long day : marginsByDay.keySet()) {
+            if (day < minDay) minDay = day;
+            if (day > maxDay) maxDay = day;
+        }
 
-                    double[] dayMargins = new double[resourceTypes.size()];
-                    Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> avg = Locutus.imp().getTradeManager().getAverage(offers);
-                    Map<ResourceType, Double> lows = avg.getKey();
-                    Map<ResourceType, Double> highs = avg.getValue();
-                    for (int i = 0; i < resourceTypes.size(); i++) {
-                        ResourceType type = resourceTypes.get(i);
-                        Double low = lows.get(type);
-                        Double high = highs.get(type);
-                        if (low != null && high != null) {
-                            double margin = high - low;
-                            if (percent) margin = 100 * margin / high;
-                            dayMargins[i] = margin;
-                        }
-                    }
-                    marginsByDay.put(day, dayMargins);
-                }
-        );
 
         if (minDay == Long.MAX_VALUE) minDay = 0; // No data case
         setTitle("Resource margin " + (percent ? " % " : "") + "by day");

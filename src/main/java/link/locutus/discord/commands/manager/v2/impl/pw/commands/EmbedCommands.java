@@ -4,13 +4,7 @@ import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
-import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.MathOperation;
 import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
@@ -19,8 +13,8 @@ import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
@@ -31,38 +25,24 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.SpyCount;
-import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.sheet.GoogleDoc;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import net.dv8tion.jda.api.components.actionrow.ActionRowChildComponent;
+import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.actionrow.ActionRowChildComponentUnion;
+import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.components.actionrow.ActionRow;
-import net.dv8tion.jda.api.components.buttons.Button;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONObject;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class EmbedCommands {
@@ -421,7 +401,8 @@ Results are sorted best to last in <#995168236213633024>" "<#995168236213633024>
      */
     @Command(desc="Makes a raid panel, which is a discord embed with buttons for different options for finding raid targets")
     @RolePermission(Roles.ADMIN)
-    public void raid(@Me IMessageIO io, @Default MessageChannel outputChannel) {
+    public void raid(@Me IMessageIO io, @Default MessageChannel outputChannel, @Default CommandBehavior behavior) {
+        if (behavior == null) behavior = CommandBehavior.UNPRESS;
         Long channelId = outputChannel == null ? null : outputChannel.getIdLong();
         String title = "Find Raid Targets";
         String body = """
@@ -452,7 +433,6 @@ Results are sorted best to last in <#995168236213633024>" "<#995168236213633024>
         CM.war.find.unprotected unprotected = CM.war.find.unprotected.cmd.targets(
                 "*").numResults("25").includeAllies("true").ignoreODP("true").maxRelativeCounterStrength("90");
 
-        CommandBehavior behavior = CommandBehavior.UNPRESS;
         io.create().embed(title, body)
                 .commandButton(behavior, channelId, app, "7d_app")
                 .commandButton(behavior, channelId, members, "7d_members")
@@ -982,7 +962,12 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
     @Command(desc = "Discord embed for checking deposits, withdrawing funds, viewing your stockpile, depositing resources and offshoring funds")
     @HasOffshore
     @RolePermission(Roles.ADMIN)
-    public void depositsPanel(@Me GuildDB db, @Me IMessageIO io, @Arg("Only applicable to corporate servers. The nation accepting trades for bank deposits. Defaults to the bot owner's nation") @Default DBNation bankerNation, @Switch("c") MessageChannel outputChannel) {
+    public void depositsPanel(@Me GuildDB db, @Me IMessageIO io,
+                              @Arg("Only applicable to corporate servers. The nation accepting trades for bank deposits. Defaults to the bot owner's nation")
+                              @Default DBNation bankerNation,
+                              @Switch("c") MessageChannel outputChannel,
+                              @Default CommandBehavior behavior) {
+        if (behavior == null) behavior = CommandBehavior.EPHEMERAL;
         int nationId = Locutus.loader().getNationId();
         if (bankerNation != null) {
             nationId = bankerNation.getId();
@@ -1048,8 +1033,6 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         CM.transfer.self self = CM.transfer.self.cmd.amount("");
         CM.transfer.resources other = CM.transfer.resources.cmd.receiver("").transfer("").nation_account("{nation_id}").bank_note("#ignore");
         CM.nation.stockpile stockpile = CM.nation.stockpile.cmd.nationOrAlliance("nation:{nation_id}");
-
-        CommandBehavior behavior = CommandBehavior.EPHEMERAL;
 
         IMessageBuilder msg = io.create().embed(title, body)
                 .commandButton(behavior, channelId, deposits, "balance")
@@ -1257,7 +1240,12 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
 
     @Command(desc = "Discord embed for sheet to update ally and enemy spy counts, generate and send spy blitz targets")
     @RolePermission(Roles.ADMIN)
-    public void spySheets(@Me GuildDB db, @Me IMessageIO io, @Default("spyops") @GuildCoalition String allies, @Default MessageChannel outputChannel, @Default SpreadSheet spySheet) throws GeneralSecurityException, IOException {
+    public void spySheets(@Me GuildDB db, @Me IMessageIO io,
+                          @Default("spyops") @GuildCoalition String allies,
+                          @Default MessageChannel outputChannel,
+                          @Default SpreadSheet spySheet,
+                          @Default CommandBehavior behavior) throws GeneralSecurityException, IOException {
+        if (behavior == null) behavior = CommandBehavior.UNPRESS;
         if (allies == null) allies = Coalition.ALLIES.name();
 
         if (db.getCoalition(allies).isEmpty()) {
@@ -1276,7 +1264,6 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             footer += "\n\n> Output in " + outputChannel.getAsMention();
         }
 
-        CommandBehavior behavior = CommandBehavior.UNPRESS;
         Long channelId = outputChannel == null ? null : outputChannel.getIdLong();
 
         String columns = StringMan.join(Arrays.asList(

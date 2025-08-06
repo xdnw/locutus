@@ -1,5 +1,6 @@
 package link.locutus.discord.util.update;
 
+import com.google.common.base.Predicates;
 import com.google.common.eventbus.Subscribe;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
@@ -78,7 +79,7 @@ public class WarUpdateProcessor {
                     double maxScore = enemy.getScore() / 0.75;
 
                     for (Member member : members) {
-                        if (member.getUnsortedRoles().contains(optOut)) continue;
+                        if (optOut != null && member.getUnsortedRoles().contains(optOut)) continue;
                         DBNation nation = DiscordUtil.getNation(member.getUser());
                         if (nation == null) continue;
 
@@ -134,7 +135,7 @@ public class WarUpdateProcessor {
                 for (Map.Entry<DBWar, DBWar> entry : wars) {
                     DBWar previous = entry.getKey();
                     DBWar current = entry.getValue();
-                    conflictManager.updateWar(previous, current, f -> true);
+                    conflictManager.updateWar(previous, current, Predicates.alwaysTrue());
                 }
             } catch (Throwable e) {
                 e.printStackTrace();

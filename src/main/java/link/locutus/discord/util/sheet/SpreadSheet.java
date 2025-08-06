@@ -59,7 +59,7 @@ public class SpreadSheet {
 3. Click Create Credentials > OAuth client ID.
 4. Click Application type > Desktop app (or web application).
 5. Download the credentials and save it to `config/credentials-sheets.json`""";
-    private static final PassiveExpiringMap<String, SpreadSheet> CACHE = new PassiveExpiringMap<String, SpreadSheet>(5, TimeUnit.MINUTES);
+    private static final PassiveExpiringMap<String, SpreadSheet> CACHE = new PassiveExpiringMap<String, SpreadSheet>(30, TimeUnit.MINUTES);
 
     public static boolean isSheet(String arg) {
         return arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:");
@@ -184,7 +184,7 @@ public class SpreadSheet {
             }
             header.set(0, record.tx_id);
             header.set(1, type);
-            header.set(2, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(record.tx_datetime)));
+            header.set(2, TimeUtil.format(TimeUtil.YYYY_MM_DD_HH_MM_SS, record.tx_datetime));
             header.set(3, record.sender_id + "");
             header.set(4, record.sender_type);
             header.set(5, record.receiver_id + "");
@@ -208,7 +208,10 @@ public class SpreadSheet {
         if (includeHeader) {
             this.valuesByTab.clear();
         }
-        this.getCachedValues(null).addAll(cells);
+        List<List<Object>> values = this.getCachedValues(null);
+        synchronized (values) {
+            values.addAll(cells);
+        }
         this.updateClearTab(null);
         try {
             this.updateWrite();
@@ -310,21 +313,27 @@ public class SpreadSheet {
     }
 
     private static SpreadSheet create(SheetId id, Sheets api) throws GeneralSecurityException, IOException {
-        SpreadSheet cached = CACHE.get(id.id);
-        if (cached == null) {
-            cached = new SpreadSheet(id.id, api);
-            CACHE.put(id.id, cached);
+        SpreadSheet cached;
+        synchronized (CACHE) {
+            cached = CACHE.get(id.id);
+            if (cached == null) {
+                cached = new SpreadSheet(id.id, api);
+                CACHE.put(id.id, cached);
+            } else {
+                CACHE.put(id.id, cached); // Reset expiration
+            }
         }
-        if (id.tabId != null) {
-            cached.setDefaultTab(id.tabId);
-        } else if (id.tabName != null) {
-            cached.setDefaultTab(id.tabName, id.tabId);
-        } else {
-            cached.setDefaultTab("", null);
+        synchronized (cached) {
+            if (id.tabId != null) {
+                cached.setDefaultTab(id.tabId);
+            } else if (id.tabName != null) {
+                cached.setDefaultTab(id.tabName, id.tabId);
+            } else {
+                cached.setDefaultTab("", null);
+            }
         }
         return cached;
     }
-
     private static final String APPLICATION_NAME = "Spreadsheet";
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final String TOKENS_DIRECTORY_PATH = "config" + java.io.File.separator + "tokens";
@@ -674,11 +683,18 @@ public class SpreadSheet {
     }
 
     public void addRow(String tab, List<?> list) {
-        this.getCachedValues(tab).add(formatRow(tab, new ObjectArrayList<>(list)));
+        List<List<Object>> values = this.getCachedValues(tab);
+        synchronized (values) {
+            values.add(formatRow(tab, new ObjectArrayList<>(list)));
+        }
     }
 
     public String getDefaultTab() {
         return defaultTab;
+    }
+
+    public Integer getDefaultTabId() {
+        return defaultTabId;
     }
 
     public String getDefaultTab(boolean useFirstTabIfNone) {
@@ -703,15 +719,23 @@ public class SpreadSheet {
 
     public List<List<Object>> getCachedValues(String tab) {
         if (tab == null) tab = getDefaultTab();
-        return valuesByTab.computeIfAbsent(tab.toLowerCase(Locale.ROOT), k -> new ObjectArrayList<>());
+        synchronized (valuesByTab) {
+            return valuesByTab.computeIfAbsent(tab.toLowerCase(Locale.ROOT), k -> new ObjectArrayList<>());
+        }
     }
 
     public void addRow(List<?> row) {
-        this.getCachedValues(null).add(formatRow(null, row));
+        List<List<Object>> rows = this.getCachedValues(null);
+        synchronized (rows) {
+            rows.add(formatRow(null, row));
+        }
     }
 
     public void addRow(Object... values) {
-        this.getCachedValues(null).add(formatRow(null, Arrays.asList(values)));
+        List<List<Object>> rows = this.getCachedValues(null);
+        synchronized (rows) {
+            rows.add(formatRow(null, Arrays.asList(values)));
+        }
     }
 
     private List<Object> formatRow(String tab, List<?> row) {
@@ -722,8 +746,13 @@ public class SpreadSheet {
             } else {
                 String valueStr = value.toString();
                 if (valueStr.contains("{")) {
-                    valueStr = valueStr.replaceAll("[$]row", (getCachedValues(tab).size() + 1) + "");
-                    valueStr = valueStr.replaceAll("[$]column", SheetUtil.getLetter(getCachedValues(tab).size() + 1));
+                    List<List<Object>> rows = getCachedValues(tab);
+                    int size;
+                    synchronized (rows) {
+                        size = rows.size();
+                    }
+                    valueStr = valueStr.replaceAll("[$]row", (size + 1) + "");
+                    valueStr = valueStr.replaceAll("[$]column", SheetUtil.getLetter(size + 1));
                     out.add(valueStr);
                 } else {
                     out.add(value);
@@ -839,6 +868,7 @@ public class SpreadSheet {
             String tabName = entry.getKey();
             updateWrite(tabName);
         }
+        reset();
     }
 
     public void updateWrite(String tabName) throws IOException {
@@ -1193,27 +1223,29 @@ public class SpreadSheet {
     public Map<String, List<Object>> findColumn(int columnDefault2, Predicate<String> acceptName, boolean acceptMultiple) {
         if (valuesByTab.isEmpty()) throw new IllegalArgumentException("No values found. Was `loadValues` called?");
         List<List<Object>> values = getCachedValues(getDefaultTab(true));
-        if (values.isEmpty()) {
-            return null;
-        }
-
-        Map<String, Integer> columnIds = new LinkedHashMap<>();
-        Map<String, List<Object>> result = new LinkedHashMap<>();
-
-        List<Object> header = values.get(0);
-        outer:
-        for (int i = 0; i < header.size(); i++) {
-            Object obj = header.get(i);
-            if (obj == null) continue;
-            String objStr = obj.toString().toLowerCase(Locale.ROOT);
-            if (!acceptName.test(objStr)) continue;
-            columnIds.put(objStr, i);
-            if (!acceptMultiple) {
-                break;
+        synchronized (values) {
+            if (values.isEmpty()) {
+                return null;
             }
         }
-        if (columnIds.isEmpty() && columnDefault2 >= 0 && columnDefault2 < header.size()) {
-            columnIds.put(header.get(columnDefault2).toString().toLowerCase(Locale.ROOT), columnDefault2);
+        Map<String, Integer> columnIds = new LinkedHashMap<>();
+        Map<String, List<Object>> result = new LinkedHashMap<>();
+        synchronized (values) {
+            List<Object> header = values.get(0);
+            outer:
+            for (int i = 0; i < header.size(); i++) {
+                Object obj = header.get(i);
+                if (obj == null) continue;
+                String objStr = obj.toString().toLowerCase(Locale.ROOT);
+                if (!acceptName.test(objStr)) continue;
+                columnIds.put(objStr, i);
+                if (!acceptMultiple) {
+                    break;
+                }
+            }
+            if (columnIds.isEmpty() && columnDefault2 >= 0 && columnDefault2 < header.size()) {
+                columnIds.put(header.get(columnDefault2).toString().toLowerCase(Locale.ROOT), columnDefault2);
+            }
         }
         if (columnIds.isEmpty()) return null;
 

@@ -1,19 +1,23 @@
 package link.locutus.discord.util.update;
 
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DiscordMeta;
 import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
-import link.locutus.discord.apiv1.enums.Rank;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
@@ -21,12 +25,7 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
 
 import java.nio.ByteBuffer;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -86,7 +85,7 @@ public class LeavingBeigeAlert {
         return true;
     }
 
-    public static boolean testBeigeAlertAuto(DBNation attacker, DBNation target, double requiredLoot, NationMeta.BeigeAlertMode mode, Function<DBNation, Boolean> canRaid, Function<DBNation, Double> scoreLeewayFunc, Map<DBNation, Double> lootEstimateByNation, boolean throwError) {
+    public static boolean testBeigeAlertAuto(ValueStore store, DBNation attacker, DBNation target, double requiredLoot, NationMeta.BeigeAlertMode mode, Function<DBNation, Boolean> canRaid, Function<DBNation, Double> scoreLeewayFunc, Map<DBNation, Double> lootEstimateByNation, boolean throwError) {
         if (target.getVm_turns() > 0) {
             if (throwError) throw new IllegalArgumentException("Target is in vacation mode");
             return false;
@@ -107,7 +106,7 @@ public class LeavingBeigeAlert {
             return false;
         }
 
-        double loot = lootEstimateByNation.computeIfAbsent(target, DBNation::lootTotal);
+        double loot = lootEstimateByNation.computeIfAbsent(target, f -> f.lootTotal(store));
         if (requiredLoot > 0) {
             if (loot < requiredLoot) {
                 if (throwError) throw new IllegalArgumentException("Target is below the loot threshold ($" + MathMan.format(loot) + " < $" + MathMan.format(requiredLoot) + "). See: " + CM.alerts.beige.beigeAlertRequiredLoot.cmd.toSlashMention());
@@ -231,8 +230,8 @@ public class LeavingBeigeAlert {
     private void alertNations(long nextTurn, boolean update) {
         long nextTurnMs = TimeUtil.getTimeFromTurn(nextTurn);
 
-        Set<DBNation> leavingBeige = new HashSet<>();
-        Map<DBNation, Double> lootEstimateByNation = new HashMap<>();
+        Set<DBNation> leavingBeige = new ObjectOpenHashSet<>();
+        Map<DBNation, Double> lootEstimateByNation = new Object2DoubleOpenHashMap<>();
 
         Map<DBNation, Map<DBNation, Boolean>> nationTargets = new HashMap<>(); // boolean = is subscribed
         Map<DBNation, Double> scoreLeewayMap = new HashMap<>();
@@ -241,6 +240,7 @@ public class LeavingBeigeAlert {
             return buf == null ? 0 : buf.getDouble();
         });
 
+        Set<DBNation> targetNations = new ObjectOpenHashSet<>();
         Collection<DBNation> nations = Locutus.imp().getNationDB().getAllNations();
         for (DBNation target : nations) {
             if (!testBeigeAlert(target, false, true, true)) continue;
@@ -258,9 +258,12 @@ public class LeavingBeigeAlert {
                     if (!testBeigeAlert(db, target, attacker, scoreLeewayFunc, false, true, true, true)) continue;
 
                     nationTargets.computeIfAbsent(attacker, f -> new HashMap<>()).put(target, true);
+                    targetNations.add(target);
                 }
             }
         }
+
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(leavingBeige, DBNation.class);
 
         for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
             if (db.isWhitelisted() && db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS)) {
@@ -302,7 +305,7 @@ public class LeavingBeigeAlert {
                     }
 
                     for (DBNation target : leavingBeige) {
-                        if (testBeigeAlertAuto(attacker, target, requiredLoot, mode, canRaid, scoreLeewayFunc, lootEstimateByNation, false)) {
+                        if (testBeigeAlertAuto(cacheStore, attacker, target, requiredLoot, mode, canRaid, scoreLeewayFunc, lootEstimateByNation, false)) {
                             nationTargets.computeIfAbsent(attacker, f -> new HashMap<>()).putIfAbsent(target, false);
                         }
                     }
@@ -339,7 +342,7 @@ public class LeavingBeigeAlert {
                     for (Map.Entry<DBNation, Boolean> targetEntry : myTargets.entrySet()) {
                         DBNation target = targetEntry.getKey();
 
-                        double loot = lootEstimateByNation.computeIfAbsent(target, DBNation::lootTotal);
+                        double loot = lootEstimateByNation.computeIfAbsent(target, f -> f.lootTotal(cacheStore));
                         String title = "Target: " + target.getNation() + ": Worth ~$" + MathMan.format(loot);
                         String body = target.toMarkdown(true, true, true, true, true, false);
 

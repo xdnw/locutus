@@ -2,14 +2,14 @@ package link.locutus.discord.commands.external.guild;
 
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.Command;
+import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.war.WarCatReason;
 import link.locutus.discord.commands.war.WarCategory;
-import link.locutus.discord.commands.manager.Command;
-import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.war.WarRoom;
 import link.locutus.discord.commands.war.WarRoomUtil;
 import link.locutus.discord.db.GuildDB;
@@ -23,12 +23,14 @@ import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.StandardGuildMessageChannel;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class WarRoomCmd extends Command {

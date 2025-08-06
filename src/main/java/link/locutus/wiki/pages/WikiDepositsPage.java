@@ -56,6 +56,8 @@ public class WikiDepositsPage extends BotWikiGen {
                 "These notes are used in addition to a primary note, and usually have a value",
                 "- " + Arrays.stream(DepositType.values()).filter(f -> f.getParent() != null).map(f -> "`#" + f.getParent().toString().toLowerCase(Locale.ROOT) +" #" + f.toString().toLowerCase(Locale.ROOT) + "`: " + f.getWikiDesc()).collect(Collectors.joining("\n- ")),
                 // ensure expire is listed and explained
+                "## Excluding expiring/decaying grants from deposits",
+                commandMarkdownSpoiler(CM.settings_bank_access.WITHDRAW_IGNORES_EXPIRE.cmd),
                 "## Tracking alliances",
                 "__This applies for guilds with a registed alliance__",
                 commandMarkdownSpoiler(CM.settings_default.registerAlliance.cmd),

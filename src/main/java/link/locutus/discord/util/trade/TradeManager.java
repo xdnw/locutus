@@ -1,5 +1,6 @@
 package link.locutus.discord.util.trade;
 
+import com.google.common.base.Predicates;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -58,7 +59,7 @@ public class TradeManager {
     private double[] lowAvg;
 
     private double[] gameAvg;
-    private long gameAvgUpdated = 0;
+    private long gameAvgUpdated = -1;
     private final TradeDB tradeDb;
 
     private Map<Integer, DBTrade> activeTradesById = new ConcurrentHashMap<>();
@@ -79,6 +80,17 @@ public class TradeManager {
     public double getGamePrice(ResourceType type) {
         if (type == ResourceType.MONEY) return 1;
         long turn = TimeUtil.getTurn();
+        if (gameAvgUpdated == -1) {
+            synchronized (this) {
+                gameAvgUpdated = 0;
+                Map.Entry<double[], Long> gameAverages = tradeDb.loadGameAverages();
+                if (gameAverages != null) {
+                    gameAvg = gameAverages.getKey();
+                    gameAvgUpdated = gameAverages.getValue();
+                }
+            }
+        }
+
         if (gameAvg == null || (gameAvgUpdated < turn)) {
             synchronized (this) {
                 if (gameAvg == null || (gameAvgUpdated < turn)) {
@@ -103,6 +115,8 @@ public class TradeManager {
 
                         gameAvgUpdated = turn;
                         gameAvg = tmp;
+
+                        tradeDb.saveGameAverages(tmp, gameAvgUpdated);
                     } catch (Exception e) {
                         e.printStackTrace();
                         return switch (type) {
@@ -125,6 +139,16 @@ public class TradeManager {
             }
         }
         return gameAvg[type.ordinal()];
+    }
+
+    public double getGamePrice(double[] resources) {
+        double total = 0;
+        for (ResourceType type : ResourceType.values) {
+            double amt = resources[type.ordinal()];
+            if (amt == 0) continue;
+            total += amt * getGamePrice(type);
+        }
+        return total;
     }
 
     public Set<TradeDB.BulkTradeOffer> getBulkOffers(ResourceType type, Predicate<TradeDB.BulkTradeOffer> filter) {
@@ -382,6 +406,13 @@ public class TradeManager {
         });
     }
 
+    public static boolean isValidPPU(ResourceType type, int price) {
+        if (type == ResourceType.FOOD) {
+            return (price > 20 && price <= 500);
+        }
+        return price > 500 && price < 10000;
+    }
+
     public Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> getAverage(List<DBTrade> trades, Function<ResourceType, Integer> minF, Function<ResourceType, Integer> maxF) {
         long[][] ppuHigh = new long[ResourceType.values.length][];
         long[][] ppuLow = new long[ResourceType.values.length][];
@@ -408,8 +439,7 @@ public class TradeManager {
 
         for (DBTrade offer : trades) {
             ResourceType type = offer.getResource();
-            int factor = type == ResourceType.FOOD ? 1 : 25;
-            if (offer.getPpu() <= 20 * factor || offer.getPpu() > (type == ResourceType.FOOD ? 500 : 10000)) {
+            if (!isValidPPU(type, offer.getPpu())) {
                 continue;
             }
             long[] ppuArr;
@@ -629,7 +659,7 @@ public class TradeManager {
 //
 //                    for (int i = 0; i < totals.size(); i++) {
 //                        long volume = Long.parseLong(totals.get(i).getAsString());
-//                        long date = TimeUtil.YYYY_MM_DD_HH_MM_SS.parse(dates.get(i).getAsString()).getTime();
+//                        long date = TimeUtil.parseDate(TimeUtil.YYYY_MM_DD_HH_MM_SS, dates.get(i).getAsString());
 //                        result.put(date, volume);
 //                    }
 //
@@ -748,7 +778,7 @@ public class TradeManager {
             List<Trade> fetched = new ArrayList<>();
 
             if (fetchNewTradesNextTick) {
-                List<Trade> trades = api.fetchTradesWithInfo(f -> f.setMin_id(latestId + 1), f -> true);
+                List<Trade> trades = api.fetchTradesWithInfo(f -> f.setMin_id(latestId + 1), Predicates.alwaysTrue());
                 fetched.addAll(trades);
 
                 fetchedNewTrades = true;
@@ -769,7 +799,7 @@ public class TradeManager {
                 api.iterateIdChunks(idsToFetch, 999, new Consumer<List<Integer>>() {
                     @Override
                     public void accept(List<Integer> integers) {
-                        List<Trade> trades = api.fetchTradesWithInfo(f -> f.setId(integers), f -> true);
+                        List<Trade> trades = api.fetchTradesWithInfo(f -> f.setId(integers), Predicates.alwaysTrue());
                         fetched.addAll(trades);
                     }
                 });
@@ -1085,7 +1115,7 @@ public class TradeManager {
 
     public boolean isTradeOutsideNormPrice(int ppu, ResourceType resource) {
         if (resource != link.locutus.discord.apiv1.enums.ResourceType.CREDITS) {
-            if (resource != ResourceType.FOOD) {
+            if (resource != link.locutus.discord.apiv1.enums.ResourceType.FOOD) {
                 return ppu < 700 || ppu > 8000;
             } else {
                 return ppu < 50 || ppu > 800;

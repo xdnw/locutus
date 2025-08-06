@@ -76,11 +76,12 @@ public class CtownedFetcher {
         }
     }
 
-    private void loadCtownedConflict(GuildDB db, boolean useCache, String cellUrl, ConflictCategory category, String conflictName, Date startDate, Date endDate, Consumer<String> output) throws IOException {
+    private void loadCtownedConflict(GuildDB db, boolean useCache, String cellUrl, ConflictCategory category, String conflictName, Long startMs, Long endMs, Consumer<String> output) throws IOException {
         String conflictHtml = getCtoConflict(cellUrl, conflictName, useCache);
 
-        long startMs = startDate.getTime();
-        long endMs = endDate == null ? Long.MAX_VALUE : endDate.getTime() + TimeUnit.DAYS.toMillis(1);
+        if (startMs == null) startMs = 0L;
+        if (endMs == null) endMs = Long.MAX_VALUE;
+        else endMs += TimeUnit.DAYS.toMillis(1);
 
         Document conflictDom = Jsoup.parse(conflictHtml);
         Elements elements = conflictDom.select("span[data-toggle=tooltip]");
@@ -125,9 +126,10 @@ public class CtownedFetcher {
         if (!unknown.isEmpty()) {
             throw new IllegalArgumentException("Unknown alliances: " + unknown.stream().collect(Collectors.joining(", ")));
         }
-        Set<Integer> col1Ids = coalition1Names.stream().map(f -> manager.getAllianceId(f, startMs, true)).filter(Objects::nonNull).collect(Collectors.toSet());
-        Set<Integer> col2Ids = coalition2Names.stream().map(f -> manager.getAllianceId(f, startMs, true)).filter(Objects::nonNull).collect(Collectors.toSet());
-        output.accept("Adding conflict: " + conflictName + " | " + startDate + "|  " + endDate + "\n" +
+        Long finalStartMs = startMs;
+        Set<Integer> col1Ids = coalition1Names.stream().map(f -> manager.getAllianceId(f, finalStartMs, true)).filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<Integer> col2Ids = coalition2Names.stream().map(f -> manager.getAllianceId(f, finalStartMs, true)).filter(Objects::nonNull).collect(Collectors.toSet());
+        output.accept("Adding conflict: " + conflictName + " | " + startMs + "|  " + endMs + "\n" +
                 "- Col1: " + coalition1Names + "\n" +
                 "- Col2: " + coalition2Names);
         boolean isOverLap = col1Ids.stream().anyMatch(col2Ids::contains);
@@ -188,8 +190,8 @@ public class CtownedFetcher {
 
             String startDateStr = row.select("td").get(6).text();
             String endDateStr = row.select("td").get(7).text();
-            Date startDate = TimeUtil.YYYY_MM_DD_FORMAT.parse(startDateStr);
-            Date endDate = endDateStr.contains("Ongoing") ? null : TimeUtil.YYYY_MM_DD_FORMAT.parse(endDateStr);
+            long startDate = TimeUtil.parseDate(TimeUtil.YYYY_MM_DD_FORMAT, startDateStr);
+            Long endDate = endDateStr.contains("Ongoing") ? null : TimeUtil.parseDate(TimeUtil.YYYY_MM_DD_FORMAT, endDateStr);
             if (filter.test(conflictName)) {
                 loadCtownedConflict(db, useCache, cellUrl, category, conflictName, startDate, endDate, warnings::add);
             }

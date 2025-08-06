@@ -32,10 +32,6 @@ public class DayColumn<P> extends NumberColumn<P, Long> {
 
     @Override
     public Long read(String string) {
-        try {
-            return TimeUtil.YYYY_MM_DD_FORMAT.parse(string).getTime();
-        } catch (ParseException e) {
-            throw new RuntimeException(e);
-        }
+        return TimeUtil.parseDate(TimeUtil.YYYY_MM_DD_FORMAT, string);
     }
 }

@@ -1,6 +1,8 @@
 package link.locutus.discord.apiv1.enums;
 
 import com.politicsandwar.graphql.model.Color;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -8,8 +10,11 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationList;
+import link.locutus.discord.util.TimeUtil;
 
+import java.util.Collections;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 public enum  NationColor implements NationList {
@@ -35,8 +40,6 @@ public enum  NationColor implements NationList {
     GOLD
 
     ;
-
-    public static final int COLOR_REVENUE_CAP = 175_000;
 
     public static final NationColor[] values = values();
     private int turnBonus;
@@ -67,18 +70,134 @@ public enum  NationColor implements NationList {
         return this != GRAY && this != BEIGE;
     }
 
-    public int getTurnBonus(Set<DBNation> nationsOnColor, boolean cap) {
-        if (this == GRAY) return 0;
-        if (this == BEIGE) return getTurnBonus();
-        double totalRev = 0;
+    private static int COLOR_REVENUE_CAP = -1;
+    private static long COLOR_REVENUE_CAP_TURN = -1;
+
+    public static int getColorRevenueCap() {
+        long turn = TimeUtil.getTurn();
+        if (turn == COLOR_REVENUE_CAP_TURN && COLOR_REVENUE_CAP != -1) {
+            return COLOR_REVENUE_CAP;
+        }
+
+        Map<NationColor, Set<DBNation>> nationsByColor = getNationsByColor();
+        RevenueCapInfo valueInfo = calculateColorRevenueCap(nationsByColor);
+        COLOR_REVENUE_CAP_TURN = turn;
+        COLOR_REVENUE_CAP = valueInfo.cap();
+        return COLOR_REVENUE_CAP;
+    }
+
+    public static Map<NationColor, Set<DBNation>> getNationsByColor() {
+        Map<NationColor, Set<DBNation>> nationsByColor = new Object2ObjectOpenHashMap<>();
+        for (DBNation nation : Locutus.imp().getNationDB().getNationsMatching(f -> f.getAlliance_id() != 0 && f.getVm_turns() == 0)) {
+            NationColor color = nation.getColor();
+            nationsByColor.computeIfAbsent(color, _ -> new ObjectOpenHashSet<>()).add(nation);
+        }
+        return nationsByColor;
+    }
+
+    public static record RevenueCapInfo(double aggregateRevenue, int nations, double averageRevenue, int cap) {}
+
+    public static RevenueCapInfo calculateColorRevenueCap(Map<NationColor, Set<DBNation>> nationsByColor) {
+        double revenueTotal = 0;
+        int totalNations = 0;
+        for (Map.Entry<NationColor, Set<DBNation>> entry : nationsByColor.entrySet()) {
+            NationColor color = entry.getKey();
+            Set<DBNation> nationsOnColor = entry.getValue();
+            if (color == GRAY || color == BEIGE) continue;
+
+            for (DBNation nation : nationsOnColor) {
+                if (nation.getAlliance_id() == 0 || nation.getVm_turns() > 0) continue;
+                double[] revenue = nation.getRevenue();
+                double dnr = Locutus.imp().getTradeManager().getGamePrice(revenue);
+                revenueTotal += dnr;
+                totalNations++;
+            }
+        }
+        double averageDNR = revenueTotal / totalNations;
+        double colorRevenueCap = Math.round(averageDNR * 18d / totalNations);
+        int cap = Math.toIntExact(Math.round(colorRevenueCap));
+        return new RevenueCapInfo(revenueTotal, totalNations, averageDNR, cap);
+    }
+
+    public static int countNationsLessThanC21(Map<NationColor, Set<DBNation>> nationsByColor) {
+        int totalNationsLessThanC21 = 0;
+        for (Map.Entry<NationColor, Set<DBNation>> entry : nationsByColor.entrySet()) {
+            NationColor color = entry.getKey();
+            if (color == GRAY || color == BEIGE) continue;
+            Set<DBNation> nations = entry.getValue();
+            for (DBNation nation : nations) {
+                if (nation.getAlliance_id() == 0 || nation.getVm_turns() > 0) continue;
+                if (nation.getCities() < 21) {
+                    totalNationsLessThanC21++;
+                }
+            }
+        }
+        return totalNationsLessThanC21;
+    }
+
+    public static record TurnBonusInfo(int nations, int nationsBelowC21, double aggregateDNR, double averageDNR, int growthTurnBonus, int growthTurnBonusUncapped, int recruitTurnBonus, int totalTurnBonus) {};
+
+    /**
+     * Calculates the turn bonus for a color based on the nations on that color.
+     * Note: growth bonus is left uncapped
+     * @param nationsByColor
+     * @param newTurnBonusCap
+     * @param totalNationsLessThanC21
+     * @return entry(growthTurnBonus, recruitTurnBonus)
+     */
+    public TurnBonusInfo getTurnBonus(Map<NationColor, Set<DBNation>> nationsByColor, int newTurnBonusCap, int totalNationsLessThanC21) {
+        Set<DBNation> nationsOnColor = nationsByColor.getOrDefault(this, Collections.emptySet());
+        int nationsOnColorCount = 0;
+        int totalNationsLessThanC21OnColor = 0;
+        double totalDNROfColor = 0;
         for (DBNation nation : nationsOnColor) {
-            totalRev += ResourceType.convertedTotal(nation.getRevenue()) / 12d;
+            if (nation.getAlliance_id() == 0 || nation.getVm_turns() > 0) continue;
+            double[] revenue = nation.getRevenue();
+            double dnr = Locutus.imp().getTradeManager().getGamePrice(revenue);
+            totalDNROfColor += dnr;
+            nationsOnColorCount++;
+
+            if (nation.getCities() < 21) {
+                totalNationsLessThanC21OnColor++;
+            }
         }
-        double colorRev = Math.round((totalRev / Math.pow(nationsOnColor.size(), 2)));
-        if (cap) {
-            colorRev = Math.max(0, Math.min(COLOR_REVENUE_CAP, colorRev));
+        double averageDMROfColor = totalDNROfColor / nationsOnColorCount;
+
+        if (this == GRAY) {
+            // growth and recruit bonuses are 0
+            return new TurnBonusInfo(
+                    nationsOnColorCount,
+                    totalNationsLessThanC21OnColor,
+                    totalDNROfColor,
+                    averageDMROfColor,
+                    0,
+                    0,
+                    0,
+                    0
+            );
         }
-        return (int) Math.round(colorRev);
+        double growthTurnBonus;
+        double recruitTurnBonus;
+        if (this == BEIGE) {
+            growthTurnBonus = getTurnBonus();
+            recruitTurnBonus = 0;
+        } else {
+            growthTurnBonus = (averageDMROfColor * 0.75d / nationsOnColorCount);
+            recruitTurnBonus = Math.min(
+                    (totalNationsLessThanC21OnColor * 10d / totalNationsLessThanC21),
+                    1d
+            ) * newTurnBonusCap;
+        }
+        return new TurnBonusInfo(
+                nationsOnColorCount,
+                totalNationsLessThanC21OnColor,
+                totalDNROfColor,
+                averageDMROfColor,
+                Math.toIntExact(Math.round(growthTurnBonus)),
+                Math.toIntExact(Math.round(growthTurnBonus)),
+                Math.toIntExact(Math.round(recruitTurnBonus)),
+                Math.toIntExact(Math.round(growthTurnBonus + recruitTurnBonus))
+        );
     }
 
     public void setTurnBonus(int amt) {

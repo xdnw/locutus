@@ -14,14 +14,13 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
+import org.jgrapht.alg.util.Pair;
 
 import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.ref.SoftReference;
 import java.nio.file.Files;
-import java.text.ParseException;
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -42,6 +41,14 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
     private final Supplier<H> createHeader;
     private volatile H globalHeader;
 
+    public File getCsvFile() {
+        return csvFile;
+    }
+
+    public File getBinFile() {
+        return binFile;
+    }
+
     public static boolean isValidName(File file, String requirePrefix) {
         String[] split = file.getName().split("\\.", 2);
         if (split.length != 2) return false;
@@ -51,16 +58,6 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
         if (split2.length != 4) return false;
         if (!split2[0].equals(requirePrefix)) return false;
         return MathMan.isInteger(split2[1]) && MathMan.isInteger(split2[2]) && MathMan.isInteger(split2[3]);
-    }
-
-    public synchronized byte[] getBytes() throws IOException {
-        byte[] decompressed = cachedBytes.get();
-        if (decompressed == null) {
-            File binFile = getCompressedFile(true, false);
-            decompressed = ArrayUtil.decompressLZ4(Files.readAllBytes(binFile.toPath()));
-            cachedBytes = new SoftReference<>(decompressed);
-        }
-        return decompressed;
     }
 
     public static class Header<T> {
@@ -88,11 +85,7 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
 
     public static long parseDateFromFile(String fileName) {
         String dateStr = fileName.replace("nations-", "").replace("cities-", "").replace(".csv", "").replace(".bin", "");
-        try {
-            return TimeUtil.YYYY_MM_DD_FORMAT.parse(dateStr).toInstant().toEpochMilli();
-        } catch (ParseException e) {
-            throw new RuntimeException(e);
-        }
+        return TimeUtil.parseDate(TimeUtil.YYYY_MM_DD_FORMAT, dateStr);
     }
 
     public long getDate() {
@@ -114,7 +107,7 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
         return globalHeader;
     }
 
-    private void readAllCsv(File file, ThrowingBiConsumer<List<String>, CloseableIterator<CsvRow>> onEach) throws IOException {
+    private static void readAllCsv(File file, ThrowingBiConsumer<List<String>, CloseableIterator<CsvRow>> onEach) throws IOException {
         try (CsvReader reader = CsvReader.builder().fieldSeparator(',').quoteCharacter('"').build(file.toPath())) {
             try (CloseableIterator<CsvRow> iter = reader.iterator()) {
                 CsvRow header = iter.next();
@@ -126,16 +119,29 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
         }
     }
 
-    public File getCompressedFile(boolean create, boolean deleteCsv) throws IOException {
+    public synchronized byte[] getBytes() throws IOException {
+        byte[] decompressed = cachedBytes.get();
+        if (decompressed == null) {
+            Pair<File, byte[]> binFilePair = getCompressedFile(true, false);
+            decompressed = binFilePair.getSecond();
+            if (decompressed == null) {
+                decompressed = ArrayUtil.decompressLZ4(Files.readAllBytes(binFile.toPath()));
+            }
+            cachedBytes = new SoftReference<>(decompressed);
+        }
+        return decompressed;
+    }
+
+    public Pair<File, byte[]> getCompressedFile(boolean create, boolean deleteCsv) throws IOException {
         if (binExists) {
-            return binFile;
+            return Pair.of(binFile, null);
         }
         if (binFile.exists()) {
             binExists = true;
             if (deleteCsv) {
                 csvFile.deleteOnExit();
             }
-            return binFile;
+            return Pair.of(binFile, null);
         }
         if (!create) return null;
         if (!csvExists) {
@@ -143,13 +149,18 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
         }
 
         synchronized (this) {
+            if (binExists) {
+                return Pair.of(binFile, null);
+            }
             H parent = createHeader.get();
             Map<String, String> aliases = parent.getAliases();
             Map<String, ColumnInfo<T, Object>> headers = parent.createHeaders();
 
+            byte[][] output = new byte[1][];
             readAllCsv(csvFile, (csvHeader, rows) -> {
                 List<ColumnInfo<T, Object>> columnsInCsv = new ObjectArrayList<>();
 
+                int numWithIndex = 0;
                 for (int i = 0; i < csvHeader.size(); i++) {
                     String header = csvHeader.get(i);
                     ColumnInfo<T, Object> column = headers.get(header);
@@ -162,6 +173,7 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
                         continue;
                     }
                     if (column != null) {
+                        numWithIndex++;
                         column.setIndex(i, 0);
                         columnsInCsv.add(column);
                     } else {
@@ -175,6 +187,14 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
                     writeOrder.removeIf(f -> !present.contains(f));
                 }
 
+                {
+                    int expected = columnsInCsv.size();
+                    if (numWithIndex != expected) {
+                        throw new IllegalStateException("Expected " + expected + " columns with index, but found " + numWithIndex + " in file: " + csvFile.getName());
+                    }
+                }
+
+                int numRows = 0;
                 FastByteArrayOutputStream baos = new FastByteArrayOutputStream();
                 try (DataOutputStream dos = new DataOutputStream(baos)) {
                     dos.writeInt(headers.size());
@@ -183,13 +203,19 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
                     }
                     List<List<Object>> all = new ObjectArrayList<>();
                     while (rows.hasNext()) {
+                        numRows++;
                         CsvRow csvRow = rows.next();
                         ObjectArrayList<Object> rowData = new ObjectArrayList<>(columnsInCsv.size());
                         for (ColumnInfo<T, Object> column : columnsInCsv) {
                             String cell = csvRow.getField(column.getIndex());
-                            Object value = column.read(cell);
+                            Object value;
+                            try {
+                                value = column.read(cell);
+                            } catch (RuntimeException e) {
+                                System.err.println("Error reading column `" + column.getName() + "/" + column.getIndex() + "` in row " + (all.size() + 1) + ": " + cell + " in file: " + csvFile.getName());
+                                throw e;
+                            }
                             rowData.add(value);
-
                         }
                         all.add(rowData);
                     }
@@ -200,58 +226,42 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
                         }
                     }
                 }
+                baos.close(); // Unnecessary since it doesn't implement any close logic, but good practice
 
                 baos.trim();
-                byte[] compressed = ArrayUtil.compressLZ4(baos.array);
-                try (FileOutputStream fos = new FileOutputStream(binFile)) {
-                    fos.write(compressed);
+                {
+                    if (baos.array.length != baos.length) {
+                        throw new IllegalStateException("Byte array length mismatch in file: " + csvFile.getName() + " (expected: " + baos.length + ", actual: " + baos.array.length + ")");
+                    }
+                    int headerSize = 4 + headers.size() + 4;
+                    int rowSize = columnsInCsv.stream().map(ColumnInfo::getBytes).reduce(0, Integer::sum);
+                    int expectedSize = headerSize + (numRows * rowSize);
+                    int remainder = (baos.length - expectedSize) % rowSize;
+                    if (baos.length != expectedSize) {
+                        throw new IllegalStateException("Expected " + expectedSize + " bytes, but got " + baos.length + " in file: " + csvFile.getName() + " (diff: " + (expectedSize - baos.length) + ")");
+                    }
+                    {
+                        System.out.println("Created binary file: " + binFile.getName() + " remainder: " + remainder + " bytes per row: " +  + rowSize + " | columns: " + columnsInCsv.size() + "/" + headers.size() + " | uncompressed size: " + baos.array.length);
+                    }
                 }
+                byte[] compressed = ArrayUtil.compressLZ4(baos.array, baos.length);
+                Files.write(binFile.toPath(), compressed);
+                output[0] = baos.array;
             });
             parent.getDictionary().save();
+            binExists = true;
+            if (deleteCsv) {
+                csvFile.deleteOnExit();
+            }
+            return Pair.of(binFile, output[0]);
         }
-        binExists = true;
-        if (deleteCsv) {
-            csvFile.deleteOnExit();
-        }
-        return binFile;
     }
-
-//    public void testCsv() throws IOException {
-//        readAllCsv(csvFile, (csvHeader, row) -> {
-//            while (row.hasNext()) {
-//                CsvRow csvRow = row.next();
-//            }
-//        });
-//    }
-//
-//    public void testRead() throws IOException {
-//        File file = getCompressedFile(true, false);
-//        byte[] decompressed = ArrayUtil.decompressLZ4(Files.readAllBytes(file.toPath()));
-//
-//        // read with gzip, ignore all data
-//        int fileSize = 524288;
-//        try (DataInputStream dis = new DataInputStream(new LZ4BlockInputStream(new FastBufferedInputStream(new FileInputStream(file), fileSize)))) {
-//            // skip all
-//            ObjectArrayList<ColumnInfo<T, Object>> allColumns = new ObjectArrayList<>(headers.values());
-//            int rowBytes = 0;
-//            int size = dis.readInt();
-//            for (int i = 0; i < size; i++) {
-//                boolean hasIndex = dis.readBoolean();
-//                if (hasIndex) {
-//                    ColumnInfo<T, Object> column = allColumns.get(i);
-//                    rowBytes += column.getBytes();
-//                }
-//            }
-//            int numLines = IOUtil.readVarInt(dis);
-//            for (int i = 0; i < numLines; i++) {
-//                dis.skipBytes(rowBytes);
-//            }
-//        }
-//    }
 
     public class Builder {
         private final H header;
         private final Map<String, ColumnInfo<T, Object>> headers;
+        private final List<ColumnInfo<T, Object>> requiredColumns = new ObjectArrayList<>();
+        private final List<ColumnInfo<T, Object>> optionalColumns = new ObjectArrayList<>();
 
         public Builder() {
             this.header = createHeader.get();
@@ -266,21 +276,24 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
             return headers;
         }
 
-        List<ColumnInfo<T, Object>> requiredColumns = new ObjectArrayList<>();
-        List<ColumnInfo<T, Object>> optionalColumns = new ObjectArrayList<>();
-
         public Builder all(boolean includeNonData) {
-            optionalColumns.addAll(headers.values().stream().filter(f -> includeNonData || !f.isAlwaysSkip()).toList());
+            synchronized (headers) {
+                optionalColumns.addAll(headers.values().stream().filter(f -> includeNonData || !f.isAlwaysSkip()).toList());
+            }
             return this;
         }
 
         public Builder required(Function<H, List<ColumnInfo>> columns) {
-            columns.apply(header).forEach(requiredColumns::add);
+            synchronized (headers) {
+                columns.apply(header).forEach(requiredColumns::add);
+            }
             return this;
         }
 
         public Builder optional(Function<H, List<ColumnInfo>> columns) {
-            columns.apply(header).forEach(optionalColumns::add);
+            synchronized (headers) {
+                columns.apply(header).forEach(optionalColumns::add);
+            }
             return this;
         }
 
@@ -292,12 +305,14 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
         }
 
         public Builder required(String... names) {
-            for (String name : names) {
-                ColumnInfo<T, Object> column = headers.get(name);
-                if (column == null) {
-                    throw new IllegalArgumentException("Unknown header: `" + name + "` in " + filePart);
+            synchronized (headers) {
+                for (String name : names) {
+                    ColumnInfo<T, Object> column = headers.get(name);
+                    if (column == null) {
+                        throw new IllegalArgumentException("Unknown header: `" + name + "` in " + filePart);
+                    }
+                    requiredColumns.add(column);
                 }
-                requiredColumns.add(column);
             }
             return this;
         }
@@ -321,39 +336,51 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
         }
 
         public void read(Consumer<R> onEachRow) throws IOException {
-            synchronized (DataFile.this) {
-                R reader = createReader.apply(header, date);
-                byte[] decompressed = getBytes();
-                Header<T> colInfo = header.readIndexes(decompressed);
-
-                Set<ColumnInfo<T, Object>> presetAndSpecified = new ObjectLinkedOpenHashSet<>();
-                for (ColumnInfo<T, Object> column : requiredColumns) {
-                    if (column.getIndex() == -1) {
-                        throw new IllegalArgumentException("Required column `" + column.getName() + "` is missing in " + filePart);
+            try {
+                synchronized (DataFile.this) {
+                    R reader = createReader.apply(header, date);
+                    byte[] decompressed = getBytes();
+                    Header<T> colInfo = header.readIndexes(decompressed);
+                    int bytesOffset = colInfo.initialOffset; // initial offset + header size + number of rows
+                    int remainder = (decompressed.length - bytesOffset) % colInfo.bytesPerRow;
+                    if (remainder != 0) {
+                        throw new IllegalStateException("Data file " + filePart + " has a remainder of " + remainder + " bytes, expected multiple of " + colInfo.bytesPerRow + " | Num columns " + colInfo.headers.length + " | Bytes per row " + colInfo.bytesPerRow + " | Total bytes " + decompressed.length);
+                    } else {
+                        // print same info but no error
+//                        System.out.println("Success: Data file " + filePart + " has no remainder, expected multiple of " + colInfo.bytesPerRow + " | Num columns " + colInfo.headers.length + " | Bytes per row " + colInfo.bytesPerRow + " | Total bytes " + decompressed.length);
                     }
-                    presetAndSpecified.add(column);
-                }
-                for (ColumnInfo<T, Object> column : optionalColumns) {
-                    if (column.getIndex() != -1) {
+
+                    Set<ColumnInfo<T, Object>> presetAndSpecified = new ObjectLinkedOpenHashSet<>();
+                    for (ColumnInfo<T, Object> column : requiredColumns) {
+                        if (column.getIndex() == -1) {
+                            throw new IllegalArgumentException("Required column `" + column.getName() + "` is missing in " + filePart);
+                        }
                         presetAndSpecified.add(column);
                     }
-                }
-                ColumnInfo<T, Object>[] shouldRead = presetAndSpecified.toArray(new ColumnInfo[0]);
-                Arrays.sort(shouldRead, Comparator.comparingInt(ColumnInfo::getIndex));
-
-
-                int index = colInfo.initialOffset;
-                int rowBytes = colInfo.bytesPerRow;
-                int numLines = colInfo.numLines;
-
-                for (int i = 0; i < numLines; i++) {
-                    header.setOffset(index);
-                    for (ColumnInfo<T, Object> column : shouldRead) {
-                        column.setCachedValue(column.read(decompressed, index + column.getOffset()));
+                    for (ColumnInfo<T, Object> column : optionalColumns) {
+                        if (column.getIndex() != -1) {
+                            presetAndSpecified.add(column);
+                        }
                     }
-                    onEachRow.accept(reader);
-                    index += rowBytes;
+                    ColumnInfo<T, Object>[] shouldRead = presetAndSpecified.toArray(new ColumnInfo[0]);
+                    Arrays.sort(shouldRead, Comparator.comparingInt(ColumnInfo::getIndex));
+
+
+                    int index = colInfo.initialOffset;
+                    int rowBytes = colInfo.bytesPerRow;
+                    int numLines = colInfo.numLines;
+
+                    for (int i = 0; i < numLines; i++) {
+                        header.setOffset(index);
+                        for (ColumnInfo<T, Object> column : shouldRead) {
+                            column.setCachedValue(column.read(decompressed, index + column.getOffset()));
+                        }
+                        onEachRow.accept(reader);
+                        index += rowBytes;
+                    }
                 }
+            } catch (IllegalStateException e) {
+                throw new RuntimeException(filePart + ": " + e.getMessage(), e);
             }
         }
     }

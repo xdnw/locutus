@@ -200,6 +200,11 @@ public class NationCommands {
         }
 
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="daysSinceCreationNotLoggedIn")
+        public static class daysSinceCreationNotLoggedIn extends CommandRef {
+            public static final daysSinceCreationNotLoggedIn cmd = new daysSinceCreationNotLoggedIn();
+
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="daysSinceLastAircraftBuy")
         public static class daysSinceLastAircraftBuy extends CommandRef {
             public static final daysSinceLastAircraftBuy cmd = new daysSinceLastAircraftBuy();
@@ -1002,6 +1007,11 @@ public class NationCommands {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getNumResearch")
         public static class getNumResearch extends CommandRef {
             public static final getNumResearch cmd = new getNumResearch();
+
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getNumTreasures")
+        public static class getNumTreasures extends CommandRef {
+            public static final getNumTreasures cmd = new getNumTreasures();
 
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getNumWars")

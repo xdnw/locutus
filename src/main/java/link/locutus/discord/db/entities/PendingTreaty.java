@@ -39,7 +39,7 @@ public class PendingTreaty extends Treaty {
     }
 
     private static long parseDate(Element date) throws ParseException {
-        return TimeUtil.F_YYYY_MM_DD.parse(date.text()).getTime();
+        return TimeUtil.parseDate(TimeUtil.F_YYYY_MM_DD, date.text());
     }
 
     private static TreatyType parseType(Element type) {

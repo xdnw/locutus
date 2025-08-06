@@ -425,7 +425,7 @@ public class IndexPages extends PageHelper {
                 e.printStackTrace();
             }
         }
-        double[] deposits = nation.getNetDeposits(db, -1L, true);
+        double[] deposits = nation.getNetDeposits(null, db, -1L, true);
 
         List<Announcement.PlayerAnnouncement> announcements = db.getPlayerAnnouncementsByNation(nation.getNation_id(), true);
 

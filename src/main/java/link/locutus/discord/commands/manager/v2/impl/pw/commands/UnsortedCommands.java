@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.google.common.base.Predicates;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import it.unimi.dsi.fastutil.ints.Int2BooleanOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
@@ -11,16 +12,19 @@ import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
-import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.DepositType;
-import link.locutus.discord.apiv1.enums.EscrowMode;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
+import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.info.optimal.OptimalBuild;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
+import link.locutus.discord.commands.manager.v2.builder.NumericGroupRankBuilder;
+import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
+import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -28,30 +32,13 @@ import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.*;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
-import link.locutus.discord.commands.manager.v2.builder.NumericGroupRankBuilder;
-import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
-import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.AddBalanceBuilder;
-import link.locutus.discord.db.entities.AllianceChange;
-import link.locutus.discord.db.entities.AttackCost;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBAlliancePosition;
-import link.locutus.discord.db.entities.DBCity;
-import link.locutus.discord.db.entities.DBTrade;
-import link.locutus.discord.db.entities.DBTreasure;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.db.entities.TaxBracket;
-import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.WarParser;
+import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.announce.AnnounceType;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
@@ -59,12 +46,7 @@ import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.pnw.*;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
@@ -74,11 +56,6 @@ import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.offshore.test.IAChannel;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.apiv1.enums.Continent;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.util.task.mail.MailApiResponse;
@@ -432,7 +409,7 @@ public class UnsortedCommands {
             header.add("" + bracket.getAlliance_id());
             header.add("" + bracket.getNations().size());
 
-            Map<DepositType, double[]> depositsByCat = db.getTaxBracketDeposits(bracket.getId(), 0L, false, false);
+            Map<DepositType, double[]> depositsByCat = db.getTaxBracketDeposits(bracket.getId(), 0L, Long.MAX_VALUE, false, false);
             double[] tax = depositsByCat.getOrDefault(DepositType.TAX, ResourceType.getBuffer());
             double[] deposits = depositsByCat.getOrDefault(DepositType.DEPOSIT, ResourceType.getBuffer());
             header.add(WebUtil.GSON.toJson(ResourceType.resourcesToMap(tax)));
@@ -513,7 +490,7 @@ public class UnsortedCommands {
             }
             totals = nation.getStockpile();
             if (totals == null) {
-                return "No stockpile found for " + nation.getMarkdownUrl() + ". Have they disabled alliance information access?";
+                return "No stockpile found for " + nation.getMarkdownUrl() + ". Have they disabled alliance information access on their **account** page?";
             }
 
             Map<ResourceType, Double> warchest = db.getPerCityWarchest(nation);
@@ -524,12 +501,10 @@ public class UnsortedCommands {
                 double[] totalsArray = ResourceType.resourcesToArray(totals);
                 double[] excess = ResourceType.subtract(totalsArray.clone(), required);
                 double[] shortage = ResourceType.subtract(required, totalsArray.clone());
-                // remove negatives
                 for (int i = 0; i < excess.length; i++) {
                     if (excess[i] < 0) excess[i] = 0;
                     if (shortage[i] < 0) shortage[i] = 0;
                 }
-                // if not empty, append to wcInfo
                 if (!ResourceType.isZero(shortage)) {
                     wcInfo.append("Missing Warchest:\n```").append(ResourceType.toString(shortage)).append("```\n");
                 }
@@ -1337,7 +1312,7 @@ public class UnsortedCommands {
         for (Map.Entry<Long, Integer> entry : history) {
             if (previous != null) {
                 long timestamp = previous.getKey();
-                String dateStr = TimeUtil.format(TimeUtil.MMDDYYYY_HH_MM_A, new Date(timestamp));
+                String dateStr = TimeUtil.format(TimeUtil.MMDDYYYY_HH_MM_A, timestamp);
 
                 int from = entry.getValue();
                 int to = previous.getValue();
@@ -1349,7 +1324,7 @@ public class UnsortedCommands {
         }
         if (previous != null) {
             long timestamp = previous.getKey();
-            String dateStr = TimeUtil.format(TimeUtil.MMDDYYYY_HH_MM_A, new Date(timestamp));
+            String dateStr = TimeUtil.format(TimeUtil.MMDDYYYY_HH_MM_A, timestamp);
 
             int to = previous.getValue();
             String from = "?";
@@ -1520,7 +1495,7 @@ public class UnsortedCommands {
             String dcStr = "UTC" + (offset >= 0 ? "+" : "") + offset + " (turn " + entry.getKey() + ")";
             Long turn = entry.getValue();
             long timestamp = TimeUtil.getTimeFromTurn(turn);
-            String dateStr = TimeUtil.format(TimeUtil.MMDDYYYY_HH_MM_A, new Date(timestamp));
+            String dateStr = TimeUtil.format(TimeUtil.MMDDYYYY_HH_MM_A, timestamp);
             body.append(dateStr + " | " + dcStr + "\n");
         }
         body.append("\n\n**Guess**: turn " + nation.getDc_turn());
@@ -1528,8 +1503,82 @@ public class UnsortedCommands {
         return null;
     }
 
+    @Command(desc = "Compare historical positions of nations then and now", viewable = true)
+    public static String compareAlliancePositions(@Me IMessageIO io, @Me @Default GuildDB db, @Me JSONObject command,
+                                                  @AllowDeleted Set<DBNation> nations,
+                                                  @Timestamp long snapshotDate) {
+
+        String filter = command.optString("nations", null);
+        Set<DBNation> thenNations = PW.getNationsSnapshot(nations, filter, snapshotDate, db == null ? null : db.getGuild(), true);
+        if (thenNations.isEmpty()) {
+            return "No nations found for that snapshot.";
+        }
+
+        // Sort the above by number of nations
+        List<DBNation> deleted = new ArrayList<>();
+        Map<Integer, List<DBNation>> byAlliance = new HashMap<>();
+
+        for (DBNation oldNation : thenNations) {
+            DBNation now = DBNation.getById(oldNation.getId());
+            if (now == null) {
+                deleted.add(oldNation);
+            } else {
+                byAlliance
+                        .computeIfAbsent(now.getAlliance_id(), k -> new ArrayList<>())
+                        .add(now);
+            }
+        }
+
+        List<String> lines = new ArrayList<>();
+
+        // Alliance groups (id > 0), sorted by size desc
+        byAlliance.entrySet().stream()
+                .filter(e -> e.getKey() != 0)
+                .sorted((a, b) -> Integer.compare(b.getValue().size(), a.getValue().size()))
+                .forEach(entry -> {
+                    DBAlliance aa = DBAlliance.getOrCreate(entry.getKey());
+                    List<DBNation> members = entry.getValue();
+                    long taxableCount = members.stream().filter(DBNation::isTaxable).count();
+                    long vmCount = members.stream().filter(n -> n.getVm_turns() > 0).count();
+                    lines.add(String.format(
+                            "- **%s**: %d (%d taxable, %d vm)",
+                            aa.getMarkdownUrl(), members.size(), taxableCount, vmCount));
+                });
+
+        // "Nones" group (alliance 0)
+        List<DBNation> none = byAlliance.getOrDefault(0, Collections.emptyList());
+        if (!none.isEmpty()) {
+            long taxableCount = none.stream().filter(DBNation::isTaxable).count();
+            long vmCount = none.stream().filter(n -> n.getVm_turns() > 0).count();
+            String detail = taxableCount > 0
+                    ? String.format(" (%d taxable, %d vm)", taxableCount, vmCount)
+                    : String.format(" (%d vm)", vmCount);
+            lines.add(String.format("- **AA:0**: %d%s", none.size(), detail));
+        }
+
+        // Deleted group
+        if (!deleted.isEmpty()) {
+            lines.add(String.format("- **<Deleted>**: %d", deleted.size()));
+        }
+
+        long originalCount = thenNations.size();
+        long originalTaxable = thenNations.stream().filter(DBNation::isTaxable).count();
+        long originalVm = thenNations.stream().filter(n -> n.getVm_turns() > 0).count();
+
+        String timeStr = DiscordUtil.timestamp(snapshotDate, null);
+        String title = String.format("%d nations in %s: %s", originalCount, filter, timeStr);
+
+        StringBuilder desc = new StringBuilder();
+        desc.append("### __Then__\n");
+        desc.append(String.format("`" + filter + "`: %d nations (%d taxable, %d vm)\n", originalCount, originalTaxable, originalVm));
+        desc.append("\n----------------\n### __Now__\n");
+        lines.forEach(line -> desc.append(line).append("\n"));
+
+        io.create().embed(title, desc.toString().trim()).send();
+        return null;
+    }
+
     @Command(desc = "List the alliance rank changes of a nation or alliance members", viewable = true)
-    @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public static String leftAA(@Me IMessageIO io, @Me @Default GuildDB db,
                          @AllowDeleted NationOrAlliance nationOrAlliance,
                          @Arg("Date to start from")
@@ -1546,7 +1595,7 @@ public class UnsortedCommands {
                          @Switch("i") boolean listIds,
                          @Switch("s") SpreadSheet sheet) throws Exception {
         List<AllianceChange> removes;
-        Predicate<AllianceChange> isAllowed = f -> true;
+        Predicate<AllianceChange> isAllowed = Predicates.alwaysTrue();
         if (filter != null) {
             Set<Integer> nationIds = filter.getNations().stream().map(DBNation::getNation_id).collect(Collectors.toSet());
             isAllowed = f -> nationIds.contains(f.getNationId());
@@ -1588,6 +1637,7 @@ public class UnsortedCommands {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.DEPARTURES);
         }
+
         {
             long now = System.currentTimeMillis();
             StringBuilder response = new StringBuilder("Time\tNation\tActions\n");
@@ -1638,7 +1688,7 @@ public class UnsortedCommands {
                 header.set(2, r.getFromRank().name());
                 header.set(3, MarkupUtil.sheetUrl(PW.getName(r.getToId(), true), PW.getAllianceUrl(r.getToId())));
                 header.set(4, r.getToRank().name());
-                header.set(5, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(r.getDate())));
+                header.set(5, TimeUtil.format(TimeUtil.YYYY_MM_DD_HH_MM_SS, r.getDate()));
                 sheet.addRow(header);
             }
 

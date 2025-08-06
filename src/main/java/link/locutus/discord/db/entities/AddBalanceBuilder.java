@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -17,15 +18,7 @@ import org.json.JSONObject;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -136,7 +129,7 @@ public class AddBalanceBuilder {
             tracked = PW.expandCoalition(tracked);
         }
 
-        double[] total = nation.getNetDeposits(db, tracked, true, true, 0L, 0L, true);
+        double[] total = nation.getNetDeposits(null, db, tracked, true, true, 0L, 0L, Long.MAX_VALUE, true);
         Map<ResourceType, Double> transfer = ResourceType.subResourcesToA(new HashMap<>(), ResourceType.resourcesToMap(total));
         return add(nation, transfer, "#deposit");
     }
@@ -147,7 +140,7 @@ public class AddBalanceBuilder {
 
     public AddBalanceBuilder reset(DBNation nation, Set<DepositType> types) {
         if (types.isEmpty()) throw new IllegalArgumentException("No types specified");
-        Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, 0, 0, true);
+        Map<DepositType, double[]> depoByType = nation.getDeposits(null, db, null, true, true, 0, 0, Long.MAX_VALUE, true);
         double[] deposits = depoByType.get(DepositType.DEPOSIT);
 
         if (deposits != null && types.contains(DepositType.DEPOSIT)) {
@@ -165,7 +158,7 @@ public class AddBalanceBuilder {
         }
         long now = System.currentTimeMillis();
         if (depoByType.containsKey(DepositType.GRANT) && types.contains(DepositType.GRANT)) {
-            List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, true, true, -1, 0, true);
+            List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, false, true, true, -1, 0, Long.MAX_VALUE, true);
             for (Map.Entry<Integer, Transaction2> entry : transactions) {
                 Transaction2 tx = entry.getValue();
                 if (tx.note == null || (!tx.note.contains("#expire") && !tx.note.contains("#decay")) || (tx.receiver_id != nation.getNation_id() && tx.sender_id != nation.getNation_id())) continue;
@@ -272,7 +265,7 @@ public class AddBalanceBuilder {
             body.append("\nBracket: #" + getFundsToSendBracket().keySet().iterator().next().getId());
         }
 
-        body.append("\nNotes: `" + StringMan.getString(getNotes(f -> true)) + "`");
+        body.append("\nNotes: `" + StringMan.getString(getNotes(Predicates.alwaysTrue())) + "`");
 
         body.append("\nNet Total: ").append(ResourceType.resourcesToFancyString(total));
 

@@ -1,5 +1,6 @@
 package link.locutus.discord.db;
 
+import com.google.common.base.Predicates;
 import com.google.common.eventbus.AsyncEventBus;
 import com.google.common.eventbus.EventBus;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -82,6 +83,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -523,7 +525,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             return "No escrowed resources found.";
         }
 
-        double[] deposits = nation.getNetDeposits(this, false, false);
+        double[] deposits = nation.getNetDeposits(null, this, false, false);
 
         User user = nation.getUser();
 
@@ -906,12 +908,18 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         }
     }
 
-    public List<Transaction2> getTransactionsById(long senderOrReceiverId, int type) {
+    public List<Transaction2> getTransactionsById(long senderOrReceiverId, int type, long start, long end) {
         GuildDB delegate = getDelegateServer();
-        if (delegate != null) return delegate.getTransactionsById(senderOrReceiverId, type);
+        if (delegate != null) return delegate.getTransactionsById(senderOrReceiverId, type, start, end);
         List<Transaction2> list = new ObjectArrayList<>();
 
         String query = "select * FROM INTERNAL_TRANSACTIONS2 WHERE ((sender_id = ? AND sender_TYPE = ?) OR (receiver_id = ? AND receiver_type = ?))";
+        if (start > 0) {
+            query += " AND tx_datetime >= ?";
+        }
+        if (end < Long.MAX_VALUE) {
+            query += " AND tx_datetime <= ?";
+        }
 
         query(query, new ThrowingConsumer<PreparedStatement>() {
             @Override
@@ -920,6 +928,13 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                 stmt.setInt(2, type);
                 stmt.setLong(3, senderOrReceiverId);
                 stmt.setInt(4, type);
+                int i = 5;
+                if (start > 0) {
+                    stmt.setLong(i++, start);
+                }
+                if (end < Long.MAX_VALUE) {
+                    stmt.setLong(i++, end);
+                }
             }
         }, (ThrowingConsumer<ResultSet>) rs -> {
             while (rs.next()) {
@@ -929,25 +944,47 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return list;
     }
 
-    public List<Transaction2> getTransactionsByIds(Set<Integer> ids, int type) {
+    public void iterateTransactionsByIds(Set<Integer> ids, int type, long start, long end, Consumer<Transaction2> consumer) {
+        if (ids.isEmpty()) return;
         GuildDB delegate = getDelegateServer();
-        if (delegate != null) return delegate.getTransactionsByIds(ids, type);
-        List<Transaction2> list = new ArrayList<>();
+        if (delegate != null) {
+            delegate.iterateTransactionsByIds(ids, type, start, end, consumer);
+            return;
+        }
+        String inStr;
+        if (ids.size() == 1) {
+            inStr = "= " + ids.iterator().next();
+        } else {
+            inStr = "IN " + StringMan.getString(ids);
+        }
         StringBuilder query = new StringBuilder("select * FROM INTERNAL_TRANSACTIONS2 WHERE " +
-                "(sender_id IN " + StringMan.getString(ids) + " and sender_type = ?) OR " +
-                "(receiver_id IN " + StringMan.getString(ids) + " and receiver_type = ?)");
+                "(sender_id " + inStr + " and sender_type = ?) OR " +
+                "(receiver_id " + inStr + " and receiver_type = ?)");
+        if (start > 0) {
+            query.append(" AND tx_datetime >= ?");
+        }
+        if (end < Long.MAX_VALUE) {
+            query.append(" AND tx_datetime <= ?");
+        }
         query(query.toString(), new ThrowingConsumer<PreparedStatement>() {
             @Override
             public void acceptThrows(PreparedStatement stmt) throws Exception {
                 stmt.setInt(1, type);
                 stmt.setInt(2, type);
+                int i = 3;
+                if (start > 0) {
+                    stmt.setLong(i++, start);
+                }
+                if (end < Long.MAX_VALUE) {
+                    stmt.setLong(i++, end);
+                }
             }
         }, (ThrowingConsumer<ResultSet>) rs -> {
             while (rs.next()) {
-                list.add(new Transaction2(rs));
+                consumer.accept(new Transaction2(rs));
             }
         });
-        return list;
+        return;
     }
 
     public void deleteTransactionsByIds(Set<Integer> ids, int type) {
@@ -1306,7 +1343,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
     public int importNationTransactions(GuildDB other, Set<Integer> nationIds) {
-        List<Transaction2> toDelete = other.getTransactionsByIds(nationIds, 1);
+        List<Transaction2> toDelete = new ObjectArrayList<>();
+        other.iterateTransactionsByIds(nationIds, 1, 0L, Long.MAX_VALUE, toDelete::add);
         deleteTransactionsByIds(nationIds, 1);
         addTransactions(toDelete);
         return toDelete.size();
@@ -1702,13 +1740,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return result;
     }
 
-    public Map<DepositType, double[]> getTaxBracketDeposits(int taxId, long cutOff, boolean includeExpired, boolean includeIgnored) {
-        List<TaxDeposit> records;
-        if (cutOff == 0) {
-            records = Locutus.imp().getBankDB().getTaxesByBracket(taxId);
-        } else {
-            records = Locutus.imp().getBankDB().getTaxesByBracket(taxId, cutOff);
-        }
+    public Map<DepositType, double[]> getTaxBracketDeposits(int taxId, long start, long end, boolean includeExpired, boolean includeIgnored) {
+        List<TaxDeposit> records = Locutus.imp().getBankDB().getTaxesByBracket(taxId, start, end);
         Set<Integer> allowedAAIds = getAllianceIds(true);
 
         double[] deposits = ResourceType.getBuffer();
@@ -1740,7 +1773,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         List<Map.Entry<Integer, Transaction2>> offset = getDepositOffsetTransactionsTaxId(taxId);
         if (!offset.isEmpty()) {
             Set<Long> allowedIdsLong = allowedAAIds.stream().map(f -> (long) f).collect(Collectors.toSet());
-            Map<DepositType, double[]> sum = PW.sumNationTransactions(null, this, allowedIdsLong, offset, includeExpired, includeIgnored, f -> true);
+            Map<DepositType, double[]> sum = PW.sumNationTransactions(null, this, allowedIdsLong, offset, includeExpired, includeIgnored, Predicates.alwaysTrue());
             for (Map.Entry<DepositType, double[]> entry : sum.entrySet()) {
                 ResourceType.add(result.computeIfAbsent(entry.getKey(), f -> ResourceType.getBuffer()), entry.getValue());
             }
@@ -2226,7 +2259,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
     public List<Map.Entry<Integer, Transaction2>> getDepositOffsetTransactionsTaxId(int tax_id) {
-        List<Transaction2> records = getDepositOffsetTransactions(tax_id, 4);
+        List<Transaction2> records = getDepositOffsetTransactions(tax_id, 4, 0, Long.MAX_VALUE);
         List<Map.Entry<Integer, Transaction2>> result = new ArrayList<>(records.size());
         for (Transaction2 record : records) {
             if (record.sender_id != tax_id && record.receiver_id != tax_id) continue;
@@ -2236,28 +2269,20 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return result;
     }
 
-    public List<Transaction2> getDepositOffsetTransactions(long id) {
+    public List<Transaction2> getDepositOffsetTransactions(long id, long start, long end) {
         long sender_id = Math.abs(id);
 
-        // nation_id = 1
-        // alliance_id = 2
-        // guild_id = 3
-        // tax_id = 4
         int sender_type;
         if (sender_id > Integer.MAX_VALUE) {
             sender_type = id > 0 ? 3 : 4;
         } else {
             sender_type = id >= 0 ? 1 : 2;
         }
-        return getDepositOffsetTransactions(sender_id, sender_type);
+        return getDepositOffsetTransactions(sender_id, sender_type, start, end);
     }
 
-    public List<Transaction2> getDepositOffsetTransactions(long sender_id, int sender_type) {
-        Map<ResourceType, Map<String, Double>> legacyOffset = sender_type <= 3 ? getDepositOffset(sender_type == 2 ? -sender_id : sender_id) : new Object2ObjectOpenHashMap<>();
-        List<Transaction2> legacyTransfers = getDepositOffsetTransactionsLegacy(sender_id, sender_type, legacyOffset);
-
-        List<Transaction2> transfers = getTransactionsById(sender_id, sender_type);
-        transfers.addAll(legacyTransfers);
+    public List<Transaction2> getDepositOffsetTransactions(long sender_id, int sender_type, long start, long end) {
+        List<Transaction2> transfers = getTransactionsById(sender_id, sender_type, start, end);
 
         for (Transaction2 transfer : transfers) {
             transfer.tx_id = -1;
@@ -2266,29 +2291,34 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return transfers;
     }
 
-    private Map<ResourceType, Map<String, Double>> getDepositOffset(long nationId) {
-        GuildDB delegate = getDelegateServer();
-        if (delegate != null) {
-            return delegate.getDepositOffset(nationId);
-        }
+    public void importLegacyDepositOffset() {
         try {
-            if (!tableExists("BANK_DEPOSIT")) return new HashMap<>();
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-        Map<ResourceType, Map<String, Double>> result = new EnumMap<ResourceType, Map<String, Double>>(ResourceType.class);
-        try (PreparedStatement stmt = prepareQuery("select * FROM BANK_DEPOSIT WHERE `nationId` = ?")) {
-            stmt.setLong(1, nationId);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    ResourceType type = ResourceType.values[rs.getInt("resource")];
-                    double amount = rs.getLong("amount") / 100d;
-                    String note = rs.getString("note");
-                    Map<String, Double> map = result.computeIfAbsent(type, f -> new HashMap<>());
-                    map.put(note, map.getOrDefault(note, 0d) + amount);
+            if (!tableExists("BANK_DEPOSIT")) return;
+            Map<Integer, Map<String, double[]>> legacyOffset = new Int2ObjectOpenHashMap<>();
+            try (PreparedStatement stmt = prepareQuery("select * FROM BANK_DEPOSIT")) {
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        int nationId = rs.getInt("nationId");
+                        ResourceType type = ResourceType.values[rs.getInt("resource")];
+                        double amount = rs.getLong("amount") / 100d;
+                        String note = rs.getString("note");
+                        legacyOffset.computeIfAbsent(nationId, f -> new Object2ObjectOpenHashMap<>())
+                                .computeIfAbsent(note, f -> ResourceType.getBuffer())[type.ordinal()] += amount;
+                    }
                 }
             }
-            return result;
+            if (!legacyOffset.isEmpty()) {
+                for (Map.Entry<Integer, Map<String, double[]>> entry : legacyOffset.entrySet()) {
+                    int nationId = entry.getKey();
+                    Map<String, double[]> noteAmtMap = entry.getValue();
+                    for (Map.Entry<String, double[]> entry2 : noteAmtMap.entrySet()) {
+                        String note = entry2.getKey();
+                        double[] rss = entry2.getValue();
+                        addTransfer(0, nationId, 1, 0, 0, 0, note, rss);
+                    }
+                }
+            }
+            executeStmt("DROP TABLE IF EXISTS BANK_DEPOSIT");
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -3344,6 +3374,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
     public Set<Long> getTrackedBanks() {
+        GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
+        if (faServer != null && faServer.getIdLong() != getIdLong()) return faServer.getTrackedBanks();
+
         Set<Long> tracked = new LongLinkedOpenHashSet(getCoalitionRaw(OFFSHORE));
         tracked.add(getGuild().getIdLong());
         tracked.addAll(getCoalitionRaw(Coalition.TRACK_DEPOSITS));

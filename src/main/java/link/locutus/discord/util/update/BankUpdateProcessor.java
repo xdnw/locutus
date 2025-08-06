@@ -192,7 +192,7 @@ public class BankUpdateProcessor {
         body.append("\n").append("From: " + PW.getMarkdownUrl((int) transfer.sender_id, transfer.isSenderAA()));
         body.append("\n").append("To: " + PW.getMarkdownUrl((int) transfer.receiver_id, transfer.isReceiverAA()));
         body.append("\n").append("Banker: " + PW.getMarkdownUrl(transfer.banker_nation, false));
-        body.append("\n").append("Date: " + TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(transfer.tx_datetime)));
+        body.append("\n").append("Date: " + TimeUtil.format(TimeUtil.YYYY_MM_DD_HH_MM_SS, transfer.tx_datetime));
         body.append("\n").append(ResourceType.toString(transfer.resources));
 
         return new KeyValue<>(title, body.toString());

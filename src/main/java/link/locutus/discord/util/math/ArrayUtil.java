@@ -1,5 +1,6 @@
 package link.locutus.discord.util.math;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
@@ -22,14 +23,14 @@ import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
 public class ArrayUtil {
-    public static byte[] compressLZ4(byte[] data) {
+    public static byte[] compressLZ4(byte[] data, int len) {
         LZ4Factory factory = LZ4Factory.fastestInstance();
         LZ4Compressor compressor = factory.highCompressor(5);
-        int maxCompressedLength = compressor.maxCompressedLength(data.length);
+        int maxCompressedLength = compressor.maxCompressedLength(len);
         byte[] compressed = new byte[maxCompressedLength];
-        int compressedLength = compressor.compress(data, 0, data.length, compressed, 0, maxCompressedLength);
+        int compressedLength = compressor.compress(data, 0, len, compressed, 0, maxCompressedLength);
         ByteBuffer buffer = ByteBuffer.allocate(4 + compressedLength);
-        buffer.putInt(data.length);
+        buffer.putInt(len);
         buffer.put(compressed, 0, compressedLength);
         return buffer.array();
     }
@@ -1605,17 +1606,17 @@ public class ArrayUtil {
 //            }
 //        }
 
-        String input = StringMan.wrapHashFunctions("*,#tanks=0,(#aircraftpct<30|#active_m>11000)", f -> true);
+        String input = StringMan.wrapHashFunctions("*,#tanks=0,(#aircraftpct<30|#active_m>11000)", Predicates.alwaysTrue());
         // private static <T> ParseResult<T> parseTokens(String input, Function<String, Set<T>> parseSet2, Function<String, Predicate<T>> parseElemPredicate, Function<String, Predicate<T>> parseFilter) {
         ParseResult<Object> test = parseTokens(input, null, new Function<String, Predicate<Object>>() {
             @Override
             public Predicate<Object> apply(String s) {
-                return f -> true;
+                return Predicates.alwaysTrue();
             }
         }, new Function<String, Predicate<Object>>() {
             @Override
             public Predicate<Object> apply(String s) {
-                return f -> true;
+                return Predicates.alwaysTrue();
             }
         });
     }

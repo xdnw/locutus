@@ -111,7 +111,7 @@ public class BFSUtil<T> {
         }
 
         long diff = System.currentTimeMillis() - originalStart;
-        Logg.text("BFS searched " + i + " options in " + diff + "ms for a rate of " + MathMan.format(i * 1000d / diff) + " per second");
+        Logg.text("BFS/A* searched " + i + " options in " + diff + "ms for a rate of " + MathMan.format(i * 1000d / diff) + " per second");
         return max;
     }
 }

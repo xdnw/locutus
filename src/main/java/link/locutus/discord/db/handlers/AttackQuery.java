@@ -1,5 +1,6 @@
 package link.locutus.discord.db.handlers;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -13,7 +14,10 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.*;
+import java.util.function.BiConsumer;
+import java.util.function.BiPredicate;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 public class AttackQuery {
 
@@ -184,7 +188,7 @@ public class AttackQuery {
         if (wars == null) {
             withAllWars();
         }
-        Predicate<AbstractCursor> attackFilterFinal = attackFilter == null ? f -> true : attackFilter;
+        Predicate<AbstractCursor> attackFilterFinal = attackFilter == null ? Predicates.alwaysTrue() : attackFilter;
         AttackCost cost = new AttackCost(nameA, nameB, buildings, ids, victories, logWars, attacks);
         getDb().iterateAttacks(wars, attackTypeFilter, preliminaryFilter, (war, attack) -> {
             if (!attackFilterFinal.test(attack)) {

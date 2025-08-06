@@ -655,7 +655,7 @@ public class GuildKey {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
-        public String RECRUIT_MESSAGE_CONTENT(@Me GuildDB db, @Me User user, String message) {
+        public String RECRUIT_MESSAGE_CONTENT(@Me GuildDB db, @Me User user, @AllowAttachment String message) {
             boolean containsHtml = HTML_TAG_PATTERN.matcher(message).find();
             if (!containsHtml) {
                 message = MarkupUtil.markdownToHTML(MarkupUtil.formatDiscordMarkdown(message, db == null ? null : db.getGuild()));
@@ -666,7 +666,8 @@ public class GuildKey {
         @Override
         public String help() {
             return "The recruit message body\n" +
-                    "Must also set " + RECRUIT_MESSAGE_OUTPUT.getCommandMention();
+                    "Must also set " + RECRUIT_MESSAGE_OUTPUT.getCommandMention() + "\n" +
+                    "Note: Provide a discord attachment url for the value to set a message longer than " + Message.MAX_CONTENT_LENGTH + " characters";
         }
 
         @Override
@@ -1126,7 +1127,7 @@ public class GuildKey {
 
         @Override
         public String help() {
-            return "Whether members's withdraw limit ignores their expiring grants (true/false)";
+            return "Whether members's withdraw limit ignores their expiring/decaying grants (true/false)";
         }
     }.setupRequirements(f -> f.requiresCoalition(Coalition.OFFSHORE).requiresOffshore());
     public static GuildSetting<Boolean> DISPLAY_ITEMIZED_DEPOSITS = new GuildBooleanSetting(GuildSettingCategory.BANK_INFO) {
@@ -1614,14 +1615,14 @@ public class GuildKey {
 
         @Override
         public String toReadableString(GuildDB db, Long value) {
-            if (value != null && value > 0) return "after:" + value + " (" + TimeUtil.YYYY_MM_DD_HH_MM_SS_A.format(value) + ")";
+            if (value != null && value > 0) return "after:" + value + " (" + TimeUtil.format(TimeUtil.YYYY_MM_DD_HH_MM_SS_A, value) + ")";
             return super.toReadableString(db, value);
         }
 
         @Override
         public String help() {
             return """
-                    If set, all allowed resources will be converted to cash at the rates set, regardless of #cash being present as a note
+                    If set, upon depositing, all allowed resources will be converted to cash at the rates set, regardless of #cash being present as a note
                     This is performed when deposits are checked, and only to new deposits
                     Requires resource conversion to be enabled for the nation
                     If no RESOURCE_CONVERSION role is set, then this applies to everyone

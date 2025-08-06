@@ -79,8 +79,12 @@ public class Settings extends Config {
     @Comment("The discord invite CODE of the support sever (defaults to the Locutus server)")
     public String SUPPORT_INVITE = "cUuskPDrB7";
 
-    @Comment({"A passcode used for generating secure bank transfer notes for #cash conversion (generated randomly on startup)"})
+    @Comment({"A passcode used for generating secure bank transfer notes for #cash conversion (generated randomly on first start)"})
     public String CONVERSION_SECRET = "some-keyword";
+
+    @Comment({"Number of discord shards to use, defaults to 1",
+            "Only set this if your bot is in more than 2,500 servers"})
+    public int SHARDS = 1;
 
     ////////////////////////////////////////////////////////////////////////////
 
@@ -188,7 +192,7 @@ public class Settings extends Config {
     }
 
     @Comment({
-            "Artificual intelligence is used for features such as natural language responses, search and image processing",
+            "Settings for repeating tasks, if they are enabled in `enabled-components`",
     })
     public static class TASKS {
         @Comment("If any turn related tasks are run (default: true)")
@@ -496,8 +500,8 @@ public class Settings extends Config {
     public static class WEB {
         @Create
         public S3 S3;
-        @Create
-        public CHAT_EXPORTER CHAT_EXPORTER;
+//        @Create
+//        public CHAT_EXPORTER CHAT_EXPORTER;
 
         @Comment({"(Optional) Configure AWS S3 bucket for caching war stats",
         "The access key, secret key and region must be set to be enabled",
@@ -522,23 +526,23 @@ public class Settings extends Config {
             public String SITE = "https://wars.locutus.link";
         }
 
-        @Comment({"News aggregation settings (optional)",
-        "This uses a third party tool to export chat logs from discord using a personal token",
-        "It does NOT use the bot token, as the bot does not have access to message content"})
-        public static final class CHAT_EXPORTER {
-            @Comment({
-                    "The location of the chat exporter",
-                    "See: <https://github.com/Tyrrrz/DiscordChatExporter/blob/master/.docs/Using-the-CLI.md>",
-                    "This setting is optional, and is used for news aggregation"
-            })
-            public String LOCATION = "C:/DCE-CLI/DiscordChatExporter.Cli.exe";
-
-            @Comment("See: <https://github.com/Tyrrrz/DiscordChatExporter/blob/master/.docs/Token-and-IDs.md>")
-            public String TOKEN = "";
-
-            @Comment("List of news channels to export")
-            public List<Long> NEWS_CHANNELS = Arrays.asList();
-        }
+//        @Comment({"News aggregation settings (optional)",
+//        "This uses a third party tool to export chat logs from discord using a personal token",
+//        "It does NOT use the bot token, as the bot does not have access to message content"})
+//        public static final class CHAT_EXPORTER {
+//            @Comment({
+//                    "The location of the chat exporter",
+//                    "See: <https://github.com/Tyrrrz/DiscordChatExporter/blob/master/.docs/Using-the-CLI.md>",
+//                    "This setting is optional, and is used for news aggregation"
+//            })
+//            public String LOCATION = "C:/DCE-CLI/DiscordChatExporter.Cli.exe";
+//
+//            @Comment("See: <https://github.com/Tyrrrz/DiscordChatExporter/blob/master/.docs/Token-and-IDs.md>")
+//            public String TOKEN = "";
+//
+//            @Comment("List of news channels to export")
+//            public List<Long> NEWS_CHANNELS = Arrays.asList();
+//        }
 
         @Comment("The cosmetic name of the web interface")
         public String INTERFACE_NAME = "Locutus";
