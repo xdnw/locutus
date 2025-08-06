@@ -545,10 +545,11 @@ public class CustomSheetCommands {
             int numTabsWithPlaceholders = (int) exportColumns.values().stream()
                     .filter(col -> col.stream().anyMatch(s -> s.contains("{") && s.contains("}")))
                     .count();
-            Gson prettyGson = new GsonBuilder().setPrettyPrinting().create();
+            Gson prettyGson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
             String exportJson = prettyGson.toJson(exportColumns);
+
             String fileName = "tabs_" + exportColumns.size() + "_hascolumns_" + numTabsWithPlaceholders + ".json";
-            msg.file(fileName, exportJson.getBytes(StandardCharsets.UTF_8));
+            msg.file(fileName, exportJson);
             response.append("See: " + CM.sheet_custom.import_json.cmd.toSlashMention() + " to import tab names and header column from json file");
         }
         msg.append(response.toString()).send();
