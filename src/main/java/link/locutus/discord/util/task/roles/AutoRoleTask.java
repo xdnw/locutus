@@ -198,7 +198,7 @@ public class AutoRoleTask implements IAutoRoleTask {
             infoStr.append(memberRole.isEmpty() ? "No Member Role" : "- Member Role: " + DiscordUtil.toRoleString(memberRole)).append("\n");
             info.put("Auto Role Members/Apps", infoStr.toString());
         } else {
-            info.put("Auto Role Members/Apps", "False (see: " + CM.settings_role.AUTOROLE_MEMBER_APPS.cmd.toSlashMention() + ")");
+            info.put("Auto Role Members/Apps", "False (see: " + CM.settings_auto_role.AUTOROLE_MEMBER_APPS.cmd.toSlashMention() + ")");
         }
         if (conditionalRoles != null && !conditionalRoles.isEmpty()) {
             StringBuilder infoStr = new StringBuilder();

@@ -34,17 +34,17 @@ public class WikiConversionPage extends BotWikiGen {
                 "## 2. Enable member resource conversion",
                 "Allow members to deposit or withdraw using `#cash` (e.g. via the `convertCash` argument in transfer commands) .",
                 "- Note: If a " + Roles.RESOURCE_CONVERSION.name() + " role is set via " + CM.role.setAlias.cmd.toString() + ", only members with that role can use this feature.",
-                commandMarkdownSpoiler(CM.settings_bank_access.RESOURCE_CONVERSION.cmd),
+                commandMarkdownSpoiler(CM.settings_bank_conversion.RESOURCE_CONVERSION.cmd),
 
                 "## 3. Allow negative resource withdrawals",
                 "Allow nations to withdraw resources into the negative as long as the overall market value of their deposits is positive",
-                commandMarkdownSpoiler(CM.settings_bank_access.ALLOW_NEGATIVE_RESOURCES.cmd),
+                commandMarkdownSpoiler(CM.settings_bank_conversion.ALLOW_NEGATIVE_RESOURCES.cmd),
 
                 "## 4. Set conversion rates",
                 "Define a percent of weekly market value to use for each resource (default 100 = 100%):",
                 "Use `*` to apply to all allowed nations or specify a filter: " + linkPage("nation_placeholders") + " e.g. `#cities>20` or `MyDiscordRole`",
                 commandMarkdownSpoiler(
-                        CM.settings_bank_access.ADD_RSS_CONVERSION_RATE
+                        CM.settings_bank_conversion.ADD_RSS_CONVERSION_RATE
                                 .cmd
                                 .filter("*")
                                 .prices("{food=60, coal=90, oil=90, uranium=90}")
@@ -53,7 +53,7 @@ public class WikiConversionPage extends BotWikiGen {
 
                 "## 5. Force conversion on new deposits",
                 "Automatically convert all new deposits regardless of `#cash` note:",
-                commandMarkdownSpoiler(CM.settings_bank_access.FORCE_RSS_CONVERSION.cmd),
+                commandMarkdownSpoiler(CM.settings_bank_conversion.FORCE_RSS_CONVERSION.cmd),
                 "Note: This will only apply to nations eligable for resource conversion (such as if you have a role set)"
         );
     }

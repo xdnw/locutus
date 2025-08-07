@@ -10,21 +10,16 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.db.guild.GuildSetting;
-import link.locutus.discord.db.guild.GuildSettingCategory;
-import link.locutus.discord.db.guild.SheetKey;
+import link.locutus.discord.db.guild.*;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.math.ArrayUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Consumer;
 
 public class SettingCommands {
@@ -42,11 +37,15 @@ public class SettingCommands {
         return map;
     }
 
-    private static Map<GuildSettingCategory, Map<GuildSetting, Object>> getKeys(GuildDB db, boolean listAll) {
-        Map<GuildSettingCategory, Map<GuildSetting, Object>> map = new LinkedHashMap<>();
+    private static Map<GuildSettingCategory, Map<GuildSettingSubgroup, Map<GuildSetting, Object>>> getKeys(GuildDB db, boolean listAll) {
+        Map<GuildSettingCategory, Map<GuildSettingSubgroup, Map<GuildSetting, Object>>> map = new LinkedHashMap<>();
         for (GuildSetting key : GuildKey.values()) {
             if (!key.allowed(db) && !listAll) continue;
-            map.computeIfAbsent(key.getCategory(), f -> new LinkedHashMap<>()).put(key, db.getOrNull(key, false));
+            GuildSettingCategory cat = key.getCategory();
+            GuildSettingSubgroup sub = key.getSubgroup();
+            map.computeIfAbsent(cat, c -> new LinkedHashMap<>())
+               .computeIfAbsent(sub, s -> new LinkedHashMap<>())
+               .put(key, db.getOrNull(key, false));
         }
         return map;
     }
@@ -122,33 +121,43 @@ public class SettingCommands {
                 return response.toString();
             } else {
                 StringBuilder response = new StringBuilder();
-                Map<GuildSettingCategory, Map<GuildSetting, Object>> keys = getKeys(db, listAll);
-                for (Map.Entry<GuildSettingCategory, Map<GuildSetting, Object>> entry : keys.entrySet()) {
+                Map<GuildSettingCategory, Map<GuildSettingSubgroup, Map<GuildSetting, Object>>> keys = getKeys(db, listAll);
+                for (Map.Entry<GuildSettingCategory, Map<GuildSettingSubgroup, Map<GuildSetting, Object>>> entry : keys.entrySet()) {
                     GuildSettingCategory category = entry.getKey();
-
                     response.append("# **__").append(category.name()).append(":__**\n");
-
-                    Map<GuildSetting, Object> catKeys = entry.getValue();
-                    for (Map.Entry<GuildSetting, Object> keyObjectEntry : catKeys.entrySet()) {
-                        GuildSetting currKey = keyObjectEntry.getKey();
-                        if (!currKey.hasPermission(db, author, null)) continue;
-
-                        String hide = "";
-                        if (!currKey.allowed(db, false)) {
-                            hide = "~~";
+                    Map<GuildSettingSubgroup, Map<GuildSetting, Object>> subGroupMap = entry.getValue();
+                    subGroupMap = ArrayUtil.sortMapKeys(subGroupMap, Comparator.comparingInt(Enum::ordinal));
+                    for (Map.Entry<GuildSettingSubgroup, Map<GuildSetting, Object>> entry2 : subGroupMap.entrySet()) {
+                        GuildSettingSubgroup subgroup = entry2.getKey();
+                        boolean isSubgroup = subgroup != GuildSettingSubgroup.NONE;
+                        if (isSubgroup) {
+                            response.append("### **").append(subgroup.name()).append(":**\n");
                         }
-                        response.append("- ").append(hide + "`" + currKey.name() + "`" + hide);
+                        Map<GuildSetting, Object> catKeys = entry2.getValue();
+                        for (Map.Entry<GuildSetting, Object> keyObjectEntry : catKeys.entrySet()) {
+                            GuildSetting currKey = keyObjectEntry.getKey();
+                            if (!currKey.hasPermission(db, author, null)) continue;
+
+                            String hide = "";
+                            if (!currKey.allowed(db, false)) {
+                                hide = "~~";
+                            }
+                            response.append("- ").append(hide + "`" + currKey.name() + "`" + hide);
 //                        response.append(" (" + currKey.getCommandMention() + ")");
 
-                        Object setValue = keyObjectEntry.getValue();
-                        if (setValue != null) {
-                            String setValueStr = currKey.toReadableString(db, setValue);
-                            if (setValueStr.length() > 25) {
-                                setValueStr = setValueStr.substring(0, 24) + "\u2026";
+                            Object setValue = keyObjectEntry.getValue();
+                            if (setValue != null) {
+                                String setValueStr = currKey.toReadableString(db, setValue);
+                                if (setValueStr.length() > 25) {
+                                    setValueStr = setValueStr.substring(0, 24) + "\u2026";
+                                }
+                                response.append("=").append(setValueStr);
                             }
-                            response.append("=").append(setValueStr);
+                            response.append("\n");
                         }
-                        response.append("\n");
+                        if (isSubgroup) {
+                            response.append("----------------\n");
+                        }
                     }
                 }
 

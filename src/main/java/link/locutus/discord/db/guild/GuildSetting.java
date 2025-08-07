@@ -64,7 +64,7 @@ public abstract class GuildSetting<T> {
     private String name;
 
     public GuildSettingSubgroup getSubgroup() {
-        return subgroup;
+        return subgroup == null ? GuildSettingSubgroup.NONE : subgroup;
     }
 
     private Queue<Consumer<GuildSetting<T>>> setupRequirements = new ConcurrentLinkedQueue<>();

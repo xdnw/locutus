@@ -1,6 +1,8 @@
 package link.locutus.discord.db.guild;
 
 public enum GuildSettingSubgroup {
+    NONE,
+
     DEFENSIVE_WARS,
     OFFENSIVE_WARS,
     BEIGE_VIOLATIONS,

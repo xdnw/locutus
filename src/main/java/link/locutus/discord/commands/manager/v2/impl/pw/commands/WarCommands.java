@@ -4762,7 +4762,7 @@ public class WarCommands {
         if (count == 0) return "No channels found to delete";
         return "Done. Deleting " + count + " war rooms. Please wait for rooms to finish deleting.\n\n" +
                 "Note: Rooms will auto create with enemies with active wars, set a filter to specify which enemies rooms are auto created for:\n" +
-                "- " + CM.settings_war_alerts.WAR_ROOM_FILTER.cmd.toSlashMention() + "\n" +
+                "- " + CM.settings_war_room.WAR_ROOM_FILTER.cmd.toSlashMention() + "\n" +
                 "- " + CM.admin.sync.warrooms.cmd.toSlashMention();
     }
 

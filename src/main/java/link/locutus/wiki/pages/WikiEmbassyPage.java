@@ -17,7 +17,7 @@ public class WikiEmbassyPage extends BotWikiGen {
                 GuildKey.EMBASSY_CATEGORY.help(),
                 commandMarkdownSpoiler(CM.embassy.cmd),
                 "# Set the rank required for opening embassies:",
-                commandMarkdownSpoiler(CM.settings_role.AUTOROLE_ALLIANCE_RANK.cmd),
+                commandMarkdownSpoiler(CM.settings_auto_role.AUTOROLE_ALLIANCE_RANK.cmd),
                 "# Open an embassy",
                 "Ensure you are registered to the bot:",
                 CM.register.cmd.toSlashCommand(true),

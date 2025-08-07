@@ -2352,7 +2352,7 @@ public class BankCommands {
                         .command(calling_command.toString());
                 msg = msg.modal(CommandBehavior.DELETE_BUTTONS, reqCmd, "request grant");
             } else if (!status.isSuccess() && isFailed) {
-                msg.append("\nTo enable grant requests: " + CM.settings_bank_info.GRANT_REQUEST_CHANNEL.cmd.toSlashMention());
+                msg.append("\nTo enable grant requests: " + CM.settings_bank_grants.GRANT_REQUEST_CHANNEL.cmd.toSlashMention());
             }
         }
 
