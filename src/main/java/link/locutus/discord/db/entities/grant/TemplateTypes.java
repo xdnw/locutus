@@ -23,7 +23,7 @@ public enum TemplateTypes {
 
         @Override
         public List<Grant.Requirement> getRequirements(boolean confirm) {
-            return CityTemplate.getBaseRequirements(null, null, null, null, confirm);
+            return CityTemplate.getRequirements(null, null, null, null, null);
         }
     },
     PROJECT(DepositType.PROJECT, ProjectTemplate.class) {
