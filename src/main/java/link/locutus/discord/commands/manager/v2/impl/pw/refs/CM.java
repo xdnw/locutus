@@ -9196,27 +9196,85 @@ public class CM {
 
             }
         }
-        public static class settings_bank_access{
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="ADD_RSS_CONVERSION_RATE", field="RSS_CONVERSION_RATES")
-            public static class ADD_RSS_CONVERSION_RATE extends CommandRef {
-                public static final ADD_RSS_CONVERSION_RATE cmd = new ADD_RSS_CONVERSION_RATE();
-            public ADD_RSS_CONVERSION_RATE filter(String value) {
-                return set("filter", value);
-            }
-
-            public ADD_RSS_CONVERSION_RATE prices(String value) {
-                return set("prices", value);
+        public static class settings_auto_role{
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="AUTONICK", field="AUTONICK")
+            public static class AUTONICK extends CommandRef {
+                public static final AUTONICK cmd = new AUTONICK();
+            public AUTONICK mode(String value) {
+                return set("mode", value);
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="ALLOW_NEGATIVE_RESOURCES", field="ALLOW_NEGATIVE_RESOURCES")
-            public static class ALLOW_NEGATIVE_RESOURCES extends CommandRef {
-                public static final ALLOW_NEGATIVE_RESOURCES cmd = new ALLOW_NEGATIVE_RESOURCES();
-            public ALLOW_NEGATIVE_RESOURCES enabled(String value) {
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="AUTOROLE_ALLIANCES", field="AUTOROLE_ALLIANCES")
+            public static class AUTOROLE_ALLIANCES extends CommandRef {
+                public static final AUTOROLE_ALLIANCES cmd = new AUTOROLE_ALLIANCES();
+            public AUTOROLE_ALLIANCES mode(String value) {
+                return set("mode", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="AUTOROLE_ALLIANCE_RANK", field="AUTOROLE_ALLIANCE_RANK")
+            public static class AUTOROLE_ALLIANCE_RANK extends CommandRef {
+                public static final AUTOROLE_ALLIANCE_RANK cmd = new AUTOROLE_ALLIANCE_RANK();
+            public AUTOROLE_ALLIANCE_RANK allianceRank(String value) {
+                return set("allianceRank", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="AUTOROLE_ALLY_GOV", field="AUTOROLE_ALLY_GOV")
+            public static class AUTOROLE_ALLY_GOV extends CommandRef {
+                public static final AUTOROLE_ALLY_GOV cmd = new AUTOROLE_ALLY_GOV();
+            public AUTOROLE_ALLY_GOV enabled(String value) {
                 return set("enabled", value);
             }
 
             }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="AUTOROLE_ALLY_ROLES", field="AUTOROLE_ALLY_ROLES")
+            public static class AUTOROLE_ALLY_ROLES extends CommandRef {
+                public static final AUTOROLE_ALLY_ROLES cmd = new AUTOROLE_ALLY_ROLES();
+            public AUTOROLE_ALLY_ROLES roles(String value) {
+                return set("roles", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="AUTOROLE_MEMBER_APPS", field="AUTOROLE_MEMBER_APPS")
+            public static class AUTOROLE_MEMBER_APPS extends CommandRef {
+                public static final AUTOROLE_MEMBER_APPS cmd = new AUTOROLE_MEMBER_APPS();
+            public AUTOROLE_MEMBER_APPS enabled(String value) {
+                return set("enabled", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="AUTOROLE_TOP_X", field="AUTOROLE_TOP_X")
+            public static class AUTOROLE_TOP_X extends CommandRef {
+                public static final AUTOROLE_TOP_X cmd = new AUTOROLE_TOP_X();
+            public AUTOROLE_TOP_X topScoreRank(String value) {
+                return set("topScoreRank", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="CONDITIONAL_ROLES", field="CONDITIONAL_ROLES")
+            public static class CONDITIONAL_ROLES extends CommandRef {
+                public static final CONDITIONAL_ROLES cmd = new CONDITIONAL_ROLES();
+            public CONDITIONAL_ROLES roleMap(String value) {
+                return set("roleMap", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="addConditionalRole", field="CONDITIONAL_ROLES")
+            public static class addConditionalRole extends CommandRef {
+                public static final addConditionalRole cmd = new addConditionalRole();
+            public addConditionalRole filter(String value) {
+                return set("filter", value);
+            }
+
+            public addConditionalRole role(String value) {
+                return set("role", value);
+            }
+
+            }
+        }
+        public static class settings_bank_access{
             @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="BANKER_WITHDRAW_LIMIT", field="BANKER_WITHDRAW_LIMIT")
             public static class BANKER_WITHDRAW_LIMIT extends CommandRef {
                 public static final BANKER_WITHDRAW_LIMIT cmd = new BANKER_WITHDRAW_LIMIT();
@@ -9233,43 +9291,11 @@ public class CM {
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="DEFAULT_OFFSHORE_ACCOUNT", field="DEFAULT_OFFSHORE_ACCOUNT")
-            public static class DEFAULT_OFFSHORE_ACCOUNT extends CommandRef {
-                public static final DEFAULT_OFFSHORE_ACCOUNT cmd = new DEFAULT_OFFSHORE_ACCOUNT();
-            public DEFAULT_OFFSHORE_ACCOUNT natOrAA(String value) {
-                return set("natOrAA", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="FORCE_RSS_CONVERSION", field="FORCE_RSS_CONVERSION")
-            public static class FORCE_RSS_CONVERSION extends CommandRef {
-                public static final FORCE_RSS_CONVERSION cmd = new FORCE_RSS_CONVERSION();
-            public FORCE_RSS_CONVERSION enabled(String value) {
-                return set("enabled", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="GRANT_LIMIT_DELAY", field="GRANT_LIMIT_DELAY")
-            public static class GRANT_LIMIT_DELAY extends CommandRef {
-                public static final GRANT_LIMIT_DELAY cmd = new GRANT_LIMIT_DELAY();
-            public GRANT_LIMIT_DELAY timediff(String value) {
-                return set("timediff", value);
-            }
-
-            }
             @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="MEMBER_CAN_ESCROW", field="MEMBER_CAN_ESCROW")
             public static class MEMBER_CAN_ESCROW extends CommandRef {
                 public static final MEMBER_CAN_ESCROW cmd = new MEMBER_CAN_ESCROW();
             public MEMBER_CAN_ESCROW enabled(String value) {
                 return set("enabled", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="MEMBER_CAN_OFFSHORE", field="MEMBER_CAN_OFFSHORE")
-            public static class MEMBER_CAN_OFFSHORE extends CommandRef {
-                public static final MEMBER_CAN_OFFSHORE cmd = new MEMBER_CAN_OFFSHORE();
-            public MEMBER_CAN_OFFSHORE value(String value) {
-                return set("value", value);
             }
 
             }
@@ -9297,55 +9323,11 @@ public class CM {
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="OFFSHORE_KEEP_AMOUNT", field="OFFSHORE_KEEP_AMOUNT")
-            public static class OFFSHORE_KEEP_AMOUNT extends CommandRef {
-                public static final OFFSHORE_KEEP_AMOUNT cmd = new OFFSHORE_KEEP_AMOUNT();
-            public OFFSHORE_KEEP_AMOUNT amount(String value) {
-                return set("amount", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="PUBLIC_OFFSHORING", field="PUBLIC_OFFSHORING")
-            public static class PUBLIC_OFFSHORING extends CommandRef {
-                public static final PUBLIC_OFFSHORING cmd = new PUBLIC_OFFSHORING();
-            public PUBLIC_OFFSHORING enabled(String value) {
-                return set("enabled", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="RESOURCE_CONVERSION", field="RESOURCE_CONVERSION")
-            public static class RESOURCE_CONVERSION extends CommandRef {
-                public static final RESOURCE_CONVERSION cmd = new RESOURCE_CONVERSION();
-            public RESOURCE_CONVERSION enabled(String value) {
-                return set("enabled", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="ROUTE_ALLIANCE_BANK", field="ROUTE_ALLIANCE_BANK")
-            public static class ROUTE_ALLIANCE_BANK extends CommandRef {
-                public static final ROUTE_ALLIANCE_BANK cmd = new ROUTE_ALLIANCE_BANK();
-            public ROUTE_ALLIANCE_BANK value(String value) {
-                return set("value", value);
-            }
-
-            }
             @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="WITHDRAW_IGNORES_EXPIRE", field="MEMBER_CAN_WITHDRAW_IGNORES_GRANTS")
             public static class WITHDRAW_IGNORES_EXPIRE extends CommandRef {
                 public static final WITHDRAW_IGNORES_EXPIRE cmd = new WITHDRAW_IGNORES_EXPIRE();
             public WITHDRAW_IGNORES_EXPIRE enabled(String value) {
                 return set("enabled", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="addGrantTemplateLimit", field="GRANT_TEMPLATE_LIMITS")
-            public static class addGrantTemplateLimit extends CommandRef {
-                public static final addGrantTemplateLimit cmd = new addGrantTemplateLimit();
-            public addGrantTemplateLimit role(String value) {
-                return set("role", value);
-            }
-
-            public addGrantTemplateLimit marketValue(String value) {
-                return set("marketValue", value);
             }
 
             }
@@ -9366,6 +9348,106 @@ public class CM {
                 public static final removeResourceChannel cmd = new removeResourceChannel();
             public removeResourceChannel channel(String value) {
                 return set("channel", value);
+            }
+
+            }
+        }
+        public static class settings_bank_conversion{
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="ADD_RSS_CONVERSION_RATE", field="RSS_CONVERSION_RATES")
+            public static class ADD_RSS_CONVERSION_RATE extends CommandRef {
+                public static final ADD_RSS_CONVERSION_RATE cmd = new ADD_RSS_CONVERSION_RATE();
+            public ADD_RSS_CONVERSION_RATE filter(String value) {
+                return set("filter", value);
+            }
+
+            public ADD_RSS_CONVERSION_RATE prices(String value) {
+                return set("prices", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="ALLOW_NEGATIVE_RESOURCES", field="ALLOW_NEGATIVE_RESOURCES")
+            public static class ALLOW_NEGATIVE_RESOURCES extends CommandRef {
+                public static final ALLOW_NEGATIVE_RESOURCES cmd = new ALLOW_NEGATIVE_RESOURCES();
+            public ALLOW_NEGATIVE_RESOURCES enabled(String value) {
+                return set("enabled", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="FORCE_RSS_CONVERSION", field="FORCE_RSS_CONVERSION")
+            public static class FORCE_RSS_CONVERSION extends CommandRef {
+                public static final FORCE_RSS_CONVERSION cmd = new FORCE_RSS_CONVERSION();
+            public FORCE_RSS_CONVERSION enabled(String value) {
+                return set("enabled", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="RESOURCE_CONVERSION", field="RESOURCE_CONVERSION")
+            public static class RESOURCE_CONVERSION extends CommandRef {
+                public static final RESOURCE_CONVERSION cmd = new RESOURCE_CONVERSION();
+            public RESOURCE_CONVERSION enabled(String value) {
+                return set("enabled", value);
+            }
+
+            }
+        }
+        public static class settings_bank_grants{
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="GRANT_LIMIT_DELAY", field="GRANT_LIMIT_DELAY")
+            public static class GRANT_LIMIT_DELAY extends CommandRef {
+                public static final GRANT_LIMIT_DELAY cmd = new GRANT_LIMIT_DELAY();
+            public GRANT_LIMIT_DELAY timediff(String value) {
+                return set("timediff", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="GRANT_REQUEST_CHANNEL", field="GRANT_REQUEST_CHANNEL")
+            public static class GRANT_REQUEST_CHANNEL extends CommandRef {
+                public static final GRANT_REQUEST_CHANNEL cmd = new GRANT_REQUEST_CHANNEL();
+            public GRANT_REQUEST_CHANNEL channel(String value) {
+                return set("channel", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="GRANT_REQUEST_DECAY", field="GRANT_REQUEST_DECAY")
+            public static class GRANT_REQUEST_DECAY extends CommandRef {
+                public static final GRANT_REQUEST_DECAY cmd = new GRANT_REQUEST_DECAY();
+            public GRANT_REQUEST_DECAY expire(String value) {
+                return set("expire", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="GRANT_REQUEST_EXPIRE", field="GRANT_REQUEST_EXPIRE")
+            public static class GRANT_REQUEST_EXPIRE extends CommandRef {
+                public static final GRANT_REQUEST_EXPIRE cmd = new GRANT_REQUEST_EXPIRE();
+            public GRANT_REQUEST_EXPIRE expire(String value) {
+                return set("expire", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="GRANT_REQUEST_NOTE", field="GRANT_REQUEST_NOTE")
+            public static class GRANT_REQUEST_NOTE extends CommandRef {
+                public static final GRANT_REQUEST_NOTE cmd = new GRANT_REQUEST_NOTE();
+            public GRANT_REQUEST_NOTE bank_note(String value) {
+                return set("bank_note", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="GRANT_REQUEST_TAX_ACCOUNT", field="GRANT_REQUEST_TAX_ACCOUNT")
+            public static class GRANT_REQUEST_TAX_ACCOUNT extends CommandRef {
+                public static final GRANT_REQUEST_TAX_ACCOUNT cmd = new GRANT_REQUEST_TAX_ACCOUNT();
+            public GRANT_REQUEST_TAX_ACCOUNT value(String value) {
+                return set("value", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="addGrantTemplateLimit", field="GRANT_TEMPLATE_LIMITS")
+            public static class addGrantTemplateLimit extends CommandRef {
+                public static final addGrantTemplateLimit cmd = new addGrantTemplateLimit();
+            public addGrantTemplateLimit role(String value) {
+                return set("role", value);
+            }
+
+            public addGrantTemplateLimit marketValue(String value) {
+                return set("marketValue", value);
             }
 
             }
@@ -9411,46 +9493,6 @@ public class CM {
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="GRANT_REQUEST_CHANNEL", field="GRANT_REQUEST_CHANNEL")
-            public static class GRANT_REQUEST_CHANNEL extends CommandRef {
-                public static final GRANT_REQUEST_CHANNEL cmd = new GRANT_REQUEST_CHANNEL();
-            public GRANT_REQUEST_CHANNEL channel(String value) {
-                return set("channel", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="GRANT_REQUEST_DECAY", field="GRANT_REQUEST_DECAY")
-            public static class GRANT_REQUEST_DECAY extends CommandRef {
-                public static final GRANT_REQUEST_DECAY cmd = new GRANT_REQUEST_DECAY();
-            public GRANT_REQUEST_DECAY expire(String value) {
-                return set("expire", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="GRANT_REQUEST_EXPIRE", field="GRANT_REQUEST_EXPIRE")
-            public static class GRANT_REQUEST_EXPIRE extends CommandRef {
-                public static final GRANT_REQUEST_EXPIRE cmd = new GRANT_REQUEST_EXPIRE();
-            public GRANT_REQUEST_EXPIRE expire(String value) {
-                return set("expire", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="GRANT_REQUEST_NOTE", field="GRANT_REQUEST_NOTE")
-            public static class GRANT_REQUEST_NOTE extends CommandRef {
-                public static final GRANT_REQUEST_NOTE cmd = new GRANT_REQUEST_NOTE();
-            public GRANT_REQUEST_NOTE bank_note(String value) {
-                return set("bank_note", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="GRANT_REQUEST_TAX_ACCOUNT", field="GRANT_REQUEST_TAX_ACCOUNT")
-            public static class GRANT_REQUEST_TAX_ACCOUNT extends CommandRef {
-                public static final GRANT_REQUEST_TAX_ACCOUNT cmd = new GRANT_REQUEST_TAX_ACCOUNT();
-            public GRANT_REQUEST_TAX_ACCOUNT value(String value) {
-                return set("value", value);
-            }
-
-            }
             @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="LARGE_TRANSFERS_CHANNEL", field="LARGE_TRANSFERS_CHANNEL")
             public static class LARGE_TRANSFERS_CHANNEL extends CommandRef {
                 public static final LARGE_TRANSFERS_CHANNEL cmd = new LARGE_TRANSFERS_CHANNEL();
@@ -9464,6 +9506,48 @@ public class CM {
                 public static final WITHDRAW_ALERT_CHANNEL cmd = new WITHDRAW_ALERT_CHANNEL();
             public WITHDRAW_ALERT_CHANNEL channel(String value) {
                 return set("channel", value);
+            }
+
+            }
+        }
+        public static class settings_bank_offshore{
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="DEFAULT_OFFSHORE_ACCOUNT", field="DEFAULT_OFFSHORE_ACCOUNT")
+            public static class DEFAULT_OFFSHORE_ACCOUNT extends CommandRef {
+                public static final DEFAULT_OFFSHORE_ACCOUNT cmd = new DEFAULT_OFFSHORE_ACCOUNT();
+            public DEFAULT_OFFSHORE_ACCOUNT natOrAA(String value) {
+                return set("natOrAA", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="MEMBER_CAN_OFFSHORE", field="MEMBER_CAN_OFFSHORE")
+            public static class MEMBER_CAN_OFFSHORE extends CommandRef {
+                public static final MEMBER_CAN_OFFSHORE cmd = new MEMBER_CAN_OFFSHORE();
+            public MEMBER_CAN_OFFSHORE value(String value) {
+                return set("value", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="OFFSHORE_KEEP_AMOUNT", field="OFFSHORE_KEEP_AMOUNT")
+            public static class OFFSHORE_KEEP_AMOUNT extends CommandRef {
+                public static final OFFSHORE_KEEP_AMOUNT cmd = new OFFSHORE_KEEP_AMOUNT();
+            public OFFSHORE_KEEP_AMOUNT amount(String value) {
+                return set("amount", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="PUBLIC_OFFSHORING", field="PUBLIC_OFFSHORING")
+            public static class PUBLIC_OFFSHORING extends CommandRef {
+                public static final PUBLIC_OFFSHORING cmd = new PUBLIC_OFFSHORING();
+            public PUBLIC_OFFSHORING enabled(String value) {
+                return set("enabled", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="ROUTE_ALLIANCE_BANK", field="ROUTE_ALLIANCE_BANK")
+            public static class ROUTE_ALLIANCE_BANK extends CommandRef {
+                public static final ROUTE_ALLIANCE_BANK cmd = new ROUTE_ALLIANCE_BANK();
+            public ROUTE_ALLIANCE_BANK value(String value) {
+                return set("value", value);
             }
 
             }
@@ -9904,76 +9988,12 @@ public class CM {
 
             }
         }
-        public static class settings_role{
+        public static class settings_self_role{
             @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="ASSIGNABLE_ROLES", field="ASSIGNABLE_ROLES")
             public static class ASSIGNABLE_ROLES extends CommandRef {
                 public static final ASSIGNABLE_ROLES cmd = new ASSIGNABLE_ROLES();
             public ASSIGNABLE_ROLES value(String value) {
                 return set("value", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="AUTONICK", field="AUTONICK")
-            public static class AUTONICK extends CommandRef {
-                public static final AUTONICK cmd = new AUTONICK();
-            public AUTONICK mode(String value) {
-                return set("mode", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="AUTOROLE_ALLIANCES", field="AUTOROLE_ALLIANCES")
-            public static class AUTOROLE_ALLIANCES extends CommandRef {
-                public static final AUTOROLE_ALLIANCES cmd = new AUTOROLE_ALLIANCES();
-            public AUTOROLE_ALLIANCES mode(String value) {
-                return set("mode", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="AUTOROLE_ALLIANCE_RANK", field="AUTOROLE_ALLIANCE_RANK")
-            public static class AUTOROLE_ALLIANCE_RANK extends CommandRef {
-                public static final AUTOROLE_ALLIANCE_RANK cmd = new AUTOROLE_ALLIANCE_RANK();
-            public AUTOROLE_ALLIANCE_RANK allianceRank(String value) {
-                return set("allianceRank", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="AUTOROLE_ALLY_GOV", field="AUTOROLE_ALLY_GOV")
-            public static class AUTOROLE_ALLY_GOV extends CommandRef {
-                public static final AUTOROLE_ALLY_GOV cmd = new AUTOROLE_ALLY_GOV();
-            public AUTOROLE_ALLY_GOV enabled(String value) {
-                return set("enabled", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="AUTOROLE_ALLY_ROLES", field="AUTOROLE_ALLY_ROLES")
-            public static class AUTOROLE_ALLY_ROLES extends CommandRef {
-                public static final AUTOROLE_ALLY_ROLES cmd = new AUTOROLE_ALLY_ROLES();
-            public AUTOROLE_ALLY_ROLES roles(String value) {
-                return set("roles", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="AUTOROLE_MEMBER_APPS", field="AUTOROLE_MEMBER_APPS")
-            public static class AUTOROLE_MEMBER_APPS extends CommandRef {
-                public static final AUTOROLE_MEMBER_APPS cmd = new AUTOROLE_MEMBER_APPS();
-            public AUTOROLE_MEMBER_APPS enabled(String value) {
-                return set("enabled", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="AUTOROLE_TOP_X", field="AUTOROLE_TOP_X")
-            public static class AUTOROLE_TOP_X extends CommandRef {
-                public static final AUTOROLE_TOP_X cmd = new AUTOROLE_TOP_X();
-            public AUTOROLE_TOP_X topScoreRank(String value) {
-                return set("topScoreRank", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="CONDITIONAL_ROLES", field="CONDITIONAL_ROLES")
-            public static class CONDITIONAL_ROLES extends CommandRef {
-                public static final CONDITIONAL_ROLES cmd = new CONDITIONAL_ROLES();
-            public CONDITIONAL_ROLES roleMap(String value) {
-                return set("roleMap", value);
             }
 
             }
@@ -9986,18 +10006,6 @@ public class CM {
 
             public addAssignableRole roles(String value) {
                 return set("roles", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="addConditionalRole", field="CONDITIONAL_ROLES")
-            public static class addConditionalRole extends CommandRef {
-                public static final addConditionalRole cmd = new addConditionalRole();
-            public addConditionalRole filter(String value) {
-                return set("filter", value);
-            }
-
-            public addConditionalRole role(String value) {
-                return set("role", value);
             }
 
             }
@@ -10222,14 +10230,6 @@ public class CM {
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="WAR_ROOM_FILTER", field="WAR_ROOM_FILTER")
-            public static class WAR_ROOM_FILTER extends CommandRef {
-                public static final WAR_ROOM_FILTER cmd = new WAR_ROOM_FILTER();
-            public WAR_ROOM_FILTER value(String value) {
-                return set("value", value);
-            }
-
-            }
             @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="WON_WAR_CHANNEL", field="WON_WAR_CHANNEL")
             public static class WON_WAR_CHANNEL extends CommandRef {
                 public static final WON_WAR_CHANNEL cmd = new WON_WAR_CHANNEL();
@@ -10245,6 +10245,14 @@ public class CM {
                 public static final ENABLE_WAR_ROOMS cmd = new ENABLE_WAR_ROOMS();
             public ENABLE_WAR_ROOMS enabled(String value) {
                 return set("enabled", value);
+            }
+
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="WAR_ROOM_FILTER", field="WAR_ROOM_FILTER")
+            public static class WAR_ROOM_FILTER extends CommandRef {
+                public static final WAR_ROOM_FILTER cmd = new WAR_ROOM_FILTER();
+            public WAR_ROOM_FILTER value(String value) {
+                return set("value", value);
             }
 
             }
