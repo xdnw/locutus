@@ -175,22 +175,22 @@ public class ProviderManager {
     }
 
     public void registerDefaults() {
-        if (Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.COPILOT.ENABLED) {
-            SimpleGPTProvider provider = new SimpleGPTProvider(
-                    ProviderType.COPILOT,
-                    handler.createCopilotText2Text("tokens", authData -> {
-                        throw new IllegalArgumentException("(For bot owner): Open URL <" + authData.Url + "> to enter the device code: `" + authData.UserCode + "`");
-                    }),
-                    handler.getModerator(),
-                    true,
-                    logger);
-            provider.setTurnLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.COPILOT.USER_TURN_LIMIT);
-            provider.setDayLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.COPILOT.USER_DAY_LIMIT);
-            provider.setGuildTurnLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.COPILOT.GUILD_TURN_LIMIT);
-            provider.setGuildDayLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.COPILOT.GUILD_DAY_LIMIT);
-
-            globalProviders.put(ProviderType.COPILOT, provider);
-        }
+//        if (Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.COPILOT.ENABLED) {
+//            SimpleGPTProvider provider = new SimpleGPTProvider(
+//                    ProviderType.COPILOT,
+//                    handler.createCopilotText2Text("tokens", authData -> {
+//                        throw new IllegalArgumentException("(For bot owner): Open URL <" + authData.Url + "> to enter the device code: `" + authData.UserCode + "`");
+//                    }),
+//                    handler.getModerator(),
+//                    true,
+//                    logger);
+//            provider.setTurnLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.COPILOT.USER_TURN_LIMIT);
+//            provider.setDayLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.COPILOT.USER_DAY_LIMIT);
+//            provider.setGuildTurnLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.COPILOT.GUILD_TURN_LIMIT);
+//            provider.setGuildDayLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.COPILOT.GUILD_DAY_LIMIT);
+//
+//            globalProviders.put(ProviderType.COPILOT, provider);
+//        }
 
         if (Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY != null) {
             SimpleGPTProvider provider = new SimpleGPTProvider(
@@ -200,22 +200,22 @@ public class ProviderManager {
                     true,
                     logger);
 
-            provider.setTurnLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.USER_TURN_LIMIT);
-            provider.setDayLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.USER_DAY_LIMIT);
-            provider.setGuildTurnLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.GUILD_TURN_LIMIT);
-            provider.setGuildDayLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.GUILD_DAY_LIMIT);
+            provider.setTurnLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.LIMITS.USER_TURN_LIMIT);
+            provider.setDayLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.LIMITS.USER_DAY_LIMIT);
+            provider.setGuildTurnLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.LIMITS.GUILD_TURN_LIMIT);
+            provider.setGuildDayLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.LIMITS.GUILD_DAY_LIMIT);
 
             globalProviders.put(ProviderType.OPENAI, provider);
         }
 
-        if (handler.getProcessText2Text() != null) {
-            SimpleGPTProvider provider = new SimpleGPTProvider(
-                    ProviderType.PROCESS,
-                    handler.getProcessText2Text(),
-                    handler.getModerator(),
-                    false,
-                    logger);
-            globalProviders.put(ProviderType.PROCESS, provider);
-        }
+//        if (handler.getProcessText2Text() != null) {
+//            SimpleGPTProvider provider = new SimpleGPTProvider(
+//                    ProviderType.PROCESS,
+//                    handler.getProcessText2Text(),
+//                    handler.getModerator(),
+//                    false,
+//                    logger);
+//            globalProviders.put(ProviderType.PROCESS, provider);
+//        }
     }
 }

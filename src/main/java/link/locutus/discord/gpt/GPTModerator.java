@@ -15,6 +15,10 @@ public class GPTModerator implements IModerator{
     private final OpenAIClient service;
 
     public GPTModerator(OpenAIClient service) {
+        if (service == null) {
+            throw new IllegalArgumentException("Text-Moderation: OpenAI service cannot be null. Please configure a valid openai key in your config.yml or disable AI features\n" +
+                    "Note: Moderation api usage is free, but you need to have a valid OpenAI API key configured.");
+        }
         this.service = service;
     }
 

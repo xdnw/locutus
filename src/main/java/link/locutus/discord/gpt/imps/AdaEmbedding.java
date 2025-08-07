@@ -38,10 +38,10 @@ public class AdaEmbedding extends AEmbeddingDatabase {
         if (data.size() != 1) {
             throw new RuntimeException("Expected 1 embedding, got " + data.size());
         }
-        List<Double> result = data.get(0).embedding();
+        List<Float> result = data.get(0).embedding();
         float[] target = new float[result.size()];
         for (int i = 0; i < target.length; i++) {
-            target[i] = result.get(i).floatValue();
+            target[i] = result.get(i);
         }
         return target;
     }

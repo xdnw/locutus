@@ -617,14 +617,31 @@ public class Settings extends Config {
         public static final class OPENAI {
             @Comment({"Your API key from <https://platform.openai.com/account/api-keys> (optional)"})
             public String API_KEY = "";
-            public int USER_TURN_LIMIT = 10;
-            public int USER_DAY_LIMIT = 25;
-            public int GUILD_TURN_LIMIT = 10;
-            public int GUILD_DAY_LIMIT = 25;
 
             @Comment({"The model to use for text embeddings",
                     "See: <https://platform.openai.com/docs/models/overview>"})
             public String EMBEDDING_MODEL = "text-embedding-3-small";
+
+            @Comment({"The base url for the OpenAI API",
+                    "Leave empty to use the default (https://api.openai.com/v1)"})
+            public String BASE_URL = "";
+        }
+        // limits
+        @Create
+        public LIMITS LIMITS;
+
+        public static class LIMITS {
+            @Comment("Maximum number of turns a user can perform")
+            public int USER_TURN_LIMIT = 0;
+
+            @Comment("Maximum number of actions a user can perform per day")
+            public int USER_DAY_LIMIT = 0;
+
+            @Comment("Maximum number of turns a guild can perform")
+            public int GUILD_TURN_LIMIT = 0;
+
+            @Comment("Maximum number of actions a guild can perform per day")
+            public int GUILD_DAY_LIMIT = 0;
         }
 
         @Create

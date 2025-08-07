@@ -13,12 +13,14 @@ import link.locutus.discord.Logg;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.copilot.CopilotDeviceAuthenticationData;
-import link.locutus.discord.gpt.imps.*;
+import link.locutus.discord.gpt.imps.CopilotText2Text;
+import link.locutus.discord.gpt.imps.GPTText2Text;
+import link.locutus.discord.gpt.imps.IText2Text;
+import link.locutus.discord.gpt.imps.LocalEmbedding;
 import link.locutus.discord.gpt.pw.GptDatabase;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 
 import javax.annotation.Nullable;
-import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Duration;
@@ -33,49 +35,86 @@ import static com.pusher.client.util.internal.Preconditions.checkArgument;
 import static com.pusher.client.util.internal.Preconditions.checkNotNull;
 
 public class GptHandler {
-    private final OpenAIClient openAiService;
     public final IEmbeddingDatabase embeddingDatabase;
     private final IModerator moderator;
-    private final ProcessText2Text processT2;
-    private final Client googleClient;
+//    private final ProcessText2Text processT2;
+
+    private volatile boolean initOpenAIClient = false;
+    private Object initOpenAIClientLock = new Object();
+    private OpenAIClient openAiService2;
+
+    private volatile boolean initGoogleClient = false;
+    private Object initGoogleClientLock = new Object();
+    private Client googleClient2;
+
+    // api key
+    // base url
+    // provider
 
     public GptHandler(GptDatabase database) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
-        this.openAiService = OpenAIOkHttpClient.builder().apiKey(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY)
-                .timeout(Duration.ofSeconds(120))
-                .build();
-
-        {
-            HttpOptions.Builder googeHttpOpt = HttpOptions.builder();
-            if (!Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.GOOGLE_AI.BASE_URL.isEmpty()) {
-                googeHttpOpt.baseUrl(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.GOOGLE_AI.BASE_URL);
-            }
-            googeHttpOpt.timeout(120);
-            this.googleClient = Client.builder()
-                    .apiKey(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.GOOGLE_AI.API_KEY)
-                    .httpOptions(googeHttpOpt.build())
-                    .build();
-        }
-
-        this.moderator = new GPTModerator(openAiService);
+        this.moderator = new GPTModerator(getOpenAiService());
 
         this.embeddingDatabase = new LocalEmbedding(database, "sentence-transformers/all-MiniLM-L6-v2");
-
-
-        File scriptPath = new File("../gpt4free/my_project/gpt3_5_turbo.py");
-        File venvExe = new File("../gpt4free/venv/Scripts/python.exe");
-        File workingDirectory = new File("../gpt4free");
-        // ensure files exist
-        if (scriptPath.exists()) {
-//            throw new RuntimeException("gpt4free not found: " + scriptPath.getAbsolutePath());
+//        File scriptPath = new File("../gpt4free/my_project/gpt3_5_turbo.py");
+//        File venvExe = new File("../gpt4free/venv/Scripts/python.exe");
+//        File workingDirectory = new File("../gpt4free");
+//        // ensure files exist
+//        if (scriptPath.exists()) {
+////            throw new RuntimeException("gpt4free not found: " + scriptPath.getAbsolutePath());
+////        }
+//            if (!venvExe.exists()) {
+//                throw new RuntimeException("venv not found: " + venvExe.getAbsolutePath());
+//            }
+////        this.summarizer = new ProcessSummarizer(venvExe, gpt4freePath, ModelType.GPT_3_5_TURBO, 8192);
+////            this.processT2 = new ProcessText2Text(venvExe, "my_project.gpt3_5_turbo", workingDirectory);
+//        } else {
+//            processT2 = null;
 //        }
-            if (!venvExe.exists()) {
-                throw new RuntimeException("venv not found: " + venvExe.getAbsolutePath());
+    }
+
+    private OpenAIClient getOrCreateOpenAiService() {
+        if (openAiService2 == null && !initOpenAIClient) {
+            synchronized (initOpenAIClientLock) {
+                if (openAiService2 == null) {
+//                    this.openAiService = OpenAIOkHttpClient.builder().apiKey(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY)
+//                            .timeout(Duration.ofSeconds(120))
+//                            .build();
+                    OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder()
+                            .apiKey(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY)
+                            .timeout(Duration.ofSeconds(120));
+                    if (Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.BASE_URL != null && !Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.BASE_URL.isEmpty()) {
+                        builder = builder.baseUrl(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.BASE_URL);
+                    }
+                    openAiService2 = builder.build();
+                }
             }
-//        this.summarizer = new ProcessSummarizer(venvExe, gpt4freePath, ModelType.GPT_3_5_TURBO, 8192);
-            this.processT2 = new ProcessText2Text(venvExe, "my_project.gpt3_5_turbo", workingDirectory);
-        } else {
-            processT2 = null;
         }
+        return openAiService2;
+    }
+
+    private Client getOrCreateGoogleClient() {
+        if (googleClient2 == null && !initGoogleClient) {
+            synchronized (initGoogleClientLock) {
+                initGoogleClient = true;
+                this.googleClient2 = createGoogleClient(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.GOOGLE_AI.BASE_URL, Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.GOOGLE_AI.API_KEY);
+            }
+        }
+        if (googleClient2 == null) {
+            throw new IllegalStateException("Google client not initialized. Please check your configuration.");
+        }
+        return googleClient2;
+    }
+
+    public Client createGoogleClient(String baseUrl, String apiKey) {
+        HttpOptions.Builder googeHttpOpt = HttpOptions.builder();
+        if (baseUrl != null && !baseUrl.isEmpty()) {
+            googeHttpOpt.baseUrl(baseUrl);
+        }
+        googeHttpOpt.timeout(120);
+        return Client.builder()
+                .apiKey(apiKey)
+                .httpOptions(googeHttpOpt.build())
+                .build();
     }
 
     public IModerator getModerator() {
@@ -83,7 +122,7 @@ public class GptHandler {
     }
 
     public OpenAIClient getOpenAiService() {
-        return openAiService;
+        return openAiService2;
     }
 
     public IEmbeddingDatabase getEmbeddings() {
@@ -155,7 +194,7 @@ public class GptHandler {
         return new CopilotText2Text(path, deviceAuthDataConsumer);
     }
 
-    public IText2Text getProcessText2Text() {
-        return processT2;
-    }
+//    public IText2Text getProcessText2Text() {
+//        return processT2;
+//    }
 }

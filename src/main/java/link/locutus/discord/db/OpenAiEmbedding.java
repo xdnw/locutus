@@ -14,7 +14,7 @@ public class OpenAiEmbedding extends AEmbeddingDatabase{
     private final String modelName;
 
     public OpenAiEmbedding(GptDatabase database, OpenAIClient service, String modelName) throws SQLException, ClassNotFoundException {
-        super("openai", database);
+        super("openai_" + modelName.replaceAll("[^a-zA-Z0-9_]", "_"), database);
         this.service = service;
         this.modelName = modelName;
     }
