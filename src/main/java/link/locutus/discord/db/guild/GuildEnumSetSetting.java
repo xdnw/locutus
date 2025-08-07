@@ -9,8 +9,8 @@ import java.util.stream.Collectors;
 public abstract class GuildEnumSetSetting<T extends Enum> extends GuildSetting<Set<T>> {
     private final Class<T> t;
 
-    public GuildEnumSetSetting(GuildSettingCategory category, Class<T> t) {
-        super(category, t);
+    public GuildEnumSetSetting(GuildSettingCategory category, GuildSettingSubgroup subgroup, Class<T> t) {
+        super(category, subgroup, t);
         this.t = t;
     }
 

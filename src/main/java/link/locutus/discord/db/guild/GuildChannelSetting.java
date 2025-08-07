@@ -7,8 +7,8 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 public abstract class GuildChannelSetting extends GuildSetting<MessageChannel> {
-    public GuildChannelSetting(GuildSettingCategory category) {
-        super(category, Key.of(MessageChannel.class));
+    public GuildChannelSetting(GuildSettingCategory category, GuildSettingSubgroup subgroup) {
+        super(category, subgroup, Key.of(MessageChannel.class));
     }
 
     @Override

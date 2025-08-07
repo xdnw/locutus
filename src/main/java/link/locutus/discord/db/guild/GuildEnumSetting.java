@@ -6,8 +6,8 @@ import link.locutus.discord.db.GuildDB;
 public abstract class GuildEnumSetting<T extends Enum> extends GuildSetting<T> {
     private final Class<T> t;
 
-    public GuildEnumSetting(GuildSettingCategory category, Class<T> t) {
-        super(category, t);
+    public GuildEnumSetting(GuildSettingCategory category, GuildSettingSubgroup subgroup, Class<T> t) {
+        super(category, subgroup, t);
         this.t = t;
     }
 

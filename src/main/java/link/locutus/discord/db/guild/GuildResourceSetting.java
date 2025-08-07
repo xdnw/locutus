@@ -10,8 +10,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 public abstract class GuildResourceSetting extends GuildSetting<Map<ResourceType, Double>> {
-    public GuildResourceSetting(GuildSettingCategory category) {
-        super(category, Map.class, ResourceType.class, Double.class);
+    public GuildResourceSetting(GuildSettingCategory category, GuildSettingSubgroup subgroup) {
+        super(category, subgroup, Map.class, ResourceType.class, Double.class);
     }
 
     @Override

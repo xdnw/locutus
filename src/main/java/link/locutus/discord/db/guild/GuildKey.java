@@ -57,8 +57,10 @@ import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static link.locutus.discord.db.guild.GuildSettingSubgroup.*;
+
 public class GuildKey {
-    public static final GuildSetting<Set<Integer>> ALLIANCE_ID = new GuildSetting<Set<Integer>>(GuildSettingCategory.DEFAULT, Set.class, Integer.class) {
+    public static final GuildSetting<Set<Integer>> ALLIANCE_ID = new GuildSetting<Set<Integer>>(GuildSettingCategory.DEFAULT, null, Set.class, Integer.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -191,7 +193,7 @@ public class GuildKey {
         }
     };
 
-    public static final GuildSetting<String> OPENAI_KEY = new GuildStringSetting(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE) {
+    public static final GuildSetting<String> OPENAI_KEY = new GuildStringSetting(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE, null) {
 
         @NoFormat
         @Command(descMethod = "help")
@@ -243,7 +245,7 @@ public class GuildKey {
         }
     }.setupRequirements(GuildSetting::requireValidAlliance);
 
-    public static final GuildSetting<ChatModel> OPENAI_MODEL = new GuildSetting<ChatModel>(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE, ChatModel.class) {
+    public static final GuildSetting<ChatModel> OPENAI_MODEL = new GuildSetting<ChatModel>(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE, null, ChatModel.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -277,7 +279,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(OPENAI_KEY));
 
-    public static GuildSetting<int[]> GPT_USAGE_LIMITS = new GuildSetting<int[]>(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE, int[].class) {
+    public static GuildSetting<int[]> GPT_USAGE_LIMITS = new GuildSetting<int[]>(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE, null, int[].class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -332,7 +334,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(OPENAI_KEY));
 
-    public static GuildSetting<Boolean> ENABLE_GITHUB_COPILOT = new GuildBooleanSetting(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE) {
+    public static GuildSetting<Boolean> ENABLE_GITHUB_COPILOT = new GuildBooleanSetting(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -373,7 +375,7 @@ public class GuildKey {
         }
     }.requireValidAlliance();
 
-    public static final GuildSetting<List<String>> API_KEY = new GuildSetting<List<String>>(GuildSettingCategory.DEFAULT, List.class, String.class) {
+    public static final GuildSetting<List<String>> API_KEY = new GuildSetting<List<String>>(GuildSettingCategory.DEFAULT, null, List.class, String.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -514,7 +516,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
 
-    public static GuildSetting<MessageChannel> ESPIONAGE_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
+    public static GuildSetting<MessageChannel> ESPIONAGE_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -570,7 +572,7 @@ public class GuildKey {
             return "The channel to get alerts when a member has their units spied successfully";
         }
     }.setupRequirements(f -> f.requires(API_KEY).requires(ALLIANCE_ID).requireActiveGuild());
-    public static GuildSetting<Boolean> MEMBER_CAN_SET_BRACKET = new GuildBooleanSetting(GuildSettingCategory.TAX) {
+    public static GuildSetting<Boolean> MEMBER_CAN_SET_BRACKET = new GuildBooleanSetting(GuildSettingCategory.TAX, TAX_SELF_ASSIGN) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -583,7 +585,7 @@ public class GuildKey {
             return "Whether members can use " + CM.nation.set.taxbracket.cmd.toSlashMention();
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID).requires(API_KEY));
-    public static GuildSetting<Boolean> MEMBER_CAN_OFFSHORE = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildSetting<Boolean> MEMBER_CAN_OFFSHORE = new GuildBooleanSetting(GuildSettingCategory.BANK_OFFSHORE, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -609,7 +611,7 @@ public class GuildKey {
             return "Whether members can use " + CM.offshore.send.cmd.toSlashMention() + " (true/false)";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID).requires(API_KEY).requiresCoalition(Coalition.OFFSHORE).requiresOffshore());
-    public static GuildSetting<Map<ResourceType, Double>> OFFSHORE_KEEP_AMOUNT = new GuildResourceSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildSetting<Map<ResourceType, Double>> OFFSHORE_KEEP_AMOUNT = new GuildResourceSetting(GuildSettingCategory.BANK_OFFSHORE, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -627,7 +629,7 @@ public class GuildKey {
             return "Amount of warchest to retain in the alliance bank when running " + CM.offshore.send.cmd.toSlashMention();
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID).requires(API_KEY).requiresCoalition(Coalition.OFFSHORE).requiresOffshore());
-    public static GuildSetting<String> RECRUIT_MESSAGE_SUBJECT = new GuildStringSetting(GuildSettingCategory.RECRUIT) {
+    public static GuildSetting<String> RECRUIT_MESSAGE_SUBJECT = new GuildStringSetting(GuildSettingCategory.RECRUIT, NATION_CREATION) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -648,7 +650,7 @@ public class GuildKey {
                     "Must also set " + RECRUIT_MESSAGE_CONTENT.getCommandMention();
         }
     }.setupRequirements(f -> f.requires(API_KEY).requires(ALLIANCE_ID).requireValidAlliance());
-    public static GuildSetting<String> RECRUIT_MESSAGE_CONTENT = new GuildStringSetting(GuildSettingCategory.RECRUIT) {
+    public static GuildSetting<String> RECRUIT_MESSAGE_CONTENT = new GuildStringSetting(GuildSettingCategory.RECRUIT, NATION_CREATION) {
 
         private static final Pattern HTML_TAG_PATTERN = Pattern.compile("<\\s*([a-z]+)\\s*[^>]*>.*?<\\s*/\\s*\\1\\s*>", Pattern.DOTALL);
 
@@ -676,7 +678,7 @@ public class GuildKey {
             return value;
         }
     }.setupRequirements(f -> f.requireValidAlliance().requires(RECRUIT_MESSAGE_SUBJECT).requires(ALLIANCE_ID).requires(API_KEY));
-    public static GuildSetting<MessageChannel> RECRUIT_MESSAGE_OUTPUT = new GuildChannelSetting(GuildSettingCategory.RECRUIT) {
+    public static GuildSetting<MessageChannel> RECRUIT_MESSAGE_OUTPUT = new GuildChannelSetting(GuildSettingCategory.RECRUIT, NATION_CREATION) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -688,7 +690,7 @@ public class GuildKey {
             return "The #channel to receive recruitment message output";
         }
     }.setupRequirements(f -> f.requires(RECRUIT_MESSAGE_SUBJECT).requires(RECRUIT_MESSAGE_CONTENT).requires(API_KEY).requireValidAlliance().requireActiveGuild());
-    public static GuildSetting<Long> RECRUIT_MESSAGE_DELAY = new GuildLongSetting(GuildSettingCategory.RECRUIT) {
+    public static GuildSetting<Long> RECRUIT_MESSAGE_DELAY = new GuildLongSetting(GuildSettingCategory.RECRUIT, NATION_CREATION) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -723,7 +725,7 @@ public class GuildKey {
         }
 
     }.setupRequirements(f -> f.requireValidAlliance().requires(RECRUIT_MESSAGE_OUTPUT).requires(ALLIANCE_ID));
-    public static GuildSetting<Map<NationFilter, TaxRate>> REQUIRED_INTERNAL_TAXRATE = new GuildSetting<Map<NationFilter, TaxRate>>(GuildSettingCategory.TAX, Map.class, NationFilter.class, TaxRate.class) {
+    public static GuildSetting<Map<NationFilter, TaxRate>> REQUIRED_INTERNAL_TAXRATE = new GuildSetting<Map<NationFilter, TaxRate>>(GuildSettingCategory.TAX, TAX_AUTO_ASSIGN, Map.class, NationFilter.class, TaxRate.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -767,7 +769,7 @@ public class GuildKey {
             return response;
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID).requires(API_KEY));
-    public static GuildSetting<Map<NationFilter, Integer>> REQUIRED_TAX_BRACKET = new GuildSetting<Map<NationFilter, Integer>>(GuildSettingCategory.TAX, Map.class, NationFilter.class, Integer.class) {
+    public static GuildSetting<Map<NationFilter, Integer>> REQUIRED_TAX_BRACKET = new GuildSetting<Map<NationFilter, Integer>>(GuildSettingCategory.TAX, TAX_AUTO_ASSIGN, Map.class, NationFilter.class, Integer.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -829,7 +831,7 @@ public class GuildKey {
             return parsed;
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID).requires(API_KEY));
-    public static GuildSetting<Map<ResourceType, Double>> WARCHEST_PER_CITY = new GuildResourceSetting(GuildSettingCategory.AUDIT) {
+    public static GuildSetting<Map<ResourceType, Double>> WARCHEST_PER_CITY = new GuildResourceSetting(GuildSettingCategory.AUDIT, MANUAL_AUDITS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -847,7 +849,7 @@ public class GuildKey {
             return "Amount of warchest to recommend per city in form `{steel=1234,aluminum=5678,gasoline=69,munitions=420}`";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID).requireValidAlliance().requires(API_KEY));
-    public static GuildSetting<Category> EMBASSY_CATEGORY = new GuildCategorySetting(GuildSettingCategory.FOREIGN_AFFAIRS) {
+    public static GuildSetting<Category> EMBASSY_CATEGORY = new GuildCategorySetting(GuildSettingCategory.FOREIGN_AFFAIRS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -878,7 +880,7 @@ public class GuildKey {
             }
         }
     }, "Requires having `" + GuildKey.ALLIANCE_ID.name() + "` set here, or `" + GuildKey.FA_SERVER.name() + "` set to this guild in another guild."));
-    public static GuildSetting<Map<Role, Set<Role>>> ASSIGNABLE_ROLES = new GuildSetting<Map<Role, Set<Role>>>(GuildSettingCategory.ROLE, Map.class, Role.class, TypeToken.getParameterized(Set.class, Role.class).getType()) {
+    public static GuildSetting<Map<Role, Set<Role>>> ASSIGNABLE_ROLES = new GuildSetting<Map<Role, Set<Role>>>(GuildSettingCategory.SELF_ROLE, null, Map.class, Role.class, TypeToken.getParameterized(Set.class, Role.class).getType()) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -927,7 +929,7 @@ public class GuildKey {
             return "Map roles that can be assigned (or removed). See " + CM.self.create.cmd.toSlashMention() + " " + CM.role.removeAssignableRole.cmd.toSlashMention() + " " + CM.self.add.cmd.toSlashMention() + " " + CM.self.remove.cmd.toSlashMention();
         }
     };
-    public static GuildSetting<MessageChannel> DEFENSE_WAR_CHANNEL = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
+    public static GuildSetting<MessageChannel> DEFENSE_WAR_CHANNEL = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS, DEFENSIVE_WARS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -942,7 +944,7 @@ public class GuildKey {
                     "To set the `" + Roles.MILCOM.name() + "` role, see: " + CM.role.setAlias.cmd.locutusRole(Roles.MILCOM.name()).discordRole("");
         }
     }.setupRequirements(f -> f.requiresAllies().requireActiveGuild().requireValidAlliance());
-    public static GuildSetting<Boolean> SHOW_ALLY_DEFENSIVE_WARS = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS) {
+    public static GuildSetting<Boolean> SHOW_ALLY_DEFENSIVE_WARS = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS, DEFENSIVE_WARS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -954,7 +956,7 @@ public class GuildKey {
             return "Whether to show defensive war alerts for allies (true/false)";
         }
     }.setupRequirements(f -> f.requires(DEFENSE_WAR_CHANNEL).requiresCoalition(Coalition.ALLIES));
-    public static GuildSetting<NationFilter> MENTION_MILCOM_FILTER = new GuildNationFilterSetting(GuildSettingCategory.WAR_ALERTS) {
+    public static GuildSetting<NationFilter> MENTION_MILCOM_FILTER = new GuildNationFilterSetting(GuildSettingCategory.WAR_ALERTS, DEFENSIVE_WARS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -967,7 +969,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(DEFENSE_WAR_CHANNEL));
 
-    public static GuildSetting<Boolean> WAR_ALERT_FOR_OFFSHORES = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS) {
+    public static GuildSetting<Boolean> WAR_ALERT_FOR_OFFSHORES = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS, DEFENSIVE_WARS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -979,7 +981,7 @@ public class GuildKey {
             return "Whether to do war alerts for offshore alliances";
         }
     }.setupRequirements(f -> f.requiresCoalition(Coalition.OFFSHORE).requires(DEFENSE_WAR_CHANNEL));
-    public static GuildSetting<MessageChannel> OFFENSIVE_WAR_CHANNEL = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
+    public static GuildSetting<MessageChannel> OFFENSIVE_WAR_CHANNEL = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS, OFFENSIVE_WARS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -994,7 +996,7 @@ public class GuildKey {
                     "Wars against inactive nones do not create alerts";
         }
     }.setupRequirements(f -> f.requiresAllies().requireActiveGuild().requireValidAlliance());
-    public static GuildSetting<Boolean> SHOW_ALLY_OFFENSIVE_WARS = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS) {
+    public static GuildSetting<Boolean> SHOW_ALLY_OFFENSIVE_WARS = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS, OFFENSIVE_WARS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1006,7 +1008,7 @@ public class GuildKey {
             return "Whether to show offensive war alerts for allies (true/false)";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID).requires(OFFENSIVE_WAR_CHANNEL).requiresCoalition(Coalition.ALLIES));
-    public static GuildSetting<Boolean> HIDE_APPLICANT_WARS = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS) {
+    public static GuildSetting<Boolean> HIDE_APPLICANT_WARS = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS, DEFENSIVE_WARS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1018,7 +1020,7 @@ public class GuildKey {
             return "Whether to hide war alerts for applicants";
         }
     }.setupRequirements(f -> f.requires(OFFENSIVE_WAR_CHANNEL));
-    public static GuildSetting<MessageChannel> WAR_PEACE_ALERTS = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
+    public static GuildSetting<MessageChannel> WAR_PEACE_ALERTS = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1030,7 +1032,7 @@ public class GuildKey {
             return "The #channel to receive alerts for changes to any war peace offers";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
-    public static GuildSetting<MessageChannel> UNBLOCKADE_REQUESTS = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
+    public static GuildSetting<MessageChannel> UNBLOCKADE_REQUESTS = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1042,7 +1044,7 @@ public class GuildKey {
             return "The #channel to receive alerts for unblockade requests";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
-    public static GuildSetting<MessageChannel> BLOCKADED_ALERTS = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
+    public static GuildSetting<MessageChannel> BLOCKADED_ALERTS = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1054,7 +1056,7 @@ public class GuildKey {
             return "The #channel to receive alerts for blockades";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
-    public static GuildSetting<MessageChannel> UNBLOCKADED_ALERTS = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
+    public static GuildSetting<MessageChannel> UNBLOCKADED_ALERTS = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1066,7 +1068,7 @@ public class GuildKey {
             return "The #channel to receive alerts for unblockades";
         }
     }.setupRequirements(f -> f.requires(BLOCKADED_ALERTS).requires(ALLIANCE_ID));
-    public static GuildSetting<Boolean> MEMBER_CAN_WITHDRAW = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildSetting<Boolean> MEMBER_CAN_WITHDRAW = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS, MEMBER_WITHDRAWAL) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1079,7 +1081,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requiresCoalition(Coalition.OFFSHORE).requiresOffshore());
 
-    public static GuildSetting<Boolean> NON_AA_MEMBERS_CAN_BANK = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildSetting<Boolean> NON_AA_MEMBERS_CAN_BANK = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS, MEMBER_WITHDRAWAL) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1092,7 +1094,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requiresCoalition(Coalition.OFFSHORE).requiresOffshore().requires(ALLIANCE_ID).requires(MEMBER_CAN_WITHDRAW));
 
-    public static GuildSetting<Boolean> NO_DISCORD_CAN_BANK = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildSetting<Boolean> NO_DISCORD_CAN_BANK = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS, MEMBER_WITHDRAWAL) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1105,7 +1107,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requiresCoalition(Coalition.OFFSHORE).requiresOffshore().requires(ALLIANCE_ID).requires(MEMBER_CAN_WITHDRAW));
 
-    public static GuildSetting<Boolean> MEMBER_CAN_WITHDRAW_WARTIME = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildSetting<Boolean> MEMBER_CAN_WITHDRAW_WARTIME = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS, MEMBER_WITHDRAWAL) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1117,7 +1119,7 @@ public class GuildKey {
             return "Whether members can withdraw during wartime (true/false)";
         }
     }.setupRequirements(f -> f.requiresCoalition(Coalition.OFFSHORE).requiresOffshore());
-    public static GuildSetting<Boolean> MEMBER_CAN_WITHDRAW_IGNORES_GRANTS = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildSetting<Boolean> MEMBER_CAN_WITHDRAW_IGNORES_GRANTS = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS, MEMBER_WITHDRAWAL) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1130,7 +1132,7 @@ public class GuildKey {
             return "Whether members's withdraw limit ignores their expiring/decaying grants (true/false)";
         }
     }.setupRequirements(f -> f.requiresCoalition(Coalition.OFFSHORE).requiresOffshore());
-    public static GuildSetting<Boolean> DISPLAY_ITEMIZED_DEPOSITS = new GuildBooleanSetting(GuildSettingCategory.BANK_INFO) {
+    public static GuildSetting<Boolean> DISPLAY_ITEMIZED_DEPOSITS = new GuildBooleanSetting(GuildSettingCategory.BANK_INFO, DEPOSIT_DISPLAY) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1144,7 +1146,7 @@ public class GuildKey {
 
     }.setupRequirements(f -> f.requiresRole(Roles.MEMBER, true));
 
-    public static GuildSetting<Boolean> DISPLAY_CONDENSED_DEPOSITS = new GuildBooleanSetting(GuildSettingCategory.BANK_INFO) {
+    public static GuildSetting<Boolean> DISPLAY_CONDENSED_DEPOSITS = new GuildBooleanSetting(GuildSettingCategory.BANK_INFO, DEPOSIT_DISPLAY) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1157,7 +1159,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requiresRole(Roles.MEMBER, true));
 
-    public static GuildSetting<MessageChannel> LOST_WAR_CHANNEL = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
+    public static GuildSetting<MessageChannel> LOST_WAR_CHANNEL = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1169,7 +1171,7 @@ public class GuildKey {
             return "The #channel to post wars when our side loses a war";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
-    public static GuildSetting<MessageChannel> WON_WAR_CHANNEL = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
+    public static GuildSetting<MessageChannel> WON_WAR_CHANNEL = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1182,7 +1184,7 @@ public class GuildKey {
         }
 
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
-    public static GuildSetting<MessageChannel> DEPOSIT_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BANK_INFO) {
+    public static GuildSetting<MessageChannel> DEPOSIT_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BANK_INFO, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1194,7 +1196,7 @@ public class GuildKey {
             return "The #channel to receive alerts when a nation makes a deposit (this will no longer reliably alert)";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
-    public static GuildSetting<MessageChannel> WITHDRAW_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BANK_INFO) {
+    public static GuildSetting<MessageChannel> WITHDRAW_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BANK_INFO, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1206,7 +1208,7 @@ public class GuildKey {
             return "The #channel to receive alerts when a nation requests a transfer";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
-    public static GuildSetting<MessageChannel> ADDBALANCE_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BANK_INFO) {
+    public static GuildSetting<MessageChannel> ADDBALANCE_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BANK_INFO, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1218,7 +1220,7 @@ public class GuildKey {
             return "The #channel to receive alerts when there is a large tranfer in the game or a nation VMs with resources";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
-    public static GuildSetting<MessageChannel> LARGE_TRANSFERS_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BANK_INFO) {
+    public static GuildSetting<MessageChannel> LARGE_TRANSFERS_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BANK_INFO, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1232,7 +1234,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.nonPublic().requiresWhitelisted()); // .requireValidAlliance() TODO FIXME
 
-    public static GuildSetting<MessageChannel> REROLL_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
+    public static GuildSetting<MessageChannel> REROLL_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1245,7 +1247,7 @@ public class GuildKey {
             return "The #channel to receive alerts for nation rerolls";
         }
     }.nonPublic().requireActiveGuild();
-    public static GuildSetting<MessageChannel> REPORT_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
+    public static GuildSetting<MessageChannel> REPORT_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1258,7 +1260,7 @@ public class GuildKey {
                     "See " + CM.report.add.cmd.toSlashMention();
         }
     }.requireActiveGuild().nonPublic();
-    public static GuildSetting<MessageChannel> DELETION_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
+    public static GuildSetting<MessageChannel> DELETION_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1271,7 +1273,7 @@ public class GuildKey {
         }
     }.nonPublic().requireActiveGuild();
 
-    public static GuildSetting<MessageChannel> BAN_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
+    public static GuildSetting<MessageChannel> BAN_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1284,7 +1286,7 @@ public class GuildKey {
         }
     }.requireActiveGuild().nonPublic();
 
-    public static GuildSetting<GuildDB.AutoNickOption> AUTONICK = new GuildEnumSetting<GuildDB.AutoNickOption>(GuildSettingCategory.ROLE, GuildDB.AutoNickOption.class) {
+    public static GuildSetting<GuildDB.AutoNickOption> AUTONICK = new GuildEnumSetting<GuildDB.AutoNickOption>(GuildSettingCategory.AUTO_ROLE, null, GuildDB.AutoNickOption.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1297,7 +1299,7 @@ public class GuildKey {
                     "See also: " + CM.role.clearNicks.cmd.toSlashMention();
         }
     };
-    public static GuildSetting<GuildDB.AutoRoleOption> AUTOROLE_ALLIANCES = new GuildEnumSetting<GuildDB.AutoRoleOption>(GuildSettingCategory.ROLE, GuildDB.AutoRoleOption.class) {
+    public static GuildSetting<GuildDB.AutoRoleOption> AUTOROLE_ALLIANCES = new GuildEnumSetting<GuildDB.AutoRoleOption>(GuildSettingCategory.AUTO_ROLE, ALLIANCE_ROLE, GuildDB.AutoRoleOption.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1316,7 +1318,7 @@ public class GuildKey {
                     "- " + AUTOROLE_TOP_X.getCommandMention();
         }
     };
-    public static GuildSetting<Boolean> AUTOROLE_MEMBER_APPS = new GuildBooleanSetting(GuildSettingCategory.ROLE) {
+    public static GuildSetting<Boolean> AUTOROLE_MEMBER_APPS = new GuildBooleanSetting(GuildSettingCategory.AUTO_ROLE, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1338,7 +1340,7 @@ public class GuildKey {
             }, "Requires " + GuildKey.ALLIANCE_ID.name() + " to be set").requiresNot(AUTOROLE_ALLY_GOV, false);
         }
     });
-    public static GuildSetting<Rank> AUTOROLE_ALLIANCE_RANK = new GuildEnumSetting<Rank>(GuildSettingCategory.ROLE, Rank.class) {
+    public static GuildSetting<Rank> AUTOROLE_ALLIANCE_RANK = new GuildEnumSetting<Rank>(GuildSettingCategory.AUTO_ROLE, ALLIANCE_ROLE, Rank.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1352,7 +1354,7 @@ public class GuildKey {
                     "Options: " + StringMan.getString(Rank.values());
         }
     }.setupRequirements(f -> f.requires(AUTOROLE_ALLIANCES));
-    public static GuildSetting<Integer> AUTOROLE_TOP_X = new GuildIntegerSetting(GuildSettingCategory.ROLE) {
+    public static GuildSetting<Integer> AUTOROLE_TOP_X = new GuildIntegerSetting(GuildSettingCategory.AUTO_ROLE, ALLIANCE_ROLE) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1365,7 +1367,7 @@ public class GuildKey {
                     "Alliances added to `" + Coalition.MASKEDALLIANCES + "` are still included outside this range";
         }
     }.setupRequirements(f -> f.requires(AUTOROLE_ALLIANCES));
-    public static GuildSetting<Integer> DO_NOT_RAID_TOP_X = new GuildIntegerSetting(GuildSettingCategory.FOREIGN_AFFAIRS) {
+    public static GuildSetting<Integer> DO_NOT_RAID_TOP_X = new GuildIntegerSetting(GuildSettingCategory.FOREIGN_AFFAIRS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1381,7 +1383,7 @@ public class GuildKey {
                     Defaults to `0`""";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
-    public static GuildSetting<Boolean> AUTOROLE_ALLY_GOV = new GuildBooleanSetting(GuildSettingCategory.ROLE) {
+    public static GuildSetting<Boolean> AUTOROLE_ALLY_GOV = new GuildBooleanSetting(GuildSettingCategory.AUTO_ROLE, ROLE_SERVER_SYNC) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1393,7 +1395,7 @@ public class GuildKey {
             return "Whether to give gov/member roles to allies (this is intended for coalition servers), `true` or `false`";
         }
     }.setupRequirements(f -> f.requiresCoalition(Coalition.ALLIES).requiresNot(ALLIANCE_ID, false).requiresNot(AUTOROLE_MEMBER_APPS, false));
-    public static GuildSetting<Set<Roles>> AUTOROLE_ALLY_ROLES = new GuildEnumSetSetting<Roles>(GuildSettingCategory.ROLE, Roles.class) {
+    public static GuildSetting<Set<Roles>> AUTOROLE_ALLY_ROLES = new GuildEnumSetSetting<Roles>(GuildSettingCategory.AUTO_ROLE, ROLE_SERVER_SYNC, Roles.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1412,7 +1414,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(AUTOROLE_ALLY_GOV).requiresCoalition(Coalition.ALLIES).requiresNot(ALLIANCE_ID, false));
 
-    public static GuildSetting<Boolean> ENABLE_WAR_ROOMS = new GuildBooleanSetting(GuildSettingCategory.WAR_ROOM) {
+    public static GuildSetting<Boolean> ENABLE_WAR_ROOMS = new GuildBooleanSetting(GuildSettingCategory.WAR_ROOM, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1437,7 +1439,7 @@ public class GuildKey {
         }
     }, "Requires " + GuildKey.ALLIANCE_ID.name() + " to be set"));
 
-    public static GuildSetting<Guild> WAR_SERVER = new GuildSetting<Guild>(GuildSettingCategory.WAR_ROOM, Guild.class) {
+    public static GuildSetting<Guild> WAR_SERVER = new GuildSetting<Guild>(GuildSettingCategory.WAR_ROOM, null, Guild.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1479,7 +1481,7 @@ public class GuildKey {
             return "The guild to defer war rooms to";
         }
     }.setupRequirements(f -> f.requires(ENABLE_WAR_ROOMS).requires(ALLIANCE_ID));
-    public static GuildSetting<Map.Entry<Integer, Long>> DELEGATE_SERVER = new GuildSetting<Map.Entry<Integer, Long>>(GuildSettingCategory.DEFAULT, Map.class, Integer.class, Long.class) {
+    public static GuildSetting<Map.Entry<Integer, Long>> DELEGATE_SERVER = new GuildSetting<Map.Entry<Integer, Long>>(GuildSettingCategory.DEFAULT, null, Map.class, Integer.class, Long.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1540,7 +1542,7 @@ public class GuildKey {
             return "The guild to delegate unset settings to";
         }
     };
-    public static GuildSetting<GuildDB> FA_SERVER = new GuildSetting<GuildDB>(GuildSettingCategory.FOREIGN_AFFAIRS, GuildDB.class) {
+    public static GuildSetting<GuildDB> FA_SERVER = new GuildSetting<GuildDB>(GuildSettingCategory.FOREIGN_AFFAIRS, null, GuildDB.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1581,7 +1583,7 @@ public class GuildKey {
             return "The guild to defer coalitions to";
         }
     };
-    public static GuildSetting<Boolean> RESOURCE_CONVERSION = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildSetting<Boolean> RESOURCE_CONVERSION = new GuildBooleanSetting(GuildSettingCategory.BANK_CONVERSION, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1597,7 +1599,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
 
-    public static GuildSetting<Long> FORCE_RSS_CONVERSION = new GuildLongSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildSetting<Long> FORCE_RSS_CONVERSION = new GuildLongSetting(GuildSettingCategory.BANK_CONVERSION, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1630,7 +1632,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(RESOURCE_CONVERSION));
 
-    public static GuildSetting<Boolean> ALLOW_NEGATIVE_RESOURCES = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildSetting<Boolean> ALLOW_NEGATIVE_RESOURCES = new GuildBooleanSetting(GuildSettingCategory.BANK_CONVERSION, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1646,7 +1648,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(RESOURCE_CONVERSION));
 
-    public static GuildSetting<Map<NationFilter, Map<ResourceType, Double>>> RSS_CONVERSION_RATES = new GuildSetting<Map<NationFilter, Map<ResourceType, Double>>>(GuildSettingCategory.BANK_ACCESS, Map.class, NationFilter.class, Map.class) {
+    public static GuildSetting<Map<NationFilter, Map<ResourceType, Double>>> RSS_CONVERSION_RATES = new GuildSetting<Map<NationFilter, Map<ResourceType, Double>>>(GuildSettingCategory.BANK_CONVERSION, null, Map.class, NationFilter.class, Map.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1712,7 +1714,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(RESOURCE_CONVERSION));
 
-    public static GuildSetting<MessageChannel> TRADE_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.TRADE) {
+    public static GuildSetting<MessageChannel> TRADE_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.TRADE, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1724,7 +1726,7 @@ public class GuildKey {
             return "The #channel to receive alerts for trades";
         }
     }.setupRequirements(f -> f.requiresWhitelisted().requireActiveGuild());
-    public static GuildSetting<MessageChannel> BEIGE_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BEIGE_ALERTS) {
+    public static GuildSetting<MessageChannel> BEIGE_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BEIGE_ALERTS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1737,7 +1739,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requireValidAlliance().requires(ALLIANCE_ID).requiresWhitelisted().requireActiveGuild());
 
-    public static GuildSetting<MessageChannel> ENEMY_BEIGED_ALERT = new GuildChannelSetting(GuildSettingCategory.BEIGE_ALERTS) {
+    public static GuildSetting<MessageChannel> ENEMY_BEIGED_ALERT = new GuildChannelSetting(GuildSettingCategory.BEIGE_ALERTS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1749,7 +1751,7 @@ public class GuildKey {
             return "The #channel to receive alerts when an enemy gets beiged";
         }
     }.setupRequirements(f -> f.requireValidAlliance().requiresCoalition(Coalition.ENEMIES));
-    public static GuildSetting<MessageChannel> ENEMY_BEIGED_ALERT_VIOLATIONS = new GuildChannelSetting(GuildSettingCategory.BEIGE_ALERTS) {
+    public static GuildSetting<MessageChannel> ENEMY_BEIGED_ALERT_VIOLATIONS = new GuildChannelSetting(GuildSettingCategory.BEIGE_ALERTS, BEIGE_VIOLATIONS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1761,7 +1763,7 @@ public class GuildKey {
             return "The #channel to receive alerts when an enemy gets beiged (without reason)";
         }
     }.setupRequirements(f -> f.requiresCoalition(Coalition.ENEMIES).requires(ALLIANCE_ID).requireValidAlliance().requireActiveGuild());
-    public static GuildSetting<Map<CityRanges, Set<BeigeReason>>> ALLOWED_BEIGE_REASONS = new GuildSetting<Map<CityRanges, Set<BeigeReason>>>(GuildSettingCategory.BEIGE_ALERTS, Map.class, CityRanges.class, TypeToken.getParameterized(Set.class, BeigeReason.class).getType()) {
+    public static GuildSetting<Map<CityRanges, Set<BeigeReason>>> ALLOWED_BEIGE_REASONS = new GuildSetting<Map<CityRanges, Set<BeigeReason>>>(GuildSettingCategory.BEIGE_ALERTS, BEIGE_VIOLATIONS, Map.class, CityRanges.class, TypeToken.getParameterized(Set.class, BeigeReason.class).getType()) {
 
         @NoFormat
         @Command(descMethod = "help")
@@ -1830,7 +1832,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(ENEMY_BEIGED_ALERT_VIOLATIONS).requireValidAlliance());
 
-    public static GuildSetting<Boolean> BEIGE_VIOLATION_MAIL = new GuildBooleanSetting(GuildSettingCategory.BEIGE_ALERTS) {
+    public static GuildSetting<Boolean> BEIGE_VIOLATION_MAIL = new GuildBooleanSetting(GuildSettingCategory.BEIGE_ALERTS, BEIGE_VIOLATIONS) {
 
         @NoFormat
         @Command(descMethod = "help")
@@ -1846,7 +1848,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(ENEMY_BEIGED_ALERT_VIOLATIONS).requireValidAlliance().requires(ALLOWED_BEIGE_REASONS));
 
-    public static GuildSetting<Map<NationFilter, Role>> CONDITIONAL_ROLES = new GuildSetting<Map<NationFilter, Role>>(GuildSettingCategory.ROLE, Map.class, NationFilter.class, Role.class) {
+    public static GuildSetting<Map<NationFilter, Role>> CONDITIONAL_ROLES = new GuildSetting<Map<NationFilter, Role>>(GuildSettingCategory.AUTO_ROLE, null, Map.class, NationFilter.class, Role.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1900,7 +1902,7 @@ public class GuildKey {
         }
     }.setupRequirements(GuildSetting::requireValidAlliance);
 
-    public static GuildSetting<Map<NationFilter, MMRMatcher>> REQUIRED_MMR = new GuildSetting<Map<NationFilter, MMRMatcher>>(GuildSettingCategory.AUDIT, Map.class, NationFilter.class, MMRMatcher.class) {
+    public static GuildSetting<Map<NationFilter, MMRMatcher>> REQUIRED_MMR = new GuildSetting<Map<NationFilter, MMRMatcher>>(GuildSettingCategory.AUDIT, MANUAL_AUDITS, Map.class, NationFilter.class, MMRMatcher.class) {
 
         @NoFormat
         @Command(descMethod = "help")
@@ -1945,7 +1947,7 @@ public class GuildKey {
             return response;
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
-    public static GuildSetting<MessageChannel> ENEMY_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BEIGE_ALERTS) {
+    public static GuildSetting<MessageChannel> ENEMY_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BEIGE_ALERTS, ENEMY_ALERT) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1965,7 +1967,7 @@ public class GuildKey {
                     "- Are online, away, or DND on discord, or have the `" + Roles.ENEMY_ALERT_OFFLINE.name() + "` role";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID).requiresCoalition(Coalition.ENEMIES).requireValidAlliance().requireActiveGuild());
-    public static GuildSetting<EnemyAlertChannelMode> ENEMY_ALERT_CHANNEL_MODE = new GuildEnumSetting<EnemyAlertChannelMode>(GuildSettingCategory.BEIGE_ALERTS, EnemyAlertChannelMode.class) {
+    public static GuildSetting<EnemyAlertChannelMode> ENEMY_ALERT_CHANNEL_MODE = new GuildEnumSetting<EnemyAlertChannelMode>(GuildSettingCategory.BEIGE_ALERTS, null, EnemyAlertChannelMode.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1979,7 +1981,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(ENEMY_ALERT_CHANNEL));
 
-    public static GuildSetting<NationFilter> ENEMY_ALERT_FILTER = new GuildSetting<NationFilter>(GuildSettingCategory.BEIGE_ALERTS, NationFilter.class) {
+    public static GuildSetting<NationFilter> ENEMY_ALERT_FILTER = new GuildSetting<NationFilter>(GuildSettingCategory.BEIGE_ALERTS, ENEMY_ALERT, NationFilter.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1999,7 +2001,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(ENEMY_ALERT_CHANNEL));
 
-    public static GuildSetting<MessageChannel> BOUNTY_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BOUNTY) {
+    public static GuildSetting<MessageChannel> BOUNTY_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BOUNTY, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2012,7 +2014,7 @@ public class GuildKey {
         }
     }.setupRequirements(GuildSetting::requireActiveGuild);
 
-    public static GuildSetting<MessageChannel> TREASURE_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BOUNTY) {
+    public static GuildSetting<MessageChannel> TREASURE_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BOUNTY, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2025,7 +2027,7 @@ public class GuildKey {
         }
     }.setupRequirements(GuildSetting::requireActiveGuild);
 
-    public static GuildSetting<MessageChannel> MEMBER_REBUY_INFRA_ALERT = new GuildChannelSetting(GuildSettingCategory.AUDIT) {
+    public static GuildSetting<MessageChannel> MEMBER_REBUY_INFRA_ALERT = new GuildChannelSetting(GuildSettingCategory.AUDIT, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2037,7 +2039,7 @@ public class GuildKey {
             return "The channel to receive alerts when a member buys infra";
         }
     }.setupRequirements(GuildSetting::requireValidAlliance);
-    public static GuildSetting<MessageChannel> MEMBER_LEAVE_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.AUDIT) {
+    public static GuildSetting<MessageChannel> MEMBER_LEAVE_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.AUDIT, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2050,7 +2052,7 @@ public class GuildKey {
         }
     }.setupRequirements(GuildSetting::requireValidAlliance);
 
-    public static GuildSetting<Boolean> MAIL_DEMOTED_MEMBERS = new GuildBooleanSetting(GuildSettingCategory.AUDIT) {
+    public static GuildSetting<Boolean> MAIL_DEMOTED_MEMBERS = new GuildBooleanSetting(GuildSettingCategory.AUDIT, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2063,7 +2065,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requireValidAlliance().requires(MEMBER_LEAVE_ALERT_CHANNEL));
 
-    public static GuildSetting<Boolean> MAIL_NEW_APPLICANTS = new GuildBooleanSetting(GuildSettingCategory.RECRUIT) {
+    public static GuildSetting<Boolean> MAIL_NEW_APPLICANTS = new GuildBooleanSetting(GuildSettingCategory.RECRUIT, ALLIANCE_APPLICATION) {
         @Override
         public String help() {
             return "If new applicants are sent an ingame mail with instructions on how to join the discord";
@@ -2075,7 +2077,7 @@ public class GuildKey {
             return MAIL_NEW_APPLICANTS.setAndValidate(db, user, enabled);
         }
     }.setupRequirements(GuildSetting::requireValidAlliance);
-    public static GuildSetting<String> MAIL_NEW_APPLICANTS_TEXT = new GuildStringSetting(GuildSettingCategory.RECRUIT) {
+    public static GuildSetting<String> MAIL_NEW_APPLICANTS_TEXT = new GuildStringSetting(GuildSettingCategory.RECRUIT, ALLIANCE_APPLICATION) {
         @Override
         public String help() {
             return "The message to send to new applicants via in-game mail.\n" +
@@ -2095,7 +2097,7 @@ public class GuildKey {
 //                return "The channel to receive alerts when a <c10 member buys a city";
 //            }
 //        }.setupRequirements(f -> f.requireValidAlliance());
-    public static GuildSetting<MessageChannel> INTERVIEW_INFO_SPAM = new GuildChannelSetting(GuildSettingCategory.INTERVIEW) {
+    public static GuildSetting<MessageChannel> INTERVIEW_INFO_SPAM = new GuildChannelSetting(GuildSettingCategory.INTERVIEW, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2107,7 +2109,7 @@ public class GuildKey {
             return "The channel to receive info spam about expired interview channels";
         }
     }.setupRequirements(GuildSetting::requireValidAlliance);
-    public static GuildSetting<MessageChannel> INTERVIEW_PENDING_ALERTS = new GuildChannelSetting(GuildSettingCategory.INTERVIEW) {
+    public static GuildSetting<MessageChannel> INTERVIEW_PENDING_ALERTS = new GuildChannelSetting(GuildSettingCategory.INTERVIEW, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2134,7 +2136,7 @@ public class GuildKey {
         // to name
     }, "Please set one of the roles:" + Arrays.asList(Roles.INTERVIEWER, Roles.MENTOR, Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS)
             .stream().map(Enum::name).collect(Collectors.joining(", ")) + " via " + CM.role.setAlias.cmd.toSlashMention()));
-    public static GuildSetting<Category> ARCHIVE_CATEGORY = new GuildCategorySetting(GuildSettingCategory.INTERVIEW) {
+    public static GuildSetting<Category> ARCHIVE_CATEGORY = new GuildCategorySetting(GuildSettingCategory.INTERVIEW, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2147,7 +2149,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requireValidAlliance().requires(INTERVIEW_PENDING_ALERTS));
 
-    public static GuildSetting<Category> INTERVIEW_CATEGORY = new GuildCategorySetting(GuildSettingCategory.INTERVIEW) {
+    public static GuildSetting<Category> INTERVIEW_CATEGORY = new GuildCategorySetting(GuildSettingCategory.INTERVIEW, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2160,7 +2162,7 @@ public class GuildKey {
         }
     }.setupRequirements(GuildSetting::requireValidAlliance);
 
-    public static GuildSetting<Map<Long, MessageChannel>> RESOURCE_REQUEST_CHANNEL = new GuildSetting<Map<Long, MessageChannel>>(GuildSettingCategory.BANK_ACCESS, Map.class, Long.class, MessageChannel.class) {
+    public static GuildSetting<Map<Long, MessageChannel>> RESOURCE_REQUEST_CHANNEL = new GuildSetting<Map<Long, MessageChannel>>(GuildSettingCategory.BANK_ACCESS, null, Map.class, Long.class, MessageChannel.class) {
 
         @NoFormat
         @Command(descMethod = "help")
@@ -2238,7 +2240,7 @@ public class GuildKey {
                     """;
         }
     }.setupRequirements(f -> f.requiresCoalition(Coalition.OFFSHORE).requiresOffshore());
-    public static GuildSetting<MessageChannel> GRANT_REQUEST_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BANK_INFO) {
+    public static GuildSetting<MessageChannel> GRANT_REQUEST_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BANK_GRANTS, GRANT_REQUESTS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2251,7 +2253,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requireValidAlliance().requiresRole(Roles.ECON_GRANT_SELF, true).requiresOffshore());
 
-    public static GuildSetting<Boolean> GRANT_REQUEST_TAX_ACCOUNT = new GuildBooleanSetting(GuildSettingCategory.BANK_INFO) {
+    public static GuildSetting<Boolean> GRANT_REQUEST_TAX_ACCOUNT = new GuildBooleanSetting(GuildSettingCategory.BANK_GRANTS, GRANT_REQUESTS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2264,7 +2266,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(GRANT_REQUEST_CHANNEL));
 
-    public static GuildSetting<DepositType.DepositTypeInfo> GRANT_REQUEST_NOTE = new GuildSetting<DepositType.DepositTypeInfo>(GuildSettingCategory.BANK_INFO, DepositType.DepositTypeInfo.class) {
+    public static GuildSetting<DepositType.DepositTypeInfo> GRANT_REQUEST_NOTE = new GuildSetting<DepositType.DepositTypeInfo>(GuildSettingCategory.BANK_GRANTS, GRANT_REQUESTS, DepositType.DepositTypeInfo.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2283,7 +2285,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(GRANT_REQUEST_CHANNEL));
 
-    public static GuildSetting<Long> GRANT_REQUEST_EXPIRE = new GuildLongSetting(GuildSettingCategory.BANK_INFO) {
+    public static GuildSetting<Long> GRANT_REQUEST_EXPIRE = new GuildLongSetting(GuildSettingCategory.BANK_GRANTS, GRANT_REQUESTS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2306,7 +2308,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(GRANT_REQUEST_CHANNEL));
 
-    public static GuildSetting<Long> GRANT_REQUEST_DECAY = new GuildLongSetting(GuildSettingCategory.BANK_INFO) {
+    public static GuildSetting<Long> GRANT_REQUEST_DECAY = new GuildLongSetting(GuildSettingCategory.BANK_GRANTS, GRANT_REQUESTS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2330,7 +2332,7 @@ public class GuildKey {
     }.setupRequirements(f -> f.requires(GRANT_REQUEST_CHANNEL));
 
 
-    public static GuildSetting<MessageChannel> TREATY_ALERTS = new GuildChannelSetting(GuildSettingCategory.FOREIGN_AFFAIRS) {
+    public static GuildSetting<MessageChannel> TREATY_ALERTS = new GuildChannelSetting(GuildSettingCategory.FOREIGN_AFFAIRS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2342,7 +2344,7 @@ public class GuildKey {
             return "The #channel to receive alerts for treaty changes";
         }
     }.setupRequirements(GuildSetting::requireActiveGuild);
-    public static GuildSetting<MessageChannel> ALLIANCE_CREATE_ALERTS = new GuildChannelSetting(GuildSettingCategory.FOREIGN_AFFAIRS) {
+    public static GuildSetting<MessageChannel> ALLIANCE_CREATE_ALERTS = new GuildChannelSetting(GuildSettingCategory.FOREIGN_AFFAIRS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2354,7 +2356,7 @@ public class GuildKey {
             return "The #channel to receive alerts for alliance creation";
         }
     }.setupRequirements(GuildSetting::requireActiveGuild);
-    public static GuildSetting<MessageChannel> ORBIS_LEADER_CHANGE_ALERT = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
+    public static GuildSetting<MessageChannel> ORBIS_LEADER_CHANGE_ALERT = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2366,7 +2368,7 @@ public class GuildKey {
             return "The #channel to receive alerts when a nation is promoted to leader in an alliance (top 80)";
         }
     }.setupRequirements(GuildSetting::requireActiveGuild).nonPublic();
-    public static GuildSetting<MessageChannel> ORBIS_OFFICER_LEAVE_ALERTS = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
+    public static GuildSetting<MessageChannel> ORBIS_OFFICER_LEAVE_ALERTS = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2378,7 +2380,7 @@ public class GuildKey {
             return "The #channel to receive alerts when officers leave an alliance  (top 50)";
         }
     }.setupRequirements(GuildSetting::requireActiveGuild).nonPublic();
-    public static GuildSetting<MessageChannel> ORBIS_ALLIANCE_EXODUS_ALERTS = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
+    public static GuildSetting<MessageChannel> ORBIS_ALLIANCE_EXODUS_ALERTS = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS, EXODUS_ALERT) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2392,7 +2394,7 @@ public class GuildKey {
         }
     }.setupRequirements(GuildSetting::requireActiveGuild).nonPublic();
 
-    public static GuildSetting<Integer> ALLIANCE_EXODUS_TOP_X = new GuildIntegerSetting(GuildSettingCategory.ORBIS_ALERTS) {
+    public static GuildSetting<Integer> ALLIANCE_EXODUS_TOP_X = new GuildIntegerSetting(GuildSettingCategory.ORBIS_ALERTS, EXODUS_ALERT) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2406,7 +2408,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requireActiveGuild().requires(ORBIS_ALLIANCE_EXODUS_ALERTS));
 
-    public static GuildSetting<MessageChannel> ORBIS_OFFICER_MMR_CHANGE_ALERTS = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
+    public static GuildSetting<MessageChannel> ORBIS_OFFICER_MMR_CHANGE_ALERTS = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2418,7 +2420,7 @@ public class GuildKey {
             return "The #channel to receive alerts when gov members increase MMR (top 80)";
         }
     }.setupRequirements(GuildSetting::requireActiveGuild).nonPublic();
-    public static GuildSetting<MessageChannel> ENEMY_MMR_CHANGE_ALERTS = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
+    public static GuildSetting<MessageChannel> ENEMY_MMR_CHANGE_ALERTS = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2430,7 +2432,7 @@ public class GuildKey {
             return "The #channel to receive alerts when a member in `enemies` coalitions changes MMR";
         }
     }.setupRequirements(f -> f.requireValidAlliance().requireActiveGuild());
-    public static GuildSetting<MessageChannel> ESCALATION_ALERTS = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
+    public static GuildSetting<MessageChannel> ESCALATION_ALERTS = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2442,7 +2444,7 @@ public class GuildKey {
             return "The #channel to receive alerts for war escalation alerts in orbis";
         }
     }.setupRequirements(GuildSetting::requireActiveGuild).nonPublic();
-    public static GuildSetting<MessageChannel> ACTIVITY_ALERTS = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
+    public static GuildSetting<MessageChannel> ACTIVITY_ALERTS = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2454,7 +2456,7 @@ public class GuildKey {
             return "The #channel to receive alerts for activity (e.g. pre blitz)";
         }
     }.setupRequirements(GuildSetting::requireActiveGuild).nonPublic();
-    public static GuildSetting<Long> BANKER_WITHDRAW_LIMIT = new GuildLongSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildSetting<Long> BANKER_WITHDRAW_LIMIT = new GuildLongSetting(GuildSettingCategory.BANK_ACCESS, BANK_LIMITS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2466,7 +2468,7 @@ public class GuildKey {
             return "The daily withdraw limit (from the offshore) of non admins";
         }
     }.setupRequirements(GuildSetting::requiresOffshore);
-    public static GuildSetting<Long> BANKER_WITHDRAW_LIMIT_INTERVAL = new GuildLongSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildSetting<Long> BANKER_WITHDRAW_LIMIT_INTERVAL = new GuildLongSetting(GuildSettingCategory.BANK_ACCESS, BANK_LIMITS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2500,7 +2502,7 @@ public class GuildKey {
             return "The time period the withdraw limit applies to (defaults to 1 day)";
         }
     }.setupRequirements(f -> f.requires(BANKER_WITHDRAW_LIMIT).requiresOffshore());
-    public static GuildSetting<TaxRate> TAX_BASE = new GuildSetting<TaxRate>(GuildSettingCategory.TAX, TaxRate.class) {
+    public static GuildSetting<TaxRate> TAX_BASE = new GuildSetting<TaxRate>(GuildSettingCategory.TAX, null, TaxRate.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2520,7 +2522,7 @@ public class GuildKey {
                     "Setting is retroactive. See also: " + CM.nation.set.taxinternal.cmd.toSlashMention();
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID).requires(API_KEY).requireValidAlliance());
-    public static GuildSetting<MessageChannel> MEMBER_AUDIT_ALERTS = new GuildChannelSetting(GuildSettingCategory.AUDIT) {
+    public static GuildSetting<MessageChannel> MEMBER_AUDIT_ALERTS = new GuildChannelSetting(GuildSettingCategory.AUDIT, AUTO_AUDITS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2532,7 +2534,7 @@ public class GuildKey {
             return "The #channel to ping members about audits";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID).requireValidAlliance());
-    public static GuildSetting<Set<AutoAuditType>> DISABLED_MEMBER_AUDITS = new GuildEnumSetSetting<AutoAuditType>(GuildSettingCategory.AUDIT, AutoAuditType.class) {
+    public static GuildSetting<Set<AutoAuditType>> DISABLED_MEMBER_AUDITS = new GuildEnumSetSetting<AutoAuditType>(GuildSettingCategory.AUDIT, AUTO_AUDITS, AutoAuditType.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2544,7 +2546,7 @@ public class GuildKey {
             return "A comma separated list of audit types to ignore:\n" + StringMan.getString(AutoAuditType.values());
         }
     }.setupRequirements(f -> f.requires(MEMBER_AUDIT_ALERTS).requireValidAlliance());
-    public static GuildSetting<Map<ResourceType, Double>> REWARD_REFERRAL = new GuildResourceSetting(GuildSettingCategory.REWARD) {
+    public static GuildSetting<Map<ResourceType, Double>> REWARD_REFERRAL = new GuildResourceSetting(GuildSettingCategory.REWARD, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2557,7 +2559,7 @@ public class GuildKey {
             return "The reward (resources) for referring a nation in the form `{food=1,money=3.2}`";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID).requireValidAlliance().requires(INTERVIEW_PENDING_ALERTS));
-    public static GuildSetting<Map<ResourceType, Double>> REWARD_MENTOR = new GuildResourceSetting(GuildSettingCategory.REWARD) {
+    public static GuildSetting<Map<ResourceType, Double>> REWARD_MENTOR = new GuildResourceSetting(GuildSettingCategory.REWARD, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2569,7 +2571,7 @@ public class GuildKey {
             return "The reward (resources) for mentoring a nation in the form `{food=1,money=3.2}`";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID).requireValidAlliance().requires(INTERVIEW_PENDING_ALERTS));
-    public static GuildSetting<Boolean> PUBLIC_OFFSHORING = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildSetting<Boolean> PUBLIC_OFFSHORING = new GuildBooleanSetting(GuildSettingCategory.BANK_OFFSHORE, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2587,7 +2589,7 @@ public class GuildKey {
             throw new IllegalArgumentException("This guild is not an offshore. See: " + CM.offshore.add.cmd.toSlashMention());
         }
     }, "The guild must be a valid offshore"));
-    public static GuildSetting<Set<Integer>> GRANT_TEMPLATE_BLACKLIST = new GuildSetting<Set<Integer>>(GuildSettingCategory.BANK_ACCESS, Set.class, Integer.class) {
+    public static GuildSetting<Set<Integer>> GRANT_TEMPLATE_BLACKLIST = new GuildSetting<Set<Integer>>(GuildSettingCategory.BANK_GRANTS, null, Set.class, Integer.class) {
 
         @Command(descMethod = "help")
         @RolePermission(Roles.ECON)
@@ -2654,7 +2656,7 @@ public class GuildKey {
     };
 
     //AA_GROUND_UNIT_ALERTS - MessageChannel
-    public static GuildSetting<MessageChannel> AA_GROUND_UNIT_ALERTS = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
+    public static GuildSetting<MessageChannel> AA_GROUND_UNIT_ALERTS = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS, ALLIANCE_GROUND_ALERT) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2668,7 +2670,7 @@ public class GuildKey {
         }
     }.setupRequirements(GuildSetting::requireActiveGuild).nonPublic();
     // AA_GROUND_TOP_X (min = 1, max = 80)
-    public static GuildSetting<Integer> AA_GROUND_TOP_X = new GuildIntegerSetting(GuildSettingCategory.ORBIS_ALERTS) {
+    public static GuildSetting<Integer> AA_GROUND_TOP_X = new GuildIntegerSetting(GuildSettingCategory.ORBIS_ALERTS, ALLIANCE_GROUND_ALERT) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2690,7 +2692,7 @@ public class GuildKey {
         }
     }.setupRequirements(GuildSetting::requireActiveGuild).nonPublic();
 
-    public static GuildSetting<Map<Long, Double>> GRANT_TEMPLATE_LIMITS = new GuildSetting<Map<Long,Double>>(GuildSettingCategory.BANK_ACCESS, Map.class, Long.class, Double.class) {
+    public static GuildSetting<Map<Long, Double>> GRANT_TEMPLATE_LIMITS = new GuildSetting<Map<Long,Double>>(GuildSettingCategory.BANK_GRANTS, GRANT_TEMPLATE_LIMIT, Map.class, Long.class, Double.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2756,7 +2758,7 @@ public class GuildKey {
     }.setupRequirements(f -> f.requireValidAlliance().requiresOffshore());
 
     // add a limit interval
-    public static GuildSetting<Long> GRANT_LIMIT_DELAY = new GuildLongSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildSetting<Long> GRANT_LIMIT_DELAY = new GuildLongSetting(GuildSettingCategory.BANK_GRANTS, GRANT_TEMPLATE_LIMIT) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2789,7 +2791,7 @@ public class GuildKey {
 
     }.setupRequirements(f -> f.requireValidAlliance().requires(RECRUIT_MESSAGE_OUTPUT).requires(ALLIANCE_ID));
 
-    public static GuildSetting<NationFilter> WAR_ROOM_FILTER = new GuildNationFilterSetting(GuildSettingCategory.WAR_ALERTS) {
+    public static GuildSetting<NationFilter> WAR_ROOM_FILTER = new GuildNationFilterSetting(GuildSettingCategory.WAR_ROOM, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2805,7 +2807,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(ENABLE_WAR_ROOMS));
 
-    public static GuildSetting<Boolean> ROUTE_ALLIANCE_BANK = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildSetting<Boolean> ROUTE_ALLIANCE_BANK = new GuildBooleanSetting(GuildSettingCategory.BANK_OFFSHORE, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2819,7 +2821,7 @@ public class GuildKey {
         }
     }.requireValidAlliance().requiresOffshore();
 
-    public static GuildSetting<NationOrAllianceOrGuild> DEFAULT_OFFSHORE_ACCOUNT = new GuildSetting<NationOrAllianceOrGuild>(GuildSettingCategory.BANK_ACCESS, NationOrAllianceOrGuild.class) {
+    public static GuildSetting<NationOrAllianceOrGuild> DEFAULT_OFFSHORE_ACCOUNT = new GuildSetting<NationOrAllianceOrGuild>(GuildSettingCategory.BANK_OFFSHORE, null, NationOrAllianceOrGuild.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2867,7 +2869,7 @@ public class GuildKey {
     }.requireValidAlliance().requiresOffshore();
 
 
-    public static GuildSetting<List<CustomConditionMessage>> TIMED_MESSAGES = new GuildSetting<List<CustomConditionMessage>>(GuildSettingCategory.RECRUIT, Key.of(List.class, CustomConditionMessage.class)) {
+    public static GuildSetting<List<CustomConditionMessage>> TIMED_MESSAGES = new GuildSetting<List<CustomConditionMessage>>(GuildSettingCategory.RECRUIT, null, Key.of(List.class, CustomConditionMessage.class)) {
         @Override
         public List<CustomConditionMessage> parse(GuildDB db, String input) {
             JSONArray jsonArray = new JSONArray(input);
@@ -3017,21 +3019,7 @@ public class GuildKey {
         }
     }, ""));
 
-    public static GuildSetting<Boolean> ALLOW_UNVERIFIED_BANKING = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
-        @NoFormat
-        @Command(descMethod = "help")
-        @RolePermission(Roles.ADMIN)
-        public String ALLOW_UNVERIFIED_BANKING(@Me GuildDB db, @Me User user, boolean value) {
-            return ALLOW_UNVERIFIED_BANKING.setAndValidate(db, user, value);
-        }
-
-        @Override
-        public String help() {
-            return "Allow unregistered nations to withdraw via a web banking portal";
-        }
-    }.requireValidAlliance().requiresOffshore();
-
-    public static GuildSetting<Boolean> MEMBER_CAN_ESCROW = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildSetting<Boolean> MEMBER_CAN_ESCROW = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -3044,7 +3032,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requiresCoalition(Coalition.OFFSHORE).requiresOffshore());
 
-    public static GuildSetting<Boolean> MENTION_MILCOM_COUNTERS = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS) {
+    public static GuildSetting<Boolean> MENTION_MILCOM_COUNTERS = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -3058,7 +3046,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(DEFENSE_WAR_CHANNEL));
 
-    public static GuildSetting<MessageChannel> VM_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
+    public static GuildSetting<MessageChannel> VM_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -3072,7 +3060,7 @@ public class GuildKey {
         }
     }.setupRequirements(GuildSetting::nonPublic);
 
-    public static GuildSetting<Boolean> HIDE_LEGACY_NOTICE = new GuildBooleanSetting(GuildSettingCategory.DEFAULT) {
+    public static GuildSetting<Boolean> HIDE_LEGACY_NOTICE = new GuildBooleanSetting(GuildSettingCategory.DEFAULT, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -3086,7 +3074,7 @@ public class GuildKey {
         }
     };
 
-    public static GuildSetting<MessageChannel> WAR_ROOM_LOG = new GuildChannelSetting(GuildSettingCategory.WAR_ROOM) {
+    public static GuildSetting<MessageChannel> WAR_ROOM_LOG = new GuildChannelSetting(GuildSettingCategory.WAR_ROOM, null) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -3099,7 +3087,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(ENABLE_WAR_ROOMS).requireValidAlliance().requireActiveGuild());
 
-    public static GuildSetting<Set<Integer>> ALLOWED_TAX_BRACKETS = new GuildSetting<Set<Integer>>(GuildSettingCategory.TAX, Set.class, Integer.class) {
+    public static GuildSetting<Set<Integer>> ALLOWED_TAX_BRACKETS = new GuildSetting<Set<Integer>>(GuildSettingCategory.TAX, TAX_SELF_ASSIGN, Set.class, Integer.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)

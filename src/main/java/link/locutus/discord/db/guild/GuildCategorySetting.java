@@ -7,8 +7,8 @@ import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.IMentionable;
 
 public abstract class GuildCategorySetting extends GuildSetting<Category> {
-    public GuildCategorySetting(GuildSettingCategory category) {
-        super(category, Key.of(Category.class));
+    public GuildCategorySetting(GuildSettingCategory category, GuildSettingSubgroup subgroup) {
+        super(category, subgroup, Key.of(Category.class));
     }
 
     @Override

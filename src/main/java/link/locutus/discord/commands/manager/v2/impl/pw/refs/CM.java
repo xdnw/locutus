@@ -9217,14 +9217,6 @@ public class CM {
             }
 
             }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="ALLOW_UNVERIFIED_BANKING", field="ALLOW_UNVERIFIED_BANKING")
-            public static class ALLOW_UNVERIFIED_BANKING extends CommandRef {
-                public static final ALLOW_UNVERIFIED_BANKING cmd = new ALLOW_UNVERIFIED_BANKING();
-            public ALLOW_UNVERIFIED_BANKING value(String value) {
-                return set("value", value);
-            }
-
-            }
             @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="BANKER_WITHDRAW_LIMIT", field="BANKER_WITHDRAW_LIMIT")
             public static class BANKER_WITHDRAW_LIMIT extends CommandRef {
                 public static final BANKER_WITHDRAW_LIMIT cmd = new BANKER_WITHDRAW_LIMIT();

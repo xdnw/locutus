@@ -7,17 +7,20 @@ public enum GuildSettingCategory {
     BEIGE_ALERTS,
     ORBIS_ALERTS,
     WAR_ROOM,
-    BANK_ACCESS,
+    BANK_ACCESS, ///
+    BANK_CONVERSION,
+    BANK_OFFSHORE,
+    BANK_GRANTS, ///
     BANK_INFO,
     TAX,
     AUDIT,
-    ROLE,
+    SELF_ROLE,
+    AUTO_ROLE,
     REWARD,
     RECRUIT,
     INTERVIEW,
     BOUNTY,
     TRADE,
-    GUILD_MANAGEMENT,
 
     ARTIFICIAL_INTELLIGENCE
 

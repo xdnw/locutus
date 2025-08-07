@@ -60,7 +60,12 @@ public abstract class GuildSetting<T> {
 
     private final Key type;
     private final GuildSettingCategory category;
+    private final GuildSettingSubgroup subgroup;
     private String name;
+
+    public GuildSettingSubgroup getSubgroup() {
+        return subgroup;
+    }
 
     private Queue<Consumer<GuildSetting<T>>> setupRequirements = new ConcurrentLinkedQueue<>();
 
@@ -86,18 +91,19 @@ public abstract class GuildSetting<T> {
         return reqListStr;
     }
 
-    public GuildSetting(GuildSettingCategory category, Type a, Type... subArgs) {
-        this(category, TypeToken.getParameterized(a, subArgs).getType());
+    public GuildSetting(GuildSettingCategory category, GuildSettingSubgroup subgroup, Type a, Type... subArgs) {
+        this(category, subgroup, TypeToken.getParameterized(a, subArgs).getType());
     }
 
-    public GuildSetting(GuildSettingCategory category, Type t) {
-        this(category, Key.of(t));
+    public GuildSetting(GuildSettingCategory category, GuildSettingSubgroup subgroup, Type t) {
+        this(category, subgroup, Key.of(t));
     }
-    public GuildSetting(GuildSettingCategory category, Class t) {
-        this(category, Key.of(t));
+    public GuildSetting(GuildSettingCategory category, GuildSettingSubgroup subgroup, Class t) {
+        this(category, subgroup, Key.of(t));
     }
-    public GuildSetting(GuildSettingCategory category, Key type) {
+    public GuildSetting(GuildSettingCategory category, GuildSettingSubgroup subgroup, Key type) {
         this.category = category;
+        this.subgroup = subgroup;
         this.type = type;
         if (type == null) {
             try {
