@@ -58,7 +58,7 @@ public class ChatManager {
 
     private synchronized void startAllianceChats() {
         for (Map.Entry<Long, GuildDB> entry : Locutus.imp().getGuildDatabases().entrySet()) {
-
+            GuildDB db = entry.getValue();
         }
     }
 

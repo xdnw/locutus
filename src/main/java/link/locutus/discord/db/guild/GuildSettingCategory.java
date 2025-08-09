@@ -18,6 +18,7 @@ public enum GuildSettingCategory {
     BOUNTY,
     TRADE,
     GUILD_MANAGEMENT,
+    GAME_CHAT,
 
     ARTIFICIAL_INTELLIGENCE
 
