@@ -2,7 +2,7 @@ package link.locutus.discord.apiv3.csv.file;
 
 import de.siegmar.fastcsv.reader.CloseableIterator;
 import de.siegmar.fastcsv.reader.CsvReader;
-import de.siegmar.fastcsv.reader.CsvRow;
+import de.siegmar.fastcsv.reader.CsvRecord;
 import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
@@ -10,6 +10,7 @@ import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.csv.ColumnInfo;
 import link.locutus.discord.apiv3.csv.header.DataHeader;
 import link.locutus.discord.apiv3.csv.header.DataReader;
+import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
@@ -107,10 +108,10 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
         return globalHeader;
     }
 
-    private static void readAllCsv(File file, ThrowingBiConsumer<List<String>, CloseableIterator<CsvRow>> onEach) throws IOException {
-        try (CsvReader reader = CsvReader.builder().fieldSeparator(',').quoteCharacter('"').build(file.toPath())) {
-            try (CloseableIterator<CsvRow> iter = reader.iterator()) {
-                CsvRow header = iter.next();
+    private static void readAllCsv(File file, ThrowingBiConsumer<List<String>, CloseableIterator<CsvRecord>> onEach) throws IOException {
+        try (CsvReader<CsvRecord> reader = FileUtil.csvBuilder(',').ofCsvRecord(file.toPath())) {
+            try (CloseableIterator<CsvRecord> iter = reader.iterator()) {
+                CsvRecord header = iter.next();
                 List<String> fields = header.getFields().stream().map(s -> s.replaceAll("[^a-z_]", "")).toList();
                 onEach.accept(fields, iter);
             }
@@ -204,7 +205,7 @@ public class DataFile<T, H extends DataHeader<T>, R extends DataReader<H>> {
                     List<List<Object>> all = new ObjectArrayList<>();
                     while (rows.hasNext()) {
                         numRows++;
-                        CsvRow csvRow = rows.next();
+                        CsvRecord csvRow = rows.next();
                         ObjectArrayList<Object> rowData = new ObjectArrayList<>(columnsInCsv.size());
                         for (ColumnInfo<T, Object> column : columnsInCsv) {
                             String cell = csvRow.getField(column.getIndex());

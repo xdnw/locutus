@@ -9,8 +9,8 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.gpt.GptHandler;
-import link.locutus.discord.gpt.imps.GPTText2Text;
-import link.locutus.discord.gpt.imps.IText2Text;
+import link.locutus.discord.gpt.imps.text2text.OpenAiText2Text;
+import link.locutus.discord.gpt.imps.text2text.IText2Text;
 import link.locutus.discord.gpt.imps.ProviderType;
 import link.locutus.discord.util.RateLimitUtil;
 import net.dv8tion.jda.api.entities.User;
@@ -72,7 +72,7 @@ public class ProviderManager {
             int[] limits = GuildKey.GPT_USAGE_LIMITS.getOrNull(db);
 
             GPTProvider existing = result.get(ProviderType.OPENAI);
-            if (openAiKey == null || (existing != null && ((GPTText2Text) existing.getText2Text()).getModel() != expectedModel)) {
+            if (openAiKey == null || (existing != null && ((OpenAiText2Text) existing.getText2Text()).getModel() != expectedModel)) {
                 GPTProvider removed = result.remove(ProviderType.OPENAI);
                 if (removed != null) {
                     try {

@@ -1,4 +1,4 @@
-package link.locutus.discord.gpt.imps;
+package link.locutus.discord.gpt.imps.embedding;
 
 import link.locutus.discord.db.entities.EmbeddingSource;
 

@@ -12,7 +12,7 @@ import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
 import link.locutus.discord.gpt.imps.DocumentChunk;
-import link.locutus.discord.gpt.imps.EmbeddingInfo;
+import link.locutus.discord.gpt.imps.embedding.EmbeddingInfo;
 import link.locutus.discord.gpt.pw.GptDatabase;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
@@ -39,9 +39,6 @@ import static graphql.com.google.common.base.Preconditions.checkNotNull;
 public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeable {
 
     private volatile boolean loaded = false;
-    private final Long2ObjectOpenHashMap<float[]> vectors;
-    private final Map<Integer, Set<Long>> textHashBySource;
-    private final Map<Integer, Map<Long, Long>> expandedTextHashBySource;
     private final Map<Integer, EmbeddingSource> embeddingSources;
     private final Map<Integer, ConvertingDocument> unconvertedDocuments;
     private final Map<Integer, Map<Integer, DocumentChunk>> documentChunks;
@@ -51,9 +48,6 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
     public AEmbeddingDatabase(String name, GptDatabase database) throws SQLException, ClassNotFoundException {
         this.database = database;
         this.vectorName = name;
-        this.vectors = new Long2ObjectOpenHashMap<>();
-        this.textHashBySource = new Int2ObjectOpenHashMap<>();
-        this.expandedTextHashBySource = new Int2ObjectOpenHashMap<>();
         this.embeddingSources = new ConcurrentHashMap<>();
         this.unconvertedDocuments = new ConcurrentHashMap<>();
         this.documentChunks = new ConcurrentHashMap<>();
@@ -63,11 +57,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         if (loaded) return (T) this;
         loaded = true;
         createTables();
-        importLegacyDate();
-        loadVectors();
-        loadHashesBySource();
         loadSources();
-        loadExpandedTextMeta();
         loadUnconvertedDocuments();
         return (T) this;
     }
@@ -81,151 +71,8 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         database.close();
     }
 
-    @Override
-    public void registerHashes(EmbeddingSource source, Set<Long> hashes, boolean deleteAbsent) {
-        load();
-        checkNotNull(source);
-        if (hashes.isEmpty()) {
-            if (deleteAbsent) {
-                throw new IllegalArgumentException("Cannot delete absent hashes if no hashes are provided");
-            }
-            return;
-        }
-        Set<Long> existing = textHashBySource.get(source.source_id);
-        if (existing == null) {
-            existing = new LongOpenHashSet();
-            textHashBySource.put(source.source_id, existing);
-            for (long hash : hashes) {
-                existing.add(hash);
-                saveVectorSources(hash, source.source_id);
-            }
-        } else {
-            Iterator<Long> iter = existing.iterator();
-            while (iter.hasNext()) {
-                long hash = iter.next();
-                if (!hashes.contains(hash)) {
-                    iter.remove();
-                    if (deleteAbsent) {
-                        deleteHash(source.source_id, hash);
-                    }
-                }
-            }
-            for (long hash : hashes) {
-                if (!existing.contains(hash)) {
-                    existing.add(hash);
-                    saveVectorSources(hash, source.source_id);
-                }
-            }
-        }
-    }
-
     private DSLContext ctx() {
         return database.ctx();
-    }
-
-    public void deleteHash(int source, long hash) {
-        ctx().execute("DELETE FROM vector_sources WHERE hash = ? AND source_id = ?", hash, source);
-    }
-
-    private void createVectorsTable() {
-        String tableName = "vectors_" + vectorName;
-        ctx().createTableIfNotExists(tableName)
-                .column("hash", SQLDataType.BIGINT.notNull())
-                .column("data", SQLDataType.BINARY.notNull())
-                .primaryKey("hash")
-                .execute();
-
-        // `vectors` exits, import it
-        try {
-            ctx().execute("INSERT INTO " + tableName + " (hash, data) SELECT hash, data FROM vectors");
-            ctx().execute("DROP TABLE vectors");
-        } catch (Throwable ignore) {
-
-        }
-    }
-
-    public synchronized void saveVector(long hash, float[] vector) {
-        load();
-        byte[] data = ArrayUtil.toByteArray(vector);
-        vectors.put(hash, vector);
-        String table = "vectors_" + vectorName;
-        ctx().execute("INSERT INTO " + table + " (hash, data) VALUES (?, ?)", hash, data);
-    }
-
-    private void createVectorTextTable() {
-        ctx().createTableIfNotExists("vector_text")
-                .column("hash", SQLDataType.BIGINT.notNull())
-                .column("description", SQLDataType.VARCHAR.notNull())
-                .primaryKey("hash")
-                .execute();
-    }
-
-    public synchronized void saveVectorText(long hash, String description) {
-        ctx().execute("INSERT INTO vector_text (hash, description) VALUES (?, ?)", hash, description);
-    }
-
-    private void createExpandedTextTable() {
-        ctx().createTableIfNotExists("expanded_text")
-                .column("embedding_hash", SQLDataType.BIGINT.notNull())
-                .column("body_hash", SQLDataType.BIGINT.notNull())
-                .column("source_id", SQLDataType.BIGINT.notNull())
-                .column("body", SQLDataType.VARCHAR.notNull())
-                .primaryKey("embedding_hash", "source_id")
-                .execute();
-    }
-
-    public synchronized boolean saveExpandedText(long embedding_hash, int source_id, String body) {
-        load();
-        long body_hash = getHash(body);
-        Map<Long, Long> hashesBySource = expandedTextHashBySource.computeIfAbsent(source_id, k -> new Long2LongOpenHashMap());
-        // if changed
-        Long existing = hashesBySource.get(embedding_hash);
-        if (existing == null || existing != body_hash) {
-            hashesBySource.put(embedding_hash, body_hash);
-            ctx().execute("INSERT OR REPLACE INTO expanded_text (embedding_hash, body_hash, source_id, body) VALUES (?, ?, ?, ?)", embedding_hash, body_hash, source_id, body);
-            return true;
-        }
-        return false;
-    }
-
-    public boolean hasExpandedText(int source_id, long embedding_hash) {
-        load();
-        Map<Long, Long> hashesBySource = expandedTextHashBySource.get(source_id);
-        if (hashesBySource == null) {
-            return false;
-        }
-        return hashesBySource.containsKey(embedding_hash);
-    }
-
-    public String getText(long hash) {
-        return ctx().selectFrom("vector_text").where("hash = ?", hash).fetchOne("description", String.class);
-    }
-
-    public String getExpandedText(int source_id, long embedding_hash) {
-        load();
-        Map<Long, Long> hashesBySource = expandedTextHashBySource.get(source_id);
-        if (hashesBySource == null) {
-            return null;
-        }
-        Long body_hash = hashesBySource.get(embedding_hash);
-        if (body_hash == null) {
-            return null;
-        }
-        return ctx().selectFrom("expanded_text").where("embedding_hash = ? AND source_id = ?", embedding_hash, source_id).fetchOne("body", String.class);
-    }
-
-    private void createVectorSourcesTable() {
-        ctx().createTableIfNotExists("vector_sources")
-                .column("hash", SQLDataType.BIGINT.notNull())
-                .column("source_id", SQLDataType.BIGINT.notNull())
-                .primaryKey("hash", "source_id")
-                .execute();
-    }
-
-    public synchronized void saveVectorSources(long hash, int source_id) {
-        load();
-        textHashBySource.computeIfAbsent(source_id, k -> new LongOpenHashSet()).add(hash);
-        ctx().execute("INSERT INTO vector_sources (source_id, hash) VALUES (?, ?)", source_id, hash);
     }
 
     private void createSourcesTable() {
@@ -369,43 +216,6 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         });
     }
 
-    private void importLegacyDate() {
-        try {
-            ctx().select().from("embeddings_2").fetch().forEach(r -> {
-                long hash = r.get("hash", Long.class);
-                byte[] data = r.get("data", byte[].class);
-                String id = r.get("id", String.class);
-                String table = "vectors_" + vectorName;
-                ctx().execute("INSERT INTO " + table + " (hash, data) VALUES (?, ?)", hash, data);
-                ctx().execute("INSERT INTO vector_text (hash, description) VALUES (?, ?)", hash, id);
-            });
-            ctx().dropTableIfExists("embeddings_2").execute();
-        } catch (DataAccessException ignore) {}
-    }
-
-    private void loadVectors() {
-        String table = "vectors_" + vectorName;
-            ctx().select().from(table).fetch().forEach(r -> {
-            long hash = r.get("hash", Long.class);
-            byte[] data = r.get("data", byte[].class);
-            float[] vector = ArrayUtil.toFloatArray(data);
-            this.vectors.put(hash, vector);
-        });
-    }
-
-    private void loadHashesBySource() {
-        ctx().select().from("vector_sources").fetch().forEach(r -> {
-            long hash = r.get("hash", Long.class);
-            int source_id = r.get("source_id", Integer.class);
-            Set<Long> hashes = textHashBySource.get(source_id);
-            if (hashes == null) {
-                hashes = new LongOpenHashSet();
-                textHashBySource.put(source_id, hashes);
-            }
-            hashes.add(hash);
-        });
-    }
-
     private void loadSources() {
         ctx().select().from("sources").fetch().forEach(r -> {
             int source_id = r.get("source_id", Integer.class);
@@ -421,33 +231,12 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
     }
 
     public synchronized void createTables() {
-        // vectors: long hash, byte[] data
-        createVectorsTable();
-        //        vector_text: long hash, String description
-        createVectorTextTable();
-        //        expanded_text: long hash, long source_id, String body primary key is (hash, source_id)
-        createExpandedTextTable();
-//        vector_sources long hash, long source_id
-        createVectorSourcesTable();
 //        sources: long source_id, String source_name, long date_added, long guild_id
         createSourcesTable();
         // document_queue: source_id, prompt, converted, use_global_context, gpt_provider, user, error, date
         createDocumentQueueTable();
         // document_chunks: source_id, chunk_index, converted, text
         createChunksTable();
-    }
-
-    private void loadExpandedTextMeta() {
-//        expandedTextHashBySource
-        ctx().select().from("expanded_text").fetch().forEach(r -> {
-//            .column("embedding_hash", SQLDataType.BIGINT.notNull())
-//                    .column("body_hash", SQLDataType.BIGINT.notNull())
-            long embedding_hash = r.get("embedding_hash", Long.class);
-            long body_hash = r.get("body_hash", Long.class);
-            int source_id = r.get("source_id", Integer.class);
-            Map<Long, Long> hashes = expandedTextHashBySource.computeIfAbsent(source_id, k -> new Long2LongOpenHashMap());
-            hashes.put(embedding_hash, body_hash);
-        });
     }
 
     @Override
@@ -467,10 +256,6 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         deleteDocumentAndChunks(source_id);
 
         embeddingSources.remove(source.source_id);
-        // textHashBySource
-        textHashBySource.remove(source_id);
-        // expandedTextHashBySource
-        expandedTextHashBySource.remove(source_id);
         unconvertedDocuments.remove(source_id);
         documentChunks.remove(source_id);
     }
@@ -481,7 +266,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
     }
 
     @Override
-    public float[] getOrCreateEmbedding(long embeddingHash, String embeddingText, Supplier<String> fullContent, EmbeddingSource source, boolean save, ThrowingConsumer<String> moderate) {
+    public float[] getOrCreateEmbedding(long embeddingHash, String embeddingText, EmbeddingSource source, boolean save, ThrowingConsumer<String> moderate) {
         float[] existing = getEmbedding(embeddingHash);
         if (existing == null) {
             if (moderate != null) {
@@ -499,12 +284,6 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
             Set<Long> hashes = textHashBySource.get(source.source_id);
             if (hashes == null || !hashes.contains(embeddingHash)) {
                 saveVectorSources(embeddingHash, source.source_id);
-            }
-            if (fullContent != null) {
-                String full = fullContent.get();
-                if (full != null && !full.equals(embeddingText)) {
-                    saveExpandedText(embeddingHash, source.source_id, full);
-                }
             }
         }
         return existing;

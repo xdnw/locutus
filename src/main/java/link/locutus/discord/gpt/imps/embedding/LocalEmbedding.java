@@ -1,4 +1,4 @@
-package link.locutus.discord.gpt.imps;
+package link.locutus.discord.gpt.imps.embedding;
 
 import ai.djl.MalformedModelException;
 import ai.djl.huggingface.translator.TextEmbeddingTranslatorFactory;
@@ -7,36 +7,36 @@ import ai.djl.repository.zoo.Criteria;
 import ai.djl.repository.zoo.ModelNotFoundException;
 import ai.djl.repository.zoo.ZooModel;
 import ai.djl.translate.TranslateException;
-import link.locutus.discord.db.AEmbeddingDatabase;
-import link.locutus.discord.gpt.pw.GptDatabase;
 
 import java.io.IOException;
 import java.sql.SQLException;
 
-public class LocalEmbedding extends AEmbeddingDatabase {
-    private final ZooModel<String, float[]> modelName;
+public class LocalEmbedding implements IEmbedding {
+    private final String modelName;
     private Criteria<String, float[]> criteria;
     private ZooModel<String, float[]> model;
     private Predictor<String, float[]> predictor;
 
-    public LocalEmbedding(GptDatabase database, String modelName) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
-        super(getTableName(modelName), database);
-        this.modelName = model;
+    public LocalEmbedding(String modelName) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
+        this.modelName = modelName;
     }
 
-    private static String getTableName(String modelName) {
+    @Override
+    public String getTableName() {
         // get last part after / if present
-        if (modelName.contains("/")) {
-            modelName = modelName.substring(modelName.lastIndexOf('/') + 1);
+        String tmp = modelName;
+        if (tmp.contains("/")) {
+            tmp = tmp.substring(tmp.lastIndexOf('/') + 1);
         }
-        if (modelName.equalsIgnoreCase("all-MiniLM-L6-v2")) {
+        if (tmp.equalsIgnoreCase("all-MiniLM-L6-v2")) {
             // legacy table name
             return "minilm";
         }
-        return modelName.replaceAll("[^a-zA-Z0-9]", "_").toLowerCase();
+        return tmp.replaceAll("[^a-zA-Z0-9]", "_").toLowerCase();
     }
 
-    private void init() {
+    @Override
+    public void init() {
         if (criteria == null) {
             synchronized (this) {
                 if (criteria == null) {
@@ -72,6 +72,5 @@ public class LocalEmbedding extends AEmbeddingDatabase {
         if (model != null) {
             this.model.close();
         }
-        super.close();
     }
 }

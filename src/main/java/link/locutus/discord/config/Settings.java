@@ -622,6 +622,10 @@ public class Settings extends Config {
                     "See: <https://platform.openai.com/docs/models/overview>"})
             public String EMBEDDING_MODEL = "text-embedding-3-small";
 
+            @Comment({"The model to use for text embeddings",
+                    "See: <https://platform.openai.com/docs/models/overview>"})
+            public String MODERATION_MODEL = "";
+
             @Comment({"The base url for the OpenAI API",
                     "Leave empty to use the default (https://api.openai.com/v1)"})
             public String BASE_URL = "";

@@ -45,7 +45,7 @@ import link.locutus.discord.db.entities.sheet.CustomSheetManager;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.SheetKey;
-import link.locutus.discord.gpt.imps.EmbeddingType;
+import link.locutus.discord.gpt.imps.embedding.EmbeddingType;
 import link.locutus.discord.gpt.imps.ProviderType;
 import link.locutus.discord.gpt.pw.GPTProvider;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
@@ -1406,7 +1406,7 @@ public class WebPWBindings extends WebBindingHelper {
     public String taxBracket(ParameterData param, @Me GuildDB db) {
         return bracket(db, param, true);
     }
-//    Missing: Key{type=java.util.Set<link.locutus.discord.gpt.imps.EmbeddingType>, annotationTypes=[interface link.locutus.discord.web.commands.HtmlInput]}
+//    Missing: Key{type=java.util.Set<link.locutus.discord.gpt.imps.embedding.EmbeddingType>, annotationTypes=[interface link.locutus.discord.web.commands.HtmlInput]}
     @HtmlInput
     @Binding(types = {Set.class, EmbeddingType.class}, multiple = true)
     public String embeddingType(ParameterData param) {

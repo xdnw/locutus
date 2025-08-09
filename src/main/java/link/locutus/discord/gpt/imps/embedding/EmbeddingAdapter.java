@@ -1,4 +1,4 @@
-package link.locutus.discord.gpt.imps;
+package link.locutus.discord.gpt.imps.embedding;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import link.locutus.discord.db.entities.EmbeddingSource;

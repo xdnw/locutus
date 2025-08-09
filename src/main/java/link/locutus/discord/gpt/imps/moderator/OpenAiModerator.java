@@ -1,4 +1,4 @@
-package link.locutus.discord.gpt;
+package link.locutus.discord.gpt.imps.moderator;
 
 import com.knuddels.jtokkit.api.ModelType;
 import com.openai.client.OpenAIClient;
@@ -6,15 +6,17 @@ import com.openai.models.moderations.Moderation;
 import com.openai.models.moderations.ModerationCreateParams;
 import com.openai.models.moderations.ModerationModel;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import link.locutus.discord.gpt.GPTUtil;
+import link.locutus.discord.gpt.ModerationResult;
 import org.json.JSONObject;
 
 import java.lang.reflect.Field;
 import java.util.*;
 
-public class GPTModerator implements IModerator{
+public class OpenAiModerator implements IModerator {
     private final OpenAIClient service;
 
-    public GPTModerator(OpenAIClient service) {
+    public OpenAiModerator(OpenAIClient service) {
         if (service == null) {
             throw new IllegalArgumentException("Text-Moderation: OpenAI service cannot be null. Please configure a valid openai key in your config.yml or disable AI features\n" +
                     "Note: Moderation api usage is free, but you need to have a valid OpenAI API key configured.");
@@ -107,6 +109,7 @@ public class GPTModerator implements IModerator{
                     categoryScores.put("violence_graphic", catScoresObject.violenceGraphic());
                 }
                 result.setScores(categoryScores);
+                result.setFlaggedCategories(flaggedCategories);
             }
             results.add(result);
 

@@ -2,9 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import de.siegmar.fastcsv.reader.CloseableIterator;
-import de.siegmar.fastcsv.reader.CsvReader;
-import de.siegmar.fastcsv.reader.CsvRow;
+import de.siegmar.fastcsv.reader.*;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
@@ -24,6 +22,7 @@ import link.locutus.discord.db.entities.SheetTemplate;
 import link.locutus.discord.db.entities.sheet.CustomSheetManager;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.scheduler.KeyValue;
@@ -619,14 +618,14 @@ public class CustomSheetCommands {
             }
             String headerLine = lines[0];
             char separator = headerLine.contains("\t") ? '\t' : ',';
-            try (CsvReader reader = CsvReader.builder().fieldSeparator(separator).quoteCharacter('"').build(new String(bytes, StandardCharsets.UTF_8))) {
-                try (CloseableIterator<CsvRow> iter = reader.iterator()) {
-                    CsvRow header = iter.next();
+            try (CsvReader<CsvRecord> reader = FileUtil.csvBuilder(separator).ofCsvRecord(new String(bytes, StandardCharsets.UTF_8))) {
+                try (CloseableIterator<CsvRecord> iter = reader.iterator()) {
+                    CsvRecord header = iter.next();
                     List<String> fields = header.getFields();
                     sheet.setHeader(fields);
 
                     while (iter.hasNext()) {
-                        CsvRow row = iter.next();
+                        CsvRecord row = iter.next();
                         List<String> rowData = row.getFields();
                         sheet.addRow(rowData);
                     }

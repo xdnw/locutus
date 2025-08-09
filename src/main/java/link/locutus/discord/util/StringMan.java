@@ -38,7 +38,7 @@ public class StringMan {
 
     public static String toCsv(List<List<String>> rows) {
         StringWriter stringWriter = new StringWriter();
-        CSVWriter csvWriter = new CSVWriter(stringWriter, ',');
+        CSVWriter csvWriter = new CSVWriter(stringWriter);
 
         for (List<String> row : rows) {
             csvWriter.writeNext(row.toArray(new String[0]));

@@ -19,9 +19,9 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.gpt.GptHandler;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
-import link.locutus.discord.gpt.imps.EmbeddingInfo;
-import link.locutus.discord.gpt.imps.EmbeddingType;
-import link.locutus.discord.gpt.imps.IEmbeddingAdapter;
+import link.locutus.discord.gpt.imps.embedding.EmbeddingInfo;
+import link.locutus.discord.gpt.imps.embedding.EmbeddingType;
+import link.locutus.discord.gpt.imps.embedding.IEmbeddingAdapter;
 import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Guild;
 

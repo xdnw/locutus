@@ -2,7 +2,7 @@ package link.locutus.discord.gpt.pw;
 
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
-import link.locutus.discord.gpt.imps.IEmbeddingAdapter;
+import link.locutus.discord.gpt.imps.embedding.IEmbeddingAdapter;
 
 public class DatabaseAdapter implements IEmbeddingAdapter<Long> {
     private final IEmbeddingDatabase database;

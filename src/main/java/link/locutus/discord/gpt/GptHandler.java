@@ -13,10 +13,10 @@ import link.locutus.discord.Logg;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.copilot.CopilotDeviceAuthenticationData;
-import link.locutus.discord.gpt.imps.CopilotText2Text;
-import link.locutus.discord.gpt.imps.GPTText2Text;
-import link.locutus.discord.gpt.imps.IText2Text;
-import link.locutus.discord.gpt.imps.LocalEmbedding;
+import link.locutus.discord.gpt.imps.moderator.IModerator;
+import link.locutus.discord.gpt.imps.text2text.CopilotText2Text;
+import link.locutus.discord.gpt.imps.text2text.IText2Text;
+import link.locutus.discord.gpt.imps.text2text.OpenAiText2Text;
 import link.locutus.discord.gpt.pw.GptDatabase;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 
@@ -35,8 +35,9 @@ import static com.pusher.client.util.internal.Preconditions.checkArgument;
 import static com.pusher.client.util.internal.Preconditions.checkNotNull;
 
 public class GptHandler {
-    public final IEmbeddingDatabase embeddingDatabase;
-    private final IModerator moderator;
+    public IEmbeddingDatabase embeddingDatabase;
+    private IModerator moderator;
+    private IText2Text text2Text;
 //    private final ProcessText2Text processT2;
 
     private volatile boolean initOpenAIClient = false;
@@ -52,9 +53,8 @@ public class GptHandler {
     // provider
 
     public GptHandler(GptDatabase database) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
-        this.moderator = new GPTModerator(getOpenAiService());
-
-        this.embeddingDatabase = new LocalEmbedding(database, "sentence-transformers/all-MiniLM-L6-v2");
+//        this.moderator = new OpenAiModerator(getOpenAiService());
+//        this.embeddingDatabase = new LocalEmbedding(database, "sentence-transformers/all-MiniLM-L6-v2");
 //        File scriptPath = new File("../gpt4free/my_project/gpt3_5_turbo.py");
 //        File venvExe = new File("../gpt4free/venv/Scripts/python.exe");
 //        File workingDirectory = new File("../gpt4free");
@@ -76,9 +76,6 @@ public class GptHandler {
         if (openAiService2 == null && !initOpenAIClient) {
             synchronized (initOpenAIClientLock) {
                 if (openAiService2 == null) {
-//                    this.openAiService = OpenAIOkHttpClient.builder().apiKey(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY)
-//                            .timeout(Duration.ofSeconds(120))
-//                            .build();
                     OpenAIOkHttpClient.Builder builder = OpenAIOkHttpClient.builder()
                             .apiKey(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY)
                             .timeout(Duration.ofSeconds(120));
@@ -105,7 +102,7 @@ public class GptHandler {
         return googleClient2;
     }
 
-    public Client createGoogleClient(String baseUrl, String apiKey) {
+    public static Client createGoogleClient(String baseUrl, String apiKey) {
         HttpOptions.Builder googeHttpOpt = HttpOptions.builder();
         if (baseUrl != null && !baseUrl.isEmpty()) {
             googeHttpOpt.baseUrl(baseUrl);
@@ -187,7 +184,7 @@ public class GptHandler {
     }
 
     public IText2Text createOpenAiText2Text(String openAiKey, ChatModel model) {
-        return new GPTText2Text(openAiKey, model);
+        return new OpenAiText2Text(openAiKey, model);
     }
 
     public IText2Text createCopilotText2Text(String path, Consumer<CopilotDeviceAuthenticationData> deviceAuthDataConsumer) {

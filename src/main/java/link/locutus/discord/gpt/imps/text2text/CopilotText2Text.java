@@ -1,4 +1,4 @@
-package link.locutus.discord.gpt.imps;
+package link.locutus.discord.gpt.imps.text2text;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.knuddels.jtokkit.api.ModelType;

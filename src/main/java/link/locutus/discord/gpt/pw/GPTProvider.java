@@ -2,7 +2,7 @@ package link.locutus.discord.gpt.pw;
 
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.gpt.imps.IText2Text;
+import link.locutus.discord.gpt.imps.text2text.IText2Text;
 import link.locutus.discord.gpt.imps.ProviderType;
 import net.dv8tion.jda.api.entities.User;
 

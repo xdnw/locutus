@@ -1,4 +1,4 @@
-package link.locutus.discord.gpt.imps;
+package link.locutus.discord.gpt.imps.text2text;
 
 import com.knuddels.jtokkit.api.ModelType;
 import link.locutus.discord.gpt.GPTUtil;
@@ -14,7 +14,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public class ProcessText2Text implements IText2Text{
+public class ProcessText2Text implements IText2Text {
     private final String scriptPath;
     private final File venvExe;
     private final File workingDirectory;

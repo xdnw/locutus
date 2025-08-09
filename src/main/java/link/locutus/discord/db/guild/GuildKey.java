@@ -28,11 +28,11 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
-import link.locutus.discord.gpt.GPTModerator;
+import link.locutus.discord.gpt.imps.moderator.OpenAiModerator;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.gpt.ModerationResult;
 import link.locutus.discord.gpt.copilot.CopilotDeviceAuthenticationData;
-import link.locutus.discord.gpt.imps.CopilotText2Text;
+import link.locutus.discord.gpt.imps.text2text.CopilotText2Text;
 import link.locutus.discord.pnw.*;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
@@ -211,7 +211,7 @@ public class GuildKey {
             OpenAIClient service = OpenAIOkHttpClient.builder().apiKey(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY)
                     .timeout(Duration.ofSeconds(120))
                     .build();
-            GPTModerator moderator = new GPTModerator(service);
+            OpenAiModerator moderator = new OpenAiModerator(service);
             List<ModerationResult> result = moderator.moderate("Hello World");
             if (result.size() == 0) {
                 throw new IllegalArgumentException("Invalid API key. No result returned");

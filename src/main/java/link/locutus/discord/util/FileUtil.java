@@ -1,5 +1,6 @@
 package link.locutus.discord.util;
 
+import de.siegmar.fastcsv.reader.CsvReader;
 import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
 import link.locutus.discord.Logg;
 import link.locutus.discord.network.IProxy;
@@ -41,6 +42,10 @@ public final class FileUtil {
             e.printStackTrace();
             return null;
         }
+    }
+
+    public static CsvReader.CsvReaderBuilder csvBuilder(char separator) {
+        return CsvReader.builder().fieldSeparator(separator).quoteCharacter('"').allowExtraFields(true).allowMissingFields(true);
     }
 
     public static List<String> getResourceFiles(String path) throws IOException {

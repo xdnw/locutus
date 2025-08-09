@@ -1,4 +1,4 @@
-package link.locutus.discord.gpt.imps;
+package link.locutus.discord.gpt.imps.text2text;
 
 import com.knuddels.jtokkit.api.ModelType;
 import com.openai.client.OpenAIClient;
@@ -17,17 +17,17 @@ import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class GPTText2Text implements IText2Text{
+public class OpenAiText2Text implements IText2Text {
     private final OpenAIClient service;
     private final ChatModel model;
 
     private OpenAiOptions defaultOptions = new OpenAiOptions();
 
-    public GPTText2Text(String openAiKey, ChatModel model) {
+    public OpenAiText2Text(String openAiKey, ChatModel model) {
         this(OpenAIOkHttpClient.builder().apiKey(openAiKey).timeout(Duration.ofSeconds(120)).build(), model);
     }
 
-    public GPTText2Text(OpenAIClient service, ChatModel model) {
+    public OpenAiText2Text(OpenAIClient service, ChatModel model) {
         this.service = service;
         this.model = model;
     }
@@ -104,7 +104,7 @@ public class GPTText2Text implements IText2Text{
         public Double frequencyPenalty = null;
         public Integer maxTokens = null;
 
-        public OpenAiOptions setOptions(GPTText2Text parent, Map<String, String> options) {
+        public OpenAiOptions setOptions(OpenAiText2Text parent, Map<String, String> options) {
             // reset options
             temperature = null;
             stopSequences = null;

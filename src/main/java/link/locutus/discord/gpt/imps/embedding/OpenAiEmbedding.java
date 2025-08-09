@@ -1,4 +1,4 @@
-package link.locutus.discord.gpt.imps;
+package link.locutus.discord.gpt.imps.embedding;
 
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingRegistry;
@@ -6,22 +6,27 @@ import com.knuddels.jtokkit.api.ModelType;
 import com.openai.client.OpenAIClient;
 import com.openai.models.embeddings.Embedding;
 import com.openai.models.embeddings.EmbeddingCreateParams;
-import link.locutus.discord.db.AEmbeddingDatabase;
-import link.locutus.discord.gpt.pw.GptDatabase;
 
-import java.sql.SQLException;
+import java.io.IOException;
 import java.util.List;
+import java.util.Locale;
 
-public class AdaEmbedding extends AEmbeddingDatabase {
+public class OpenAiEmbedding implements IEmbedding {
     private final EncodingRegistry registry;
     private final Encoding embeddingEncoder;
     private final OpenAIClient service;
+    private final ModelType model;
 
-    public AdaEmbedding(EncodingRegistry registry, OpenAIClient service, GptDatabase database) throws SQLException, ClassNotFoundException {
-        super("ada", database);
+    public OpenAiEmbedding(EncodingRegistry registry, OpenAIClient service, ModelType modelType) throws ClassNotFoundException {
         this.registry = registry;
         this.service = service;
-        this.embeddingEncoder = registry.getEncodingForModel(ModelType.TEXT_EMBEDDING_ADA_002);
+        this.embeddingEncoder = registry.getEncodingForModel(modelType);
+        this.model = modelType;
+    }
+
+    @Override
+    public String getTableName() {
+        return this.model.getName();
     }
 
     public int getEmbeddingTokenSize(String text) {
@@ -31,7 +36,7 @@ public class AdaEmbedding extends AEmbeddingDatabase {
     @Override
     public float[] fetchEmbedding(String text) {
         EmbeddingCreateParams params = EmbeddingCreateParams.builder()
-                .model("text-embedding-ada-002")
+                .model(model.name().toLowerCase(Locale.ROOT))
                 .input(text)
                 .build();
         List<Embedding> data = service.embeddings().create(params).data();
@@ -46,4 +51,8 @@ public class AdaEmbedding extends AEmbeddingDatabase {
         return target;
     }
 
+    @Override
+    public void init() {
+
+    }
 }

@@ -3,7 +3,7 @@ package link.locutus.discord.gpt;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
 import link.locutus.discord.gpt.imps.DocumentChunk;
-import link.locutus.discord.gpt.imps.EmbeddingInfo;
+import link.locutus.discord.gpt.imps.embedding.EmbeddingInfo;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.scheduler.TriConsumer;
 
@@ -12,14 +12,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 public interface IEmbeddingDatabase {
     long getHash(String text);
     float[] getEmbedding(String text);
     float[] getEmbedding(long hash);
     float[] fetchEmbedding(String text);
-    float[] getOrCreateEmbedding(long embeddingHash, String embeddingText, Supplier<String> fullContent, EmbeddingSource source, boolean save, ThrowingConsumer<String> moderate);
+    float[] getOrCreateEmbedding(long embeddingHash, String embeddingText, EmbeddingSource source, boolean save, ThrowingConsumer<String> moderate);
+
     void registerHashes(EmbeddingSource source, Set<Long> hashes, boolean deleteAbsent);
     EmbeddingSource getSource(String name, long guild_id);
     EmbeddingSource getOrCreateSource(String name, long guild_id);

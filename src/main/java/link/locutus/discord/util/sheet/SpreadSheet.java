@@ -50,6 +50,10 @@ import java.util.stream.Collectors;
 
 import static com.google.gson.internal.$Gson$Preconditions.checkArgument;
 import static com.google.gson.internal.$Gson$Preconditions.checkNotNull;
+import static com.opencsv.ICSVWriter.DEFAULT_ESCAPE_CHARACTER;
+import static com.opencsv.ICSVWriter.DEFAULT_QUOTE_CHARACTER;
+import static com.opencsv.ICSVWriter.DEFAULT_SEPARATOR;
+import static com.opencsv.ICSVWriter.DEFAULT_LINE_END;
 
 public class SpreadSheet {
 
@@ -1181,7 +1185,7 @@ public class SpreadSheet {
             List<List<Object>> rows = entry.getValue();
             if (tabName.isEmpty() && rows.isEmpty()) continue;
             try (StringWriter stringWriter = new StringWriter()) {
-                CSVWriter csvWriter = new CSVWriter(stringWriter, ',');
+                CSVWriter csvWriter = new CSVWriter(stringWriter);
                 for (List<Object> rowObj : entry.getValue()) {
                     String[] row = new String[rowObj.size()];
                     for (int i = 0; i < rowObj.size(); i++) {

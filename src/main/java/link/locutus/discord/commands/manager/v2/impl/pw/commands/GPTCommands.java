@@ -32,7 +32,7 @@ import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
 import link.locutus.discord.gpt.imps.DocumentChunk;
-import link.locutus.discord.gpt.imps.EmbeddingType;
+import link.locutus.discord.gpt.imps.embedding.EmbeddingType;
 import link.locutus.discord.gpt.pw.ArgumentEmbeddingAdapter;
 import link.locutus.discord.gpt.pw.GPTProvider;
 import link.locutus.discord.gpt.pw.GPTSearchUtil;

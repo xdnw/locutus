@@ -404,7 +404,7 @@ public class AllianceMetricCommands {
 
         // new csv writer
         StringWriter stringWriter = new StringWriter();
-        CSVWriter csvWriter = new CSVWriter(stringWriter, ',');
+        CSVWriter csvWriter = new CSVWriter(stringWriter);
         // write header
         csvWriter.writeNext(header.toArray(new String[0]));
 

@@ -2,6 +2,7 @@ package link.locutus.discord.gpt.imps;
 
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.gpt.ISummarizer;
+import link.locutus.discord.gpt.imps.text2text.IText2Text;
 
 import java.util.ArrayList;
 import java.util.List;

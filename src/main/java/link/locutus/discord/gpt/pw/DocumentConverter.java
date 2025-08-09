@@ -7,7 +7,7 @@ import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.gpt.GptHandler;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
-import link.locutus.discord.gpt.IModerator;
+import link.locutus.discord.gpt.imps.moderator.IModerator;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
 import link.locutus.discord.gpt.imps.DocumentChunk;
 import link.locutus.discord.gpt.imps.ProviderType;

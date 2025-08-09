@@ -1,12 +1,14 @@
-package link.locutus.discord.gpt;
+package link.locutus.discord.gpt.test;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.EmbeddingSource;
-import link.locutus.discord.gpt.imps.EmbeddingInfo;
-import link.locutus.discord.gpt.imps.EmbeddingType;
-import link.locutus.discord.gpt.imps.IEmbeddingAdapter;
+import link.locutus.discord.gpt.GptHandler;
+import link.locutus.discord.gpt.IEmbeddingDatabase;
+import link.locutus.discord.gpt.imps.embedding.EmbeddingInfo;
+import link.locutus.discord.gpt.imps.embedding.EmbeddingType;
+import link.locutus.discord.gpt.imps.embedding.IEmbeddingAdapter;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.util.math.ArrayUtil;
 
