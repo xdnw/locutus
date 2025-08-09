@@ -66,6 +66,10 @@ public class Settings extends Config {
     @Comment({"A list of api keys the bot can use for general requests (optional)"})
     public List<String> API_KEY_POOL = Arrays.asList();
 
+    @Comment({"Your ingame chat token (optional)",
+    "Use the `/chat token` for help setting this"})
+    public String CHAT_TOKEN = "";
+
     @Comment({"The discord id of the bot (generated at startup)",
             "Found in the General Information section of the Discord Developer Portal"})
     public long APPLICATION_ID = 0;
