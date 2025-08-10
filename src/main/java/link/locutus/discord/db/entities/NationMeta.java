@@ -124,8 +124,6 @@ public enum NationMeta {
     LAST_SENT_LEAVE,
     LAST_SENT_ACTIVE,
 
-    CHAT_TOKEN,
-
     ;
 
     public static NationMeta[] values = values();

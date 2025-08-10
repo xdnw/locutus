@@ -2,8 +2,12 @@ package link.locutus.discord.chat;
 
 import com.google.gson.*;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildKey;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 
@@ -13,6 +17,7 @@ import java.net.http.WebSocket;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -35,7 +40,7 @@ public class ChatClient {
         }
     }
 
-    public static Map.Entry<String, Boolean> validateToken(int natioId, String token) throws DecoderException {
+    public static Map.Entry<String, Boolean> validateToken(int natioId, String token) {
         if (token == null || token.isEmpty()) {
             String script = "(()=>{let r=/token\\s*:\\s*'([0-9a-f]{64})'/i,t;for(let s of document.scripts){let m=(s.textContent||\"\").match(r);if(m){t=m[1];break}}if(!t)return alert(\"Token not found\");let c=e=>{try{let a=document.createElement(\"textarea\");a.value=e;a.style.position=\"fixed\";a.style.left=\"-9999px\";document.body.appendChild(a);a.select();document.execCommand(\"copy\");a.remove();return 1}catch(e){return 0}},n=navigator.clipboard,m=[\"Token copied:\",\"Use Ctrl+C to copy token:\"];(async()=>prompt((n&&n.writeText?await n.writeText(t).then(()=>0).catch(()=>c(t)?0:1):c(t)?0:1)?m[1]:m[0],t))()})();";
             String md = "# How to Obtain and Set Your Chat Token\n\n" +
@@ -89,7 +94,7 @@ public class ChatClient {
         };
         try {
             client.start();
-            latch.await(15, TimeUnit.SECONDS);
+            latch.await(10, TimeUnit.SECONDS);
             if (!success.get()) {
                 throw new IllegalArgumentException("Connection failed: " + result.get());
             } else {
@@ -109,7 +114,7 @@ public class ChatClient {
     // Configuration (can be overridden by CLI args/env vars)
     private String wsUrl;
     private String token;
-    private long accountId;
+    private int accountId;
     private Channels currentChannel;
 
     // Intervals (match JS)
@@ -132,7 +137,7 @@ public class ChatClient {
     private int reconnectAttempts = 0;
     private final int maxReconnectAttempts = 10;
 
-    public ChatClient(String wsUrl, String token, long accountId, Channels currentChannel) {
+    public ChatClient(String wsUrl, String token, int accountId, Channels currentChannel) {
         if (token == null) {
             throw new IllegalArgumentException("Token cannot be null");
         }
@@ -158,14 +163,14 @@ public class ChatClient {
         return token;
     }
 
-    public long getAccountId() {
+    public int getAccountId() {
         return accountId;
     }
 
     public static ChatClient loadFromArgs(String[] args) {
         String wsUrl = WS_DEFAULT_URL;
         String token = null;
-        long accountId = 0;
+        int accountId = 0;
         Channels currentChannel = WS_DEFAULT_CHANNEL;
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
@@ -178,7 +183,7 @@ public class ChatClient {
                     break;
                 case "--userId":
                 case "--accountId":
-                    if (i + 1 < args.length) accountId = Long.parseLong(args[++i]);
+                    if (i + 1 < args.length) accountId = Integer.parseInt(args[++i]);
                     break;
                 case "--channel":
                     if (i + 1 < args.length) currentChannel = link.locutus.discord.chat.Channels.parse(args[++i]);
@@ -190,7 +195,7 @@ public class ChatClient {
 
     public static ChatClient loadFromEnv() {
         String token = null;
-        long accountId = 0;
+        int accountId = 0;
         Channels currentChannel = WS_DEFAULT_CHANNEL;
         String wsUrl = WS_DEFAULT_URL;
         if (token == null) {
@@ -200,7 +205,7 @@ public class ChatClient {
         if (accountId == 0) {
             String id = System.getenv("USER_ID");
             if (id == null) id = System.getenv("ACCOUNT_ID");
-            if (id != null && !id.isBlank()) accountId = Long.parseLong(id);
+            if (id != null && !id.isBlank()) accountId = Integer.parseInt(id);
         }
         String ch = System.getenv("CHANNEL");
         if (ch != null && !ch.isBlank()) currentChannel = Channels.parse(ch);
@@ -209,7 +214,7 @@ public class ChatClient {
         return new ChatClient(wsUrl, token, accountId, currentChannel);
     }
 
-    public void start() throws Exception {
+    public void start() {
         System.out.println("Connecting to " + wsUrl + " as account " + accountId + " channel " + currentChannel);
         connect();
         Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
@@ -250,6 +255,27 @@ public class ChatClient {
             onError(webSocket, e);
             scheduleReconnect();
         }
+    }
+
+    public boolean isValidAllianceChat(int allianceId, boolean checkToken, boolean checkGuild) {
+        if (currentChannel != Channels.ALLIANCE_ALL) return false;
+        DBNation nation = DBNation.getById(accountId);
+        if (nation == null || nation.getAlliance_id() != allianceId || nation.getPositionEnum().id <= Rank.APPLICANT.id) {
+            return false;
+        }
+        if (checkToken) {
+            String token = Locutus.imp().getDiscordDB().getChatToken(accountId);
+            if (!token.equalsIgnoreCase(this.token)) {
+                return false;
+            }
+        }
+        if (checkGuild) {
+            GuildDB db = Locutus.imp().getGuildDBByAA(allianceId);
+            if (db == null) return false;
+            Set<Integer> validAccounts = GuildKey.GAME_CHAT_ACCOUNT.get(db);
+            if (validAccounts == null || !validAccounts.contains(accountId)) return false;
+        }
+        return true;
     }
 
     private void scheduleReconnect() {
@@ -471,9 +497,6 @@ public class ChatClient {
         }
 
         private void handleIncoming(String raw) {
-            synchronized (replyLock) {
-                // Wait for connection to complete
-            }
             try {
                 JsonObject obj = JsonParser.parseString(raw).getAsJsonObject();
                 String type = null;

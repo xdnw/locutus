@@ -3150,146 +3150,99 @@ public class GuildKey {
 
     }.setupRequirements(f -> f.requires(API_KEY).requires(MEMBER_CAN_SET_BRACKET).requireValidAlliance());
 
-    ///
-    ///
-    public static final GuildSetting<List<String>> CHAT_TOKENS = new GuildSetting<List<String>>(GuildSettingCategory.DEFAULT, List.class, String.class) {
+    public static final GuildSetting<Set<Integer>> GAME_CHAT_ACCOUNT = new GuildSetting<Set<Integer>>(GuildSettingCategory.GAME_CHAT, Set.class, DBNation.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
         @Ephemeral
-        public String registerApiKey(@Me GuildDB db, @Me User user, @TextArea(',') List<String> apiKeys) {
-            List<String> existing = CHAT_TOKENS.getOrNull(db);
-            existing = existing == null ? new ArrayList<>() : new ArrayList<>(existing);
-
-            List<String> toAdd = CHAT_TOKENS.allowedAndValidate(db, user, apiKeys);
-
-            StringBuilder response = new StringBuilder();
-            for (String key : existing) {
-                // list duplicate keys
-                if (toAdd.contains(key)) {
-                    Integer nationId = Locutus.imp().getDiscordDB().getNationFromChatToken(key, false);
-                    String startWith = key.charAt(0) + "";
-                    String endWith = key.charAt(key.length() - 1) + "";
-                    response.append("The existing key `" + startWith + "..." + endWith + "` for nation: " + nationId + " is already registered\n");
-                    toAdd.remove(key);
-                }
-            }
-
-            Set<String> toRemove = new ObjectLinkedOpenHashSet<>();
-            for (String key : existing) {
-                ApiKeyDetails details = null;
-                Integer nationId = null;
-                try {
-                    nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key, false);
-                    details = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();
-                } catch (Throwable e) {}
-                if (details == null || details.getNation() == null || details.getNation().getId() == null) {
-                    String startWith = key.charAt(0) + "";
-                    String endWith = key.charAt(key.length() - 1) + "";
-                    response.append("The key `" + startWith + "..." + endWith + "` (nation: " + nationId + ") is invalid and has been removed\n");
-                    toRemove.add(key);
-                }
-            }
-            existing.removeAll(toRemove);
-            apiKeys = API_KEY.allowedAndValidate(db, user, apiKeys);
-
-            existing.addAll(apiKeys);
-            existing.removeIf(String::isBlank);
-            // List the missing keys
-            Set<Integer> aaIds = new IntOpenHashSet(db.getAllianceIds());
-            for (String key : existing) {
-                Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key, false);
-                if (nationId != null) {
-                    DBNation nation = DBNation.getById(nationId);
-                    if (nation != null) {
-                        aaIds.remove(nation.getAlliance_id());
-                    }
-                }
-            }
-            if (!aaIds.isEmpty()) {
-                response.append("The following alliance ids are missing from the api keys: " + StringMan.join(aaIds, ",") + "\n");
-            }
-
-            response.append(API_KEY.set(db, user, existing));
-            return response.toString();
+        public String register_chat_accounts(@Me GuildDB db, @Me User user, Set<DBNation> nations) {
+            Set<Integer> nationIds = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
+            validate(db, user, nationIds);
+            return GAME_CHAT_ACCOUNT.set(db, user, nationIds);
         }
 
         @Override
-        public List<String> validate(GuildDB db, User user, List<String> tokens) {
-            keys = new ArrayList<>(new ObjectLinkedOpenHashSet<>(keys));
-            Set<Integer> aaIds = db.getAllianceIds();
-            if (aaIds.isEmpty()) {
-                throw new IllegalArgumentException("Please first use " + GuildKey.ALLIANCE_ID.getCommandMention());
-            }
-            for (String key : keys) {
-                try {
-                    Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
-                    if (nationId == null) {
-                        throw new IllegalArgumentException("Invalid API key");
-                    }
-                    DBNation nation = DBNation.getById(nationId);
-                    if (nation == null) {
-                        throw new IllegalArgumentException("Nation not found for id: " + nationId + "(out of sync?)");
-                    }
-                    if (!aaIds.contains(nation.getAlliance_id())) {
-                        nation.update(true);
-                        if (!aaIds.contains(nation.getAlliance_id())) {
-                            throw new IllegalArgumentException("Nation " + nation.getName() + " is not in your alliance: " + StringMan.getString(aaIds));
-                        }
-                    }
-                } catch (Throwable e) {
-                    try {
-                        ApiKeyDetails details = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();
-                        Integer nationId = details.getNation().getId();
-                        if (nationId != null) {
-                            DBNation nation = DBNation.getById(nationId);
-                            if (nation != null && !aaIds.contains(nation.getAlliance_id())) {
-                                continue;
-                            }
-                            throw new IllegalArgumentException("API key is not from a nation in the alliance (nation: " + nation + "): " + StringMan.stripApiKey(e.getMessage()));
-                        }
-                    } catch (Throwable ignore) {
-                        ignore.printStackTrace();
-                    }
-                    throw new IllegalArgumentException("Key was rejected: " + StringMan.stripApiKey(e.getMessage()));
+        public Set<Integer> validate(GuildDB db, User user, Set<Integer> nationIds) {
+            Set<DBNation> nations = nationIds.stream().map(DBNation::getOrCreate).collect(Collectors.toSet());
+            Set<Integer> allianceIds = db.getAllianceIds();
+            Set<String> lacking = new ObjectLinkedOpenHashSet<>();
+
+            // Map alliance_id to set of nations
+            Map<Integer, Set<DBNation>> allianceToNations = new Int2ObjectOpenHashMap<>();
+            for (DBNation nation : nations) {
+                allianceToNations.computeIfAbsent(nation.getAlliance_id(), k -> new HashSet<>()).add(nation);
+
+                if (!nation.isValid()) {
+                    throw new IllegalArgumentException("Nation " + nation.getMarkdownUrl() + " is not valid. Please check that it still exists.");
+                }
+                if (!allianceIds.contains(nation.getAlliance_id())) {
+                    throw new IllegalArgumentException("Nation " + nation.getMarkdownUrl() + " is not in your alliance: " + StringMan.getString(allianceIds));
+                }
+                if (nation.getPositionEnum().id <= Rank.APPLICANT.id) {
+                    throw new IllegalArgumentException("Nation " + nation.getMarkdownUrl() + " is an applicant. Only members can provide alliance chat functionality");
+                }
+                String token = Locutus.imp().getDiscordDB().getChatToken(nation.getId());
+                if (token == null) {
+                    lacking.add(nation.getMarkdownUrl());
                 }
             }
-            return keys;
+            if (!lacking.isEmpty()) {
+                throw new IllegalArgumentException("The following nations do not have a chat token registered:\n" + StringMan.join(lacking, "\n") + "\n" +
+                        "Please register your token using TODO CM REF");
+            }
+
+            // Check for multiple nations per alliance
+            List<String> multipleNations = new ArrayList<>();
+            for (Map.Entry<Integer, Set<DBNation>> entry : allianceToNations.entrySet()) {
+                if (entry.getValue().size() > 1) {
+                    for (DBNation nation : entry.getValue()) {
+                        multipleNations.add(nation.getMarkdownUrl());
+                    }
+                }
+            }
+            if (!multipleNations.isEmpty()) {
+                throw new IllegalArgumentException("Multiple nations per alliance detected:\n" + StringMan.join(multipleNations, "\n"));
+            }
+            return nationIds;
         }
 
         @Override
-        public String toString(List<String> value) {
-            value.removeIf(f -> f.isBlank() || f.endsWith(","));
+        public String toString(Set<Integer> value) {
             return StringMan.join(value, ",");
         }
 
         @Override
-        public List<String> parse(GuildDB db, String input) {
-            return new ArrayList<>(StringMan.split(input, ','));
+        public String toReadableString(GuildDB db, Set<Integer> value) {
+            return value.stream()
+                    .map(DBNation::getOrCreate)
+                    .map(DBNation::getMarkdownUrl)
+                    .collect(Collectors.joining(","));
         }
 
         @Override
-        public String toReadableString(GuildDB db, List<String> value) {
-            List<String> redacted = new ArrayList<>();
-            for (String key : value) {
-                String startWith = key.charAt(0) + "";
-                String endWith = key.charAt(key.length() - 1) + "";
-                Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key, false);
-                if (nationId != null) {
-                    redacted.add(PW.getName(nationId, false));
-                } else {
-                    redacted.add(startWith + "..." + endWith);
-                }
-            }
-            return StringMan.join(redacted, ",");
+        public Set<Integer> parse(GuildDB db, String input) {
+            return PrimitiveBindings.integerSet(input);
         }
 
         @Override
         public String help() {
-            return "Ingame chat token. Set at the guild level" +
+            return "The nations to set" +
                     "Use the command TODO CM REF for instructions on obtaining the chat token.";
         }
-    }.setupRequirements(f -> f.requires(ALLIANCE_ID));
+    }.setupRequirements(f -> f.requires(ALLIANCE_ID).requireValidAlliance().requireActiveGuild());
+
+    public static GuildSetting<MessageChannel> GAME_CHAT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.GAME_CHAT) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String GAME_CHAT_CHANNEL(@Me GuildDB db, @Me User user, MessageChannel channel) {
+            return GAME_CHAT_CHANNEL.setAndValidate(db, user, channel);
+        }
+        @Override
+        public String help() {
+            return "The #channel to receive ingame alliance chat messages in";
+        }
+    }.setupRequirements(f -> f.requires(GAME_CHAT_ACCOUNT).requireValidAlliance().requireActiveGuild());
 
     private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
 

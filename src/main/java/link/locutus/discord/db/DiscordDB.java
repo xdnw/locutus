@@ -86,6 +86,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         executeStmt("CREATE TABLE IF NOT EXISTS `VERIFIED` (`nation_id` INT NOT NULL PRIMARY KEY)");
         executeStmt("CREATE TABLE IF NOT EXISTS `DISCORD_META` (`key` BIGINT NOT NULL, `id` BIGINT NOT NULL, `value` BLOB NOT NULL, PRIMARY KEY(`key`, `id`))");
         executeStmt("CREATE TABLE IF NOT EXISTS `API_KEYS3`(`nation_id` INT NOT NULL PRIMARY KEY, `api_key` BLOB, `bot_key` BLOB, `date_updated` BIGINT NOT NULL)");
+        executeStmt("CREATE TABLE IF NOT EXISTS `CHAT_TOKEN`(`nation_id` INT NOT NULL PRIMARY KEY, `token` BLOB, `date_updated` BIGINT NOT NULL)");
         executeStmt("CREATE TABLE IF NOT EXISTS `DISCORD_BANS`(`user` BIGINT NOT NULL, `server` BIGINT NOT NULL, `date` BIGINT NOT NULL, `reason` VARCHAR, PRIMARY KEY(`user`, `server`))");
 
         executeStmt("CREATE TABLE IF NOT EXISTS `NetworkRow2` (`id1` INTEGER NOT NULL, `id2` INTEGER NOT NULL, `lastAccessFromSharedIP` BIGINT NOT NULL, `numberOfSharedIPs` INTEGER NOT NULL, `lastActiveMs` BIGINT NOT NULL, `allianceId` INTEGER NOT NULL, `dateCreated` BIGINT NOT NULL, PRIMARY KEY (`id1`, `id2`))");
@@ -406,6 +407,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
     public Integer getNationFromApiKey(String key) {
         return getNationFromApiKey(key, true);
     }
+
     public Integer getNationFromApiKey(String key, boolean allowFetch) {
         if (Settings.INSTANCE.API_KEY_PRIMARY.equalsIgnoreCase(key) && Settings.INSTANCE.NATION_ID > 0) {
             return Settings.INSTANCE.NATION_ID;
@@ -438,6 +440,66 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
             }
         }
         return null;
+    }
+
+    // Add ChatToken for a nation
+    public void addChatToken(int nationId, String chatToken) {
+        if (nationId == Settings.INSTANCE.NATION_ID && !chatToken.isEmpty() && Settings.INSTANCE.NATION_ID > 0) {
+            Settings.INSTANCE.CHAT_TOKEN = chatToken;
+            Settings.INSTANCE.save(Settings.INSTANCE.getDefaultFile());
+            return;
+        }
+        byte[] tokenBytes = SQLUtil.hexStringToByteArray(chatToken);
+        update("INSERT OR REPLACE INTO `CHAT_TOKEN`(`nation_id`, `token`, `date_updated`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, nationId);
+            stmt.setBytes(2, tokenBytes);
+            stmt.setLong(3, System.currentTimeMillis());
+        });
+    }
+
+    // Get ChatToken for a nation
+    public String getChatToken(int nationId) {
+        if (nationId == Settings.INSTANCE.NATION_ID && !Settings.INSTANCE.CHAT_TOKEN.isEmpty()) {
+            return Settings.INSTANCE.CHAT_TOKEN;
+        }
+        try (PreparedStatement stmt = prepareQuery("SELECT token FROM `CHAT_TOKEN` WHERE nation_id = ?")) {
+            stmt.setInt(1, nationId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    byte[] tokenBytes = rs.getBytes("token");
+                    return tokenBytes == null ? null : SQLUtil.byteArrayToHexString(tokenBytes);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public Integer getNationIdFromChatToken(String chatToken) {
+        if (chatToken.equalsIgnoreCase(Settings.INSTANCE.CHAT_TOKEN) && !chatToken.isEmpty() && Settings.INSTANCE.NATION_ID > 0) {
+            return Settings.INSTANCE.NATION_ID;
+        }
+        byte[] tokenBytes = SQLUtil.hexStringToByteArray(chatToken);
+        try (PreparedStatement stmt = prepareQuery("SELECT nation_id FROM CHAT_TOKEN WHERE token = ?")) {
+            stmt.setBytes(1, tokenBytes);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("nation_id");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    // Delete ChatToken for a nation
+    public void deleteChatToken(int nationId) {
+        update("UPDATE CHAT_TOKEN SET token = NULL, `date_updated` = ? WHERE nation_id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setLong(1, System.currentTimeMillis());
+            stmt.setInt(2, nationId);
+        });
     }
 
     private Map<DiscordMeta, Map<Long, byte[]>> info;
