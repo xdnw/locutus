@@ -2239,7 +2239,7 @@ public class BankCommands {
             String title = forceErrors.size() + " **ERRORS**. Please confirm transfer";
             String body = StringMan.join(forceErrors, "\n") + "\n\n" +
                     "Press `Confirm` to attempt to send anyway";
-            channel.create().confirmation(title, body, command.put("force", "true"), "bypassChecks").send();
+            channel.create().confirmation(title, body, command.put("force", "true"), "bypass_checks").send();
             return null;
         }
 
