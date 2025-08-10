@@ -1,29 +1,26 @@
 package link.locutus.discord.util;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.WarPolicy;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.LootEntry;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.event.Event;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.WarPolicy;
-import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.util.io.PagePriority;
+import link.locutus.discord.util.scheduler.KeyValue;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
-import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
+
+import static link.locutus.discord.util.PW.SPY_RANGE_MAX_MODIFIER;
+import static link.locutus.discord.util.PW.SPY_RANGE_MIN_MODIFIER;
 
 public class SpyCount {
     private static final List<Map.Entry<Double, Map.Entry<Operation, Integer>>> BY_SUCCESS = new ArrayList<>();
@@ -122,8 +119,8 @@ public class SpyCount {
     }
 
     public static boolean isInScoreRange(double attackerScore, double defenderScore) {
-        double min = attackerScore * 0.4;
-        double max = attackerScore * 2.5;
+        double min = attackerScore * SPY_RANGE_MIN_MODIFIER;
+        double max = attackerScore * SPY_RANGE_MAX_MODIFIER;
         if (defenderScore < min || defenderScore > max) {
 //            if (other.getRank() < getRank() || other.getRank() >= getRank() + 10)
             {

@@ -918,6 +918,9 @@ public final class PW {
     public static double WAR_RANGE_MAX_MODIFIER = 2.50;
     public static double WAR_RANGE_MIN_MODIFIER = 0.75;
 
+    public static double SPY_RANGE_MIN_MODIFIER = 0.4;
+    public static double SPY_RANGE_MAX_MODIFIER = 2.5;
+
     /**
      * @param offensive (else defensive)
      * @param isWar (else spy)
@@ -936,9 +939,9 @@ public final class PW {
                 }
             } else {
                 if (isMin) {
-                    range = Math.round(scoreInt * 0.4);
+                    range = Math.round(scoreInt * SPY_RANGE_MIN_MODIFIER);
                 } else {
-                    range = Math.round(scoreInt * 2.5);
+                    range = Math.round(scoreInt * SPY_RANGE_MAX_MODIFIER);
                 }
             }
         } else {
@@ -950,9 +953,9 @@ public final class PW {
                 }
             } else {
                 if (isMin) {
-                    range = Math.round(scoreInt / 2.5);
+                    range = Math.round(scoreInt / SPY_RANGE_MAX_MODIFIER);
                 } else {
-                    range = Math.round(scoreInt / 0.4);
+                    range = Math.round(scoreInt / SPY_RANGE_MIN_MODIFIER);
                 }
             }
         }
