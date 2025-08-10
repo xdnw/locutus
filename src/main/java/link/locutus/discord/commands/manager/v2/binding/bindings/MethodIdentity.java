@@ -45,6 +45,10 @@ public class MethodIdentity {
 
     @Override
     public int hashCode() {
-        return Objects.hash(method, args);
+        int hash = method.hashCode();
+        for (Object arg : args) {
+            hash = 31 * hash + (arg != null ? arg.hashCode() : 0);
+        }
+        return hash;
     }
 }

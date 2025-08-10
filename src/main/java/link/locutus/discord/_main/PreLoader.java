@@ -405,7 +405,8 @@ public class PreLoader implements ILoader {
     }
 
     private JDA buildJDA() throws ExecutionException, InterruptedException {
-        JDABuilder builder = JDABuilder.createLight(Settings.INSTANCE.BOT_TOKEN, GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_MESSAGES, GatewayIntent.DIRECT_MESSAGES);
+        JDABuilder builder = JDABuilder.createLight(Settings.INSTANCE.BOT_TOKEN, GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_MESSAGES, GatewayIntent.DIRECT_MESSAGES)
+                .setMaxReconnectDelay(32);
         if (Settings.INSTANCE.ENABLED_COMPONENTS.SLASH_COMMANDS) {
             SlashCommandManager slash = getSlashCommandManager();
             if (slash != null) {
@@ -456,7 +457,8 @@ public class PreLoader implements ILoader {
     }
 
     private ShardManager buildShardManager() throws ExecutionException, InterruptedException {
-        DefaultShardManagerBuilder builder = DefaultShardManagerBuilder.createLight(Settings.INSTANCE.BOT_TOKEN, GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_MESSAGES, GatewayIntent.DIRECT_MESSAGES);
+        DefaultShardManagerBuilder builder = DefaultShardManagerBuilder.createLight(Settings.INSTANCE.BOT_TOKEN, GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_MESSAGES, GatewayIntent.DIRECT_MESSAGES)
+                .setMaxReconnectDelay(32);
         if (Settings.INSTANCE.ENABLED_COMPONENTS.SLASH_COMMANDS) {
             SlashCommandManager slash = getSlashCommandManager();
             if (slash != null) {
