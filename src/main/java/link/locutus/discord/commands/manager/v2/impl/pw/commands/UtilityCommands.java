@@ -1035,6 +1035,13 @@ public class UtilityCommands {
             @Arg(value = "Unit MMR value", group = 3) @Switch("mmr") MMRDouble builtMMR,
             @Arg(value = "Military research levels", group = 3) @Switch("r") Map<Research, Integer> research
     ) {
+        boolean anyValueProvided = nation != null || cities != null || soldiers != null || tanks != null ||
+                aircraft != null || ships != null || missiles != null || nukes != null ||
+                projects != null || avg_infra != null || infraTotal != null || builtMMR != null || research != null;
+        if (!anyValueProvided) {
+            throw new IllegalArgumentException("Please specify a value for at least one argument, such as `nation`");
+        }
+
         if (nation == null) {
             nation = new SimpleDBNation(new DBNationData());
             nation.setMissiles(0);
@@ -1083,8 +1090,6 @@ public class UtilityCommands {
                 "WarRange: " + MathMan.format(score * 0.75) + "- " + MathMan.format(score * PW.WAR_RANGE_MAX_MODIFIER) + "\n" +
                 "Can be Attacked By: " + MathMan.format(score / PW.WAR_RANGE_MAX_MODIFIER) + "- " + MathMan.format(score / 0.75) + "\n" +
                 "Spy range: " + MathMan.format(score * 0.4) + "- " + MathMan.format(score * 1.5);
-
-
     }
 
     @Command(desc = "Check how many turns are left in the city/project timer", aliases = {"TurnTimer", "Timer", "CityTimer", "ProjectTimer"}, viewable = true)
