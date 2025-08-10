@@ -3354,9 +3354,15 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
 
     public Set<Long> getTrackedBanks() {
         GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
-        if (faServer != null && faServer.getIdLong() != getIdLong()) return faServer.getTrackedBanks();
-
-        Set<Long> tracked = new LongLinkedOpenHashSet(getCoalitionRaw(OFFSHORE));
+        Set<Long> tracked = null;
+        if (faServer != null && faServer.getIdLong() != getIdLong()) {
+            tracked = faServer.getTrackedBanks();
+        }
+        if (tracked == null) {
+            tracked = new LongLinkedOpenHashSet(getCoalitionRaw(OFFSHORE));
+        } else {
+            tracked.addAll(getCoalitionRaw(OFFSHORE));
+        }
         tracked.add(getGuild().getIdLong());
         tracked.addAll(getCoalitionRaw(Coalition.TRACK_DEPOSITS));
         for (Integer id : getAllianceIds()) tracked.add(id.longValue());
