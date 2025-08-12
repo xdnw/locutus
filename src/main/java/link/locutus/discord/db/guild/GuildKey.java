@@ -1948,7 +1948,7 @@ public class GuildKey {
     public static GuildSetting<MessageChannel> ENEMY_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BEIGE_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
-        @RolePermission(Roles.ADMIN)
+        @RolePermission(Roles.MILCOM)
         public String ENEMY_ALERT_CHANNEL(@Me GuildDB db, @Me User user, MessageChannel channel) {
             return ENEMY_ALERT_CHANNEL.setAndValidate(db, user, channel);
         }
