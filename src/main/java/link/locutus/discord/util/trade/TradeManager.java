@@ -7,6 +7,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.politicsandwar.graphql.model.*;
 import com.ptsmods.mysqlw.query.QueryOrder;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2LongLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
@@ -484,11 +485,11 @@ public class TradeManager {
     }
 
     public Map<Integer, double[]> inflows(Collection<Transfer> transfers) {
-        return inflows(transfers, false);
+        return inflows(transfers, false, true, true);
     }
 
-    public Map<Integer, double[]> inflows(Collection<Transfer> transfers, boolean byAA) {
-        Map<Integer, double[]> totals = new HashMap<>();
+    public Map<Integer, double[]> inflows(Collection<Transfer> transfers, boolean byAA, boolean includeSender, boolean includeReceiver) {
+        Map<Integer, double[]> totals = new Int2ObjectOpenHashMap<>();
         for (Transfer transfer : transfers) {
             int sender = transfer.getSender();
             int receiver = transfer.getReceiver();
@@ -500,11 +501,15 @@ public class TradeManager {
                 receiver = recNation == null ? 0 : recNation.getAlliance_id();
             }
 
-            double[] senderTotal = totals.computeIfAbsent(sender, f -> new double[ResourceType.values.length]);
-            senderTotal[transfer.getRss().ordinal()] -= transfer.getAmount();
+            if (includeSender) {
+                double[] senderTotal = totals.computeIfAbsent(sender, f -> new double[ResourceType.values.length]);
+                senderTotal[transfer.getRss().ordinal()] -= transfer.getAmount();
+            }
 
-            double[] receiverTotal = totals.computeIfAbsent(receiver, f -> new double[ResourceType.values.length]);
-            receiverTotal[transfer.getRss().ordinal()] += transfer.getAmount();
+            if (includeReceiver) {
+                double[] receiverTotal = totals.computeIfAbsent(receiver, f -> new double[ResourceType.values.length]);
+                receiverTotal[transfer.getRss().ordinal()] += transfer.getAmount();
+            }
         }
         return totals;
     }
