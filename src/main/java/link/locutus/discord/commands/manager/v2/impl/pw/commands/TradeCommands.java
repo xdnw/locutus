@@ -1324,9 +1324,11 @@ public class TradeCommands {
             offers.removeIf(f -> manager.isTradeOutsideNormPrice(f.getPpu(), f.getResource()));
         }
         int findsign = buyOrSell.equalsIgnoreCase("SOLD") ? 1 : -1;
+        boolean includeSender = findsign == 1;
+        boolean includeReceiver = findsign == -1;
 
         Collection<Transfer> transfers = manager.toTransfers(offers, false);
-        Map<Integer, double[]> inflows = manager.inflows(transfers, groupByAlliance);
+        Map<Integer, double[]> inflows = manager.inflows(transfers, groupByAlliance, includeSender, includeReceiver);
         Map<Integer, double[]> ppu = manager.ppuByNation(offers, groupByAlliance);
 
         Map<Integer, Double> newMap = new Int2DoubleOpenHashMap();
