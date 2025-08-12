@@ -81,8 +81,11 @@ public class FindTrader extends Command {
         long cutoff = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
         List<DBTrade> offers = db.getTrades(cutoff);
 
+        boolean includeSender = findsign == 1;
+        boolean includeReceiver = findsign == -1;
+
         Collection<Transfer> transfers = manager.toTransfers(offers, false);
-        Map<Integer, double[]> inflows = manager.inflows(transfers, groupByAlliance);
+        Map<Integer, double[]> inflows = manager.inflows(transfers, groupByAlliance, includeSender, includeReceiver);
         Map<Integer, double[]> ppu = manager.ppuByNation(offers, groupByAlliance);
 
 //        for (ResourceType type : ResourceType.values()) {
