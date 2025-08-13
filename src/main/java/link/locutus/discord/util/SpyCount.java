@@ -118,6 +118,28 @@ public class SpyCount {
         OP_DISTR.put(10, 772);
     }
 
+    public static void main(String[] args) {
+//        int defUnitBefore = 13;
+//        int killed = 11;
+//        Map.Entry<Integer, Integer> rangeNoSat = SpyCount.getSpiesUsedRange(killed, defUnitBefore, false);
+//        Map.Entry<Integer, Integer> rangeSat = SpyCount.getSpiesUsedRange(killed, defUnitBefore, true);
+//        System.out.println("Range without spy sat: " + rangeNoSat.getKey() + " - " + rangeNoSat.getValue());
+//        System.out.println("Range with spy sat: " + rangeSat.getKey() + " - " + rangeSat.getValue());
+        for (int i = 1; i < 60; i++) {
+            System.out.println(i + ": " + SpyCount.getSpyKillCap(i, false) + " | " + SpyCount.getSpyKillCap(i, true));
+            Map.Entry<Integer, Integer> killRange = getUnitKillRange(60, i, MilitaryUnit.SPIES, i, false, false);
+            Map.Entry<Integer, Integer> killRangeSat = getUnitKillRange(60, i, MilitaryUnit.SPIES, i, true, false);
+            System.out.println("- Range without spy sat: " + killRange.getKey() + " - " + killRange.getValue());
+            System.out.println("- Range with spy sat: " + killRangeSat.getKey() + " - " + killRangeSat.getValue());
+        }
+    }
+
+    public static int getSpyKillCap(int defSpies, boolean spySat) {
+        double factor = spySat ? 1.5 : 1;
+        return (int) Math.round((defSpies * 0.25 + 4) * factor);
+    }
+
+
     public static boolean isInScoreRange(double attackerScore, double defenderScore) {
         double min = attackerScore * SPY_RANGE_MIN_MODIFIER;
         double max = attackerScore * SPY_RANGE_MAX_MODIFIER;
@@ -134,6 +156,9 @@ public class SpyCount {
         double factor = spySat ? 1.5 : 1;
         long min = Math.round(spiesKilled / (1.05 * 0.335 * factor) + (defSpies * 0.4));
         long max = Math.round(spiesKilled / (0.85 * 0.335 * factor) + (defSpies * 0.4));
+        int cap = Math.toIntExact(Math.round((defSpies * 0.25 + 4) * (spySat ? 1.5 : 1)));
+
+
         return new KeyValue<>((int) min, (int) max);
     }
 
@@ -144,7 +169,7 @@ public class SpyCount {
         if (spySat) factor *= 1.5;
         if (unit == MilitaryUnit.SPIES) {
             double average =  ((double) attSpies - (defSpies * 0.4)) * 0.335;
-            double cap = (defSpies * 0.25) + 4;
+            double cap = getSpyKillCap(defSpies, spySat);
             min = Math.min(cap, average * 0.85) * factor;
             max = Math.min(cap, average * 1.05) * factor;
         } else {
@@ -157,6 +182,9 @@ public class SpyCount {
                     max = (double) defUnits * 0.05 * factor;
                     break;
                 case MISSILE:
+                    min = 1;
+                    max = 2;
+                    break;
                 case NUKE:
                     min = 1;
                     max = 1;

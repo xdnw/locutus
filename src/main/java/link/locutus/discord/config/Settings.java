@@ -123,6 +123,9 @@ public class Settings extends Config {
     }
 
     public static class ENABLED_COMPONENTS {
+        @Comment({"If the discord bot can use the api at all",
+                "- Basic requirement for the bot to function"})
+        public boolean USE_API = true;
         @Comment({"If the discord bot is enabled at all",
                 "- Other components require the discord bot to be enabled"})
         public boolean DISCORD_BOT = true;
