@@ -1573,13 +1573,17 @@ public class GuildHandler {
         String typeStr = isAttacker ? "\uD83D\uDD2A" : "\uD83D\uDEE1";
         builder.append(typeStr);
         builder.append(memberNation.getNationUrlMarkup() + " (member):");
+        String userStr = memberNation.getUserMention();
+        if (userStr != null) {
+            builder.append(" ").append(userStr);
+        }
         builder.append("\n").append(memberNation.toCityMilMarkdown());
 
         String attStr = card.condensedSubInfo(isAttacker);
         String defStr = card.condensedSubInfo(!isAttacker);
         builder.append("```\n" + attStr + "|" + defStr + "```\n");
 
-        msg.writeTable(title, breakdown.toTableList(), false, builder.toString());
+        msg.writeTable(title, breakdown.toTableList(), true, builder.toString());
         msg.commandButton(CommandBehavior.DELETE_PRESSED_BUTTON, infoCommand, infoEmoji);
         msg.commandButton(CommandBehavior.DELETE_PRESSED_BUTTON, costCommand, costEmoji);
         msg.commandButton(CommandBehavior.DELETE_PRESSED_BUTTON, assignCmd, assignEmoji);
