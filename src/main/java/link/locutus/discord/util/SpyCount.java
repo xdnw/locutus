@@ -157,8 +157,9 @@ public class SpyCount {
         long min = Math.round(spiesKilled / (1.05 * 0.335 * factor) + (defSpies * 0.4));
         long max = Math.round(spiesKilled / (0.85 * 0.335 * factor) + (defSpies * 0.4));
         int cap = Math.toIntExact(Math.round((defSpies * 0.25 + 4) * (spySat ? 1.5 : 1)));
-
-
+        if (max == cap) {
+            max = 60;
+        }
         return new KeyValue<>((int) min, (int) max);
     }
 

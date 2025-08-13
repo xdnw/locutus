@@ -26,7 +26,6 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.handlers.AttackQuery;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.util.scheduler.KeyValue;
@@ -347,8 +346,6 @@ public class SpyTracker {
                         if (attacker != null && (attacker.getAlliance_id() == defender.getAlliance_id() || treaties.contains(attacker.getAlliance_id()))) continue;
                         if (attacker != null && Settings.INSTANCE.LEGACY_SETTINGS.ESPIONAGE_ALWAYS_ONLINE_AA.contains(attacker.getAlliance_id())) continue;
 
-                        SpyCount.getSpyKills(offensive.originalSpies, defensive.originalSpies
-
                         if (offensive.change == defensive.change) {
                             alert.high.add(offensive);
                         } else {
@@ -414,8 +411,13 @@ public class SpyTracker {
                 defSpiesStr = "" + defender.getSpies();
             }
 
-            String title = "Possible " + alert.change + " x " + unit + " spied (Note: False positives are common)";
+            String title = alert.change + " x " + unit + " Spied";
             StringBuilder body = new StringBuilder("**" + title + "**:\n");
+            body.append("-# note1: False positives are common\n");
+            body.append("-# note2: Nations active **BEFORE** the minute displayed in-game (UTC) are improbable\n");
+            body.append("-# note3: Consider the `SAT` and `no SAT` kill ranges and `Spies Estimate`\n");
+            body.append("-# note4: Two attacks in quick succession may throw off estimates; [See Wiki](<https://politicsandwar.fandom.com/wiki/Spies>)\n");
+
             body.append("\nDefender (" + defSpiesStr + " spies):" + defender.toMarkdown(false, false, true, true, true, true));
             body.append("\ntimestamp:" + alert.timestamp + " (" + TimeUtil.format(TimeUtil.YYYY_MM_DDTHH_MM_SSX, alert.timestamp) + ")");
 
@@ -434,26 +436,24 @@ public class SpyTracker {
                 Map.Entry<Integer, Integer> rangeSat = SpyCount.getSpiesUsedRange(killed, defUnitBefore, true);
                 body.append("\n**Attacker Spies Estimate:** ");
                 body.append(rangeNoSat.getKey() + "- " + rangeNoSat.getValue() + "(no SAT) | " + rangeSat.getKey() + "- " + rangeSat.getValue() + "(SAT)");
-                body.append("\n- Note: Unit counts may be incorrect (outdated/two attacks in quick succession)");
-                body.append("\n- See: <https://politicsandwar.fandom.com/wiki/Spies>");
             };
             if (unit == MilitaryUnit.SPIES) {
                 appendSpySatInfo.run();
             }
 
             if (!alert.high.isEmpty()) {
-                body.append("\nAttackers (high probability):");
+                body.append("\n__Attackers (high %):__");
                 for (SpyActivity offensive : alert.high) {
                     body.append("\n- " + alert.entryToString(offensive, null));
                 }
             } else {
                 if (!alert.medium.isEmpty()) {
-                    body.append("\nAttackers (medium probability):");
+                    body.append("\n__Attackers (med %):__");
                     for (SpyActivity offensive : alert.medium) {
                         body.append("\n- " + alert.entryToString(offensive, null));
                     }
                 }
-                body.append("\nAttackers Online (low probability):");
+                body.append("\n__Attackers (low %):__");
                 for (Map.Entry<DBNation, Long> entry : alert.low) {
                     DBNation attacker = entry.getKey();
                     body.append("\n- " + alert.entryToString(attacker, null, entry.getValue()));
@@ -518,7 +518,7 @@ public class SpyTracker {
             message.append(attacker.getMarkdownUrl() + " | " + attacker.getAllianceUrlMarkup() + " | " + MathMan.format(odds) + "%");
 
             if (killRange != null) {
-                message.append(" | " + killRange.getKey() + "-" + killRange.getValue() + " max kills");
+                message.append(" | kill:" + killRange.getKey() + "-" + killRange.getValue());
             }
 
             if (attacker.hasProject(Projects.SPY_SATELLITE)) message.append(" | SAT");
@@ -533,7 +533,10 @@ public class SpyTracker {
             String fullTimestamp = TimeUtil.format(TimeUtil.MMDD_HH_MM_A, timestamp);
 
             message.append(" | " + attSpies + " \uD83D\uDD75");
-            message.append(" | " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff));
+            String timeStr = TimeUtil.format(TimeUtil.MMDD_HH_MM_SS_A, timestamp);
+            String diffStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff);
+            if (diffStr.isEmpty()) diffStr = "Now";
+            message.append(" | " + timeStr + " | " + diffStr);
             return message.toString();
         }
     }
