@@ -412,14 +412,14 @@ public class SpyTracker {
             }
 
             String title = alert.change + " x " + unit + " Spied";
-            StringBuilder body = new StringBuilder("**" + title + "**:\n");
+            StringBuilder body = new StringBuilder("## " + title + ":\n");
             body.append("-# note1: False positives are common with nations that are __always online__\n");
             body.append("-# note2: Nations active **BEFORE** the minute displayed in-game (UTC) are improbable\n");
             body.append("-# note3: Consider the `SAT` and `no SAT` kill ranges and `Spies Estimate`\n");
             body.append("-# note4: Two attacks in quick succession may throw off estimates; [See Wiki](<https://politicsandwar.fandom.com/wiki/Spies>)\n");
 
-            body.append("\nDefender (" + defSpiesStr + " spies):" + defender.toMarkdown(false, false, true, true, true, true));
-            body.append("\ntimestamp:" + alert.timestamp + " (" + TimeUtil.format(TimeUtil.YYYY_MM_DDTHH_MM_SSX, alert.timestamp) + ")");
+            body.append("\n**Defender** (" + defSpiesStr + " spies):" + defender.toMarkdown(false, false, true, true, true, true));
+            body.append("\n- Time: `" + TimeUtil.format(TimeUtil.YYYY_MM_DDTHH_MM_SSX, alert.timestamp) + "` | `timestamp:" + alert.timestamp + "`");
 
             int defUnits = alert.originalUnit;
             Map.Entry<Integer, Integer> killRangeNoSat, killRangeSat;
@@ -605,7 +605,7 @@ public class SpyTracker {
             for (Nation nation : active) {
                 int id = nation.getId();
                 long activeMs = start - nation.getLast_active().toEpochMilli();
-                if (activeMs < minTime - 1000) continue;
+                if (activeMs < minTime - 15000) continue;
                 String activeStr = TimeUtil.format(TimeUtil.MMDD_HH_MM_SS_A, activeMs);
                 body.append("- " + PW.getMarkdownUrl(id, false) + " | ");
                 DBNation dbNation = DBNation.getById(id);
@@ -613,7 +613,7 @@ public class SpyTracker {
                 body.append(PW.getMarkdownUrl(allianceId, true) + " | ");
                 body.append(activeStr + "\n");
             }
-            body.append("\n\n-# Note: Nations active BEFORE the bounty date are unlikely to have done it");
+            body.append("\n\n-# Note: Nations active **BEFORE** the bounty date are improbable");
             try {
                 new DiscordChannelIO(channel).send("**__" + title + "__**\n" + body);
             } catch (InsufficientPermissionException permE) {
