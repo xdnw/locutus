@@ -50,6 +50,8 @@ public class DBTrade implements Comparable<DBTrade> {
         this.parent_id = model.getOriginal_trade_id() != null ? model.getOriginal_trade_id() : -1;
     }
 
+    private static final TradeType[] TRADE_TYPE_VALUES = TradeType.values();
+
     public DBTrade(ResultSet rs) throws SQLException {
         this.tradeId = rs.getInt(1);
         this.date = rs.getLong(2);
@@ -59,7 +61,7 @@ public class DBTrade implements Comparable<DBTrade> {
         this.isBuy = rs.getBoolean(6);
         this.quantity = rs.getInt(7);
         this.ppu = rs.getInt(8);
-        this.type = TradeType.values[rs.getInt(9)];
+        this.type = TRADE_TYPE_VALUES[rs.getInt(9)];
         this.date_accepted = rs.getLong(10);
         this.parent_id = rs.getInt(11);
     }
