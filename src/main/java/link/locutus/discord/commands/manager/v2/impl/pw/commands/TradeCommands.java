@@ -1315,7 +1315,7 @@ public class TradeCommands {
         if (type == ResourceType.MONEY || type == ResourceType.CREDITS) return "Invalid resource";
         List<DBTrade> offers;
         if (nations == null) {
-            offers = db.getTrades(cutoff);
+            offers = db.getTrades(type, cutoff, Long.MAX_VALUE);
         } else {
             Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(IntOpenHashSet::new, IntOpenHashSet::add, IntOpenHashSet::addAll);
             offers = db.getTrades(nationIds, cutoff);

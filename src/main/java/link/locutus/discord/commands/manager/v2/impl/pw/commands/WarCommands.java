@@ -3645,7 +3645,7 @@ public class WarCommands {
                 return "You do not have permission to dm custom messages. Try again without `header` set";
             }
             for (DBNation nation : allAttackers) {
-                if (!db.isAllianceId(nation.getAlliance_id())) {
+                if (allowedNations == null || allowedNations.contains(nation) && !db.isAllianceId(nation.getAlliance_id())) {
                     throw new IllegalArgumentException("You do not have permission to DM nations outside this alliance (" + nation.getMarkdownUrl() + ")\n" +
                             "Set `dm` to false, register the alliance, or provide a different target list");
                 }

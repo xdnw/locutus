@@ -348,7 +348,15 @@ public class TradeManager {
                 amount = offer.getTotal();
                 type = ResourceType.MONEY;
             }
-            Transfer transfer = new Transfer(offer.getDate(), null, offer.getSeller(), false, offer.getBuyer(), false, 0, type, amount);
+            int sender, receiver;
+            if (offer.isBuy()) {
+                sender = offer.getBuyer();
+                receiver = offer.getSeller();
+            } else {
+                sender = offer.getSeller();
+                receiver = offer.getBuyer();
+            }
+            Transfer transfer = new Transfer(offer.getDate(), null, sender, false, receiver, false, 0, type, amount);
             allTransfers.add(transfer);
         }
         return allTransfers;
