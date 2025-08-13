@@ -588,23 +588,29 @@ public class SpyTracker {
             } else {
                 title += bounties.size() + " nations";
             }
+
+            long minTime = Long.MAX_VALUE;
             StringBuilder body = new StringBuilder();
             body.append("**Bounties:**\n");
             for (Bounty bounty : bounties) {
-                String time = DiscordUtil.timestamp(bounty.getDate().toEpochMilli(), null);
+                long timeMs = bounty.getDate().toEpochMilli();
+                minTime = Math.min(timeMs, minTime);
+                String time = TimeUtil.format(TimeUtil.MMDD_HH_MM_SS_A, timeMs);
                 body.append("\n- " + PW.getMarkdownUrl(bounty.getNation_id(), false) + ": `$" + MathMan.format(bounty.getAmount()) + "` - " + time);
             }
             body.append("\n<" + Settings.PNW_URL() + "/world/bounties/>\n\n**Active Nations**:\n");
             for (Nation nation : active) {
                 int id = nation.getId();
                 long activeMs = start - nation.getLast_active().toEpochMilli();
-                String activeStr = activeMs < 1000 ? "Now" : TimeUtil.secToTime(TimeUnit.MILLISECONDS, activeMs);
+                if (activeMs < minTime - 1000) continue;
+                String activeStr = TimeUtil.format(TimeUtil.MMDD_HH_MM_SS_A, activeMs);
                 body.append("- " + PW.getMarkdownUrl(id, false) + " | ");
                 DBNation dbNation = DBNation.getById(id);
                 int allianceId = dbNation == null ? 0 : dbNation.getAlliance_id();
                 body.append(PW.getMarkdownUrl(allianceId, true) + " | ");
                 body.append(activeStr + "\n");
             }
+            body.append("\n\n-# Note: Nations active BEFORE the bounty date are unlikely to have done it");
             try {
                 new DiscordChannelIO(channel).send("**__" + title + "__**\n" + body);
             } catch (InsufficientPermissionException permE) {
