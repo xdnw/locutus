@@ -4515,7 +4515,8 @@ public class BankCommands {
             DBNation nation = entry.getKey();
             if (nation == null || (nationFilter != null && !nationFilter.getNations().contains(nation))) continue;
             row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
-            row.add(nation.getUserDiscriminator());
+            String usr = nation.getUserDiscriminator();
+            row.add(usr == null ? "" : usr);
             row.add(nation.getCities());
             row.add(nation.getAvg_infra());
             row.add(nation.getOff() +"|" + nation.getDef());
