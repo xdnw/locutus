@@ -1337,7 +1337,7 @@ public class TradeCommands {
             }
         }
         SummedMapRankBuilder<Integer, Double> builder = new SummedMapRankBuilder<>(newMap);
-        Map<Integer, Double> sorted = (findsign == 1 ? builder.sort() : builder.sortAsc()).get();
+        Map<Integer, Double> sorted = builder.sort().get();
 
         List<String> nationName = new ArrayList<>();
         List<String> amtList = new ArrayList<>();
