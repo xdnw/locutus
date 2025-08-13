@@ -1323,19 +1323,17 @@ public class TradeCommands {
         if (!includeMoneyTrades) {
             offers.removeIf(f -> manager.isTradeOutsideNormPrice(f.getPpu(), f.getResource()));
         }
-        int findsign = buyOrSell.equalsIgnoreCase("SOLD") ? 1 : -1;
-        boolean includeSender = findsign == 1;
-        boolean includeReceiver = findsign == -1;
+        int findsign = buyOrSell.equalsIgnoreCase("SOLD") ? -1 : 1;
 
         Collection<Transfer> transfers = manager.toTransfers(offers, false);
-        Map<Integer, double[]> inflows = manager.inflows(transfers, groupByAlliance, includeSender, includeReceiver);
+        Map<Integer, double[]> inflows = manager.inflows(transfers, groupByAlliance, true, true);
         Map<Integer, double[]> ppu = manager.ppuByNation(offers, groupByAlliance);
 
         Map<Integer, Double> newMap = new Int2DoubleOpenHashMap();
         for (Map.Entry<Integer, double[]> entry : inflows.entrySet()) {
             double value = entry.getValue()[type.ordinal()];
             if (value != 0 && Math.signum(value) == findsign) {
-                newMap.put(entry.getKey(), value);
+                newMap.put(entry.getKey(), Math.abs(value));
             }
         }
         SummedMapRankBuilder<Integer, Double> builder = new SummedMapRankBuilder<>(newMap);
