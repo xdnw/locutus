@@ -959,7 +959,7 @@ public class WarUpdateProcessor {
                 Set<DBWar> wars = defender.getActiveWars();
                 Set<DBWar> escalatedWars = null;
                 for (DBWar war : wars) {
-                    if (war.getAttacker_id() == defender.getNation_id()) continue;
+                    if (war.getAttacker_id() != defender.getNation_id()) continue;
 
                     DBNation warDef = DBNation.getById(war.getDefender_id());
                     if (warDef == null || warDef.getPosition() < 1) continue;
