@@ -195,7 +195,7 @@ public class SpyTracker {
                     if (currentUnits < min || currentUnits > max) return;
                 }
 
-                SpyActivity activity = new SpyActivity(nationId, unit, currentUnits + change, change, currentSpies, timestamp, score, false);
+                SpyActivity activity = new SpyActivity(nationId, unit, currentUnits + change, currentSpies, change, timestamp, score, false);
                 if (Settings.INSTANCE.LEGACY_SETTINGS.PRINT_ESPIONAGE_DEBUG) Logg.text("Add activity sold " + nationId + " | " + unit + " | " + change + " | " + timestamp + " | " + score);
                 queue.add(activity);
             }
@@ -360,8 +360,7 @@ public class SpyTracker {
                             if (cachedNation == null) continue;
                             if (!SpyCount.isInScoreRange(cachedNation.getScore(), defensive.score)) continue;
                             long activeMs = nation.getLast_active().toEpochMilli();
-                            long diff = Math.max(0, defensive.timestamp - activeMs);
-                            alert.low.add(KeyValue.of(cachedNation, diff));
+                            alert.low.add(KeyValue.of(cachedNation, activeMs));
                         }
                         defensive.nationActiveInfo = null;
                     }
@@ -456,7 +455,8 @@ public class SpyTracker {
                 body.append("\n__Attackers (low %):__");
                 for (Map.Entry<DBNation, Long> entry : alert.low) {
                     DBNation attacker = entry.getKey();
-                    body.append("\n- " + alert.entryToString(attacker, null, entry.getValue()));
+                    long diff = Math.max(0, alert.timestamp - entry.getValue());
+                    body.append("\n- " + alert.entryToString(attacker, null, diff, entry.getValue()));
                 }
             }
 
@@ -506,10 +506,10 @@ public class SpyTracker {
         public String entryToString(SpyActivity offensive, Map.Entry<Integer, Integer> killRange) {
             DBNation attacker = DBNation.getById(offensive.nationId);
             long diff = Math.abs(offensive.timestamp - timestamp);
-            return entryToString(attacker, killRange, diff);
+            return entryToString(attacker, killRange, diff, offensive.timestamp);
         }
 
-        public String entryToString(DBNation attacker, Map.Entry<Integer, Integer> killRange, long diff) {
+        public String entryToString(DBNation attacker, Map.Entry<Integer, Integer> killRange, long diff, long attackerMs) {
             int attSpies = attacker.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, 24);;
 
             double odds = SpyCount.getOdds(attSpies, originalSpies, 3, SpyCount.Operation.getByUnit(unit), defender);
@@ -530,10 +530,8 @@ public class SpyTracker {
                 message.append(" | COV");
             }
 
-            String fullTimestamp = TimeUtil.format(TimeUtil.MMDD_HH_MM_A, timestamp);
-
             message.append(" | " + attSpies + " \uD83D\uDD75");
-            String timeStr = TimeUtil.format(TimeUtil.MMDD_HH_MM_SS_A, timestamp);
+            String timeStr = TimeUtil.format(TimeUtil.MMDD_HH_MM_SS_A, attackerMs);
             String diffStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff);
             if (diffStr.isEmpty()) diffStr = "Now";
             message.append(" | " + timeStr + " | " + diffStr);
