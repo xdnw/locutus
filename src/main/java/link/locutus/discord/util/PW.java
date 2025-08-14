@@ -1352,6 +1352,110 @@ public final class PW {
         return estimateScore(db, nation, null, null, null, null, null);
     }
 
+    public enum ScoreType {
+        TOTAL(0),
+        BASE(1),
+        RESEARCH(1),
+        PROJECTS(1),
+        CITIES(1),
+        INFRA(1),
+        MILITARY(1),
+        SOLDIER(2),
+        TANK(2),
+        AIRCRAFT(2),
+        SHIP(2),
+        MISSILE(2),
+        NUKE(2);
+
+        private final int tier;
+
+        ScoreType(int tier) {
+            this.tier = tier;
+        }
+
+        public int getTier() {
+            return tier;
+        }
+    }
+
+    public static Map<ScoreType, Double> scoreBreakdown(NationDB db, DBNation nation, MMRDouble mmr, Double infra, Integer projects, Integer cities, Integer researchBits) {
+        Map<ScoreType, Double> result = new EnumMap<>(ScoreType.class);
+
+        if (projects == null) projects = nation.getNumProjects();
+        if (researchBits == null) researchBits = nation.getResearchBits();
+        if (infra == null) {
+            infra = 0d;
+            for (DBCity city : db.getCitiesV3(nation.getNation_id()).values()) {
+                infra += city.getInfra();
+            }
+        }
+        if (cities == null) cities = nation.getCities();
+
+        double base = 10;
+        result.put(ScoreType.BASE, base);
+
+        double researchScore = 0;
+        if (researchBits > 0) {
+            for (Research rs : Research.values) {
+                int level = rs.getLevel(researchBits);
+                if (level > 0) {
+                    researchScore += rs.getScore() * level;
+                }
+            }
+        }
+        result.put(ScoreType.RESEARCH, MathMan.round2(researchScore));
+
+        double projectScore = projects * Projects.getScore();
+        result.put(ScoreType.PROJECTS, MathMan.round2(projectScore));
+
+        double cityScore = (cities - 1) * 100;
+        result.put(ScoreType.CITIES, MathMan.round2(cityScore));
+
+        double infraScore = infra / 40d;
+        result.put(ScoreType.INFRA, MathMan.round2(infraScore));
+
+        MilitaryUnit[] units = {
+            MilitaryUnit.SOLDIER,
+            MilitaryUnit.TANK,
+            MilitaryUnit.AIRCRAFT,
+            MilitaryUnit.SHIP,
+            MilitaryUnit.MISSILE,
+            MilitaryUnit.NUKE
+        };
+        ScoreType[] unitScoreTypes = {
+            ScoreType.SOLDIER,
+            ScoreType.TANK,
+            ScoreType.AIRCRAFT,
+            ScoreType.SHIP,
+            ScoreType.MISSILE,
+            ScoreType.NUKE
+        };
+        double militaryScore = 0;
+        for (int i = 0; i < units.length; i++) {
+            MilitaryUnit unit = units[i];
+            ScoreType scoreType = unitScoreTypes[i];
+            int amt;
+            if (mmr != null && unit.getBuilding() != null) {
+                amt = (int) (mmr.getPercent(unit) * unit.getBuilding().getUnitCap() * unit.getBuilding().cap(Predicates.alwaysFalse()) * cities);
+            } else {
+                amt = nation.getUnits(unit);
+            }
+            if (amt > 0) {
+                double score = MathMan.round2(unit.getScore(amt));
+                militaryScore += score;
+                result.put(scoreType, score);
+            } else {
+                result.put(scoreType, 0d);
+            }
+        }
+        result.put(ScoreType.MILITARY, MathMan.round2(militaryScore));
+
+        double total = base + researchScore + projectScore + cityScore + infraScore + militaryScore;
+        result.put(ScoreType.TOTAL, MathMan.round2(total));
+
+        return result;
+    }
+
     public static double estimateScore(NationDB db, DBNation nation, MMRDouble mmr, Double infra, Integer projects, Integer cities, Integer researchBits) {
         if (projects == null) projects = nation.getNumProjects();
         if (researchBits == null) researchBits = nation.getResearchBits();
