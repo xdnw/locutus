@@ -667,8 +667,8 @@ public class GuildKey {
         public String help() {
             return "The recruit message body\n" +
                     "Must also set " + RECRUIT_MESSAGE_OUTPUT.getCommandMention() + "\n" +
-                    "Note: Provide a discord attachment url for the value to set a message longer than " + Message.MAX_CONTENT_LENGTH + " characters\n" +
-                    "Note: Ingame uses a sanitized subset of HTML for formatting";
+                    "Note: Provide a discord attachment url with `.txt` extension for the value to set a message longer than " + Message.MAX_CONTENT_LENGTH + " characters\n" +
+                    "Note: In-game uses a sanitized subset of HTML for formatting";
         }
 
         @Override
