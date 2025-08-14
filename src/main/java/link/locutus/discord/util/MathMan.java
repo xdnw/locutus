@@ -171,6 +171,10 @@ public class MathMan {
         return hasDecimal ? (truncated / 10d) + suffix : (truncated / 10) + suffix;
     }
 
+    public static double round2(double value) {
+        return Math.round(value * 100.0) * 0.01;
+    }
+
     public static BigInteger binomial(final int N, final int K) {
         BigInteger ret = BigInteger.ONE;
         for (int k = 0; k < K; k++) {

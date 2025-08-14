@@ -1082,12 +1082,28 @@ public class UtilityCommands {
         if (builtMMR != null) {
             nation.setMMR((builtMMR.getBarracks()), (builtMMR.getFactory()), (builtMMR.getHangar()), (builtMMR.getDrydock()));
         }
-        double score = nation.estimateScore(infra == -1 ? nation.getInfra() : infra);
 
-        if (score == 0) throw new IllegalArgumentException("No arguments provided");
+        double infraFinal = infra == -1 ? nation.getInfra() : infra;
+        Map<PW.ScoreType, Double> breakdown = PW.scoreBreakdown(Locutus.imp().getNationDB(), nation, null, infraFinal, null, null, null);
 
-        return "Score: " + MathMan.format(score) + "\n" +
-                "WarRange: " + MathMan.format(score * 0.75) + "- " + MathMan.format(score * PW.WAR_RANGE_MAX_MODIFIER) + "\n" +
+        double score = breakdown.getOrDefault(PW.ScoreType.TOTAL, 0d);
+        if (score == 0) {
+            throw new IllegalArgumentException("No arguments provided");
+        }
+
+        StringBuilder md = new StringBuilder();
+        PW.ScoreType[] types = PW.ScoreType.values();
+        for (int i = types.length - 1; i >= 0; i--) {
+            PW.ScoreType type = types[i];
+            Double value = breakdown.get(type);
+            if (value == null || Math.round(value * 100) == 0) continue;
+            md.append("  ".repeat(type.getTier()))
+                    .append("- **").append(type.name()).append("**: ")
+                    .append(MathMan.format(value)).append("\n");
+        }
+
+        return  md.toString() +
+                "\nWarRange: " + MathMan.format(score * 0.75) + "- " + MathMan.format(score * PW.WAR_RANGE_MAX_MODIFIER) + "\n" +
                 "Can be Attacked By: " + MathMan.format(score / PW.WAR_RANGE_MAX_MODIFIER) + "- " + MathMan.format(score / 0.75) + "\n" +
                 "Spy range: " + MathMan.format(score * 0.4) + "- " + MathMan.format(score * 1.5);
     }
