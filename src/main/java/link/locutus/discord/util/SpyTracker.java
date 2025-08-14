@@ -603,7 +603,6 @@ public class SpyTracker {
             for (Nation nation : active) {
                 int id = nation.getId();
                 long activeMs = start - nation.getLast_active().toEpochMilli();
-                if (activeMs < minTime - 15000) continue;
                 String activeStr = TimeUtil.format(TimeUtil.MMDD_HH_MM_SS_A, activeMs);
                 body.append("- " + PW.getMarkdownUrl(id, false) + " | ");
                 DBNation dbNation = DBNation.getById(id);
