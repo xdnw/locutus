@@ -1913,6 +1913,8 @@ public class UtilityCommands {
                       @Switch("s") @Timestamp Long snapshotDate,
                       @Switch("p") Integer page) throws IOException {
         DBNation myNation = me;
+        boolean listAny = list || listMentions || listRawUserIds || listChannels || listAlliances;
+
         int perpage = 15;
         StringBuilder response = new StringBuilder();
         String filter = command.has("nationoralliances") ? command.getString("nationoralliances") : null;
@@ -2070,7 +2072,11 @@ public class UtilityCommands {
             title = "(" + nations.size() + " nations) " + title;
             IMessageBuilder msg = channel.create().embed(title, nationList.toMarkdown());
 
-            msg = msg.commandButton(CommandBehavior.EPHEMERAL, command.put("list", "True").put("listMentions", "True"), "List");
+            JSONObject listCmd = command;
+            if (!listAny) {
+//                copy = new JSONObject(command, JSONObject.getNames(command));
+            }
+            msg = msg.commandButton(CommandBehavior.EPHEMERAL, command.put("list", "True").put("listmentions", "True"), "List");
 //            // Tiering graph
 //            CM.stats_tier.cityTierGraph tiering =
 //                    CM.stats_tier.cityTierGraph.cmd.create(filter, "");
@@ -2098,7 +2104,7 @@ public class UtilityCommands {
             channel.create().embed(title, response.toString()).send();
         }
 
-        if (list || listMentions || listRawUserIds || listChannels || listAlliances) {
+        if (listAny) {
 //            if (perpage == null) perpage = 15;
             if (page == null) page = 0;
             List<IShrink> nationList = new ArrayList<>();
