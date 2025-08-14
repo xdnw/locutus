@@ -1097,9 +1097,15 @@ public class UtilityCommands {
             PW.ScoreType type = types[i];
             Double value = breakdown.get(type);
             if (value == null || Math.round(value * 100) == 0) continue;
-            md.append("  ".repeat(type.getTier()))
-                    .append("- **").append(type.name()).append("**: ")
-                    .append(MathMan.format(value)).append("\n");
+            boolean boldUnderline = type.getTier() == 0;
+            boolean indent = type.getTier() == 2;
+            String title = type.name();
+            if (boldUnderline) {
+                title = "**__" + title + "__**";
+            } else if (indent) {
+                title = "- " + title;
+            }
+            md.append(title).append(": ").append(MathMan.format(value)).append("\n");
         }
 
         return  md.toString() +
