@@ -613,7 +613,7 @@ public class SpyTracker {
                 body.append(PW.getMarkdownUrl(allianceId, true) + " | ");
                 body.append(activeStr + "\n");
             }
-            body.append("\n\n-# Note: Nations active **BEFORE** the bounty date are improbable");
+            body.append("\n\n-# Note: Nations active **BEFORE** the bounty datetime listed here are improbable");
             try {
                 new DiscordChannelIO(channel).send("**__" + title + "__**\n" + body);
             } catch (InsufficientPermissionException permE) {
