@@ -413,7 +413,7 @@ public class SpyTracker {
             String title = alert.change + " x " + unit + " Spied";
             StringBuilder body = new StringBuilder("## " + title + ":\n");
             body.append("-# note1: False positives are common with nations that are __always online__\n");
-            body.append("-# note2: Nations active **BEFORE** the minute displayed in-game (UTC) are improbable\n");
+            body.append("-# note2: Nations active **BEFORE** the minute displayed in-game (UTC) are __improbable__, and those **BEFORE** the detected time listed here are __unlikely__\n");
             body.append("-# note3: Consider the `SAT` and `no SAT` kill ranges and `Spies Estimate`\n");
             body.append("-# note4: Two attacks in quick succession may throw off estimates; [See Wiki](<https://politicsandwar.fandom.com/wiki/Spies>)\n");
 
