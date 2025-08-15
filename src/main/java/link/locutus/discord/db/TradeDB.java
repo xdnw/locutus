@@ -57,12 +57,19 @@ public class TradeDB extends DBMainV2 {
                 .putColumn("isBuy", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                 .putColumn("quantity", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                 .putColumn("ppu", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("type", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("date_accepted", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                .putColumn("parent_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
 
                 .addIndex(TableIndex.index("index_trade_date", "date", TableIndex.Type.INDEX))
                 .addIndex(TableIndex.index("index_trade_type", "resource", TableIndex.Type.INDEX))
                 .addIndex(TableIndex.index("index_trade_seller", "seller", TableIndex.Type.INDEX))
                 .addIndex(TableIndex.index("index_trade_buyer", "buyer", TableIndex.Type.INDEX))
                 .create(getDb());
+
+        executeStmt("ALTER TABLE TRADES ADD COLUMN `type` INT NOT NULL DEFAULT 0", true);
+        executeStmt("ALTER TABLE TRADES ADD COLUMN `date_accepted` BIGINT NOT NULL DEFAULT 0", true);
+        executeStmt("ALTER TABLE TRADES ADD COLUMN `parent_id` INT NOT NULL DEFAULT 0", true);
 
         // executeStmt("CREATE INDEX IF NOT EXISTS index_mil_unit ON NATION_MIL_HISTORY (unit);");
         // add index for seller and buyer if not exist
@@ -76,9 +83,7 @@ public class TradeDB extends DBMainV2 {
                 .putColumn("name", ColumnType.VARCHAR.struct().setNullAllowed(false).configure(f -> f.apply(32)))
                 .putColumn("bonus", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
                 .create(getDb());
-        executeStmt("ALTER TABLE TRADES ADD COLUMN `type` INT NOT NULL DEFAULT 0", true);
-        executeStmt("ALTER TABLE TRADES ADD COLUMN `date_accepted` BIGINT NOT NULL DEFAULT 0", true);
-        executeStmt("ALTER TABLE TRADES ADD COLUMN `parent_id` INT NOT NULL DEFAULT 0", true);
+
 
         String query = TablePreset.create("SUBSCRIPTIONS_2")
                 .putColumn("user", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
@@ -1070,14 +1075,18 @@ public class TradeDB extends DBMainV2 {
     }
 
     public List<DBTrade> getTrades(ResourceType type, long startDate, long endDate) {
-        return getTrades(f ->
-                f.where(QueryCondition.equals("resource", type.ordinal())
-                        .and(QueryCondition.greater("date", startDate))
-                        .and(QueryCondition.less("date", endDate))
-                        .and(QueryCondition.notEquals("seller", 0))
-                        .and(QueryCondition.notEquals("buyer", 0))
-                )
-        );
+        return getTrades(f -> {
+            QueryConditions condition = QueryCondition.equals("resource", type.ordinal())
+                    .and(QueryCondition.notEquals("seller", 0))
+                    .and(QueryCondition.notEquals("buyer", 0));
+            if (startDate > 0) {
+                condition = condition.and(QueryCondition.greaterEqual("date", startDate));
+            }
+            if (endDate < Long.MAX_VALUE) {
+                condition = condition.and(QueryCondition.lessEqual("date", endDate));
+            }
+            f.where(condition);
+        });
     }
 
     public List<DBTrade> getTradesByResources(Set<ResourceType> types, long startDate, long endDate) {
@@ -1167,6 +1176,30 @@ public class TradeDB extends DBMainV2 {
         Object[] nationIdsArr = sorted.toArray();
         List<DBTrade> result = getTrades(f -> {
             QueryConditions condition = QueryCondition.in("seller", nationIdsArr).or(QueryCondition.in("buyer", nationIdsArr));
+            if (startDate > 0) condition = QueryCondition.greater("date", startDate).and(condition);
+            if (endDate != Long.MAX_VALUE) condition = QueryCondition.less("date", endDate).and(condition);
+            f.where(condition);
+        });
+        return result;
+    }
+
+    public List<DBTrade> getTrades(Set<Integer> nationIds, long startDate, long endDate, ResourceType resourceType) {
+        if (nationIds.isEmpty()) return Collections.emptyList();
+        if (nationIds.size() == 1) {
+            int nationId = nationIds.iterator().next();
+            return getTrades(f -> f.where(
+                    QueryCondition.equals("resource", resourceType.ordinal())
+                            .and(QueryCondition.greater("date", startDate))
+                            .and(QueryCondition.less("date", endDate))
+                            .and(QueryCondition.equals("seller", nationId).or(QueryCondition.equals("buyer", nationId)))
+            ));
+        }
+        List<Integer> sorted = new ArrayList<>(nationIds);
+        sorted.sort(Comparator.naturalOrder());
+        Object[] nationIdsArr = sorted.toArray();
+        List<DBTrade> result = getTrades(f -> {
+            QueryConditions condition = QueryCondition.equals("resource", resourceType.ordinal())
+                    .and(QueryCondition.in("seller", nationIdsArr).or(QueryCondition.in("buyer", nationIdsArr)));
             if (startDate > 0) condition = QueryCondition.greater("date", startDate).and(condition);
             if (endDate != Long.MAX_VALUE) condition = QueryCondition.less("date", endDate).and(condition);
             f.where(condition);

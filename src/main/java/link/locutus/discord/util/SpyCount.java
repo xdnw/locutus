@@ -1,29 +1,26 @@
 package link.locutus.discord.util;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.WarPolicy;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.LootEntry;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.event.Event;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.WarPolicy;
-import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.util.io.PagePriority;
+import link.locutus.discord.util.scheduler.KeyValue;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
-import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
+
+import static link.locutus.discord.util.PW.SPY_RANGE_MAX_MODIFIER;
+import static link.locutus.discord.util.PW.SPY_RANGE_MIN_MODIFIER;
 
 public class SpyCount {
     private static final List<Map.Entry<Double, Map.Entry<Operation, Integer>>> BY_SUCCESS = new ArrayList<>();
@@ -121,9 +118,31 @@ public class SpyCount {
         OP_DISTR.put(10, 772);
     }
 
+    public static void main(String[] args) {
+//        int defUnitBefore = 13;
+//        int killed = 11;
+//        Map.Entry<Integer, Integer> rangeNoSat = SpyCount.getSpiesUsedRange(killed, defUnitBefore, false);
+//        Map.Entry<Integer, Integer> rangeSat = SpyCount.getSpiesUsedRange(killed, defUnitBefore, true);
+//        System.out.println("Range without spy sat: " + rangeNoSat.getKey() + " - " + rangeNoSat.getValue());
+//        System.out.println("Range with spy sat: " + rangeSat.getKey() + " - " + rangeSat.getValue());
+        for (int i = 1; i < 60; i++) {
+            System.out.println(i + ": " + SpyCount.getSpyKillCap(i, false) + " | " + SpyCount.getSpyKillCap(i, true));
+            Map.Entry<Integer, Integer> killRange = getUnitKillRange(60, i, MilitaryUnit.SPIES, i, false, false);
+            Map.Entry<Integer, Integer> killRangeSat = getUnitKillRange(60, i, MilitaryUnit.SPIES, i, true, false);
+            System.out.println("- Range without spy sat: " + killRange.getKey() + " - " + killRange.getValue());
+            System.out.println("- Range with spy sat: " + killRangeSat.getKey() + " - " + killRangeSat.getValue());
+        }
+    }
+
+    public static int getSpyKillCap(int defSpies, boolean spySat) {
+        double factor = spySat ? 1.5 : 1;
+        return (int) Math.round((defSpies * 0.25 + 4) * factor);
+    }
+
+
     public static boolean isInScoreRange(double attackerScore, double defenderScore) {
-        double min = attackerScore * 0.4;
-        double max = attackerScore * 2.5;
+        double min = attackerScore * SPY_RANGE_MIN_MODIFIER;
+        double max = attackerScore * SPY_RANGE_MAX_MODIFIER;
         if (defenderScore < min || defenderScore > max) {
 //            if (other.getRank() < getRank() || other.getRank() >= getRank() + 10)
             {
@@ -137,6 +156,10 @@ public class SpyCount {
         double factor = spySat ? 1.5 : 1;
         long min = Math.round(spiesKilled / (1.05 * 0.335 * factor) + (defSpies * 0.4));
         long max = Math.round(spiesKilled / (0.85 * 0.335 * factor) + (defSpies * 0.4));
+        int cap = Math.toIntExact(Math.round((defSpies * 0.25 + 4) * (spySat ? 1.5 : 1)));
+        if (max == cap) {
+            max = 60;
+        }
         return new KeyValue<>((int) min, (int) max);
     }
 
@@ -147,7 +170,7 @@ public class SpyCount {
         if (spySat) factor *= 1.5;
         if (unit == MilitaryUnit.SPIES) {
             double average =  ((double) attSpies - (defSpies * 0.4)) * 0.335;
-            double cap = (defSpies * 0.25) + 4;
+            double cap = getSpyKillCap(defSpies, spySat);
             min = Math.min(cap, average * 0.85) * factor;
             max = Math.min(cap, average * 1.05) * factor;
         } else {
@@ -160,6 +183,9 @@ public class SpyCount {
                     max = (double) defUnits * 0.05 * factor;
                     break;
                 case MISSILE:
+                    min = 1;
+                    max = 2;
+                    break;
                 case NUKE:
                     min = 1;
                     max = 1;

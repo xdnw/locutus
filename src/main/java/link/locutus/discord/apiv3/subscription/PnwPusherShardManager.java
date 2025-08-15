@@ -94,7 +94,7 @@ public class PnwPusherShardManager {
             runningAlliances.add(allianceId);
             this.root.subscribeBuilder(key, Nation.class, PnwPusherEvent.UPDATE).addFilter(PnwPusherFilter.ALLIANCE_ID, allianceId).build(nations -> {
                 try {
-                    spyTracker.updateCasualties(nations);
+                    spyTracker.updateCasualties(nations, false);
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
@@ -126,7 +126,7 @@ public class PnwPusherShardManager {
             });
             root.subscribeBuilder(Locutus.loader().getApiKey(), Nation.class, PnwPusherEvent.UPDATE).build(nations -> {
                 try {
-                    spyTracker.updateCasualties(nations);
+                    spyTracker.updateCasualties(nations, true);
                     Locutus.imp().runEventsAsync(f -> {
                         for (Nation nation : nations) {
                             nation.setGross_national_income(null);

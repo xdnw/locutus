@@ -1573,13 +1573,17 @@ public class GuildHandler {
         String typeStr = isAttacker ? "\uD83D\uDD2A" : "\uD83D\uDEE1";
         builder.append(typeStr);
         builder.append(memberNation.getNationUrlMarkup() + " (member):");
+        String userStr = memberNation.getUserMention();
+        if (userStr != null) {
+            builder.append(" ").append(userStr);
+        }
         builder.append("\n").append(memberNation.toCityMilMarkdown());
 
         String attStr = card.condensedSubInfo(isAttacker);
         String defStr = card.condensedSubInfo(!isAttacker);
         builder.append("```\n" + attStr + "|" + defStr + "```\n");
 
-        msg.writeTable(title, breakdown.toTableList(), false, builder.toString());
+        msg.writeTable(title, breakdown.toTableList(), true, builder.toString());
         msg.commandButton(CommandBehavior.DELETE_PRESSED_BUTTON, infoCommand, infoEmoji);
         msg.commandButton(CommandBehavior.DELETE_PRESSED_BUTTON, costCommand, costEmoji);
         msg.commandButton(CommandBehavior.DELETE_PRESSED_BUTTON, assignCmd, assignEmoji);
@@ -2517,6 +2521,21 @@ public class GuildHandler {
 
     private boolean sentNoIAMessage = false;
 
+    private void loadPersistedMailTasks() {
+        Map<Integer, Long> mailTasks = db.getDelayMailTasks();
+        if (mailTasks.isEmpty()) return;
+        MessageChannel output = db.getOrNull(GuildKey.RECRUIT_MESSAGE_OUTPUT, false);
+        if (output == null) {
+            db.deleteDelayMailTasks();
+            return;
+        }
+        for (Map.Entry<Integer, Long> entry : mailTasks.entrySet()) {
+            DBNation nation = DBNation.getOrCreate(entry.getKey());
+            long timestamp = entry.getValue();
+            runMailTask(nation, timestamp, output, true);
+        }
+    }
+
     private void sendMail(DBNation current) {
         if (current.getPositionEnum().id > Rank.APPLICANT.id || current.getAgeDays() > 10) return;
         if (!sentMail.contains(current.getNation_id())) {
@@ -2526,13 +2545,46 @@ public class GuildHandler {
             MessageChannel output = db.getOrNull(GuildKey.RECRUIT_MESSAGE_OUTPUT, false);
             if (output == null) return;
 
+            Set<Integer> aaIds = db.getAllianceIds();
+            if (aaIds.isEmpty()) {
+                try {
+                    RateLimitUtil.queueWhenFree(output.sendMessage("No alliance registered to this server.\n" +
+                            "- Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`: enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention() + " <@" + db.getGuild().getOwnerId() + ">"));
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+                db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
+                return;
+            }
+
             GuildDB root = Locutus.imp().getRootDb();
             boolean isWhitelisted = root != null && root.getCoalitionRaw("whitelisted_mail").contains(getDb().getIdLong());
+            Set<DBNation> nations = db.getAllianceList().getNations(true, 7200, true);
+            int amtActive = nations.size();
+            if (amtActive == 0) {
+                try {
+                    RateLimitUtil.queueWhenFree(output.sendMessage("No active members.\n" +
+                            "- Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`: enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention() + " <@" + db.getGuild().getOwnerId() + ">"));
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+                db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
+                return;
+            }
+            long numActiveLeader = nations.stream().filter(f -> f.getPositionEnum().id >= Rank.HEIR.id && f.getColor() != NationColor.GRAY).count();
+            if (numActiveLeader == 0) {
+                if (!sentNoIAMessage) {
+                    sentNoIAMessage = true;
+                    try {
+                        RateLimitUtil.queueWhenFree(output.sendMessage("No active leader (non gray). Recruitment will be paused."));
+                    } catch (Throwable e) {
+                        e.printStackTrace();
+                    }
+                }
+                return;
+            }
 
             if (!isWhitelisted) {
-                Set<Integer> aaIds = db.getAllianceIds();
-                if (aaIds.isEmpty()) return;
-
                 Set<DBNation> members = Locutus.imp().getNationDB().getNationsByAlliance(aaIds);
                 members.removeIf(f -> f.getPosition() < Rank.MEMBER.id);
                 members.removeIf(f -> f.active_m() > 2880);
@@ -2601,37 +2653,66 @@ public class GuildHandler {
             }
 
             Long delay = db.getOrNull(GuildKey.RECRUIT_MESSAGE_DELAY);
-            Runnable task = new CaughtRunnable() {
-                @Override
-                public void runUnsafe() {
+            if (delay != null && delay > 15_000) {
+                db.addDelayMailTask(current.getNation_id(), System.currentTimeMillis() + delay);
+            }
+
+            runMailTask(current, delay == null ? 0 : System.currentTimeMillis() + delay, output, delay != null && delay > 15_000);
+        }
+    }
+
+    private void runMailTask(DBNation current, long timestamp, MessageChannel output, boolean hasDelay) {
+        long now = System.currentTimeMillis();
+        long delay = timestamp - now;
+        if ((delay > 0 && !current.isValid()) || timestamp < now - TimeUnit.DAYS.toMillis(2)) {
+            db.deleteDelayMailTask(current.getNation_id());
+            return;
+        }
+
+        MessageChannel finalOutput = output;
+        Runnable task = new CaughtRunnable() {
+            @Override
+            public void runUnsafe() {
+                try {
+                    if (hasDelay) {
+                        db.deleteDelayMailTask(current.getNation_id());
+                    }
+                    if (delay > 0 && !current.isValid()) return;
+                    if (delay > TimeUnit.MINUTES.toMillis(15) && current.getPositionEnum().id > 0) {
+                        return;
+                    }
+
+                    MailApiResponse response = db.sendRecruitMessage(current);
+                    if (response.status() == MailApiSuccess.SUCCESS) {
+                        sentNoIAMessage = false;
+                        RateLimitUtil.queueMessage(finalOutput, (current.getNation() + ": " + response), true, 5 * 60);
+                    } else if (response.status() == MailApiSuccess.NON_MAIL_KEY) {
+                        String msg = response.error() + "\nDisabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`. Set a new key and enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention();
+                        RateLimitUtil.queueMessage(finalOutput, (current.getNation() + ": " + msg), true, 5 * 60);
+                        db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
+                    } else {
+                        RateLimitUtil.queueMessage(finalOutput, (current.getNation() + ": " + response), true, 5 * 60);
+                    }
+                } catch (Throwable e) {
                     try {
-                        MailApiResponse response = db.sendRecruitMessage(current);
-                        if (response.status() == MailApiSuccess.SUCCESS) {
-                            sentNoIAMessage = false;
-                            RateLimitUtil.queueMessage(output, (current.getNation() + ": " + response), true, 5 * 60);
-                        } else if (response.status() == MailApiSuccess.NON_MAIL_KEY) {
-                            String msg = response.error() + "\nDisabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`. Set a new key and enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention();
-                            RateLimitUtil.queueMessage(output, (current.getNation() + ": " + msg), true, 5 * 60);
-                            db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
-                        } else {
-                            RateLimitUtil.queueMessage(output, (current.getNation() + ": " + response), true, 5 * 60);
+                        if (!guildsFailedMailSend.contains(db.getIdLong())) {
+                            guildsFailedMailSend.add(db.getIdLong());
+                            RateLimitUtil.queueMessage(finalOutput, (current.getNation() + " (error): " + StringMan.stripApiKey(e.getMessage())), true, 5 * 60);
                         }
-                    } catch (Throwable e) {
-                        try {
-                            if (!guildsFailedMailSend.contains(db.getIdLong())) {
-                                guildsFailedMailSend.add(db.getIdLong());
-                                RateLimitUtil.queueMessage(output, (current.getNation() + " (error): " + StringMan.stripApiKey(e.getMessage())), true, 5 * 60);
-                            }
-                        } catch (Throwable e2) {
-                            db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
-                        }
+                    } catch (Throwable e2) {
+                        db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
                     }
                 }
-            };
-            if (delay == null || delay <= 60) task.run();
-            else {
-                Locutus.imp().getCommandManager().getExecutor().schedule(task, delay, TimeUnit.MILLISECONDS);
             }
+        };
+        if (delay <= 0) {
+            try {
+                task.run();
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
+        } else {
+            Locutus.imp().getCommandManager().getExecutor().schedule(task, delay, TimeUnit.MILLISECONDS);
         }
     }
 

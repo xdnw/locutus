@@ -947,6 +947,7 @@ public class DiscordUtil {
     }
 
     public static DBNation parseNation(INationSnapshot snapshot, String arg, boolean allowDeleted, boolean throwError, Guild guildOrNull) {
+        arg = arg.trim();
         if (arg.isEmpty()) {
             if (throwError) {
                 throw new IllegalArgumentException("Empty text provided for nation: `" + arg + "`");

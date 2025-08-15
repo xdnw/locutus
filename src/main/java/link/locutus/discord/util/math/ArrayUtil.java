@@ -1,6 +1,5 @@
 package link.locutus.discord.util.math;
 
-import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
@@ -1589,36 +1588,6 @@ public class ArrayUtil {
             return or(predicates.get(0), predicates.get(1));
         }
         return predicates.stream().reduce(Predicate::or).orElseThrow();
-    }
-
-    public static void main(String[] args) {
-//        Function<String, LazyMathEntity> func = s -> {
-//            return new LazyMathEntity(s);
-//        };
-//        System.out.println(calculate("5+3>1?55:30", func));
-//        System.out.println("---");
-//        List<LazyMathEntity> result = (calculate("HYPERLINK(\"politicsandwar.com/nation/id={nation_id}\", \"{nation}\")", func));
-//        if (result.size() == 1) {
-//            System.out.println(result.get(0).resolve(null));
-//        } else {
-//            for (LazyMathEntity entity : result) {
-//                System.out.println(entity.resolve(null));
-//            }
-//        }
-
-        String input = StringMan.wrapHashFunctions("*,#tanks=0,(#aircraftpct<30|#active_m>11000)", Predicates.alwaysTrue());
-        // private static <T> ParseResult<T> parseTokens(String input, Function<String, Set<T>> parseSet2, Function<String, Predicate<T>> parseElemPredicate, Function<String, Predicate<T>> parseFilter) {
-        ParseResult<Object> test = parseTokens(input, null, new Function<String, Predicate<Object>>() {
-            @Override
-            public Predicate<Object> apply(String s) {
-                return Predicates.alwaysTrue();
-            }
-        }, new Function<String, Predicate<Object>>() {
-            @Override
-            public Predicate<Object> apply(String s) {
-                return Predicates.alwaysTrue();
-            }
-        });
     }
 
     private static <T> ParseResult<T> parseTokens(String input, Function<String, Set<T>> parseSet2, Function<String, Predicate<T>> parseElemPredicate, Function<String, Predicate<T>> parseFilter) {

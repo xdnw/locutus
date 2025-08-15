@@ -50,18 +50,20 @@ public class DBTrade implements Comparable<DBTrade> {
         this.parent_id = model.getOriginal_trade_id() != null ? model.getOriginal_trade_id() : -1;
     }
 
+    private static final TradeType[] TRADE_TYPE_VALUES = TradeType.values();
+
     public DBTrade(ResultSet rs) throws SQLException {
-        this.tradeId = rs.getInt("tradeId");
-        this.date = rs.getLong("date");
-        this.seller = rs.getInt("seller");
-        this.buyer = rs.getInt("buyer");
-        this.resource = ResourceType.values[rs.getInt("resource")];
-        this.isBuy = (rs.getBoolean("isBuy"));
-        this.quantity = rs.getInt("quantity");
-        this.ppu = rs.getInt("ppu");
-        this.type = TradeType.values()[rs.getInt("type")];
-        this.date_accepted = rs.getLong("date_accepted");
-        this.parent_id = rs.getInt("parent_id");
+        this.tradeId = rs.getInt(1);
+        this.date = rs.getLong(2);
+        this.seller = rs.getInt(3);
+        this.buyer = rs.getInt(4);
+        this.resource = ResourceType.values[rs.getInt(5)];
+        this.isBuy = rs.getBoolean(6);
+        this.quantity = rs.getInt(7);
+        this.ppu = rs.getInt(8);
+        this.type = TRADE_TYPE_VALUES[rs.getInt(9)];
+        this.date_accepted = rs.getLong(10);
+        this.parent_id = rs.getInt(11);
     }
 
     @Command

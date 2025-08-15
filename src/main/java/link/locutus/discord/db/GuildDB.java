@@ -3,10 +3,7 @@ package link.locutus.discord.db;
 import com.google.common.base.Predicates;
 import com.google.common.eventbus.AsyncEventBus;
 import com.google.common.eventbus.EventBus;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntArraySet;
-import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -1166,6 +1163,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                     "`message_id` BIGINT, " +
                     "`estimate_amount` BLOB NOT NULL, " +
                     "`date_created` BIGINT NOT NULL DEFAULT " + System.currentTimeMillis() + ")");
+        }
+        {
+            executeStmt("CREATE TABLE IF NOT EXISTS `DELAY_MAIL_TASKS` (" +
+                    "`nation_id` INT NOT NULL PRIMARY KEY, " +
+                    "`time` BIGINT NOT NULL)");
         }
     }
 
@@ -2705,6 +2707,39 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return false;
     }
 
+    public void addDelayMailTask(int nationId, long l) {
+        executeStmt("INSERT OR REPLACE INTO `DELAY_MAIL_TASKS`(`nationId`, `time`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, nationId);
+            stmt.setLong(2, l);
+        });
+    }
+
+    public void deleteDelayMailTask(int nationId) {
+        executeStmt("DELETE FROM `DELAY_MAIL_TASKS` WHERE `nationId` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, nationId);
+        });
+    }
+
+    public Map<Integer, Long> getDelayMailTasks() {
+        Map<Integer, Long> result = new Int2LongOpenHashMap();
+        try (PreparedStatement stmt = prepareQuery("SELECT * FROM `DELAY_MAIL_TASKS`")) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    int nationId = rs.getInt("nationId");
+                    long time = rs.getLong("time");
+                    result.put(nationId, time);
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return result;
+    }
+
+    public void deleteDelayMailTasks() {
+        executeStmt("DELETE FROM `DELAY_MAIL_TASKS`");
+    }
+
     public enum AutoNickOption {
         FALSE("No nickname given"),
         LEADER("Set to leader name"),
@@ -3354,9 +3389,15 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
 
     public Set<Long> getTrackedBanks() {
         GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
-        if (faServer != null && faServer.getIdLong() != getIdLong()) return faServer.getTrackedBanks();
-
-        Set<Long> tracked = new LongLinkedOpenHashSet(getCoalitionRaw(OFFSHORE));
+        Set<Long> tracked = null;
+        if (faServer != null && faServer.getIdLong() != getIdLong()) {
+            tracked = faServer.getTrackedBanks();
+        }
+        if (tracked == null) {
+            tracked = new LongLinkedOpenHashSet(getCoalitionRaw(OFFSHORE));
+        } else {
+            tracked.addAll(getCoalitionRaw(OFFSHORE));
+        }
         tracked.add(getGuild().getIdLong());
         tracked.addAll(getCoalitionRaw(Coalition.TRACK_DEPOSITS));
         for (Integer id : getAllianceIds()) tracked.add(id.longValue());

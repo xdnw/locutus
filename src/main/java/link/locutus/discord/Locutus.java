@@ -813,13 +813,14 @@ public final class Locutus extends ListenerAdapter {
 //                        runEventsAsync(events -> getNationDB().updateAlliances(null, events));
 //                    }
 //                    runEventsAsync(getNationDB()::updateTreaties);
-//                    try {
-//                        runEventsAsync(getNationDB()::updateBans);
-//                    } catch (Throwable e) {
-//                        e.printStackTrace();
-//                    }
 //                    getNationDB().saveAllCities(); // TODO save all cities
+
                     getTradeManager().updateColorBlocs(); // TODO move to configurable task
+                    try {
+                        runEventsAsync(getNationDB()::updateBans);
+                    } catch (Throwable e) {
+                        e.printStackTrace();
+                    }
                 } else {
                     runEventsAsync(events -> getNationDB().updateNationsV2(true, events));
                     runEventsAsync(events -> getNationDB().updateCitiesV2(events));

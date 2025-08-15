@@ -955,7 +955,7 @@ public class WarUpdateProcessor {
                         card.embed(new DiscordChannelIO(channel), false, true);
                     }
                 });
-            } else if (defender.getOff() > 0 && (stat == null || stat.type != CounterType.UNCONTESTED)) {
+            } else if (defender.getOff() > 0 && stat != null && stat.type == CounterType.IS_COUNTER) {
                 Set<DBWar> wars = defender.getActiveWars();
                 Set<DBWar> escalatedWars = null;
                 for (DBWar war : wars) {
