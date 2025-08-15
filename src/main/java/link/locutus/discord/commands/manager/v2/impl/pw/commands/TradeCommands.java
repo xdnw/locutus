@@ -1301,7 +1301,7 @@ public class TradeCommands {
     }
 
     @Command(desc = "List nations who have bought and sold the most of a resource over a period\n" +
-            "Amounts are net transfers", viewable = true)
+            "Amounts are net transfers, set `show_absolute` to disable", viewable = true)
     public String findTrader(@Me IMessageIO channel, @Me JSONObject command, TradeManager manager, link.locutus.discord.db.TradeDB db,
                              ResourceType type,
                              @Arg("Date to start from")
@@ -1311,6 +1311,7 @@ public class TradeCommands {
                              @Switch("a") boolean groupByAlliance,
                              @Arg("Include trades done outside of standard market prices")
                              @Switch("p") boolean includeMoneyTrades,
+                             @Switch("s") boolean show_absolute,
                              @Switch("n") Set<DBNation> nations) {
         if (type == ResourceType.MONEY || type == ResourceType.CREDITS) return "Invalid resource";
         List<DBTrade> offers;
@@ -1326,7 +1327,9 @@ public class TradeCommands {
         int findsign = buyOrSell.equalsIgnoreCase("SOLD") ? -1 : 1;
 
         Collection<Transfer> transfers = manager.toTransfers(offers, false);
-        Map<Integer, double[]> inflows = manager.inflows(transfers, groupByAlliance, true, true);
+        boolean includeSender = !show_absolute || findsign == -1;
+        boolean includeReceiver = !show_absolute || findsign == 1;
+        Map<Integer, double[]> inflows = manager.inflows(transfers, groupByAlliance, includeSender, includeReceiver);
         Map<Integer, double[]> ppu = manager.ppuByNation(offers, groupByAlliance);
 
         Map<Integer, Double> newMap = new Int2DoubleOpenHashMap();
