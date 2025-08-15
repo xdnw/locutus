@@ -2521,6 +2521,21 @@ public class GuildHandler {
 
     private boolean sentNoIAMessage = false;
 
+    private void loadPersistedMailTasks() {
+        Map<Integer, Long> mailTasks = db.getDelayMailTasks();
+        if (mailTasks.isEmpty()) return;
+        MessageChannel output = db.getOrNull(GuildKey.RECRUIT_MESSAGE_OUTPUT, false);
+        if (output == null) {
+            db.deleteDelayMailTasks();
+            return;
+        }
+        for (Map.Entry<Integer, Long> entry : mailTasks.entrySet()) {
+            DBNation nation = DBNation.getOrCreate(entry.getKey());
+            long timestamp = entry.getValue();
+            runMailTask(nation, timestamp, output, true);
+        }
+    }
+
     private void sendMail(DBNation current) {
         if (current.getPositionEnum().id > Rank.APPLICANT.id || current.getAgeDays() > 10) return;
         if (!sentMail.contains(current.getNation_id())) {
@@ -2609,42 +2624,65 @@ public class GuildHandler {
                 db.addDelayMailTask(current.getNation_id(), System.currentTimeMillis() + delay);
             }
 
-            Runnable task = new CaughtRunnable() {
-                @Override
-                public void runUnsafe() {
-                    try {
-                        if (delay != null && delay > 60) {
-                            db.deleteDelayMailTask(current.getNation_id());
-                        }
-                        if (delay != null && !current.isValid()) return;
+            runMailTask(current, delay == null ? 0 : System.currentTimeMillis() + delay, output, delay != null && delay > 0);
+        }
+    }
 
-                        MailApiResponse response = db.sendRecruitMessage(current);
-                        if (response.status() == MailApiSuccess.SUCCESS) {
-                            sentNoIAMessage = false;
-                            RateLimitUtil.queueMessage(output, (current.getNation() + ": " + response), true, 5 * 60);
-                        } else if (response.status() == MailApiSuccess.NON_MAIL_KEY) {
-                            String msg = response.error() + "\nDisabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`. Set a new key and enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention();
-                            RateLimitUtil.queueMessage(output, (current.getNation() + ": " + msg), true, 5 * 60);
-                            db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
-                        } else {
-                            RateLimitUtil.queueMessage(output, (current.getNation() + ": " + response), true, 5 * 60);
+    private void runMailTask(DBNation current, long timestamp, MessageChannel output, boolean hasDelay) {
+        long now = System.currentTimeMillis();
+        long delay = timestamp - now;
+        if (delay > 0 && !current.isValid()) {
+            db.deleteDelayMailTask(current.getNation_id());
+            return;
+        }
+        if (output == null) {
+            if (hasDelay) {
+                db.deleteDelayMailTask(current.getNation_id());
+            }
+            return;
+        }
+
+        MessageChannel finalOutput = output;
+        Runnable task = new CaughtRunnable() {
+            @Override
+            public void runUnsafe() {
+                try {
+                    if (delay > 15_000) {
+                        db.deleteDelayMailTask(current.getNation_id());
+                    }
+                    if (delay > 0 && !current.isValid()) return;
+
+                    MailApiResponse response = db.sendRecruitMessage(current);
+                    if (response.status() == MailApiSuccess.SUCCESS) {
+                        sentNoIAMessage = false;
+                        RateLimitUtil.queueMessage(finalOutput, (current.getNation() + ": " + response), true, 5 * 60);
+                    } else if (response.status() == MailApiSuccess.NON_MAIL_KEY) {
+                        String msg = response.error() + "\nDisabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`. Set a new key and enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention();
+                        RateLimitUtil.queueMessage(finalOutput, (current.getNation() + ": " + msg), true, 5 * 60);
+                        db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
+                    } else {
+                        RateLimitUtil.queueMessage(finalOutput, (current.getNation() + ": " + response), true, 5 * 60);
+                    }
+                } catch (Throwable e) {
+                    try {
+                        if (!guildsFailedMailSend.contains(db.getIdLong())) {
+                            guildsFailedMailSend.add(db.getIdLong());
+                            RateLimitUtil.queueMessage(finalOutput, (current.getNation() + " (error): " + StringMan.stripApiKey(e.getMessage())), true, 5 * 60);
                         }
-                    } catch (Throwable e) {
-                        try {
-                            if (!guildsFailedMailSend.contains(db.getIdLong())) {
-                                guildsFailedMailSend.add(db.getIdLong());
-                                RateLimitUtil.queueMessage(output, (current.getNation() + " (error): " + StringMan.stripApiKey(e.getMessage())), true, 5 * 60);
-                            }
-                        } catch (Throwable e2) {
-                            db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
-                        }
+                    } catch (Throwable e2) {
+                        db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
                     }
                 }
-            };
-            if (delay == null || delay <= 60) task.run();
-            else {
-                Locutus.imp().getCommandManager().getExecutor().schedule(task, delay, TimeUnit.MILLISECONDS);
             }
+        };
+        if (delay <= 0) {
+            try {
+                task.run();
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
+        } else {
+            Locutus.imp().getCommandManager().getExecutor().schedule(task, delay, TimeUnit.MILLISECONDS);
         }
     }
 
