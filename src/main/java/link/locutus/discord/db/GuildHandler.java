@@ -2545,13 +2545,46 @@ public class GuildHandler {
             MessageChannel output = db.getOrNull(GuildKey.RECRUIT_MESSAGE_OUTPUT, false);
             if (output == null) return;
 
+            Set<Integer> aaIds = db.getAllianceIds();
+            if (aaIds.isEmpty()) {
+                try {
+                    RateLimitUtil.queueWhenFree(output.sendMessage("No alliance registered to this server.\n" +
+                            "- Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`: enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention() + " <@" + db.getGuild().getOwnerId() + ">"));
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+                db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
+                return;
+            }
+
             GuildDB root = Locutus.imp().getRootDb();
             boolean isWhitelisted = root != null && root.getCoalitionRaw("whitelisted_mail").contains(getDb().getIdLong());
+            Set<DBNation> nations = db.getAllianceList().getNations(true, 7200, true);
+            int amtActive = nations.size();
+            if (amtActive == 0) {
+                try {
+                    RateLimitUtil.queueWhenFree(output.sendMessage("No active members.\n" +
+                            "- Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`: enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention() + " <@" + db.getGuild().getOwnerId() + ">"));
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+                db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
+                return;
+            }
+            long numActiveLeader = nations.stream().filter(f -> f.getPositionEnum().id >= Rank.HEIR.id && f.getColor() != NationColor.GRAY).count();
+            if (numActiveLeader == 0) {
+                if (!sentNoIAMessage) {
+                    sentNoIAMessage = true;
+                    try {
+                        RateLimitUtil.queueWhenFree(output.sendMessage("No active leader (non gray). Recruitment will be paused."));
+                    } catch (Throwable e) {
+                        e.printStackTrace();
+                    }
+                }
+                return;
+            }
 
             if (!isWhitelisted) {
-                Set<Integer> aaIds = db.getAllianceIds();
-                if (aaIds.isEmpty()) return;
-
                 Set<DBNation> members = Locutus.imp().getNationDB().getNationsByAlliance(aaIds);
                 members.removeIf(f -> f.getPosition() < Rank.MEMBER.id);
                 members.removeIf(f -> f.active_m() > 2880);
