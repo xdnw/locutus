@@ -2705,6 +2705,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         return false;
     }
 
+    public void addDelayMailTask(int nationId, long l) {
+    }
+
+    public void deleteDelayMailTask(int nationId) {
+    }
+
     public enum AutoNickOption {
         FALSE("No nickname given"),
         LEADER("Set to leader name"),

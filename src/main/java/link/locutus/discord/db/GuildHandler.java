@@ -2605,10 +2605,19 @@ public class GuildHandler {
             }
 
             Long delay = db.getOrNull(GuildKey.RECRUIT_MESSAGE_DELAY);
+            if (delay != null && delay > 60) {
+                db.addDelayMailTask(current.getNation_id(), System.currentTimeMillis() + delay);
+            }
+
             Runnable task = new CaughtRunnable() {
                 @Override
                 public void runUnsafe() {
                     try {
+                        if (delay != null && delay > 60) {
+                            db.deleteDelayMailTask(current.getNation_id());
+                        }
+                        if (delay != null && !current.isValid()) return;
+
                         MailApiResponse response = db.sendRecruitMessage(current);
                         if (response.status() == MailApiSuccess.SUCCESS) {
                             sentNoIAMessage = false;
