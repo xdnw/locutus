@@ -697,8 +697,8 @@ public class GuildKey {
             if (timediff < 60) {
                 return "The interval must be at least 1 minute";
             }
-            if (timediff > TimeUnit.HOURS.toMillis(2)) {
-                return "The interval must be less than 2 hours";
+            if (timediff > TimeUnit.DAYS.toMillis(1)) {
+                return "The interval must be less than 1 day";
             }
             return RECRUIT_MESSAGE_DELAY.setAndValidate(db, user, timediff);
         }

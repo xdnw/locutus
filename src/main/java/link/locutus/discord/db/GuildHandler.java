@@ -2620,25 +2620,19 @@ public class GuildHandler {
             }
 
             Long delay = db.getOrNull(GuildKey.RECRUIT_MESSAGE_DELAY);
-            if (delay != null && delay > 60) {
+            if (delay != null && delay > 15_000) {
                 db.addDelayMailTask(current.getNation_id(), System.currentTimeMillis() + delay);
             }
 
-            runMailTask(current, delay == null ? 0 : System.currentTimeMillis() + delay, output, delay != null && delay > 0);
+            runMailTask(current, delay == null ? 0 : System.currentTimeMillis() + delay, output, delay != null && delay > 15_000);
         }
     }
 
     private void runMailTask(DBNation current, long timestamp, MessageChannel output, boolean hasDelay) {
         long now = System.currentTimeMillis();
         long delay = timestamp - now;
-        if (delay > 0 && !current.isValid()) {
+        if ((delay > 0 && !current.isValid()) || timestamp < now - TimeUnit.DAYS.toMillis(2)) {
             db.deleteDelayMailTask(current.getNation_id());
-            return;
-        }
-        if (output == null) {
-            if (hasDelay) {
-                db.deleteDelayMailTask(current.getNation_id());
-            }
             return;
         }
 
@@ -2647,10 +2641,13 @@ public class GuildHandler {
             @Override
             public void runUnsafe() {
                 try {
-                    if (delay > 15_000) {
+                    if (hasDelay) {
                         db.deleteDelayMailTask(current.getNation_id());
                     }
                     if (delay > 0 && !current.isValid()) return;
+                    if (delay > TimeUnit.MINUTES.toMillis(15) && current.getPositionEnum().id > 0) {
+                        return;
+                    }
 
                     MailApiResponse response = db.sendRecruitMessage(current);
                     if (response.status() == MailApiSuccess.SUCCESS) {
