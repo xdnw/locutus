@@ -4,6 +4,7 @@ import com.politicsandwar.graphql.model.Bounty;
 import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationResponseProjection;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -398,10 +399,6 @@ public class SpyTracker {
             MilitaryUnit unit = alert.unit;
             DBNation defender = alert.defender;
 
-            if (alert.high.size() == 1) {
-                // TODO Log the spy op
-            }
-
             String defSpiesStr;
             if (alert.unit == MilitaryUnit.SPIES) {
                 defSpiesStr = alert.originalUnit + "->" + (alert.originalUnit - alert.change);
@@ -441,12 +438,14 @@ public class SpyTracker {
             }
 
             if (!alert.high.isEmpty()) {
+                removeDuplicates(alert.high);
                 body.append("\n__Attackers (high %):__");
                 for (SpyActivity offensive : alert.high) {
                     body.append("\n- " + alert.entryToString(offensive, null));
                 }
             } else {
                 if (!alert.medium.isEmpty()) {
+                    removeDuplicates(alert.medium);
                     body.append("\n__Attackers (med %):__");
                     for (SpyActivity offensive : alert.medium) {
                         body.append("\n- " + alert.entryToString(offensive, null));
@@ -473,6 +472,21 @@ public class SpyTracker {
             if (role != null) body.append(role.getAsMention());
             new DiscordChannelIO(channel).send(body.toString());
         }
+    }
+
+    private void removeDuplicates(List<SpyActivity> list) {
+        if (list.size() <= 1) return;
+        Map<Integer, SpyActivity> latestById = new Int2ObjectLinkedOpenHashMap<>();
+        for (SpyActivity activity : list) {
+            int key = activity.nationId; // or other unique property
+            SpyActivity existing = latestById.get(key);
+            if (existing == null || activity.timestamp > existing.timestamp) {
+                latestById.put(key, activity);
+            }
+        }
+
+        list.clear();
+        list.addAll(latestById.values());
     }
 
     public static class SpyAlert {
