@@ -1,24 +1,27 @@
 package link.locutus.discord.chat;
 
+import com.google.gson.JsonObject;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.commands.manager.v2.command.StringMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.task.mail.MailApiResponse;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.apache.commons.codec.DecoderException;
 
 import java.net.http.WebSocket;
-import java.util.Collections;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class ChatManager {
 
@@ -41,9 +44,11 @@ public class ChatManager {
         if (globalChatInitialized) {
             return;
         }
+        String token = Settings.INSTANCE.CHAT_TOKEN;
+        if (token.isEmpty()) return;
+
         globalChatInitialized = true;
         try {
-            String token = Settings.INSTANCE.CHAT_TOKEN;
             byte[] tokenBytes = ChatClient.parseToken(token);
             globalChatClient = new ChatClient(ChatClient.WS_DEFAULT_URL, token.toLowerCase(Locale.ROOT), Settings.INSTANCE.NATION_ID, Channels.GLOBAL);
             globalChatClient.start();
@@ -91,12 +96,42 @@ public class ChatManager {
                     chatClient.quit();
                 }
             }
+            return false;
         }
+        return true;
+    }
+
+    private synchronized void checkAndUpdateAllianceChats(boolean checkToken, boolean checkGuild) {
+        Iterator<Map.Entry<Integer, ChatClient>> iter = clientByAlliance.entrySet().iterator();
+        while (iter.hasNext()) {
+            Map.Entry<Integer, ChatClient> entry = iter.next();
+            int allianceId = entry.getKey();
+            ChatClient client = entry.getValue();
+            if (!client.isValidAllianceChat(allianceId, checkToken, checkGuild)) {
+                iter.remove();
+                client.quit();
+                // find a new nation with the same alliance
+                GuildDB db = Locutus.imp().getGuildDBByAA(allianceId);
+                if (db != null) {
+                    startAllianceChatOrDisable(db, false, false);
+                }
+            }
+        }
+    }
+
+    private synchronized void enableAllianceChat(int allianceId) {
+        GuildDB db = Locutus.imp().getGuildDBByAA(allianceId);
+        if (db == null) return;
+        if (!db.hasAlliance()) return;
+        startAllianceChat(db);
     }
 
     private synchronized boolean startAllianceChat(GuildDB db) {
         Set<Integer> accounts = GuildKey.GAME_CHAT_ACCOUNT.get(db);
         if (accounts == null || accounts.isEmpty()) return false;
+        ApiKeyPool mailKey = db.getMailKey();
+        if (mailKey == null) return false;
+
         Map<Integer, String> unsetAccounts = null;
         Map<Integer, Map.Entry<Integer, String>> tokens = null;
 
@@ -173,6 +208,16 @@ public class ChatManager {
                         RateLimitUtil.queue(alertChannel.sendMessage(msgFormatted));
                     }
                 }
+
+                @Override
+                public void onChatMessage(ChatMessage msg) {
+                    handleChatMessage(this, db, allianceId, msg);
+                }
+
+                @Override
+                public void onJoined(JsonObject data, Channels channel, List<ChatMessage> history, List<ChatMessage> systemMsgs) {
+                    handleHistory(this, db, allianceId, history);
+                }
             };
             try {
                 newClient.start();
@@ -186,14 +231,62 @@ public class ChatManager {
         return true;
     }
 
-    private synchronized void checkAndUpdateAllianceChats() {
-        // if nation is not in the alliance, or is deleted, quit the chat and remove from map
-        // if quit is called, find a new nation with the same alliance and start the chat
+    public void handleChatMessage(ChatClient client, GuildDB db, int allianceId, ChatClient.ChatMessage msg) {
+        // Handle the chat message here
+        // This method should be implemented to process the chat messages received from the clients
+        // For example, you can log the message, send it to a specific channel, etc.
+        int nationId = msg.user.accountId;
+        if (nationId == client.getAccountId()) {
+            System.out.println("Received message from the same account, ignoring: " + msg.message + " | " + msg.id);
+            return; // Ignore messages from the same account
+        }
+        String mention = "@" + msg.user.leaderName;
 
-        // if no nation is found, disable the chat setting for the guild
+        // Guild guild, IMessageIO io, User author, String command, boolean async, boolean returnNotFound
+        DBNation nation = DBNation.getOrCreate(nationId);
+        User user = nation.getUser();
+        Guild guild = db.getGuild();
+        ApiKeyPool mailKey = db.getMailKey();
+        if (mailKey == null) {
+            synchronized (this) {
+                if (clientByAlliance.get(allianceId) == client) {
+                    clientByAlliance.remove(allianceId);
+                } else {
+                    clientByAlliance.entrySet().removeIf(entry -> entry.getValue() == client);
+                }
+                client.quit();
+            }
+            return;
+        }
+
+        StringMessageIO io = new StringMessageIO(user, guild);
+        String command = msg.message;
+
+        Locutus.cmd().getExecutor().submit(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    client.sendMessage(Channels.ALLIANCE_ALL, mention + " Please wait...");
+                    Locutus.cmd().getV2().run(db.getGuild(), io, user, command, false, false);
+                    String html = io.toSimpleHtml(true, false);
+                    if (!html.isEmpty()) {
+                        String title = "Alliance Chat Message";
+                        MailApiResponse mail = nation.sendMail(mailKey, title, html, true);
+                        String url = Settings.PNW_URL() + "/inbox/";
+                        client.sendMessage(Channels.ALLIANCE_ALL, mention + " " + url);
+                    }
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+            }
+        });
     }
 
-    private synchronized void enableAllianceChat(int allianceId) {
-        // get the first nation in alliance with chat token set
+    public void handleHistory(ChatClient client, GuildDB db, int allianceId, List<ChatClient.ChatMessage> history) {
+        // Handle the chat history here
+        // This method should be implemented to process the chat history received from the clients
+        // For example, you can log the history, send it to a specific channel, etc.
+
+        // Do nothing for now
     }
 }

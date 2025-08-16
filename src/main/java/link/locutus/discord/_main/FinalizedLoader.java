@@ -2,6 +2,7 @@ package link.locutus.discord._main;
 
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
+import link.locutus.discord.chat.ChatManager;
 import link.locutus.discord.commands.manager.CommandManager;
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
 import link.locutus.discord.commands.stock.StockDB;
@@ -29,6 +30,7 @@ public class FinalizedLoader implements ILoader {
     private final PoliticsAndWarV2 apiV2;
     private final PoliticsAndWarV3 apiV3;
     private final PoliticsAndWarV3 apiPool;
+    private final ChatManager chatManager;
 
     public FinalizedLoader(PreLoader loader) {
         this.slashCommandManager = loader.getSlashCommandManager();
@@ -44,6 +46,7 @@ public class FinalizedLoader implements ILoader {
         this.apiV2 = loader.getApiV2();
         this.apiV3 = loader.getApiV3();
         this.apiPool = loader.getApiPool();
+        this.chatManager = loader.getChatManager();
     }
 
     @Override
@@ -131,6 +134,11 @@ public class FinalizedLoader implements ILoader {
     @Override
     public PoliticsAndWarV2 getApiV2() {
         return apiV2;
+    }
+
+    @Override
+    public ChatManager getChatManager() {
+        return chatManager;
     }
 
     @Override

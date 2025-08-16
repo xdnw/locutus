@@ -3230,7 +3230,7 @@ public class GuildKey {
             return "The nations to set" +
                     "Use the command TODO CM REF for instructions on obtaining the chat token.";
         }
-    }.setupRequirements(f -> f.requires(ALLIANCE_ID).requireValidAlliance().requireActiveGuild());
+    }.setupRequirements(f -> f.requires(ALLIANCE_ID).requireValidAlliance().requireActiveGuild().requires(API_KEY));
 
     public static GuildSetting<MessageChannel> GAME_CHAT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.GAME_CHAT) {
         @NoFormat
@@ -3243,7 +3243,7 @@ public class GuildKey {
         public String help() {
             return "The #channel to receive ingame alliance chat messages in";
         }
-    }.setupRequirements(f -> f.requires(GAME_CHAT_ACCOUNT).requireValidAlliance().requireActiveGuild());
+    }.setupRequirements(f -> f.requires(GAME_CHAT_ACCOUNT).requireValidAlliance().requireActiveGuild().requires(API_KEY));
 
     private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
 

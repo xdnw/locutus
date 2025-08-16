@@ -67,6 +67,15 @@ public class StringMessageIO implements IMessageIO {
         return 0;
     }
 
+    public String toSimpleHtml(boolean includeFiles, boolean includeButtons) {
+        StringBuilder result = new StringBuilder();
+        for (StringMessageBuilder value : this.messages.values()) {
+            if (value.isEmpty()) continue;
+            result.append(value.toSimpleHtml(includeFiles, includeButtons));
+        }
+        return result.toString();
+    }
+
     @Override
     public CompletableFuture<IModalBuilder> send(IModalBuilder modal) {
         throw new UnsupportedOperationException("Not supported yet.");

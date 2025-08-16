@@ -137,6 +137,8 @@ public class Settings extends Config {
         public boolean MESSAGE_COMMANDS = true;
         @Comment("If slash `/` commands are enabled")
         public boolean SLASH_COMMANDS = true;
+        @Comment("If commands can be used via in-game chat")
+        public boolean INGAME_CHAT_COMMANDS = false;
         @Comment({"If bot admin only slash commands are registered with discord",
         "If false, you can still use them by mentioning the bot"})
         public boolean REGISTER_ADMIN_SLASH_COMMANDS = true;

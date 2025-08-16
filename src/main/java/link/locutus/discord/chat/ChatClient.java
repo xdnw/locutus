@@ -3,6 +3,7 @@ package link.locutus.discord.chat;
 import com.google.gson.*;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -44,21 +45,21 @@ public class ChatClient {
         if (token == null || token.isEmpty()) {
             String script = "(()=>{let r=/token\\s*:\\s*'([0-9a-f]{64})'/i,t;for(let s of document.scripts){let m=(s.textContent||\"\").match(r);if(m){t=m[1];break}}if(!t)return alert(\"Token not found\");let c=e=>{try{let a=document.createElement(\"textarea\");a.value=e;a.style.position=\"fixed\";a.style.left=\"-9999px\";document.body.appendChild(a);a.select();document.execCommand(\"copy\");a.remove();return 1}catch(e){return 0}},n=navigator.clipboard,m=[\"Token copied:\",\"Use Ctrl+C to copy token:\"];(async()=>prompt((n&&n.writeText?await n.writeText(t).then(()=>0).catch(()=>c(t)?0:1):c(t)?0:1)?m[1]:m[0],t))()})();";
             String md = "# How to Obtain and Set Your Chat Token\n\n" +
-                    "1. **Open Developer Tools (PC)**  \n" +
-                    "- On Windows: Press `F12`  \n" +
-                    "- On Mac: Press `Cmd + Option + I`\n\n" +
+                    "1. **Open Developer Tools (PC)**\n" +
+                    "\\- On Windows: Press `F12`  \n" +
+                    "\\- On Mac: Press `Cmd + Option + I`\n\n" +
                     "2. **Copy the Provided Script**\n\n" +
                     "```javascript\n" +
                     script +
                     "\n```\n\n" +
                     "3. **Paste and Run the Script**  \n" +
-                    "- Go to the `Console` tab in Developer Tools.  \n" +
-                    "- Paste the script and press `Enter`.\n\n" +
+                    "\\- Go to the `Console` tab in Developer Tools.  \n" +
+                    "\\- Paste the script and press `Enter`.\n\n" +
                     "4. **Copy the Token**  \n" +
-                    "- The script will copy the token to your clipboard or show a prompt.  \n" +
-                    "- If prompted, use `Ctrl+C` (Windows) or `Cmd+C` (Mac) to copy.\n\n" +
+                    "\\- The script will copy the token to your clipboard or show a prompt.  \n" +
+                    "\\- If prompted, use `Ctrl+C` (Windows) or `Cmd+C` (Mac) to copy.\n\n" +
                     "5. **Set Your Token in the Command**  \n" +
-                    "- Run the chat command again, providing your copied token as the argument.\n\n";
+                    "\\- Run the chat command again, providing your copied token as the argument.\n\n";
             return Map.entry(md, false);
         } else {
             parseToken(token);
@@ -274,6 +275,8 @@ public class ChatClient {
             if (db == null) return false;
             Set<Integer> validAccounts = GuildKey.GAME_CHAT_ACCOUNT.get(db);
             if (validAccounts == null || !validAccounts.contains(accountId)) return false;
+            ApiKeyPool key = db.getMailKey();
+            if (key == null) return false;
         }
         return true;
     }
@@ -438,7 +441,7 @@ public class ChatClient {
 
     public static class User {
         public final long id;
-        public final long accountId;
+        public final int accountId;
         public final String nationName;
         public final String leaderName;
         public final Rank position;
@@ -449,7 +452,7 @@ public class ChatClient {
 
         public User(JsonObject obj) {
             this.id = obj.has("id") ? obj.get("id").getAsLong() : 0;
-            this.accountId = obj.has("account_id") ? obj.get("account_id").getAsLong() : 0;
+            this.accountId = obj.has("account_id") ? obj.get("account_id").getAsInt() : 0;
             this.nationName = obj.has("nation_name") ? obj.get("nation_name").getAsString() : null;
             this.leaderName = obj.has("leader_name") ? obj.get("leader_name").getAsString() : null;
             if (obj.has("position") && !obj.get("position").getAsString().isEmpty()) {
@@ -470,6 +473,21 @@ public class ChatClient {
                 users.add(user);
             }
             return users;
+        }
+
+        @Override
+        public String toString() {
+            return "User{" +
+                    "id=" + id +
+                    ", accountId=" + accountId +
+                    ", nationName='" + nationName + '\'' +
+                    ", leaderName='" + leaderName + '\'' +
+                    ", position=" + position +
+                    ", allianceId=" + allianceId +
+                    ", allianceAcronym='" + allianceAcronym + '\'' +
+                    ", allianceColor='" + allianceColor + '\'' +
+                    ", allianceChatTag='" + allianceChatTag + '\'' +
+                    '}';
         }
     }
 
@@ -544,11 +562,10 @@ public class ChatClient {
                         System.out.println("[SYSTEM] Unpinned: " + obj);
                         break;
                     case "user_presence":
-                        System.out.println("[PRESENCE] " + obj);
+                        System.out.println("[PRESENCE-user] " + obj);
                         break;
                     case "online_users":
-                        // You can print presence info if desired
-                        System.out.println("[PRESENCE] " + obj);
+                        System.out.println("[PRESENCE-online] " + obj);
                         break;
                     case "heartbeat":
                     case "auth_refreshed":
@@ -650,11 +667,7 @@ public class ChatClient {
     }
 
     public void handleOnlineUsers(List<User> users) {
-
-    }
-
-    public void onOnlineUsers(List<User> users, int count) {
-
+        System.out.println("Online users: " + users);
     }
 
     public void onChannelJoin(Channels channel) {

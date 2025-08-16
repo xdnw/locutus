@@ -259,6 +259,8 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        getCommands().registerMethod(new ChatCommands(), List.of("credentials"), "token", "chat_token");
+
         getCommands().registerMethod(new GrantCommands(), List.of("grant", "request"), "grantRequest", "create");
         getCommands().registerMethod(new GrantCommands(), List.of("grant", "request"), "grantRequestCancel", "cancel");
         getCommands().registerMethod(new GrantCommands(), List.of("grant", "request"), "grantRequestApprove", "approve");

@@ -8,6 +8,7 @@ import link.locutus.discord.apiv1.PoliticsAndWarBuilder;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
+import link.locutus.discord.chat.ChatManager;
 import link.locutus.discord.commands.manager.CommandManager;
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
@@ -76,6 +77,8 @@ public class PreLoader implements ILoader {
     private final Future<PoliticsAndWarV3> apiV3Pool;
 
     private final Future<Boolean> backup;
+
+    private final Future<ChatManager> chatManager;
 
     public PreLoader(Locutus locutus, ThreadPoolExecutor executor, ScheduledThreadPoolExecutor scheduler) {
         this.executor = executor;
@@ -216,6 +219,15 @@ public class PreLoader implements ILoader {
             cmdMan.registerCommands(db);
             return null;
         });
+
+        this.chatManager = add("Register Chat Manager", () -> {
+            if (Settings.INSTANCE.ENABLED_COMPONENTS.INGAME_CHAT_COMMANDS) {
+                ChatManager chatManager = new ChatManager();
+                return chatManager;
+            }
+            return null;
+        });
+
         setupMonitor();
     }
 
@@ -534,6 +546,11 @@ public class PreLoader implements ILoader {
     @Override
     public NationDB getNationDB() {
         return FileUtil.get(nationDB);
+    }
+
+    @Override
+    public ChatManager getChatManager() {
+        return FileUtil.get(chatManager);
     }
 
     @Override

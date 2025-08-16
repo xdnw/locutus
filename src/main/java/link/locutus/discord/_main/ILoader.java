@@ -2,6 +2,7 @@ package link.locutus.discord._main;
 
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
+import link.locutus.discord.chat.ChatManager;
 import link.locutus.discord.commands.manager.CommandManager;
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
 import link.locutus.discord.commands.stock.StockDB;
@@ -47,6 +48,8 @@ public interface ILoader {
     PoliticsAndWarV3 getApiPool();
     PoliticsAndWarV3 getApiV3();
     PoliticsAndWarV2 getApiV2();
+
+    ChatManager getChatManager();
 
     default String printStacktrace() {
         return "";
