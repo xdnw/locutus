@@ -236,8 +236,16 @@ public final class FileUtil {
                     apply.accept((HttpURLConnection) connection.request().url().openConnection());
                 }
 
-                // Execute the request and get the response
-                Connection.Response response = connection.execute();
+                Connection.Response response;
+                try {
+                    // Execute the request and get the response
+                    response = connection.execute();
+                } catch (org.jsoup.HttpStatusException e) {
+                    if (e.getStatusCode() == 429) {
+                        throw new TooManyRequests("Too many requests", null);
+                    }
+                    throw new RuntimeException(e);
+                }
 
                 // Store cookies from the response
                 if (msCookieManager != null) {

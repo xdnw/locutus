@@ -9,6 +9,7 @@ import com.politicsandwar.graphql.model.*;
 import com.ptsmods.mysqlw.query.QueryOrder;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2LongLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -1037,7 +1038,7 @@ public class TradeManager {
         return global;
     }
 
-    public double getGlobalRadiation(Continent continent) {
+    public synchronized double getGlobalRadiation(Continent continent) {
         return getGlobalRadiation(continent, false);
     }
 
@@ -1065,13 +1066,15 @@ public class TradeManager {
             GameInfo gameInfo = Locutus.imp().getApiPool().getGameInfo();
             Radiation info = gameInfo.getRadiation();
 
-            setRadiation(Continent.NORTH_AMERICA, info.getNorth_america());
-            setRadiation(Continent.SOUTH_AMERICA, info.getSouth_america());
-            setRadiation(Continent.EUROPE, info.getEurope());
-            setRadiation(Continent.AFRICA, info.getAfrica());
-            setRadiation(Continent.ASIA, info.getAsia());
-            setRadiation(Continent.AUSTRALIA, info.getAustralia());
-            setRadiation(Continent.ANTARCTICA, info.getAntarctica());
+            Map<Continent, Double> continentRadiation = new Object2DoubleOpenHashMap<>();
+            continentRadiation.put(Continent.NORTH_AMERICA, info.getNorth_america());
+            continentRadiation.put(Continent.SOUTH_AMERICA, info.getSouth_america());
+            continentRadiation.put(Continent.EUROPE, info.getEurope());
+            continentRadiation.put(Continent.AFRICA, info.getAfrica());
+            continentRadiation.put(Continent.ASIA, info.getAsia());
+            continentRadiation.put(Continent.AUSTRALIA, info.getAustralia());
+            continentRadiation.put(Continent.ANTARCTICA, info.getAntarctica());
+            continentRadiation.forEach(this::setRadiation);
 
             this.gameDate = gameInfo.getGame_date();
 
