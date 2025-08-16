@@ -185,7 +185,7 @@ public class FACommands {
     }
 
     @Command(desc = "Create a new coalition with the provided alliances")
-    @RolePermission(Roles.FOREIGN_AFFAIRS)
+    @RolePermission(Roles.MEMBER)
     public String createCoalition(@Me User user, @Me GuildDB db, Set<NationOrAllianceOrGuild> alliances, String coalitionName) {
         Coalition coalition = Coalition.getOrNull(coalitionName);
         if ((coalition != null && !coalition.hasPermission(db.getGuild(), user)) ||

@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 
 public class TimeUtil {
     public static final DateTimeFormatter MMDD_HH_MM_A      = withOptionalTime("MM/dd h:mm a");
+    public static final DateTimeFormatter MMDD_HH_MM_SS_A      = withOptionalTime("MM/dd h:mm:ss a");
     public static final DateTimeFormatter MMDDYYYY_HH_MM_A  = withOptionalTime("MM/dd/yyyy h:mm a");
     public static final DateTimeFormatter YYYY_MM_DD_HH_MM_SS = withOptionalTime("yyyy-MM-dd HH:mm:ss");
     public static final DateTimeFormatter YYYY_MM_DDTHH_MM_SSX = withOptionalTime("yyyy-MM-dd HH:mm:ssX");

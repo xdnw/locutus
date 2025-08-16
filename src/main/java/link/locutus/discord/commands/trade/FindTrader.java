@@ -82,7 +82,7 @@ public class FindTrader extends Command {
         List<DBTrade> offers = db.getTrades(cutoff);
 
         Collection<Transfer> transfers = manager.toTransfers(offers, false);
-        Map<Integer, double[]> inflows = manager.inflows(transfers, groupByAlliance);
+        Map<Integer, double[]> inflows = manager.inflows(transfers, groupByAlliance, true, true);
         Map<Integer, double[]> ppu = manager.ppuByNation(offers, groupByAlliance);
 
 //        for (ResourceType type : ResourceType.values()) {
@@ -91,11 +91,11 @@ public class FindTrader extends Command {
         for (Map.Entry<Integer, double[]> entry : inflows.entrySet()) {
             double value = entry.getValue()[type.ordinal()];
             if (value != 0 && Math.signum(value) == findsign) {
-                newMap.put(entry.getKey(), value);
+                newMap.put(entry.getKey(), Math.abs(value));
             }
         }
         SummedMapRankBuilder<Integer, Double> builder = new SummedMapRankBuilder<>(newMap);
-        Map<Integer, Double> sorted = (findsign == 1 ? builder.sort() : builder.sortAsc()).get();
+        Map<Integer, Double> sorted = builder.sort().get();
 
         List<String> nationName = new ArrayList<>();
         List<String> amtList = new ArrayList<>();

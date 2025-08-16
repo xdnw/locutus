@@ -2376,7 +2376,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             if (pusher != null) {
                 SpyTracker spyTracker = pusher.getSpyTracker();
                 if (spyTracker != null) {
-                    spyTracker.updateCasualties(nation, timestamp);
+                    spyTracker.updateCasualties(nation, timestamp, true);
                 }
             }
         }

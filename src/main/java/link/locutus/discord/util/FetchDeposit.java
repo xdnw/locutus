@@ -165,7 +165,7 @@ public class FetchDeposit {
 
         Map<Integer, Map<DepositType, double[]>> results = new Int2ObjectOpenHashMap<>();
         Map<Integer, BiConsumer<Integer, Transaction2>> adderByNation = new Int2ObjectOpenHashMap<>();
-        Set<Long> finalTracked = tracked;
+        Set<Long> finalTracked = getTracked();
 
         Function<Integer, BiConsumer<Integer, Transaction2>> getAdder = (nationId) -> {
             BiConsumer<Integer, Transaction2> adder = adderByNation.get(nationId);

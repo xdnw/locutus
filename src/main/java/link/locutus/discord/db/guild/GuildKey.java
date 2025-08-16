@@ -669,7 +669,8 @@ public class GuildKey {
         public String help() {
             return "The recruit message body\n" +
                     "Must also set " + RECRUIT_MESSAGE_OUTPUT.getCommandMention() + "\n" +
-                    "Note: Provide a discord attachment url for the value to set a message longer than " + Message.MAX_CONTENT_LENGTH + " characters";
+                    "Note: Provide a discord attachment url with `.txt` extension for the value to set a message longer than " + Message.MAX_CONTENT_LENGTH + " characters\n" +
+                    "Note: In-game uses a sanitized subset of HTML for formatting";
         }
 
         @Override
@@ -698,8 +699,8 @@ public class GuildKey {
             if (timediff < 60) {
                 return "The interval must be at least 1 minute";
             }
-            if (timediff > TimeUnit.HOURS.toMillis(2)) {
-                return "The interval must be less than 2 hours";
+            if (timediff > TimeUnit.DAYS.toMillis(1)) {
+                return "The interval must be less than 1 day";
             }
             return RECRUIT_MESSAGE_DELAY.setAndValidate(db, user, timediff);
         }
@@ -1950,7 +1951,7 @@ public class GuildKey {
     public static GuildSetting<MessageChannel> ENEMY_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BEIGE_ALERTS, ENEMY_ALERT) {
         @NoFormat
         @Command(descMethod = "help")
-        @RolePermission(Roles.ADMIN)
+        @RolePermission(Roles.MILCOM)
         public String ENEMY_ALERT_CHANNEL(@Me GuildDB db, @Me User user, MessageChannel channel) {
             return ENEMY_ALERT_CHANNEL.setAndValidate(db, user, channel);
         }

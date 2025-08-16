@@ -1923,7 +1923,23 @@ public class BankCommands {
 
                            @Switch("f") boolean force
     ) throws IOException {
-        return transfer(channel, command, author, me, guildDb, me, amount, bank_note,
+        JSONObject command2 = CM.transfer.resources.cmd.receiver(me.getUrl())
+                .transfer(ResourceType.toString(amount))
+                .bank_note(bank_note.toString())
+                .nation_account(nation_account == null ? me.getUrl() : nation_account.getUrl())
+                .ingame_bank(ingame_bank != null ? ingame_bank.getUrl() : null)
+                .offshore_account(offshore_account != null ? offshore_account.getUrl() : null)
+                .tax_account(tax_account != null ? tax_account.getQualifiedId() : null)
+                .use_receiver_tax_account(use_receiver_tax_account ? String.valueOf(use_receiver_tax_account) : null)
+                .onlyMissingFunds(only_send_missing ? String.valueOf(only_send_missing) : null)
+                .expire(expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire))
+                .decay(decay == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay))
+                .deduct_as_cash(deduct_as_cash ? String.valueOf(deduct_as_cash) : null)
+                .escrow_mode(escrow_mode == null ? null : escrow_mode.name())
+                .bypass_checks(bypass_checks ? String.valueOf(bypass_checks) : null)
+                .force(force ? String.valueOf(force) : null)
+                .toJson();
+        return transfer(channel, command2, author, me, guildDb, me, amount, bank_note,
                 nation_account == null ? me : nation_account,
                 ingame_bank,
                 offshore_account,
@@ -2223,7 +2239,7 @@ public class BankCommands {
             String title = forceErrors.size() + " **ERRORS**. Please confirm transfer";
             String body = StringMan.join(forceErrors, "\n") + "\n\n" +
                     "Press `Confirm` to attempt to send anyway";
-            channel.create().confirmation(title, body, command, "bypassChecks").send();
+            channel.create().confirmation(title, body, command.put("force", "true"), "bypass_checks").send();
             return null;
         }
 
@@ -4499,7 +4515,8 @@ public class BankCommands {
             DBNation nation = entry.getKey();
             if (nation == null || (nationFilter != null && !nationFilter.getNations().contains(nation))) continue;
             row.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getUrl()));
-            row.add(nation.getUserDiscriminator());
+            String usr = nation.getUserDiscriminator();
+            row.add(usr == null ? "" : usr);
             row.add(nation.getCities());
             row.add(nation.getAvg_infra());
             row.add(nation.getOff() +"|" + nation.getDef());

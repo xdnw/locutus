@@ -3,6 +3,7 @@ package link.locutus.discord.util;
 import de.siegmar.fastcsv.reader.CsvReader;
 import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
 import link.locutus.discord.Logg;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.network.IProxy;
 import link.locutus.discord.network.PassthroughProxy;
 import link.locutus.discord.util.io.PagePriority;
@@ -263,6 +264,9 @@ public final class FileUtil {
     }
 
     public static <T> T get(Future<T> myFuture) {
+        if (!Settings.INSTANCE.ENABLED_COMPONENTS.USE_API) {
+            throw new IllegalArgumentException("Cannot use get() when USE_API is disabled.");
+        }
         try {
             return myFuture.get();
         } catch (InterruptedException | ExecutionException e) {

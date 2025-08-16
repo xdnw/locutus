@@ -815,7 +815,8 @@ public class UtilityCommands {
         naps.put(1740182400000L, "<https://forum.politicsandwar.com/index.php?/topic/47732-peace-in-their-time/>");
         naps.put(1746921600000L, "<https://forum.politicsandwar.com/index.php?/topic/48689-peace-double-down/>");
         naps.put(1755129600000L, "<https://forum.politicsandwar.com/index.php?/topic/49670-peace-quit-monkeyin%E2%80%99-around/>");
-        naps.put(1754697600000L, "<https://forum.politicsandwar.com/index.php?/topic/49931-doe-peace-introducing%E2%80%A6-tulip/>");
+        naps.put(1756339200000L, "<https://forum.politicsandwar.com/index.php?/topic/49931-doe-peace-introducing%E2%80%A6-tulip/>");
+        naps.put(1760572800000L, "<https://forum.politicsandwar.com/index.php?/topic/52693-%E2%80%9Cwhen-in-rome%E2%80%A6%E2%80%9D/>");
 
         long turn = TimeUtil.getTurn();
         int skippedExpired = 0;
@@ -1035,6 +1036,13 @@ public class UtilityCommands {
             @Arg(value = "Unit MMR value", group = 3) @Switch("mmr") MMRDouble builtMMR,
             @Arg(value = "Military research levels", group = 3) @Switch("r") Map<Research, Integer> research
     ) {
+        boolean anyValueProvided = nation != null || cities != null || soldiers != null || tanks != null ||
+                aircraft != null || ships != null || missiles != null || nukes != null ||
+                projects != null || avg_infra != null || infraTotal != null || builtMMR != null || research != null;
+        if (!anyValueProvided) {
+            throw new IllegalArgumentException("Please specify a value for at least one argument, such as `nation`");
+        }
+
         if (nation == null) {
             nation = new SimpleDBNation(new DBNationData());
             nation.setMissiles(0);
@@ -1075,16 +1083,36 @@ public class UtilityCommands {
         if (builtMMR != null) {
             nation.setMMR((builtMMR.getBarracks()), (builtMMR.getFactory()), (builtMMR.getHangar()), (builtMMR.getDrydock()));
         }
-        double score = nation.estimateScore(infra == -1 ? nation.getInfra() : infra);
 
-        if (score == 0) throw new IllegalArgumentException("No arguments provided");
+        double infraFinal = infra == -1 ? nation.getInfra() : infra;
+        Map<PW.ScoreType, Double> breakdown = PW.scoreBreakdown(Locutus.imp().getNationDB(), nation, null, infraFinal, null, null, null);
 
-        return "Score: " + MathMan.format(score) + "\n" +
-                "WarRange: " + MathMan.format(score * 0.75) + "- " + MathMan.format(score * PW.WAR_RANGE_MAX_MODIFIER) + "\n" +
+        double score = breakdown.getOrDefault(PW.ScoreType.TOTAL, 0d);
+        if (score == 0) {
+            throw new IllegalArgumentException("No arguments provided");
+        }
+
+        StringBuilder md = new StringBuilder();
+        PW.ScoreType[] types = PW.ScoreType.values();
+        for (int i = types.length - 1; i >= 0; i--) {
+            PW.ScoreType type = types[i];
+            Double value = breakdown.get(type);
+            if (value == null || Math.round(value * 100) == 0) continue;
+            boolean boldUnderline = type.getTier() == 0;
+            boolean indent = type.getTier() == 2;
+            String title = type.name();
+            if (boldUnderline) {
+                title = "**__" + title + "__**";
+            } else if (indent) {
+                title = "- " + title;
+            }
+            md.append(title).append(": ").append(MathMan.format(value)).append("\n");
+        }
+
+        return  md.toString() +
+                "\nWarRange: " + MathMan.format(score * 0.75) + "- " + MathMan.format(score * PW.WAR_RANGE_MAX_MODIFIER) + "\n" +
                 "Can be Attacked By: " + MathMan.format(score / PW.WAR_RANGE_MAX_MODIFIER) + "- " + MathMan.format(score / 0.75) + "\n" +
                 "Spy range: " + MathMan.format(score * 0.4) + "- " + MathMan.format(score * 1.5);
-
-
     }
 
     @Command(desc = "Check how many turns are left in the city/project timer", aliases = {"TurnTimer", "Timer", "CityTimer", "ProjectTimer"}, viewable = true)
@@ -1886,6 +1914,8 @@ public class UtilityCommands {
                       @Switch("s") @Timestamp Long snapshotDate,
                       @Switch("p") Integer page) throws IOException {
         DBNation myNation = me;
+        boolean listAny = list || listMentions || listRawUserIds || listChannels || listAlliances;
+
         int perpage = 15;
         StringBuilder response = new StringBuilder();
         String filter = command.has("nationoralliances") ? command.getString("nationoralliances") : null;
@@ -2043,7 +2073,19 @@ public class UtilityCommands {
             title = "(" + nations.size() + " nations) " + title;
             IMessageBuilder msg = channel.create().embed(title, nationList.toMarkdown());
 
-            msg = msg.commandButton(CommandBehavior.EPHEMERAL, command.put("list", "True").put("listMentions", "True"), "List");
+            JSONObject listCmd = new JSONObject(command.toMap());
+            {
+                Set<String> toRemoveLower = Set.of("list", "listalliance", "listrawuserids", "listmentions", "listinfo", "listchannels", "page");
+                Iterator<String> keys = listCmd.keys();
+                while (keys.hasNext()) {
+                    String key = keys.next();
+                    if (toRemoveLower.contains(key.toLowerCase())) {
+                        keys.remove();
+                    }
+                }
+            }
+            listCmd.put("list", "True").put("listmentions", "True");
+            msg = msg.commandButton(CommandBehavior.EPHEMERAL, listCmd, "List");
 //            // Tiering graph
 //            CM.stats_tier.cityTierGraph tiering =
 //                    CM.stats_tier.cityTierGraph.cmd.create(filter, "");
@@ -2071,7 +2113,7 @@ public class UtilityCommands {
             channel.create().embed(title, response.toString()).send();
         }
 
-        if (list || listMentions || listRawUserIds || listChannels || listAlliances) {
+        if (listAny) {
 //            if (perpage == null) perpage = 15;
             if (page == null) page = 0;
             List<IShrink> nationList = new ArrayList<>();

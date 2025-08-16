@@ -431,7 +431,7 @@ public final class CityNode implements INationCity {
     public final double[] getProfit(double[] profitBuffer) {
         System.arraycopy(cached.baseProfit, 0, profitBuffer, 0, profitBuffer.length);
         int population = calcPopulation(cached.hasProject);
-        double revenue = cached.baseProfitConverted + cached.commerceIncome[commerce] * population;
+        double revenue = cached.baseProfitConverted + cached.commerceIncome[commerce & 0xFF] * population;
         profitBuffer[0] += revenue;
 
         for (int i = 0; i < modifiable.length; i++) {
@@ -451,7 +451,7 @@ public final class CityNode implements INationCity {
         byte[] mods         = modifiable;
         double[][] mProfit  = c.modifiableProfit;
         int pop             = calcPopulation();
-        double rev          = c.baseProfitConverted + c.commerceIncome[commerce] * pop;
+        double rev          = c.baseProfitConverted + c.commerceIncome[commerce & 0xFF] * pop;
 //        for (int i = 0, len = mods.length; i < len; i++) {
 //            int amt = mods[i];
 //            if (amt > 0) {
@@ -502,7 +502,7 @@ public final class CityNode implements INationCity {
 
     public double calcCrime() {
         int police           = modifiable[POLICE_MOD_INDEX] & 0xFF;
-        double crimeVal      = cached.crimeCache[commerce];
+        double crimeVal      = cached.crimeCache[commerce & 0xFF];
 
         if (police > 0) {
             crimeVal -= police * cached.policePct;

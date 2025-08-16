@@ -71,8 +71,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
-import java.text.SimpleDateFormat;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -3647,7 +3645,7 @@ public class WarCommands {
                 return "You do not have permission to dm custom messages. Try again without `header` set";
             }
             for (DBNation nation : allAttackers) {
-                if (!db.isAllianceId(nation.getAlliance_id())) {
+                if (allowedNations == null || allowedNations.contains(nation) && !db.isAllianceId(nation.getAlliance_id())) {
                     throw new IllegalArgumentException("You do not have permission to DM nations outside this alliance (" + nation.getMarkdownUrl() + ")\n" +
                             "Set `dm` to false, register the alliance, or provide a different target list");
                 }
@@ -4954,5 +4952,36 @@ public class WarCommands {
         channel.create().paginate(title, command, page, perPage, IShrink.toList(results)).send();
 
         return null;
+    }
+
+    @Command(desc = "Get the war and spy range for a nation score", viewable = true)
+    public void warRange(@Me IMessageIO io, double score) {
+        StringBuilder sb = new StringBuilder();
+        double attackedByMin = PW.getAttackRange(false, true, true, score);
+        double attackedByMax = PW.getAttackRange(false, true, false, score);
+
+        double canAttackMin = PW.getAttackRange(true, true, true, score);
+        double canAttackMax = PW.getAttackRange(true, true, false, score);
+
+        double spiedByMin = PW.getAttackRange(false, false, true, score);
+        double spiedByMax = PW.getAttackRange(false, false, false, score);
+
+        double canSpyMin = PW.getAttackRange(true, false, true, score);
+        double canSpyMax = PW.getAttackRange(true, false, false, score);
+
+        // War range
+        sb.append("**War range**:\n");
+        sb.append("- Attacked by: ").append(MathMan.format(attackedByMin)).append(" to ").append(MathMan.format(attackedByMax)).append("\n");
+        sb.append("- Can attack: ").append(MathMan.format(canAttackMin)).append(" to ").append(MathMan.format(canAttackMax)).append("\n");
+
+        // Spy range
+        sb.append("\n**Spy range**:\n");
+        sb.append("- Spied by: ").append(MathMan.format(spiedByMin)).append(" to ").append(MathMan.format(spiedByMax)).append("\n");
+        sb.append("- Can spy: ").append(MathMan.format(canSpyMin)).append(" to ").append(MathMan.format(canSpyMax)).append("\n");
+        sb.append("\n\nSee also: ").append(CM.nation.score.cmd.toSlashMention());
+
+        String title = "War/Spy range at " + MathMan.format(score) + "ns";
+
+        io.create().embed(title, sb.toString()).send();
     }
 }

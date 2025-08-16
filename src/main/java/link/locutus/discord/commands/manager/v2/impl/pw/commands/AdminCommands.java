@@ -166,6 +166,7 @@ public class AdminCommands {
         sheet.setHeader(List.of(
                 "guild_id",
                 "Guild Name",
+                "Recent Message",
                 "Member Count",
                 "Alliance Ids",
                 "Cannot Talk",
@@ -181,9 +182,10 @@ public class AdminCommands {
 
         int numGuildsToCull = 0;
         for (GuildDB other : toCheck) {
+            boolean hasRecentChannel = false;
             boolean hasNoSettings = other.getInfoMap().isEmpty();
 
-            boolean hasRecentMessage = false;
+            long hasRecentMessage = 0L;
             boolean cannotTalk = true;
             {
                 for (GuildMessageChannel channel : other.getGuild().getTextChannels()) {
@@ -194,12 +196,12 @@ public class AdminCommands {
                     if (latestSnowflake != 0) {
                         long latestMs = net.dv8tion.jda.api.utils.TimeUtil.getTimeCreated(latestSnowflake).toEpochSecond() * 1000L;
                         if (latestMs > oneYearAgoMs) {
-                            hasRecentMessage = true;
+                            hasRecentMessage = Math.max(hasRecentMessage, latestMs);
                         }
                     }
                     long channelCreated = channel.getTimeCreated().toEpochSecond() * 1000L;
                     if (channelCreated > oneYearAgoMs) {
-                        hasRecentMessage = true;
+                        hasRecentChannel = true;
                     }
                 }
             }
@@ -246,7 +248,7 @@ public class AdminCommands {
 
             boolean hasOffshoreAccount = other.getOffshore() != null;
 
-            if (hasRecentMessage || isValidAlliance || !joinedLongTimeAgo || hasRecentMember || hasRecentAdmin || hasRegisteredAdmin || hasRecentRole || hasOffshoreAccount) {
+            if (hasRecentChannel || isValidAlliance || !joinedLongTimeAgo || hasRecentMember || hasRecentAdmin || hasRegisteredAdmin || hasRecentRole || hasOffshoreAccount) {
                 continue;
             }
 
@@ -255,6 +257,7 @@ public class AdminCommands {
             List<Object> row = List.of(
                     other.getIdLong() + "",
                     other.getGuild().getName(),
+                    TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - hasRecentMessage),
                     memberCount,
                     StringMan.getString(other.getAllianceIds()),
                     cannotTalk,

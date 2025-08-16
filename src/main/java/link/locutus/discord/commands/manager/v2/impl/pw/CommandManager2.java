@@ -268,6 +268,8 @@ public class CommandManager2 {
         getCommands().registerMethod(new GrantCommands(), List.of("grant_template", "create"), "templateCreateResearch", "research");
         getCommands().registerMethod(new GrantCommands(), List.of("grant"), "grantResearch", "research");
 
+        getCommands().registerMethod(new WarCommands(), List.of("war"), "warRange", "range");
+
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "syncCityRefund", "city_refund");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "reloadConfig", "config");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "cullInactiveGuilds", "cull_inactive_guilds");
