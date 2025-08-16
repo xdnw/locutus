@@ -4231,7 +4231,10 @@ public abstract class DBNation implements NationOrAlliance {
 
         List<Trade> tradesV3 = new ArrayList<>(api.fetchPrivateTrades(data()._nationId()));
         if (tradesV3.isEmpty()) {
-            return List.of(new Auth.TradeResult("no trades to accept", Auth.TradeResultType.NO_TRADES));
+            if (reverse) {
+                return List.of(new Auth.TradeResult("No trades to accept. Ensure the `View Trades` and `Accept Trades` scopes and whitelisted access are enabled on <" + Settings.PNW_URL() + "/account/#7>", Auth.TradeResultType.NO_TRADES));
+            }
+            return List.of(new Auth.TradeResult("No trades to accept.", Auth.TradeResultType.NO_TRADES));
         }
 
         double[] amountArr = amount == null ? null : ResourceType.resourcesToArray(amount);
