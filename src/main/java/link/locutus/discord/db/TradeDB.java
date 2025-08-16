@@ -32,8 +32,6 @@ import link.locutus.discord.util.trade.TradeManager;
 import net.dv8tion.jda.api.entities.User;
 
 import java.sql.*;
-import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
@@ -1260,7 +1258,7 @@ public class TradeDB extends DBMainV2 {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     long date = rs.getLong(1);
-                    long day = TimeUtil.getDay(Instant.ofEpochMilli(date).atZone(ZoneOffset.UTC));
+                    long day = TimeUtil.getDay(date);
                     long total = rs.getLong(2);
                     long quantity = rs.getLong(3);
                     double avg = (double) total / quantity;

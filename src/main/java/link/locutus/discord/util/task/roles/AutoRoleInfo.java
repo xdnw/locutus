@@ -7,6 +7,7 @@ import link.locutus.discord.util.math.CIEDE2000;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.exceptions.PermissionException;
 import net.dv8tion.jda.api.requests.restaction.RoleAction;
 
@@ -72,20 +73,20 @@ public class AutoRoleInfo {
             result.append("Add Roles:\n");
             for (Map.Entry<Member, Set<RoleAdd>> entry : addRoles.entrySet()) {
                 String roleNames = entry.getValue().stream().map(roleAdd -> roleAdd.role.name).collect(Collectors.joining(", "));
-                result.append("- ").append(entry.getKey().getEffectiveName()).append(" -> ").append(roleNames).append("\n");
+                result.append("- ").append(getName(entry.getKey())).append(" -> ").append(roleNames).append("\n");
             }
         }
         if (!removeRoles.isEmpty()) {
             result.append("Remove Roles:\n");
             for (Map.Entry<Member, Set<Role>> entry : removeRoles.entrySet()) {
                 String roleNames = entry.getValue().stream().map(Role::getName).collect(Collectors.joining(", "));
-                result.append("- ").append(entry.getKey().getEffectiveName()).append(" -> ").append(roleNames).append("\n");
+                result.append("- ").append(getName(entry.getKey())).append(" -> ").append(roleNames).append("\n");
             }
         }
         if (!nickSet.isEmpty()) {
             result.append("Set Nicknames:\n");
             for (Map.Entry<Member, String> entry : nickSet.entrySet()) {
-                result.append("- ").append(entry.getKey().getEffectiveName()).append(" -> ").append(entry.getValue()).append("\n");
+                result.append("- ").append(getName(entry.getKey())).append(" -> ").append(entry.getValue()).append("\n");
             }
         }
         if (!renameRoles.isEmpty()) {
@@ -96,19 +97,32 @@ public class AutoRoleInfo {
         }
         return result.toString();
     }
+    
+    private String getName(Member member) {
+        if (member == null) return "null";
+        String name = member.getEffectiveName();
+        if (name == null || name.isEmpty()) {
+            User user = member.getUser();
+            if (user != null) {
+                name = user.getName();
+            }
+            return member.getAsMention();
+        }
+        return name;
+    }
 
     public String getChangesAndErrorMessage() {
         StringBuilder response = new StringBuilder();
         if (!errors.isEmpty()) {
             response.append("Errors:\n");
             for (Map.Entry<Member, List<String>> entry : errors.entrySet()) {
-                response.append("- ").append(entry.getKey().getEffectiveName()).append(" -> ").append(String.join(", ", entry.getValue())).append("\n");
+                response.append("- ").append(getName(entry.getKey())).append(" -> ").append(String.join(", ", entry.getValue())).append("\n");
             }
         }
         if (!success.isEmpty()) {
             response.append("Success:\n");
             for (Map.Entry<Member, List<String>> entry : success.entrySet()) {
-                response.append("- ").append(entry.getKey().getEffectiveName()).append(" -> ").append(String.join(", ", entry.getValue())).append("\n");
+                response.append("- ").append(getName(entry.getKey())).append(" -> ").append(String.join(", ", entry.getValue())).append("\n");
             }
         }
         if (response.isEmpty()) {
@@ -151,7 +165,7 @@ public class AutoRoleInfo {
                     if (!f) {
                         errors.computeIfAbsent(member, k -> new ObjectArrayList<>()).add(roleAdd.failedMessage);
                     } else {
-                        success.computeIfAbsent(member, k -> new ObjectArrayList<>()).add("Added role `" + roleAdd.role.name + "` to " + member.getEffectiveName());
+                        success.computeIfAbsent(member, k -> new ObjectArrayList<>()).add("Added role `" + roleAdd.role.name + "` to " + getName(member));
                     }
                 }));
             }
@@ -167,7 +181,7 @@ public class AutoRoleInfo {
                 }
                 try {
                     tasks.add(RateLimitUtil.queue(db.getGuild().removeRoleFromMember(member, role)).thenAccept(v -> {
-                        success.computeIfAbsent(member, k -> new ObjectArrayList<>()).add("Removed role `" + role.getName() + "` from " + member.getEffectiveName());
+                        success.computeIfAbsent(member, k -> new ObjectArrayList<>()).add("Removed role `" + role.getName() + "` from " + getName(member));
                     }));
                 } catch (PermissionException e) {
                     errors.computeIfAbsent(member, k -> new ObjectArrayList<>()).add("Failed to remove role `" + role.getName() + "`: " + e.getMessage());
@@ -202,7 +216,7 @@ public class AutoRoleInfo {
                 }
                 try {
                     tasks.add(RateLimitUtil.queue(db.getGuild().modifyNickname(member, null)).thenAccept(v -> {
-                        success.computeIfAbsent(member, k -> new ObjectArrayList<>()).add("Removed nickname from " + member.getEffectiveName());
+                        success.computeIfAbsent(member, k -> new ObjectArrayList<>()).add("Removed nickname from " + getName(member));
                     }));
                 } catch (PermissionException e) {
                     errors.computeIfAbsent(member, k -> new ObjectArrayList<>()).add("Failed to remove nickname: " + e.getMessage());
@@ -215,7 +229,7 @@ public class AutoRoleInfo {
                 }
                 try {
                     tasks.add(RateLimitUtil.queue(db.getGuild().modifyNickname(member, nick)).thenAccept(v -> {
-                        success.computeIfAbsent(member, k -> new ObjectArrayList<>()).add("Set nickname of " + member.getEffectiveName() + " to `" + nick + "`");
+                        success.computeIfAbsent(member, k -> new ObjectArrayList<>()).add("Set nickname of " + getName(member) + " to `" + nick + "`");
                     }));
                 } catch (PermissionException e) {
                     errors.computeIfAbsent(member, k -> new ObjectArrayList<>()).add("Failed to set nickname: " + e.getMessage());

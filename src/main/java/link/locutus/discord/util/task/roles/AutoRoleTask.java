@@ -329,6 +329,7 @@ public class AutoRoleTask implements IAutoRoleTask {
                                 for (int i = 0; i < maskRoles.length; i++) {
                                     if (!hasRoles[i]) continue;
                                     Role thisRole = thisDiscordRoles[i];
+                                    if (thisRole == null) continue;
 
                                     Map<Long, Role> allyRoleMap = allyDiscordRoles[i];
                                     Role role1 = allyRoleMap.get((long) 0L);

@@ -4231,7 +4231,10 @@ public abstract class DBNation implements NationOrAlliance {
 
         List<Trade> tradesV3 = new ArrayList<>(api.fetchPrivateTrades(data()._nationId()));
         if (tradesV3.isEmpty()) {
-            return List.of(new Auth.TradeResult("no trades to accept", Auth.TradeResultType.NO_TRADES));
+            if (reverse) {
+                return List.of(new Auth.TradeResult("No trades to accept. Ensure the `View Trades` and `Accept Trades` scopes and whitelisted access are enabled on <" + Settings.PNW_URL() + "/account/#7>", Auth.TradeResultType.NO_TRADES));
+            }
+            return List.of(new Auth.TradeResult("No trades to accept.", Auth.TradeResultType.NO_TRADES));
         }
 
         double[] amountArr = amount == null ? null : ResourceType.resourcesToArray(amount);
@@ -4703,9 +4706,7 @@ public abstract class DBNation implements NationOrAlliance {
         if (!isBeige()) {
             return 0;
         }
-        ZonedDateTime utc = ZonedDateTime.now(ZoneOffset.UTC);
-        long currentTurn = TimeUtil.getTurn(utc);
-
+        long currentTurn = TimeUtil.getTurn();
         int days = 15;
 
 //        int[] beige = new int[days * 12 + 1];
@@ -4713,8 +4714,7 @@ public abstract class DBNation implements NationOrAlliance {
 
         Set<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(data()._nationId());
         for (DBWar war : wars) {
-            ZonedDateTime warTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(war.getDate()), ZoneOffset.UTC);
-            long warTurns = TimeUtil.getTurn(warTime);
+            long warTurns = TimeUtil.getTurn(war.getDate());
             if (warTurns < currentTurn - days * 12) continue;
 
             if (war.getAttacker_id() == data()._nationId()) {
@@ -4726,8 +4726,7 @@ public abstract class DBNation implements NationOrAlliance {
         Locutus.imp().getWarDb().iterateAttacks(data()._nationId(), System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days + 1), (war, attack) -> {
             if (attack.getAttack_type() != AttackType.VICTORY || attack.getVictor() == data()._nationId()) return;
 
-            ZonedDateTime warTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(attack.getDate()), ZoneOffset.UTC);
-            long warTurns = TimeUtil.getTurn(warTime);
+            long warTurns = TimeUtil.getTurn(attack.getDate());
 
             if (warTurns < currentTurn - days * 12) return;
             int turnsAgo = (int) (currentTurn - warTurns);
