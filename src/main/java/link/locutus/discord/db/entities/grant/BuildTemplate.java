@@ -222,6 +222,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                     city.setMMR(mmr);
                 }
                 city.zeroNonMilitary();
+                city.setOptimalPower(receiver.getContinent());
                 city.optimalBuild(receiver, 5000, false, null);
                 // generate
                 build = city.toCityBuild();

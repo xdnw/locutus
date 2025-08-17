@@ -1011,13 +1011,13 @@ public class BankDB extends DBMainV3 {
     }
 
     public Transaction2 getLatestDeposit(int id, int type) {
-        Condition condition = TRANSACTIONS_2.SENDER_ID.eq((long) id).and(TRANSACTIONS_2.SENDER_TYPE.eq(type));
+        Condition condition = TRANSACTIONS_2.SENDER_ID.eq((long) id).and(TRANSACTIONS_2.SENDER_TYPE.eq(type).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(2)));
         List<Transaction2> transactions = getTransactions(condition, TRANSACTIONS_2.TX_ID.desc(), 1);
         return transactions.isEmpty() ? null : transactions.getFirst();
     }
 
     public Transaction2 getLatestWithdrawal(int id, int type) {
-        Condition condition = TRANSACTIONS_2.RECEIVER_ID.eq((long) id).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(type));
+        Condition condition = TRANSACTIONS_2.RECEIVER_ID.eq((long) id).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(type).and(TRANSACTIONS_2.SENDER_TYPE.eq(2)));
         List<Transaction2> transactions = getTransactions(condition, TRANSACTIONS_2.TX_ID.desc(), 1);
         return transactions.isEmpty() ? null : transactions.getFirst();
     }

@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
@@ -8,6 +9,7 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.ICity;
+import link.locutus.discord.apiv1.enums.city.INationCity;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
@@ -1152,25 +1154,35 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Generate csv file of project costs", viewable = true)
-    public String projectCostCsv() {
-        StringBuilder response = new StringBuilder();
-        response.append("PROJECT");
+    public void projectCostCsv(@Me IMessageIO io, @Me GuildDB db, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, SheetKey.PROJECT_COST);
+        }
+        List<String> header = new ArrayList<>();
+        header.add("project");
         for (ResourceType type : ResourceType.values) {
             if (type == ResourceType.CREDITS) continue;
-            response.append("\t" + type);
+            header.add(type.name());
         }
-        response.append("marketValue");
+        header.add("Value");
+        sheet.setHeader(header);
+
+        // Add project rows
         for (Project project : Projects.values) {
-            response.append("\n");
-            response.append(project.name());
+            List<Object> row = new ArrayList<>();
+            row.add(project.name());
             for (ResourceType type : ResourceType.values) {
                 if (type == ResourceType.CREDITS) continue;
                 Double rssValue = project.cost().getOrDefault(type, 0d);
-                response.append("\t").append(MathMan.format(rssValue));
+                row.add(MathMan.format(rssValue));
             }
-            response.append("\t" + MathMan.format(ResourceType.convertedTotal(project.cost())));
+            row.add(MathMan.format(ResourceType.convertedTotal(project.cost())));
+            sheet.addRow(row);
         }
-        return response.toString();
+
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
+        sheet.attach(io.create(), "project_cost").send();
     }
 
     @Command(desc = "Get nation or bank loot history\n" +
@@ -2896,8 +2908,11 @@ public class UtilityCommands {
                              @Switch("m") MMRInt mmr,
                              @Switch("i") Integer infra,
                              @Switch("l") Integer land) {
+        boolean projectsSpecified = false;
         if (projects == null || projects.isEmpty()) {
             projects = new ObjectOpenHashSet<>(Arrays.asList(Projects.values));
+        } else {
+            projectsSpecified = true;
         }
         final double radsFinal = rad_index == null ? nation.getRads() : rad_index / 1000d;
         DBNation nationCopy = new SimpleDBNation(new DBNationData(nation.data())) {
@@ -2935,16 +2950,20 @@ public class UtilityCommands {
 
         double originRevenue;
         {
+            Project exclude = projects.size() == 1 ? projects.iterator().next() : null;
             Predicate<Project> hasProject = nation.hasProjectPredicate();
-            Function<ICity, Double> profit = city -> PW.City.profitConverted(nationCopy.getContinent(), nationCopy.getRads(), hasProject, nation.getCities(), nation.getGrossModifier(), city);
+            if (exclude != null) {
+                hasProject = Projects.optimize(hasProject.and(Predicates.not(exclude::equals)));
+            }
+            Predicate<Project> finalHasProject = hasProject;
             DBCity first = nation._getCitiesV3().values().iterator().next();
-            JavaCity optimal = new JavaCity(first).zeroNonMilitary().optimalBuild(nation, 5000, false, null);
-            originRevenue = profit.apply(optimal);
+            JavaCity optimal = new JavaCity(first).zeroNonMilitary().setOptimalPower(nationCopy.getContinent()).optimalBuild(nationCopy.getContinent(), nationCopy.getCities(), INationCity::getRevenueConverted, null, finalHasProject, 15000, nation.getRads(), false, true, nation.getGrossModifier(), null);
+            originRevenue = PW.City.profitConverted(nationCopy.getContinent(), nationCopy.getRads(), finalHasProject, nation.getCities(), nation.getGrossModifier(), optimal);
         }
 
 
         StringBuilder result = new StringBuilder();
-        CompletableFuture<IMessageBuilder> msgFuture = channel.send("Please wait...");
+        CompletableFuture<IMessageBuilder> msgFuture = channel.send("Please wait. This will take 5s to initialize and then 5s for each project to calculate ROI...");
         long start = System.currentTimeMillis();
         boolean hasAny = false;
         List<Project> projectsList = new ArrayList<>(projects);
@@ -2954,7 +2973,7 @@ public class UtilityCommands {
             Project project = projectsList.get(i);
             QuadFunction<Integer, DBNation, Project, Double, RoiResult> roiFunc = project.getRoiFunction();
             if (roiFunc == null) continue;
-            if (!project.canBuild(nation) || nation.hasProject(project)) continue;
+            if ((!projectsSpecified || projectsList.size() != 1) && (!project.canBuild(nation) || nation.hasProject(project))) continue;
             if (i != projectsList.size() - 1 && System.currentTimeMillis() - start > 10000) {
                 channel.updateOptionally(msgFuture, "Calculating ROI for " + project.name() + "...");
                 start = System.currentTimeMillis();
@@ -2972,11 +2991,12 @@ public class UtilityCommands {
             result.append("> - Profit (Gross): ~$" + MathMan.format(roi.profit()) + "\n");
             result.append("> - Profit (Net - Over Timeframe): ~$" + MathMan.format(roi.profit() - roi.cost()) + "\n\n");
         }
-        if (result.length() != 0) {
+        if (result.length() != 0 || hasAny) {
             result.append("\n\nDone!");
             channel.send(result.toString());
         } else if (!hasAny) {
-            channel.send("No projects found with a ROI function that can be calculated for the given parameters.");
+            channel.send("No projects found with a ROI function that can be calculated for the given parameters.\n" +
+                    "Note: Provide only one project if you would like to test projects the nation already has or cannot currently build");
         }
         return null;
     }

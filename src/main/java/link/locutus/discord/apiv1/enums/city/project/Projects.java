@@ -54,12 +54,12 @@ public class Projects {
             }
             // get first city
             DBCity first = nation._getCitiesV3().values().iterator().next();
-            Predicate<Project> hasProject = Projects.optimize(nation.hasProjectPredicate().or(f -> f == project));
+            Predicate<Project> hasProject = Projects.optimize(nation.hasProjectPredicate().or(f -> f.equals(project)));
             Function<ICity, Double> profit = city -> {
                 return PW.City.profitConverted(continent, nation.getRads(), hasProject, nation.getCities(), nation.getGrossModifier(), city);
             };
             // optimalbuild
-            JavaCity optimal = new JavaCity(first).zeroNonMilitary().optimalBuild(nation.getContinent(),
+            JavaCity optimal = new JavaCity(first).zeroNonMilitary().setOptimalPower(continent).optimalBuild(nation.getContinent(),
                     nation.getCities(),
                     INationCity::getRevenueConverted,
                     null,
@@ -71,6 +71,13 @@ public class Projects {
                     nation.getGrossModifier(),
                     null);
 
+            if (output != null && output.hasBuilding() && optimal.getBuilding(output.getBuilding()) == 0) {
+                return new RoiResult(
+                        "Additional city revenue over the timeframe",
+                        0,
+                        project.getMarketValue()
+                );
+            }
             double optimalProfit = profit.apply(optimal);
             double revenuePerDay = Math.max(0, optimalProfit - originRevenue) * days * nation.getCities();
 

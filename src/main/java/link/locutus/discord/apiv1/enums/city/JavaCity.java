@@ -479,6 +479,12 @@ public class JavaCity implements IMutableCity {
         return hashCode;
     }
 
+    @Override
+    public JavaCity setOptimalPower(Continent continent) {
+        IMutableCity.super.setOptimalPower(continent);
+        return this;
+    }
+
     public JavaCity zeroNonMilitary() {
         for (int i = 0; i < buildings.length; i++) {
             if (Buildings.get(i) instanceof MilitaryBuilding) continue;
