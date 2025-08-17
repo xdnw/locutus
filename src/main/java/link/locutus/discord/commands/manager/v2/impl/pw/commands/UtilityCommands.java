@@ -9,6 +9,7 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.ICity;
+import link.locutus.discord.apiv1.enums.city.INationCity;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
@@ -2955,15 +2956,14 @@ public class UtilityCommands {
                 hasProject = Projects.optimize(hasProject.and(Predicates.not(exclude::equals)));
             }
             Predicate<Project> finalHasProject = hasProject;
-            Function<ICity, Double> profit = city -> PW.City.profitConverted(nationCopy.getContinent(), nationCopy.getRads(), finalHasProject, nation.getCities(), nation.getGrossModifier(), city);
             DBCity first = nation._getCitiesV3().values().iterator().next();
-            JavaCity optimal = new JavaCity(first).zeroNonMilitary().optimalBuild(nation, 5000, false, null);
-            originRevenue = profit.apply(optimal);
+            JavaCity optimal = new JavaCity(first).zeroNonMilitary().optimalBuild(nationCopy.getContinent(), nationCopy.getCities(), INationCity::getRevenueConverted, null, finalHasProject, 15000, nation.getRads(), false, true, nation.getGrossModifier(), null);
+            originRevenue = PW.City.profitConverted(nationCopy.getContinent(), nationCopy.getRads(), finalHasProject, nation.getCities(), nation.getGrossModifier(), optimal);
         }
 
 
         StringBuilder result = new StringBuilder();
-        CompletableFuture<IMessageBuilder> msgFuture = channel.send("Please wait...");
+        CompletableFuture<IMessageBuilder> msgFuture = channel.send("Please wait. This will take 5s to initialize and then 5s for each project to calculate ROI...");
         long start = System.currentTimeMillis();
         boolean hasAny = false;
         List<Project> projectsList = new ArrayList<>(projects);
@@ -2991,7 +2991,7 @@ public class UtilityCommands {
             result.append("> - Profit (Gross): ~$" + MathMan.format(roi.profit()) + "\n");
             result.append("> - Profit (Net - Over Timeframe): ~$" + MathMan.format(roi.profit() - roi.cost()) + "\n\n");
         }
-        if (result.length() != 0) {
+        if (result.length() != 0 || hasAny) {
             result.append("\n\nDone!");
             channel.send(result.toString());
         } else if (!hasAny) {
