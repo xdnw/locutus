@@ -22,6 +22,16 @@ public class LocalEmbedding implements IEmbedding {
     }
 
     @Override
+    public int getSize(String text) {
+        return 0; // TODO CM REF (see LocalModeration for example)
+    }
+
+    @Override
+    public int getSizeCap() {
+        return 0; // TODO CM REF (see LocalModeration for example)
+    }
+
+    @Override
     public String getTableName() {
         // get last part after / if present
         String tmp = modelName;

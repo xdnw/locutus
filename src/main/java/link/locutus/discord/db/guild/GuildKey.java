@@ -4,6 +4,7 @@ import com.google.gson.reflect.TypeToken;
 import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.models.ChatModel;
+import com.openai.models.moderations.ModerationModel;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
@@ -211,7 +212,7 @@ public class GuildKey {
             OpenAIClient service = OpenAIOkHttpClient.builder().apiKey(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY)
                     .timeout(Duration.ofSeconds(120))
                     .build();
-            OpenAiModerator moderator = new OpenAiModerator(service);
+            OpenAiModerator moderator = new OpenAiModerator(service, ModerationModel.OMNI_MODERATION_LATEST);
             List<ModerationResult> result = moderator.moderate("Hello World");
             if (result.size() == 0) {
                 throw new IllegalArgumentException("Invalid API key. No result returned");

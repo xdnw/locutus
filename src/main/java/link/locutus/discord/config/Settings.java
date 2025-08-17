@@ -615,24 +615,57 @@ public class Settings extends Config {
         }
 
         @Create
+        public MODERATION MODERATION;
+
+        public static final class MODERATION {
+            @Comment({"The provider to use for text moderation",
+                    "OpenAI = OpenAI API (or an openai compatible api)",
+                    "Local = A local pytorch model on huggingface"})
+            public String PROVIDER = "OpenAI";
+
+            @Comment({"The model to use for text moderation",
+                    "Example (OpenAi): `omni-moderation-latest` or `text-moderation-latest` (see https://platform.openai.com/docs/models/overview)",
+                    "Example (Local): `unitary/toxic-bert` (downloads if it exists on huggingface and is a compatible format)"})
+            public String MODEL = "omni-moderation-latest";
+        }
+
+        public static final class EMBEDDING {
+            @Comment({"The provider to use for text moderation",
+                    "OPENAI = OpenAI API (or an openai compatible api)",
+                    "Google = Google Gemini API (requires API key)",
+                    "Local = A local pytorch model on huggingface"})
+            public String PROVIDER = "Google";
+
+            @Comment({"The model to use for text embeddings",
+                    "Example (OpenAi): `text-embedding-3-large` or `text-embedding-3-small` (see https://platform.openai.com/docs/models/overview)",
+                    "Example (Google): `gemini-embedding-001` (see: https://cloud.google.com/vertex-ai/docs/generative-ai/embeddings/models)",
+                    "Example (Local): `sentence-transformers/all-MiniLM-L6-v2` (downloads if it exists on huggingface and is a compatible format)"})
+            public String EMBEDDING_MODEL = "text-embedding-3-small";
+        }
+
+        @Create
         public OPENAI OPENAI;
 
         public static final class OPENAI {
-            @Comment({"Your API key from <https://platform.openai.com/account/api-keys> (optional)"})
+            @Comment({"Your API key from <https://platform.openai.com/account/api-keys>"})
             public String API_KEY = "";
-
-            @Comment({"The model to use for text embeddings",
-                    "See: <https://platform.openai.com/docs/models/overview>"})
-            public String EMBEDDING_MODEL = "text-embedding-3-small";
-
-            @Comment({"The model to use for text embeddings",
-                    "See: <https://platform.openai.com/docs/models/overview>"})
-            public String MODERATION_MODEL = "";
 
             @Comment({"The base url for the OpenAI API",
                     "Leave empty to use the default (https://api.openai.com/v1)"})
             public String BASE_URL = "";
         }
+
+        @Create
+        public GOOGLE_AI GOOGLE_AI;
+        public static final class GOOGLE_AI {
+            @Comment({"Your gemini API key from <https://console.cloud.google.com/apis/credentials> (optional)"})
+            public String API_KEY = "";
+
+            @Comment({"The base url for the gemini API",
+                    "Leave empty to use the default (https://generativelanguage.googleapis.com)"})
+            public String BASE_URL = "";
+        }
+
         // limits
         @Create
         public LIMITS LIMITS;
@@ -650,29 +683,6 @@ public class Settings extends Config {
             @Comment("Maximum number of actions a guild can perform per day")
             public int GUILD_DAY_LIMIT = 0;
         }
-
-        @Create
-        public GOOGLE_AI GOOGLE_AI;
-        public static final class GOOGLE_AI {
-            @Comment({"Your gemini API key from <https://console.cloud.google.com/apis/credentials> (optional)"})
-            public String API_KEY = "";
-            // text embedding model
-            @Comment({"The model to use for text embeddings",
-                    "See: <https://cloud.google.com/vertex-ai/docs/generative-ai/embeddings/models>"})
-            public String EMBEDDING_MODEL = "gemini-embedding-001";
-            // base url (empty for default)
-            @Comment({"The base url for the gemini API",
-                    "Leave empty to use the default (https://generativelanguage.googleapis.com)"})
-            public String BASE_URL = "";
-        }
-
-
-        // Either OPENAI, GOOGLE or any compatible pytorch model on huggingface (will attempt to download and run locally)
-        @Comment({"The provider to use for text embeddings",
-                "OPENAI = OpenAI API (requires API key)",
-                "GOOGLE = Google Gemini API (requires API key)",
-                "OR enter the name of a compatible pytorch model on huggingface (e.g. `sentence-transformers/all-MiniLM-L6-v2`)",})
-        public static String TEXT_EMBEDDING_PROVIDER = "sentence-transformers/all-MiniLM-L6-v2";
     }
 
     public static class DATABASE {

@@ -2,22 +2,16 @@ package link.locutus.discord.gpt.pw;
 
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Logg;
-import link.locutus.wiki.game.PWWikiUtil;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.GptHandler;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
+import link.locutus.discord.util.scheduler.KeyValue;
+import link.locutus.wiki.game.PWWikiUtil;
 import org.jooq.DSLContext;
 
 import java.io.IOException;
-import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Stream;
 
 public class WikiManager {
     private final Map<Integer, WikiPagePW> gameWikiPagesBySourceId = new ConcurrentHashMap<>();
@@ -170,10 +164,7 @@ public class WikiManager {
                 List<String> summary = page.getSummaryData();
                 if (summary != null && !summary.isEmpty()) {
                     System.out.println("Found Summary for " + page.getName() + ": " + summary);
-
-                    // entry source , null
-                    Stream<Map.Entry<String, String>> stream = summary.stream().map(f -> new KeyValue<>(f, null));
-                    handler.registerEmbeddings(source, stream, false, true);
+                    handler.registerEmbeddings(source, summary.stream(), false, true);
                 } else {
                     System.out.println("No summary for " + page.getSlug());
                 }

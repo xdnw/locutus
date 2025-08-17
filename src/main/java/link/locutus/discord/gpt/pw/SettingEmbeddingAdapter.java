@@ -28,11 +28,6 @@ public class SettingEmbeddingAdapter extends PWAdapter<GuildSetting> {
     }
 
     @Override
-    public String getExpanded(EmbeddingSource source, GuildSetting obj) {
-        return null;
-    }
-
-    @Override
     public boolean hasPermission(GuildSetting obj, ValueStore store, CommandManager2 manager) {
         GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class));
         User author = (User) store.getProvided(Key.of(User.class, Me.class));

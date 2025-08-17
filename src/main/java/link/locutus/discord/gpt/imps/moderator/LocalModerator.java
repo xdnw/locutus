@@ -16,33 +16,7 @@ public class LocalModerator implements IModerator {
     private final ZooModel<String, Classifications> model;
     private final Predictor<String, Classifications> predictor;
 
-    public static void main(String[] args) {
-        // KoalaAI/Text-Moderation
-        String modelId = "unitary/toxic-bert"; // Replace with your model ID
-        List<String> testInputs = Arrays.asList(
-                "I love this!",
-                "You are so stupid.",
-                "Have a nice day."
-        );
-
-        try {
-            LocalModerator moderator = new LocalModerator(modelId);
-            List<ModerationResult> results = moderator.moderate(testInputs);
-
-            for (int i = 0; i < testInputs.size(); i++) {
-                System.out.println("Input: " + testInputs.get(i));
-                System.out.println("Flagged: " + results.get(i).isFlagged());
-                System.out.println("Flagged Categories: " + results.get(i).getFlaggedCategories());
-                System.out.println("Scores: " + results.get(i).getScores());
-                System.out.println();
-            }
-            moderator.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        }
-
-    public LocalModerator(String modelId) throws IOException, ModelNotFoundException, MalformedModelException {
+    public LocalModerator(String modelId, int contextWindow) throws IOException, ModelNotFoundException, MalformedModelException {
         Criteria<String, Classifications> criteria = Criteria.builder()
                 .setTypes(String.class, Classifications.class)
                 .optModelUrls("djl://ai.djl.huggingface.pytorch/" + modelId)
@@ -50,6 +24,16 @@ public class LocalModerator implements IModerator {
                 .build();
         this.model = criteria.loadModel();
         this.predictor = model.newPredictor();
+    }
+
+    @Override
+    public int getSizeCap() {
+        return 8192;  // TODO FIXME CM REF
+    }
+
+    @Override
+    public int getSize(String text) {
+        return 0; // TODO FIXME CM REF
     }
 
     @Override

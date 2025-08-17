@@ -3,6 +3,7 @@
     import com.google.genai.Client;
     import com.google.genai.types.ContentEmbedding;
     import com.google.genai.types.EmbedContentConfig;
+    import com.google.genai.types.Model;
 
     import java.sql.SQLException;
     import java.util.List;
@@ -12,6 +13,9 @@
         private final String modelName;
         private final Client client;
         private final EmbedContentConfig config;
+        private Model model;
+        private Integer tokenLimit;
+//        private SpTokenizer tokenizer;
 
         public GoogleAiEmbedding(Client client, String modelName) throws SQLException, ClassNotFoundException {
             this.client = client;
@@ -26,7 +30,24 @@
 
         @Override
         public void init() {
+            try {
+                this.model = client.models.get(modelName, null);
+                this.tokenLimit = model.inputTokenLimit().get();
+//                this.tokenizer = downloadAndLoadFromHf("google/gemma-2-9b-it", "tokenizer.model");
+            } catch (Exception e) {
+//                throw new RuntimeException(e);
+                throw e;
+            }
+        }
 
+        @Override
+        public int getSizeCap() {
+            return this.tokenLimit;
+        }
+
+        @Override
+        public int getSize(String text) {
+            return client.models.countTokens(modelName, text, null).totalTokens().orElseThrow();
         }
 
         @Override
@@ -55,6 +76,6 @@
 
         @Override
         public void close() {
-
+//            tokenizer.close();
         }
     }

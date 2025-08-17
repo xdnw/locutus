@@ -2,54 +2,43 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
-import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.wiki.game.PWWikiUtil;
 import com.vdurmont.emoji.EmojiParser;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
-import link.locutus.discord.commands.manager.v2.binding.annotation.WikiCategory;
-import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
-import link.locutus.discord.commands.manager.v2.command.CommandCallable;
-import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
-import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Messages;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.db.entities.NationMeta;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
 import link.locutus.discord.gpt.imps.DocumentChunk;
+import link.locutus.discord.gpt.imps.ProviderType;
 import link.locutus.discord.gpt.imps.embedding.EmbeddingType;
 import link.locutus.discord.gpt.pw.ArgumentEmbeddingAdapter;
 import link.locutus.discord.gpt.pw.GPTProvider;
 import link.locutus.discord.gpt.pw.GPTSearchUtil;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
-import link.locutus.discord.gpt.imps.ProviderType;
 import link.locutus.discord.gpt.test.ExtractText;
 import link.locutus.discord.user.Roles;
-import link.locutus.wiki.CommandWikiPages;
-import link.locutus.discord.util.FileUtil;
-import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
+import link.locutus.wiki.CommandWikiPages;
+import link.locutus.wiki.game.PWWikiUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.ChannelType;
@@ -62,15 +51,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
-import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -365,8 +346,8 @@ public class GPTCommands {
 
     @Command(desc = """
             Save Google spreadsheet contents to a named embedding dataset.
-            Requires two columns labeled "fact" or "question" and "answer" for vectors.
-            Search finds nearest fact, or searches questions and returns corresponding answers if two columns.""")
+            Requires one column labeled "text" for vectors.
+            Search finds nearest text""")
     @RolePermission(value = Roles.ADMIN)
     public String save_embeddings(PWGPTHandler gpt, @Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, SpreadSheet sheet, String document_name, @Switch("f") boolean force) {
         String originalName = document_name;
@@ -397,20 +378,15 @@ public class GPTCommands {
         }
 
         List<List<Object>> rows = sheet.fetchAll(null);
-        if (rows.size() < 2){
-            throw new IllegalArgumentException("Must have at least 2 rows, a header (`description`, `full_text`) and 1 row of data");
+        if (rows.size() < 2) {
+            throw new IllegalArgumentException("Must have at least 2 rows, and the column `text");
         }
         List<Object> header = rows.get(0);
         String col1 = header.get(0).toString();
-        String col2 = header.size() > 1 ? header.get(1).toString() : null;
         if (!col1.equalsIgnoreCase("text")) {
-            throw new IllegalArgumentException("First column must be `description`");
-        }
-        if (col2 != null && !col2.equalsIgnoreCase("full_text")) {
-            throw new IllegalArgumentException("Second column must be `full_text`");
+            throw new IllegalArgumentException("First column must be `text`");
         }
         List<String> descriptions = new ArrayList<>();
-        List<String> fullTexts = new ArrayList<>();
         // ad all
         for (int i = 1; i < rows.size(); i++) {
             List<Object> row = rows.get(i);
@@ -419,16 +395,14 @@ public class GPTCommands {
             }
             String desc = row.get(0).toString();
             if (desc.isEmpty()) continue;
-            String fullText = row.size() > 1 ? row.get(1).toString() : null;
             descriptions.add(desc);
-            fullTexts.add(fullText);
         }
 
         if (source == null) {
             source = gpt.getHandler().getEmbeddings().getOrCreateSource(document_name, db.getIdLong());
         }
 
-        List<Long> embeddings = gpt.getHandler().registerEmbeddings(source, descriptions, fullTexts, true, true);
+        List<Long> embeddings = gpt.getHandler().registerEmbeddings(source, descriptions, true, true);
 
         return "Registered " + embeddings.size() + " embeddings for `" + document_name + "` See: " + CM.chat.dataset.view.cmd.toSlashMention() + " and " + CM.chat.dataset.list.cmd.toSlashMention();
     }

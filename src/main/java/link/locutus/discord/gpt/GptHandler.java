@@ -20,18 +20,14 @@ import link.locutus.discord.gpt.imps.text2text.OpenAiText2Text;
 import link.locutus.discord.gpt.pw.GptDatabase;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 
-import javax.annotation.Nullable;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-import static com.pusher.client.util.internal.Preconditions.checkArgument;
 import static com.pusher.client.util.internal.Preconditions.checkNotNull;
 
 public class GptHandler {
@@ -140,17 +136,12 @@ public class GptHandler {
      * @param deleteMissing if embeddings in the source not included will be deleted
      * @return the ids of the embeddings
      */
-    public List<Long> registerEmbeddings(EmbeddingSource source, List<String> descriptions, @Nullable List<String> expandedDescriptions, boolean moderate, boolean deleteMissing) {
-        checkArgument(expandedDescriptions == null || descriptions.size() == expandedDescriptions.size(), "descriptions and expandedDescriptions must be the same size");
+    public List<Long> registerEmbeddings(EmbeddingSource source, List<String> descriptions, boolean moderate, boolean deleteMissing) {
         // create a stream Map.Entry<String, String> from descriptions and expandedDescriptions
-        Map<String, String> map = new HashMap<>();
-        for (int i = 0; i < descriptions.size(); i++) {
-            map.put(descriptions.get(i), expandedDescriptions == null ? null : expandedDescriptions.get(i));
-        }
-        return registerEmbeddings(source, map.entrySet().stream(), moderate, deleteMissing);
+        return registerEmbeddings(source, descriptions.stream(), moderate, deleteMissing);
     }
 
-    public <T> List<Long> registerEmbeddings(EmbeddingSource source, Stream<Map.Entry<String, String>> descriptionAndExpandedStream, boolean moderate, boolean deleteMissing) {
+    public <T> List<Long> registerEmbeddings(EmbeddingSource source, Stream<String> descriptionStream, boolean moderate, boolean deleteMissing) {
 
         checkNotNull(source, "source must not be null");
         ThrowingConsumer<String> moderateFunc = moderate ? this::checkModeration : null;
@@ -158,15 +149,12 @@ public class GptHandler {
         Set<Long> hashesSet = new LongLinkedOpenHashSet();
         List<Long> hashes = new LongArrayList();
         // iterate over descriptionAndExpandedStream
-        descriptionAndExpandedStream.forEach(new Consumer<Map.Entry<String, String>>() {
+        descriptionStream.forEach(new Consumer<String>() {
             @Override
-            public void accept(Map.Entry<String, String> entry) {
-                String description = entry.getKey();
-                String expandedDescription = entry.getValue();
-
+            public void accept(String description) {
                 long hash = embeddingDatabase.getHash(description);
                 if (hashesSet.add(hash)) {
-                    float[] vector = embeddingDatabase.getOrCreateEmbedding(hash, description, expandedDescription == null ? null : () -> expandedDescription, source, true, moderateFunc);
+                    float[] vector = embeddingDatabase.getOrCreateEmbedding(hash, description, source, true, moderateFunc);
                 } else {
                     Logg.info("Skipping duplicate description: ```\n" + description + "\n```");
                 }

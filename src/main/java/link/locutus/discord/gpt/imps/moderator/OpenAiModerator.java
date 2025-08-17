@@ -1,10 +1,10 @@
 package link.locutus.discord.gpt.imps.moderator;
 
-import com.knuddels.jtokkit.api.ModelType;
 import com.openai.client.OpenAIClient;
 import com.openai.models.moderations.Moderation;
 import com.openai.models.moderations.ModerationCreateParams;
 import com.openai.models.moderations.ModerationModel;
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.gpt.ModerationResult;
@@ -15,18 +15,30 @@ import java.util.*;
 
 public class OpenAiModerator implements IModerator {
     private final OpenAIClient service;
+    private final ModerationModel model;
 
-    public OpenAiModerator(OpenAIClient service) {
+    public OpenAiModerator(OpenAIClient service, ModerationModel model) {
         if (service == null) {
             throw new IllegalArgumentException("Text-Moderation: OpenAI service cannot be null. Please configure a valid openai key in your config.yml or disable AI features\n" +
                     "Note: Moderation api usage is free, but you need to have a valid OpenAI API key configured.");
         }
         this.service = service;
+        this.model = model;
+    }
+
+    @Override
+    public int getSize(String text) {
+        return 0;
+    }
+
+    @Override
+    public int getSizeCap() {
+        return Integer.MAX_VALUE;
     }
 
     public List<Moderation> checkModeration(String input) {
         ModerationCreateParams params = ModerationCreateParams.builder()
-                .model(ModerationModel.OMNI_MODERATION_LATEST)
+                .model(model)
                 .input(input)
                 .build();
 
@@ -36,10 +48,11 @@ public class OpenAiModerator implements IModerator {
     @Override
     public List<ModerationResult> moderate(List<String> inputs) {
         List<String> split = new ArrayList<>();
+        int cap = getSizeCap();
         for (String input : inputs) {
-            int tokens = GPTUtil.getTokens(input, ModelType.GPT_3_5_TURBO);
-            if (tokens > 2000) {
-                List<String> parts = GPTUtil.getChunks(input, ModelType.GPT_3_5_TURBO, 2000);
+            int tokens = getSize(input);
+            if (tokens > cap) {
+                List<String> parts = GPTUtil.getChunks(input, cap, this::getSize);
                 split.addAll(parts);
             } else {
                 split.add(input);
@@ -55,7 +68,7 @@ public class OpenAiModerator implements IModerator {
                 Moderation.Categories categoriesObject = resultObject.categories();
                 Moderation.CategoryScores catScoresObject = resultObject.categoryScores();
                 Set<String> flaggedCategories = new HashSet<>();
-                Map<String, Double> categoryScores = new HashMap<>();
+                Map<String, Double> categoryScores = new Object2DoubleOpenHashMap<>();
                 if (categoriesObject.harassment()) {
                     flaggedCategories.add("harassment");
                     categoryScores.put("harassment", catScoresObject.harassment());

@@ -343,7 +343,7 @@ public class DocumentConverter {
                 if (chunk.output == null) continue;
                 facts.addAll(chunk.getOutputList());
             }
-            handler.registerEmbeddings(source, facts, null, false, true);
+            handler.registerEmbeddings(source, facts, false, true);
             source.source_hash = document.hash;
             getEmbeddings().updateSources(List.of(source));
         } else {

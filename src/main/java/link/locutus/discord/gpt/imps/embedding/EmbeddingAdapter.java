@@ -50,7 +50,7 @@ public abstract class EmbeddingAdapter<T> implements IEmbeddingAdapter<T> {
         objectsByHash.clear();
 
         List<Long> hashes = handler.registerEmbeddings(source,
-                values.stream().map(t -> getDescriptionAndExpandedPair(source, t)), moderate && !skipModerate, true);
+                values.stream().map(t -> getDescription(source, t)), moderate && !skipModerate, true);
 
         for (int i = 0; i < values.size(); i++) {
             long hash = hashes.get(i);

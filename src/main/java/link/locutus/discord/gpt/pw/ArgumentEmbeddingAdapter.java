@@ -41,9 +41,4 @@ public class ArgumentEmbeddingAdapter extends PWAdapter<Parser> {
     public String getDescription(Parser parser) {
         return getType() + ": " + parser.getNameDescriptionAndExamples(true, false,false, false);
     }
-
-    @Override
-    public String getExpanded(EmbeddingSource source, Parser obj) {
-        return null;
-    }
 }

@@ -1,6 +1,5 @@
 package link.locutus.discord.gpt.pw;
 
-import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
 import link.locutus.discord.gpt.imps.embedding.IEmbeddingAdapter;
 
@@ -26,11 +25,6 @@ public class DatabaseAdapter implements IEmbeddingAdapter<Long> {
     @Override
     public String getDescription(Long hash) {
         return database.getText(hash);
-    }
-
-    @Override
-    public String getExpanded(EmbeddingSource source, Long hash) {
-        return database.getExpandedText(source.source_id, hash);
     }
 
     @Override
