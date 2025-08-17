@@ -59,7 +59,7 @@ public class Projects {
                 return PW.City.profitConverted(continent, nation.getRads(), hasProject, nation.getCities(), nation.getGrossModifier(), city);
             };
             // optimalbuild
-            JavaCity optimal = new JavaCity(first).zeroNonMilitary().optimalBuild(nation.getContinent(),
+            JavaCity optimal = new JavaCity(first).zeroNonMilitary().setOptimalPower(continent).optimalBuild(nation.getContinent(),
                     nation.getCities(),
                     INationCity::getRevenueConverted,
                     null,

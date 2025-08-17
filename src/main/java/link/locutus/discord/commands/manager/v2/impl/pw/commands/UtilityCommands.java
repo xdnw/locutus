@@ -2957,7 +2957,7 @@ public class UtilityCommands {
             Predicate<Project> finalHasProject = hasProject;
             Function<ICity, Double> profit = city -> PW.City.profitConverted(nationCopy.getContinent(), nationCopy.getRads(), finalHasProject, nation.getCities(), nation.getGrossModifier(), city);
             DBCity first = nation._getCitiesV3().values().iterator().next();
-            JavaCity optimal = new JavaCity(first).zeroNonMilitary().optimalBuild(nation, 5000, false, null);
+            JavaCity optimal = new JavaCity(first).zeroNonMilitary().setOptimalPower(nationCopy.getContinent()).optimalBuild(nation, 5000, false, null);
             originRevenue = profit.apply(optimal);
         }
 
