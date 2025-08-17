@@ -92,7 +92,7 @@ public enum SheetKey {
     EXPIRE_RECORD_SHEET,
     BUILD_SHEET,
     GUILD_CULLING,
-    COLOR_REVENUE
-
+    COLOR_REVENUE,
+    PROJECT_COST,
 
 }

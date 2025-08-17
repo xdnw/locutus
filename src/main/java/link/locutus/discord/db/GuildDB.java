@@ -2708,14 +2708,14 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
     public void addDelayMailTask(int nationId, long l) {
-        executeStmt("INSERT OR REPLACE INTO `DELAY_MAIL_TASKS`(`nationId`, `time`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        executeStmt("INSERT OR REPLACE INTO `DELAY_MAIL_TASKS`(`nation_id`, `time`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, nationId);
             stmt.setLong(2, l);
         });
     }
 
     public void deleteDelayMailTask(int nationId) {
-        executeStmt("DELETE FROM `DELAY_MAIL_TASKS` WHERE `nationId` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        executeStmt("DELETE FROM `DELAY_MAIL_TASKS` WHERE `nation_id` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, nationId);
         });
     }
