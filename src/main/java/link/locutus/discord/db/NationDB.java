@@ -2644,9 +2644,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         createKicksTable();
 
 
-        String spies = "CREATE TABLE IF NOT EXISTS `SPIES_BUILDUP` (`nation` INT NOT NULL, `spies` INT NOT NULL, `day` BIGINT NOT NULL, PRIMARY KEY(nation, day))";
-        executeStmt(spies);
-
         String activity = "CREATE TABLE IF NOT EXISTS `activity` (`nation` INT NOT NULL, `turn` BIGINT NOT NULL, PRIMARY KEY(nation, turn))";
         executeStmt(activity);
 
@@ -2714,6 +2711,10 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
     private void purgeDeletedLootData() {
         executeStmt("DELETE FROM NATION_LOOT3 WHERE id NOT IN (SELECT nation_id FROM NATIONS2);");
+        // drop SPIES_BUILDUP
+        executeStmt("DROP TABLE IF EXISTS SPIES_BUILDUP", true);
+        executeStmt("DROP TABLE IF EXISTS SPIES", true);
+        executeStmt("DROP TABLE IF EXISTS SPY_DAILY", true);
     }
 
     private void createKicksTable() {
@@ -4763,81 +4764,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             throw new RuntimeException(e);
         }
     }
-
-//    public void setSpies(int nation, int spies) {
-//        long day = TimeUtil.getDay();
-//        update("INSERT OR REPLACE INTO `SPIES_BUILDUP` (`nation`, `spies`, `day`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-//            stmt.setInt(1, nation);
-//            stmt.setInt(2, spies);
-//            stmt.setLong(3, day);
-//        });
-//    }
-//
-//    public Map.Entry<Integer, Long> getLatestSpyCount(int nationId, long beforeDay) {
-//        String queryStr = "SELECT * from SPIES_BUILDUP where nation = ? AND day < ? order by day DESC limit 1";
-//
-//        try (PreparedStatement stmt = prepareQuery(queryStr)) {
-//            stmt.setInt(1, nationId);
-//            stmt.setLong(2, beforeDay);
-//            try (ResultSet rs = stmt.executeQuery()) {
-//                while (rs.next()) {
-//                    int spies = rs.getInt("spies");
-//                    long day = rs.getLong("day");
-//                    return new KeyValue<>(spies, day);
-//                }
-//            }
-//            return null;
-//        } catch (SQLException e) {
-//            e.printStackTrace();
-//            throw new RuntimeException(e);
-//        }
-//    }
-//
-//    public Map<Integer, Integer> getLastSpiesByNation(Set<Integer> nationIds, long lastDay) {
-//        String query = "SELECT nation, spies, max(day) as day from SPIES_BUILDUP where nation in " + StringMan.getString(nationIds) + " AND day < ? GROUP BY nation";
-//        try (PreparedStatement stmt = prepareQuery(query)) {
-//            stmt.setLong(1, lastDay);
-//
-//            Map<Integer, Integer> map = new LinkedHashMap<>();
-//
-//            try (ResultSet rs = stmt.executeQuery()) {
-//                while (rs.next()) {
-//                    int nationId = rs.getInt("nation");
-//                    int spies = rs.getInt("spies");
-//                    long day = rs.getLong("day");
-//                    map.put(nationId, spies);
-//                }
-//            }
-//            return map;
-//        } catch (SQLException e) {
-//            e.printStackTrace();
-//            throw new RuntimeException(e);
-//        }
-//    }
-//
-//    public Map<Long, Integer> getSpiesByDay(int nationId) {
-//        try (PreparedStatement stmt = prepareQuery("select * FROM SPIES_BUILDUP WHERE nation = ? ORDER BY day DESC")) {
-//            stmt.setInt(1, nationId);
-//
-//            Map<Long, Integer> map = new LinkedHashMap<>();
-//
-//            try (ResultSet rs = stmt.executeQuery()) {
-//                while (rs.next()) {
-//                    int spies = rs.getInt("spies");
-//                    long day = rs.getLong("day");
-//                    map.put(day, spies);
-//                }
-//            }
-//            return map;
-//        } catch (SQLException e) {
-//            e.printStackTrace();
-//            throw new RuntimeException(e);
-//        }
-//    }
-
-//    public void setProjects(int nationId, Set<Project> projects) {
-//        Set<Integer> projectIds = new HashSet<>();
-//    }
 
     public void addRemove(int nationId, int fromAA, int toAA, Rank fromRank, Rank toRank, long time) {
         update("INSERT INTO `KICKS2`(`nation`, `from_aa`, `to_aa`, `from_rank`, `to_rank`, `date`) VALUES(?, ?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
