@@ -4706,9 +4706,7 @@ public abstract class DBNation implements NationOrAlliance {
         if (!isBeige()) {
             return 0;
         }
-        ZonedDateTime utc = ZonedDateTime.now(ZoneOffset.UTC);
-        long currentTurn = TimeUtil.getTurn(utc);
-
+        long currentTurn = TimeUtil.getTurn();
         int days = 15;
 
 //        int[] beige = new int[days * 12 + 1];
@@ -4716,8 +4714,7 @@ public abstract class DBNation implements NationOrAlliance {
 
         Set<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(data()._nationId());
         for (DBWar war : wars) {
-            ZonedDateTime warTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(war.getDate()), ZoneOffset.UTC);
-            long warTurns = TimeUtil.getTurn(warTime);
+            long warTurns = TimeUtil.getTurn(war.getDate());
             if (warTurns < currentTurn - days * 12) continue;
 
             if (war.getAttacker_id() == data()._nationId()) {
@@ -4729,8 +4726,7 @@ public abstract class DBNation implements NationOrAlliance {
         Locutus.imp().getWarDb().iterateAttacks(data()._nationId(), System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days + 1), (war, attack) -> {
             if (attack.getAttack_type() != AttackType.VICTORY || attack.getVictor() == data()._nationId()) return;
 
-            ZonedDateTime warTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(attack.getDate()), ZoneOffset.UTC);
-            long warTurns = TimeUtil.getTurn(warTime);
+            long warTurns = TimeUtil.getTurn(attack.getDate());
 
             if (warTurns < currentTurn - days * 12) return;
             int turnsAgo = (int) (currentTurn - warTurns);

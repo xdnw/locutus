@@ -43,7 +43,6 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
-import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -1042,27 +1041,29 @@ public class TradeManager {
         return getGlobalRadiation(continent, false);
     }
 
+    private volatile long lastTurnUpdateRads = 0;
+
     public synchronized double getGlobalRadiation(Continent continent, boolean forceUpdate) {
         long currentTurn = TimeUtil.getTurn();
 
         if (!forceUpdate) {
             Map.Entry<Double, Long> valuePair = radiation.get(continent);
             if (valuePair != null) {
-                if (valuePair.getValue() == currentTurn) return valuePair.getKey();
+                if (valuePair.getValue() == currentTurn || lastTurnUpdateRads == currentTurn) return valuePair.getKey();
             }
-
             ByteBuffer radsStr = Locutus.imp().getDiscordDB().getInfo(DiscordMeta.RADIATION_CONTINENT, continent.ordinal());
             if (radsStr != null) {
                 double rads = radsStr.getLong() / 100d;
                 long turn = radsStr.getLong();
 
                 radiation.put(continent, new KeyValue<>(rads, turn));
-                if (turn == currentTurn) {
+                if (turn == currentTurn || lastTurnUpdateRads == currentTurn) {
                     return rads;
                 }
             }
         }
         try {
+            lastTurnUpdateRads = currentTurn;
             GameInfo gameInfo = Locutus.imp().getApiPool().getGameInfo();
             Radiation info = gameInfo.getRadiation();
 
@@ -1075,8 +1076,6 @@ public class TradeManager {
             continentRadiation.put(Continent.AUSTRALIA, info.getAustralia());
             continentRadiation.put(Continent.ANTARCTICA, info.getAntarctica());
             continentRadiation.forEach(this::setRadiation);
-
-            this.gameDate = gameInfo.getGame_date();
 
             Double cityAvg = gameInfo.getCity_average();
             if (cityAvg != null && Math.round(cityAvg * 10000) != Math.round(PW.City.CITY_AVERAGE * 10000)) {
@@ -1099,16 +1098,8 @@ public class TradeManager {
         return contRad.getKey();
     }
 
-    private Instant gameDate;
-
-    public Instant getGameDate() {
-        if (this.gameDate == null) {
-            getGlobalRadiation(Continent.AFRICA, true);
-        }
-        if (this.gameDate == null) {
-            this.gameDate = Instant.ofEpochSecond(TimeUtil.getOrbisDate(System.currentTimeMillis()) / 1000);
-        }
-        return this.gameDate;
+    public long getGameDate() {
+        return TimeUtil.getOrbisDate(TimeUtil.getTimeFromDay(TimeUtil.getDay()));
     }
 
     private void setRadiation(Continent continent, double rads) {

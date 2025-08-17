@@ -11,12 +11,10 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.trade.TradeManager;
 import org.apache.commons.lang3.text.WordUtils;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -170,17 +168,13 @@ public enum Continent {
 
     @Command(desc = "Returns the season modifier for this continent")
     public double getSeasonModifier() {
-        return getSeasonModifier(Locutus.imp().getTradeManager().getGameDate());
+        return getSeasonModifierDate(Locutus.imp().getTradeManager().getGameDate());
     }
 
     @Command(desc = "Returns the season modifier for this continent at the given date")
-    public double getSeasonModifierDate(@Timestamp long date) {
-        return getSeasonModifier(Instant.ofEpochMilli(date));
-    }
-
-    public double getSeasonModifier(Instant instant) {
+    public double getSeasonModifierDate(@Timestamp long instant) {
         double season = 1;
-        switch (LocalDateTime.ofInstant(instant, ZoneOffset.UTC).getMonth()) {
+        switch (TimeUtil.getMonth(instant)) {
             case DECEMBER:
             case JANUARY:
             case FEBRUARY:

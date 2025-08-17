@@ -3,10 +3,7 @@ package link.locutus.discord.util;
 import link.locutus.discord.config.Settings;
 
 import java.io.File;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.ResolverStyle;
@@ -335,15 +332,17 @@ public class TimeUtil {
 
     public static long getTurn(Long timestamp) {
         if (timestamp == null) return getTurn();
-        Instant instant = Instant.ofEpochMilli(timestamp);
-        return getTurn(instant.atZone(ZoneOffset.UTC));
+        long hours = timestamp / 3_600_000L;
+        if (Settings.INSTANCE.TEST) {
+            return hours;
+        }
+        return (hours / 2);
     }
 
     public static long getTimeFromDay(long day) {
         if (Settings.INSTANCE.TEST) day *= 2;
 
-        ZonedDateTime time = Instant.ofEpochMilli(0).atZone(ZoneOffset.UTC).plusDays(day);
-        long millisecond = time.toEpochSecond() * 1000L;
+        long millisecond = day * 86_400_000L; // 24 * 60 * 60 * 1000
         return millisecond;
     }
 
@@ -359,42 +358,26 @@ public class TimeUtil {
         return millisecond;
     }
 
-    public static long getTurn(ZonedDateTime utc) {
-        if (Settings.INSTANCE.TEST) {
-            long value = ChronoUnit.HOURS.between(Instant.EPOCH, utc);
-            return value;
-        }
-        return (utc.getHour() / 2) + getDay(utc) * 12L;
-    }
-
     public static long getDayTurn() {
-        ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
+        long now = System.currentTimeMillis();
+        long hours = now / 3_600_000L;
         if (Settings.INSTANCE.TEST) {
-            int hours = now.getHour();
-            return hours;
+            return hours % 12;
         }
-        return now.getHour() / 2;
+        return (hours / 2) % 12;
     }
 
     public static long getDay() {
-        ZonedDateTime utc = ZonedDateTime.now(ZoneOffset.UTC);
-        return getDay(utc);
-    }
-
-    public static long getDay(ZonedDateTime utc) {
-        if (Settings.INSTANCE.TEST) {
-            long value = ChronoUnit.HOURS.between(Instant.EPOCH, utc);
-            return value;
-        }
-        return ChronoUnit.DAYS.between(Instant.EPOCH, utc);
+        long daysSinceEpoch = System.currentTimeMillis() / 86_400_000L;
+        return daysSinceEpoch;
     }
 
     public static long getDay(long timestamp) {
         if (Settings.INSTANCE.TEST) {
-            long value = ChronoUnit.HOURS.between(Instant.EPOCH, Instant.ofEpochMilli(timestamp));
-            return value / 12;
+            long hours = timestamp / 3_600_000L; // hours since epoch
+            return hours / 12;
         }
-        return ChronoUnit.DAYS.between(Instant.EPOCH, Instant.ofEpochMilli(timestamp));
+        return timestamp / 86_400_000L; // days since epoch
     }
 
     public static long getDayFromTurn(long turn) {
@@ -404,6 +387,11 @@ public class TimeUtil {
     public static long getOrbisDate(long date) {
         long origin = getOrigin();
         return origin + (date - origin) * 12;
+    }
+
+    public static Month getMonth(long timestamp) {
+        ZonedDateTime dateTime = Instant.ofEpochMilli(timestamp).atZone(ZoneOffset.UTC);
+        return Month.of(dateTime.getMonthValue());
     }
 
     public static long getRealDate(long orbisDate) {
