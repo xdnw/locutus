@@ -20,7 +20,7 @@ public class OpenAiEmbedding implements IEmbedding {
     private final EmbeddingModel model;
     private final ModelType modelType;
 
-    public OpenAiEmbedding(EncodingRegistry registry, OpenAIClient service, EmbeddingModel model) throws ClassNotFoundException {
+    public OpenAiEmbedding(EncodingRegistry registry, OpenAIClient service, EmbeddingModel model) {
         this.registry = registry;
         this.service = service;
         this.embeddingEncoder = registry.getEncoding(EncodingType.CL100K_BASE);

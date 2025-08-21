@@ -32,8 +32,6 @@ import link.locutus.discord.db.entities.*;
 import link.locutus.discord.gpt.imps.moderator.OpenAiModerator;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.gpt.ModerationResult;
-import link.locutus.discord.gpt.copilot.CopilotDeviceAuthenticationData;
-import link.locutus.discord.gpt.imps.text2text.CopilotText2Text;
 import link.locutus.discord.pnw.*;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
@@ -194,91 +192,91 @@ public class GuildKey {
         }
     };
 
-    public static final GuildSetting<String> OPENAI_KEY = new GuildStringSetting(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE, null) {
-
-        @NoFormat
-        @Command(descMethod = "help")
-        @RolePermission(Roles.ADMIN)
-        @Ephemeral
-        public String register_openai_key(@Me GuildDB db, @Me User user, String apiKey) {
-            return OPENAI_KEY.set(db, user, apiKey);
-        }
-
-        @Override
-        public String validate(GuildDB db, User user, String apiKey) {
-            if (apiKey == null || apiKey.isEmpty()) {
-                throw new IllegalArgumentException("Please provide an API key");
-            }
-            OpenAIClient service = OpenAIOkHttpClient.builder().apiKey(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY)
-                    .timeout(Duration.ofSeconds(120))
-                    .build();
-            OpenAiModerator moderator = new OpenAiModerator(service, ModerationModel.OMNI_MODERATION_LATEST);
-            List<ModerationResult> result = moderator.moderate("Hello World");
-            if (result.size() == 0) {
-                throw new IllegalArgumentException("Invalid API key. No result returned");
-            }
-            ModerationResult modResult = result.get(0);
-            if (modResult.isError()) {
-                throw new IllegalArgumentException("Invalid API key. Error returned: " + modResult.getMessage());
-            }
-            return apiKey;
-        }
-
-        @Override
-        public String parse(GuildDB db, String input) {
-            return input;
-        }
-
-        @Override
-        public String toReadableString(GuildDB db, String value) {
-            if (value != null && value.length() > 7) {
-                return value.substring(0, 3) + "..." + value.substring(value.length() - 4);
-            }
-            return "Invalid key";
-        }
-
-        @Override
-        public String help() {
-            return """
-                    OpenAI API key
-                    Used for chat responses and completion
-                    Get a key from: <https://platform.openai.com/account/api-keys>""";
-        }
-    }.setupRequirements(GuildSetting::requireValidAlliance);
-
-    public static final GuildSetting<ChatModel> OPENAI_MODEL = new GuildSetting<ChatModel>(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE, null, ChatModel.class) {
-        @NoFormat
-        @Command(descMethod = "help")
-        @RolePermission(Roles.ADMIN)
-        public String register_openai_key(@Me GuildDB db, @Me User user, ChatModel model) {
-            return OPENAI_MODEL.set(db, user, model);
-        }
-
-        @Override
-        public ChatModel validate(GuildDB db, User user, ChatModel model) {
-            if (model == ChatModel.GPT_4 || model == ChatModel.GPT_4_32K || model == ChatModel.GPT_3_5_TURBO || model == ChatModel.GPT_3_5_TURBO_16K) {
-                return model;
-            }
-            throw new IllegalArgumentException("Invalid chat model type: " + model + ". Valid values: " + StringMan.join(ChatModel.Known.values(), ", "));
-        }
-
-        @Override
-        public ChatModel parse(GuildDB db, String input) {
-            return ChatModel.of(input);
-        }
-
-        @Override
-        public String help() {
-            return "OpenAI model type\n" +
-                    "Used for chat responses and completion\n" +
-                    "Valid values: " + StringMan.join(ChatModel.Known.values(), ", ");
-        }
-
-        @Override
-        public String toString(ChatModel value) {
-            return value.asString();
-        }
-    }.setupRequirements(f -> f.requires(OPENAI_KEY));
+//    public static final GuildSetting<String> OPENAI_KEY = new GuildStringSetting(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE, null) {
+//
+//        @NoFormat
+//        @Command(descMethod = "help")
+//        @RolePermission(Roles.ADMIN)
+//        @Ephemeral
+//        public String register_openai_key(@Me GuildDB db, @Me User user, String apiKey) {
+//            return OPENAI_KEY.set(db, user, apiKey);
+//        }
+//
+//        @Override
+//        public String validate(GuildDB db, User user, String apiKey) {
+//            if (apiKey == null || apiKey.isEmpty()) {
+//                throw new IllegalArgumentException("Please provide an API key");
+//            }
+//            OpenAIClient service = OpenAIOkHttpClient.builder().apiKey(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY)
+//                    .timeout(Duration.ofSeconds(120))
+//                    .build();
+//            OpenAiModerator moderator = new OpenAiModerator(service, ModerationModel.OMNI_MODERATION_LATEST);
+//            List<ModerationResult> result = moderator.moderate("Hello World");
+//            if (result.size() == 0) {
+//                throw new IllegalArgumentException("Invalid API key. No result returned");
+//            }
+//            ModerationResult modResult = result.get(0);
+//            if (modResult.isError()) {
+//                throw new IllegalArgumentException("Invalid API key. Error returned: " + modResult.getMessage());
+//            }
+//            return apiKey;
+//        }
+//
+//        @Override
+//        public String parse(GuildDB db, String input) {
+//            return input;
+//        }
+//
+//        @Override
+//        public String toReadableString(GuildDB db, String value) {
+//            if (value != null && value.length() > 7) {
+//                return value.substring(0, 3) + "..." + value.substring(value.length() - 4);
+//            }
+//            return "Invalid key";
+//        }
+//
+//        @Override
+//        public String help() {
+//            return """
+//                    OpenAI API key
+//                    Used for chat responses and completion
+//                    Get a key from: <https://platform.openai.com/account/api-keys>""";
+//        }
+//    }.setupRequirements(GuildSetting::requireValidAlliance);
+//
+//    public static final GuildSetting<ChatModel> OPENAI_MODEL = new GuildSetting<ChatModel>(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE, null, ChatModel.class) {
+//        @NoFormat
+//        @Command(descMethod = "help")
+//        @RolePermission(Roles.ADMIN)
+//        public String register_openai_key(@Me GuildDB db, @Me User user, ChatModel model) {
+//            return OPENAI_MODEL.set(db, user, model);
+//        }
+//
+//        @Override
+//        public ChatModel validate(GuildDB db, User user, ChatModel model) {
+//            if (model == ChatModel.GPT_4 || model == ChatModel.GPT_4_32K || model == ChatModel.GPT_3_5_TURBO || model == ChatModel.GPT_3_5_TURBO_16K) {
+//                return model;
+//            }
+//            throw new IllegalArgumentException("Invalid chat model type: " + model + ". Valid values: " + StringMan.join(ChatModel.Known.values(), ", "));
+//        }
+//
+//        @Override
+//        public ChatModel parse(GuildDB db, String input) {
+//            return ChatModel.of(input);
+//        }
+//
+//        @Override
+//        public String help() {
+//            return "OpenAI model type\n" +
+//                    "Used for chat responses and completion\n" +
+//                    "Valid values: " + StringMan.join(ChatModel.Known.values(), ", ");
+//        }
+//
+//        @Override
+//        public String toString(ChatModel value) {
+//            return value.asString();
+//        }
+//    }.setupRequirements(f -> f.requires(OPENAI_KEY));
 
     public static GuildSetting<int[]> GPT_USAGE_LIMITS = new GuildSetting<int[]>(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE, null, int[].class) {
         @NoFormat
@@ -334,47 +332,6 @@ public class GuildKey {
             return StringMan.join(value, ",");
         }
     }.setupRequirements(f -> f.requires(OPENAI_KEY));
-
-    public static GuildSetting<Boolean> ENABLE_GITHUB_COPILOT = new GuildBooleanSetting(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE, null) {
-        @NoFormat
-        @Command(descMethod = "help")
-        @RolePermission(Roles.ADMIN)
-        public String ENABLE_GITHUB_COPILOT(@Me GuildDB db, @Me User user, boolean value) {
-            return ENABLE_GITHUB_COPILOT.setAndValidate(db, user, value);
-        }
-
-        @Override
-        public Boolean validate(GuildDB db, User user, Boolean value) {
-            if (value == Boolean.TRUE) {
-                CopilotDeviceAuthenticationData[] authData = new CopilotDeviceAuthenticationData[1];
-
-
-                CopilotText2Text copilot = new CopilotText2Text("tokens" + File.separator + db.getIdLong(), new Consumer<CopilotDeviceAuthenticationData>() {
-                    @Override
-                    public void accept(CopilotDeviceAuthenticationData data) {
-                        authData[0] = data;
-                    }
-                });
-                try {
-                    copilot.generate("Hello W");
-                } catch (Throwable e) {
-                    if (authData[0] != null) {
-                        throw new IllegalArgumentException("Open URL " + authData[0].Url + " to enter the device code: " + authData[0].UserCode);
-                    }
-                    throw e;
-                }
-            }
-            return value;
-        }
-
-        @Override
-        public String help() {
-            return """
-                    Enable GitHub Copilot for generating AI text responses
-                    See: <https://github.com/features/copilot>
-                    This is an alternative to an open ai key""";
-        }
-    }.requireValidAlliance();
 
     public static final GuildSetting<List<String>> API_KEY = new GuildSetting<List<String>>(GuildSettingCategory.DEFAULT, null, List.class, String.class) {
         @NoFormat

@@ -6,12 +6,14 @@ import com.openai.models.moderations.ModerationCreateParams;
 import com.openai.models.moderations.ModerationModel;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.gpt.ModerationResult;
 import org.json.JSONObject;
 
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class OpenAiModerator implements IModerator {
     private final OpenAIClient service;
@@ -47,20 +49,8 @@ public class OpenAiModerator implements IModerator {
 
     @Override
     public List<ModerationResult> moderate(List<String> inputs) {
-        List<String> split = new ArrayList<>();
-        int cap = getSizeCap();
-        for (String input : inputs) {
-            int tokens = getSize(input);
-            if (tokens > cap) {
-                List<String> parts = GPTUtil.getChunks(input, cap, this::getSize);
-                split.addAll(parts);
-            } else {
-                split.add(input);
-            }
-        }
-
         List<ModerationResult> results = new ObjectArrayList<>();
-        List<Moderation> responses = checkModeration(split);
+        List<Moderation> responses = checkModeration(inputs);
         for (Moderation resultObject : responses) {
             ModerationResult result = new ModerationResult();
             result.setFlagged(resultObject.flagged());

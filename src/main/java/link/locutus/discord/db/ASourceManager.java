@@ -1,65 +1,93 @@
 package link.locutus.discord.db;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Logg;
 import link.locutus.discord.db.entities.EmbeddingSource;
-import link.locutus.discord.gpt.IEmbeddingDatabase;
+import link.locutus.discord.gpt.ISourceManager;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
 import link.locutus.discord.gpt.imps.DocumentChunk;
+import link.locutus.discord.gpt.imps.VectorDatabase;
 import link.locutus.discord.gpt.imps.embedding.EmbeddingInfo;
+import link.locutus.discord.gpt.imps.embedding.IEmbedding;
 import link.locutus.discord.gpt.pw.GptDatabase;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
-import link.locutus.discord.util.scheduler.TriConsumer;
+import link.locutus.discord.util.scheduler.ThrowingSupplier;
 import org.jetbrains.annotations.Nullable;
 import org.jooq.DSLContext;
 import org.jooq.Record;
-import org.jooq.exception.DataAccessException;
-import org.jooq.impl.SQLDataType;
 
 import java.io.Closeable;
-import java.sql.SQLException;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiPredicate;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static graphql.com.google.common.base.Preconditions.checkArgument;
-import static graphql.com.google.common.base.Preconditions.checkNotNull;
 
-public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeable {
+public class ASourceManager implements ISourceManager, Closeable {
+
+    private final IEmbedding embedding;
 
     private volatile boolean loaded = false;
     private final Map<Integer, EmbeddingSource> embeddingSources;
     private final Map<Integer, ConvertingDocument> unconvertedDocuments;
     private final Map<Integer, Map<Integer, DocumentChunk>> documentChunks;
-    private final String vectorName;
     private final GptDatabase database;
+    private final VectorDatabase vectors;
 
-    public AEmbeddingDatabase(String name, GptDatabase database) throws SQLException, ClassNotFoundException {
+    private final Map<String, Integer> usageCache = new ConcurrentHashMap<>();
+
+    public ASourceManager(GptDatabase database, IEmbedding embedding) throws IOException {
         this.database = database;
-        this.vectorName = name;
         this.embeddingSources = new ConcurrentHashMap<>();
         this.unconvertedDocuments = new ConcurrentHashMap<>();
         this.documentChunks = new ConcurrentHashMap<>();
+
+        this.embedding = embedding;
+
+        this.vectors = VectorDatabase.createInConfigFolder(embedding.getTableName());
     }
 
-    public <T extends AEmbeddingDatabase> T load() {
+    public <T extends ASourceManager> T load() {
         if (loaded) return (T) this;
         loaded = true;
         createTables();
         loadSources();
         loadUnconvertedDocuments();
+        loadUsageCache();
         return (T) this;
+    }
+
+    @Override
+    public void deleteMissing(EmbeddingSource source, Set<Long> hashesSet) {
+        vectors.deleteMissing(source.source_id, hashesSet);
+    }
+
+    @Override
+    public String getText(long hash) {
+        return vectors.getTextAndVectorById(hash, true, false)
+                .map(Map.Entry::getKey)
+                .orElse(null);
+    }
+
+    @Override
+    public void createEmbeddingIfNotExist(IEmbedding provider, long embeddingHash, String embeddingText, EmbeddingSource source, ThrowingConsumer<String> moderate) {
+        vectors.addDocumentIfNotExists(embeddingText, embeddingHash, (ThrowingSupplier<float[]>) () -> {
+            if (moderate != null) {
+                moderate.accept(embeddingText);
+            }
+            return provider.fetchEmbedding(embeddingText);
+        }, source.source_id);
     }
 
     public GptDatabase getDatabase() {
@@ -85,7 +113,6 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
                 "prompt VARCHAR NOT NULL, " +
                 "converted BOOLEAN NOT NULL, " +
                 "use_global_context BOOLEAN NOT NULL, " +
-                "provider_type INTEGER NOT NULL, " +
                 "user BIGINT NOT NULL, " +
                 "error VARCHAR, " +
                 "date BIGINT NOT NULL, " +
@@ -100,6 +127,47 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
                 "converted BOOLEAN NOT NULL, " +
                 "text VARCHAR NOT NULL," +
                 "output VARCHAR, PRIMARY KEY (source_id, chunk_index))");
+    }
+
+    private void createUsageTable() {
+        ctx().execute(
+                "CREATE TABLE IF NOT EXISTS usage (" +
+                        "model VARCHAR PRIMARY KEY, " +
+                        "usage INTEGER NOT NULL, " +
+                        "day BIGINT NOT NULL)"
+        );
+    }
+
+    public synchronized void loadUsageCache() {
+        long currentDay = TimeUtil.getDay();
+        boolean[] needsDelete = {false};
+
+        ctx().selectFrom("usage").fetch().forEach(r -> {
+            String model = r.get("model", String.class);
+            int usage = r.get("usage", int.class);
+            long day = r.get("day", long.class);
+            if (day == currentDay) {
+                usageCache.put(model, usage);
+            } else if (day < currentDay) {
+                needsDelete[0] = true;
+            }
+        });
+
+        if (needsDelete[0]) {
+            ctx().execute("DELETE FROM usage WHERE day < ?", currentDay);
+        }
+    }
+
+    public int getUsage(String model) {
+        return usageCache.get(model);
+    }
+
+    public void addUsage(String model, int usage) {
+        usageCache.merge(model, usage, Integer::sum);
+        ctx().transaction((TransactionalRunnable) -> {
+            ctx().execute("INSERT INTO usage (model, usage, day) VALUES (?, ?, ?) ON CONFLICT(model) DO UPDATE SET usage = usage + ?",
+                    model, usage, TimeUtil.getDay(), usage);
+        });
     }
 
     private void loadUnconvertedDocuments() {
@@ -137,8 +205,8 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         }
         ctx().transaction((TransactionalRunnable) -> {
             for (ConvertingDocument document : documents) {
-                ctx().execute("INSERT OR REPLACE INTO document_queue (source_id, prompt, converted, use_global_context, provider_type, user, error, date, hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                        document.source_id, document.prompt, document.converted, document.use_global_context, document.provider_type, document.user, document.error, document.date, document.hash);
+                ctx().execute("INSERT OR REPLACE INTO document_queue (source_id, prompt, converted, use_global_context, user, error, date, hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                        document.source_id, document.prompt, document.converted, document.use_global_context, document.user, document.error, document.date, document.hash);
             }
         });
     }
@@ -237,12 +305,15 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         createDocumentQueueTable();
         // document_chunks: source_id, chunk_index, converted, text
         createChunksTable();
+        // usage: model, usage, day
+        createUsageTable();
     }
 
     @Override
     public float[] getEmbedding(long hash) {
         load();
-        return vectors.get(hash);
+        return vectors.getTextAndVectorById(hash, false, true)
+                .map(Map.Entry::getValue).orElse(null);
     }
 
     @Override
@@ -266,24 +337,17 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
     }
 
     @Override
-    public float[] getOrCreateEmbedding(long embeddingHash, String embeddingText, EmbeddingSource source, boolean save, ThrowingConsumer<String> moderate) {
+    public float[] getOrCreateEmbedding(IEmbedding provider, long embeddingHash, String embeddingText, EmbeddingSource source, boolean save, ThrowingConsumer<String> moderate) {
         float[] existing = getEmbedding(embeddingHash);
         if (existing == null) {
             if (moderate != null) {
                 moderate.accept(embeddingText);
             }
             // fetch embedding
-            existing = fetchEmbedding(embeddingText);
+            existing = provider.fetchEmbedding(embeddingText);
             // store
             if (save) {
-                saveVector(embeddingHash, existing);
-                saveVectorText(embeddingHash, embeddingText);
-            }
-        }
-        if (save) {
-            Set<Long> hashes = textHashBySource.get(source.source_id);
-            if (hashes == null || !hashes.contains(embeddingHash)) {
-                saveVectorSources(embeddingHash, source.source_id);
+                vectors.addOrUpdateDocument(embeddingText, embeddingHash, existing, source.source_id);
             }
         }
         return existing;
@@ -295,14 +359,15 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
     }
 
     @Override
-    public void iterateVectors(Set<EmbeddingSource> allowedSources, TriConsumer<EmbeddingSource, Long, float[]> source_hash_vector_consumer) {
-        for (EmbeddingSource source : allowedSources) {
-            Set<Long> hashes = textHashBySource.get(source.source_id);
-            if (hashes != null && !hashes.isEmpty()) {
-                for (long hash : hashes) {
-                    float[] vector = vectors.get(hash);
-                    source_hash_vector_consumer.accept(source, hash, vector);
-                }
+    public void iterateVectors(Set<EmbeddingSource> allowedSources, Consumer<VectorDatabase.SearchResult> source_hash_vector_consumer) {
+        Set<Integer> srcIds = new IntOpenHashSet(allowedSources.size());
+        for (EmbeddingSource src : allowedSources) srcIds.add(src.source_id);
+        for (VectorDatabase.SearchResult result : vectors.getDocumentsBySource(srcIds)) {
+            EmbeddingSource source = result.sourceId == null ? null : embeddingSources.get(result.sourceId);
+            if (source != null) {
+                source_hash_vector_consumer.accept(result);
+            } else {
+                Logg.error("Source with id " + result.sourceId + " not found for hash " + result.id + " | " + result.text);
             }
         }
     }
@@ -324,8 +389,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
 
     @Override
     public int countVectors(EmbeddingSource existing) {
-        Set<Long> hashes = textHashBySource.get(existing.source_id);
-        return hashes == null ? 0 : hashes.size();
+        return vectors.countBySource(Set.of(existing.source_id));
     }
 
     @Override
@@ -353,7 +417,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
     @Override
     public float[] getEmbedding(EmbeddingSource source, String text, ThrowingConsumer<String> moderate) {
         long hash = getHash(text);
-        return getOrCreateEmbedding(hash, text, null, source, true, moderate);
+        return getOrCreateEmbedding(embedding, hash, text, source, true, moderate);
     }
 
     @Override
@@ -367,34 +431,24 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         });
 
         float[] compareTo = getEmbedding(inputSource, input, moderate);
-
-        for (EmbeddingSource source : allowedTypes) {
-            Set<Long> hashes = textHashBySource.get(source.source_id);
-            if (hashes == null || hashes.isEmpty()) {
-                Logg.info("No hashes for " + source.source_name + " | " + source.source_id);
-                continue;
-            }
-            for (long hash : hashes) {
-                if (!sourceHashPredicate.test(source, hash)) continue;
-                float[] vector = vectors.get(hash);
-                double diff = ArrayUtil.cosineSimilarity(vector, compareTo);
-
-                if (largest.size() < top || largest.peek().distance < diff) {
-                    if (largest.size() == top)
-                        largest.remove();
-                    EmbeddingInfo result = new EmbeddingInfo(hash, vector, source, diff);
-                    largest.add(result);
-                }
-            }
+        Map<Integer, EmbeddingSource> sourceMap = new Int2ObjectLinkedOpenHashMap<>();
+        for (EmbeddingSource allowedType : allowedTypes) {
+            sourceMap.put(allowedType.source_id, allowedType);
         }
-
-        ObjectArrayList<EmbeddingInfo> list = new ObjectArrayList<>(largest.size());
-        // poll and add
-        while (!largest.isEmpty()) {
-            list.add(largest.poll());
+        List<VectorDatabase.SearchResult> results = vectors.searchSimilar(compareTo, top, sourceMap.keySet(), result -> {
+            EmbeddingSource source = sourceMap.get(result.sourceId);
+            if (source == null) {
+                Logg.error("Source with id " + result.sourceId + " not found for hash " + result.id + " | " + result.text);
+                return false;
+            }
+            return sourceHashPredicate.test(source, result.id);
+        });
+        List<EmbeddingInfo> resultsMapped = new ObjectArrayList<>(results.size());
+        for (VectorDatabase.SearchResult result : results) {
+            EmbeddingSource source = sourceMap.get(result.sourceId);
+            EmbeddingInfo info = new EmbeddingInfo(result.text, result.id, source, result.score);
+            resultsMapped.add(info);
         }
-        // reverse
-        Collections.reverse(list);
-        return list;
+        return resultsMapped;
     }
 }

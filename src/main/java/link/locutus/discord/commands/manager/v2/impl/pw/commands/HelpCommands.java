@@ -43,8 +43,7 @@ public class HelpCommands {
 
     @Command(desc = "Check a message for moderation to see if it is flagged", viewable = true)
     public void moderation_check(@Me IMessageIO io, String input) throws IOException {
-        List<String> inputs = List.of(input);
-        List<ModerationResult> results = getGPT().getHandler().getModerator().moderate(inputs);
+        List<ModerationResult> results = getGPT().getHandler().getModerator().moderate(input);
         IMessageBuilder msg = io.create();
         for (ModerationResult result : results) {
             msg.append("Flagged: " + result.isFlagged() + "\n");

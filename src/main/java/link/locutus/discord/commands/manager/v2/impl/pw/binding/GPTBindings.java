@@ -10,8 +10,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.WikiCategory;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.imps.embedding.EmbeddingType;
-import link.locutus.discord.gpt.imps.ProviderType;
-import link.locutus.discord.gpt.pw.GPTProvider;
+import link.locutus.discord.gpt.pw.GptLimitTracker;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
@@ -62,11 +61,6 @@ public class GPTBindings extends BindingHelper {
         return Locutus.imp().getCommandManager().getV2().getPwgptHandler();
     }
 
-    @Binding(value = "A comma separated list of provider types")
-    public Set<ProviderType> providerTypes(String input) {
-        return emumSet(ProviderType.class, input);
-    }
-
     @Binding(value = "A comma separated list of embedding types")
     public Set<EmbeddingType> EmbeddingType(String input) {
         return emumSet(EmbeddingType.class, input);
@@ -79,14 +73,9 @@ public class GPTBindings extends BindingHelper {
     }
 
     @Binding
-    public GPTProvider provider(PWGPTHandler handler, @Me GuildDB db, String input) {
-        for (GPTProvider provider : handler.getProviderManager().getProviders(db)) {
-            if (provider.getId().equalsIgnoreCase(input)) {
-                return provider;
-            }
-        }
-        String names = handler.getProviderManager().getProviders(db).stream().map(GPTProvider::getId).collect(Collectors.joining(", "));
-        throw new IllegalArgumentException("No provider found with name " + input + "\nOptions: " + names);
+    @Me
+    public GptLimitTracker provider(PWGPTHandler handler, @Me GuildDB db) {
+        return handler.getProviderManager().getLimitTracker(db);
     }
 
     @Binding

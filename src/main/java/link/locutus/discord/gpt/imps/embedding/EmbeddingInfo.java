@@ -3,14 +3,14 @@ package link.locutus.discord.gpt.imps.embedding;
 import link.locutus.discord.db.entities.EmbeddingSource;
 
 public class EmbeddingInfo {
+    public final String text;
     public final long hash;
-    public final float[] vector;
     public final EmbeddingSource source;
-    public double distance;
+    public final double distance;
 
-    public EmbeddingInfo(long hash, float[] vector, EmbeddingSource source, double distance) {
+    public EmbeddingInfo(String text, long hash, EmbeddingSource source, double distance) {
+        this.text = text;
         this.hash = hash;
-        this.vector = vector;
         this.source = source;
         this.distance = distance;
     }

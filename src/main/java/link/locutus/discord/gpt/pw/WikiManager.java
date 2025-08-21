@@ -4,7 +4,7 @@ import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Logg;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.GptHandler;
-import link.locutus.discord.gpt.IEmbeddingDatabase;
+import link.locutus.discord.gpt.ISourceManager;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.wiki.game.PWWikiUtil;
 import org.jooq.DSLContext;
@@ -16,10 +16,10 @@ import java.util.concurrent.ConcurrentHashMap;
 public class WikiManager {
     private final Map<Integer, WikiPagePW> gameWikiPagesBySourceId = new ConcurrentHashMap<>();
     private final GptDatabase database;
-    private final IEmbeddingDatabase embeddings;
+    private final ISourceManager embeddings;
     private final GptHandler handler;
 
-    public WikiManager(GptDatabase database, IEmbeddingDatabase embeddings, GptHandler handler) {
+    public WikiManager(GptDatabase database, ISourceManager embeddings, GptHandler handler) {
         this.database = database;
         this.embeddings = embeddings;
         this.handler = handler;

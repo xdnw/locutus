@@ -108,7 +108,7 @@ public enum NationMeta {
     RECRUIT_GOV_MESSAGE,
     LOGIN_NOTIFY,
 
-    GPT_PROVIDER,
+    GPT_PROVIDER_DEPRECATED,
 
     GPT_OPTIONS,
 

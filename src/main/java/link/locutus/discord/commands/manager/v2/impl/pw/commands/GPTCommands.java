@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.vdurmont.emoji.EmojiParser;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
@@ -20,21 +21,21 @@ import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
-import link.locutus.discord.gpt.IEmbeddingDatabase;
+import link.locutus.discord.gpt.ISourceManager;
+import link.locutus.discord.gpt.ProviderType;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
 import link.locutus.discord.gpt.imps.DocumentChunk;
-import link.locutus.discord.gpt.imps.ProviderType;
+import link.locutus.discord.gpt.imps.VectorDatabase;
 import link.locutus.discord.gpt.imps.embedding.EmbeddingType;
 import link.locutus.discord.gpt.pw.ArgumentEmbeddingAdapter;
-import link.locutus.discord.gpt.pw.GPTProvider;
 import link.locutus.discord.gpt.pw.GPTSearchUtil;
+import link.locutus.discord.gpt.pw.GptLimitTracker;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.gpt.test.ExtractText;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
-import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.wiki.CommandWikiPages;
@@ -53,6 +54,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class GPTCommands {
@@ -61,7 +63,7 @@ public class GPTCommands {
             "Conversion can be resumed later")
     @RolePermission(value = Roles.INTERNAL_AFFAIRS)
     public String pauseConversion(PWGPTHandler gpt, @Me User user, @Me IMessageIO io, @Me GuildDB db, EmbeddingSource source) {
-        ConvertingDocument document = gpt.getEmbeddings().getConvertingDocument(source.source_id);
+        ConvertingDocument document = gpt.getSourceManager().getConvertingDocument(source.source_id);
         if (document == null) {
             return "No converting document found for `" + source.getQualifiedName() + "`";
         }
@@ -74,7 +76,7 @@ public class GPTCommands {
     @Command(desc = "Resume conversion for a google document to a chat dataset")
     @RolePermission(value = Roles.INTERNAL_AFFAIRS)
     public String resumeConversion(PWGPTHandler gpt, @Me User user, @Me IMessageIO io, @Me GuildDB db, EmbeddingSource source) {
-        ConvertingDocument document = gpt.getEmbeddings().getConvertingDocument(source.source_id);
+        ConvertingDocument document = gpt.getSourceManager().getConvertingDocument(source.source_id);
         if (document == null) {
             return "No converting document found for `" + source.getQualifiedName() + "`";
         }
@@ -89,12 +91,12 @@ public class GPTCommands {
     @Command(desc = "Delete a conversion task for a google document to a chat dataset")
     @RolePermission(value = Roles.INTERNAL_AFFAIRS)
     public String deleteConversion(PWGPTHandler gpt, @Me User user, @Me IMessageIO io, @Me GuildDB db, EmbeddingSource source) {
-        ConvertingDocument document = gpt.getEmbeddings().getConvertingDocument(source.source_id);
+        ConvertingDocument document = gpt.getSourceManager().getConvertingDocument(source.source_id);
         if (document == null) {
             return "No converting document found for `" + source.getQualifiedName() + "`";
         }
         gpt.getConverter().pauseConversion(document, "Deleted by " + user.getName());
-        gpt.getEmbeddings().deleteDocumentAndChunks(document.source_id);
+        gpt.getSourceManager().deleteDocumentAndChunks(document.source_id);
         return "Deleted conversion for `" + source.getQualifiedName() + "`\n" +
                 "This does not delete the dataset. See: " + CM.chat.dataset.delete.cmd.toSlashMention();
     }
@@ -107,10 +109,10 @@ public class GPTCommands {
         if (showOtherGuilds && !Roles.ADMIN.hasOnRoot(user)) {
             return "You must be a bot admin to use the `showAll`";
         }
-        List<ConvertingDocument> documents2 = gpt.getHandler().getEmbeddings().getUnconvertedDocuments();
+        List<ConvertingDocument> documents2 = gpt.getHandler().getSourcemanager().getUnconvertedDocuments();
         Map<ConvertingDocument, EmbeddingSource> sourceMap = new LinkedHashMap<>();
         for (ConvertingDocument document : documents2) {
-            EmbeddingSource source = gpt.getHandler().getEmbeddings().getEmbeddingSource(document.source_id);
+            EmbeddingSource source = gpt.getHandler().getSourcemanager().getSourcemanagerource(document.source_id);
             if (source == null) {
                 System.out.println("No source found for " + document.source_id);
                 continue;
@@ -130,7 +132,7 @@ public class GPTCommands {
         for (Map.Entry<ConvertingDocument, EmbeddingSource> entry : sourceMap.entrySet()) {
             EmbeddingSource source = entry.getValue();
             ConvertingDocument document = entry.getKey();
-            List<DocumentChunk> chunks = gpt.getHandler().getEmbeddings().getChunks(document.source_id);
+            List<DocumentChunk> chunks = gpt.getHandler().getSourcemanager().getChunks(document.source_id);
             int converted = (int) chunks.stream().filter(f -> f.converted).count();
 
             builder.append("`#" + document.source_id + "` - " + source.source_name);
@@ -165,7 +167,7 @@ public class GPTCommands {
         }
 
         // ensure no document exists already
-        EmbeddingSource existing = gpt.getEmbeddings().getSource(document_name, db.getIdLong());
+        EmbeddingSource existing = gpt.getSourceManager().getSource(document_name, db.getIdLong());
         if (existing != null) {
             throw new IllegalArgumentException("A document with the name `" + document_name + "` already exists. Delete it with: " + CM.chat.dataset.delete.cmd.toSlashMention());
         }
@@ -227,8 +229,7 @@ public class GPTCommands {
                 db,
                 document_name,
                 markdown,
-                null,
-                ProviderType.OPENAI);
+                null);
 
         return "Added document `#" + document.source_id + "` | `" + document_name + "` to the queue. Use " +
                 CM.chat.conversion.list.cmd.toSlashMention() + " to view conversion progress, and " +
@@ -255,7 +256,7 @@ public class GPTCommands {
         StringBuilder result = new StringBuilder();
         for (EmbeddingSource source : sources) {
             result.append("#" + source.source_id + ": " + source.source_name);
-            int numVectors = gpt.getHandler().getEmbeddings().countVectors(source);
+            int numVectors = gpt.getHandler().getSourcemanager().countVectors(source);
             result.append(" - " + numVectors + " vectors");
             // date to string `source.date_added`
             String dateStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - source.date_added);
@@ -278,19 +279,19 @@ public class GPTCommands {
             String title = "Delete document?";
             StringBuilder body = new StringBuilder();
             body.append("This will delete the document with the name `" + source.source_name + "`.\n");
-            int numVectors = gpt.getHandler().getEmbeddings().countVectors(source);
+            int numVectors = gpt.getHandler().getSourcemanager().countVectors(source);
             body.append("Vectors: `").append(numVectors).append("`.\n");
             io.create().confirmation(title, body.toString(), command).send();
             return null;
         }
 
-        ConvertingDocument document = gpt.getHandler().getEmbeddings().getConvertingDocument(source.source_id);
+        ConvertingDocument document = gpt.getHandler().getSourcemanager().getConvertingDocument(source.source_id);
         if (document != null) {
             gpt.getConverter().pauseConversion(document, "Deleted by " + user.getName());
-            gpt.getEmbeddings().deleteDocumentAndChunks(document.source_id);
+            gpt.getSourceManager().deleteDocumentAndChunks(document.source_id);
         }
 
-        gpt.getHandler().getEmbeddings().deleteSource(source);
+        gpt.getHandler().getSourcemanager().deleteSource(source);
         return "Deleted document `" + source.source_name + "`";
     }
 
@@ -299,7 +300,7 @@ public class GPTCommands {
             Requires two columns labeled "fact" or "question" and "answer" for vectors.
             Search finds nearest fact, or searches questions and returns corresponding answers if two columns.""")
     @RolePermission(value = Roles.ADMIN)
-    public String view_document(PWGPTHandler handler, @Me IMessageIO io, @Me GuildDB db, EmbeddingSource source, final @Switch("a") boolean getAnswers, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String view_document(PWGPTHandler handler, @Me IMessageIO io, @Me GuildDB db, EmbeddingSource source, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (source == handler.getSource(EmbeddingType.User_Input)) {
             return "Cannot view " + EmbeddingType.User_Input.name() + " source";
         }
@@ -307,32 +308,18 @@ public class GPTCommands {
             sheet = SpreadSheet.create(db, SheetKey.ANSWER_SHEET);
         }
 
-        List<String> header;
-        if (getAnswers) {
-            header = new ArrayList<>(Arrays.asList(
-                    "question",
-                    "answer"
-            ));
-        } else {
-            header = new ArrayList<>(Arrays.asList(
-                    "fact"
-            ));
-        }
+        List<String> header = new ObjectArrayList<>(List.of("text"));
 
         sheet.setHeader(header);
 
-        IEmbeddingDatabase embeddings = handler.getHandler().getEmbeddings();
+        ISourceManager embeddings = handler.getHandler().getSourcemanager();
         Set<EmbeddingSource> sources = Collections.singleton(source);
         SpreadSheet finalSheet = sheet;
-        embeddings.iterateVectors(sources, new TriConsumer<EmbeddingSource, Long, float[]>() {
+        embeddings.iterateVectors(sources, new Consumer<VectorDatabase.SearchResult>() {
             @Override
-            public void accept(EmbeddingSource source, Long hash, float[] vector) {
-                String text = embeddings.getText(hash);
+            public void accept(VectorDatabase.SearchResult result) {
+                String text = result.text;
                 header.set(0, text);
-                if (getAnswers) {
-                    String expanded = embeddings.getExpandedText(source.source_id, hash);
-                    header.set(1, expanded);
-                }
                 finalSheet.addRow(header);
             }
         });
@@ -356,9 +343,9 @@ public class GPTCommands {
             throw new IllegalArgumentException("Name must be at least 1 character long and alphanumerical");
         }
 
-        EmbeddingSource source = gpt.getHandler().getEmbeddings().getSource(document_name, db.getIdLong());
+        EmbeddingSource source = gpt.getHandler().getSourcemanager().getSource(document_name, db.getIdLong());
         if (source == null) {
-            source = gpt.getHandler().getEmbeddings().getSource(document_name, 0);
+            source = gpt.getHandler().getSourcemanager().getSource(document_name, 0);
             throw new IllegalArgumentException("Document `" + document_name + "` already exists and is a default source. It cannot be overwritten.");
         }
         if (source != null) {
@@ -370,7 +357,7 @@ public class GPTCommands {
                 String title = "Overwrite existing document?";
                 StringBuilder body = new StringBuilder();
                 body.append("This will overwrite the existing document with the same name.\n");
-                int numVectors = gpt.getHandler().getEmbeddings().countVectors(source);
+                int numVectors = gpt.getHandler().getSourcemanager().countVectors(source);
                 body.append("Vectors: `").append(numVectors).append("`.\n");
                 io.create().confirmation(title, body.toString(), command).send();
                 return null;
@@ -399,32 +386,12 @@ public class GPTCommands {
         }
 
         if (source == null) {
-            source = gpt.getHandler().getEmbeddings().getOrCreateSource(document_name, db.getIdLong());
+            source = gpt.getHandler().getSourcemanager().getOrCreateSource(document_name, db.getIdLong());
         }
 
         List<Long> embeddings = gpt.getHandler().registerEmbeddings(source, descriptions, true, true);
 
         return "Registered " + embeddings.size() + " embeddings for `" + document_name + "` See: " + CM.chat.dataset.view.cmd.toSlashMention() + " and " + CM.chat.dataset.list.cmd.toSlashMention();
-    }
-
-    @Command(desc = "List available chat providers, and their information.\n" +
-            "This includes status, rate limits, execution time, model, permissions, options.", viewable = true)
-    @RolePermission(Roles.AI_COMMAND_ACCESS)
-    public String listChatProviders(PWGPTHandler pwGpt, @Me GuildDB db, @Me User user) {
-        Set<GPTProvider> providers = pwGpt.getProviderManager().getProviders(db);
-
-        if (providers.isEmpty()) {
-            return "No providers found";
-        }
-
-        StringBuilder result = new StringBuilder();
-        for (GPTProvider provider : providers) {
-            result.append(provider.toString(db, user) + "\n");
-        }
-
-        result.append("\n\nSee also: " + CM.chat.providers.set.cmd.toSlashMention() + " and " + CM.chat.providers.configure.cmd.toSlashMention());
-
-        return result.toString();
     }
 
     @Command(desc = """
@@ -462,17 +429,17 @@ public class GPTCommands {
             Configurations for all new messages.
             Refer to API docs for details: <https://platform.openai.com/docs/api-reference/chat/create>""")
     @RolePermission(Roles.AI_COMMAND_ACCESS)
-    public String chatProviderConfigure(PWGPTHandler pwGpt, @Me GuildDB db, @Me User user, @Me DBNation nation, GPTProvider provider, Map<String, String> options) {
-        Map<String, Map<String, String>> config = pwGpt.getPlayerGPTConfig().setAndValidateOptions(nation, provider, options);
+    public String chatProviderConfigure(PWGPTHandler pwGpt, @Me GuildDB db, @Me User user, @Me DBNation nation, String modelName, Map<String, String> options) {
+        Map<String, Map<String, String>> config = pwGpt.getPlayerGPTConfig().setAndValidateOptions(nation, modelName, options);
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         String json = gson.toJson(config);
-        return "Set options for " + provider.getId() + ".\nCurrent configuration:\n```json\n" + json + "\n```";
+        return "Set options for " + modelName + ".\nCurrent configuration:\n```json\n" + json + "\n```";
     }
 
     @Command(desc = "Resume paused chat provider (i.e. manual/error).\n" +
             "Check provider status with list command.")
     @RolePermission(value = Roles.ADMIN)
-    public String chatResume(@Me GuildDB db, @Me User user, GPTProvider provider) {
+    public String chatResume(@Me GuildDB db, @Me User user, GptLimitTracker provider) {
         if (!provider.checkAdminPermission(db, user, true)) {
             return "You do not have permission to resume this provider";
         }
@@ -482,7 +449,7 @@ public class GPTCommands {
         }
         Throwable e = provider.getPauseError();
         provider.resume();
-        String msg = "Resumed provider: `" + provider.getId() + "`.";
+        String msg = "Resumed provider";
         if (e != null) {
             // append previous error information
             msg += "\nPrevious error:\n```\n" + ExceptionUtils.getStackTrace(e) + "\n```";
@@ -496,7 +463,7 @@ public class GPTCommands {
             Halts document conversion using this provider.
             Providers may be resumed.""")
     @RolePermission(value = Roles.ADMIN)
-    public String chatPause(@Me GuildDB db, @Me User user, GPTProvider provider) {
+    public String chatPause(@Me GuildDB db, @Me User user, GptLimitTracker provider) {
         if (!provider.checkAdminPermission(db, user, true)) {
             return "You do not have permission to pause this provider";
         }
@@ -595,9 +562,9 @@ public class GPTCommands {
             return parser;
         };
 
-        TriFunction<Parser, GPTProvider, Integer, Map.Entry<String, Integer>> getPromptText = new TriFunction<Parser, GPTProvider, Integer, Map.Entry<String, Integer>>() {
+        TriFunction<Parser, GptLimitTracker, Integer, Map.Entry<String, Integer>> getPromptText = new TriFunction<Parser, GptLimitTracker, Integer, Map.Entry<String, Integer>>() {
             @Override
-            public Map.Entry<String, Integer> apply(Parser parser, GPTProvider provider, Integer remaining) {
+            public Map.Entry<String, Integer> apply(Parser parser, GptLimitTracker provider, Integer remaining) {
                 String text = "# " + parser.getNameDescriptionAndExamples(true, false,true, false);
                 int length = provider.getSize(text);
                 if (remaining < length) return null;
@@ -738,7 +705,7 @@ public class GPTCommands {
                 throw new IllegalStateException("No GPT instance found. Please have the bot owner enable it in the `config.yaml` or specify a `sheet` instead");
             }
 
-            GPTProvider provider = gpt.getProviderManager().getDefaultProvider(db, user, me);
+            GptLimitTracker provider = gpt.getProviderManager().getDefaultProvider(db, user, me);
 
             StringBuilder channelsBuilder = new StringBuilder();
             Category lastCategory = null;

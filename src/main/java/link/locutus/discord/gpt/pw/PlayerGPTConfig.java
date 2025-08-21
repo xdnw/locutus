@@ -3,7 +3,6 @@ package link.locutus.discord.gpt.pw;
 import com.google.gson.reflect.TypeToken;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.gpt.pw.GPTProvider;
 import link.locutus.discord.web.WebUtil;
 
 import java.nio.ByteBuffer;
@@ -28,22 +27,15 @@ public class PlayerGPTConfig {
         nation.setMeta(NationMeta.GPT_OPTIONS, data);
     }
 
-    public Map<String, Map<String, String>> setAndValidateOptions(DBNation nation, GPTProvider provider, Map<String, String> options) {
-        Map<String, String> allowed = provider.getOptions();
-        // ensure all options are in allowed (as keys)
-        for (String key : options.keySet()) {
-            if (!allowed.containsKey(key)) {
-                throw new IllegalArgumentException("Option `" + key + "` is not allowed for provider `" + provider.getId() + "`. Example options:\n```json\n" + allowed + "\n```");
-            }
-        }
+    public Map<String, Map<String, String>> setAndValidateOptions(DBNation nation, String modelName, Map<String, String> options) {
         Map<String, Map<String, String>> config = getConfiguration(nation);
-        config.put(provider.getId(), options);
+        config.put(modelName, options);
         setOptions(nation, config);
         return config;
     }
 
-    public Map<String, String> getOptions(DBNation nation, GPTProvider provider) {
+    public Map<String, String> getOptions(DBNation nation, String modelName) {
         Map<String, Map<String, String>> allOptions = getConfiguration(nation);
-        return allOptions.getOrDefault(provider.getId(), new HashMap<>());
+        return allOptions.getOrDefault(modelName, new HashMap<>());
     }
 }

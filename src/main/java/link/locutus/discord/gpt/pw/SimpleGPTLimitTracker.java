@@ -8,10 +8,8 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.gpt.GPTUtil;
-import link.locutus.discord.gpt.imps.moderator.IModerator;
 import link.locutus.discord.gpt.ModerationResult;
 import link.locutus.discord.gpt.imps.text2text.IText2Text;
-import link.locutus.discord.gpt.imps.ProviderType;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -34,14 +32,12 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
-public class SimpleGPTProvider extends GPTProvider {
+public class SimpleGPTLimitTracker extends GptLimitTracker {
     private final Logger logger;
     private final ExecutorService executor;
     private volatile boolean paused = false;
     private static final ReentrantLock lock = new ReentrantLock();
     private static final Condition condition = lock.newCondition();
-    private final IModerator moderator;
-    private final ProviderType type;
     private long requireGuild;
     private int turnLimit;
     private int dayLimit;
@@ -57,10 +53,7 @@ public class SimpleGPTProvider extends GPTProvider {
     private ConcurrentHashMap<Integer, String> runningTasks = new ConcurrentHashMap<>();
     private Throwable pauseError;
 
-    public SimpleGPTProvider(ProviderType type, IText2Text text, IModerator moderator, boolean allowMultipleThreads, org.slf4j.Logger logger) {
-        super(text);
-        this.type = type;
-        this.moderator = moderator;
+    public SimpleGPTLimitTracker(boolean allowMultipleThreads, org.slf4j.Logger logger) {
         this.logger = logger;
 
         if (allowMultipleThreads) {
@@ -168,12 +161,10 @@ public class SimpleGPTProvider extends GPTProvider {
     @Override
     public String toString(GuildDB db, User user) {
         StringBuilder result = new StringBuilder();
-
-        result.append("### " + getType() + " | " + getId());
         if (requireGuild != 0) {
-            result.append(" | Guild: ").append(requireGuild);
+            result.append("## Guild: ").append(requireGuild);
         } else {
-            result.append(" | PUBLIC");
+            result.append("## PUBLIC");
         }
         result.append("\n");
 
@@ -246,7 +237,6 @@ public class SimpleGPTProvider extends GPTProvider {
         addUse(db, nation);
         try {
             long start = System.currentTimeMillis();
-
             List<ModerationResult> modResult = moderator.moderate(input);
             try {
                 GPTUtil.checkThrowModeration(modResult, input);
@@ -299,11 +289,6 @@ public class SimpleGPTProvider extends GPTProvider {
     }
 
     @Override
-    public ProviderType getType() {
-        return type;
-    }
-
-    @Override
     public boolean checkAdminPermission(GuildDB db, User user, boolean throwError) {
         if (requireGuild > 0) {
             if (db.getIdLong() != requireGuild) {
@@ -333,27 +318,27 @@ public class SimpleGPTProvider extends GPTProvider {
         return true;
     }
 
-    public SimpleGPTProvider requireGuild(Guild guild) {
+    public SimpleGPTLimitTracker requireGuild(Guild guild) {
         this.requireGuild = guild.getIdLong();
         return this;
     }
 
-    public SimpleGPTProvider setTurnLimit(int limit) {
+    public SimpleGPTLimitTracker setTurnLimit(int limit) {
         this.turnLimit = limit;
         return this;
     }
 
-    public SimpleGPTProvider setDayLimit(int limit) {
+    public SimpleGPTLimitTracker setDayLimit(int limit) {
         this.dayLimit = limit;
         return this;
     }
 
-    public SimpleGPTProvider setGuildTurnLimit(int limit) {
+    public SimpleGPTLimitTracker setGuildTurnLimit(int limit) {
         this.guildTurnLimit = limit;
         return this;
     }
 
-    public SimpleGPTProvider setGuildDayLimit(int limit) {
+    public SimpleGPTLimitTracker setGuildDayLimit(int limit) {
         this.guildDayLimit = limit;
         return this;
     }

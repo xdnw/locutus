@@ -29,7 +29,7 @@ import link.locutus.discord.db.entities.newsletter.Newsletter;
 import link.locutus.discord.db.entities.newsletter.NewsletterManager;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSetting;
-import link.locutus.discord.gpt.pw.GPTProvider;
+import link.locutus.discord.gpt.pw.GptLimitTracker;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.pnw.*;
 import link.locutus.discord.util.PW;
@@ -259,16 +259,16 @@ public class WebOptionBindings extends BindingHelper {
         });
     }
 //GPTProvider
-    @Binding(types = GPTProvider.class)
+    @Binding(types = GptLimitTracker.class)
     public WebOption getGPTProvider() {
-        return new WebOption(GPTProvider.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
+        return new WebOption(GptLimitTracker.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
             PWGPTHandler gpt = Locutus.cmd().getV2().getPwgptHandler();
             if (gpt == null) {
                 return new WebOptions(false);
             }
-            Set<GPTProvider> providers = gpt.getProviderManager().getProviders(db);
+            GptLimitTracker provider = gpt.getProviderManager().getLimitTracker(db);
             WebOptions data = new WebOptions(false).withText();
-            for (GPTProvider provider : providers) {
+            for (GptLimitTracker provider : providers) {
                 data.add(provider.getId(), provider.getType() + ":" + provider.getId());
             }
             return data;

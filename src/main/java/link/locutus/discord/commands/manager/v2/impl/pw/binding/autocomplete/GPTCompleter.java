@@ -12,18 +12,14 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.EmbeddingSource;
-import link.locutus.discord.gpt.pw.GPTProvider;
+import link.locutus.discord.gpt.ProviderType;
+import link.locutus.discord.gpt.pw.GptLimitTracker;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
-import link.locutus.discord.gpt.imps.ProviderType;
 import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
@@ -43,10 +39,10 @@ public class GPTCompleter extends BindingHelper {
     }
 
     @Autocomplete
-    @Binding(types={GPTProvider.class})
+    @Binding(types={GptLimitTracker.class})
     public List<String> provider(PWGPTHandler handler, @Me GuildDB db, String input) {
-        Set<GPTProvider> providers = handler.getProviderManager().getProviders(db);
-        List<String> providerList = providers.stream().map(GPTProvider::getId).collect(Collectors.toList());
+        GptLimitTracker providers = handler.getProviderManager().getLimitTracker(db);
+        List<String> providerList = providers.stream().map(GptLimitTracker::getId).collect(Collectors.toList());
         return StringMan.getClosest(input, providerList, f -> f, OptionData.MAX_CHOICES, true);
     }
 

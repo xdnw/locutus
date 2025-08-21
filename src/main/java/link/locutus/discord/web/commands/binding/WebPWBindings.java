@@ -45,9 +45,9 @@ import link.locutus.discord.db.entities.sheet.CustomSheetManager;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.SheetKey;
+import link.locutus.discord.gpt.ProviderType;
 import link.locutus.discord.gpt.imps.embedding.EmbeddingType;
-import link.locutus.discord.gpt.imps.ProviderType;
-import link.locutus.discord.gpt.pw.GPTProvider;
+import link.locutus.discord.gpt.pw.GptLimitTracker;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.pnw.*;
 import link.locutus.discord.pnw.json.CityBuild;
@@ -219,13 +219,6 @@ public class WebPWBindings extends WebBindingHelper {
     public String AGrantTemplate(ParameterData param, GrantTemplateManager manager, @Me DBNation me, @Me User author, @Me GuildDB db) {
         Set<AGrantTemplate> options = manager.getTemplates();
         return multipleSelect(param, options, f -> KeyValue.of(f.getType() + "/" + f.getName(), f.getName()));
-    }
-
-    @HtmlInput
-    @Binding(types = GPTProvider.class)
-    public String GPTProvider(ParameterData param, PWGPTHandler handler, @Me DBNation me, @Me User author, @Me GuildDB db) {
-        Set<GPTProvider> options = handler.getProviderManager().getProviders(db);
-        return multipleSelect(param, options, f -> KeyValue.of(f.getId(), f.getId()));
     }
 
     @HtmlInput

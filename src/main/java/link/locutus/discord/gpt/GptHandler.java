@@ -7,14 +7,22 @@ import com.google.genai.types.HttpOptions;
 import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.models.ChatModel;
+import com.openai.models.embeddings.EmbeddingModel;
+import com.openai.models.moderations.ModerationModel;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
 import link.locutus.discord.Logg;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.ASourceManager;
 import link.locutus.discord.db.entities.EmbeddingSource;
-import link.locutus.discord.gpt.copilot.CopilotDeviceAuthenticationData;
+import link.locutus.discord.gpt.imps.embedding.GoogleAiEmbedding;
+import link.locutus.discord.gpt.imps.embedding.IEmbedding;
+import link.locutus.discord.gpt.imps.embedding.LocalEmbedding;
+import link.locutus.discord.gpt.imps.embedding.OpenAiEmbedding;
 import link.locutus.discord.gpt.imps.moderator.IModerator;
-import link.locutus.discord.gpt.imps.text2text.CopilotText2Text;
+import link.locutus.discord.gpt.imps.moderator.LocalModerator;
+import link.locutus.discord.gpt.imps.moderator.OpenAiModerator;
+import link.locutus.discord.gpt.imps.text2text.GoogleAiText2Text;
 import link.locutus.discord.gpt.imps.text2text.IText2Text;
 import link.locutus.discord.gpt.imps.text2text.OpenAiText2Text;
 import link.locutus.discord.gpt.pw.GptDatabase;
@@ -24,17 +32,21 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
-import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.pusher.client.util.internal.Preconditions.checkNotNull;
 
 public class GptHandler {
-    public IEmbeddingDatabase embeddingDatabase;
+    public ISourceManager sourceManager;
+
     private IModerator moderator;
-    private IText2Text text2Text;
-//    private final ProcessText2Text processT2;
+    private volatile IEmbedding embedding;
+
+    private Map<IText2Text, Integer> text2TextList;
 
     private volatile boolean initOpenAIClient = false;
     private Object initOpenAIClientLock = new Object();
@@ -44,28 +56,8 @@ public class GptHandler {
     private Object initGoogleClientLock = new Object();
     private Client googleClient2;
 
-    // api key
-    // base url
-    // provider
-
     public GptHandler(GptDatabase database) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
-//        this.moderator = new OpenAiModerator(getOpenAiService());
-//        this.embeddingDatabase = new LocalEmbedding(database, "sentence-transformers/all-MiniLM-L6-v2");
-//        File scriptPath = new File("../gpt4free/my_project/gpt3_5_turbo.py");
-//        File venvExe = new File("../gpt4free/venv/Scripts/python.exe");
-//        File workingDirectory = new File("../gpt4free");
-//        // ensure files exist
-//        if (scriptPath.exists()) {
-////            throw new RuntimeException("gpt4free not found: " + scriptPath.getAbsolutePath());
-////        }
-//            if (!venvExe.exists()) {
-//                throw new RuntimeException("venv not found: " + venvExe.getAbsolutePath());
-//            }
-////        this.summarizer = new ProcessSummarizer(venvExe, gpt4freePath, ModelType.GPT_3_5_TURBO, 8192);
-////            this.processT2 = new ProcessText2Text(venvExe, "my_project.gpt3_5_turbo", workingDirectory);
-//        } else {
-//            processT2 = null;
-//        }
+        this.sourceManager = new ASourceManager(database, getEmbedding());
     }
 
     private OpenAIClient getOrCreateOpenAiService() {
@@ -98,7 +90,7 @@ public class GptHandler {
         return googleClient2;
     }
 
-    public static Client createGoogleClient(String baseUrl, String apiKey) {
+    private static Client createGoogleClient(String baseUrl, String apiKey) {
         HttpOptions.Builder googeHttpOpt = HttpOptions.builder();
         if (baseUrl != null && !baseUrl.isEmpty()) {
             googeHttpOpt.baseUrl(baseUrl);
@@ -110,20 +102,120 @@ public class GptHandler {
                 .build();
     }
 
+    public ISourceManager getSourcemanager() {
+        return sourceManager;
+    }
+
+    public IEmbedding getEmbedding() {
+        if (this.embedding == null) {
+            synchronized (this) {
+                if (this.embedding == null) {
+                    ProviderType type = ProviderType.parse(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.EMBEDDING.PROVIDER);
+                    String modelName = Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.EMBEDDING.EMBEDDING_MODEL;
+                    if (modelName.isEmpty()) {
+                           throw new IllegalArgumentException("Embedding model must not be empty. Please check your `config.yml` file.");
+                    }
+                    switch (type) {
+                        case OPENAI -> {
+                            EmbeddingModel model = EmbeddingModel.of(modelName.toUpperCase(Locale.ROOT));
+                            this.embedding = new OpenAiEmbedding(GPTUtil.getRegistry(), getOrCreateOpenAiService(), model);
+                        }
+                        case GOOGLE -> {
+                            String apiKey = Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.GOOGLE_AI.API_KEY;
+                            if (apiKey.isEmpty()) {
+                                throw new IllegalArgumentException("Google AI API key must not be empty. Please check your `config.yml` file.");
+                            }
+                            this.embedding = new GoogleAiEmbedding(getOrCreateGoogleClient(), modelName);
+                        }
+                        case LOCAL -> {
+                            this.embedding = new LocalEmbedding(modelName);
+                        }
+                    }
+                    this.embedding.init();
+                }
+            }
+        }
+        return this.embedding;
+    }
+
     public IModerator getModerator() {
-        return moderator;
+        if (this.moderator == null) {
+            synchronized (this) {
+                if (this.moderator == null) {
+                    ProviderType type = ProviderType.parse(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.MODERATION.PROVIDER);
+                    String modelName = Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.MODERATION.MODEL;
+                    if (modelName.isEmpty()) {
+                        throw new IllegalArgumentException("Moderation model must not be empty. Please check your `config.yml` file.");
+                    }
+                    switch (type) {
+                        case OPENAI -> {
+                            ModerationModel model = ModerationModel.of(modelName.toUpperCase(Locale.ROOT));
+                            this.moderator = new OpenAiModerator(getOrCreateOpenAiService(), model);
+                        }
+                        case GOOGLE -> {
+                            throw new IllegalArgumentException("Google AI moderation is not yet implemented. Please use OpenAI or Local moderation.");
+                        }
+                        case LOCAL -> {
+                            try {
+                                this.moderator = new LocalModerator(modelName);
+                            } catch (IOException | ModelNotFoundException | MalformedModelException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return this.moderator;
+
     }
 
-    public OpenAIClient getOpenAiService() {
-        return openAiService2;
+    public IText2Text getText2Text() {
+        if (this.text2TextList == null) {
+            synchronized (this) {
+                if (this.text2TextList == null) {
+                    this.text2TextList = Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.CHAT.getInstances().stream()
+                            .collect(Collectors.toMap(
+                                    this::createTextToText,
+                                    config -> config.DAILY_LIMIT
+                            ));
+                    if (this.text2TextList.isEmpty()) {
+                        throw new IllegalArgumentException("No Text2Text models configured. Please check your `config.yml` file.");
+                    }
+                }
+            }
+        }
+
+        return this.text2TextList.entrySet().stream()
+                .filter(entry -> sourceManager.getUsage(entry.getKey().getId()) < entry.getValue())
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("All Text2Text models have reached their daily limit."));
     }
 
-    public IEmbeddingDatabase getEmbeddings() {
-        return embeddingDatabase;
+    private IText2Text createTextToText(Settings.ARTIFICIAL_INTELLIGENCE.CHAT config) {
+        ProviderType type = ProviderType.parse(config.PROVIDER);
+        String modelName = config.MODEL;
+        if (modelName.isEmpty()) {
+            throw new IllegalArgumentException("Text2Text model must not be empty. Please check your `config.yml` file.");
+        }
+        switch (type) {
+            case OPENAI -> {
+                ChatModel model = ChatModel.of(modelName.toUpperCase(Locale.ROOT));
+                return new OpenAiText2Text(getOrCreateOpenAiService(), model);
+            }
+            case GOOGLE -> {
+                return new GoogleAiText2Text(getOrCreateGoogleClient(), modelName);
+            }
+            case LOCAL -> {
+                throw new IllegalArgumentException("Local Text2Text is not yet implemented. Please use OpenAI or Google AI Text2Text.");
+            }
+            default -> throw new IllegalStateException("Unexpected value: " + type);
+        }
     }
 
     public void checkModeration(String text) {
-        List<ModerationResult> modResult = moderator.moderate(text);
+        List<ModerationResult> modResult = getModerator().moderate(text);
         GPTUtil.checkThrowModeration(modResult, text);
     }
 
@@ -142,44 +234,29 @@ public class GptHandler {
     }
 
     public <T> List<Long> registerEmbeddings(EmbeddingSource source, Stream<String> descriptionStream, boolean moderate, boolean deleteMissing) {
-
         checkNotNull(source, "source must not be null");
         ThrowingConsumer<String> moderateFunc = moderate ? this::checkModeration : null;
 
         Set<Long> hashesSet = new LongLinkedOpenHashSet();
         List<Long> hashes = new LongArrayList();
         // iterate over descriptionAndExpandedStream
-        descriptionStream.forEach(new Consumer<String>() {
-            @Override
-            public void accept(String description) {
-                long hash = embeddingDatabase.getHash(description);
-                if (hashesSet.add(hash)) {
-                    float[] vector = embeddingDatabase.getOrCreateEmbedding(hash, description, source, true, moderateFunc);
-                } else {
-                    Logg.info("Skipping duplicate description: ```\n" + description + "\n```");
-                }
-                hashes.add(hash);
+        IEmbedding embeddingFinal = getEmbedding();
+        descriptionStream.forEach(description -> {
+            long hash = sourceManager.getHash(description);
+            if (hashesSet.add(hash)) {
+                sourceManager.createEmbeddingIfNotExist(embeddingFinal, hash, description, source, moderateFunc);
+            } else {
+                Logg.info("Skipping duplicate description: ```\n" + description + "\n```");
             }
+            hashes.add(hash);
         });
         if (deleteMissing) {
-            embeddingDatabase.registerHashes(source, hashesSet, deleteMissing);
+            sourceManager.deleteMissing(source, hashesSet);
         }
         return hashes;
     }
 
     public float[] getEmbedding(EmbeddingSource source, String text) {
-        return embeddingDatabase.getEmbedding(source, text, this::checkModeration);
+        return sourceManager.getEmbedding(source, text, this::checkModeration);
     }
-
-    public IText2Text createOpenAiText2Text(String openAiKey, ChatModel model) {
-        return new OpenAiText2Text(openAiKey, model);
-    }
-
-    public IText2Text createCopilotText2Text(String path, Consumer<CopilotDeviceAuthenticationData> deviceAuthDataConsumer) {
-        return new CopilotText2Text(path, deviceAuthDataConsumer);
-    }
-
-//    public IText2Text getProcessText2Text() {
-//        return processT2;
-//    }
 }

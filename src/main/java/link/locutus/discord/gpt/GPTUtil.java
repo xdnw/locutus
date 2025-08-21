@@ -9,10 +9,16 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.util.MathMan;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class GPTUtil {
 
@@ -20,7 +26,42 @@ public class GPTUtil {
 //        // see https://github.com/openai/openai-cookbook/blob/main/examples/Embedding_long_inputs.ipynb
 //    }
 
-    private static EncodingRegistry REGISTRY = Encodings.newDefaultEncodingRegistry();
+    private static class RegistryHolder {
+        static final EncodingRegistry INSTANCE = Encodings.newDefaultEncodingRegistry();
+    }
+
+    public static EncodingRegistry getRegistry() {
+        return RegistryHolder.INSTANCE;
+    }
+
+    public static int detectContextWindow(Path modelDir) {
+        // Try common HF config locations
+        Path[] candidates = new Path[] {
+                modelDir.resolve("config.json"),
+                modelDir.resolve("model").resolve("config.json")
+        };
+        for (Path p : candidates) {
+            if (Files.isRegularFile(p)) {
+                try {
+                    String json = Files.readString(p, StandardCharsets.UTF_8);
+                    Integer v = findInt(json, "\"max_position_embeddings\"\\s*:\\s*(\\d+)");
+                    if (v == null) v = findInt(json, "\"n_positions\"\\s*:\\s*(\\d+)");
+                    if (v == null) v = findInt(json, "\"max_sequence_length\"\\s*:\\s*(\\d+)");
+                    if (v != null) return v;
+                } catch (IOException ignore) {
+                }
+            }
+        }
+        System.err.println("Warning: Unable to determine context window size from model config. " +
+                "Using default value of 512 tokens. This may lead to unexpected behavior if the model supports a different size.");
+        // Sensible default if the config doesn't declare it (typical BERT/Roberta: 512)
+        return 512;
+    }
+
+    private static Integer findInt(String json, String regex) {
+        Matcher m = Pattern.compile(regex).matcher(json);
+        return m.find() ? Integer.parseInt(m.group(1)) : null;
+    }
 
     public static void checkThrowModeration2(List<Moderation> moderations, String text) {
         for (Moderation result : moderations) {
@@ -59,12 +100,12 @@ public class GPTUtil {
     private static final ConcurrentHashMap<ModelType, Encoding> ENCODER_CACHE = new ConcurrentHashMap<>();
 
     public static int getTokens(String input, ModelType type) {
-        Encoding enc = ENCODER_CACHE.computeIfAbsent(type, REGISTRY::getEncodingForModel);
+        Encoding enc = ENCODER_CACHE.computeIfAbsent(type, getRegistry()::getEncodingForModel);
         return enc.countTokens(input);
     }
 
     public static List<String> getChunks(String input, ModelType type, int tokenSizeCap) {
-        Encoding enc = ENCODER_CACHE.computeIfAbsent(type, REGISTRY::getEncodingForModel);
+        Encoding enc = ENCODER_CACHE.computeIfAbsent(type, getRegistry()::getEncodingForModel);
         return getChunks(input, tokenSizeCap, enc::countTokens);
     }
 

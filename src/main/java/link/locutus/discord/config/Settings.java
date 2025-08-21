@@ -629,6 +629,9 @@ public class Settings extends Config {
             public String MODEL = "omni-moderation-latest";
         }
 
+        @Create
+        public EMBEDDING EMBEDDING;
+
         public static final class EMBEDDING {
             @Comment({"The provider to use for text moderation",
                     "OPENAI = OpenAI API (or an openai compatible api)",
@@ -637,10 +640,32 @@ public class Settings extends Config {
             public String PROVIDER = "Google";
 
             @Comment({"The model to use for text embeddings",
-                    "Example (OpenAi): `text-embedding-3-large` or `text-embedding-3-small` (see https://platform.openai.com/docs/models/overview)",
+                    "Example (OpenAi): `text-embedding-3-large`, `text-embedding-3-small` (see https://platform.openai.com/docs/models/overview)",
                     "Example (Google): `gemini-embedding-001` (see: https://cloud.google.com/vertex-ai/docs/generative-ai/embeddings/models)",
                     "Example (Local): `sentence-transformers/all-MiniLM-L6-v2` (downloads if it exists on huggingface and is a compatible format)"})
-            public String EMBEDDING_MODEL = "text-embedding-3-small";
+            public String EMBEDDING_MODEL = "gemini-embedding-001";
+
+            @Comment("Memory allocation for the embedding model in MB (default: 16MB)")
+            public static int MEMORY_ALLOCATED_MB = 16;
+        }
+
+        @Create
+        public ConfigBlock<CHAT> CHAT;
+
+        public static final class CHAT {
+            @Comment({"Max chat tokens per day for this model. 0 = unlimited\n" +
+                    "After exceeded, it will either use the next model, or cease working"})
+            public int DAILY_LIMIT = 1_000_000;
+
+            @Comment({"The provider to use for text moderation",
+                    "OpenAI = OpenAI API (or an openai compatible api)",
+                    "Google = Google Gemini via Vertex API (requires API key)"})
+            public String PROVIDER = "OpenAI";
+
+            @Comment({"The model to use for text embeddings",
+                    "Example (OpenAi): `gpt-5`, `gpt-5-mini` (see https://platform.openai.com/docs/models/overview)",
+                    "Example (Google): `gemini-2.5-pro`, `gemini-2.5-flash` (see: https://cloud.google.com/vertex-ai/docs/generative-ai/embeddings/models)"})
+            public String MODEL = "text-embedding-3-small";
         }
 
         @Create

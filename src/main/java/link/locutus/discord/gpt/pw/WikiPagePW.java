@@ -3,7 +3,7 @@ package link.locutus.discord.gpt.pw;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.wiki.game.PWWikiUtil;
-import link.locutus.discord.gpt.IEmbeddingDatabase;
+import link.locutus.discord.gpt.ISourceManager;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,7 +44,7 @@ public class WikiPagePW {
         return name;
     }
 
-    public Map<String, Object> getPageData(IEmbeddingDatabase embeddings) throws IOException {
+    public Map<String, Object> getPageData(ISourceManager embeddings) throws IOException {
         Map<String, Object> map = PWWikiUtil.getPageJson(name);
         if (map == null) return null;
         this.categories = new ObjectLinkedOpenHashSet<>((List<String>) map.get("categories"));

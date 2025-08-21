@@ -2,14 +2,12 @@ package link.locutus.discord.gpt.imps.text2text;
 
 import com.knuddels.jtokkit.api.ModelType;
 import com.openai.client.OpenAIClient;
-import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.models.ChatModel;
 import com.openai.models.chat.completions.ChatCompletion;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.util.StringMan;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -21,11 +19,7 @@ public class OpenAiText2Text implements IText2Text {
     private final OpenAIClient service;
     private final ChatModel model;
 
-    private OpenAiOptions defaultOptions = new OpenAiOptions();
-
-    public OpenAiText2Text(String openAiKey, ChatModel model) {
-        this(OpenAIOkHttpClient.builder().apiKey(openAiKey).timeout(Duration.ofSeconds(120)).build(), model);
-    }
+    private final OpenAiOptions defaultOptions = new OpenAiOptions();
 
     public OpenAiText2Text(OpenAIClient service, ChatModel model) {
         this.service = service;
@@ -40,9 +34,6 @@ public class OpenAiText2Text implements IText2Text {
     @Override
     public String generate(Map<String, String> options, String text) {
         OpenAiOptions optObj = options == null || options.isEmpty() ? defaultOptions : new OpenAiOptions().setOptions(this, options);
-//        ChatCompletionRequest.ChatCompletionRequestBuilder builder = ChatCompletionRequest.builder()
-//                .messages(List.of(new ChatMessage("user", text)))
-//                .model(this.model.getName());
 
         ChatCompletionCreateParams.Builder builder = ChatCompletionCreateParams.builder()
                 .addUserMessage(text)

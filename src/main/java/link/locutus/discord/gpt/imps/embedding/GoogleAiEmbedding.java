@@ -5,7 +5,6 @@
     import com.google.genai.types.EmbedContentConfig;
     import com.google.genai.types.Model;
 
-    import java.sql.SQLException;
     import java.util.List;
 
     public class GoogleAiEmbedding implements IEmbedding {
@@ -17,7 +16,7 @@
         private Integer tokenLimit;
 //        private SpTokenizer tokenizer;
 
-        public GoogleAiEmbedding(Client client, String modelName) throws SQLException, ClassNotFoundException {
+        public GoogleAiEmbedding(Client client, String modelName) {
             this.client = client;
             this.modelName = modelName;
             this.config = null;//EmbedContentConfig.builder().build();
@@ -33,7 +32,6 @@
             try {
                 this.model = client.models.get(modelName, null);
                 this.tokenLimit = model.inputTokenLimit().get();
-//                this.tokenizer = downloadAndLoadFromHf("google/gemma-2-9b-it", "tokenizer.model");
             } catch (Exception e) {
 //                throw new RuntimeException(e);
                 throw e;
