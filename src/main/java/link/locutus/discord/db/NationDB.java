@@ -3848,7 +3848,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         if (allianceIds.isEmpty()) throw new IllegalArgumentException("No alliances provided");
         Set<Integer> aaIdsFU = new IntOpenHashSet(allianceIds);
 
-        List<Integer> alliancesSorted = new ArrayList<>(aaIdsFU);
+        List<Integer> alliancesSorted = new IntArrayList(aaIdsFU);
         alliancesSorted.sort(Comparator.naturalOrder());
         String allianceQueryStr = StringMan.getString(alliancesSorted);
         String aaInClause = "alliance_id in " + allianceQueryStr + " AND ";
@@ -3878,7 +3878,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                     double value = rs.getDouble("value");
 
                     DBAlliance alliance = getOrCreateAlliance(allianceId);
-                    result.computeIfAbsent(alliance, f -> new HashMap<>()).computeIfAbsent(metric, f -> new HashMap<>()).put(turn, value);
+                    result.computeIfAbsent(alliance, f -> new Object2ObjectOpenHashMap<>()).computeIfAbsent(metric, f -> new Long2DoubleOpenHashMap()).put(turn, value);
                 }
             }
         });

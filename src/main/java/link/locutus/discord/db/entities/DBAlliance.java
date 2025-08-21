@@ -2056,18 +2056,34 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 
         Set<AllianceMetric> metricSet = new ObjectOpenHashSet<>(metrics.keySet());
         Map<AllianceMetric, Map<Long, Double>> values = getMetricsAt(store, metricSet, turnStart, turnEnd);
-        double[] buffer = new double[ResourceType.values().length];
-        for (Map.Entry<AllianceMetric, Map<Long, Double>> entry : values.entrySet()) {
-            ResourceType type = metrics.get(entry.getKey());
-            for (Map.Entry<Long, Double> entry2 : entry.getValue().entrySet()) {
-                buffer[type.ordinal()] += entry2.getValue();
+
+        long minTurn = values.getOrDefault(AllianceMetric.REVENUE_MONEY, Collections.emptyMap()).keySet().stream()
+                .min(Long::compareTo)
+                .orElse(Long.MAX_VALUE);
+        long maxTurn = values.getOrDefault(AllianceMetric.REVENUE_MONEY, Collections.emptyMap()).keySet().stream()
+                .max(Long::compareTo)
+                .orElse(Long.MIN_VALUE);
+
+        double[] total = new double[ResourceType.values().length];
+        double[] currTurnRevenue = ResourceType.getBuffer();
+
+        for (long turn = minTurn; turn <= maxTurn; turn++) {
+            for (Map.Entry<AllianceMetric, ResourceType> entry : metrics.entrySet()) {
+                Map<Long, Double> metricValues = values.get(entry.getKey());
+                if (metricValues == null) continue;
+                Double value = metricValues.get(turn);
+                if (value == null) continue;
+                currTurnRevenue[entry.getValue().ordinal()] = value;
+            }
+            for (int i = 0; i < total.length; i++) {
+                total[i] += currTurnRevenue[i];
             }
         }
         double factor = 1/12d;
-        for (int i = 0; i < buffer.length; i++) {
-            buffer[i] *= factor;
+        for (int i = 0; i < total.length; i++) {
+            total[i] *= factor;
         }
-        return ResourceType.resourcesToMap(buffer);
+        return ResourceType.resourcesToMap(total);
     }
 
     @Command(desc = "The cumulative market value (current prices) of revenue members have produced over the period, accounting for joins/leaves, radiation, city, building, policy, and project changes")

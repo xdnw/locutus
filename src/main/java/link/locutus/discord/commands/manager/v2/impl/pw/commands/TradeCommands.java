@@ -15,7 +15,6 @@ import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
@@ -33,7 +32,6 @@ import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
@@ -42,8 +40,6 @@ import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.WM;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
-import org.apache.commons.collections4.CollectionUtils;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 
@@ -56,9 +52,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class TradeCommands {
-
-    public static final long BULK_TRADE_SERVER = 672217848311054346L; // 1080313938937389207L
-    public static final long BULK_TRADE_CHANNEL = 672310912090243092L; // 1080573769048932372L
 
 //    @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
 //    @Command(desc = "List the bot offers nations have on discord for you selling a given resource")
