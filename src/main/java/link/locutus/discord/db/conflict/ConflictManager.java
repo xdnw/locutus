@@ -535,7 +535,7 @@ public class ConflictManager {
             Locutus.imp().getRepeatingTasks().addTask("Conflict Website", () -> {
                 if (!conflictsLoaded) return;
                 pushDirtyConflicts();
-            }, 5, TimeUnit.MINUTES);
+            }, Settings.INSTANCE.TASKS.WAR_STATS_PUSH_INTERVAL, TimeUnit.MINUTES);
         });
     }
 

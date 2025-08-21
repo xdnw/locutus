@@ -272,6 +272,11 @@ public class Settings extends Config {
         @Comment({"The task for conditional messages (default: disabled)"})
         public boolean CUSTOM_MESSAGE_HANDLER = false;
 
+        @Comment({"Interval for pushing to the war stats site",
+        "In seconds, default to 15m",
+        "This is ignored if the setting is not enabled"})
+        public int WAR_STATS_PUSH_INTERVAL = 15 * 60;
+
         @Create
         public TURN_TASKS TURN_TASKS;
 
@@ -386,7 +391,7 @@ public class Settings extends Config {
         @Final
         @Comment({"Print the espionage debug information",
                 "Disabled by default, as it is verbose"})
-        public boolean PRINT_ESPIONAGE_DEBUG = false;
+        public boolean PRINT_ESPIONAGE_DEBUG = true;
 
         @Comment({"Whitelist a list of bot ids allowed to send messages to the bot",
         "Intended for testing purposes, DO NOT USE IN PRODUCTION"})

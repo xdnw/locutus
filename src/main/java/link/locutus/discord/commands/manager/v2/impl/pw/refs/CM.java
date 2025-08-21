@@ -16254,203 +16254,203 @@ public class CM {
 
             }
             public static class offer{
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="buyOffer")
-                public static class buy extends CommandRef {
-                    public static final buy cmd = new buy();
-                public buy resource(String value) {
-                    return set("resource", value);
-                }
-
-                public buy quantity(String value) {
-                    return set("quantity", value);
-                }
-
-                public buy minPPU(String value) {
-                    return set("minPPU", value);
-                }
-
-                public buy maxPPU(String value) {
-                    return set("maxPPU", value);
-                }
-
-                public buy negotiable(String value) {
-                    return set("negotiable", value);
-                }
-
-                public buy expire(String value) {
-                    return set("expire", value);
-                }
-
-                public buy exchangeFor(String value) {
-                    return set("exchangeFor", value);
-                }
-
-                public buy exchangePPU(String value) {
-                    return set("exchangePPU", value);
-                }
-
-                public buy force(String value) {
-                    return set("force", value);
-                }
-
-                }
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="buyList")
-                public static class buy_list extends CommandRef {
-                    public static final buy_list cmd = new buy_list();
-                public buy_list youBuy(String value) {
-                    return set("youBuy", value);
-                }
-
-                public buy_list youProvide(String value) {
-                    return set("youProvide", value);
-                }
-
-                public buy_list allowedTraders(String value) {
-                    return set("allowedTraders", value);
-                }
-
-                public buy_list sortByLowestMinPrice(String value) {
-                    return set("sortByLowestMinPrice", value);
-                }
-
-                public buy_list sortByLowestMaxPrice(String value) {
-                    return set("sortByLowestMaxPrice", value);
-                }
-
-                }
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="deleteOffer")
-                public static class delete extends CommandRef {
-                    public static final delete cmd = new delete();
-                public delete deleteResource(String value) {
-                    return set("deleteResource", value);
-                }
-
-                public delete buyOrSell(String value) {
-                    return set("buyOrSell", value);
-                }
-
-                public delete deleteId(String value) {
-                    return set("deleteId", value);
-                }
-
-                }
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="offerInfo")
-                public static class info extends CommandRef {
-                    public static final info cmd = new info();
-                public info offerId(String value) {
-                    return set("offerId", value);
-                }
-
-                }
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="myOffers")
-                public static class my_offers extends CommandRef {
-                    public static final my_offers cmd = new my_offers();
-
-                }
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="sellOffer")
-                public static class sell extends CommandRef {
-                    public static final sell cmd = new sell();
-                public sell resource(String value) {
-                    return set("resource", value);
-                }
-
-                public sell quantity(String value) {
-                    return set("quantity", value);
-                }
-
-                public sell minPPU(String value) {
-                    return set("minPPU", value);
-                }
-
-                public sell maxPPU(String value) {
-                    return set("maxPPU", value);
-                }
-
-                public sell negotiable(String value) {
-                    return set("negotiable", value);
-                }
-
-                public sell expire(String value) {
-                    return set("expire", value);
-                }
-
-                public sell exchangeFor(String value) {
-                    return set("exchangeFor", value);
-                }
-
-                public sell exchangePPU(String value) {
-                    return set("exchangePPU", value);
-                }
-
-                public sell force(String value) {
-                    return set("force", value);
-                }
-
-                }
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="sellList")
-                public static class sell_list extends CommandRef {
-                    public static final sell_list cmd = new sell_list();
-                public sell_list youSell(String value) {
-                    return set("youSell", value);
-                }
-
-                public sell_list youReceive(String value) {
-                    return set("youReceive", value);
-                }
-
-                public sell_list allowedTraders(String value) {
-                    return set("allowedTraders", value);
-                }
-
-                public sell_list sortByLowestMinPrice(String value) {
-                    return set("sortByLowestMinPrice", value);
-                }
-
-                public sell_list sortByLowestMaxPrice(String value) {
-                    return set("sortByLowestMaxPrice", value);
-                }
-
-                }
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="updateOffer")
-                public static class update extends CommandRef {
-                    public static final update cmd = new update();
-                public update offerId(String value) {
-                    return set("offerId", value);
-                }
-
-                public update quantity(String value) {
-                    return set("quantity", value);
-                }
-
-                public update minPPU(String value) {
-                    return set("minPPU", value);
-                }
-
-                public update maxPPU(String value) {
-                    return set("maxPPU", value);
-                }
-
-                public update negotiable(String value) {
-                    return set("negotiable", value);
-                }
-
-                public update expire(String value) {
-                    return set("expire", value);
-                }
-
-                public update exchangeFor(String value) {
-                    return set("exchangeFor", value);
-                }
-
-                public update exchangePPU(String value) {
-                    return set("exchangePPU", value);
-                }
-
-                public update force(String value) {
-                    return set("force", value);
-                }
-
-                }
+//                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="buyOffer")
+//                public static class buy extends CommandRef {
+//                    public static final buy cmd = new buy();
+//                public buy resource(String value) {
+//                    return set("resource", value);
+//                }
+//
+//                public buy quantity(String value) {
+//                    return set("quantity", value);
+//                }
+//
+//                public buy minPPU(String value) {
+//                    return set("minPPU", value);
+//                }
+//
+//                public buy maxPPU(String value) {
+//                    return set("maxPPU", value);
+//                }
+//
+//                public buy negotiable(String value) {
+//                    return set("negotiable", value);
+//                }
+//
+//                public buy expire(String value) {
+//                    return set("expire", value);
+//                }
+//
+//                public buy exchangeFor(String value) {
+//                    return set("exchangeFor", value);
+//                }
+//
+//                public buy exchangePPU(String value) {
+//                    return set("exchangePPU", value);
+//                }
+//
+//                public buy force(String value) {
+//                    return set("force", value);
+//                }
+//
+//                }
+//                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="buyList")
+//                public static class buy_list extends CommandRef {
+//                    public static final buy_list cmd = new buy_list();
+//                public buy_list youBuy(String value) {
+//                    return set("youBuy", value);
+//                }
+//
+//                public buy_list youProvide(String value) {
+//                    return set("youProvide", value);
+//                }
+//
+//                public buy_list allowedTraders(String value) {
+//                    return set("allowedTraders", value);
+//                }
+//
+//                public buy_list sortByLowestMinPrice(String value) {
+//                    return set("sortByLowestMinPrice", value);
+//                }
+//
+//                public buy_list sortByLowestMaxPrice(String value) {
+//                    return set("sortByLowestMaxPrice", value);
+//                }
+//
+//                }
+//                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="deleteOffer")
+//                public static class delete extends CommandRef {
+//                    public static final delete cmd = new delete();
+//                public delete deleteResource(String value) {
+//                    return set("deleteResource", value);
+//                }
+//
+//                public delete buyOrSell(String value) {
+//                    return set("buyOrSell", value);
+//                }
+//
+//                public delete deleteId(String value) {
+//                    return set("deleteId", value);
+//                }
+//
+//                }
+//                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="offerInfo")
+//                public static class info extends CommandRef {
+//                    public static final info cmd = new info();
+//                public info offerId(String value) {
+//                    return set("offerId", value);
+//                }
+//
+//                }
+//                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="myOffers")
+//                public static class my_offers extends CommandRef {
+//                    public static final my_offers cmd = new my_offers();
+//
+//                }
+//                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="sellOffer")
+//                public static class sell extends CommandRef {
+//                    public static final sell cmd = new sell();
+//                public sell resource(String value) {
+//                    return set("resource", value);
+//                }
+//
+//                public sell quantity(String value) {
+//                    return set("quantity", value);
+//                }
+//
+//                public sell minPPU(String value) {
+//                    return set("minPPU", value);
+//                }
+//
+//                public sell maxPPU(String value) {
+//                    return set("maxPPU", value);
+//                }
+//
+//                public sell negotiable(String value) {
+//                    return set("negotiable", value);
+//                }
+//
+//                public sell expire(String value) {
+//                    return set("expire", value);
+//                }
+//
+//                public sell exchangeFor(String value) {
+//                    return set("exchangeFor", value);
+//                }
+//
+//                public sell exchangePPU(String value) {
+//                    return set("exchangePPU", value);
+//                }
+//
+//                public sell force(String value) {
+//                    return set("force", value);
+//                }
+//
+//                }
+//                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="sellList")
+//                public static class sell_list extends CommandRef {
+//                    public static final sell_list cmd = new sell_list();
+//                public sell_list youSell(String value) {
+//                    return set("youSell", value);
+//                }
+//
+//                public sell_list youReceive(String value) {
+//                    return set("youReceive", value);
+//                }
+//
+//                public sell_list allowedTraders(String value) {
+//                    return set("allowedTraders", value);
+//                }
+//
+//                public sell_list sortByLowestMinPrice(String value) {
+//                    return set("sortByLowestMinPrice", value);
+//                }
+//
+//                public sell_list sortByLowestMaxPrice(String value) {
+//                    return set("sortByLowestMaxPrice", value);
+//                }
+//
+//                }
+//                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="updateOffer")
+//                public static class update extends CommandRef {
+//                    public static final update cmd = new update();
+//                public update offerId(String value) {
+//                    return set("offerId", value);
+//                }
+//
+//                public update quantity(String value) {
+//                    return set("quantity", value);
+//                }
+//
+//                public update minPPU(String value) {
+//                    return set("minPPU", value);
+//                }
+//
+//                public update maxPPU(String value) {
+//                    return set("maxPPU", value);
+//                }
+//
+//                public update negotiable(String value) {
+//                    return set("negotiable", value);
+//                }
+//
+//                public update expire(String value) {
+//                    return set("expire", value);
+//                }
+//
+//                public update exchangeFor(String value) {
+//                    return set("exchangeFor", value);
+//                }
+//
+//                public update exchangePPU(String value) {
+//                    return set("exchangePPU", value);
+//                }
+//
+//                public update force(String value) {
+//                    return set("force", value);
+//                }
+//
+//                }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="tradePrice")
             public static class price extends CommandRef {
