@@ -359,6 +359,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     public synchronized GuildHandler getHandler() {
         if (handler == null) {
             this.handler = new GuildHandler(guild, this);
+            this.handler.init();
         }
         return handler;
     }
@@ -2725,7 +2726,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         try (PreparedStatement stmt = prepareQuery("SELECT * FROM `DELAY_MAIL_TASKS`")) {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    int nationId = rs.getInt("nationId");
+                    int nationId = rs.getInt("nation_id");
                     long time = rs.getLong("time");
                     result.put(nationId, time);
                 }
