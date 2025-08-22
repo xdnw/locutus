@@ -3,6 +3,7 @@ package link.locutus.discord.db;
 import com.google.common.eventbus.Subscribe;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -2536,118 +2537,110 @@ public class GuildHandler {
         }
     }
 
+    public static record AllowRecruitmentResult(boolean allowed, boolean shouldDisable, String reason) { }
+
+    public AllowRecruitmentResult checkRecruitmentAllowed() {
+        if (db.isDelegateServer()) {
+            return new AllowRecruitmentResult(false, false, "Recruitment is not allowed when " + GuildKey.DELEGATE_SERVER.name() + " is set");
+        }
+
+        MessageChannel output = db.getOrNull(GuildKey.RECRUIT_MESSAGE_OUTPUT, false);
+        if (output == null) {
+            return new AllowRecruitmentResult(false, false, "Recruitment message output channel is not set. Please set it with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention());
+        }
+
+        Set<Integer> aaIds = db.getAllianceIds();
+        if (aaIds.isEmpty()) {
+            return new AllowRecruitmentResult(false, true, "No alliance registered to this server.");
+        }
+
+        GuildDB root = Locutus.imp().getRootDb();
+        boolean isWhitelisted = root != null && root.getCoalitionRaw("whitelisted_mail").contains(getDb().getIdLong());
+        Set<DBNation> nations = db.getAllianceList().getNations(true, 7200, true);
+        int amtActive = nations.size();
+        if (amtActive == 0) {
+            return new AllowRecruitmentResult(false, true, "No active members found in the alliance.");
+        }
+        long numActiveLeader = nations.stream().filter(f -> f.getPositionEnum().id >= Rank.HEIR.id && f.getColor() != NationColor.GRAY).count();
+        if (numActiveLeader == 0) {
+//            if (!sentNoIAMessage) {
+//                sentNoIAMessage = true;
+//                try {
+//                    RateLimitUtil.queueWhenFree(output.sendMessage("No active leader (non gray). Recruitment will be paused."));
+//                } catch (Throwable e) {
+//                    e.printStackTrace();
+//                }
+//            }
+//            return;
+            return new AllowRecruitmentResult(false, false, "No active leader/heir (non gray) found in the alliance. Recruitment will be paused.");
+        }
+
+        if (!isWhitelisted) {
+            Set<DBNation> members = Locutus.imp().getNationDB().getNationsByAlliance(aaIds);
+            members.removeIf(f -> f.getPosition() < Rank.MEMBER.id);
+            members.removeIf(f -> f.active_m() > 2880);
+            members.removeIf(f -> f.getVm_turns() > 0);
+            members.removeIf(DBNation::isGray);
+
+            if (members.isEmpty()) {
+                return new AllowRecruitmentResult(false, true, "No active members (2 days) found in the alliance. Please ensure there are active members before enabling recruitment.");
+            }
+            if (members.size() < 10 && !db.isWhitelisted()) {
+                boolean allowed = false;
+                Map<Long, Role> roleMap = Roles.INTERNAL_AFFAIRS.toRoleMap(db);
+                Set<Member> membersWithRoles = new HashSet<>();
+                if (!roleMap.isEmpty()) {
+                    Set<Role> iaRoles = new HashSet<>(roleMap.values());
+                    for (Role role : iaRoles) {
+                        membersWithRoles.addAll(guild.getMembersWithRoles(role));
+                    }
+                    for (Member member : membersWithRoles) {
+                        if (member.getOnlineStatus() == OnlineStatus.ONLINE) {
+                            allowed = true;
+                        }
+                    }
+                }
+                if (membersWithRoles.isEmpty()) {
+                    return new AllowRecruitmentResult(false, true, "Please set " + CM.role.setAlias.cmd.locutusRole(Roles.INTERNAL_AFFAIRS.name()).discordRole(null) + " and assign it to an active gov member");
+                }
+                if (!allowed) {
+                    return new AllowRecruitmentResult(false, true, "No `" + Roles.INTERNAL_AFFAIRS.name() + "` is currently ONLINE on discord (note: This restriction applies to alliances with <10 active members in order to avoid recruitment graveyards)");
+                }
+            }
+        }
+
+        if (!GuildKey.RECRUIT_MESSAGE_OUTPUT.allowed(db)) {
+            return new AllowRecruitmentResult(false, true, "Only existant alliances can send recruitment messages. Please ensure the alliance you have registered to this server is valid.");
+        }
+        return null;
+    }
+
+    private String lastMsg = null;
+
     private void sendMail(DBNation current) {
         if (current.getPositionEnum().id > Rank.APPLICANT.id || current.getAgeDays() > 10) return;
         if (!sentMail.contains(current.getNation_id())) {
             sentMail.add(current.getNation_id());
-
-            if (db.isDelegateServer()) return;
             MessageChannel output = db.getOrNull(GuildKey.RECRUIT_MESSAGE_OUTPUT, false);
-            if (output == null) return;
-
-            Set<Integer> aaIds = db.getAllianceIds();
-            if (aaIds.isEmpty()) {
-                try {
-                    RateLimitUtil.queueWhenFree(output.sendMessage("No alliance registered to this server.\n" +
-                            "- Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`: enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention() + " <@" + db.getGuild().getOwnerId() + ">"));
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                }
-                db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
-                return;
-            }
-
-            GuildDB root = Locutus.imp().getRootDb();
-            boolean isWhitelisted = root != null && root.getCoalitionRaw("whitelisted_mail").contains(getDb().getIdLong());
-            Set<DBNation> nations = db.getAllianceList().getNations(true, 7200, true);
-            int amtActive = nations.size();
-            if (amtActive == 0) {
-                try {
-                    RateLimitUtil.queueWhenFree(output.sendMessage("No active members.\n" +
-                            "- Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`: enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention() + " <@" + db.getGuild().getOwnerId() + ">"));
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                }
-                db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
-                return;
-            }
-            long numActiveLeader = nations.stream().filter(f -> f.getPositionEnum().id >= Rank.HEIR.id && f.getColor() != NationColor.GRAY).count();
-            if (numActiveLeader == 0) {
-                if (!sentNoIAMessage) {
-                    sentNoIAMessage = true;
-                    try {
-                        RateLimitUtil.queueWhenFree(output.sendMessage("No active leader (non gray). Recruitment will be paused."));
-                    } catch (Throwable e) {
-                        e.printStackTrace();
-                    }
-                }
-                return;
-            }
-
-            if (!isWhitelisted) {
-                Set<DBNation> members = Locutus.imp().getNationDB().getNationsByAlliance(aaIds);
-                members.removeIf(f -> f.getPosition() < Rank.MEMBER.id);
-                members.removeIf(f -> f.active_m() > 2880);
-                members.removeIf(f -> f.getVm_turns() > 0);
-                members.removeIf(DBNation::isGray);
-
-                if (members.isEmpty()) {
-                    try {
-                        RateLimitUtil.queueWhenFree(output.sendMessage("No active members found in the alliance.\n" +
-                                "- Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`: enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention() + " <@" + db.getGuild().getOwnerId() + ">"));
-                    } catch (Throwable e) {
-                        e.printStackTrace();
-                    }
+            AllowRecruitmentResult notAllowed = checkRecruitmentAllowed();
+            if (notAllowed != null && !notAllowed.allowed()) {
+                if (notAllowed.shouldDisable()) {
                     db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
-                    return;
                 }
-                if (members.size() < 10 && !db.isWhitelisted()) {
-                    boolean allowed = false;
-                    Map<Long, Role> roleMap = Roles.INTERNAL_AFFAIRS.toRoleMap(db);
-                    Set<Member> membersWithRoles = new HashSet<>();
-                    if (!roleMap.isEmpty()) {
-                        Set<Role> iaRoles = new HashSet<>(roleMap.values());
-                        for (Role role : iaRoles) {
-                            membersWithRoles.addAll(guild.getMembersWithRoles(role));
-                        }
-                        for (Member member : membersWithRoles) {
-                            if (member.getOnlineStatus() == OnlineStatus.ONLINE) {
-                                allowed = true;
-                            }
-                        }
-                    }
-                    if (membersWithRoles.isEmpty()) {
+                if (lastMsg == null || !lastMsg.equals(notAllowed.reason())) {
+                    lastMsg = notAllowed.reason();
+                    if (output != null) {
                         try {
-                            RateLimitUtil.queueWhenFree(output.sendMessage("Please set " + CM.role.setAlias.cmd.locutusRole(Roles.INTERNAL_AFFAIRS.name()).discordRole(null) + " and assign it to an active gov member\n" +
-                                    "- Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`: enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention() + " <@" + db.getGuild().getOwnerId() + ">"));
-                            db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
+                            List<String> message = new ObjectArrayList<>();
+                            message.add(notAllowed.reason());
+                            if (notAllowed.shouldDisable()) {
+                                message.add("- Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`: enable again with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention() + " <@" + db.getGuild().getOwnerId() + ">");
+                            }
+                            RateLimitUtil.queueWhenFree(output.sendMessage(StringMan.join(message, "\n")));
                         } catch (Throwable e) {
                             e.printStackTrace();
                         }
-                        return;
                     }
-                    if (!allowed) {
-                        if (!sentNoIAMessage) {
-                            try {
-                                sentNoIAMessage = true;
-                                RateLimitUtil.queueWhenFree(output.sendMessage("No `INTERNAL_AFFAIRS` is currently online on discord (note: This restriction only applies to alliances with 9 or less active members. To avoid recruitment graveyards)"));
-                            } catch (Throwable e) {
-                                db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
-                                e.printStackTrace();
-                            }
-                        }
-                        return;
-                    }
-                }
-            }
-
-            if (!GuildKey.RECRUIT_MESSAGE_OUTPUT.allowed(db)) {
-                try {
-                    RateLimitUtil.queueWhenFree(output.sendMessage("Only existant alliances can send messages\n" +
-                            "- Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`: enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention() + " <@" + db.getGuild().getOwnerId() + ">"));
-                    db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
-                } catch (Throwable e) {
-                    e.printStackTrace();
                 }
                 return;
             }

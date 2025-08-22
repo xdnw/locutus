@@ -17,6 +17,7 @@ import link.locutus.discord.db.entities.city.SimpleDBCity;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.city.*;
 import link.locutus.discord.pnw.json.CityBuild;
+import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
@@ -45,6 +46,15 @@ public abstract class DBCity implements IMutableCity {
         this.setCreated(date_created);
     }
 
+    @Command
+    public String getSheetUrl() {
+        return MarkupUtil.sheetUrl(getId() + "", getUrl());
+    }
+
+    @Command
+    public String getMarkdownUrl() {
+        return MarkupUtil.markdownUrl(getId() + "", getUrl());
+    }
 
 
     @Command(desc = "Url of this city")

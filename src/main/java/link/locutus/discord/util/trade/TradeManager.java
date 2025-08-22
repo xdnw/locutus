@@ -753,6 +753,18 @@ public class TradeManager {
     }
 
     private boolean fetchNewTradesNextTick = true;
+    private long lastUpdateTradeList = -1;
+
+    public long getLastUpdateTradeList() {
+        return lastUpdateTradeList;
+    }
+
+    public synchronized boolean updateTradeListIfOutdated(long cutoff, Consumer<Event> eventConsumer) {
+        if (lastUpdateTradeList < cutoff) {
+            return updateTradeList(eventConsumer);
+        }
+        return false;
+    }
 
     public synchronized boolean updateTradeList(Consumer<Event> eventConsumer) {
         PoliticsAndWarV3 api = Locutus.imp().getApiPool();
@@ -762,6 +774,7 @@ public class TradeManager {
         int latestId = latest == null ? 0 : latest.getTradeId();
         long latestDate = latest == null ? 0 : latest.getDate();
         if (latest == null || latestDate < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(2)) {
+            lastUpdateTradeList = System.currentTimeMillis();
             if (eventConsumer == null && Settings.INSTANCE.ENABLED_COMPONENTS.SNAPSHOTS) {
                 List<Trade> apiTrades = api.readSnapshot(PagePriority.API_TRADE_GET, Trade.class);
                 List<DBTrade> tradeList = new ObjectArrayList<>(apiTrades.size());
@@ -783,7 +796,7 @@ public class TradeManager {
                     }
                     return false;
                 });
-                tradeDb.saveTrades(new ArrayList<>(trades));
+                tradeDb.saveTrades(new ObjectArrayList<>(trades));
             }
         } else {
             boolean mixupAlerts = (System.currentTimeMillis() - latestDate) < TimeUnit.MINUTES.toMillis(30);

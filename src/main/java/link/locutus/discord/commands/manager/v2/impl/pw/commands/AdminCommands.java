@@ -46,10 +46,7 @@ import link.locutus.discord.commands.war.WarRoom;
 import link.locutus.discord.commands.war.WarRoomUtil;
 import link.locutus.discord.config.Messages;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.ForumDB;
-import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.NationDB;
-import link.locutus.discord.db.TaxDeposit;
+import link.locutus.discord.db.*;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.announce.AnnounceType;
 import link.locutus.discord.db.entities.announce.Announcement;
@@ -2154,11 +2151,18 @@ public class AdminCommands {
     @RolePermission(value = Roles.ADMIN)
     public String testRecruitMessage(@Me GuildDB db) throws IOException {
         MailApiResponse response = db.sendRecruitMessage(Locutus.imp().getNationDB().getNationById(Locutus.loader().getNationId()));
+        String msg;
         if (response.status() != MailApiSuccess.SUCCESS) {
-            return response.status() + ": " + response.error();
+            msg = response.status() + ": " + response.error();
         } else {
-            return response.status().name() + ": See in-game to confirm message formatting";
+            msg = response.status().name() + ": See in-game to confirm message formatting";
+            GuildHandler.AllowRecruitmentResult notAllowed = db.getHandler().checkRecruitmentAllowed();
+            if (notAllowed != null && !notAllowed.allowed()) {
+                msg += "\n\nMessages will not auto-send until the following is resolved:\n" +
+                        "- `" + notAllowed.reason() + "`";
+            }
         }
+        return msg;
     }
 
     @Command(desc = "Purge a category's channels older than the time specified")
