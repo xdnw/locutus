@@ -259,6 +259,11 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        this.commands.registerMethod(new TradeCommands(), List.of("trade", "create"), "createSell", "sell");
+        this.commands.registerMethod(new TradeCommands(), List.of("trade", "create"), "createBuy", "buy");
+        this.commands.registerMethod(new TradeCommands(), List.of("trade", "create"), "undercutSell", "undercut_sell");
+        this.commands.registerMethod(new TradeCommands(), List.of("trade", "create"), "undercutBuy", "undercut_buy");
+
         getCommands().registerMethod(new GrantCommands(), List.of("grant", "request"), "grantRequest", "create");
         getCommands().registerMethod(new GrantCommands(), List.of("grant", "request"), "grantRequestCancel", "cancel");
         getCommands().registerMethod(new GrantCommands(), List.of("grant", "request"), "grantRequestApprove", "approve");

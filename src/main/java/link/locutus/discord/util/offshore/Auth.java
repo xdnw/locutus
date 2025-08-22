@@ -1,9 +1,14 @@
 package link.locutus.discord.util.offshore;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.TreatyType;
+import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -12,18 +17,10 @@ import link.locutus.discord.network.IProxy;
 import link.locutus.discord.network.PassthroughProxy;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.json.CityBuild;
-import link.locutus.discord.util.FileUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.TreatyType;
-import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.util.io.PagePriority;
+import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -32,15 +29,7 @@ import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.net.CookieManager;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -231,16 +220,157 @@ public class Auth {
         return createTrade(receiver, resource, amount, price, isBuy);
     }
 
+    public String deleteTrades(Set<ResourceType> types, boolean deleteSell, boolean deleteBuy) {
+        final String url = Settings.PNW_URL() + "/nation/trade/";
+
+        return PW.withLogin((Callable<String>) () -> {
+            List<String> response = new ObjectArrayList<>();
+            int deleted = 0;
+            int guard = 0;
+
+            while (guard++ < 20) {
+                String html = Auth.this.readStringFromURL(PagePriority.BANK_TRADE, url, emptyMap());
+                Document dom = Jsoup.parse(html);
+
+                if (html.contains("/human/")) {
+                    throw new IllegalArgumentException("Captcha required (nation: " + PW.getName(this.nationId, false) + "/" + this.nationId + ") " + Settings.PNW_URL() + "/human/");
+                }
+
+                Elements tables = dom.getElementsByClass("nationtable");
+                if (tables.isEmpty()) {
+                    break;
+                }
+
+                Element table = tables.get(0);
+                Elements rows = table.getElementsByTag("tr");
+                if (rows.size() < 2) {
+                    break;
+                }
+
+                boolean deletedThisPass = false;
+
+                for (int i = 1; i < rows.size(); i++) {
+                    Element row = rows.get(i);
+                    Elements tds = row.getElementsByTag("td");
+                    if (tds.size() < 7) {
+                        continue;
+                    }
+
+                    // Parse resource type from the image in the Resource column (index 4)
+                    Element resCell = tds.get(4);
+                    Element resImg = resCell.selectFirst("img[src*=/resources/]");
+                    if (resImg == null) {
+                        continue;
+                    }
+
+                    String src = resImg.attr("src");
+                    String[] split = src.split("[\\./]");
+                    String resName = split.length >= 2 ? split[split.length - 2] : null;
+                    if (resName == null) {
+                        continue;
+                    }
+
+                    ResourceType resType = ResourceType.parse(resName);
+                    if (resType == null) continue;
+                    if (types != null && !types.isEmpty() && !types.contains(resType)) {
+                        continue;
+                    }
+
+                    // Determine whether this is our sell or buy
+                    // Column 1: Selling Nation, Column 2: Buying Nation
+                    int myId = this.getNationId();
+
+                    int sellerId = -1;
+                    {
+                        Element a = tds.get(1).selectFirst("a[href*=/nation/id=]");
+                        if (a != null) {
+                            String href = a.attr("href");
+                            int idx = href.lastIndexOf("id=");
+                            if (idx >= 0) {
+                                String sub = href.substring(idx + 3);
+                                int end = 0;
+                                while (end < sub.length() && Character.isDigit(sub.charAt(end))) end++;
+                                try {
+                                    sellerId = Integer.parseInt(sub.substring(0, end));
+                                } catch (Exception ignored) {
+                                }
+                            }
+                        }
+                    }
+
+                    int buyerId = -1;
+                    {
+                        Element a = tds.get(2).selectFirst("a[href*=/nation/id=]");
+                        if (a != null) {
+                            String href = a.attr("href");
+                            int idx = href.lastIndexOf("id=");
+                            if (idx >= 0) {
+                                String sub = href.substring(idx + 3);
+                                int end = 0;
+                                while (end < sub.length() && Character.isDigit(sub.charAt(end))) end++;
+                                try {
+                                    buyerId = Integer.parseInt(sub.substring(0, end));
+                                } catch (Exception ignored) {
+                                }
+                            }
+                        }
+                    }
+
+
+                    boolean isMySell = (sellerId == myId);
+                    boolean isMyBuy = (buyerId == myId);
+
+                    // Skip if this row does not match the requested directions
+                    if (!((isMySell && deleteSell) || (isMyBuy && deleteBuy))) {
+                        continue;
+                    }
+                    if (!isMySell && !isMyBuy) {
+                        continue;
+                    }
+
+                    // Find delete/decline link
+                    Element delLink = row.selectFirst("a[href*='tradedelid=']");
+                    if (delLink == null) {
+                        continue;
+                    }
+
+                    String href = delLink.attr("href");
+                    if (!href.startsWith("http")) {
+                        if (href.startsWith("/")) href = Settings.PNW_URL() + href;
+                        else href = Settings.PNW_URL() + "/" + href;
+                    }
+
+                    String resp = Auth.this.readStringFromURL(PagePriority.TOKEN, href, emptyMap());
+                    Document respDom = Jsoup.parse(resp);
+                    String alert = PW.getAlert(respDom);
+
+                    response.add(alert);
+
+                    deleted++;
+                    deletedThisPass = true;
+                    break; // Re-fetch after one delete to avoid acting on stale DOM
+                }
+
+                if (!deletedThisPass) break;
+            }
+
+            if (response.isEmpty()) {
+                return "No trades found to delete.";
+            }
+            return StringMan.join(response, "\n");
+        }, this);
+    }
+
     public String createTrade(DBNation receiver, ResourceType resource, int amount, int ppu, boolean isBuy) {
-        String leadername = receiver.getLeader();
-        String leaderUrlEscape = URLEncoder.encode(leadername, StandardCharsets.UTF_8);
+        String leadername = receiver == null ? null : receiver.getLeader();
+//            leaderUrlEscape = URLEncoder.encode(leadername, StandardCharsets.UTF_8);
         String url = Settings.PNW_URL() + "/nation/trade/create";
         Map<String, String> post = new HashMap<>();
         post.put("resourceoffer", resource.name().toLowerCase());
         post.put("offeramount", "" + amount);
         post.put("wantamount", "" + ppu);
-        post.put("offertype", "personal");
-        post.put("leaderpersonal", leadername);
+        post.put("offertype", leadername != null ? "personal" : "global");
+        if (leadername != null) post.put("leaderpersonal", leadername);
         post.put("submit", isBuy ? "Buy" : "Sell");
 
         return PW.withLogin(() -> {
@@ -1055,7 +1185,7 @@ public class Auth {
                             return ResourceType.getBuffer();
                         }
                     }
-                    if (ResourceType.convertedTotal(toDeposit) == 0) return ResourceType.getBuffer();
+                    if (ResourceType.convertedTotal(toDeposit) == 0) return link.locutus.discord.apiv1.enums.ResourceType.getBuffer();
 
                     OffshoreInstance bank = nation.getAlliance().getBank();
                     if (bank != offshore) {

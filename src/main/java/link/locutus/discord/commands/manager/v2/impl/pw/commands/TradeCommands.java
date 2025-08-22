@@ -5,6 +5,7 @@ import com.google.common.collect.Maps;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -1522,9 +1523,81 @@ public class TradeCommands {
         return null;
     }
 
-    @Command(desc = "Create an offer for a resource in-game")
-    public String createOffer(@Me DBNation nation, ResourceType type, int amount, int ppu, boolean isBuy) {
+    @Command(desc = "Create a sell offer for a resource in-game")
+    public String createSell(TradeManager manager, @Me DBNation nation, ResourceType type, int amount, int ppu, @Switch("u") boolean update, @Switch("c") boolean clear_other_offers) {
+        return createOffer(manager, nation, type, amount, ppu, false, update, clear_other_offers);
+    }
+
+    @Command(desc = "Create a buy offer for a resource in-game")
+    public String createBuy(TradeManager manager, @Me DBNation nation, ResourceType type, int amount, int ppu, @Switch("u") boolean update, @Switch("c") boolean clear_other_offers) {
+        return createOffer(manager, nation, type, amount, ppu, true, update, clear_other_offers);
+    }
+
+    public String createOffer(TradeManager manager, @Me DBNation nation, ResourceType type, int amount, int ppu, boolean isBuy, @Switch("u") boolean update, @Switch("c") boolean clear_other_offers) {
+        if (type == ResourceType.MONEY) {
+            throw new IllegalArgumentException("Cannot trade money in-game");
+        }
         Auth auth = nation.getAuth(true);
-        return auth.createTrade(null, type, amount, ppu, isBuy);
+        long lastUpdateTradeList = Locutus.imp().getTradeManager().getLastUpdateTradeList();
+        long now = System.currentTimeMillis();
+
+        long cutoff = update ? Long.MAX_VALUE : now - TimeUnit.MINUTES.toMillis(1);
+
+        Locutus.imp().runEventsAsync(events -> manager.updateTradeListIfOutdated(cutoff, events));
+        int low = manager.getLow(type);
+        int high = manager.getHigh(type);
+        if (ppu < low || ppu > high) {
+            return "You cannot create an offer for " + type + " at $" + ppu + " PPU, the current range is: $" + low + " - $" + high;
+        }
+        List<String> respones = new ObjectArrayList<>();
+        if (clear_other_offers) {
+            respones.add(deleteOtherOffers(auth, manager, nation, type, !isBuy, isBuy));
+        } else {
+            System.out.println("Not clearing other offers for " + type + " for " + nation.getNation_id() + " (" + nation.getName() + ")");
+        }
+        respones.add(auth.createTrade(null, type, amount, ppu, isBuy));
+        return String.join("\n", respones);
+    }
+
+    @Command(desc = "Create a sell offer for a resource in-game that is $1 below the current lowest offer")
+    public String undercutSell(TradeManager manager, @Me DBNation nation, ResourceType type, int amount, @Switch("u") boolean update, @Switch("c") boolean clear_other_offers) {
+        return undercut(manager, nation, type, amount, false, update, clear_other_offers);
+    }
+
+    @Command(desc = "Create a buy offer for a resource in-game that is $1 above the current highest offer")
+    public String undercutBuy(TradeManager manager, @Me DBNation nation, ResourceType type, int amount, @Switch("u") boolean update, @Switch("c") boolean clear_other_offers) {
+        return undercut(manager, nation, type, amount, true, update, clear_other_offers);
+    }
+
+    public String undercut(TradeManager manager, @Me DBNation nation, ResourceType type, int amount, boolean isBuy, @Switch("u") boolean update, @Switch("c") boolean clear_other_offers) {
+        if (type == ResourceType.MONEY) {
+            throw new IllegalArgumentException("Cannot trade money in-game");
+        }
+        Auth auth = nation.getAuth(true);
+        long lastUpdateTradeList = Locutus.imp().getTradeManager().getLastUpdateTradeList();
+        long now = System.currentTimeMillis();
+
+        long cutoff = update ? Long.MAX_VALUE : now - TimeUnit.SECONDS.toMillis(15);
+
+        Locutus.imp().runEventsAsync(events -> manager.updateTradeListIfOutdated(cutoff, events));
+        int low = manager.getLow(type);
+        int high = manager.getHigh(type);
+
+        int ppu = isBuy ? low : high;
+
+        List<String> respones = new ObjectArrayList<>();
+        if (clear_other_offers) {
+            respones.add(deleteOtherOffers(auth, manager, nation, type, !isBuy, isBuy));
+        }
+        respones.add(auth.createTrade(null, type, amount, ppu, isBuy));
+        return String.join("\n", respones);
+    }
+
+    public String deleteOtherOffers(Auth auth, TradeManager manager, @Me DBNation nation, ResourceType type, boolean clearSell, boolean clearBuy) {
+        System.out.println("Deleting other offers for " + type + " for " + nation.getNation_id() + " (" + nation.getName() + ")");
+        if (type == ResourceType.MONEY) {
+            throw new IllegalArgumentException("Cannot trade money in-game");
+        }
+        return auth.deleteTrades(Set.of(type), clearSell, clearBuy);
     }
 }

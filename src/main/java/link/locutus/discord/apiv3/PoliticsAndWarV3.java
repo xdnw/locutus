@@ -1742,6 +1742,16 @@ public class PoliticsAndWarV3 {
         return request(PagePriority.API_BANK_SEND, false, mutation, projection, BankWithdrawMutationResponse.class).bankWithdraw();
     }
 
+    public Trade deleteTrade(int id) {
+        DeclinePersonalTradeMutationRequest mutation = new DeclinePersonalTradeMutationRequest();
+        mutation.setId(id);
+
+        TradeResponseProjection projection = tradeResponseProjection();
+
+        DeclinePersonalTradeMutationResponse response = request(PagePriority.TOKEN, false, mutation, projection, DeclinePersonalTradeMutationResponse.class);
+        return response.declinePersonalTrade();
+    }
+
 
     public Bankrec depositIntoBank(double[] amount, String note) {
         BankDepositMutationRequest mutation = new BankDepositMutationRequest();
