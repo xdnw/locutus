@@ -106,7 +106,6 @@ public class GuildHandler {
                 }
             });
         }
-        loadPersistedMailTasks();
     }
 
     public void onGuildInviteCreate(GuildInviteCreateEvent event) {
@@ -2535,6 +2534,14 @@ public class GuildHandler {
             DBNation nation = DBNation.getOrCreate(entry.getKey());
             long timestamp = entry.getValue();
             runMailTask(nation, timestamp, output, true);
+        }
+    }
+
+    public void init() {
+        try {
+            loadPersistedMailTasks();
+        } catch (Throwable e) {
+            e.printStackTrace();
         }
     }
 
