@@ -2621,7 +2621,7 @@ public class GuildHandler {
         if (current.getPositionEnum().id > Rank.APPLICANT.id || current.getAgeDays() > 10) return;
         if (!sentMail.contains(current.getNation_id())) {
             sentMail.add(current.getNation_id());
-
+            MessageChannel output = db.getOrNull(GuildKey.RECRUIT_MESSAGE_OUTPUT, false);
             AllowRecruitmentResult notAllowed = checkRecruitmentAllowed();
             if (notAllowed != null && !notAllowed.allowed()) {
                 if (notAllowed.shouldDisable()) {
@@ -2629,7 +2629,6 @@ public class GuildHandler {
                 }
                 if (lastMsg == null || !lastMsg.equals(notAllowed.reason())) {
                     lastMsg = notAllowed.reason();
-                    MessageChannel output = db.getOrNull(GuildKey.RECRUIT_MESSAGE_OUTPUT, false);
                     if (output != null) {
                         try {
                             List<String> message = new ObjectArrayList<>();
