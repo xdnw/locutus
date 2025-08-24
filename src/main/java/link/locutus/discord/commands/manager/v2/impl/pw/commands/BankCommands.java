@@ -2854,7 +2854,7 @@ public class BankCommands {
     @Command(desc = "Get a sheet of ingame transfers for nations, filtered by the sender", viewable = true)
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String IngameNationTransfersBySender(@Me IMessageIO channel, @Me @Default GuildDB db, @Me @Default User author,
-    Set<NationOrAlliance> senders, @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
+    @AllowDeleted Set<NationOrAlliance> senders, @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
         Set<Long> senderIds = senders.stream().map(NationOrAllianceOrGuild::getIdLong).collect(Collectors.toSet());
         Set<Integer> hasAdmin = new IntOpenHashSet();
@@ -2882,7 +2882,7 @@ public class BankCommands {
     }, viewable = true)
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String IngameNationTransfersByReceiver(@Me IMessageIO channel, @Me @Default GuildDB db, @Me @Default User author,
-                                                  Set<NationOrAlliance> receivers, @Arg(value = "Only list transfers after this time", group = 0)
+                                                  @AllowDeleted Set<NationOrAlliance> receivers, @Arg(value = "Only list transfers after this time", group = 0)
                                                       @Timestamp @Default Long startTime,
                                                   @Arg(value = "Only list transfers before this time", group = 0)
                                                       @Timestamp @Default Long endTime, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {

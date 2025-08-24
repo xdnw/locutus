@@ -885,7 +885,7 @@ public class UtilityCommands {
     }
     @Command(desc = "Rank the number of wars between two coalitions by nation or alliance\n" +
             "Defaults to alliance ranking", viewable = true)
-    public String warRanking(@Me JSONObject command, @Me IMessageIO channel, @Timestamp long time, Set<NationOrAlliance> attackers, Set<NationOrAlliance> defenders,
+    public String warRanking(@Me JSONObject command, @Me IMessageIO channel, @Timestamp long time, @AllowDeleted Set<NationOrAlliance> attackers, @AllowDeleted Set<NationOrAlliance> defenders,
                              @Arg("Only include offensive wars in the ranking")
                              @Switch("o") boolean onlyOffensives,
                              @Arg("Only include defensive wars in the ranking")
