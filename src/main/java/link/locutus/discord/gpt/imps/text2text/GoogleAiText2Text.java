@@ -2,27 +2,29 @@ package link.locutus.discord.gpt.imps.text2text;
 
 import com.google.genai.Client;
 import com.google.genai.types.*;
+import link.locutus.discord.gpt.GPTUtil;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.function.IntConsumer;
+import java.util.function.Supplier;
 
 public class GoogleAiText2Text implements IText2Text {
 
     private final Client client;
     private final String modelName;
 
-    private Model model;
     private Integer tokenLimit;
+    private boolean isGeminiModel = false;
 
     public GoogleAiText2Text(Client client, String modelName) {
         this.client = client;
         this.modelName = modelName;
+        this.isGeminiModel = modelName.toLowerCase().contains("gemini");
     }
 
     // Optional init similar to embedding class to fetch token limits
     public void init() {
         try {
-            this.model = client.models.get(modelName, null);
+            Model model = client.models.get(modelName, null);
             this.tokenLimit = model.inputTokenLimit().orElse(null);
         } catch (Exception e) {
             throw new RuntimeException("Failed to init model: " + modelName, e);
@@ -31,47 +33,13 @@ public class GoogleAiText2Text implements IText2Text {
 
     @Override
     public String getId() {
-        return "google-gemini:" + modelName;
+        return "google_" + modelName;
     }
 
     @Override
-    public Map<String, String> getOptions() {
-        // Defaults that can be overridden in generate(options, text)
-        Map<String, String> opts = new HashMap<>();
-        opts.put("temperature", "0.7");
-        opts.put("maxOutputTokens", "1024");
-        opts.put("topP", "0.95");
-        opts.put("topK", "40");
-        opts.put("system", "");
-        return opts;
-    }
-
-    @Override
-    public String generate(Map<String, String> options, String text) {
-        init(); // Ensure model is initialized
+    public String generate(String text, IntConsumer tokenUsage) {
         try {
-            Map<String, String> opts = new HashMap<>(getOptions());
-            if (options != null) opts.putAll(options);
-
-            Float temperature = parseFloat(opts.get("temperature"), null);
-            Integer maxOutputTokens = parseInt(opts.get("maxOutputTokens"), null);
-            Float topP = parseFloat(opts.get("topP"), null);
-            Float topK = parseFloat(opts.get("topK"), null);
-            String system = opts.getOrDefault("system", null);
-
             GenerateContentConfig.Builder cfg = GenerateContentConfig.builder();
-            if (temperature != null) cfg = cfg.temperature(temperature);
-            if (maxOutputTokens != null) cfg = cfg.maxOutputTokens(maxOutputTokens);
-            if (topP != null) cfg = cfg.topP(topP);
-            if (topK != null) cfg = cfg.topK(topK);
-
-            if (system != null && !system.isEmpty()) {
-                Content sys = Content.builder()
-                        .role("system")
-                        .parts(Part.fromText(system))
-                        .build();
-                cfg = cfg.systemInstruction(sys);
-            }
 
             GenerateContentResponse response = client.models.generateContent(modelName, text, cfg.build());
 
@@ -88,8 +56,15 @@ public class GoogleAiText2Text implements IText2Text {
                     });
                 }
             });
-            if (sb.length() > 0) return sb.toString();
+            Supplier<Integer> backupTokenCount = () -> getSize(text + "\n" + sb.toString());
+            if (tokenUsage != null) {
+                int tokens = response.usageMetadata()
+                        .map(usage -> usage.totalTokenCount().orElseGet(backupTokenCount))
+                        .orElseGet(backupTokenCount);
+                tokenUsage.accept(tokens);
+            }
 
+            if (sb.length() > 0) return sb.toString();
             throw new RuntimeException("No text generated for input.");
         } catch (Exception e) {
             throw new RuntimeException("Error generating content", e);
@@ -98,6 +73,9 @@ public class GoogleAiText2Text implements IText2Text {
 
     // ITokenizer-style helpers (token count and cap)
     public int getSize(String text) {
+        if (isGeminiModel) {
+            return GPTUtil.countSentencePieceTokens(text);
+        }
         try {
             return client.models.countTokens(modelName, text, null).totalTokens().orElseThrow();
         } catch (Exception e) {

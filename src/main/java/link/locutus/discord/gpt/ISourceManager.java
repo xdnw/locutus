@@ -2,7 +2,6 @@ package link.locutus.discord.gpt;
 
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
-import link.locutus.discord.gpt.imps.DocumentChunk;
 import link.locutus.discord.gpt.imps.VectorDatabase;
 import link.locutus.discord.gpt.imps.embedding.EmbeddingInfo;
 import link.locutus.discord.gpt.imps.embedding.IEmbedding;
@@ -32,27 +31,26 @@ public interface ISourceManager {
     void iterateVectors(Set<EmbeddingSource> allowedSources, Consumer<VectorDatabase.SearchResult> source_hash_vector_consumer);
     float[] getEmbedding(EmbeddingSource source, String text, ThrowingConsumer<String> checkModeration);
     List<EmbeddingInfo>  getClosest(EmbeddingSource inputSource, String input, int top, Set<EmbeddingSource> allowedTypes, BiPredicate<EmbeddingSource, Long> sourceHashPredicate, ThrowingConsumer<String> moderate);
-    int countVectors(EmbeddingSource existing);
+    int countVectors(int source_id);
     void deleteSource(EmbeddingSource source);
     public List<ConvertingDocument> getUnconvertedDocuments();
     public ConvertingDocument getConvertingDocument(int source_id);
-    public void addConvertingDocument(List<ConvertingDocument> documents);
-    public void addChunks(List<DocumentChunk> chunks);
-    public List<DocumentChunk> getChunks(int source_id);
+    public void addDocument(List<ConvertingDocument> documents);
+
     public EmbeddingSource getEmbeddingSource(int source_id);
 
     default void setDocumentError(ConvertingDocument document, String error) {
         document.error = error;
-        addConvertingDocument(List.of(document));
+        addDocument(List.of(document));
     }
 
     default void setDocumentErrorIfAbsent(ConvertingDocument document, String error) {
         if (document.error == null) {
             document.error = error;
         }
-        addConvertingDocument(List.of(document));
+        addDocument(List.of(document));
     }
-    void deleteDocumentAndChunks(int sourceId);
+    void deleteDocument(int sourceId);
 
     void deleteMissing(EmbeddingSource source, Set<Long> hashesSet);
 

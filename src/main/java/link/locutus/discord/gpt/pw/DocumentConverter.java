@@ -1,5 +1,6 @@
 package link.locutus.discord.gpt.pw;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -8,8 +9,8 @@ import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.gpt.GptHandler;
 import link.locutus.discord.gpt.ISourceManager;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
-import link.locutus.discord.gpt.imps.DocumentChunk;
 import link.locutus.discord.gpt.imps.embedding.IEmbedding;
+import link.locutus.discord.gpt.imps.moderator.IModerator;
 import link.locutus.discord.gpt.imps.text2text.IText2Text;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
@@ -18,9 +19,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -29,13 +28,15 @@ public class DocumentConverter {
     private final LimitManager limitManager;
     private final GptHandler handler;
     private final IEmbedding embedding;
-    private final IText2Text text2Text;
+    private final IModerator moderator;
+    private final ISourceManager sourceManager;
 
     public DocumentConverter(LimitManager limitManager, GptHandler handler) {
         this.limitManager = limitManager;
         this.handler = handler;
         this.embedding = handler.getEmbedding();
-        this.text2Text = handler.getText2Text();
+        this.moderator = handler.getModerator();
+        this.sourceManager = handler.getSourceManager();
     }
 
     public GptHandler getHandler() {
@@ -99,16 +100,10 @@ public class DocumentConverter {
         return prompt.replace("{context}", context).replace("{text}", text.replace("```", "\"\"\""));
     }
 
-    public List<String> chunkTexts(String markdown, GptLimitTracker generator) {
-        int totalCap = text2Text.getSizeCap();
-        int promptCap = totalCap / 3;
-        return GPTUtil.getChunks(markdown, promptCap, text2Text::getSize);
-    }
-
     public List<ConvertingDocument> getDocumentConversions(Guild guild) {
         List<ConvertingDocument> documents = new ArrayList<>();
-        for (ConvertingDocument document : handler.getSourcemanager().getUnconvertedDocuments()) {
-            EmbeddingSource source = handler.getSourcemanager().getEmbeddingSource(document.source_id);
+        for (ConvertingDocument document : handler.getSourceManager().getUnconvertedDocuments()) {
+            EmbeddingSource source = handler.getSourceManager().getEmbeddingSource(document.source_id);
             if (source != null) {
                 documents.add(document);
             }
@@ -116,9 +111,9 @@ public class DocumentConverter {
         return documents;
     }
 
-    public ConvertingDocument createDocumentAndChunks(User user, GuildDB db, String documentName, String markdown, String prompt) {
-        EmbeddingSource source = handler.getSourcemanager().getOrCreateSource(documentName, db.getIdLong());
-        long hash = embeddings.getHash(markdown);
+    public ConvertingDocument createDocument(User user, GuildDB db, String documentName, String markdown, String prompt) {
+        EmbeddingSource source = handler.getSourceManager().getOrCreateSource(documentName, db.getIdLong());
+        long hash = handler.getSourceManager().getHash(markdown);
         if (hash == source.source_hash) {
             throw new IllegalArgumentException("An identical document already exists: `" + documentName + "`. See: " + CM.chat.dataset.view.cmd.source(source.getQualifiedName()));
         }
@@ -127,6 +122,7 @@ public class DocumentConverter {
 
         document.source_id = source.source_id;
         if (prompt == null) prompt = getDocumentPrompt(documentName);
+        document.text = markdown;
         document.prompt = prompt;
         document.converted = false;
         document.use_global_context = true;
@@ -135,24 +131,7 @@ public class DocumentConverter {
         document.date = System.currentTimeMillis();
         document.hash = hash;
 
-        List<String> chunkTexts = chunkTexts(markdown, generator);
-
-        List<DocumentChunk> chunks = new ArrayList<>();
-        for (int i = 0; i < chunkTexts.size(); i++) {
-            String text = chunkTexts.get(i);
-            GPTUtil.checkThrowModeration(moderator.moderate(text), text);
-            DocumentChunk chunk = new DocumentChunk();
-            chunk.source_id = source.source_id;
-            chunk.chunk_index = i;
-            chunk.converted = false;
-            chunk.text = text;
-            chunks.add(chunk);
-        }
-
-        System.out.println("Add chunks to document: " + chunks.size() + " chunks");
-
-        getSourceManager().addConvertingDocument(List.of(document));
-        getSourceManager().addChunks(chunks);
+        handler.getSourceManager().addDocument(List.of(document));
 
         this.submitDocument(db, document, true);
 
@@ -169,10 +148,10 @@ public class DocumentConverter {
             }
             return;
         }
-        EmbeddingSource source = getSourceManager().getEmbeddingSource(document.source_id);
+        EmbeddingSource source = handler.getSourceManager().getEmbeddingSource(document.source_id);
         if (source == null) {
             String msg = "Cannot find document source `" + document.source_id + "` in guild " + db.getGuild() + " (was it deleted?)";
-            getSourceManager().setDocumentError(document, msg);
+            handler.getSourceManager().setDocumentError(document, msg);
             if (throwError) {
                 throw new IllegalArgumentException(msg);
             }
@@ -183,7 +162,7 @@ public class DocumentConverter {
         if (guildId == 0) {
             // TODO set error
             String msg = "Document `" + source.getQualifiedName() + "` (`#" + source.source_id + "`) has no assigned guild";
-            getSourceManager().setDocumentError(document, msg);
+            handler.getSourceManager().setDocumentError(document, msg);
             if (throwError) {
                 throw new IllegalArgumentException(msg);
             }
@@ -193,7 +172,7 @@ public class DocumentConverter {
         Member member = db.getGuild().getMemberById(document.user);
         if (member == null) {
             String msg = "Document submitted by user `" + DiscordUtil.getUserName(document.user) + "` but cannot be found in " + db.getGuild();
-            getSourceManager().setDocumentError(document, msg);
+            handler.getSourceManager().setDocumentError(document, msg);
             if (throwError) {
                 throw new IllegalArgumentException(msg);
             }
@@ -201,10 +180,10 @@ public class DocumentConverter {
         }
 
         User user = member.getUser();
-        GptLimitTracker provider = getLimitTracker(db, user, document.getProviderType());
-        if (provider == null) {
+        GptLimitTracker tracker = getLimitManager().getLimitTracker(db);
+        if (tracker == null) {
             String msg = "Cannot find provider for document `" + source.getQualifiedName() + "` (`#" + source.source_id + "`) in guild " + db.getGuild();
-            getSourceManager().setDocumentError(document, msg);
+            handler.getSourceManager().setDocumentError(document, msg);
             if (throwError) {
                 throw new IllegalArgumentException(msg);
             }
@@ -214,7 +193,17 @@ public class DocumentConverter {
         DBNation nation = DiscordUtil.getNation(user);
         if (nation == null) {
             String msg = "Cannot find nation for user `" + user.getName() + "` in guild " + db.getGuild();
-            getSourceManager().setDocumentError(document, msg);
+            handler.getSourceManager().setDocumentError(document, msg);
+            if (throwError) {
+                throw new IllegalArgumentException(msg);
+            }
+            return;
+        }
+
+        IText2Text text2Text = handler.getText2Text();
+        if (text2Text == null) {
+            String msg = "Text2Text provider is not available for document `" + source.getQualifiedName() + "` (`#" + source.source_id + "`) in guild " + db.getGuild();
+            handler.getSourceManager().setDocumentError(document, msg);
             if (throwError) {
                 throw new IllegalArgumentException(msg);
             }
@@ -235,17 +224,18 @@ public class DocumentConverter {
                 }
                 return;
             }
-            List<DocumentChunk> chunks = getSourceManager().getChunks(document.source_id);
-            List<String> outputSplit = chunks.stream().filter(f -> f.converted).flatMap(f -> f.getOutputList().stream()).toList();
-            chunks.removeIf(f -> f.converted);
-            if (chunks.isEmpty()) {
+            String fullText = document.text;
+            if (fullText.length() == 0) {
                 setConverted(document);
+                if (throwError) {
+                    throw new IllegalArgumentException("Document `#" + document.source_id + "` is empty");
+                }
                 return;
             }
 
             Boolean status = conversionStatus.get(document.source_id);
             if (status == Boolean.FALSE) {
-                getSourceManager().setDocumentErrorIfAbsent(document, "Document conversion manually cancelled");
+                handler.getSourceManager().setDocumentErrorIfAbsent(document, "Document conversion manually cancelled");
                 if (throwError) {
                     throw new IllegalArgumentException(document.error);
                 }
@@ -260,7 +250,10 @@ public class DocumentConverter {
             // put status true
             conversionStatus.put(document.source_id, true);
 
-            DocumentChunk chunk = chunks.get(0);
+            int totalCap = text2Text.getSizeCap();
+            int promptCap = totalCap / 3;
+            String chunkText = GPTUtil.getNextChunk(document.text, promptCap, text2Text::getSize);
+            String remaining = document.text.substring(chunkText.length()).trim();
 
             Function<String, List<String>> getClosestFacts = new Function<String, List<String>>() {
                 @Override
@@ -269,24 +262,33 @@ public class DocumentConverter {
                 }
             };
 
+            List<String> previousSummary = new ObjectArrayList<>();
+            sourceManager.iterateVectors(Set.of(source), result -> previousSummary.add(result.text));
+
             String text = getSummaryPrompt(document.prompt,
-                    outputSplit,
-                    chunk.text,
-                    provider.getSizeCap() * 2 / 4,
-                    provider::getSize,
+                    previousSummary,
+                    chunkText,
+                    text2Text.getSizeCap() * 2 / 4,
+                    text2Text::getSize,
                     getClosestFacts
             );
 
-            boolean isLastChunk = chunks.size() == 1;
+            boolean isLastChunk = remaining.length() == 0;
 
             try {
-                CompletableFuture<String> future = provider.submit(db, user, nation, null, text);
+                CompletableFuture<String> future = tracker.submit(db, user, nation, text);
 
                 future.thenAcceptAsync(s -> {
                     synchronized (lock) {
-                        chunk.output = MarkupUtil.unescapeMarkdown(s);
-                        chunk.converted = true;
-                        getSourceManager().addChunks(List.of(chunk));
+                        String output = MarkupUtil.unescapeMarkdown(s);
+                        List<String> facts = Arrays.asList(output.split("\n- "));
+
+                        handler.registerEmbeddings(source, facts, false, false);
+                        source.source_hash = document.hash;
+                        handler.getSourceManager().updateSources(List.of(source));
+
+                        document.text = remaining;
+                        handler.getSourceManager().addDocument(List.of(document));
 
                         conversionStatus.remove(document.source_id);
                         if (isLastChunk) {
@@ -298,14 +300,14 @@ public class DocumentConverter {
                 }).exceptionally(e -> {
                     e.printStackTrace();
                     synchronized (lock) {
-                        getSourceManager().setDocumentError(document, e.getMessage());
+                        handler.getSourceManager().setDocumentError(document, e.getMessage());
                         conversionStatus.remove(document.source_id);
                         return null;
                     }
                 });
 
             } catch (Throwable e) {
-                getSourceManager().setDocumentError(document, e.getMessage());
+                handler.getSourceManager().setDocumentError(document, e.getMessage());
                 conversionStatus.remove(document.source_id);
             }
         }
@@ -314,7 +316,7 @@ public class DocumentConverter {
     public void pauseConversion(ConvertingDocument document, String reason) {
         conversionStatus.put(document.source_id, false);
         document.error = "Paused: " + reason;
-        getSourceManager().addConvertingDocument(List.of(document));
+        handler.getSourceManager().addDocument(List.of(document));
     }
 
     public String resumeConversion(GuildDB db, ConvertingDocument document) {
@@ -322,32 +324,24 @@ public class DocumentConverter {
         boolean removed = conversionStatus.remove(document.source_id, false);
         String existingError = document.error;
         document.error = null;
-        getSourceManager().addConvertingDocument(List.of(document));
+        handler.getSourceManager().addDocument(List.of(document));
         submitDocument(db, document, true);
         return existingError;
     }
 
     private void setConverted(ConvertingDocument document) {
         document.converted = true;
-        getSourceManager().addConvertingDocument(List.of(document));
+        handler.getSourceManager().addDocument(List.of(document));
         // get or create source
-        EmbeddingSource source = getSourceManager().getEmbeddingSource(document.source_id);
+        EmbeddingSource source = handler.getSourceManager().getEmbeddingSource(document.source_id);
         if (source != null) {
-            // get chunks
-            List<DocumentChunk> chunks = getSourceManager().getChunks(document.source_id);
-            List<String> facts = new ArrayList<>();
-            for (DocumentChunk chunk : chunks) {
-                if (chunk.output == null) continue;
-                facts.addAll(chunk.getOutputList());
-            }
-            handler.registerEmbeddings(source, facts, false, true);
             source.source_hash = document.hash;
-            getSourceManager().updateSources(List.of(source));
+            handler.getSourceManager().updateSources(List.of(source));
         } else {
             System.out.println("Cannot find source for document `#" + document.source_id + "`");
         }
 
-        getSourceManager().deleteDocumentAndChunks(document.source_id);
+        handler.getSourceManager().deleteDocument(document.source_id);
     }
 
     public void initDocumentConversion(GuildDB db) {

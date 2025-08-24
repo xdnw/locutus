@@ -6,6 +6,7 @@ import link.locutus.discord.gpt.imps.text2text.IText2Text;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.IntConsumer;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -36,18 +37,18 @@ public class SimpleSummarizer implements ISummarizer {
     }
 
     @Override
-    public String summarize(String text) {
+    public String summarize(String text, IntConsumer tokensUsed) {
         int remaining = (int) ((tokenCap * promptToResponseRatio) - promptTokens);
         List<String> summaries = new ArrayList<>();
         for (String chunk : GPTUtil.getChunks(text, remaining, parent::getSize)) {
-            String result = summarizeChunk(chunk);
+            String result = summarizeChunk(chunk, tokensUsed);
             summaries.add(result);
         }
         return String.join("\n", summaries);
     }
 
-    public String summarizeChunk(String chunk) {
+    public String summarizeChunk(String chunk, IntConsumer tokensUsed) {
         String full = prompt.replace("{query}", chunk);
-        return parent.generate(full);
+        return parent.generate(full, tokensUsed);
     }
 }

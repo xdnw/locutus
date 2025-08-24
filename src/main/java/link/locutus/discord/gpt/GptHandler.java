@@ -3,7 +3,6 @@ package link.locutus.discord.gpt;
 import ai.djl.MalformedModelException;
 import ai.djl.repository.zoo.ModelNotFoundException;
 import com.google.genai.Client;
-import com.google.genai.types.HttpOptions;
 import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.models.ChatModel;
@@ -39,6 +38,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.pusher.client.util.internal.Preconditions.checkNotNull;
+import static link.locutus.discord.gpt.GPTUtil.createGoogleClient;
 
 public class GptHandler {
     public ISourceManager sourceManager;
@@ -90,19 +90,7 @@ public class GptHandler {
         return googleClient2;
     }
 
-    private static Client createGoogleClient(String baseUrl, String apiKey) {
-        HttpOptions.Builder googeHttpOpt = HttpOptions.builder();
-        if (baseUrl != null && !baseUrl.isEmpty()) {
-            googeHttpOpt.baseUrl(baseUrl);
-        }
-        googeHttpOpt.timeout(120);
-        return Client.builder()
-                .apiKey(apiKey)
-                .httpOptions(googeHttpOpt.build())
-                .build();
-    }
-
-    public ISourceManager getSourcemanager() {
+    public ISourceManager getSourceManager() {
         return sourceManager;
     }
 

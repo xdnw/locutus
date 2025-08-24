@@ -1,11 +1,16 @@
 package link.locutus.discord.gpt;
 
+import ai.djl.sentencepiece.SpTokenizer;
+import com.google.genai.Client;
+import com.google.genai.types.HttpOptions;
 import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingRegistry;
 import com.knuddels.jtokkit.api.ModelType;
 import com.openai.models.moderations.Moderation;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.gpt.imps.token.TokenizerDownloader;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.util.MathMan;
 
@@ -21,7 +26,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class GPTUtil {
-
 //    public static float[] average(List<float[]> input, List<Double> weighting) {
 //        // see https://github.com/openai/openai-cookbook/blob/main/examples/Embedding_long_inputs.ipynb
 //    }
@@ -32,6 +36,24 @@ public class GPTUtil {
 
     public static EncodingRegistry getRegistry() {
         return RegistryHolder.INSTANCE;
+    }
+
+    private static class SentencePieceHolder {
+        static final SpTokenizer TOKENIZER;
+
+        static {
+            try {
+                TOKENIZER = TokenizerDownloader.downloadAndLoad(TokenizerDownloader.SourceType.GITHUB, "google/gemma_pytorch/main/tokenizer", "tokenizer.model");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    public static int countSentencePieceTokens(String text) {
+        int count = SentencePieceHolder.TOKENIZER.tokenize(text).size();
+        // Add extra margin for safety, since newer models use slightly more tokens than SP counts
+        return (int) ((count * 1.005) + 1);
     }
 
     public static int detectContextWindow(Path modelDir) {
@@ -109,8 +131,83 @@ public class GPTUtil {
         return getChunks(input, tokenSizeCap, enc::countTokens);
     }
 
+    public static String getNextChunk(String text, int tokenSizeCap, Function<String, Integer> getSize) {
+        if (text == null || text.isEmpty()) return "";
+        if (tokenSizeCap == Integer.MAX_VALUE) return text;
+
+        if (getSize.apply(text) <= tokenSizeCap) {
+            return text; // Whole text fits.
+        }
+
+        int bestCut = -1;
+        StringBuilder sb = new StringBuilder();
+
+        // --- Pass 1: prefer newline boundaries ---
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            sb.append(c);
+            if (c == '\n') {
+                if (getSize.apply(sb.toString()) > tokenSizeCap) break;
+                bestCut = sb.length();
+            }
+        }
+
+        if (bestCut > 0) {
+            return text.substring(0, bestCut);
+        }
+
+        // --- Pass 2: fallback to whitespace boundaries ---
+        sb.setLength(0);
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            sb.append(c);
+            if (Character.isWhitespace(c)) {
+                if (getSize.apply(sb.toString()) > tokenSizeCap) break;
+                bestCut = sb.length();
+            }
+        }
+
+        if (bestCut > 0) {
+            return text.substring(0, bestCut);
+        }
+
+        // --- Pass 3: hard cut (binary search) ---
+        int low = 0, high = text.length();
+        while (low < high) {
+            int mid = (low + high) / 2;
+            String candidate = text.substring(0, mid);
+            if (getSize.apply(candidate) <= tokenSizeCap) {
+                low = mid + 1;
+            } else {
+                high = mid;
+            }
+        }
+
+        return text.substring(0, Math.max(0, low - 1));
+    }
+
+    public static Client createGoogleClient(String baseUrl, String apiKey) {
+        HttpOptions.Builder googeHttpOpt = HttpOptions.builder();
+        if (baseUrl != null && !baseUrl.isEmpty()) {
+            googeHttpOpt.baseUrl(baseUrl);
+        }
+        googeHttpOpt.timeout(120);
+        return Client.builder()
+                .apiKey(apiKey)
+                .httpOptions(googeHttpOpt.build())
+                .build();
+    }
+
     public static List<String> getChunks(String input, int tokenSizeCap, Function<String, Integer> getSize) {
-        List<String> result = new ArrayList<>();
+        if (tokenSizeCap == Integer.MAX_VALUE) {
+            return List.of(input);
+        }
+        int fullSize = getSize.apply(input);
+        List<String> result = new ObjectArrayList<>();
+        if (fullSize <= tokenSizeCap) {
+            result.add(input);
+            return result;
+        }
 
         String[] lines = input.split("[\r\n]+|\\.\\s");
 

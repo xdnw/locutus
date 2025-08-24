@@ -6,12 +6,12 @@ import com.openai.models.ChatModel;
 import com.openai.models.chat.completions.ChatCompletion;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import link.locutus.discord.gpt.GPTUtil;
-import link.locutus.discord.util.StringMan;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.function.IntConsumer;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -32,8 +32,8 @@ public class OpenAiText2Text implements IText2Text {
     }
 
     @Override
-    public String generate(Map<String, String> options, String text) {
-        OpenAiOptions optObj = options == null || options.isEmpty() ? defaultOptions : new OpenAiOptions().setOptions(this, options);
+    public String generate(String text, IntConsumer tokensUsed) {
+        OpenAiOptions optObj = defaultOptions;
 
         ChatCompletionCreateParams.Builder builder = ChatCompletionCreateParams.builder()
                 .addUserMessage(text)
@@ -72,19 +72,13 @@ public class OpenAiText2Text implements IText2Text {
                 System.out.println("No content in message, skipping.");
             }
         }
-        return String.join("\n", results);
-    }
+        String fullResponse = String.join("\n", results);
 
-    @Override
-    public Map<String, String> getOptions() {
-        return Map.of(
-                "temperature", "0.7",
-                "stop_sequences", "\n\n",
-                "top_p", "1",
-                "presence_penalty", "0",
-                "frequency_penalty", "0",
-                "max_tokens", "2000"
-        );
+        int tokens = completion.usage().map(f -> (int) f.totalTokens()).orElseGet(() -> getSize(text + "\n" + fullResponse));
+        if (tokensUsed != null) tokensUsed.accept((int) tokens);
+
+
+        return String.join("\n", results);
     }
 
     private static class OpenAiOptions {
@@ -132,7 +126,8 @@ public class OpenAiText2Text implements IText2Text {
                             checkArgument(maxTokens >= 1 && maxTokens <= parent.getSizeCap(), "max_tokens must be between 1 and " + parent.getSizeCap());
                             break;
                         default:
-                            throw new IllegalArgumentException("Unknown option: " + entry.getKey() + ". Valid options are: " + StringMan.getString(parent.getOptions()));
+                            throw new IllegalArgumentException("Unknown option: " + entry.getKey() + ". Valid options are: " +
+                                    "temperature (0-2), stop_sequences (1-4 comma-separated), top_p (0-1), presence_penalty (-2 to 2), frequency_penalty (-2 to 2), max_tokens (1-" + parent.getSizeCap() + ")");
                     }
                 }
             }

@@ -1,19 +1,11 @@
 package link.locutus.discord.gpt.pw;
 
-import com.openai.models.ChatModel;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.gpt.GptHandler;
-import link.locutus.discord.gpt.ProviderType;
-import link.locutus.discord.gpt.imps.text2text.IText2Text;
-import link.locutus.discord.gpt.imps.text2text.OpenAiText2Text;
-import link.locutus.discord.util.RateLimitUtil;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.apache.logging.log4j.core.config.builder.api.*;
@@ -21,10 +13,7 @@ import org.apache.logging.log4j.core.config.builder.impl.BuiltConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class LimitManager {
@@ -61,50 +50,26 @@ public class LimitManager {
     }
 
     public GptLimitTracker getLimitTracker(GuildDB db) {
-        return limitTrackerMap.computeIfAbsent(db.getIdLong(), f -> new SimpleGPTLimitTracker(true, logger));
-    }
-
-    public GptLimitTracker getDefaultProvider(GuildDB db, User user, DBNation nation) {
-        return getLimitTracker(db);
-    }
-
-    public void registerDefaults() {
-//        if (Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.COPILOT.ENABLED) {
-//            SimpleGPTProvider provider = new SimpleGPTProvider(
-//                    ProviderType.COPILOT,
-//                    handler.createCopilotText2Text("tokens", authData -> {
-//                        throw new IllegalArgumentException("(For bot owner): Open URL <" + authData.Url + "> to enter the device code: `" + authData.UserCode + "`");
-//                    }),
-//                    handler.getModerator(),
-//                    true,
-//                    logger);
-//            provider.setTurnLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.COPILOT.USER_TURN_LIMIT);
-//            provider.setDayLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.COPILOT.USER_DAY_LIMIT);
-//            provider.setGuildTurnLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.COPILOT.GUILD_TURN_LIMIT);
-//            provider.setGuildDayLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.COPILOT.GUILD_DAY_LIMIT);
-//
-//            globalProviders.put(ProviderType.COPILOT, provider);
-//        }
-
-        if (Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY != null) {
-            SimpleGPTLimitTracker provider = new SimpleGPTLimitTracker(true, logger);
-
+        return limitTrackerMap.computeIfAbsent(db.getIdLong(), f -> {
+            SimpleGPTLimitTracker provider = new SimpleGPTLimitTracker(handler, true, logger);
             provider.setTurnLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.LIMITS.USER_TURN_LIMIT);
             provider.setDayLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.LIMITS.USER_DAY_LIMIT);
             provider.setGuildTurnLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.LIMITS.GUILD_TURN_LIMIT);
             provider.setGuildDayLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.LIMITS.GUILD_DAY_LIMIT);
 
-            globalProviders.put(ProviderType.OPENAI, provider);
-        }
+            int[] localLimits = GuildKey.GPT_USAGE_LIMITS.getOrNull(db);
+            if (localLimits != null) {
+                // min between both
+                provider.setTurnLimit(Math.min(provider.getTurnLimit(), localLimits[0]));
+                provider.setDayLimit(Math.min(provider.getDayLimit(), localLimits[1]));
+                provider.setGuildTurnLimit(Math.min(provider.getGuildTurnLimit(), localLimits[2]));
+                provider.setGuildDayLimit(Math.min(provider.getGuildDayLimit(), localLimits[3]));
+            }
+            return provider;
+        });
+    }
 
-//        if (handler.getProcessText2Text() != null) {
-//            SimpleGPTProvider provider = new SimpleGPTProvider(
-//                    ProviderType.PROCESS,
-//                    handler.getProcessText2Text(),
-//                    handler.getModerator(),
-//                    false,
-//                    logger);
-//            globalProviders.put(ProviderType.PROCESS, provider);
-//        }
+    public GptLimitTracker getDefaultProvider(GuildDB db, User user, DBNation nation) {
+        return getLimitTracker(db);
     }
 }

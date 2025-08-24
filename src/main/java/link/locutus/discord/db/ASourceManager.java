@@ -10,7 +10,6 @@ import link.locutus.discord.Logg;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.ISourceManager;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
-import link.locutus.discord.gpt.imps.DocumentChunk;
 import link.locutus.discord.gpt.imps.VectorDatabase;
 import link.locutus.discord.gpt.imps.embedding.EmbeddingInfo;
 import link.locutus.discord.gpt.imps.embedding.IEmbedding;
@@ -41,7 +40,6 @@ public class ASourceManager implements ISourceManager, Closeable {
     private volatile boolean loaded = false;
     private final Map<Integer, EmbeddingSource> embeddingSources;
     private final Map<Integer, ConvertingDocument> unconvertedDocuments;
-    private final Map<Integer, Map<Integer, DocumentChunk>> documentChunks;
     private final GptDatabase database;
     private final VectorDatabase vectors;
 
@@ -51,7 +49,6 @@ public class ASourceManager implements ISourceManager, Closeable {
         this.database = database;
         this.embeddingSources = new ConcurrentHashMap<>();
         this.unconvertedDocuments = new ConcurrentHashMap<>();
-        this.documentChunks = new ConcurrentHashMap<>();
 
         this.embedding = embedding;
 
@@ -111,6 +108,7 @@ public class ASourceManager implements ISourceManager, Closeable {
         ctx().execute("CREATE TABLE IF NOT EXISTS document_queue (" +
                 "source_id INTEGER NOT NULL, " +
                 "prompt VARCHAR NOT NULL, " +
+                "remaining VARCHAR, " +
                 "converted BOOLEAN NOT NULL, " +
                 "use_global_context BOOLEAN NOT NULL, " +
                 "user BIGINT NOT NULL, " +
@@ -118,15 +116,6 @@ public class ASourceManager implements ISourceManager, Closeable {
                 "date BIGINT NOT NULL, " +
                 "hash BIGINT NOT NULL, " +
                 "PRIMARY KEY (source_id))");
-    }
-
-    private void createChunksTable() {
-        ctx().execute("CREATE TABLE IF NOT EXISTS document_chunks (" +
-                "source_id INTEGER NOT NULL, " +
-                "chunk_index INTEGER NOT NULL, " +
-                "converted BOOLEAN NOT NULL, " +
-                "text VARCHAR NOT NULL," +
-                "output VARCHAR, PRIMARY KEY (source_id, chunk_index))");
     }
 
     private void createUsageTable() {
@@ -172,18 +161,12 @@ public class ASourceManager implements ISourceManager, Closeable {
 
     private void loadUnconvertedDocuments() {
         ctx().execute("DELETE FROM document_queue WHERE converted = ?", true);
-        ctx().execute("DELETE FROM document_chunks WHERE converted = ?", true);
         // delete where source_id not in sources
         ctx().execute("DELETE FROM document_queue WHERE source_id NOT IN (SELECT source_id FROM sources)");
-        ctx().execute("DELETE FROM document_chunks WHERE source_id NOT IN (SELECT source_id FROM document_queue)");
 
         List<ConvertingDocument> docs = ctx().selectFrom("document_queue").fetchInto(ConvertingDocument.class);
         for (ConvertingDocument doc : docs) {
             unconvertedDocuments.put(doc.source_id, doc);
-        }
-        List<DocumentChunk> chunks = ctx().selectFrom("document_chunks").fetchInto(DocumentChunk.class);
-        for (DocumentChunk chunk : chunks) {
-            documentChunks.computeIfAbsent(chunk.source_id, k -> new ConcurrentHashMap<>()).put(chunk.source_id, chunk);
         }
     }
 
@@ -198,10 +181,14 @@ public class ASourceManager implements ISourceManager, Closeable {
         return unconvertedDocuments.get(source_id);
     }
 
-    public void addConvertingDocument(List<ConvertingDocument> documents) {
+    public void addDocument(List<ConvertingDocument> documents) {
         load();
         for (ConvertingDocument document : documents) {
-            unconvertedDocuments.put(document.source_id, document);
+            if (!document.converted) {
+                unconvertedDocuments.put(document.source_id, document);
+            } else {
+                unconvertedDocuments.remove(document.source_id);
+            }
         }
         ctx().transaction((TransactionalRunnable) -> {
             for (ConvertingDocument document : documents) {
@@ -211,34 +198,13 @@ public class ASourceManager implements ISourceManager, Closeable {
         });
     }
 
-    public void addChunks(List<DocumentChunk> chunks) {
-        load();
-        for (DocumentChunk chunk : chunks) {
-            documentChunks.computeIfAbsent(chunk.source_id, k -> new ConcurrentHashMap<>()).put(chunk.chunk_index, chunk);
-        }
-        ctx().transaction((TransactionalRunnable) -> {
-        for (DocumentChunk chunk : chunks) {
-            ctx().execute("INSERT OR REPLACE INTO document_chunks (source_id, chunk_index, converted, text, output) VALUES (?, ?, ?, ?, ?)",
-                    chunk.source_id, chunk.chunk_index, chunk.converted, chunk.text, chunk.output);
-        }
-        });
-    }
-
-    public List<DocumentChunk> getChunks(int source_id) {
-        load();
-        ArrayList<DocumentChunk> result = new ArrayList<>(documentChunks.getOrDefault(source_id, Collections.emptyMap()).values());
-        result.sort(Comparator.comparingInt(o -> o.chunk_index));
-        return result;
-    }
 
     @Override
-    public void deleteDocumentAndChunks(int sourceId) {
+    public void deleteDocument(int sourceId) {
         load();
-        documentChunks.remove(sourceId);
         unconvertedDocuments.remove(sourceId);
         ctx().transaction((TransactionalRunnable) -> {
             ctx().execute("DELETE FROM document_queue WHERE source_id = ?", sourceId);
-            ctx().execute("DELETE FROM document_chunks WHERE source_id = ?", sourceId);
         });
     }
 
@@ -303,8 +269,6 @@ public class ASourceManager implements ISourceManager, Closeable {
         createSourcesTable();
         // document_queue: source_id, prompt, converted, use_global_context, gpt_provider, user, error, date
         createDocumentQueueTable();
-        // document_chunks: source_id, chunk_index, converted, text
-        createChunksTable();
         // usage: model, usage, day
         createUsageTable();
     }
@@ -324,11 +288,9 @@ public class ASourceManager implements ISourceManager, Closeable {
         ctx().execute("DELETE FROM expanded_text WHERE source_id = ?", source_id);
         ctx().execute("DELETE FROM sources WHERE source_id = ?", source_id);
         ctx().execute("DELETE FROM vector_sources WHERE source_id = ?", source_id);
-        deleteDocumentAndChunks(source_id);
 
         embeddingSources.remove(source.source_id);
         unconvertedDocuments.remove(source_id);
-        documentChunks.remove(source_id);
     }
 
     @Override
@@ -388,8 +350,8 @@ public class ASourceManager implements ISourceManager, Closeable {
     }
 
     @Override
-    public int countVectors(EmbeddingSource existing) {
-        return vectors.countBySource(Set.of(existing.source_id));
+    public int countVectors(int source_id) {
+        return vectors.countBySource(Set.of(source_id));
     }
 
     @Override

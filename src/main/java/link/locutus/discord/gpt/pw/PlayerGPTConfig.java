@@ -20,22 +20,22 @@ public class PlayerGPTConfig {
         }
         return gptOptions;
     }
-
-    public void setOptions(DBNation nation, Map<String, Map<String, String>> options) {
-        String json = WebUtil.GSON.toJson(options);
-        byte[] data = json.getBytes(StandardCharsets.UTF_8);
-        nation.setMeta(NationMeta.GPT_OPTIONS, data);
-    }
-
-    public Map<String, Map<String, String>> setAndValidateOptions(DBNation nation, String modelName, Map<String, String> options) {
-        Map<String, Map<String, String>> config = getConfiguration(nation);
-        config.put(modelName, options);
-        setOptions(nation, config);
-        return config;
-    }
-
-    public Map<String, String> getOptions(DBNation nation, String modelName) {
-        Map<String, Map<String, String>> allOptions = getConfiguration(nation);
-        return allOptions.getOrDefault(modelName, new HashMap<>());
-    }
+//
+//    public void setOptions(DBNation nation, Map<String, Map<String, String>> options) {
+//        String json = WebUtil.GSON.toJson(options);
+//        byte[] data = json.getBytes(StandardCharsets.UTF_8);
+//        nation.setMeta(NationMeta.GPT_OPTIONS, data);
+//    }
+//
+//    public Map<String, Map<String, String>> setAndValidateOptions(DBNation nation, String modelName, Map<String, String> options) {
+//        Map<String, Map<String, String>> config = getConfiguration(nation);
+//        config.put(modelName, options);
+//        setOptions(nation, config);
+//        return config;
+//    }
+//
+//    public Map<String, String> getOptions(DBNation nation, String modelName) {
+//        Map<String, Map<String, String>> allOptions = getConfiguration(nation);
+//        return allOptions.getOrDefault(modelName, new HashMap<>());
+//    }
 }

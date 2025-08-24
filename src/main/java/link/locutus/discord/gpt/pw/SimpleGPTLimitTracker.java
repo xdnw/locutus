@@ -8,7 +8,9 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.gpt.GPTUtil;
+import link.locutus.discord.gpt.GptHandler;
 import link.locutus.discord.gpt.ModerationResult;
+import link.locutus.discord.gpt.imps.moderator.IModerator;
 import link.locutus.discord.gpt.imps.text2text.IText2Text;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.TimeUtil;
@@ -30,11 +32,18 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 public class SimpleGPTLimitTracker extends GptLimitTracker {
     private final Logger logger;
     private final ExecutorService executor;
+
+
+    private final Supplier<IModerator> getModerator;
+    private final Supplier<IText2Text> getText2Text;
+    private final BiConsumer<IText2Text, Integer> addUsage;
+
     private volatile boolean paused = false;
     private static final ReentrantLock lock = new ReentrantLock();
     private static final Condition condition = lock.newCondition();
@@ -53,14 +62,27 @@ public class SimpleGPTLimitTracker extends GptLimitTracker {
     private ConcurrentHashMap<Integer, String> runningTasks = new ConcurrentHashMap<>();
     private Throwable pauseError;
 
-    public SimpleGPTLimitTracker(boolean allowMultipleThreads, org.slf4j.Logger logger) {
+    public SimpleGPTLimitTracker(Supplier<IModerator> getModerator,
+                                 Supplier<IText2Text> getText2Text,
+                                 BiConsumer<IText2Text, Integer> addUsage,
+                                 boolean allowMultipleThreads,
+                                 org.slf4j.Logger logger) {
         this.logger = logger;
+        this.getModerator = getModerator;
+        this.getText2Text = getText2Text;
+        this.addUsage = addUsage;
+        this.executor = allowMultipleThreads ? Executors.newCachedThreadPool() : Executors.newSingleThreadExecutor();
+    }
 
-        if (allowMultipleThreads) {
-            this.executor = Executors.newCachedThreadPool();
-        } else {
-            this.executor = Executors.newSingleThreadExecutor();
-        }
+    // Change the existing constructor to delegate to the new one
+    public SimpleGPTLimitTracker(GptHandler handler, boolean allowMultipleThreads, org.slf4j.Logger logger) {
+        this(
+                handler::getModerator,
+                handler::getText2Text,
+                (t2t, tokens) -> handler.getSourceManager().addUsage(t2t.getId(), tokens),
+                allowMultipleThreads,
+                logger
+        );
     }
 
     @Override
@@ -188,17 +210,15 @@ public class SimpleGPTLimitTracker extends GptLimitTracker {
             result.append("Permission: `").append(e.getMessage() + "`\n");
         }
 
-        if (!getOptions().isEmpty()) {
-            result.append("Default Options: `").append(getOptions()).append("`\n");
-        }
-
         DBNation nation = DiscordUtil.getNation(user);
         if (nation != null) {
-            Map<String, String> myOptions = Locutus.imp().getCommandManager().getV2().getPwgptHandler().getPlayerGPTConfig().getOptions(nation, this);
-            if (!myOptions.isEmpty()) {
-                result.append("Your Options: `").append(myOptions).append("`\n");
+            IText2Text t2t = getText2Text.get();
+            if (t2t != null) {
+//                Map<String, String> myOptions = Locutus.imp().getCommandManager().getV2().getPwgptHandler().getPlayerGPTConfig().getOptions(nation, t2t.getId());
+//                if (!myOptions.isEmpty()) {
+//                    result.append("Your Options: `").append(myOptions).append("`\n");
+//                }
             }
-
             int turnUse = getUsesThisTurn(db, nation);
             int dayUse = getUsesToday(db, nation);
             result.append("User Usage: {turn: " + turnUse + (turnLimit == 0 ? "" : "/" + turnLimit) + ", day: " + dayUse + (dayLimit == 0 ? "" : "/" + dayLimit) + "}\n");
@@ -217,7 +237,7 @@ public class SimpleGPTLimitTracker extends GptLimitTracker {
     private final Map<Integer, Object> userLocks = new Int2ObjectOpenHashMap<>();
 
     @Override
-    public CompletableFuture<String> submit(GuildDB db, User user, DBNation nation, Map<String, String> options, String input) {
+    public CompletableFuture<String> submit(GuildDB db, User user, DBNation nation, String input) {
         if (paused) {
             throw new IllegalStateException("Executor is paused, cannot submit new task." + getPauseStr());
         }
@@ -225,6 +245,7 @@ public class SimpleGPTLimitTracker extends GptLimitTracker {
         if (moderatedBuf != null) {
             throw new IllegalStateException("No permission. Please open a ticket to appeal your automatic ban.\n" + new String(moderatedBuf.array(), StandardCharsets.ISO_8859_1) + ")");
         }
+
 
         // check if task is running via userLocks
         synchronized (userLocks) {
@@ -234,20 +255,27 @@ public class SimpleGPTLimitTracker extends GptLimitTracker {
             }
             userLocks.put(nation.getId(), new Object());
         }
+        IText2Text t2 = getText2Text.get();
+        if (t2 == null) {
+            synchronized (userLocks) {
+                userLocks.remove(nation.getId());
+            }
+            throw new IllegalStateException("No Text2Text provider available at this time. Please try again later, or ask an administrator to define a larger usage limit");
+        }
+
         addUse(db, nation);
         try {
             long start = System.currentTimeMillis();
-            List<ModerationResult> modResult = moderator.moderate(input);
+            List<ModerationResult> modResult = getModerator.get().moderate(input);
             try {
                 GPTUtil.checkThrowModeration(modResult, input);
             } catch (IllegalArgumentException e) {
                 nation.setMeta(NationMeta.GPT_MODERATED, e.getMessage());
-                // Add user to deny list
                 throw e;
             }
 
             System.out.println("Moderation: " + modResult);
-            logger.info("GPT-{}: {} ({}) - {}", type, db.getId(), user.getName(), input);
+            logger.info("GPT-{}: {} - {}", db.getId(), user.getName(), input);
 
             Supplier<String> task = () -> {
                 try {
@@ -261,8 +289,9 @@ public class SimpleGPTLimitTracker extends GptLimitTracker {
                         lock.unlock();
                     }
                     long start2 = System.currentTimeMillis();
-                    IText2Text t2 = getText2Text();
-                    String result = t2.generate(options, input);
+                    String result = t2.generate(input, tokensUsed -> {
+                        if (tokensUsed > 0) addUsage.accept(t2, tokensUsed);
+                    });
                     long execTime = System.currentTimeMillis() - start2;
                     addExecutionTime((int) execTime);
                     addExecutionDelay((int) (delay));
@@ -409,7 +438,7 @@ public class SimpleGPTLimitTracker extends GptLimitTracker {
             if (db.getIdLong() != requireGuild) {
                 Guild other = Locutus.imp().getDiscordApi().getGuildById(requireGuild);
                 String name = other == null ? "guild:" + requireGuild : other.toString();
-                throw new IllegalArgumentException("The GPT provider `" + this.getText2Text().getId() + "` can only be used in the `" + name + "` guild.");
+                throw new IllegalArgumentException("The GPT provider can only be used in the `" + name + "` guild.");
             }
         }
 
@@ -423,14 +452,14 @@ public class SimpleGPTLimitTracker extends GptLimitTracker {
             OffsetDateTime created = guild.getTimeCreated();
             // require 10 days old
             if (created.plusDays(50).isAfter(OffsetDateTime.now())) {
-                throw new IllegalArgumentException("The GPT provider `" + this.getText2Text().getId() + "` can only be used in guilds that are at least 50 days old.");
+                throw new IllegalArgumentException("The GPT provider can only be used in guilds that are at least 50 days old.");
             }
             if (isWhitelisted) {
                 return true;
             }
         } else {
             if (!Roles.AI_COMMAND_ACCESS.has(member)) {
-                throw new IllegalArgumentException("You do not have permission to use the GPT provider `" + this.getText2Text().getId() + "`. Missing role: " + Roles.AI_COMMAND_ACCESS.toDiscordRoleNameElseInstructions(db.getGuild()));
+                throw new IllegalArgumentException("You do not have permission to use the GPT provider. Missing role: " + Roles.AI_COMMAND_ACCESS.toDiscordRoleNameElseInstructions(db.getGuild()));
             }
             if (Roles.ADMIN.has(member)) {
                 return true;
@@ -441,7 +470,7 @@ public class SimpleGPTLimitTracker extends GptLimitTracker {
             int usedThisTurn = getUsesThisTurn(db, nation);
             if (usedThisTurn > this.turnLimit) {
                 long nexTurnMs = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() + 1);
-                throw new IllegalArgumentException("You have used the GPT provider `" + this.getText2Text().getId() + "` too many times this turn (" + usedThisTurn + "). Please wait until the next turn in " + DiscordUtil.timestamp(nexTurnMs, null) + ".");
+                throw new IllegalArgumentException("You have used the GPT provider too many times this turn (" + usedThisTurn + "). Please wait until the next turn in " + DiscordUtil.timestamp(nexTurnMs, null) + ".");
             }
         }
 
@@ -449,7 +478,7 @@ public class SimpleGPTLimitTracker extends GptLimitTracker {
             int usedToday = getUsesToday(db, nation);
             if (usedToday > this.dayLimit) {
                 long nextDayMs = TimeUtil.getTimeFromDay(TimeUtil.getDay() + 1);
-                throw new IllegalArgumentException("You have used the GPT provider `" + this.getText2Text().getId() + "` too many times today (" + usedToday + "). Please wait until the next day in " + DiscordUtil.timestamp(nextDayMs, null) + ".");
+                throw new IllegalArgumentException("You have used the GPT provider too many times today (" + usedToday + "). Please wait until the next day in " + DiscordUtil.timestamp(nextDayMs, null) + ".");
             }
         }
 
@@ -457,7 +486,7 @@ public class SimpleGPTLimitTracker extends GptLimitTracker {
             int usedThisTurn = getUsesThisTurn(db);
             if (usedThisTurn > this.guildTurnLimit) {
                 long nexTurnMs = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() + 1);
-                throw new IllegalArgumentException("Your guild has used the GPT provider `" + this.getText2Text().getId() + "` too many times this turn (" + usedThisTurn + "). Please wait until the next turn in " + DiscordUtil.timestamp(nexTurnMs, null) + ".");
+                throw new IllegalArgumentException("Your guild has used the GPT provider too many times this turn (" + usedThisTurn + "). Please wait until the next turn in " + DiscordUtil.timestamp(nexTurnMs, null) + ".");
             }
         }
         return true;
@@ -474,5 +503,25 @@ public class SimpleGPTLimitTracker extends GptLimitTracker {
     @Override
     public void close() throws IOException {
         executor.shutdownNow();
+    }
+
+    @Override
+    public int getTurnLimit() {
+        return turnLimit;
+    }
+
+    @Override
+    public int getDayLimit() {
+        return dayLimit;
+    }
+
+    @Override
+    public int getGuildTurnLimit() {
+        return guildTurnLimit;
+    }
+
+    @Override
+    public int getGuildDayLimit() {
+        return guildDayLimit;
     }
 }

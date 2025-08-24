@@ -55,7 +55,7 @@ public class PWGPTHandler {
         this.limitManager = new LimitManager(handler);
         this.PlayerGPTConfig = new PlayerGPTConfig();
         this.converter = new DocumentConverter(limitManager, handler);
-        this.wikiManager = new WikiManager(database, handler.getSourcemanager(), handler);
+        this.wikiManager = new WikiManager(database, handler.getSourceManager(), handler);
     }
 
     public WikiManager getWikiManager() {
@@ -80,7 +80,7 @@ public class PWGPTHandler {
 
     public void registerSources() {
         for (EmbeddingType type : EmbeddingType.values()) {
-            EmbeddingSource source = handler.getSourcemanager().getOrCreateSource(type.name(), 0);
+            EmbeddingSource source = handler.getSourceManager().getOrCreateSource(type.name(), 0);
             System.out.println("REMOVE:|| Register source " + type + " | " + source);
             sourceMap.put(type, source);
         }
@@ -91,7 +91,6 @@ public class PWGPTHandler {
     }
 
     public void registerDefaults() {
-        System.out.println("REMOVE:|| Register sources");
         registerSources();
 
         registerCommandEmbeddings();
@@ -107,8 +106,6 @@ public class PWGPTHandler {
 //        registerAcronymBindings("Acronym");
 //        registerPageSectionBindings("Wiki Page");
 //        registerTutorialBindings("Tutorial");
-
-        limitManager.registerDefaults();
     }
 
 //    public String generateSolution(ValueStore store, GuildDB db, User user, String userInput) {
@@ -191,7 +188,7 @@ public class PWGPTHandler {
     }
 
     public Set<EmbeddingSource> getSources(Guild guild, boolean allowRoot) {
-        return handler.getSourcemanager().getSources(guildId -> (allowRoot && (guildId == 0 || guildId == Settings.INSTANCE.ROOT_SERVER || guildId == Settings.INSTANCE.ROOT_COALITION_SERVER || guildId == Settings.INSTANCE.FORUM_FEED_SERVER)) || guildId == guild.getIdLong(), src -> true);
+        return handler.getSourceManager().getSources(guildId -> (allowRoot && (guildId == 0 || guildId == Settings.INSTANCE.ROOT_SERVER || guildId == Settings.INSTANCE.ROOT_COALITION_SERVER || guildId == Settings.INSTANCE.FORUM_FEED_SERVER)) || guildId == guild.getIdLong(), src -> true);
     }
 
     private void registerSettingEmbeddings() {
@@ -309,7 +306,7 @@ public class PWGPTHandler {
         EmbeddingType userInput = EmbeddingType.User_Input;
         EmbeddingSource userInputSrc = sourceMap.get(userInput);
 
-        List<EmbeddingInfo> result = handler.getSourcemanager().getClosest(userInputSrc, input, top, allowedSources, new BiPredicate<EmbeddingSource, Long>() {
+        List<EmbeddingInfo> result = handler.getSourceManager().getClosest(userInputSrc, input, top, allowedSources, new BiPredicate<EmbeddingSource, Long>() {
             @Override
             public boolean test(EmbeddingSource embeddingSource, Long hash) {
                 IEmbeddingAdapter<?> adapter = adapterMap2.get(embeddingSource);
@@ -409,6 +406,6 @@ public class PWGPTHandler {
     }
 
     public ISourceManager getSourceManager() {
-        return getHandler().getSourcemanager();
+        return getHandler().getSourceManager();
     }
 }

@@ -331,7 +331,7 @@ public class GuildKey {
         public String toString(int[] value) {
             return StringMan.join(value, ",");
         }
-    }.setupRequirements(f -> f.requires(OPENAI_KEY));
+    };
 
     public static final GuildSetting<List<String>> API_KEY = new GuildSetting<List<String>>(GuildSettingCategory.DEFAULT, null, List.class, String.class) {
         @NoFormat

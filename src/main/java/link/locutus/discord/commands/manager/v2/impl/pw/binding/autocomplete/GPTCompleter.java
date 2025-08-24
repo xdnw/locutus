@@ -10,10 +10,8 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Autocomplete;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.ProviderType;
-import link.locutus.discord.gpt.pw.GptLimitTracker;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.entities.Guild;
@@ -36,14 +34,6 @@ public class GPTCompleter extends BindingHelper {
         Set<EmbeddingSource> sources = handler.getSources(guild, true);
         List<String> sourceList = sources.stream().map(f -> f.source_name).collect(Collectors.toList());
         return StringMan.getClosest(input, sourceList, f -> f, OptionData.MAX_CHOICES, true);
-    }
-
-    @Autocomplete
-    @Binding(types={GptLimitTracker.class})
-    public List<String> provider(PWGPTHandler handler, @Me GuildDB db, String input) {
-        GptLimitTracker providers = handler.getProviderManager().getLimitTracker(db);
-        List<String> providerList = providers.stream().map(GptLimitTracker::getId).collect(Collectors.toList());
-        return StringMan.getClosest(input, providerList, f -> f, OptionData.MAX_CHOICES, true);
     }
 
     public GPTCompleter() {

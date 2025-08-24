@@ -10,6 +10,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.gpt.imps.text2text.IText2Text;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
@@ -30,12 +31,12 @@ public class GPTSearchUtil {
                                               Function<List<String>, ParametricCallable> getCommand,
                                               Function<ParametricCallable, String> getMention,
                                               String footer) {
-        TriFunction<ParametricCallable, GptLimitTracker, Integer, Map.Entry<String, Integer>> getPromptText = new TriFunction<ParametricCallable, GptLimitTracker, Integer, Map.Entry<String, Integer>>() {
+        TriFunction<ParametricCallable, IText2Text, Integer, Map.Entry<String, Integer>> getPromptText = new TriFunction<ParametricCallable, IText2Text, Integer, Map.Entry<String, Integer>>() {
             private boolean full = false;
             private int allowedFull = 5;
 
             @Override
-            public Map.Entry<String, Integer> apply(ParametricCallable command, GptLimitTracker provider, Integer remaining) {
+            public Map.Entry<String, Integer> apply(ParametricCallable command, IText2Text provider, Integer remaining) {
                 if (allowedFull-- <= 0) full = false;
                 String fullText;
                 if (!full) {
@@ -97,7 +98,7 @@ public class GPTSearchUtil {
     public static <T> String gptSearchCommand(@Me IMessageIO io, ValueStore store, @Me GuildDB db, @Me User user, String search, @Default String instructions, @Switch("g") boolean useGPT, @Switch("n") Integer numResults,
             Function<Integer, List<T>> getClosest,
             Function<List<String>, T> getCommand,
-            TriFunction<T, GptLimitTracker, Integer, Map.Entry<String, Integer>> getPromptText,
+            TriFunction<T, IText2Text, Integer, Map.Entry<String, Integer>> getPromptText,
             Function<T, String> getDescription,
             String footer) {
 
@@ -113,7 +114,8 @@ public class GPTSearchUtil {
 
         DBNation nation = DiscordUtil.getNation(user);
         if (nation != null && useGPT && pwGpt != null) {
-            GptLimitTracker provider = pwGpt.getProviderManager().getDefaultProvider(db, user, nation);
+            GptLimitTracker tracker = pwGpt.getProviderManager().getDefaultProvider(db, user, nation);
+            IText2Text provider = pwGpt.getHandler().getText2Text();
             if (provider != null) {
                 closest = getClosest.apply(100);
                 int cap = provider.getSizeCap();
@@ -170,15 +172,7 @@ public class GPTSearchUtil {
                 prompt = prompt.replace("{commands}", String.join("\n\n", commandTexts));
                 System.out.println(prompt);
 
-                Map<String, String> options = pwGpt.getPlayerGPTConfig().getOptions(nation, provider);
-                if (provider.getOptions().containsKey("temperature")) {
-                    options.putIfAbsent("temperature", "0.5");
-                }
-                if (provider.getOptions().containsKey("max_tokens")) {
-                    options.putIfAbsent("max_tokens", String.valueOf(20 * numResults));
-                }
-
-                Future<String> result = provider.submit(db, user, nation, options, prompt);
+                Future<String> result = tracker.submit(db, user, nation, prompt);
                 String resultStr = FileUtil.get(result);
                 System.out.println(resultStr);
                 List<String> lines = Arrays.asList(resultStr.split("\n"));

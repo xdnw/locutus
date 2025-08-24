@@ -529,7 +529,7 @@ public class Settings extends Config {
 
             @Comment({
                     "The frontend url for war stats",
-                    "Not hosted locally, see: <https://github.com/xdnw/lc_stats_svelte/> (github pages)"
+                    "Not hosted locally, see: https://github.com/xdnw/lc_stats_svelte/ (github pages)"
             })
             public String SITE = "https://wars.locutus.link";
         }
@@ -677,22 +677,22 @@ public class Settings extends Config {
         public OPENAI OPENAI;
 
         public static final class OPENAI {
-            @Comment({"Your API key from <https://platform.openai.com/account/api-keys>"})
+            @Comment({"Your API key from https://platform.openai.com/account/api-keys"})
             public String API_KEY = "";
 
             @Comment({"The base url for the OpenAI API",
-                    "Leave empty to use the default (https://api.openai.com/v1)"})
+                    "Leave empty to use the default https://api.openai.com/v1"})
             public String BASE_URL = "";
         }
 
         @Create
         public GOOGLE_AI GOOGLE_AI;
         public static final class GOOGLE_AI {
-            @Comment({"Your gemini API key from <https://console.cloud.google.com/apis/credentials> (optional)"})
+            @Comment({"Your gemini API key from https://console.cloud.google.com/apis/credentials (optional)"})
             public String API_KEY = "";
 
             @Comment({"The base url for the gemini API",
-                    "Leave empty to use the default (https://generativelanguage.googleapis.com)"})
+                    "Leave empty to use the default https://generativelanguage.googleapis.com"})
             public String BASE_URL = "";
         }
 
@@ -779,9 +779,9 @@ public class Settings extends Config {
         @Comment({
                 "The file location of the backup script to run",
                 "Set to empty string to disable backups",
-                "e.g. Restic: <https://restic.net/>",
-                "Windows Example: <https://gist.github.com/xdnw/a966c4bfe4bf2e1b9fa99ab189d1c41f>",
-                "Linux Example: <https://gist.github.com/xdnw/2b3939395961fb4108ab13fe07c43711>",
+                "e.g. Restic: https://restic.net/",
+                "Windows Example: https://gist.github.com/xdnw/a966c4bfe4bf2e1b9fa99ab189d1c41f",
+                "Linux Example: https://gist.github.com/xdnw/2b3939395961fb4108ab13fe07c43711",
         })
         public String SCRIPT = "";
         @Comment({"Intervals in turns between backups",
