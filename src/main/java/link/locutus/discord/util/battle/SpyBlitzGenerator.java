@@ -1,5 +1,7 @@
 package link.locutus.discord.util.battle;
 
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -37,6 +39,7 @@ public class SpyBlitzGenerator {
     private final boolean checkEspionageSlots;
     private final Integer minRequiredSpies;
     private final boolean prioritizeKills;
+    private final Map<Integer, Integer> attSpyCountOverride;
     private boolean forceUpdate;
 
     private Map<Integer, Double> allianceWeighting = new HashMap<>();
@@ -56,8 +59,22 @@ public class SpyBlitzGenerator {
         this.prioritizeKills = prioritizeKills;
         this.forceUpdate = forceUpdate;
 
-        this.attList = sortNations(attackers, true);
-        this.defList = sortNations(defenders, false);
+        this.attSpyCountOverride = new Int2IntOpenHashMap();
+
+        if (minRequiredSpies != null && minRequiredSpies >= 0) {
+            for (DBNation nation : attackers) {
+                int spies = nation.getSpies();
+                if (spies == 0 && !nation.hasBoughtSpiesToday()) {
+                    int dailyBuy = MilitaryUnit.SPIES.getMaxPerDay(nation.getCities(), nation::hasProject, nation::getResearch);
+                    attSpyCountOverride.put(nation.getId(), dailyBuy);
+                }
+            }
+        }
+
+        this.attList = sortNations(attackers, true, attSpyCountOverride);
+        this.defList = sortNations(defenders, false, attSpyCountOverride);
+
+        System.out.println("Attackers: " + attList.size() + " Defenders: " + defList.size());
     }
 
     public Map<DBNation, List<Spyop>> assignTargets(boolean isDayChange, Map<DBNation, Integer> subtractOffensiveSlots, Map<DBNation, Integer> subtractDefensiveSlots) {
@@ -67,7 +84,7 @@ public class SpyBlitzGenerator {
         BiFunction<Double, Double, Integer> attScoreRange = PW.getIsNationsInScoreRange(attList.keySet());
         BiFunction<Double, Double, Integer> defScoreRange = PW.getIsNationsInScoreRange(defList.keySet());
 
-        defList.entrySet().removeIf(n -> attScoreRange.apply(n.getKey().getScore() * 0.75, n.getKey().getScore() / 0.75) == 0);
+        defList.entrySet().removeIf(n -> attScoreRange.apply(n.getKey().getScore() * PW.SPY_RANGE_MIN_MODIFIER, n.getKey().getScore() * PW.SPY_RANGE_MAX_MODIFIER) == 0);
 
         BiFunction<Double, Double, Double> attSpyGraph = PW.getXInRange(attList.keySet(), n -> Math.pow(attList.get(n), 3));
         BiFunction<Double, Double, Double> defSpyGraph = PW.getXInRange(defList.keySet(), n -> Math.pow(defList.get(n), 3));
@@ -82,15 +99,15 @@ public class SpyBlitzGenerator {
             list.updateSpies(true);
         }
 
-        List<Spyop> ops = new ArrayList<>();
+        List<Spyop> ops = new ObjectArrayList<>();
 
         Set<SpyCount.Operation> allowedOpTypes = new HashSet<>(allowedTypes);
 
         Function<Double, Double> enemySpyRatio = new Function<Double, Double>() {
             @Override
             public Double apply(Double scoreAttacker) {
-                double attSpies = attSpyGraph.apply(scoreAttacker * 0.4, scoreAttacker * 1.5);
-                double defSpies = defSpyGraph.apply(scoreAttacker * 0.4, scoreAttacker * 1.5);
+                double attSpies = attSpyGraph.apply(scoreAttacker * PW.SPY_RANGE_MIN_MODIFIER, scoreAttacker * PW.SPY_RANGE_MAX_MODIFIER);
+                double defSpies = defSpyGraph.apply(scoreAttacker * PW.SPY_RANGE_MIN_MODIFIER, scoreAttacker * PW.SPY_RANGE_MAX_MODIFIER);
                 return defSpies / attSpies;
             }
         };
@@ -99,7 +116,7 @@ public class SpyBlitzGenerator {
 
         for (Map.Entry<DBNation, Double> entry : attList.entrySet()) {
             DBNation attacker = entry.getKey();
-            int mySpies = attacker.getSpies();
+            int mySpies = attSpyCountOverride.computeIfAbsent(attacker.getId(), _ -> attacker.getSpies());
 //            double attValue = entry.getValue();
 //
 //            Double attWeight = allianceWeighting.get(attacker.getAlliance_id());
@@ -121,7 +138,7 @@ public class SpyBlitzGenerator {
                 double spyRatio = enemySpyRatio.apply(defender.getScore());
                 for (SpyCount.Operation operation : allowedOpTypes) {
                     if (mySpies >= 30 && defender.getSpies() > 9 && operation != SpyCount.Operation.SPIES && allowedOpTypes.contains(SpyCount.Operation.SPIES)) {
-                         continue;
+                        continue;
                     }
 //                    if (defender.getSpies() > Math.min(6, attacker.getSpies() / 3d) && operation != SpyCount.Operation.SPIES && mySpies >= 30) {
 //                        continue;
@@ -143,7 +160,10 @@ public class SpyBlitzGenerator {
                     SpyCount.Operation[] opTypes = new SpyCount.Operation[]{operation};
                     Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(!prioritizeKills, mySpies, defender, attacker.hasProject(Projects.SPY_SATELLITE), opTypes);
 
-                    if (best == null) continue;
+                    if (best == null) {
+                        System.out.println("Best is null for " + attacker.getMarkdownUrl() + " -> " + defender.getMarkdownUrl() + " | " + operation);
+                        continue;
+                    }
 
                     Map.Entry<Integer, Double> bestValue = best.getValue();
                     double opNetDamage = bestValue.getValue();
@@ -239,16 +259,20 @@ public class SpyBlitzGenerator {
                 numFree -= subtractDefensiveSlots.getOrDefault(op.defender, 0);
             }
             if (numFree <= 0) {
+                System.out.println("Skipping def full " + op.defender.getMarkdownUrl());
                 continue;
             }
             if (!defOps.isEmpty()) {
                 int units = op.defender.getUnits(op.operation.unit);
                 for (Spyop other : defOps) {
                     if (other.operation != op.operation) continue;
-                    units -= Math.ceil(SpyCount.getKills(other.spies, other.defender, other.operation, other.attacker.hasProject(Projects.SPY_SATELLITE)));
+                    units -= (int) Math.ceil(SpyCount.getKills(other.spies, other.defender, other.operation, other.attacker.hasProject(Projects.SPY_SATELLITE)));
                 }
                 int kills = (int) Math.ceil(SpyCount.getKills(op.spies, op.defender, op.operation, op.attacker.hasProject(Projects.SPY_SATELLITE)));
-                if (units < kills || kills == 0) continue;
+                if (units < kills || kills == 0) {
+                    System.out.println("Skipping def no units " + op.defender.getMarkdownUrl() + " | " + op.operation + " | " + units + " < " + kills);
+                    continue;
+                }
 
             }
 
@@ -258,9 +282,10 @@ public class SpyBlitzGenerator {
 
         return opsAgainstNations;
     }
-
     public static double estimateValue(DBNation nation, boolean isAttacker, NationAttributeDouble priority) {
-        int spies = nation.getSpies();
+        return estimateValue(nation, nation.getSpies(), isAttacker, priority);
+    }
+    public static double estimateValue(DBNation nation, int spies, boolean isAttacker, NationAttributeDouble priority) {
         String mmrBuilding = nation.getMMRBuildingStr();
         int barracks = (mmrBuilding.charAt(0) - '0');
         int factories = (mmrBuilding.charAt(1) - '0');
@@ -362,13 +387,13 @@ public class SpyBlitzGenerator {
         return perSpyValue;
     }
 
-    private Map<DBNation, Double> sortNations(Collection<DBNation> nations, boolean isAttacker) {
+    private Map<DBNation, Double> sortNations(Collection<DBNation> nations, boolean isAttacker, Map<Integer, Integer> spyCountOverride) {
         List<DBNation> list = new ArrayList<>(nations);
 
         list.removeIf(DBNation::hasUnsetMil);
         list.removeIf(f -> f.active_m() > 2880);
         list.removeIf(f -> f.getVm_turns() > 0);
-        list.removeIf(f -> f.getSpies() <= 0);
+        list.removeIf(f -> spyCountOverride.computeIfAbsent(f.getId(), _ -> f.getSpies()) <= 0);
         list.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id);
         if (checkEspionageSlots && !isAttacker) {
             list.removeIf(DBNation::isEspionageFull);
@@ -377,7 +402,8 @@ public class SpyBlitzGenerator {
 
         Map<DBNation, Double> spyValueMap = new LinkedHashMap<>();
         for (DBNation nation : list) {
-            double perSpyValue = estimateValue(nation, isAttacker, isAttacker ? attackerPriority : defenderPriority);
+            int spies = attSpyCountOverride.computeIfAbsent(nation.getId(), _ -> nation.getSpies());
+            double perSpyValue = estimateValue(nation, spies, isAttacker, isAttacker ? attackerPriority : defenderPriority);
 
             spyValueMap.put(nation, perSpyValue);
         }
@@ -696,14 +722,14 @@ public class SpyBlitzGenerator {
                 case "fighter #4":
                     att4 = i;
                     break;
-                    // 5
+                // 5
                 case "att5":
                 case "op 5":
                 case "attacker 5":
                 case "fighter #5":
                     att5 = i;
                     break;
-                    // 6
+                // 6
                 case "att6":
                 case "op 6":
                 case "attacker 6":

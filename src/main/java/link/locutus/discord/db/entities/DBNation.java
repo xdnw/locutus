@@ -6644,7 +6644,7 @@ public abstract class DBNation implements NationOrAlliance {
             Includes projects, infra, land, cities, buildings, units, and research
             Does not factor in cost reduction policies or projects""")
     public double costConverted() {
-        int total = 0;
+        double total = 0;
         total += projectValue();
         total += infraValue();
         total += landValue();

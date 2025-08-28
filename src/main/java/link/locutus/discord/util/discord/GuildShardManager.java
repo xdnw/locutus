@@ -14,6 +14,7 @@ import net.dv8tion.jda.api.entities.SelfUser;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
+import net.dv8tion.jda.api.sharding.DefaultShardManager;
 import net.dv8tion.jda.api.sharding.ShardManager;
 
 import java.util.*;
@@ -45,6 +46,9 @@ public class GuildShardManager {
                 this.discordAPIMap.put(guild.getIdLong(), shard);
             }
         }
+        for (Guild guild : defaultShardManager.getGuilds()) {
+        }
+
 
     }
 
@@ -183,7 +187,9 @@ public class GuildShardManager {
 
     public Guild getGuildById(long id) {
         JDA api = getApiByGuildId(id);
-        if (api == null) return null;
+        if (api == null) {
+            return null;
+        }
         return api.getGuildById(id);
     }
 

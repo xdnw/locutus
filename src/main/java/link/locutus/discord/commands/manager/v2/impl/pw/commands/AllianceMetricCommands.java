@@ -172,7 +172,6 @@ public class AllianceMetricCommands {
         Settings.INSTANCE.ENABLED_COMPONENTS.WEB = false;
         Settings.INSTANCE.ENABLED_COMPONENTS.SLASH_COMMANDS = false;
         Settings.INSTANCE.ENABLED_COMPONENTS.MESSAGE_COMMANDS = false;
-        Settings.INSTANCE.ENABLED_COMPONENTS.CREATE_DATABASES_ON_STARTUP = true;
 
         Locutus locutus = Locutus.create();
         locutus.start();

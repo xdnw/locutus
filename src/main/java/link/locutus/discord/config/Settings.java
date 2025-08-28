@@ -141,9 +141,6 @@ public class Settings extends Config {
         })
         public boolean WEB = false;
 
-        @Comment({"Should databases be initialized on startup",
-                "false = they are initialized as needed (not optimized, so that is probably shortly after startup anyway, lol)"})
-        public boolean CREATE_DATABASES_ON_STARTUP = true;
 
         @Comment({"Should any repeating tasks be enabled",
                 "- See the task section to disable/adjust individual tasks"})
@@ -163,7 +160,6 @@ public class Settings extends Config {
         public boolean SNAPSHOTS = true;
 
         public void disableTasks() {
-            CREATE_DATABASES_ON_STARTUP = false;
             REPEATING_TASKS = false;
             SUBSCRIPTIONS = false;
         }
@@ -189,8 +185,6 @@ public class Settings extends Config {
 
             Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.clear();
             Settings.INSTANCE.MODERATION.BANNED_GUILDS.clear();
-
-            Settings.INSTANCE.ENABLED_COMPONENTS.CREATE_DATABASES_ON_STARTUP = false;
         }
     }
 

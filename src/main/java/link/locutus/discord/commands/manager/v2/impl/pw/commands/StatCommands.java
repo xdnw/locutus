@@ -1436,6 +1436,7 @@ public class StatCommands {
                                      @Switch("c") boolean attach_csv,
                                      @Switch("s") boolean attach_sheet) throws IOException {
         if (end_time == null) end_time = System.currentTimeMillis();
+        if (end_time <= start_time) throw new IllegalArgumentException("End time must be after start time");
         long endTurn = Math.min(TimeUtil.getTurn(), TimeUtil.getTurn(end_time));
         long startTurn = TimeUtil.getTurn(start_time);
 
