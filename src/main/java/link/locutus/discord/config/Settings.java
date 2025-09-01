@@ -140,6 +140,10 @@ public class Settings extends Config {
                 "- If enabled, also configure the web section below"
         })
         public boolean WEB = false;
+        @Comment({"If artificial intelligence features are enabled (must properly configure the AI section below)",
+                "Depending on your configuration this may use significant RAM and CPU"
+        })
+        public boolean ARTIFICIAL_INTELLIGENCE = false;
 
         @Comment({"Should databases be initialized on startup",
                 "false = they are initialized as needed (not optimized, so that is probably shortly after startup anyway, lol)"})
@@ -596,14 +600,15 @@ public class Settings extends Config {
     }
 
     @Comment({
-            "How often in seconds a task is run (set to 0 to disable)",
-            "Note: Politics and war is rate limited. You may experience issues if you run tasks too frequently"
+            "Artificial intelligence settings (if enabled in enabled-components)",
     })
     public static class ARTIFICIAL_INTELLIGENCE {
 
         @Create
         public OCR OCR;
 
+        @Comment({"You can setup google cloud console, for access to vision API, and leave these free OCR settings blank",
+                    "See: https://cloud.google.com/sdk/docs/install for more information",})
         public static final class OCR {
             @Comment({
                     "The directory of the tesseract files.",
@@ -615,7 +620,7 @@ public class Settings extends Config {
             })
             public String TESSERACT_LOCATION = "src/main/java/tessdata";
 
-            @Comment({"Your API key for <ocr.space> (optional)"})
+            @Comment({"Your API key for https://ocr.space (optional)"})
             public String OCR_SPACE_KEY = "";
         }
 
@@ -657,8 +662,9 @@ public class Settings extends Config {
         @Create
         public ConfigBlock<CHAT> CHAT;
 
-        public static final class CHAT {
-            @Comment({"Max chat tokens per day for this model. 0 = unlimited\n" +
+        @BlockName("gpt-5")
+        public static final class CHAT extends ConfigBlock {
+            @Comment({"Max chat tokens per day for this model. 0 = unlimited" +
                     "After exceeded, it will either use the next model, or cease working"})
             public int DAILY_LIMIT = 1_000_000;
 
@@ -670,7 +676,7 @@ public class Settings extends Config {
             @Comment({"The model to use for text embeddings",
                     "Example (OpenAi): `gpt-5`, `gpt-5-mini` (see https://platform.openai.com/docs/models/overview)",
                     "Example (Google): `gemini-2.5-pro`, `gemini-2.5-flash` (see: https://cloud.google.com/vertex-ai/docs/generative-ai/embeddings/models)"})
-            public String MODEL = "text-embedding-3-small";
+            public String MODEL = "gpt-5";
         }
 
         @Create

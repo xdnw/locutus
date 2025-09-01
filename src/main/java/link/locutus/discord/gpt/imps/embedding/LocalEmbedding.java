@@ -37,18 +37,18 @@ public class LocalEmbedding implements IEmbedding {
         return tokenizer.encode(text).getIds().length;
     }
 
+    private int dimensions = -1;
+
     @Override
-    public String getTableName() {
-        // get last part after / if present
-        String tmp = modelName;
-        if (tmp.contains("/")) {
-            tmp = tmp.substring(tmp.lastIndexOf('/') + 1);
+    public int getDimensions() {
+        if (dimensions != -1) {
+            return dimensions;
         }
-        if (tmp.equalsIgnoreCase("all-MiniLM-L6-v2")) {
-            // legacy table name
-            return "minilm";
+        String dimStr = model.getProperty("embedding_size");
+        if (dimStr != null) {
+            return dimensions = Integer.parseInt(dimStr);
         }
-        return tmp.replaceAll("[^a-zA-Z0-9]", "_").toLowerCase();
+        return dimensions = fetch("dimension_check").length;
     }
 
     @Override
@@ -75,7 +75,7 @@ public class LocalEmbedding implements IEmbedding {
     }
 
     @Override
-    public float[] fetchEmbedding(String text) {
+    public float[] fetch(String text) {
         init();
         try {
             return predictor.predict(text);
@@ -90,4 +90,19 @@ public class LocalEmbedding implements IEmbedding {
             this.model.close();
         }
     }
+
+    @Override
+    public String getTableName() {
+        // get last part after / if present
+        String tmp = modelName;
+        if (tmp.contains("/")) {
+            tmp = tmp.substring(tmp.lastIndexOf('/') + 1);
+        }
+        if (tmp.equalsIgnoreCase("all-MiniLM-L6-v2")) {
+            // legacy table name
+            return "minilm";
+        }
+        return tmp.replaceAll("[^a-zA-Z0-9]", "_").toLowerCase();
+    }
+
 }

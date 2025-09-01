@@ -606,9 +606,6 @@ public class DiscordCommands {
     @Command(desc = "Get the text from a discord image\n" +
             "It is recommended to crop the image first", viewable = true)
     public String ocr(String discordImageUrl) {
-        if (!ImageUtil.isDiscordImage(discordImageUrl)) {
-            throw new IllegalArgumentException("Invalid discord image url: `" + discordImageUrl + "`");
-        }
         String text = ImageUtil.getText(discordImageUrl);
         return "```\n" +text + "\n```\n";
     }

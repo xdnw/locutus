@@ -2,7 +2,7 @@ package link.locutus.discord.gpt;
 
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
-import link.locutus.discord.gpt.imps.VectorDatabase;
+import link.locutus.discord.gpt.imps.VectorRow;
 import link.locutus.discord.gpt.imps.embedding.EmbeddingInfo;
 import link.locutus.discord.gpt.imps.embedding.IEmbedding;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
@@ -28,7 +28,7 @@ public interface ISourceManager {
     Set<EmbeddingSource> getSources(Predicate<Long> guildPredicateOrNull, Predicate<EmbeddingSource> sourcePredicate);
     Map<Long, String> getContent(Set<Long> hashes);
     public String getText(long hash);
-    void iterateVectors(Set<EmbeddingSource> allowedSources, Consumer<VectorDatabase.SearchResult> source_hash_vector_consumer);
+    void iterateVectors(Set<EmbeddingSource> allowedSources, Consumer<VectorRow> source_hash_vector_consumer);
     float[] getEmbedding(EmbeddingSource source, String text, ThrowingConsumer<String> checkModeration);
     List<EmbeddingInfo>  getClosest(EmbeddingSource inputSource, String input, int top, Set<EmbeddingSource> allowedTypes, BiPredicate<EmbeddingSource, Long> sourceHashPredicate, ThrowingConsumer<String> moderate);
     int countVectors(int source_id);

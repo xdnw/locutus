@@ -3736,7 +3736,7 @@ public class WarCommands {
                 mail.append("Espionage targets: (costs >$" + MathMan.format(cost) + ")\n");
 
                 if (intelOps == 0) {
-                    mail.append("- These are NOT gather intelligence ops. XD\n");
+                    mail.append("- These are NOT gather intelligence ops.\n");
                     mail.append("- If these targets don't work, reply with the word `more` and i'll send you some more targets\n");
                 }
                 if (killSpies != 0) {

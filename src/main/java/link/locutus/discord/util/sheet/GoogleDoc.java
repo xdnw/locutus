@@ -1,42 +1,15 @@
 package link.locutus.discord.util.sheet;
 
-import com.google.api.client.auth.oauth2.Credential;
-import com.google.api.client.auth.oauth2.TokenResponseException;
-import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
-import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
-import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
-import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import com.google.api.client.googleapis.json.GoogleJsonResponseException;
-import com.google.api.client.http.javanet.NetHttpTransport;
-import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.gson.GsonFactory;
-import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.docs.v1.Docs;
-import com.google.api.services.docs.v1.DocsScopes;
-import com.google.api.services.docs.v1.model.BatchUpdateDocumentRequest;
-import com.google.api.services.docs.v1.model.DeleteContentRangeRequest;
-import com.google.api.services.docs.v1.model.Document;
-import com.google.api.services.docs.v1.model.InsertTextRequest;
-import com.google.api.services.docs.v1.model.Location;
-import com.google.api.services.docs.v1.model.Range;
-import com.google.api.services.docs.v1.model.Request;
-import com.google.api.services.docs.v1.model.StructuralElement;
-import link.locutus.discord.config.Settings;
+import com.google.api.services.docs.v1.model.*;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.gpt.test.ExtractText;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -44,13 +17,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class GoogleDoc {
-    private static final String APPLICATION_NAME = "DriveFile";
-    private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
-    protected static final String TOKENS_DIRECTORY_PATH = "config" + java.io.File.separator + "tokens2";
-    private static final String CREDENTIALS_FILE_PATH = "config" + java.io.File.separator + "credentials-drive.json";
-
-    private static final List<String> SCOPES = Collections.singletonList(DocsScopes.DOCUMENTS);
-
     public static String parseId(String id) {
         if (id.startsWith("document:")) {
             id = id.split(":")[1];
@@ -63,82 +29,51 @@ public class GoogleDoc {
         return id.split("/")[0];
     }
 
-    private static Docs getServiceAPI() throws GeneralSecurityException, IOException {
-        final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
-        return  new Docs.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT))
-                .setApplicationName(APPLICATION_NAME)
-                .build();
-    }
-
     public static boolean isDoc(String arg) {
         return arg.startsWith("https://docs.google.com/document/") || arg.startsWith("document:");
     }
 
-    public static File getCredentialsFile() {
-        return new File(CREDENTIALS_FILE_PATH);
-    }
-
-    private static Credential getCredentials(final NetHttpTransport HTTP_TRANSPORT) throws IOException {
-        // Load client secrets.
-        File file = getCredentialsFile();
-        if (!file.exists()) {
-            throw new FileNotFoundException("Resource not found: " + CREDENTIALS_FILE_PATH);
-        }
-        try (InputStream in = new FileInputStream(file)) {
-            GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
-
-            // Build flow and trigger user authorization request.
-            GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-                    HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
-                    .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH)))
-                    .setAccessType("offline")
-                    .build();
-            LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(Settings.INSTANCE.WEB.GOOGLE_SHEET_VALIDATION_PORT).build();
-            return new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
-        }
-    }
-
-    public static boolean credentialsExists() {
-        return getCredentialsFile().exists();
-    }
-
     public static GoogleDoc create(GuildDB db, SheetKey key, String titleOrNull) throws GeneralSecurityException, IOException {
+        if (titleOrNull == null) {
+            if (key == null || db == null) {
+                throw new IllegalArgumentException("A guild, key, or title must be provided to create a new document.");
+            }
+        }
         String documentId = key == null ? null : db.getInfo(key, true);
         String defTitle = titleOrNull != null ? titleOrNull : db.getGuild().getId() + "." + key.name();
-
         Docs api = null;
+        try {
+            api = SheetUtil.getDocsService();
 
-        if (credentialsExists()) {
-            if (documentId == null) {
-                // Set the title of the document
-                Document document = new Document()
-                        .setTitle(defTitle);
+            Document document = new Document()
+                    .setTitle(defTitle);
 
-                api = getServiceAPI();
-                document = api.documents().create(document)
-                        .setFields("documentId")
-                        .execute();
+            document = api.documents().create(document)
+                    .setFields("documentId")
+                    .execute();
 
-                documentId = document.getDocumentId();
-                if (key != null) db.setInfo(key, documentId);
-            }
+            documentId = document.getDocumentId();
+            if (key != null && db != null) db.setInfo(key, documentId);
             if (documentId != null) {
-                DriveFile gdFile = new DriveFile(documentId);
                 try {
+                    DriveFile gdFile = new DriveFile(documentId);
                     gdFile.shareWithAnyone(DriveFile.DriveRole.WRITER);
-                } catch (GoogleJsonResponseException | TokenResponseException e) {
+                } catch (GeneralSecurityException | IOException e) {
                     e.printStackTrace();
                 }
             }
-        } else {
+        } catch (IOException e) {
             documentId = UUID.randomUUID().toString();
         }
-
         return create(documentId, api, defTitle);
     }
 
     public static GoogleDoc create(String id) throws GeneralSecurityException, IOException {
-        return create(id, credentialsExists() ? getServiceAPI() : null, "");
+        Docs api = null;
+        try {
+            api = SheetUtil.getDocsService();
+        } catch (IOException _) {}
+        return create(id, api, "");
     }
 
     private static GoogleDoc create(String id, Docs api, String title) throws GeneralSecurityException, IOException {
@@ -158,7 +93,6 @@ public class GoogleDoc {
     private String documentId;
     private GoogleDoc(String id, Docs api, String title) throws GeneralSecurityException, IOException {
         if (id != null) {
-            if (api == null && credentialsExists()) api = getServiceAPI();
             this.service = api;
             this.documentId = parseId(id);
         }

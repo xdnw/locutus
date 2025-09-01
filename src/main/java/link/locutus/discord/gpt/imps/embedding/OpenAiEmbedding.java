@@ -10,6 +10,8 @@ import com.openai.models.embeddings.EmbeddingCreateParams;
 import com.openai.models.embeddings.EmbeddingModel;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Locale;
 
@@ -26,6 +28,45 @@ public class OpenAiEmbedding implements IEmbedding {
         this.embeddingEncoder = registry.getEncoding(EncodingType.CL100K_BASE);
         this.model = model;
         this.modelType = ModelType.fromName(model.asString().toLowerCase(Locale.ROOT).replace('_', '-')).orElse(null);
+    }
+
+    private volatile int dimensions = -1;
+
+    @Override
+    public int getDimensions() {
+        if (dimensions != -1) return dimensions;
+        synchronized (this) {
+            if (dimensions != -1) return dimensions;
+            String modelName = model.asString().toLowerCase(Locale.ROOT);
+            return dimensions = switch (modelName) {
+                case "text-embedding-3-large" -> 3072;
+                case "text-embedding-ada-002", "text-embedding-3-small" -> 1536;
+                default -> {
+                    String cachePath = "config/vector/dim_" + modelName + ".txt";
+                    try {
+                        if (Files.exists(Paths.get(cachePath))) {
+                            String content = Files.readString(Paths.get(cachePath)).trim();
+                            yield Integer.parseInt(content);
+                        }
+                    } catch (Exception e) {
+                        // Ignore and proceed to fetch
+                    }
+
+                    // Fetch dummy embedding and cache
+                    float[] dummyEmbedding = fetch("dimension_check");
+                    int dim = dummyEmbedding.length;
+
+                    // Cache the dimension
+                    try {
+                        Files.createDirectories(Paths.get("config/vector"));
+                        Files.writeString(Paths.get(cachePath), Integer.toString(dim));
+                    } catch (IOException e) {
+                        // Ignore cache write errors
+                    }
+                    yield dim;
+                }
+            };
+        }
     }
 
     @Override
@@ -48,7 +89,7 @@ public class OpenAiEmbedding implements IEmbedding {
     }
 
     @Override
-    public float[] fetchEmbedding(String text) {
+    public float[] fetch(String text) {
         EmbeddingCreateParams params = EmbeddingCreateParams.builder()
                 .model(model)
                 .input(text)

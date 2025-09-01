@@ -1,11 +1,17 @@
     package link.locutus.discord.gpt.imps.embedding;
 
+    import ai.djl.sentencepiece.SpTokenizer;
     import com.google.genai.Client;
     import com.google.genai.types.ContentEmbedding;
     import com.google.genai.types.EmbedContentConfig;
     import com.google.genai.types.Model;
+    import link.locutus.discord.gpt.GPTUtil;
 
+    import java.io.IOException;
+    import java.nio.file.Files;
+    import java.nio.file.Paths;
     import java.util.List;
+    import java.util.Locale;
 
     public class GoogleAiEmbedding implements IEmbedding {
 
@@ -14,7 +20,9 @@
         private final EmbedContentConfig config;
         private Model model;
         private Integer tokenLimit;
-//        private SpTokenizer tokenizer;
+
+        private SpTokenizer tokenizer;
+        private boolean tokenizerInitialized;
 
         public GoogleAiEmbedding(Client client, String modelName) {
             this.client = client;
@@ -38,6 +46,44 @@
             }
         }
 
+        private int dimensions = -1;
+
+        @Override
+        public int getDimensions() {
+            if (dimensions != -1) return dimensions;
+            synchronized (this) {
+                if (dimensions != -1) return dimensions;
+                return dimensions = switch (modelName.toLowerCase()) {
+                    case "gemini-embedding-001" -> 3072;
+                    case "text-embedding-005", "text-multilingual-embedding-002" -> 768;
+                    default -> {
+                        String cachePath = "config/vector/dim_" + modelName + ".txt";
+                        try {
+                            if (Files.exists(Paths.get(cachePath))) {
+                                String content = Files.readString(Paths.get(cachePath)).trim();
+                                yield Integer.parseInt(content);
+                            }
+                        } catch (Exception e) {
+                            // Ignore and proceed to fetch
+                        }
+
+                        // Fetch dummy embedding and cache
+                        float[] dummyEmbedding = fetch("dimension_check");
+                        int dim = dummyEmbedding.length;
+
+                        // Cache the dimension
+                        try {
+                            Files.createDirectories(Paths.get("config/vector"));
+                            Files.writeString(Paths.get(cachePath), Integer.toString(dim));
+                        } catch (IOException e) {
+                            // Ignore cache write errors
+                        }
+                        yield dim;
+                    }
+                };
+            }
+        }
+
         @Override
         public int getSizeCap() {
             return this.tokenLimit;
@@ -45,11 +91,26 @@
 
         @Override
         public int getSize(String text) {
-            return client.models.countTokens(modelName, text, null).totalTokens().orElseThrow();
+            if (!tokenizerInitialized) {
+                synchronized (this) {
+                    if (!tokenizerInitialized) {
+                        this.tokenizer = GPTUtil.getSpTokenizerOrNull(modelName.toLowerCase(Locale.ROOT));
+                    }
+                }
+            }
+            if (tokenizer != null) {
+                return GPTUtil.countSentencePieceTokens(tokenizer, text);
+            }
+            try {
+                return client.models.countTokens(modelName, text, null).totalTokens().orElseThrow();
+            } catch (Exception e) {
+                throw new RuntimeException("Error counting tokens", e);
+            }
         }
 
         @Override
-        public float[] fetchEmbedding(String text) {
+        public float[] fetch(String text) {
+            System.out.println("Fetching embedding for text: ```\n" + text + "\n```");
             try {
                 var response = client.models.embedContent(modelName, text, config);
                 List<ContentEmbedding> floatList = response.embeddings().orElse(null);

@@ -8,8 +8,8 @@ import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingRegistry;
 import com.knuddels.jtokkit.api.ModelType;
 import com.openai.models.moderations.Moderation;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.gpt.imps.VectorRow;
 import link.locutus.discord.gpt.imps.token.TokenizerDownloader;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.util.MathMan;
@@ -18,17 +18,14 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.ToDoubleFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class GPTUtil {
-//    public static float[] average(List<float[]> input, List<Double> weighting) {
-//        // see https://github.com/openai/openai-cookbook/blob/main/examples/Embedding_long_inputs.ipynb
-//    }
 
     private static class RegistryHolder {
         static final EncodingRegistry INSTANCE = Encodings.newDefaultEncodingRegistry();
@@ -38,22 +35,98 @@ public class GPTUtil {
         return RegistryHolder.INSTANCE;
     }
 
-    private static class SentencePieceHolder {
+    private static class Gemma2Tokenizer {
         static final SpTokenizer TOKENIZER;
 
         static {
             try {
-                TOKENIZER = TokenizerDownloader.downloadAndLoad(TokenizerDownloader.SourceType.GITHUB, "google/gemma_pytorch/main/tokenizer", "tokenizer.model");
+                TOKENIZER = TokenizerDownloader.downloadAndLoad(TokenizerDownloader.SourceType.GITHUB, "google/gemma_pytorch/33b652c465537c6158f9a472ea5700e5e770ad3f/tokenizer", "tokenizer.model");
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
     }
 
-    public static int countSentencePieceTokens(String text) {
-        int count = SentencePieceHolder.TOKENIZER.tokenize(text).size();
-        // Add extra margin for safety, since newer models use slightly more tokens than SP counts
-        return (int) ((count * 1.005) + 1);
+    private static class Gemma3Tokenizer {
+        static final SpTokenizer TOKENIZER;
+
+        static {
+            try {
+                TOKENIZER = TokenizerDownloader.downloadAndLoad(TokenizerDownloader.SourceType.GITHUB, "google/gemma_pytorch/014acb7ac4563a5f77c76d7ff98f31b568c16508/tokenizer", "gemma3_cleaned_262144_v2.spiece.model");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    public static SpTokenizer getSpTokenizerOrNull(String modelName) {
+        return switch (modelName) {
+            case
+                    "gemini-1.0-pro",
+                    "gemini-1.0-pro-001",
+                    "gemini-1.0-pro-002",
+                    "gemini-1.5-pro",
+                    "gemini-1.5-pro-001",
+                    "gemini-1.5-pro-002",
+                    "gemini-1.5-flash",
+                    "gemini-1.5-flash-001",
+                    "gemini-1.5-flash-002" -> GPTUtil.GEMMA_2();
+            case
+                    "gemini-embedding-001", // gemini-embedding-001 is preliminary, may not be correct
+                    "gemini-2.5-pro",
+                    "gemini-2.5-pro-preview-06-05",
+                    "gemini-2.5-pro-preview-05-06",
+                    "gemini-2.5-pro-exp-03-25",
+                    "gemini-live-2.5-flash",
+                    "gemini-2.5-flash",
+                    "gemini-2.5-flash-preview-05-20",
+                    "gemini-2.5-flash-preview-04-17",
+                    "gemini-2.5-flash-lite",
+                    "gemini-2.5-flash-lite-preview-06-17",
+                    "gemini-2.0-flash",
+                    "gemini-2.0-flash-lite",
+                    "gemini-2.0-flash-001",
+                    "gemini-2.0-flash-lite-001" -> GPTUtil.GEMMA_3();
+            default -> null;
+        };
+    }
+
+    public static SpTokenizer GEMMA_3() {
+        return Gemma3Tokenizer.TOKENIZER;
+    }
+
+    public static SpTokenizer GEMMA_2() {
+        return Gemma2Tokenizer.TOKENIZER;
+    }
+
+    public static int countSentencePieceTokens(SpTokenizer tokenizer, String text) {
+        int count = tokenizer.tokenize(text).size();
+        // Add end token
+        return count + 1;
+    }
+
+    public static void normalize(float[] vector) {
+        double normSquared = 0.0;
+        for (float v : vector) {
+            normSquared += v * v;
+        }
+
+        // Calculate norm
+        double norm = Math.sqrt(normSquared);
+
+        // If the vector is already very close to unit length, skip normalization
+        // Threshold is tunable; 1e-6 is usually safe for float precision
+        if (Math.abs(norm - 1.0) < 1e-6) {
+            return;
+        }
+
+        if (norm == 0.0) {
+            throw new IllegalArgumentException("Cannot normalize a zero vector");
+        }
+
+        for (int i = 0; i < vector.length; i++) {
+            vector[i] /= norm;
+        }
     }
 
     public static int detectContextWindow(Path modelDir) {
@@ -126,64 +199,63 @@ public class GPTUtil {
         return enc.countTokens(input);
     }
 
-    public static List<String> getChunks(String input, ModelType type, int tokenSizeCap) {
+    public static List<String> getChunksOld(String input, ModelType type, int tokenSizeCap) {
         Encoding enc = ENCODER_CACHE.computeIfAbsent(type, getRegistry()::getEncodingForModel);
-        return getChunks(input, tokenSizeCap, enc::countTokens);
+        return Chunker.getChunks(input, tokenSizeCap, enc::countTokens);
     }
 
-    public static String getNextChunk(String text, int tokenSizeCap, Function<String, Integer> getSize) {
-        if (text == null || text.isEmpty()) return "";
-        if (tokenSizeCap == Integer.MAX_VALUE) return text;
-
-        if (getSize.apply(text) <= tokenSizeCap) {
-            return text; // Whole text fits.
+    public static float[] handleVectorChunking(String text, int tokenSizeCap,
+                                               Function<String, Integer> getSize,
+                                               Function<String, float[]> fetchEmbedding) {
+        List<String> chunks = Chunker.getChunks(text, tokenSizeCap, getSize);
+        if (chunks.isEmpty()) {
+            return new float[0];
         }
 
-        int bestCut = -1;
-        StringBuilder sb = new StringBuilder();
+        // Fast-path for a single chunk
+        if (chunks.size() == 1) {
+            float[] single = fetchEmbedding.apply(chunks.get(0));
+            return (single != null) ? single : new float[0];
+        }
 
-        // --- Pass 1: prefer newline boundaries ---
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            sb.append(c);
-            if (c == '\n') {
-                if (getSize.apply(sb.toString()) > tokenSizeCap) break;
-                bestCut = sb.length();
+        float[] weightedSum = null;
+        long totalTokens = 0L;
+
+        for (String chunk : chunks) {
+            int tokens = Math.max(0, getSize.apply(chunk));
+            if (tokens == 0) {
+                continue;
             }
-        }
 
-        if (bestCut > 0) {
-            return text.substring(0, bestCut);
-        }
-
-        // --- Pass 2: fallback to whitespace boundaries ---
-        sb.setLength(0);
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            sb.append(c);
-            if (Character.isWhitespace(c)) {
-                if (getSize.apply(sb.toString()) > tokenSizeCap) break;
-                bestCut = sb.length();
+            float[] emb = fetchEmbedding.apply(chunk);
+            if (emb == null || emb.length == 0) {
+                continue;
             }
-        }
 
-        if (bestCut > 0) {
-            return text.substring(0, bestCut);
-        }
-
-        // --- Pass 3: hard cut (binary search) ---
-        int low = 0, high = text.length();
-        while (low < high) {
-            int mid = (low + high) / 2;
-            String candidate = text.substring(0, mid);
-            if (getSize.apply(candidate) <= tokenSizeCap) {
-                low = mid + 1;
-            } else {
-                high = mid;
+            if (weightedSum == null) {
+                weightedSum = new float[emb.length];
+            } else if (weightedSum.length != emb.length) {
+                throw new IllegalStateException("Embedding dimension mismatch across chunks.");
             }
+
+            // Accumulate weighted by token count
+            for (int j = 0; j < emb.length; j++) {
+                weightedSum[j] += emb[j] * tokens;
+            }
+            totalTokens += tokens;
         }
 
-        return text.substring(0, Math.max(0, low - 1));
+        if (weightedSum == null || totalTokens == 0L) {
+            return new float[0];
+        }
+
+        // Divide by total token weight to get the mean
+        float inv = 1.0f / (float) totalTokens;
+        for (int j = 0; j < weightedSum.length; j++) {
+            weightedSum[j] *= inv;
+        }
+
+        return weightedSum;
     }
 
     public static Client createGoogleClient(String baseUrl, String apiKey) {
@@ -198,48 +270,94 @@ public class GPTUtil {
                 .build();
     }
 
-    public static List<String> getChunks(String input, int tokenSizeCap, Function<String, Integer> getSize) {
-        if (tokenSizeCap == Integer.MAX_VALUE) {
-            return List.of(input);
-        }
-        int fullSize = getSize.apply(input);
-        List<String> result = new ObjectArrayList<>();
-        if (fullSize <= tokenSizeCap) {
-            result.add(input);
-            return result;
-        }
+    public static List<VectorRow> rerankTopKByCosine_mutable(List<VectorRow> candidates, float[] queryVector, int k) {
+        if (queryVector == null) throw new IllegalArgumentException("queryVector must not be null");
+        if (candidates == null || candidates.isEmpty() || k <= 0) return Collections.emptyList();
 
-        String[] lines = input.split("[\r\n]+|\\.\\s");
+        // compute query norm once
+        int len = queryVector.length;
+        double qNormSq = 0.0;
+        for (float v : queryVector) qNormSq += (double) v * v;
+        double qNorm = Math.sqrt(qNormSq);
+        if (qNorm == 0.0) return Collections.emptyList();
 
-        // get the tokens count for each line
-        List<Integer> tokensCount = new ArrayList<>();
-        for (String line : lines) {
-            int size = getSize.apply(line);
-            if (size > tokenSizeCap) {
-                throw new IllegalArgumentException("Line exceeds token limit of " + tokenSizeCap);
+        // produce a normalized query (unit length) so dot(candidate, qUnit) == cosine
+        float[] qUnit = new float[len];
+        double invQNorm = 1.0 / qNorm;
+        for (int i = 0; i < len; i++) qUnit[i] = (float) (queryVector[i] * invQNorm);
+
+        int n = candidates.size();
+
+        // If k >= n: score all, set score field, sort descending
+        if (k >= n) {
+            List<VectorRow> scored = new ArrayList<>(n);
+            for (VectorRow row : candidates) {
+                if (row == null || row.vector == null || row.vector.length != len) {
+                    if (row != null) row.score = Double.NEGATIVE_INFINITY;
+                    continue;
+                }
+                double dot = 0.0;
+                float[] v = row.vector;
+                for (int i = 0; i < len; i++) dot += (double) v[i] * qUnit[i];
+                // dot is already cosine because both are unit length
+                row.score = Double.isFinite(dot) ? dot : Double.NEGATIVE_INFINITY;
+                if (row.score > Double.NEGATIVE_INFINITY) scored.add(row);
             }
-            tokensCount.add(size);
+            scored.sort(Comparator.comparingDouble((ToDoubleFunction<VectorRow>) f -> f.score).reversed());
+            return scored;
         }
 
-        // iterate over lines in chunks of 6000 tokens
-        int currentChunkSize = 0;
-        StringBuilder currentChunk = new StringBuilder();
-        for (String line : lines) {
-            int lineTokens = tokensCount.get(0);
-            if (currentChunkSize + lineTokens > tokenSizeCap) {
-                // process current chunk
-                result.add(currentChunk.toString());
-                // start new chunk
-                currentChunk = new StringBuilder();
-                currentChunkSize = 0;
+        // Else use a min-heap of size k (min at head) for O(n log k)
+        PriorityQueue<VectorRow> heap = new PriorityQueue<>(Comparator.comparingDouble(r -> r.score));
+
+        for (VectorRow row : candidates) {
+            if (row == null || row.vector == null || row.vector.length != len) {
+                if (row != null) row.score = Double.NEGATIVE_INFINITY;
+                continue;
             }
-            currentChunk.append(line).append("\n");
-            currentChunkSize += lineTokens;
-            tokensCount.remove(0);
-        }
-        // process last chunk
-        result.add(currentChunk.toString());
+            double dot = 0.0;
+            float[] v = row.vector;
+            for (int i = 0; i < len; i++) dot += (double) v[i] * qUnit[i];
 
-        return result;
+            double score = Double.isFinite(dot) ? dot : Double.NEGATIVE_INFINITY;
+            if (score == Double.NEGATIVE_INFINITY) {
+                row.score = score;
+                continue;
+            }
+
+            row.score = score;
+
+            if (heap.size() < k) {
+                heap.offer(row);
+            } else if (heap.peek().score < score) {
+                heap.poll();
+                heap.offer(row);
+            }
+        }
+
+        List<VectorRow> top = new ArrayList<>(heap);
+        top.sort(Comparator.comparingDouble((ToDoubleFunction<VectorRow>) f -> f.score).reversed());
+        return top;
+    }
+
+    // Helper to compute cosine score between queryVector and a candidate row (uses precomputed queryNorm).
+    private static double scoreCandidate(float[] queryVector, double queryNorm, VectorRow row) {
+        if (row == null) return Double.NEGATIVE_INFINITY;
+        float[] v = row.vector;
+        if (v == null || v.length != queryVector.length) return Double.NEGATIVE_INFINITY;
+
+        double dot = 0.0;
+        double candNormSq = 0.0;
+        for (int i = 0; i < v.length; i++) {
+            double a = queryVector[i];
+            double b = v[i];
+            dot += a * b;
+            candNormSq += b * b;
+        }
+        if (candNormSq == 0.0) return Double.NEGATIVE_INFINITY;
+        double candNorm = Math.sqrt(candNormSq);
+        double score = dot / (queryNorm * candNorm);
+        if (Double.isFinite(score)) return score;
+        return Double.NEGATIVE_INFINITY;
     }
 }

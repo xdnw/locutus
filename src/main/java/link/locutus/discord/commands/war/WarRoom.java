@@ -18,7 +18,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.StandardGuildMessageChanne
 
 import java.util.*;
 
-import static com.google.gson.internal.$Gson$Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkNotNull;
 import static link.locutus.discord.util.discord.DiscordUtil.setSymbol;
 
 public class WarRoom {

@@ -21,7 +21,7 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.gpt.ISourceManager;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
-import link.locutus.discord.gpt.imps.VectorDatabase;
+import link.locutus.discord.gpt.imps.VectorRow;
 import link.locutus.discord.gpt.imps.embedding.EmbeddingType;
 import link.locutus.discord.gpt.imps.text2text.IText2Text;
 import link.locutus.discord.gpt.pw.ArgumentEmbeddingAdapter;
@@ -312,9 +312,9 @@ public class GPTCommands {
         ISourceManager embeddings = handler.getHandler().getSourceManager();
         Set<EmbeddingSource> sources = Collections.singleton(source);
         SpreadSheet finalSheet = sheet;
-        embeddings.iterateVectors(sources, new Consumer<VectorDatabase.SearchResult>() {
+        embeddings.iterateVectors(sources, new Consumer<VectorRow>() {
             @Override
-            public void accept(VectorDatabase.SearchResult result) {
+            public void accept(VectorRow result) {
                 String text = result.text;
                 header.set(0, text);
                 finalSheet.addRow(header);
@@ -407,7 +407,7 @@ public class GPTCommands {
     @Command(desc = "Resume paused chat provider (i.e. manual/error).\n" +
             "Check provider status with list command.")
     @RolePermission(value = Roles.ADMIN)
-    public String chatResume(@Me GuildDB db, @Me User user, GptLimitTracker provider) {
+    public String chatResume(@Me GuildDB db, @Me User user, @Me GptLimitTracker provider) {
         if (!provider.checkAdminPermission(db, user, true)) {
             return "You do not have permission to resume this provider";
         }
@@ -431,7 +431,7 @@ public class GPTCommands {
             Halts document conversion using this provider.
             Providers may be resumed.""")
     @RolePermission(value = Roles.ADMIN)
-    public String chatPause(@Me GuildDB db, @Me User user, GptLimitTracker provider) {
+    public String chatPause(@Me GuildDB db, @Me User user, @Me GptLimitTracker provider) {
         if (!provider.checkAdminPermission(db, user, true)) {
             return "You do not have permission to pause this provider";
         }

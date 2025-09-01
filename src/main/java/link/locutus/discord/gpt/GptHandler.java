@@ -10,6 +10,7 @@ import com.openai.models.embeddings.EmbeddingModel;
 import com.openai.models.moderations.ModerationModel;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import link.locutus.discord.Logg;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.ASourceManager;
@@ -18,6 +19,7 @@ import link.locutus.discord.gpt.imps.embedding.GoogleAiEmbedding;
 import link.locutus.discord.gpt.imps.embedding.IEmbedding;
 import link.locutus.discord.gpt.imps.embedding.LocalEmbedding;
 import link.locutus.discord.gpt.imps.embedding.OpenAiEmbedding;
+import link.locutus.discord.gpt.imps.moderator.GoogleModerator;
 import link.locutus.discord.gpt.imps.moderator.IModerator;
 import link.locutus.discord.gpt.imps.moderator.LocalModerator;
 import link.locutus.discord.gpt.imps.moderator.OpenAiModerator;
@@ -28,7 +30,6 @@ import link.locutus.discord.gpt.pw.GptDatabase;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 
 import java.io.IOException;
-import java.sql.SQLException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
@@ -56,7 +57,7 @@ public class GptHandler {
     private Object initGoogleClientLock = new Object();
     private Client googleClient2;
 
-    public GptHandler(GptDatabase database) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
+    public GptHandler(GptDatabase database) throws Exception {
         this.sourceManager = new ASourceManager(database, getEmbedding());
     }
 
@@ -105,7 +106,7 @@ public class GptHandler {
                     }
                     switch (type) {
                         case OPENAI -> {
-                            EmbeddingModel model = EmbeddingModel.of(modelName.toUpperCase(Locale.ROOT));
+                            EmbeddingModel model = EmbeddingModel.of(modelName.toLowerCase(Locale.ROOT));
                             this.embedding = new OpenAiEmbedding(GPTUtil.getRegistry(), getOrCreateOpenAiService(), model);
                         }
                         case GOOGLE -> {
@@ -137,11 +138,11 @@ public class GptHandler {
                     }
                     switch (type) {
                         case OPENAI -> {
-                            ModerationModel model = ModerationModel.of(modelName.toUpperCase(Locale.ROOT));
+                            ModerationModel model = ModerationModel.of(modelName.toLowerCase(Locale.ROOT));
                             this.moderator = new OpenAiModerator(getOrCreateOpenAiService(), model);
                         }
                         case GOOGLE -> {
-                            throw new IllegalArgumentException("Google AI moderation is not yet implemented. Please use OpenAI or Local moderation.");
+                            this.moderator = new GoogleModerator();
                         }
                         case LOCAL -> {
                             try {
@@ -162,11 +163,11 @@ public class GptHandler {
         if (this.text2TextList == null) {
             synchronized (this) {
                 if (this.text2TextList == null) {
-                    this.text2TextList = Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.CHAT.getInstances().stream()
+                    this.text2TextList = new Object2IntOpenHashMap<>(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.CHAT.getInstances().stream()
                             .collect(Collectors.toMap(
                                     this::createTextToText,
                                     config -> config.DAILY_LIMIT
-                            ));
+                            )));
                     if (this.text2TextList.isEmpty()) {
                         throw new IllegalArgumentException("No Text2Text models configured. Please check your `config.yml` file.");
                     }
@@ -174,11 +175,21 @@ public class GptHandler {
             }
         }
 
-        return this.text2TextList.entrySet().stream()
-                .filter(entry -> sourceManager.getUsage(entry.getKey().getId()) < entry.getValue())
-                .map(Map.Entry::getKey)
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("All Text2Text models have reached their daily limit."));
+        synchronized (text2TextList) {
+            if (text2TextList.size() == 1) {
+                IText2Text possible = text2TextList.keySet().iterator().next();
+                if (sourceManager.getUsage(possible.getId()) < text2TextList.get(possible)) {
+                    return possible;
+                }
+                throw new IllegalArgumentException("The only configured Text2Text model has reached its daily limit.");
+            }
+
+            return this.text2TextList.entrySet().stream()
+                    .filter(entry -> sourceManager.getUsage(entry.getKey().getId()) < entry.getValue())
+                    .map(Map.Entry::getKey)
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("All Text2Text models have reached their daily limit."));
+        }
     }
 
     private IText2Text createTextToText(Settings.ARTIFICIAL_INTELLIGENCE.CHAT config) {
@@ -189,7 +200,7 @@ public class GptHandler {
         }
         switch (type) {
             case OPENAI -> {
-                ChatModel model = ChatModel.of(modelName.toUpperCase(Locale.ROOT));
+                ChatModel model = ChatModel.of(modelName.toLowerCase(Locale.ROOT));
                 return new OpenAiText2Text(getOrCreateOpenAiService(), model);
             }
             case GOOGLE -> {

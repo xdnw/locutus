@@ -2795,23 +2795,6 @@ public class CM {
                 }
             }
             public static class providers{
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="chatProviderConfigure")
-                public static class configure extends CommandRef {
-                    public static final configure cmd = new configure();
-                public configure provider(String value) {
-                    return set("provider", value);
-                }
-
-                public configure options(String value) {
-                    return set("options", value);
-                }
-
-                }
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="listChatProviders")
-                public static class list extends CommandRef {
-                    public static final list cmd = new list();
-
-                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="chatPause")
                 public static class pause extends CommandRef {
                     public static final pause cmd = new pause();
@@ -2825,14 +2808,6 @@ public class CM {
                     public static final resume cmd = new resume();
                 public resume provider(String value) {
                     return set("provider", value);
-                }
-
-                }
-                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="setChatProviders")
-                public static class set extends CommandRef {
-                    public static final set cmd = new set();
-                public set providerTypes(String value) {
-                    return set("providerTypes", value);
                 }
 
                 }
@@ -9089,14 +9064,6 @@ public class CM {
             }
         }
         public static class settings_artificial_intelligence{
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="ENABLE_GITHUB_COPILOT", field="ENABLE_GITHUB_COPILOT")
-            public static class ENABLE_GITHUB_COPILOT extends CommandRef {
-                public static final ENABLE_GITHUB_COPILOT cmd = new ENABLE_GITHUB_COPILOT();
-            public ENABLE_GITHUB_COPILOT value(String value) {
-                return set("value", value);
-            }
-
-            }
             @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="GPT_USAGE_LIMITS", field="GPT_USAGE_LIMITS")
             public static class GPT_USAGE_LIMITS extends CommandRef {
                 public static final GPT_USAGE_LIMITS cmd = new GPT_USAGE_LIMITS();
@@ -9114,14 +9081,6 @@ public class CM {
 
             public GPT_USAGE_LIMITS guildDayLimit(String value) {
                 return set("guildDayLimit", value);
-            }
-
-            }
-            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="register_openai_key", field="OPENAI_KEY")
-            public static class register_openai_key extends CommandRef {
-                public static final register_openai_key cmd = new register_openai_key();
-            public register_openai_key apiKey(String value) {
-                return set("apiKey", value);
             }
 
             }

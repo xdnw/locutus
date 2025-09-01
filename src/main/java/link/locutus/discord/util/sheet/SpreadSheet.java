@@ -1,40 +1,28 @@
 package link.locutus.discord.util.sheet;
 
-import com.google.api.client.auth.oauth2.TokenResponseException;
-import com.google.api.client.googleapis.json.GoogleJsonResponseException;
-import com.google.api.client.http.HttpRequest;
-import com.google.api.client.http.HttpRequestInitializer;
+import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.sheets.v4.model.*;
+import com.opencsv.CSVWriter;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AddBalanceBuilder;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
-import link.locutus.discord.util.*;
-import com.google.api.client.auth.oauth2.Credential;
-import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
-import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
-import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
-import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import com.google.api.client.http.javanet.NetHttpTransport;
-import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.gson.GsonFactory;
-import com.google.api.client.util.store.FileDataStoreFactory;
-import com.google.api.services.sheets.v4.Sheets;
-import com.google.api.services.sheets.v4.SheetsScopes;
-import com.opencsv.CSVWriter;
-import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.util.MarkupUtil;
+import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.TimeUtil;
 import net.dv8tion.jda.api.entities.Message;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.security.GeneralSecurityException;
 import java.util.*;
@@ -48,12 +36,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static com.google.gson.internal.$Gson$Preconditions.checkArgument;
-import static com.google.gson.internal.$Gson$Preconditions.checkNotNull;
-import static com.opencsv.ICSVWriter.DEFAULT_ESCAPE_CHARACTER;
-import static com.opencsv.ICSVWriter.DEFAULT_QUOTE_CHARACTER;
-import static com.opencsv.ICSVWriter.DEFAULT_SEPARATOR;
-import static com.opencsv.ICSVWriter.DEFAULT_LINE_END;
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 public class SpreadSheet {
 
@@ -82,7 +66,7 @@ public class SpreadSheet {
         SpreadSheet sheet;
         try {
             sheet = SpreadSheet.create(keys);
-        } catch (GeneralSecurityException | IOException e) {
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
 
@@ -247,82 +231,102 @@ public class SpreadSheet {
         return instance;
     }
 
-    public static SpreadSheet createTitle(String title) throws GeneralSecurityException, IOException {
-        Sheets api = null;
-        String sheetId;
-        if (credentialsExists()) {
-            Spreadsheet spreadsheet = new Spreadsheet()
-                    .setProperties(new SpreadsheetProperties()
-                            .setTitle(title)
-                    );
-            api = getServiceAPI();
-            spreadsheet = api.spreadsheets().create(spreadsheet)
-                    .setFields("spreadsheetId")
-                    .execute();
-
-            sheetId = spreadsheet.getSpreadsheetId();
-        } else {
-            sheetId = UUID.randomUUID().toString();
+    private static SpreadSheet createInternal(GuildDB dbOrNull, SheetKey key, String titleOrNull) {
+        if (titleOrNull == null) {
+            if (dbOrNull == null || key == null) {
+                if (key == null) {
+                    throw new IllegalArgumentException("Either a guild or title must be provided");
+                }
+                throw new IllegalArgumentException("This command must be run in a guild, or a sheet must be specified for: " + key.name());
+            }
+            titleOrNull = dbOrNull.getGuild().getId() + "." + key.name();
         }
-        return new SpreadSheet(sheetId, api);
-    }
-
-    public static SpreadSheet create(GuildDB db, SheetKey key) throws GeneralSecurityException, IOException {
-        if (db == null) throw new IllegalArgumentException("This command must be run in a guild, or a sheet must be specified for: " + key.name());
-        String sheetId = db.getInfo(key, true);
+        Spreadsheet spreadsheet = new Spreadsheet()
+                .setProperties(new SpreadsheetProperties()
+                        .setTitle(titleOrNull)
+                );
 
         Sheets api = null;
-
-        if (credentialsExists()) {
+        String sheetId = null;
+        try {
+            api = SheetUtil.getSheetService();
             if (sheetId == null) {
-                Spreadsheet spreadsheet = new Spreadsheet()
-                        .setProperties(new SpreadsheetProperties()
-                                .setTitle(db.getGuild().getId() + "." + key.name())
-                        );
-                api = getServiceAPI();
                 spreadsheet = api.spreadsheets().create(spreadsheet)
                         .setFields("spreadsheetId")
                         .execute();
-
                 sheetId = spreadsheet.getSpreadsheetId();
-                db.setInfo(key, sheetId);
+                if (dbOrNull != null && key != null) {
+                    dbOrNull.setInfo(key, sheetId);
+                }
             }
             if (sheetId != null) {
                 String[] split = sheetId.split(",");
-                DriveFile gdFile = new DriveFile(split[0]);
                 try {
+                    DriveFile gdFile = new DriveFile(split[0]);
                     gdFile.shareWithAnyone(DriveFile.DriveRole.WRITER);
-                } catch (GoogleJsonResponseException | TokenResponseException e) {
+                } catch (GeneralSecurityException | IOException e) {
                     e.printStackTrace();
                 }
             }
-        } else {
+        } catch (IOException e) {
             sheetId = UUID.randomUUID().toString();
         }
-
-        SpreadSheet sheet = create(sheetId, api);
-        return sheet;
+        return create(sheetId, api);
     }
 
-    public static SpreadSheet create(String id) throws GeneralSecurityException, IOException {
-        return create(id, null);
+    public static SpreadSheet createTitle(String title) throws GeneralSecurityException, IOException {
+        return createInternal(null, null, title);
     }
 
-    private static SpreadSheet create(String id, Sheets api) throws GeneralSecurityException, IOException {
+    public static SpreadSheet create(GuildDB db, SheetKey key) throws GeneralSecurityException, IOException {
+        return createInternal(db, key, null);
+    }
+
+    private SpreadSheet(String id, Sheets api) {
+        if (id != null) {
+            this.service = api;
+            this.spreadsheetId = id;
+            if (this.service != null) {
+                this.valuesByTab.clear();
+            }
+        }
+    }
+
+    public static SpreadSheet create(String id) throws IOException {
+        Sheets api = null;
+        try {
+            api = SheetUtil.getSheetService();
+        } catch (IOException _) {}
+        return create(id, api);
+    }
+
+    private static SpreadSheet create(String id, Sheets api) {
         return create(parseId(id), api);
     }
 
-    private static SpreadSheet create(SheetId id) throws GeneralSecurityException, IOException {
-        return create(id, null);
+    private static SpreadSheet create(SheetId id) throws IOException {
+        Sheets api = null;
+        try {
+            api = SheetUtil.getSheetService();
+        } catch (IOException _) {}
+        return create(id, api);
     }
 
-    private static SpreadSheet create(SheetId id, Sheets api) throws GeneralSecurityException, IOException {
+    private static SpreadSheet create(SheetId id, Sheets api) {
         SpreadSheet cached;
         synchronized (CACHE) {
             cached = CACHE.get(id.id);
             if (cached == null) {
                 cached = new SpreadSheet(id.id, api);
                 CACHE.put(id.id, cached);
+                if (api != null) {
+                    try {
+                        DriveFile gdFile = new DriveFile(id.id);
+                        gdFile.shareWithAnyone(DriveFile.DriveRole.WRITER);
+                    } catch (GeneralSecurityException | IOException e) {
+                        e.printStackTrace();
+                    }
+                }
             } else {
                 CACHE.put(id.id, cached); // Reset expiration
             }
@@ -338,16 +342,7 @@ public class SpreadSheet {
         }
         return cached;
     }
-    private static final String APPLICATION_NAME = "Spreadsheet";
-    private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
-    private static final String TOKENS_DIRECTORY_PATH = "config" + java.io.File.separator + "tokens";
 
-    /**
-     * Global instance of the scopes required by this quickstart.
-     * If modifying these scopes, delete your previously saved tokens/ folder.
-     */
-    private static final List<String> SCOPES = Collections.singletonList(SheetsScopes.SPREADSHEETS);
-    private static final String CREDENTIALS_FILE_PATH = "config" + java.io.File.separator + "credentials-sheets.json";
     private Sheets service;
     private final Map<String, List<List<Object>>> valuesByTab = new LinkedHashMap<>();
     private String spreadsheetId;
@@ -408,35 +403,6 @@ public class SpreadSheet {
             id = m.group().split("/")[0];
         }
         return new SheetId(id, tabName, tabId);
-    }
-
-    private SpreadSheet(String id, Sheets api) throws GeneralSecurityException, IOException {
-        if (id != null) {
-            if (api == null && credentialsExists()) api = getServiceAPI();
-            this.service = api;
-            this.spreadsheetId = id;
-            if (this.service != null) {
-                this.valuesByTab.clear();
-            }
-        }
-    }
-
-    private static Sheets getServiceAPI() throws GeneralSecurityException, IOException {
-        final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
-        Credential credentials = getCredentials(HTTP_TRANSPORT);
-        HttpRequestInitializer requestInitializer = new HttpRequestInitializer() {
-            @Override
-            public void initialize(final HttpRequest httpRequest) throws IOException {
-                credentials.initialize(httpRequest);
-                httpRequest.setConnectTimeout(240_000);
-                httpRequest.setReadTimeout(240_000);
-//                httpRequest.setNumberOfRetries(3);
-            }
-        };
-        return new Sheets.Builder(HTTP_TRANSPORT, JSON_FACTORY, credentials)
-                .setApplicationName(APPLICATION_NAME)
-                .setHttpRequestInitializer(requestInitializer)
-                .build();
     }
 
     public Sheets getService() {
@@ -651,38 +617,6 @@ public class SpreadSheet {
         return url;
     }
 
-    public static File getCredentialsFile() {
-        return new File(CREDENTIALS_FILE_PATH);
-    }
-
-    public static boolean credentialsExists() {
-        return getCredentialsFile().exists();
-    }
-
-    /**
-     * Creates an authorized Credential object.
-     *
-     * @param HTTP_TRANSPORT The network HTTP Transport.
-     * @return An authorized Credential object.
-     * @throws IOException If the credentials.json file cannot be found.
-     */
-    private static Credential getCredentials(final NetHttpTransport HTTP_TRANSPORT) throws IOException {
-        // Load client secrets.
-        File file = getCredentialsFile();
-        if (!file.exists()) {
-            throw new FileNotFoundException("Resource not found: " + CREDENTIALS_FILE_PATH);
-        }
-        try (InputStream in = new FileInputStream(file)) {
-            GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
-
-            // Build flow and trigger user authorization request.
-            GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-                    HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
-                    .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH)))
-                    .setAccessType("offline")
-                    .build();
-            LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(Settings.INSTANCE.WEB.GOOGLE_SHEET_VALIDATION_PORT).build();
-            return new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
         }
     }
 
@@ -866,6 +800,7 @@ public class SpreadSheet {
             return;
         }
         if (service == null) {
+            System.out.println("Skipping write, no service");
             return;
         }
         for (Map.Entry<String, List<List<Object>>> entry : valuesByTab.entrySet()) {
@@ -880,6 +815,7 @@ public class SpreadSheet {
             return;
         }
         if (service == null) {
+            System.out.println("Skipping write, no service");
             return;
         }
         List<List<Object>> values = valuesByTab.get(tabName.toLowerCase(Locale.ROOT));

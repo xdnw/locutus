@@ -2,6 +2,8 @@ package link.locutus.discord.util;
 
 import cn.easyproject.easyocr.EasyOCR;
 import cn.easyproject.easyocr.ImageType;
+import com.google.cloud.vision.v1.*;
+import com.google.cloud.vision.v1.Image;
 import com.mxgraph.layout.mxFastOrganicLayout;
 import com.mxgraph.model.mxCell;
 import com.mxgraph.swing.mxGraphComponent;
@@ -223,6 +225,9 @@ public class ImageUtil {
 
 
     public static String getTextLocal(String imageUrl, ImageType type) {
+        if (!ImageUtil.isDiscordImage(imageUrl)) {
+            throw new IllegalArgumentException("Invalid discord image url: `" + imageUrl + "`");
+        }
         String pathStr = Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OCR.TESSERACT_LOCATION;
         if (pathStr == null || pathStr == null) {
             return null;
@@ -404,6 +409,10 @@ public class ImageUtil {
     }
 
     public static String getText(String imageUrl) {
+        String text = getTextGoogleCloud(imageUrl);
+        if (text != null && !text.isEmpty()) {
+            return text;
+        }
         if (!Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OCR.OCR_SPACE_KEY.isEmpty()) {
             try {
                 return getTextAPI(imageUrl);
@@ -413,6 +422,56 @@ public class ImageUtil {
         }
         return getTextLocal(imageUrl, ImageType.CLEAR);
     }
+
+    private static String getTextGoogleCloud(String imageUrl) {
+        // Build the image request
+        List<AnnotateImageRequest> requests = new ArrayList<>();
+        Image img = Image.newBuilder().setSource(ImageSource.newBuilder().setImageUri(imageUrl).build()).build();
+        Feature textDetectFeat = Feature.newBuilder().setType(Feature.Type.DOCUMENT_TEXT_DETECTION).build();
+        Feature safeSearchFeat = Feature.newBuilder().setType(Feature.Type.SAFE_SEARCH_DETECTION).build();
+
+        AnnotateImageRequest request =
+                AnnotateImageRequest.newBuilder().addFeatures(textDetectFeat).addFeatures(safeSearchFeat).setImage(img).build();
+        requests.add(request);
+
+        // Perform OCR
+        try (ImageAnnotatorClient client = ImageAnnotatorClient.create()) {
+            List<AnnotateImageResponse> responses = client.batchAnnotateImages(requests).getResponsesList();
+            StringBuilder sb = new StringBuilder();
+            for (AnnotateImageResponse res : responses) {
+                if (res.hasError()) {
+                    throw new IllegalArgumentException("Error: " + res.getError().getMessage());
+                }
+                SafeSearchAnnotation annotation = res.getSafeSearchAnnotation();
+                if (annotation.getAdultValue() >= Likelihood.LIKELY.getNumber() ||
+                        annotation.getViolenceValue() >= Likelihood.LIKELY.getNumber() ||
+                        annotation.getRacyValue() >= Likelihood.LIKELY.getNumber()) {
+                    String msg = new JSONObject()
+                            .put("flagged", true)
+                            .put("moderation", new JSONObject()
+                                    .put("sexual_graphic", new JSONObject()
+                                            .put("label", annotation.getAdult().name())
+                                            .put("value", annotation.getAdultValue()))
+                                    .put("violence", new JSONObject()
+                                            .put("label", annotation.getViolence().name())
+                                            .put("value", annotation.getViolenceValue()))
+                                    .put("sexual_suggestive", new JSONObject()
+                                            .put("label", annotation.getRacy().name())
+                                            .put("value", annotation.getRacyValue()))
+                            ).toString();
+                    throw new IllegalArgumentException(msg);
+                }
+
+                sb.append(res.getFullTextAnnotation().getText());
+            }
+            return sb.toString();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+
 
     // Example usage:
     public static String getTextAPI(String imageUrl) throws IOException {

@@ -7,10 +7,7 @@ import com.openai.models.chat.completions.ChatCompletion;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import link.locutus.discord.gpt.GPTUtil;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.IntConsumer;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -62,9 +59,6 @@ public class OpenAiText2Text implements IText2Text {
         ChatCompletion completion = service.chat().completions().create(completionRequest);
         List<String> results = new ArrayList<>();
         for (ChatCompletion.Choice choice : completion.choices()) {
-            System.out.println("Reason: " + choice.finishReason());
-            // name, getName() doesn't exist
-            System.out.println("Message: " + choice.message().toString());
             String msg = choice.message().content().orElse(null);
             if (msg != null) {
                 results.add(msg);

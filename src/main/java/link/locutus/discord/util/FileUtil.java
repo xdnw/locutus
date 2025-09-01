@@ -14,6 +14,8 @@ import org.jsoup.Connection;
 import java.io.*;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +44,12 @@ public final class FileUtil {
         } catch (IOException e) {
             e.printStackTrace();
             return null;
+        }
+    }
+
+    public static void copyUrlToFile(URL url, Path dest) throws IOException {
+        try (InputStream in = url.openStream()) {
+            Files.copy(in, dest, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
         }
     }
 

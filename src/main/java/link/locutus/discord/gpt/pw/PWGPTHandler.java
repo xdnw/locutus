@@ -1,7 +1,5 @@
 package link.locutus.discord.gpt.pw;
 
-import ai.djl.MalformedModelException;
-import ai.djl.repository.zoo.ModelNotFoundException;
 import com.google.common.base.Predicates;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
@@ -25,10 +23,8 @@ import link.locutus.discord.gpt.imps.embedding.IEmbeddingAdapter;
 import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Guild;
 
-import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
-import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiPredicate;
@@ -48,7 +44,7 @@ public class PWGPTHandler {
     private final GptDatabase database;
     private final WikiManager wikiManager;
 
-    public PWGPTHandler(CommandManager2 manager) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
+    public PWGPTHandler(CommandManager2 manager) throws Exception {
         this.database = new GptDatabase();
         this.cmdManager = manager;
         this.handler = new GptHandler(database);

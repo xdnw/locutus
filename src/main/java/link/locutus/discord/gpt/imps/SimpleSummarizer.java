@@ -1,6 +1,6 @@
 package link.locutus.discord.gpt.imps;
 
-import link.locutus.discord.gpt.GPTUtil;
+import link.locutus.discord.gpt.Chunker;
 import link.locutus.discord.gpt.ISummarizer;
 import link.locutus.discord.gpt.imps.text2text.IText2Text;
 
@@ -40,7 +40,7 @@ public class SimpleSummarizer implements ISummarizer {
     public String summarize(String text, IntConsumer tokensUsed) {
         int remaining = (int) ((tokenCap * promptToResponseRatio) - promptTokens);
         List<String> summaries = new ArrayList<>();
-        for (String chunk : GPTUtil.getChunks(text, remaining, parent::getSize)) {
+        for (String chunk : Chunker.getChunks(text, remaining, parent::getSize)) {
             String result = summarizeChunk(chunk, tokensUsed);
             summaries.add(result);
         }

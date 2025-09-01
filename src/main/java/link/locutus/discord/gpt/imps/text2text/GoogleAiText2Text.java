@@ -1,9 +1,11 @@
 package link.locutus.discord.gpt.imps.text2text;
 
+import ai.djl.sentencepiece.SpTokenizer;
 import com.google.genai.Client;
 import com.google.genai.types.*;
 import link.locutus.discord.gpt.GPTUtil;
 
+import java.util.Locale;
 import java.util.function.IntConsumer;
 import java.util.function.Supplier;
 
@@ -13,12 +15,13 @@ public class GoogleAiText2Text implements IText2Text {
     private final String modelName;
 
     private Integer tokenLimit;
-    private boolean isGeminiModel = false;
+    private SpTokenizer tokenizer;
+    private boolean tokenizerInitialized;
 
     public GoogleAiText2Text(Client client, String modelName) {
         this.client = client;
         this.modelName = modelName;
-        this.isGeminiModel = modelName.toLowerCase().contains("gemini");
+//        this.isGeminiModel = modelName.toLowerCase().contains("gemini");
     }
 
     // Optional init similar to embedding class to fetch token limits
@@ -73,8 +76,15 @@ public class GoogleAiText2Text implements IText2Text {
 
     // ITokenizer-style helpers (token count and cap)
     public int getSize(String text) {
-        if (isGeminiModel) {
-            return GPTUtil.countSentencePieceTokens(text);
+        if (!tokenizerInitialized) {
+            synchronized (this) {
+                if (!tokenizerInitialized) {
+                    this.tokenizer = GPTUtil.getSpTokenizerOrNull(modelName.toLowerCase(Locale.ROOT));
+                }
+            }
+        }
+        if (tokenizer != null) {
+            return GPTUtil.countSentencePieceTokens(tokenizer, text);
         }
         try {
             return client.models.countTokens(modelName, text, null).totalTokens().orElseThrow();

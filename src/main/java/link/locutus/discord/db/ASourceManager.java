@@ -10,7 +10,8 @@ import link.locutus.discord.Logg;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.ISourceManager;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
-import link.locutus.discord.gpt.imps.VectorDatabase;
+import link.locutus.discord.gpt.imps.SqliteVecStore;
+import link.locutus.discord.gpt.imps.VectorRow;
 import link.locutus.discord.gpt.imps.embedding.EmbeddingInfo;
 import link.locutus.discord.gpt.imps.embedding.IEmbedding;
 import link.locutus.discord.gpt.pw.GptDatabase;
@@ -23,7 +24,7 @@ import org.jooq.DSLContext;
 import org.jooq.Record;
 
 import java.io.Closeable;
-import java.io.IOException;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiPredicate;
@@ -41,18 +42,18 @@ public class ASourceManager implements ISourceManager, Closeable {
     private final Map<Integer, EmbeddingSource> embeddingSources;
     private final Map<Integer, ConvertingDocument> unconvertedDocuments;
     private final GptDatabase database;
-    private final VectorDatabase vectors;
+    private final SqliteVecStore vectors;
 
     private final Map<String, Integer> usageCache = new ConcurrentHashMap<>();
 
-    public ASourceManager(GptDatabase database, IEmbedding embedding) throws IOException {
+    public ASourceManager(GptDatabase database, IEmbedding embedding) throws Exception {
         this.database = database;
         this.embeddingSources = new ConcurrentHashMap<>();
         this.unconvertedDocuments = new ConcurrentHashMap<>();
 
         this.embedding = embedding;
 
-        this.vectors = VectorDatabase.createInConfigFolder(embedding.getTableName());
+        this.vectors = new SqliteVecStore(Path.of("database", embedding.getTableName() + ".db"), embedding.getDimensions());
     }
 
     public <T extends ASourceManager> T load() {
@@ -72,9 +73,8 @@ public class ASourceManager implements ISourceManager, Closeable {
 
     @Override
     public String getText(long hash) {
-        return vectors.getTextAndVectorById(hash, true, false)
-                .map(Map.Entry::getKey)
-                .orElse(null);
+        VectorRow vector = vectors.getVectorById(hash, true, false);
+        return vector == null ? null : vector.text;
     }
 
     @Override
@@ -83,7 +83,7 @@ public class ASourceManager implements ISourceManager, Closeable {
             if (moderate != null) {
                 moderate.accept(embeddingText);
             }
-            return provider.fetchEmbedding(embeddingText);
+            return provider.fetchAndNormalize(embeddingText);
         }, source.source_id);
     }
 
@@ -148,7 +148,7 @@ public class ASourceManager implements ISourceManager, Closeable {
     }
 
     public int getUsage(String model) {
-        return usageCache.get(model);
+        return usageCache.getOrDefault(model, 0);
     }
 
     public void addUsage(String model, int usage) {
@@ -276,8 +276,8 @@ public class ASourceManager implements ISourceManager, Closeable {
     @Override
     public float[] getEmbedding(long hash) {
         load();
-        return vectors.getTextAndVectorById(hash, false, true)
-                .map(Map.Entry::getValue).orElse(null);
+        VectorRow vector = vectors.getVectorById(hash, false, true);
+        return vector == null ? null : vector.vector;
     }
 
     @Override
@@ -306,10 +306,10 @@ public class ASourceManager implements ISourceManager, Closeable {
                 moderate.accept(embeddingText);
             }
             // fetch embedding
-            existing = provider.fetchEmbedding(embeddingText);
+            existing = provider.fetchAndNormalize(embeddingText);
             // store
             if (save) {
-                vectors.addOrUpdateDocument(embeddingText, embeddingHash, existing, source.source_id);
+                vectors.addDocumentIfNotExists(embeddingText, embeddingHash, existing, source.source_id);
             }
         }
         return existing;
@@ -321,17 +321,20 @@ public class ASourceManager implements ISourceManager, Closeable {
     }
 
     @Override
-    public void iterateVectors(Set<EmbeddingSource> allowedSources, Consumer<VectorDatabase.SearchResult> source_hash_vector_consumer) {
+    public void iterateVectors(Set<EmbeddingSource> allowedSources, Consumer<VectorRow> source_hash_vector_consumer) {
         Set<Integer> srcIds = new IntOpenHashSet(allowedSources.size());
         for (EmbeddingSource src : allowedSources) srcIds.add(src.source_id);
-        for (VectorDatabase.SearchResult result : vectors.getDocumentsBySource(srcIds)) {
-            EmbeddingSource source = result.sourceId == null ? null : embeddingSources.get(result.sourceId);
-            if (source != null) {
-                source_hash_vector_consumer.accept(result);
-            } else {
-                Logg.error("Source with id " + result.sourceId + " not found for hash " + result.id + " | " + result.text);
+        vectors.getDocumentsBySource(srcIds, true, new Consumer<VectorRow>() {
+            @Override
+            public void accept(VectorRow result) {
+                EmbeddingSource source = result.sourceId == -1 ? null : embeddingSources.get(result.sourceId);
+                if (source != null) {
+                    source_hash_vector_consumer.accept(result);
+                } else {
+                    Logg.error("Source with id " + result.sourceId + " not found for hash " + result.id + " | " + result.text);
+                }
             }
-        }
+        });
     }
 
     public Map<Long, String> getContent(Set<Long> hashes) {
@@ -397,7 +400,7 @@ public class ASourceManager implements ISourceManager, Closeable {
         for (EmbeddingSource allowedType : allowedTypes) {
             sourceMap.put(allowedType.source_id, allowedType);
         }
-        List<VectorDatabase.SearchResult> results = vectors.searchSimilar(compareTo, top, sourceMap.keySet(), result -> {
+        List<VectorRow> results = vectors.searchSimilarReranked(compareTo, top, true, sourceMap.keySet(), result -> {
             EmbeddingSource source = sourceMap.get(result.sourceId);
             if (source == null) {
                 Logg.error("Source with id " + result.sourceId + " not found for hash " + result.id + " | " + result.text);
@@ -406,7 +409,7 @@ public class ASourceManager implements ISourceManager, Closeable {
             return sourceHashPredicate.test(source, result.id);
         });
         List<EmbeddingInfo> resultsMapped = new ObjectArrayList<>(results.size());
-        for (VectorDatabase.SearchResult result : results) {
+        for (VectorRow result : results) {
             EmbeddingSource source = sourceMap.get(result.sourceId);
             EmbeddingInfo info = new EmbeddingInfo(result.text, result.id, source, result.score);
             resultsMapped.add(info);

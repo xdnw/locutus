@@ -1,8 +1,30 @@
 package link.locutus.discord.util.sheet;
 
+import com.google.api.client.auth.oauth2.Credential;
+import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
+import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
+import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
+import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.googleapis.json.GoogleJsonResponseException;
+import com.google.api.client.http.HttpRequest;
+import com.google.api.client.http.HttpRequestInitializer;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.JsonFactory;
+import com.google.api.client.json.gson.GsonFactory;
+import com.google.api.client.util.store.FileDataStoreFactory;
+import com.google.api.services.docs.v1.Docs;
+import com.google.api.services.docs.v1.DocsScopes;
+import com.google.api.services.drive.Drive;
+import com.google.api.services.drive.DriveScopes;
+import com.google.api.services.sheets.v4.Sheets;
+import com.google.api.services.sheets.v4.SheetsScopes;
 import com.google.api.services.sheets.v4.model.CellData;
 import com.google.api.services.sheets.v4.model.ExtendedValue;
 import com.google.api.services.sheets.v4.model.RowData;
+import com.google.auth.http.HttpCredentialsAdapter;
+import com.google.auth.oauth2.GoogleCredentials;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.Activity;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MarkupUtil;
@@ -10,15 +32,302 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.io.*;
+import java.security.GeneralSecurityException;
+import java.util.*;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 public class SheetUtil {
+
+    private static final File SHEET_CREDENTIALS_PATH = new File("config" + java.io.File.separator + "credentials-sheets.json");
+    private static final File DRIVE_CREDENTIALS_PATH = new File("config" + java.io.File.separator + "credentials-drive.json");
+    private static final File DOCS_CREDENTIALS_PATH = new File("config" + java.io.File.separator + "credentials-drive.json");
+
+    private static final File SHEET_TOKENS_PATH = new File("config" + java.io.File.separator + "tokens");
+    private static final File DRIVE_TOKENS_PATH = new File("config" + java.io.File.separator + "tokens2");
+    private static final File DOCS_TOKENS_PATH = new File("config" + java.io.File.separator + "tokens2");
+
+    private static final List<String> SHEET_SCOPES = List.of(SheetsScopes.SPREADSHEETS);
+    private static final List<String> DRIVE_SCOPES = List.of(DriveScopes.DRIVE_FILE, DriveScopes.DRIVE_APPDATA, DriveScopes.DRIVE_METADATA, DriveScopes.DRIVE);
+    private static final List<String> DOCS_SCOPES = List.of(DocsScopes.DOCUMENTS);
+
+    public static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
+
+    private static volatile boolean initSheetAdv = false;
+    private static GoogleCredentials sheetAdvCredentials = null;
+
+    private static volatile NetHttpTransport HTTP_TRANSPORT = null;
+
+    public static NetHttpTransport getHttpTransport() {
+        if (HTTP_TRANSPORT == null) {
+            synchronized (SheetUtil.class) {
+                if (HTTP_TRANSPORT == null) {
+                    try {
+                        HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+                    } catch (GeneralSecurityException | IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+        }
+        return HTTP_TRANSPORT;
+    }
+
+    private enum RequestType {
+        SHEETS,
+        DRIVE,
+        DOCS
+    }
+
+    private static <T> T executeRequest(RequestType type, Callable<T> supplier) {
+        try {
+            return supplier.call();
+        } catch (GoogleJsonResponseException gje) {
+            // choose scopes and credential file based on request type
+            List<String> scopes = SHEET_SCOPES;
+            File credFile = SHEET_CREDENTIALS_PATH;
+            switch (type) {
+                case DRIVE:
+                    scopes = DRIVE_SCOPES;
+                    credFile = DRIVE_CREDENTIALS_PATH;
+                    break;
+                case DOCS:
+                    scopes = DOCS_SCOPES;
+                    credFile = DOCS_CREDENTIALS_PATH;
+                    break;
+                case SHEETS:
+                default:
+                    scopes = SHEET_SCOPES;
+                    credFile = SHEET_CREDENTIALS_PATH;
+                    break;
+            }
+
+            String scopesCsv = String.join(",", scopes);
+            String tutorialUrl = "https://cloud.google.com/sdk/gcloud/reference/auth/application-default/login";
+            String hint = "\n\nFix: run `gcloud auth application-default login --scopes=" + scopesCsv + "` " +
+                    "and ensure the application default credentials are available (or place the JSON in `" + credFile.getPath() + "`). " +
+                    "See " + tutorialUrl + " for details.";
+
+            String details = gje.getDetails() != null ? gje.getDetails().toString() : gje.getMessage();
+            throw new RuntimeException("Google API error: " + gje.getStatusMessage() + " (" + gje.getStatusCode() + "). " + details + hint, gje);
+        } catch (Exception e) {
+            // preserve existing behavior converting checked exceptions to runtime
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static Sheets getSheetService() throws IOException {
+        final int TIMEOUT_MS = 240_000;
+
+        GoogleCredentials adcCredential = getSheetAdcCredentials();
+        if (adcCredential != null) {
+            final HttpRequestInitializer adcAdapter = new HttpCredentialsAdapter(adcCredential);
+            HttpRequestInitializer requestInitializer = new HttpRequestInitializer() {
+                @Override
+                public void initialize(final HttpRequest httpRequest) throws IOException {
+                    adcAdapter.initialize(httpRequest);
+                    httpRequest.setConnectTimeout(TIMEOUT_MS);
+                    httpRequest.setReadTimeout(TIMEOUT_MS);
+                }
+            };
+            return new Sheets.Builder(getHttpTransport(), JSON_FACTORY, requestInitializer)
+                    .setApplicationName("Spreadsheet")
+                    .build();
+        }
+
+        Credential jsonCredential = getSheetJsonCredentials();
+        if (jsonCredential == null) {
+            throw new IOException("No Google credentials available for Sheets");
+        }
+        HttpRequestInitializer requestInitializer = new HttpRequestInitializer() {
+            @Override
+            public void initialize(final HttpRequest httpRequest) throws IOException {
+                jsonCredential.initialize(httpRequest);
+                httpRequest.setConnectTimeout(TIMEOUT_MS);
+                httpRequest.setReadTimeout(TIMEOUT_MS);
+            }
+        };
+        return new Sheets.Builder(getHttpTransport(), JSON_FACTORY, requestInitializer)
+                .setApplicationName("Spreadsheet")
+                .build();
+    }
+
+    public static Drive getDriveService() throws IOException {
+        final int TIMEOUT_MS = 240_000;
+
+        GoogleCredentials adcCredential = getDriveAdcCredentials();
+        if (adcCredential != null) {
+            final HttpRequestInitializer adcAdapter = new HttpCredentialsAdapter(adcCredential);
+            HttpRequestInitializer requestInitializer = new HttpRequestInitializer() {
+                @Override
+                public void initialize(final HttpRequest httpRequest) throws IOException {
+                    adcAdapter.initialize(httpRequest);
+                    httpRequest.setConnectTimeout(TIMEOUT_MS);
+                    httpRequest.setReadTimeout(TIMEOUT_MS);
+                }
+            };
+            return new Drive.Builder(getHttpTransport(), JSON_FACTORY, requestInitializer)
+                    .setApplicationName("DriveFile")
+                    .build();
+        }
+
+        Credential jsonCredential = getDriveJsonCredentials();
+        if (jsonCredential == null) {
+            throw new IOException("No Google credentials available for Drive");
+        }
+        HttpRequestInitializer requestInitializer = new HttpRequestInitializer() {
+            @Override
+            public void initialize(final HttpRequest httpRequest) throws IOException {
+                jsonCredential.initialize(httpRequest);
+                httpRequest.setConnectTimeout(TIMEOUT_MS);
+                httpRequest.setReadTimeout(TIMEOUT_MS);
+            }
+        };
+        return new Drive.Builder(getHttpTransport(), JSON_FACTORY, requestInitializer)
+                .setApplicationName("DriveFile")
+                .build();
+    }
+
+    public static Docs getDocsService() throws IOException {
+        final int TIMEOUT_MS = 240_000;
+
+        GoogleCredentials adcCredential = getDocsAdcCredentials();
+        if (adcCredential != null) {
+            final HttpRequestInitializer adcAdapter = new HttpCredentialsAdapter(adcCredential);
+            HttpRequestInitializer requestInitializer = new HttpRequestInitializer() {
+                @Override
+                public void initialize(final HttpRequest httpRequest) throws IOException {
+                    adcAdapter.initialize(httpRequest);
+                    httpRequest.setConnectTimeout(TIMEOUT_MS);
+                    httpRequest.setReadTimeout(TIMEOUT_MS);
+                }
+            };
+            return new Docs.Builder(getHttpTransport(), JSON_FACTORY, requestInitializer)
+                    .setApplicationName("DriveFile")
+                    .build();
+        }
+
+        Credential jsonCredential = getDocsJsonCredentials();
+        if (jsonCredential == null) {
+            throw new IOException("No Google credentials available for Docs");
+        }
+        HttpRequestInitializer requestInitializer = new HttpRequestInitializer() {
+            @Override
+            public void initialize(final HttpRequest httpRequest) throws IOException {
+                jsonCredential.initialize(httpRequest);
+                httpRequest.setConnectTimeout(TIMEOUT_MS);
+                httpRequest.setReadTimeout(TIMEOUT_MS);
+            }
+        };
+        return new Docs.Builder(getHttpTransport(), JSON_FACTORY, requestInitializer)
+                .setApplicationName("Docs")
+                .build();
+    }
+
+    public static GoogleCredentials getSheetAdcCredentials() {
+        if (sheetAdvCredentials != null) {
+            return sheetAdvCredentials;
+        }
+        if (!initSheetAdv) {
+            synchronized (SHEET_TOKENS_PATH) {
+                if (!initSheetAdv) {
+                    try {
+                        GoogleCredentials credentials = GoogleCredentials.getApplicationDefault();
+                        return sheetAdvCredentials = credentials.createScoped(SHEET_SCOPES);
+                    } catch (IOException e) {
+                        return null;
+                    }
+                }
+            }
+        }
+        return sheetAdvCredentials;
+    }
+
+    public static Credential getSheetJsonCredentials() throws IOException {
+        if (SHEET_CREDENTIALS_PATH.exists()) {
+            return getCredentials(getHttpTransport(), SHEET_CREDENTIALS_PATH, SHEET_TOKENS_PATH, SHEET_SCOPES);
+        }
+        return null;
+    }
+
+    private static volatile boolean initDocsAdc = false;
+    private static GoogleCredentials docsAdcCredentials = null;
+
+    public static GoogleCredentials getDocsAdcCredentials() {
+        if (docsAdcCredentials != null) {
+            return docsAdcCredentials;
+        }
+        if (!initDocsAdc) {
+            synchronized (DOCS_TOKENS_PATH) {
+                if (!initDocsAdc) {
+                    try {
+                        GoogleCredentials credentials = GoogleCredentials.getApplicationDefault();
+                        return docsAdcCredentials = credentials.createScoped(DOCS_SCOPES);
+                    } catch (IOException e) {
+                        return null;
+                    }
+                }
+            }
+        }
+        return docsAdcCredentials;
+    }
+
+    public static Credential getDocsJsonCredentials() throws IOException {
+        if (DOCS_CREDENTIALS_PATH.exists()) {
+            return getCredentials(getHttpTransport(), DOCS_CREDENTIALS_PATH, DOCS_TOKENS_PATH, DOCS_SCOPES);
+        }
+        return null;
+    }
+
+    private static volatile boolean initDriveAdc = false;
+    private static GoogleCredentials driveAdcCredentials = null;
+
+    public static GoogleCredentials getDriveAdcCredentials() {
+        if (driveAdcCredentials != null) {
+            return driveAdcCredentials;
+        }
+        if (!initDriveAdc) {
+            synchronized (DRIVE_TOKENS_PATH) {
+                if (!initDriveAdc) {
+                    try {
+                        GoogleCredentials credentials = GoogleCredentials.getApplicationDefault();
+                        return driveAdcCredentials = credentials.createScoped(DRIVE_SCOPES);
+                    } catch (IOException e) {
+                        return null;
+                    }
+                }
+            }
+        }
+        return driveAdcCredentials;
+    }
+
+    public static Credential getDriveJsonCredentials() throws IOException {
+        if (DRIVE_CREDENTIALS_PATH.exists()) {
+            return getCredentials(getHttpTransport(), DRIVE_CREDENTIALS_PATH, DRIVE_TOKENS_PATH, DRIVE_SCOPES);
+        }
+        return null;
+    }
+
+    private static Credential getCredentials(final NetHttpTransport HTTP_TRANSPORT, File keyFile, File tokenDirectory, List<String> scopes) throws IOException {
+        // Load client secrets.
+        if (!keyFile.exists()) {
+            throw new FileNotFoundException("Resource not found: " + keyFile);
+        }
+        try (InputStream in = new FileInputStream(keyFile)) {
+            GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
+
+            // Build flow and trigger user authorization request.
+            GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
+                    HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, scopes)
+                    .setDataStoreFactory(new FileDataStoreFactory(tokenDirectory))
+                    .setAccessType("offline")
+                    .build();
+            LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(Settings.INSTANCE.WEB.GOOGLE_SHEET_VALIDATION_PORT).build();
+            return new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
+        }
+    }
+
     public static String getLetter(int x) {
         x++;
         String letter = "";

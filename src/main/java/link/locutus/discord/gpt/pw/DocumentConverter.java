@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.EmbeddingSource;
-import link.locutus.discord.gpt.GPTUtil;
+import link.locutus.discord.gpt.Chunker;
 import link.locutus.discord.gpt.GptHandler;
 import link.locutus.discord.gpt.ISourceManager;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
@@ -252,7 +252,7 @@ public class DocumentConverter {
 
             int totalCap = text2Text.getSizeCap();
             int promptCap = totalCap / 3;
-            String chunkText = GPTUtil.getNextChunk(document.text, promptCap, text2Text::getSize);
+            String chunkText = Chunker.getNextChunk(document.text, promptCap, text2Text::getSize);
             String remaining = document.text.substring(chunkText.length()).trim();
 
             Function<String, List<String>> getClosestFacts = new Function<String, List<String>>() {

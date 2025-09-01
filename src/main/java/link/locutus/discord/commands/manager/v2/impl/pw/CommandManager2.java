@@ -1,7 +1,5 @@
 package link.locutus.discord.commands.manager.v2.impl.pw;
 
-import ai.djl.MalformedModelException;
-import ai.djl.repository.zoo.ModelNotFoundException;
 import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
@@ -50,9 +48,7 @@ import org.json.JSONObject;
 
 import javax.annotation.Nullable;
 import java.io.File;
-import java.io.IOException;
 import java.lang.reflect.Method;
-import java.sql.SQLException;
 import java.util.*;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
@@ -184,11 +180,10 @@ public class CommandManager2 {
 
         this.commands = CommandGroup.createRoot(store, validators);
 
-        if (!Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY.isEmpty()) {
+        if (Settings.INSTANCE.ENABLED_COMPONENTS.ARTIFICIAL_INTELLIGENCE) {
             try {
                 pwgptHandler = new PWGPTHandler(this);
-            } catch (SQLException | ClassNotFoundException | ModelNotFoundException | MalformedModelException |
-                     IOException e) {
+            } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         }
@@ -686,9 +681,6 @@ public class CommandManager2 {
             this.commands.registerMethod(gptCommands, List.of("chat", "dataset"), "view_document", "view");
             this.commands.registerMethod(gptCommands, List.of("chat", "dataset"), "delete_document", "delete");
             this.commands.registerMethod(gptCommands, List.of("chat", "dataset"), "save_embeddings", "import_sheet");
-            this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "listChatProviders", "list");
-            this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "setChatProviders", "set");
-            this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "chatProviderConfigure", "configure");
             this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "chatResume", "resume");
             this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "chatPause", "pause");
             this.commands.registerMethod(gptCommands, List.of("channel", "rename"), "emojifyChannels", "bulk");
@@ -706,6 +698,7 @@ public class CommandManager2 {
             try {
                 pwgptHandler.registerDefaults();
             } catch (Throwable e) {
+                e.printStackTrace();
                 Logg.text("Cannot register AI commands: " + e.getMessage());
             }
         }

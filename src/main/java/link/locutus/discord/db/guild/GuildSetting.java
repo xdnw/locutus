@@ -48,7 +48,7 @@ import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import static com.google.gson.internal.$Gson$Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 public abstract class GuildSetting<T> {
     private final Set<GuildSetting> requires = new ObjectLinkedOpenHashSet<>();

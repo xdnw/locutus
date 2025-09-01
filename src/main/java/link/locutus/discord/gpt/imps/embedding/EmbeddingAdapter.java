@@ -49,6 +49,8 @@ public abstract class EmbeddingAdapter<T> implements IEmbeddingAdapter<T> {
         hashesByObject.clear();
         objectsByHash.clear();
 
+        System.out.println("Registering " + values.size() + " embeddings for " + source.source_name);
+
         List<Long> hashes = handler.registerEmbeddings(source,
                 values.stream().map(t -> getDescription(source, t)), moderate && !skipModerate, true);
 

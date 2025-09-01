@@ -2094,7 +2094,7 @@ public class IACommands {
         List<Object> nationNames = sheet.findColumn(0, "nation", "id");
         List<Object> subjects = sheet.findColumn("subject");
         List<Object> bodies = sheet.findColumn("message", "body", "content");
-        if (nationNames == null || nationNames.size() <= 1) return "No column found: `nation`";
+        if (nationNames == null) return "No column found: `nation`";
         if (subjects == null) return "No column found: `subject`";
         if (bodies == null) return "No column found: `message`";
 
