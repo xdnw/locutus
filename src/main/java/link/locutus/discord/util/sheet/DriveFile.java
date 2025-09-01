@@ -27,10 +27,10 @@ public class DriveFile {
 
     public void purgeVersionHistory() throws IOException {
         // List all revisions of the file
-        RevisionList revisions = service.revisions().list(fileId).execute();
+        RevisionList revisions = SheetUtil.executeRequest(SheetUtil.RequestType.DRIVE, () -> service.revisions().list(fileId).execute());
         for (Revision revision : revisions.getRevisions()) {
             // Delete each revision
-            service.revisions().delete(fileId, revision.getId()).execute();
+            SheetUtil.executeRequest(SheetUtil.RequestType.DRIVE, () -> service.revisions().delete(fileId, revision.getId()).execute());
         }
     }
 
@@ -53,29 +53,29 @@ public class DriveFile {
         ByteArrayContent content = ByteArrayContent.fromString("text/html", html);
 
         // Upload the file to Google Drive.
-        File file = SheetUtil.getDriveService().files().create(fileMetadata, content)
+        File file = SheetUtil.executeRequest(SheetUtil.RequestType.DRIVE, () -> SheetUtil.getDriveService().files().create(fileMetadata, content)
                 .setFields("id")
-                .execute();
+                .execute());
         return file;
     }
 
     public void shareWithAnyone(DriveRole role) throws IOException {
-        service.permissions().create(fileId, new Permission()
+        SheetUtil.executeRequest(SheetUtil.RequestType.DRIVE, () -> service.permissions().create(fileId, new Permission()
                 .setType("anyone")
                 .setRole(role.name().toLowerCase())
-        ).execute();
+        ).execute());
     }
 
 
     public void shareWithEmail(String email, DriveRole role) throws IOException {
-        service.permissions().create(fileId, new Permission()
+        SheetUtil.executeRequest(SheetUtil.RequestType.DRIVE, () -> service.permissions().create(fileId, new Permission()
                 .setType("user")
                 .setRole(role.name().toLowerCase())
                 .setEmailAddress(email)
-        ).execute();
+        )).execute();
     }
 
     public File getFile() throws IOException {
-        return service.files().get(fileId).execute();
+        return SheetUtil.executeRequest(SheetUtil.RequestType.DRIVE, () -> service.files().get(fileId).execute());
     }
 }

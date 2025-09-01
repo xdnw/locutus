@@ -189,6 +189,13 @@ public class SheetUtil {
                 .build();
     }
 
+    public static Credential getDriveJsonCredentials() throws IOException {
+        if (DRIVE_CREDENTIALS_PATH.exists()) {
+            return getCredentials(getHttpTransport(), DRIVE_CREDENTIALS_PATH, DRIVE_TOKENS_PATH, DRIVE_SCOPES);
+        }
+        return null;
+    }
+
     public static Docs getDocsService() throws IOException {
         final int TIMEOUT_MS = 240_000;
 

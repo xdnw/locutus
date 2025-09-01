@@ -809,7 +809,7 @@ public class SpreadSheet {
         try {
             SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
                     () -> service.spreadsheets().batchUpdate(spreadsheetId, batchUpdateSpreadsheetRequest).execute());
-        } catch (IOException e) {
+        } catch (RuntimeException e) {
             e.printStackTrace();
         }
     }
@@ -906,43 +906,35 @@ public class SpreadSheet {
     }
 
     public List<List<Object>> fetchAll(String tab) {
-        try {
-            if (tab == null || tab.isEmpty()) tab = getDefaultTab(true);
-            if (service == null) return loadValues(false).get(tab);
+        if (tab == null || tab.isEmpty()) tab = getDefaultTab(true);
+        if (service == null) return loadValues(false).get(tab);
 
-            String range = tab; // Change this to the name of your sheet
-            ValueRange response = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
-                    () -> service.spreadsheets().values()
-                            .get(spreadsheetId, range)
-                            .execute());
-            List<List<Object>> values = response.getValues();
-            if (values == null) {
-                return Collections.emptyList();
-            }
-            valuesByTab.put(tab.toLowerCase(Locale.ROOT), values);
-            return values;
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        String range = tab; // Change this to the name of your sheet
+        ValueRange response = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
+                () -> service.spreadsheets().values()
+                        .get(spreadsheetId, range)
+                        .execute());
+        List<List<Object>> values = response.getValues();
+        if (values == null) {
+            return Collections.emptyList();
         }
+        valuesByTab.put(tab.toLowerCase(Locale.ROOT), values);
+        return values;
     }
 
     public Map<String, List<List<Object>>> fetchAll() {
-        try {
-            if (service == null) return loadValues(false);
-            Map<String, List<List<Object>>> map = new LinkedHashMap<>();
-            Spreadsheet spreadsheet = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
-                    () -> service.spreadsheets().get(spreadsheetId).execute());
-            for (Sheet sheet : spreadsheet.getSheets()) {
-                String title = sheet.getProperties().getTitle();
-                List<List<Object>> values = fetchAll(title);
-                if (values != null) {
-                    map.put(title, values);
-                }
+        if (service == null) return loadValues(false);
+        Map<String, List<List<Object>>> map = new LinkedHashMap<>();
+        Spreadsheet spreadsheet = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
+                () -> service.spreadsheets().get(spreadsheetId).execute());
+        for (Sheet sheet : spreadsheet.getSheets()) {
+            String title = sheet.getProperties().getTitle();
+            List<List<Object>> values = fetchAll(title);
+            if (values != null) {
+                map.put(title, values);
             }
-            return map;
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
+        return map;
     }
 
     public List<List<Object>> fetchRange(String range) {
@@ -1034,7 +1026,7 @@ public class SpreadSheet {
             // Wrapped execute
             spreadsheet = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
                     () -> service.spreadsheets().get(spreadsheetId).execute());
-        } catch (IOException e) {
+        } catch (RuntimeException e) {
             e.printStackTrace();
         }
         List<Sheet> sheets = spreadsheet.getSheets();
@@ -1047,7 +1039,7 @@ public class SpreadSheet {
                 // Wrapped execute
                 SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
                         () -> request.execute());
-            } catch (IOException e) {
+            } catch (RuntimeException e) {
                 e.printStackTrace();
             }
         }
@@ -1087,7 +1079,7 @@ public class SpreadSheet {
             // Wrapped execute
             spreadsheet = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
                     () -> service.spreadsheets().get(spreadsheetId).execute());
-        } catch (IOException e) {
+        } catch (RuntimeException e) {
             e.printStackTrace();
         }
         if (spreadsheet == null) {
@@ -1130,7 +1122,7 @@ public class SpreadSheet {
             // Wrapped execute
             SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
                     () -> service.spreadsheets().batchUpdate(spreadsheetId, requestBody).execute());
-        } catch (IOException e) {
+        } catch (RuntimeException e) {
             e.printStackTrace();
         }
     }
