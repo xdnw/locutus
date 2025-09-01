@@ -251,9 +251,12 @@ public class SpreadSheet {
         try {
             api = SheetUtil.getSheetService();
             if (sheetId == null) {
-                spreadsheet = api.spreadsheets().create(spreadsheet)
-                        .setFields("spreadsheetId")
-                        .execute();
+                Sheets finalApi = api;
+                Spreadsheet finalSpreadsheet = spreadsheet;
+                spreadsheet = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
+                        () -> finalApi.spreadsheets().create(finalSpreadsheet)
+                                .setFields("spreadsheetId")
+                                .execute());
                 sheetId = spreadsheet.getSpreadsheetId();
                 if (dbOrNull != null && key != null) {
                     dbOrNull.setInfo(key, sheetId);
@@ -354,9 +357,10 @@ public class SpreadSheet {
             return spreadsheetId;
         }
         try {
-            Spreadsheet spreadsheet = service.spreadsheets().get(spreadsheetId).setFields("properties").execute();
+            Spreadsheet spreadsheet = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
+                    () -> service.spreadsheets().get(spreadsheetId).setFields("properties").execute());
             return spreadsheet.getProperties().getTitle();
-        } catch (IOException e) {
+        } catch (RuntimeException e) {
             e.printStackTrace();
         }
         return spreadsheetId;
@@ -617,6 +621,18 @@ public class SpreadSheet {
         return url;
     }
 
+    public static void main(String[] args) {
+        String key = args[0];
+        try {
+            SpreadSheet sheet = SpreadSheet.create(key);
+            // set header and row
+            sheet.setHeader(List.of("hello", "world"));
+            sheet.addRow(List.of("first", "row"));
+            sheet.updateClearCurrentTab();
+            sheet.updateWrite();
+            System.out.println("DONE");
+        } catch (Throwable e) {
+            e.printStackTrace();
         }
     }
 
@@ -738,11 +754,13 @@ public class SpreadSheet {
         BatchUpdateSpreadsheetRequest batchRequests = new BatchUpdateSpreadsheetRequest();
         batchRequests.setRequests( requests );
 
-        BatchUpdateSpreadsheetResponse result = service.spreadsheets().batchUpdate(spreadsheetId, batchRequests).execute();
+        BatchUpdateSpreadsheetResponse result = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
+                () -> service.spreadsheets().batchUpdate(spreadsheetId, batchRequests).execute());
     }
 
     public void updateCreateTabIfAbsent(String tabName) throws IOException {
-        Spreadsheet sheet = service.spreadsheets().get(spreadsheetId).execute();
+        Spreadsheet sheet = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
+                () -> service.spreadsheets().get(spreadsheetId).execute());
         List<Sheet> sheets = sheet.getSheets();
         for (Sheet sheet1 : sheets) {
             if (sheet1.getProperties().getTitle().equals(tabName)) {
@@ -789,7 +807,8 @@ public class SpreadSheet {
         BatchUpdateSpreadsheetRequest batchUpdateSpreadsheetRequest = new BatchUpdateSpreadsheetRequest();
         batchUpdateSpreadsheetRequest.setRequests(requests);
         try {
-            service.spreadsheets().batchUpdate(spreadsheetId, batchUpdateSpreadsheetRequest).execute();
+            SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
+                    () -> service.spreadsheets().batchUpdate(spreadsheetId, batchUpdateSpreadsheetRequest).execute());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -840,10 +859,10 @@ public class SpreadSheet {
             ValueRange body = new ValueRange()
                     .setValues(batch);
 
-            UpdateValuesResponse result =
-                    service.spreadsheets().values().update(spreadsheetId, (tabName.isEmpty() ? "" : tabName + "!") + range, body)
+            UpdateValuesResponse result = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
+                    () -> service.spreadsheets().values().update(spreadsheetId, (tabName.isEmpty() ? "" : tabName + "!") + range, body)
                             .setValueInputOption("USER_ENTERED")
-                            .execute();
+                            .execute());
         }
     }
 
@@ -892,9 +911,10 @@ public class SpreadSheet {
             if (service == null) return loadValues(false).get(tab);
 
             String range = tab; // Change this to the name of your sheet
-            ValueRange response = service.spreadsheets().values()
-                    .get(spreadsheetId, range)
-                    .execute();
+            ValueRange response = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
+                    () -> service.spreadsheets().values()
+                            .get(spreadsheetId, range)
+                            .execute());
             List<List<Object>> values = response.getValues();
             if (values == null) {
                 return Collections.emptyList();
@@ -910,7 +930,8 @@ public class SpreadSheet {
         try {
             if (service == null) return loadValues(false);
             Map<String, List<List<Object>>> map = new LinkedHashMap<>();
-            Spreadsheet spreadsheet = service.spreadsheets().get(spreadsheetId).execute();
+            Spreadsheet spreadsheet = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
+                    () -> service.spreadsheets().get(spreadsheetId).execute());
             for (Sheet sheet : spreadsheet.getSheets()) {
                 String title = sheet.getProperties().getTitle();
                 List<List<Object>> values = fetchAll(title);
@@ -939,7 +960,8 @@ public class SpreadSheet {
         try {
             Sheets.Spreadsheets.Values.Get query = service.spreadsheets().values().get(spreadsheetId, range);
             if (onGet != null) onGet.accept(query);
-            ValueRange result = query.execute();
+            ValueRange result = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
+                    () -> query.execute());
             return result.getValues();
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -964,8 +986,9 @@ public class SpreadSheet {
                     .setRanges(ranges)
                     .setFields("valueRanges.values");
 
-            // Execute the batch request
-            BatchGetValuesResponse response = request.execute();
+            // Execute the batch request (wrapped)
+            BatchGetValuesResponse response = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
+                    () -> request.execute());
 
             // Process the response
             List<ValueRange> valueRanges = response.getValueRanges();
@@ -993,9 +1016,13 @@ public class SpreadSheet {
         if (service == null) {
             return;
         }
-        String firstSheetId = service.spreadsheets().get(spreadsheetId).execute().getSheets().get(0).getProperties().getTitle();
+        // Wrapped execute to get spreadsheet then getSheets()
+        String firstSheetId = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
+                () -> service.spreadsheets().get(spreadsheetId).execute()).getSheets().get(0).getProperties().getTitle();
         ClearValuesRequest requestBody = new ClearValuesRequest();
-        service.spreadsheets().values().clear(spreadsheetId, firstSheetId, requestBody).execute();
+        // Wrapped execute for clear
+        SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
+                () -> service.spreadsheets().values().clear(spreadsheetId, firstSheetId, requestBody).execute());
     }
 
     public void updateClearAll() throws IOException {
@@ -1004,7 +1031,9 @@ public class SpreadSheet {
         }
         Spreadsheet spreadsheet = null;
         try {
-            spreadsheet = service.spreadsheets().get(spreadsheetId).execute();
+            // Wrapped execute
+            spreadsheet = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
+                    () -> service.spreadsheets().get(spreadsheetId).execute());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -1015,13 +1044,14 @@ public class SpreadSheet {
             Sheets.Spreadsheets.Values.Clear request =
                     service.spreadsheets().values().clear(spreadsheetId, sheet.getProperties().getTitle(), requestBody);
             try {
-                ClearValuesResponse response = request.execute();
+                // Wrapped execute
+                SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
+                        () -> request.execute());
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
     }
-
 
     public void clearAllButFirstRow(String tabName) throws IOException {
         String range = tabName + "!2:40000";
@@ -1032,8 +1062,9 @@ public class SpreadSheet {
         Sheets.Spreadsheets.Values.Clear request =
                 service.spreadsheets().values().clear(spreadsheetId, range, requestBody);
 
-        // Execute the request
-        ClearValuesResponse response = request.execute();
+        // Execute the request (wrapped)
+        SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
+                () -> request.execute());
     }
 
     public void updateClearTab(String tab) throws IOException {
@@ -1045,13 +1076,17 @@ public class SpreadSheet {
         Sheets.Spreadsheets.Values.Clear request =
                 service.spreadsheets().values().clear(spreadsheetId, tab, requestBody);
 
-        ClearValuesResponse response = request.execute();
+        // Wrapped execute
+        SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
+                () -> request.execute());
     }
 
     public Map<Integer, String> fetchTabs() {
         Spreadsheet spreadsheet = null;
         try {
-            spreadsheet = service.spreadsheets().get(spreadsheetId).execute();
+            // Wrapped execute
+            spreadsheet = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
+                    () -> service.spreadsheets().get(spreadsheetId).execute());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -1092,7 +1127,9 @@ public class SpreadSheet {
         BatchUpdateSpreadsheetRequest requestBody = new BatchUpdateSpreadsheetRequest();
         requestBody.setRequests(requests);
         try {
-            BatchUpdateSpreadsheetResponse response = service.spreadsheets().batchUpdate(spreadsheetId, requestBody).execute();
+            // Wrapped execute
+            SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
+                    () -> service.spreadsheets().batchUpdate(spreadsheetId, requestBody).execute());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -1106,7 +1143,9 @@ public class SpreadSheet {
         Sheets.Spreadsheets.Values.Clear request =
                 service.spreadsheets().values().clear(spreadsheetId, (tab == null || tab.isEmpty() ? "" : tab + "!") + range, requestBody);
 
-        ClearValuesResponse response = request.execute();
+        // Wrapped execute
+        SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
+                () -> request.execute());
     }
 
     public void reset() {
@@ -1215,3 +1254,4 @@ public class SpreadSheet {
         this.addRow(header);
     }
 }
+

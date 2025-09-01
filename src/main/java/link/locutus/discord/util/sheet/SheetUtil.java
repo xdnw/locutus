@@ -74,13 +74,13 @@ public class SheetUtil {
         return HTTP_TRANSPORT;
     }
 
-    private enum RequestType {
+    public enum RequestType {
         SHEETS,
         DRIVE,
         DOCS
     }
 
-    private static <T> T executeRequest(RequestType type, Callable<T> supplier) {
+    public static <T> T executeRequest(RequestType type, Callable<T> supplier) {
         try {
             return supplier.call();
         } catch (GoogleJsonResponseException gje) {
@@ -299,14 +299,8 @@ public class SheetUtil {
                 }
             }
         }
-        return driveAdcCredentials;
-    }
 
-    public static Credential getDriveJsonCredentials() throws IOException {
-        if (DRIVE_CREDENTIALS_PATH.exists()) {
-            return getCredentials(getHttpTransport(), DRIVE_CREDENTIALS_PATH, DRIVE_TOKENS_PATH, DRIVE_SCOPES);
-        }
-        return null;
+        return driveAdcCredentials;
     }
 
     private static Credential getCredentials(final NetHttpTransport HTTP_TRANSPORT, File keyFile, File tokenDirectory, List<String> scopes) throws IOException {
