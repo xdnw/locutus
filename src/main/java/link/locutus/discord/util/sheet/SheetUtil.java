@@ -103,7 +103,16 @@ public class SheetUtil {
                     break;
             }
 
-            String scopesCsv = String.join(",", scopes);
+            // build a copy of scopes for the gcloud hint; gcloud may require additional scopes (e.g. cloud-platform for Drive)
+            List<String> scopesForLogin = new ArrayList<>(scopes);
+            {
+                final String CLOUD_PLATFORM = "https://www.googleapis.com/auth/cloud-platform";
+                if (!scopesForLogin.contains(CLOUD_PLATFORM)) {
+                    scopesForLogin.add(CLOUD_PLATFORM);
+                }
+            }
+
+            String scopesCsv = String.join(",", scopesForLogin);
             String tutorialUrl = "https://cloud.google.com/sdk/gcloud/reference/auth/application-default/login";
             String hint = "\n\nFix: run `gcloud auth application-default login --scopes=" + scopesCsv + "` " +
                     "and ensure the application default credentials are available (or place the JSON in `" + credFile.getPath() + "`). " +
