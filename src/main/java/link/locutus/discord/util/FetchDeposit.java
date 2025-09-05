@@ -202,14 +202,14 @@ public class FetchDeposit {
                 Map<DepositType, Object> noteMap = record.getNoteMap();
                 Object expireVal = noteMap.get(DepositType.EXPIRE);
                 Object decayVal = noteMap.get(DepositType.DECAY);
-                Long dateVal;
+                long dateVal = 0;
                 if (decayVal instanceof Number n) {
-                    dateVal = n.longValue();
-                } else if (expireVal instanceof Number n) {
-                    dateVal = n.longValue();
-                } else {
-                    return;
+                    dateVal = Math.max(dateVal, n.longValue());
                 }
+                if (expireVal instanceof Number n) {
+                    dateVal = Math.max(dateVal, n.longValue());
+                }
+                if (dateVal == 0) return;
                 getExpiring.accept(record, dateVal);
             });
         }

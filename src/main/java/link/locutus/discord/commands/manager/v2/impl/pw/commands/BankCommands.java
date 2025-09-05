@@ -2088,6 +2088,7 @@ public class BankCommands {
                     Map<DepositType, Object> noteMap = tx.getNoteMap();
                     Object expire3 = noteMap.get(DepositType.EXPIRE);
                     Object decay3 = noteMap.get(DepositType.DECAY);
+                    if (expire3 == null && decay3 == null) continue;
                     long expireEpoch = Long.MAX_VALUE;
                     long decayEpoch = Long.MAX_VALUE;
                     if (expire3 instanceof Number n) {
@@ -2096,29 +2097,28 @@ public class BankCommands {
                     if (decay3 instanceof Number n) {
                         decayEpoch = n.longValue();
                     }
-                    expireEpoch = Math.min(expireEpoch, decayEpoch);
-                    if (expireEpoch > now) {
+                    if ((decayEpoch != Long.MAX_VALUE || expireEpoch != Long.MAX_VALUE) && (expireEpoch > now && decayEpoch > now)) {
+                        System.out.println("RESETTING NOTE: " + tx.note + " | exp: " + expireEpoch + " dec: " + decayEpoch + " now: " + now);
                         String noteCopy = tx.note.toLowerCase(Locale.ROOT)
                                 .replaceAll("#expire=[a-zA-Z0-9:]+", "")
                                 .replaceAll("#decay=[a-zA-Z0-9:]+", "");
-                        if (expire3 instanceof Number) {
+                        if (expireEpoch != Long.MAX_VALUE && expire3 instanceof Number) {
                             noteCopy += " #expire=" + "timestamp:" + expireEpoch;
                         }
-                        if (decay3 instanceof Number) {
+                        if (decayEpoch != Long.MAX_VALUE && decay3 instanceof Number) {
                             noteCopy += " #decay=" + "timestamp:" + decayEpoch;
                         }
                         noteCopy = noteCopy.trim();
 
-                        tx.tx_datetime = System.currentTimeMillis();
                         int sign = entry.getKey();
                         if (sign == 1) {
                             response.append("Subtracting `" + nation.getQualifiedId() + " " + ResourceType.toString(tx.resources) + " " + noteCopy + "`\n");
                             ResourceType.subtract(totalExpire, tx.resources);
-                            if (force) db.subBalance(now, nation, me.getNation_id(), noteCopy, tx.resources);
+                            if (force) db.subBalance(decayEpoch == Long.MAX_VALUE ? now : tx.tx_datetime, nation, me.getNation_id(), noteCopy, tx.resources);
                         } else if (sign == -1) {
                             response.append("Adding `" + nation.getQualifiedId() + " " + ResourceType.toString(tx.resources) + " " + noteCopy + "`\n");
                             ResourceType.add(totalExpire, tx.resources);
-                            if (force) db.addBalance(now, nation, me.getNation_id(), noteCopy, tx.resources);
+                            if (force) db.addBalance(decayEpoch == Long.MAX_VALUE ? now : tx.tx_datetime, nation, me.getNation_id(), noteCopy, tx.resources);
                         } else {
                             Logg.error("Invalid sign for deposits reset " + sign);
                         }
@@ -4120,8 +4120,10 @@ public class BankCommands {
                     Integer sign = PW.getSign(record, nation.getId(), offshoreIdsFinal);
                     if (sign == null) return; // not for this nation
                     hasRow[0] = true;
-                    if (dateVal <= now) return;
                     Long decayVal = (Long) record.getNoteMap().get(DepositType.DECAY);
+                    Long expireVal = (Long) record.getNoteMap().get(DepositType.EXPIRE);
+                    if (decayVal == null && expireVal == null) return; // no value
+                    if ((decayVal != null && decayVal < now) || (expireVal != null && expireVal < now)) return; // already expired
 
                     List<Object> row = new ObjectArrayList<>();
                     row.add(sign);
@@ -4129,11 +4131,11 @@ public class BankCommands {
                     row.add(TimeUtil.format(TimeUtil.YYYY_MM_DD_HH_MM_SS, record.tx_datetime));
                     row.add(ResourceType.convertedTotal(record.resources));
 
-                    if (dateVal != null) {
+                    if (decayVal != null) {
                         double[] principal = record.resources.clone();
-                        double decayFactor = 1 - ((now - record.tx_datetime) / (double) (dateVal - record.tx_datetime));
+                        double decayFactor = 1 - ((now - record.tx_datetime) / (double) (decayVal - record.tx_datetime));
                         double[] remaining = PW.multiply(principal.clone(), decayFactor);
-                        double decayFactorPerDay = (double) TimeUnit.DAYS.toMillis(1) / (dateVal - record.tx_datetime);
+                        double decayFactorPerDay = (double) TimeUnit.DAYS.toMillis(1) / (decayVal - record.tx_datetime);
                         double[] decayPerDay = ResourceType.getBuffer();
                         for (int i = 0; i < principal.length; i++) {
                             double remainingVal = remaining[i];
