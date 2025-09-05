@@ -300,10 +300,16 @@ public final class Locutus extends ListenerAdapter {
         runLoadMembersTask(guild);
     }
 
+    private final Set<Long> loadedMembersSet = new LongOpenHashSet();
     private final Object memberLoadLock = new Object();
     private CompletableFuture<Void> memberLoadChain = CompletableFuture.completedFuture(null);
 
     private Future<Void> runLoadMembersTask(Guild guild) {
+        synchronized (loadedMembersSet) {
+            if (!loadedMembersSet.add(guild.getIdLong())) {
+                return CompletableFuture.completedFuture(null);
+            }
+        }
         final CompletableFuture<Void> next = new CompletableFuture<>();
         final CompletableFuture<Void> prev;
         synchronized (memberLoadLock) {
