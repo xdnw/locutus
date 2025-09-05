@@ -111,9 +111,9 @@ public class PnwPusherHandler {
         if (pusher == null) {
 
             PusherOptions options = new PusherOptions()
-                    .setUserAuthenticator(new HttpUserAuthenticator(AUTH_ENDPOINT))
+                    .setUserAuthenticator(new RetryingUserAuthenticator(new HttpUserAuthenticator(AUTH_ENDPOINT), 3, 120_000, false))
                     .setHost(HOST)
-                    .setChannelAuthorizer(new HttpChannelAuthorizer(AUTH_ENDPOINT))
+                    .setChannelAuthorizer(new RetryingChannelAuthorizer(new HttpChannelAuthorizer(AUTH_ENDPOINT), 3, 120_000, false))
                     ;
             this.pusher = new Pusher("a22734a47847a64386c8", options);
 
