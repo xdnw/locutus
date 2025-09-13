@@ -642,9 +642,10 @@ public final class PW {
 
             boolean allowConversion = (finalAllowConversionDefault && record.tx_datetime > allowConversionDefaultCutoff) || (record.tx_id != -1 && isOffshoreSender);
             boolean allowArbitraryConversion = record.tx_id != -1 && isOffshoreSender;
+            long forceConversionAfterFinal = record.isInternal() ? Long.MAX_VALUE : forceRssConversionAfter;
 
             Predicate<Transaction2> allowExpiryFinal = isOffshoreSender || record.isInternal() ? allowExpiry : Predicates.alwaysFalse();
-            PW.processDeposit(record, guildDB, finalTracked, sign, result, record.resources, record.tx_datetime, allowExpiryFinal, allowConversion, allowArbitraryConversion, true, forceIncludeIgnored, rateFunc, forceRssConversionAfter);
+            PW.processDeposit(record, guildDB, finalTracked, sign, result, record.resources, record.tx_datetime, allowExpiryFinal, allowConversion, allowArbitraryConversion, true, forceIncludeIgnored, rateFunc, forceConversionAfterFinal, start);
         };
     }
 
@@ -683,7 +684,8 @@ public final class PW {
                                       boolean ignoreMarkedDeposits,
                                       boolean includeIgnored,
                                       Function<ResourceType, Double> rates,
-                                      long forceConvertRssAfter) {
+                                      long forceConvertRssAfter,
+                                      long now) {
         /*
         allowConversion sender is nation and alliance has conversion enabled
          */
@@ -741,7 +743,6 @@ public final class PW {
                 case DECAY: {
                     if (allowExpiry.test(record) && value2 instanceof Number n) {
                         try {
-                            long now = System.currentTimeMillis();
                             long expire = n.longValue();
                             if (now > expire) {
                                 return;
@@ -758,7 +759,6 @@ public final class PW {
                 case EXPIRE: {
                     if (allowExpiry.test(record) && value2 instanceof Number n) {
                         try {
-                            long now = System.currentTimeMillis();
                             long expire = n.longValue();
                             if (now > expire) {
                                 return;
@@ -892,6 +892,16 @@ public final class PW {
                     note = note.replaceAll("#[a-f0-9]{32}", "");
                     note = note.replaceAll("\\s+", " ").trim();
                     note += " #" + hash + " " + "#cash=" + MathMan.format(cashValue).replace(",", "");
+
+                    if (convert != null) {
+                        long convertBits = 0;
+                        for (byte b : convert) {
+                            convertBits |= (1L << b);
+                        }
+                        note += " #rss=" + convertBits;
+                    }
+
+
                     record.note = note.trim();
 
                     if (record.isInternal()) {
@@ -1515,9 +1525,9 @@ public final class PW {
         return new BiFunction<Double, Double, Integer>() {
             @Override
             public Integer apply(Double min, Double max) {
-                max = Math.min(scoreRange.length - 1, max);
-                min = Math.min(scoreRange.length - 1, min);
-                return scoreRange[(int) Math.ceil(max)] - scoreRange[min.intValue()];
+                max = Math.max(0, Math.min(scoreRange.length - 1, max));
+                min = Math.max(0, Math.min(scoreRange.length - 1, min));
+                return scoreRange[max.intValue()] - scoreRange[min.intValue()];
             }
         };
     }
