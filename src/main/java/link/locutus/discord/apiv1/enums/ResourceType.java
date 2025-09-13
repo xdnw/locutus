@@ -1070,7 +1070,7 @@ public enum ResourceType {
         double base = getBaseProduction(continent, rads, hasProject, city.getLand(), -1);
         base = (base * baseProductionInverse) * baseInput;
 
-        return base * (1+0.5*((improvements - 1d) * capInverse)) * improvements;
+        return base * (1 + 0.5*((improvements - 1d) * capInverse)) * improvements;
     }
 
     public double getBaseProduction(Continent continent, double rads, Predicate<Project> hasProject, double land, long date) {
