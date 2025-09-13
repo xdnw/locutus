@@ -13,6 +13,7 @@ public enum TreatyType {
     NAP(2, "NAP", "#ffb6c1"),
     NPT(3, "NPT", "#ff0000"),
     EXTENSION(9, "Extension", "#9333ea"),
+    OFFSHORE(10, "Offshore", "#9333ea"),
 
     ;
 
