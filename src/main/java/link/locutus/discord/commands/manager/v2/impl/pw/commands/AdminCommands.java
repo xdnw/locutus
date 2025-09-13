@@ -520,8 +520,9 @@ public class AdminCommands {
         Map<Integer, WarCatReason> toDelete = new LinkedHashMap<>();
         Map<DBNation, TextChannel> toReassign = new LinkedHashMap<>();
         Map<Integer, Set<TextChannel>> duplicates = new LinkedHashMap<>();
+        Set<TextChannel> cantTalk = new LinkedHashSet<>();
 
-        cat.sync(warsLog, inactiveRoomLog, activeRoomLog, toCreate, toDelete, toReassign, duplicates, force);
+        cat.sync(warsLog, inactiveRoomLog, activeRoomLog, toCreate, toDelete, toReassign, duplicates, cantTalk, force);
         if (!warsLog.isEmpty()) {
             response.append("\n**" + warsLog.size() + " wars:**\n");
             for (Map.Entry<DBWar, WarCatReason> entry : warsLog.entrySet()) {
@@ -574,6 +575,12 @@ public class AdminCommands {
                 int id = entry.getKey();
                 Set<TextChannel> channels = entry.getValue();
                 response.append("- " + PW.getMarkdownUrl(id, false) + ": " + channels.stream().map(Channel::getAsMention).collect(Collectors.joining(", ")) + "\n");
+            }
+        }
+        if (!cantTalk.isEmpty()) {
+            response.append("\n**" + cantTalk.size() + " channels the bot cannot talk in:**\n");
+            for (TextChannel channel : cantTalk) {
+                response.append("- " + channel.getAsMention() + "\n");
             }
         }
 

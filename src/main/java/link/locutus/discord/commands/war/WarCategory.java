@@ -70,8 +70,9 @@ public class WarCategory {
         Map<Integer, WarCatReason> toDelete = new Int2ObjectLinkedOpenHashMap<>();
         Map<DBNation, TextChannel> toReassign = new Object2ObjectOpenHashMap<>();
         Map<Integer, Set<TextChannel>> duplicates = new Int2ObjectLinkedOpenHashMap<>();
+        Set<TextChannel> cantTalk = new ObjectLinkedOpenHashSet<>();
 
-        sync(null, null, null, toCreate, toDelete, toReassign, duplicates, false);
+        sync(null, null, null, toCreate, toDelete, toReassign, duplicates, cantTalk, false);
         if (!toCreate.isEmpty() || !toDelete.isEmpty() || !toReassign.isEmpty() || !duplicates.isEmpty()) {
             MessageChannel logChan = GuildKey.WAR_ROOM_LOG.getOrNull(getGuildDb());
             if (logChan != null) {
@@ -92,6 +93,12 @@ public class WarCategory {
                     pretty.append("\n### Reassign\n");
                     for (Map.Entry<DBNation, TextChannel> entry : toReassign.entrySet()) {
                         pretty.append("\n").append(entry.getKey().getNation_id()).append(" - ").append(entry.getValue().getName());
+                    }
+                }
+                if (!cantTalk.isEmpty()) {
+                    pretty.append("\n### Cant access Channel (Discord Perms)\n");
+                    for (TextChannel chan : cantTalk) {
+                        pretty.append("\n").append(chan.getName()).append(" - ").append(chan.getId());
                     }
                 }
                 if (!duplicates.isEmpty()) {
@@ -680,11 +687,11 @@ public class WarCategory {
     }
 
     public void sync() {
-        sync(null, null, null, null, null, null, null, false);
+        sync(null, null, null, null, null, null, null, null, false);
     }
 
     public void sync(boolean force) {
-        sync(null, null, null, null, null, null, null, force);
+        sync(null, null, null, null, null, null, null, null, force);
     }
 
     private void syncAlliances() {
@@ -699,6 +706,7 @@ public class WarCategory {
                      Map<Integer, WarCatReason> toDelete,
                      Map<DBNation, TextChannel> toReassign,
                      Map<Integer, Set<TextChannel>> duplicates,
+                     Set<TextChannel> cantTalk,
                      boolean create) {
         if (warRoomMap.isEmpty() && !create && warsLog == null) return;
         syncAlliances();
@@ -794,6 +802,9 @@ public class WarCategory {
             String catName = category.getName().toLowerCase();
             if (catName.startsWith(catPrefix)) {
                 for (TextChannel channel : category.getTextChannels()) {
+                    if (!channel.canTalk()) {
+                        cantTalk.add(channel);
+                    }
                     String channelName = channel.getName();
                     String[] split = channelName.split("-");
                     int targetId;
