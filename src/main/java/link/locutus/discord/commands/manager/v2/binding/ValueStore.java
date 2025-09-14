@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.binding;
 
 import io.javalin.http.RedirectResponse;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 
 import java.util.Map;
 import java.util.function.Function;
@@ -55,4 +56,12 @@ public interface ValueStore<T> {
     }
 
     Map<Key, Parser> getParsers();
+
+    default Map<String, Parser> getParsersByName() {
+        Map<String, Parser> map = new Object2ObjectLinkedOpenHashMap<>();
+        for (Map.Entry<Key, Parser> entry : getParsers().entrySet()) {
+            map.put(entry.getKey().toSimpleString(), entry.getValue());
+        }
+        return map;
+    }
 }

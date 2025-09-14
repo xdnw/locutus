@@ -56,6 +56,7 @@ import link.locutus.discord.util.offshore.test.IAChannel;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.MailRespondTask;
+import link.locutus.discord.util.task.ia.AuditType;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.util.task.mail.*;
 import link.locutus.discord.web.jooby.handler.CommandResult;
@@ -1180,7 +1181,7 @@ public class IACommands {
                 response.append("\n- c" + myMentee.getCities() + " mmr[unit]=" + myMentee.getMMR() + " mmr[build]=" + myMentee.getMMRBuildingStr() + " off:" + myMentee.getOff());
 
                 if (includeAudit) {
-                    Map<IACheckup.AuditType, Map.Entry<Object, String>> checkupResult = checkup.checkup(cacheStore, myMentee, true, true);
+                    Map<AuditType, Map.Entry<Object, String>> checkupResult = checkup.checkup(cacheStore, myMentee, true, true);
                     checkupResult.entrySet().removeIf(f -> f.getValue() == null || f.getValue().getValue() == null);
                     if (!checkupResult.isEmpty()) {
                         response.append("\n- Failed: [" + StringMan.join(checkupResult.keySet(), ", ") + "]");

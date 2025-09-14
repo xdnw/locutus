@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
@@ -15,7 +14,9 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Messages;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.Report;
 import link.locutus.discord.db.ReportManager;
+import link.locutus.discord.db.ReportType;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.nation.DBNationData;
 import link.locutus.discord.db.entities.nation.SimpleDBNation;
@@ -50,7 +51,7 @@ public class ReportCommands {
     @Command(desc=  "Generate a sheet of all the community reports for players", viewable = true)
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String reportSheet(@Me IMessageIO io, @Me @Default GuildDB db, ReportManager manager, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException, NoSuchFieldException, IllegalAccessException {
-        List<ReportManager.Report> reports = manager.loadReports(null);
+        List<Report> reports = manager.loadReports(null);
 
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.REPORTS_SHEET);
@@ -61,7 +62,7 @@ public class ReportCommands {
         List<String> column = new ArrayList<>(Arrays.asList(header.getHeaderNames()));
         sheet.addRow(column);
 
-        for (ReportManager.Report report : reports) {
+        for (Report report : reports) {
             String natUrl = sheetUrl(getName(report.nationId, false), getNationUrl(report.nationId));
             String discordUrl = sheetUrl(getUserName(report.discordId), userUrl(report.discordId, false));
 
@@ -115,7 +116,7 @@ public class ReportCommands {
             return "`Reason` column not found";
         }
 
-        List<ReportManager.Report> reports = new ArrayList<>();
+        List<Report> reports = new ArrayList<>();
         // iterate rows
 
         for (int i = 1; i < rows.size(); i++) {
@@ -141,17 +142,17 @@ public class ReportCommands {
             String reason = row.get(reasonIndex).toString();
             String reasonLower = reason.toLowerCase();
 
-            ReportManager.ReportType type;
+            ReportType type;
             if (reasonLower.contains("attacking") || reason.contains("declaring war")) {
-                type = ReportManager.ReportType.THREATS_COERCION;
+                type = ReportType.THREATS_COERCION;
             } else if (reasonLower.contains("scam") || reasonLower.contains("$")) {
-                type = ReportManager.ReportType.FRAUD;
+                type = ReportType.FRAUD;
             } else if (reasonLower.contains("default")) {
-                type = ReportManager.ReportType.BANK_DEFAULT;
+                type = ReportType.BANK_DEFAULT;
             } else if (reasonLower.contains("multi")) {
-                type = ReportManager.ReportType.MULTI;
+                type = ReportType.MULTI;
             } else {
-                type = ReportManager.ReportType.FRAUD;
+                type = ReportType.FRAUD;
             }
 
             String reasonFinal = reason + "\nnote: `legacy blacklist`";
@@ -164,7 +165,7 @@ public class ReportCommands {
             for (long discordId : discordIds) {
                 if (nationId == 0 && discordId == 0) continue;
 
-                ReportManager.Report report = new ReportManager.Report(
+                Report report = new Report(
                         nationId,
                         discordId,
                         type,
@@ -185,9 +186,9 @@ public class ReportCommands {
 
 
         // ignore reports already exists
-        List<ReportManager.Report> existing = reportManager.loadReports();
+        List<Report> existing = reportManager.loadReports();
         Map<Integer, Set<String>> existingMap = new Int2ObjectOpenHashMap<>();
-        for (ReportManager.Report report : existing) {
+        for (Report report : existing) {
             int nationId = report.nationId;
             String msg = report.message;
             existingMap.computeIfAbsent(nationId, k -> new HashSet<>()).add(msg);
@@ -209,7 +210,7 @@ public class ReportCommands {
             If no nations are provided, only the loans for this server are returned
             If no loan status is provided, all loans are returned""", viewable = true)
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
-    public String getLoanSheet(@Me IMessageIO io, @Me GuildDB db, LoanManager manager, @Default Set<DBNation> nations, @Switch("s") SpreadSheet sheet, @Switch("l") Set<DBLoan.Status> loanStatus) throws GeneralSecurityException, IOException {
+    public String getLoanSheet(@Me IMessageIO io, @Me GuildDB db, LoanManager manager, @Default Set<DBNation> nations, @Switch("s") SpreadSheet sheet, @Switch("l") Set<Status> loanStatus) throws GeneralSecurityException, IOException {
         List<DBLoan> loans;
         if (nations == null) {
             loans = manager.getLoansByGuildDB(db);
@@ -290,7 +291,7 @@ public class ReportCommands {
 
     @Command(desc = "Add a loan for a nation or alliance")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.ECON}, any = true)
-    public String addLoan(LoanManager loanManager, @Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, NationOrAlliance receiver, @Default DBLoan.Status status, @Switch("o") @GuildLoan DBLoan overwriteLoan,
+    public String addLoan(LoanManager loanManager, @Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, NationOrAlliance receiver, @Default Status status, @Switch("o") @GuildLoan DBLoan overwriteLoan,
                           @Switch("p") Map<ResourceType, Double> principal, @Switch("r") Map<ResourceType, Double> remaining, @Switch("c") Map<ResourceType, Double> amountPaid,
                           @Switch("d") @Timestamp Long dueDate, @Switch("a") DBAlliance allianceLending, @Switch("f") boolean force) {
         if (allianceLending != null) {
@@ -375,7 +376,7 @@ public class ReportCommands {
             // If loan already exists to nation from this guild, prompt to update it
             if (overwriteLoan == null) {
                 List<DBLoan> foundLoans = loanManager.getLoanByReceiver(db, receiver);
-                foundLoans.removeIf(f -> f.status == DBLoan.Status.CLOSED);
+                foundLoans.removeIf(f -> f.status == Status.CLOSED);
                 if (!foundLoans.isEmpty()) {
                     body.append("**A loan already exists to ")
                             .append(receiver.isAlliance() ? "alliance " : "nation ")
@@ -395,7 +396,7 @@ public class ReportCommands {
                     body.append("**Warning:** No `dueDate` set. Defaulting to 7 days\n");
                 }
                 if (status == null) {
-                    status = DBLoan.Status.OPEN;
+                    status = Status.OPEN;
                     body.append("**Warning:** No `status` set. Defaulting to `OPEN`\n");
                 }
             }
@@ -407,7 +408,7 @@ public class ReportCommands {
 
         boolean isUpdate = overwriteLoan == null;
         if (overwriteLoan == null) {
-            if (dueDate == null && (overwriteLoan == null || overwriteLoan.status == DBLoan.Status.OPEN || overwriteLoan.status == DBLoan.Status.EXTENDED)) {
+            if (dueDate == null && (overwriteLoan == null || overwriteLoan.status == Status.OPEN || overwriteLoan.status == Status.EXTENDED)) {
                 dueDate = TimeUtil.getTimeFromTurn(TimeUtil.getTurn()) + TimeUnit.DAYS.toMillis(7);
             }
             if (principal == null) {
@@ -437,7 +438,7 @@ public class ReportCommands {
         // If there are loans updated >1w ago, prompt to update them
         List<DBLoan> existing = loanManager.getLoansByGuildDB(db);
         long now = System.currentTimeMillis();
-        existing.removeIf(f -> f.status == DBLoan.Status.DEFAULTED || f.status == DBLoan.Status.CLOSED || f.dueDate >= now);
+        existing.removeIf(f -> f.status == Status.DEFAULTED || f.status == Status.CLOSED || f.dueDate >= now);
         // The following loans are >1w old, would you like to update them?
         if (!existing.isEmpty()) {
             response.append("\n**Warning:** There are loans >1w old that have not been updated. Consider updating them:\n");
@@ -544,7 +545,7 @@ public class ReportCommands {
     @Command(desc = "Mark all active loans by this guild as up to date\n" +
             "It is useful for loan reporting to remain accurate")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.ECON}, any = true)
-    public String markAllLoansAsUpdated(LoanManager loanManager, @Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Default Set<DBLoan.Status> loanStatus, @Switch("f") boolean force) {
+    public String markAllLoansAsUpdated(LoanManager loanManager, @Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Default Set<Status> loanStatus, @Switch("f") boolean force) {
         List<DBLoan> loans = loanManager.getLoansByGuildDB(db);
         if (loanStatus != null) {
             loans.removeIf(f -> !loanStatus.contains(f.status));
@@ -574,7 +575,7 @@ public class ReportCommands {
             Expects the columns: Receiver, Principal, Remaining, Status, Due Date, Loan Date, Paid, Interest
             This is not affect member balances and is solely for sharing information with the public""")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.ECON}, any = true)
-    public String importLoans(LoanManager loanManager, @Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, SpreadSheet sheet, @Default DBLoan.Status defaultStatus, @Switch("o") boolean overwriteLoans, @Switch("m") boolean overwriteSameNation, @Switch("a") boolean addLoans) throws ParseException {
+    public String importLoans(LoanManager loanManager, @Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, SpreadSheet sheet, @Default Status defaultStatus, @Switch("o") boolean overwriteLoans, @Switch("m") boolean overwriteSameNation, @Switch("a") boolean addLoans) throws ParseException {
         List<List<Object>> rows = sheet.fetchAll(null);
         if (rows.isEmpty()) {
             return "No rows found: " + sheet.getURL();
@@ -704,7 +705,7 @@ public class ReportCommands {
                 }
             }
 
-            DBLoan.Status status = statusStr == null || statusStr.isEmpty() ? defaultStatus : DBLoan.Status.valueOf(statusStr.toUpperCase());
+            Status status = statusStr == null || statusStr.isEmpty() ? defaultStatus : Status.valueOf(statusStr.toUpperCase());
 
             long loanDate = TimeUtil.parseDate(TimeUtil.YYYY_MM_DD_HH_MM_SS, loanDateStr);
             long dueDate = dueDateStr == null ? 0 : TimeUtil.parseDate(TimeUtil.YYYY_MM_DD_HH_MM_SS, dueDateStr);
@@ -781,14 +782,14 @@ public class ReportCommands {
 //    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
     public String createReport(@Me DBNation me, @Me User author, @Me GuildDB db, @Me IMessageIO io, @Me JSONObject command,
                          ReportManager reportManager,
-                         ReportManager.ReportType type,
+                         ReportType type,
                          @Arg("Description of report") @TextArea String message,
                          @Default @Arg("Nation to report") DBNation nation,
                          @Default @Arg("Discord user to report") Long discord_user_id,
                          @Arg("Image evidence of report") @Switch("i") String imageEvidenceUrl,
                          @Arg("Link to relevant forum post") @Switch("p") String forum_post,
                          @Arg("Link to relevant news post") @Switch("m") String news_post,
-                               @Switch("u") ReportManager.Report updateReport,
+                               @Switch("u") Report updateReport,
                                @Switch("f") boolean force) {
         Map.Entry<String, Long> ban = reportManager.getBan(me);
         if (ban != null) {
@@ -801,7 +802,7 @@ public class ReportCommands {
         long reporterGuildId = db.getIdLong();
         int reporterAlliance = me.getAlliance_id();
 
-        ReportManager.Report existing = null;
+        Report existing = null;
         if (updateReport != null) {
             existing = updateReport;
             if (!existing.hasPermission(me, author, db)) {
@@ -932,11 +933,11 @@ public class ReportCommands {
                 body.append("News post: " + news_post + "\n");
             }
 
-            List<ReportManager.Report> reportList = reportManager.loadReportsByNationOrUser(nationId, discord_user_id);
+            List<Report> reportList = reportManager.loadReportsByNationOrUser(nationId, discord_user_id);
             if (!reportList.isEmpty()) {
                 body.append("To add a comment: " + CM.report.comment.add.cmd.toSlashMention() + "\n");
                 body.append("**Please look at these existing reports and add a comment instead if you are reporting the same thing**\n");
-                for (ReportManager.Report report : reportList) {
+                for (Report report : reportList) {
                     body.append("#" + report.reportId +": ```\n" + report.message + "\n```\n");
                 }
             }
@@ -965,7 +966,7 @@ public class ReportCommands {
             imageUrls = existing.imageUrls;
         }
 
-        ReportManager.Report report = new ReportManager.Report(
+        Report report = new Report(
             nationId == null ? 0 : nationId,
             discord_user_id == null ? 0 : discord_user_id,
             type,
@@ -986,7 +987,7 @@ public class ReportCommands {
 
         reportManager.saveReport(report);
 
-        ReportManager.Report finalExisting = existing;
+        Report finalExisting = existing;
         AlertUtil.forEachChannel(f -> true, REPORT_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB db) {
@@ -1001,7 +1002,7 @@ public class ReportCommands {
     }
 
     @Command(desc = "Remove a report of a nation or user")
-    public String removeReport(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, @Me GuildDB db, @ReportPerms ReportManager.Report report, @Switch("f") boolean force) {
+    public String removeReport(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, @Me GuildDB db, @ReportPerms Report report, @Switch("f") boolean force) {
         if (!report.hasPermission(me, author, db)) {
             return "You do not have permission to remove this report: `#" + report.reportId +
                     "` (owned by nation:" + PW.getName(report.reporterNationId, false) + ")\n" +
@@ -1018,7 +1019,7 @@ public class ReportCommands {
     }
 
     @Command(desc = "Remove a comment on a report")
-    public String removeComment(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, @ReportPerms ReportManager.Report report, @Default DBNation nationCommenting, @Switch("f") boolean force) {
+    public String removeComment(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, @ReportPerms Report report, @Default DBNation nationCommenting, @Switch("f") boolean force) {
         if (nationCommenting == null) nationCommenting = me;
         if (nationCommenting.getNation_id() != me.getNation_id() && !Roles.INTERNAL_AFFAIRS_STAFF.hasOnRoot(author)) {
             return "You do not have permission to remove another nation's comment on report: `#" + report.reportId +
@@ -1044,7 +1045,7 @@ public class ReportCommands {
 
     @Command(desc = "Approve a report for a nation or user")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS}, root = true, any = true)
-    public String approveReport(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @ReportPerms ReportManager.Report report, @Switch("f") boolean force) {
+    public String approveReport(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @ReportPerms Report report, @Switch("f") boolean force) {
         if (report.approved) {
             return "Report #" + report.reportId + " is already approved.";
         }
@@ -1060,7 +1061,7 @@ public class ReportCommands {
     }
 
     @Command(desc = "Add a short comment to a report")
-    public String comment(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, ReportManager.Report report, String comment, @Switch("f") boolean force) {
+    public String comment(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, Report report, String comment, @Switch("f") boolean force) {
         Map.Entry<String, Long> ban = reportManager.getBan(me);
         if (ban != null) {
             return "You were banned from reporting on " + DiscordUtil.timestamp(ban.getValue(), null) + " for `" + ban.getKey() + "`";
@@ -1103,7 +1104,7 @@ public class ReportCommands {
     @Command(desc = "Mass delete reports about or submitted by a user or nation")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS}, root = true, any = true)
     public String purgeReports(@Me IMessageIO io, @Me JSONObject command, ReportManager reportManager, @Switch("n") Integer nationIdReported, @Switch("d") Long userIdReported, @Switch("i") Integer reportingNation, @Switch("u") Long reportingUser, @Switch("f") boolean force) {
-        List<ReportManager.Report> reports = reportManager.loadReports(nationIdReported, userIdReported, reportingNation, reportingUser);
+        List<Report> reports = reportManager.loadReports(nationIdReported, userIdReported, reportingNation, reportingUser);
         if (reports.isEmpty()) {
             return "No reports found";
         }
@@ -1131,7 +1132,7 @@ public class ReportCommands {
             io.create().confirmation(title, body.toString(), command).send();
             return null;
         }
-        for (ReportManager.Report report : reports) {
+        for (Report report : reports) {
             reportManager.deleteReport(report.reportId);
         }
         return "Deleted " + reports.size() + " reports";
@@ -1139,7 +1140,7 @@ public class ReportCommands {
 
     @Command(desc = "Mass delete reports about or submitted by a user or nation")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS}, root = true, any = true)
-    public String purgeComments(@Me IMessageIO io, @Me JSONObject command, ReportManager reportManager, @Switch("r") ReportManager.Report report, @Switch("i") Integer nation_id, @Switch("u") Long discord_id, @Switch("f") boolean force) {
+    public String purgeComments(@Me IMessageIO io, @Me JSONObject command, ReportManager reportManager, @Switch("r") Report report, @Switch("i") Integer nation_id, @Switch("u") Long discord_id, @Switch("f") boolean force) {
         if (nation_id != null && discord_id != null) {
             return "Cannot specify both a nation and a user. Pick one";
         }
@@ -1252,14 +1253,14 @@ public class ReportCommands {
     // report search
     @Command(desc = "List all reports about or submitted by a nation or user", viewable = true)
     public String searchReports(ReportManager reportManager, @Switch("n") Integer nationIdReported, @Switch("d") Long userIdReported, @Switch("i") Integer reportingNation, @Switch("u") Long reportingUser) {
-        List<ReportManager.Report> reports = reportManager.loadReports(nationIdReported, userIdReported, reportingNation, reportingUser);
+        List<Report> reports = reportManager.loadReports(nationIdReported, userIdReported, reportingNation, reportingUser);
         // list reports matching
         if (reports.isEmpty()) {
             return "No reports found";
         }
         StringBuilder response = new StringBuilder();
         response.append("# " + reports.size()).append(" reports found:\n");
-        for (ReportManager.Report report : reports) {
+        for (Report report : reports) {
             response.append("### ").append(report.toMarkdown(false)).append("\n");
         }
         return response.toString();
@@ -1267,7 +1268,7 @@ public class ReportCommands {
 
     // report show, incl comments
     @Command(desc = "View a report and its comments", viewable = true)
-    public String showReport(ReportManager.Report report) {
+    public String showReport(Report report) {
         return "### " + report.toMarkdown(true);
     }
 
@@ -1296,13 +1297,13 @@ public class ReportCommands {
         List<DBLoan> loans = loanManager.getLoansByNation(nation.getId());
 
         // remove completed loans
-        loans.removeIf(loan -> loan.status == DBLoan.Status.CLOSED);
+        loans.removeIf(loan -> loan.status == Status.CLOSED);
         if (!loans.isEmpty()) {
-            Map<DBLoan.Status, List<DBLoan>> loansByStatus = new HashMap<>();
+            Map<Status, List<DBLoan>> loansByStatus = new HashMap<>();
             for (DBLoan loan : loans) {
                 loansByStatus.computeIfAbsent(loan.status, k -> new ArrayList<>()).add(loan);
             }
-            for (DBLoan.Status status : DBLoan.Status.values()) {
+            for (Status status : Status.values()) {
                 List<DBLoan> loansForStatus = loansByStatus.get(status);
                 if (loansForStatus == null) continue;
                 response.append(status.name() + " loans:\n");
@@ -1318,7 +1319,7 @@ public class ReportCommands {
         }
 
         // Get reports by same nation/discord
-        List<ReportManager.Report> reports = reportManager.loadReports(nation.getId(), nation.getUserId(), null, null);
+        List<Report> reports = reportManager.loadReports(nation.getId(), nation.getUserId(), null, null);
         if (reports.size() > 0) {
             int approved = (int) reports.stream().filter(report -> report.approved).count();
             int pending = reports.size() - approved;
@@ -1424,13 +1425,13 @@ public class ReportCommands {
         //- proximity to banned or reported individuals (alliance history, trades, bank transfers)
         // Map of Nation id -> Alliance -> duration
         Map<Integer, Long> sameAAProximity = reportManager.getBlackListProximity(nation, history);
-        Map<Integer, Set<ReportManager.ReportType>> reportTypes = reportManager.getApprovedReportTypesByNation(sameAAProximity.keySet());
+        Map<Integer, Set<ReportType>> reportTypes = reportManager.getApprovedReportTypesByNation(sameAAProximity.keySet());
         if (!sameAAProximity.isEmpty()) {
             response.append("Proximity to reported individuals:\n");
             for (Map.Entry<Integer, Long> entry : sameAAProximity.entrySet()) {
                 int nationId = entry.getKey();
                 String nationName = PW.getMarkdownUrl(nationId, false);
-                String reportListStr = reportTypes.get(nationId).stream().map(ReportManager.ReportType::name).collect(Collectors.joining(","));
+                String reportListStr = reportTypes.get(nationId).stream().map(ReportType::name).collect(Collectors.joining(","));
                 response.append("- " + nationName + " | " + reportListStr + ": " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, entry.getValue()) + "\n");
             }
             response.append("See: " + CM.nation.departures.cmd.toSlashMention() + "\n");

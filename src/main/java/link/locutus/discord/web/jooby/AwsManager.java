@@ -8,13 +8,11 @@ import com.amazonaws.services.s3.model.ListObjectsV2Result;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
-import jakarta.xml.bind.DatatypeConverter;
 import link.locutus.discord.config.Settings;
+import org.apache.commons.codec.digest.DigestUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
 public class AwsManager {
@@ -52,14 +50,7 @@ public class AwsManager {
     }
 
     private String calculateMD5(byte[] data) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            md.update(data);
-            byte[] digest = md.digest();
-            return DatatypeConverter.printHexBinary(digest).toLowerCase();
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
+        return DigestUtils.md5Hex(data);
     }
 
     public byte[] getObject(String key) throws IOException {

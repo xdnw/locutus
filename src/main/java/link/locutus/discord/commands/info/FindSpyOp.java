@@ -12,6 +12,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBSpyUpdate;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.Operation;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -99,7 +100,7 @@ public class FindSpyOp extends Command {
 
             if (spiesUsed == -1) spiesUsed = attacker.getSpies();
 
-            double odds = SpyCount.getOdds(spiesUsed, defenderSpies, safety, SpyCount.Operation.SPIES, defender);
+            double odds = SpyCount.getOdds(spiesUsed, defenderSpies, safety, Operation.SPIES, defender);
             if (spySatellite) odds = Math.min(100, odds * 1.2);
 //            if (odds < 10) continue;
 

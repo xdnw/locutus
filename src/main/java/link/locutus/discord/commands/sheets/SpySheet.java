@@ -12,11 +12,8 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.Spyop;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -85,15 +82,15 @@ public class SpySheet extends Command {
 
         if (args.size() < 2) return usage(args.size(), 2, channel);
         Integer turns = Integer.MAX_VALUE;
-        Set<SpyCount.Operation> allowedOpTypes = new HashSet<>();
+        Set<Operation> allowedOpTypes = new HashSet<>();
         if (args.size() == 3) {
             for (String type : args.get(2).split(",")) {
-                allowedOpTypes.add(SpyCount.Operation.valueOf(type.toUpperCase()));
+                allowedOpTypes.add(Operation.valueOf(type.toUpperCase()));
             }
         } else {
-            allowedOpTypes.addAll(Arrays.asList(SpyCount.Operation.values()));
-            allowedOpTypes.remove(SpyCount.Operation.INTEL);
-            allowedOpTypes.remove(SpyCount.Operation.SOLDIER);
+            allowedOpTypes.addAll(Arrays.asList(Operation.values()));
+            allowedOpTypes.remove(Operation.INTEL);
+            allowedOpTypes.remove(Operation.SOLDIER);
         }
 
         Set<DBNation> attackers = DiscordUtil.parseNations(guild, author, me, args.get(0), false, false);
@@ -174,10 +171,10 @@ public class SpySheet extends Command {
                     double loginRatio = loginProb.get(defender);
 
                     double spyRatio = enemySpyRatio.apply(defender.getScore());
-                    for (SpyCount.Operation operation : allowedOpTypes) {
-                        if (defender.getSpies() > Math.min(6, attacker.getSpies() / 3d) && operation != SpyCount.Operation.SPIES) continue;
+                    for (Operation operation : allowedOpTypes) {
+                        if (defender.getSpies() > Math.min(6, attacker.getSpies() / 3d) && operation != Operation.SPIES) continue;
                         if (operation.unit == null) continue;
-                        if (operation != SpyCount.Operation.SPIES) {
+                        if (operation != Operation.SPIES) {
                             int units = defender.getUnits(operation.unit);
                             if (units == 0) continue;
                             switch (operation.unit) {
@@ -190,8 +187,8 @@ public class SpySheet extends Command {
                                     break;
                             }
                         }
-                        SpyCount.Operation[] opTypes = new SpyCount.Operation[]{operation};
-                        Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(!flags.contains('k'), mySpies, defender, attacker.hasProject(Projects.SPY_SATELLITE), opTypes);
+                        Operation[] opTypes = new Operation[]{operation};
+                        Map.Entry<Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(!flags.contains('k'), mySpies, defender, attacker.hasProject(Projects.SPY_SATELLITE), opTypes);
 
                         if (best == null) continue;
 
@@ -200,7 +197,7 @@ public class SpySheet extends Command {
 
                         opNetDamage *= loginRatio;
 
-                        if (operation == SpyCount.Operation.SPIES) {
+                        if (operation == Operation.SPIES) {
                             opNetDamage *= spyRatio;
                             if (defender.hasProject(Projects.INTELLIGENCE_AGENCY)) {
                                 opNetDamage *= 10;
@@ -209,7 +206,7 @@ public class SpySheet extends Command {
                                 opNetDamage *= 10;
                             }
                         }
-                        if (operation == SpyCount.Operation.NUKE) {
+                        if (operation == Operation.NUKE) {
                             int perDay = MilitaryUnit.NUKE.getMaxPerDay(defender.getCities(), defender::hasProject, defender::getResearch);
                             if (defender.getNukes() <= perDay) {
                                 ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
@@ -228,7 +225,7 @@ public class SpySheet extends Command {
                                 opNetDamage *= 2;
                             }
                         }
-                        if (operation == SpyCount.Operation.MISSILE) {
+                        if (operation == Operation.MISSILE) {
                             Integer missileCap = MilitaryUnit.MISSILE.getMaxPerDay(defender.getCities(), defender::hasProject, defender::getResearch);
                             if (defender.getMissiles() == (missileCap)) {
                                 ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
@@ -261,7 +258,7 @@ public class SpySheet extends Command {
                         int safety = bestValue.getKey();
 
                         Integer defSpies = defender.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, false, false);
-                        if (defSpies < 48 && operation == SpyCount.Operation.NUKE) defSpies += 3;
+                        if (defSpies < 48 && operation == Operation.NUKE) defSpies += 3;
                         int numSpies = (int) Math.ceil(Math.min(mySpies, SpyCount.getRequiredSpies(defSpies, safety, operation, defender)));
 
                         double opCost = SpyCount.opCost(numSpies, safety);

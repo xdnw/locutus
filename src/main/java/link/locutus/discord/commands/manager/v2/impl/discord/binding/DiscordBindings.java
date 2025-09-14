@@ -224,7 +224,7 @@ public class DiscordBindings extends BindingHelper {
     }
 
     @Binding(examples = "#channel", value = "A discord channel name or mention",
-            webType = "TextChannel")
+            webType = TextChannel.class)
     public MessageChannel channel(@Me Guild guild, String channel) {
         MessageChannel GuildMessageChannel = DiscordUtil.getChannel(guild, channel);
         if (GuildMessageChannel == null) throw new IllegalArgumentException("No channel found for " + channel);
@@ -265,7 +265,7 @@ public class DiscordBindings extends BindingHelper {
     }
 
     @Binding(examples = "#channel", value = "A categorized discord guild channel name or mention",
-    webType = "TextChannel")
+    webType = TextChannel.class)
     public ICategorizableChannel categorizableChannel(@Me Guild guild, String input) {
         MessageChannel channel = DiscordUtil.getChannel(guild, input);
         if (channel == null) throw new IllegalArgumentException("No channel found for " + null);
@@ -274,7 +274,8 @@ public class DiscordBindings extends BindingHelper {
         return (ICategorizableChannel) channel;
     }
 
-    @Binding(examples = "https://discord.com/channels/647252780817448972/973848742769885194/975827690877780050", value = "A discord message url")
+    @Binding(examples = "https://discord.com/channels/647252780817448972/973848742769885194/975827690877780050",
+            value = "A discord message url")
     public Message message(String message) {
         return DiscordUtil.getMessage(message);
     }
@@ -339,7 +340,9 @@ public class DiscordBindings extends BindingHelper {
         throw new IllegalArgumentException("No command binding found.");
     }
 
-    @Binding
+    @Binding(value = "A bot command in either JSON or slash command format",
+            examples = "{ \"\": \"register\", \"nation\": \"Borg\" }\n" +
+                        "/register nation=Borg")
     public JSONObject cmd(String input) {
         if (input.isEmpty()) {
             throw new IllegalArgumentException("No command input provided.");
@@ -355,7 +358,7 @@ public class DiscordBindings extends BindingHelper {
             if (callable == null) {
                 throw new IllegalArgumentException("No command found for " + cmdName);
             }
-            if (callable instanceof ParametricCallable parametric) {
+            if (callable instanceof ParametricCallable<?> parametric) {
                 Set<String> allowedArgsLowercase = parametric.getUserParameterMap().keySet().stream().map(f -> f.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
                 for (String key : json.keySet()) {
                     if (key.isEmpty()) continue;

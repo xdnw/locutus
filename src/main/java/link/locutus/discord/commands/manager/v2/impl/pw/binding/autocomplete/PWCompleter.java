@@ -20,10 +20,10 @@ import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
-import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.Report;
 import link.locutus.discord.db.ReportManager;
 import link.locutus.discord.db.conflict.Conflict;
 import link.locutus.discord.db.conflict.ConflictManager;
@@ -38,13 +38,10 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.pnw.*;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.AutoAuditType;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.SpyCount;
-import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
-import link.locutus.discord.util.task.ia.IACheckup;
+import link.locutus.discord.util.task.ia.AuditType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.ISnowflake;
 import net.dv8tion.jda.api.entities.Member;
@@ -55,6 +52,7 @@ import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 
 import java.awt.*;
 import java.lang.reflect.Type;
+import java.lang.reflect.WildcardType;
 import java.util.*;
 import java.util.List;
 import java.util.function.BiFunction;
@@ -164,7 +162,7 @@ public class PWCompleter extends BindingHelper {
     }
 
     @Autocomplete
-    @Binding(types={ICommand.class})
+    @Binding(types={ICommand.class, WildcardType.class})
     public List<String> commandEndpoint(String input) {
         return command(input);
     }
@@ -261,7 +259,7 @@ public class PWCompleter extends BindingHelper {
 
     @Autocomplete
     @ReportPerms
-    @Binding(types={ReportManager.Report.class})
+    @Binding(types={Report.class})
     public List<Map.Entry<String, String>> reports(ReportManager manager, @Me DBNation me, @Me User author, @Me GuildDB db, String input) {
         return reports(manager, me, author, db, input, true, OptionData.MAX_CHOICES);
     }
@@ -289,13 +287,13 @@ public class PWCompleter extends BindingHelper {
     }
 
     @Autocomplete
-    @Binding(types={ReportManager.Report.class})
+    @Binding(types={Report.class})
     public List<Map.Entry<String, String>> reportsAll(ReportManager manager, @Me DBNation me, @Me User author, @Me GuildDB db, String input) {
         return reports(manager, me, author, db, input, false, OptionData.MAX_CHOICES);
     }
 
     public static List<Map.Entry<String, String>> reports(ReportManager manager, @Me DBNation me, @Me User author, @Me GuildDB db, String input, boolean checkPerms, int maxChoices) {
-        List<ReportManager.Report> options = manager.loadReports(null);
+        List<Report> options = manager.loadReports(null);
         if (checkPerms) {
             options.removeIf(f -> !f.hasPermission(me, author, db));
         }
@@ -614,9 +612,9 @@ public class PWCompleter extends BindingHelper {
     }
 
     @Autocomplete
-    @Binding(types={UnsortedCommands.ClearRolesEnum.class})
+    @Binding(types={ClearRolesEnum.class})
     public List<String> ClearRolesEnum(String input) {
-        return StringMan.completeEnum(input, UnsortedCommands.ClearRolesEnum.class);
+        return StringMan.completeEnum(input, ClearRolesEnum.class);
     }
 
     @Autocomplete
@@ -626,9 +624,9 @@ public class PWCompleter extends BindingHelper {
     }
 
     @Autocomplete
-    @Binding(types={DBLoan.Status.class})
+    @Binding(types={Status.class})
     public List<String> LoanStatus(String input) {
-        return StringMan.completeEnum(input, DBLoan.Status.class);
+        return StringMan.completeEnum(input, Status.class);
     }
 
     {
@@ -691,10 +689,10 @@ public class PWCompleter extends BindingHelper {
         }
 
         {
-            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, DBLoan.Status.class).getType(), Autocomplete.class);
+            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, Status.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                    return StringMan.autocompleteCommaEnum(DBLoan.Status.class, input.toString(), OptionData.MAX_CHOICES);
+                    return StringMan.autocompleteCommaEnum(Status.class, input.toString(), OptionData.MAX_CHOICES);
                 }));
             });
         }
@@ -716,26 +714,26 @@ public class PWCompleter extends BindingHelper {
             });
         }
         {
-            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, IACheckup.AuditType.class).getType(), Autocomplete.class);
+            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, AuditType.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                    return StringMan.autocompleteCommaEnum(IACheckup.AuditType.class, input.toString(), OptionData.MAX_CHOICES);
+                    return StringMan.autocompleteCommaEnum(AuditType.class, input.toString(), OptionData.MAX_CHOICES);
                 }));
             });
         }
         {
-            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, SpyCount.Operation.class).getType(), Autocomplete.class);
+            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, Operation.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                    return StringMan.autocompleteCommaEnum(SpyCount.Operation.class, input.toString(), OptionData.MAX_CHOICES);
+                    return StringMan.autocompleteCommaEnum(Operation.class, input.toString(), OptionData.MAX_CHOICES);
                 }));
             });
         }
         {
-            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, IACheckup.AuditType.class).getType(), Autocomplete.class);
+            Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, AuditType.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                    return StringMan.autocompleteCommaEnum(IACheckup.AuditType.class, input.toString(), OptionData.MAX_CHOICES);
+                    return StringMan.autocompleteCommaEnum(AuditType.class, input.toString(), OptionData.MAX_CHOICES);
                 }));
             });
         }

@@ -5,13 +5,19 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
+import link.locutus.discord.apiv1.domains.Alliance;
+import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.apiv1.enums.city.JavaCity;
+import link.locutus.discord.apiv1.enums.city.building.Building;
+import link.locutus.discord.apiv1.enums.city.building.Buildings;
+import link.locutus.discord.apiv1.enums.city.building.ResourceBuilding;
 import link.locutus.discord.apiv1.enums.city.building.ServiceBuilding;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Messages;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -23,32 +29,12 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.apiv1.domains.Alliance;
-import link.locutus.discord.apiv1.enums.Continent;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.NationColor;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.WarPolicy;
-import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.apiv1.enums.city.building.Building;
-import link.locutus.discord.apiv1.enums.city.building.Buildings;
-import link.locutus.discord.apiv1.enums.city.building.ResourceBuilding;
-import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import link.locutus.discord.util.scheduler.KeyValue;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -56,16 +42,16 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class IACheckup {
-    public static Map<IACheckup.AuditType, Map.Entry<Object, String>> simplify(Map<IACheckup.AuditType, Map.Entry<Object, String>> auditFinal) {
+    public static Map<AuditType, Map.Entry<Object, String>> simplify(Map<AuditType, Map.Entry<Object, String>> auditFinal) {
         Map<AuditType, Map.Entry<Object, String>> audit = new LinkedHashMap<>(auditFinal);
         audit.entrySet().removeIf(f -> {
             Map.Entry<Object, String> value = f.getValue();
             return value == null || value.getValue() == null;
         });
 
-        Map<IACheckup.AuditType, Map.Entry<Object, String>> tmp = new LinkedHashMap<>(audit);
+        Map<AuditType, Map.Entry<Object, String>> tmp = new LinkedHashMap<>(audit);
         tmp.entrySet().removeIf(f -> {
-            IACheckup.AuditType required = f.getKey().required;
+            AuditType required = f.getKey().required;
             while (required != null) {
                 if (audit.containsKey(required)) return true;
                 required = required.required;
@@ -75,7 +61,7 @@ public class IACheckup {
         return tmp;
     }
 
-    public static void createEmbed(IMessageIO channel, String command, DBNation nation, Map<IACheckup.AuditType, Map.Entry<Object, String>> auditFinal, Integer page) {
+    public static void createEmbed(IMessageIO channel, String command, DBNation nation, Map<AuditType, Map.Entry<Object, String>> auditFinal, Integer page) {
         Map<AuditType, Map.Entry<Object, String>> audit = simplify(auditFinal);
         int failed = audit.size();
 
@@ -84,8 +70,8 @@ public class IACheckup {
         String title = (page + 1) + "/" + failed + " tips for " + nation.getNation();
 
         List<String> pages = new ArrayList<>();
-        for (Map.Entry<IACheckup.AuditType, Map.Entry<Object, String>> entry : audit.entrySet()) {
-            IACheckup.AuditType type = entry.getKey();
+        for (Map.Entry<AuditType, Map.Entry<Object, String>> entry : audit.entrySet()) {
+            AuditType type = entry.getKey();
             Map.Entry<Object, String> info = entry.getValue();
             if (info == null || info.getValue() == null) continue;
 
@@ -240,152 +226,6 @@ public class IACheckup {
         INFO,
         WARNING,
         DANGER,
-    }
-
-    public enum AuditType {
-        CHECK_RANK("\uD83E\uDD47", AuditSeverity.WARNING, "position",
-                "Not a member of the alliance in-game", false, false),
-        INACTIVE("\uD83D\uDCA4", AuditSeverity.DANGER, "days inactive",
-                "Two or more days inactive", false, false),
-        FINISH_OBJECTIVES("\uD83D\uDC69\u200D\uD83C\uDFEB", AuditSeverity.WARNING, "false",
-                "Has one city in-game", false, false),
-        FIX_COLOR(FINISH_OBJECTIVES, "\uD83C\uDFA8", AuditSeverity.WARNING, "color",
-                "Not on the alliance color or beige", false, false),
-        CHANGE_CONTINENT(FINISH_OBJECTIVES, "\uD83C\uDF0D", AuditSeverity.WARNING, "continent",
-                "Not in a continent that can build uranium (needed for self sufficient city power)", false, false),
-        FIX_WAR_POLICY(FINISH_OBJECTIVES, "\uD83D\uDCDC", AuditSeverity.WARNING, "war policy",
-                "War policy must be either fortress if no wars, or pirate", false, false),
-        RAID(FINISH_OBJECTIVES, "\uD83D\uDD2A", AuditSeverity.WARNING, "# available targets",
-                "Must have at least 4 raids going, or no suitable nations in range", false, false),
-        UNUSED_MAP( "\uD83D\uDE34", AuditSeverity.WARNING, "war ids",
-                "Has 12 MAP in raids against inactives", false, false),
-        BARRACKS(FINISH_OBJECTIVES, "\uD83C\uDFD5", AuditSeverity.WARNING, "building mmr",
-                "Has <5 barracks and is either below city 10, or is fighting an active nation", false, false),
-        INCORRECT_MMR(FINISH_OBJECTIVES, "\uD83C\uDFE2", AuditSeverity.WARNING, "building mmr",
-                "Does not match the REQUIRED_MMR set by the guild", false, true),
-        BUY_SOLDIERS(BARRACKS, "\uD83D\uDC82", AuditSeverity.WARNING, "soldier %",
-                "Has barracks, but has not bought soldiers OR has not bought barracks and the alliance is at war", false, false),
-        BUY_HANGARS(BUY_SOLDIERS, "\u2708\uFE0F", AuditSeverity.WARNING, "building mmr",
-                "Nation is c10 or higher, with >1.7k infra, at peace, and has <5 avg. hangars", false, false),
-        BUY_PLANES(BUY_HANGARS, "\u2708\uFE0F", AuditSeverity.WARNING, "plane %",
-                "Nation is c10 or higher, with >1.7k infra, at peace, and has not bought planes in its hangars", false, false),
-        BUY_SHIPS(BUY_PLANES, "\uD83D\uDEA2", AuditSeverity.WARNING, "ships",
-                "Nation is at war with a pirate (weaker air and <4 ships), and has no ships", false, false),
-        BEIGE_LOOT(BUY_SOLDIERS, "\uD83D\uDC82", AuditSeverity.INFO, "LINK",
-                "Has not used the bot to find beige targets to raid", true, false), // TODO FIXME web link
-        RAID_TURN_CHANGE(BEIGE_LOOT, "\uD83C\uDFAF", AuditSeverity.INFO, "false",
-                "Has not declared a war at turn change", true, false), // TODO FIXME web link
-        BUY_SPIES(FINISH_OBJECTIVES, "\uD83D\uDD75", AuditSeverity.WARNING, "spies",
-                "Nation is below spy cap and has not bought in 2 or more days", false, false),
-        GATHER_INTEL(BUY_SPIES, "\uD83D\uDD0E", AuditSeverity.INFO, "false",
-                "Nation has not used the `/spy find intel` command", true, false),
-        SPY_COMMAND(GATHER_INTEL, "\uD83D\uDCE1", AuditSeverity.INFO, "false",
-                "Nation has not used the `/nation spies` command", true, false),
-        LOOT_COMMAND(SPY_COMMAND, "", AuditSeverity.INFO, "false",
-                "Nation has not used the `/nation loot` command", true, false),
-        DAILY_SPYOPS(LOOT_COMMAND, "\uD83D\uDEF0", AuditSeverity.WARNING, "days since last spy op",
-        "Nation has not done a spy op in 3 days nor pinged the bot with a spy report (if no api tracking is available)", false, true),
-        DEPOSIT_RESOURCES(FINISH_OBJECTIVES, "\uD83C\uDFE6", AuditSeverity.WARNING, "false",
-                "Nation has NEVER deposited resources into the alliance bank", false, false),
-        CHECK_DEPOSITS(DEPOSIT_RESOURCES, "", AuditSeverity.INFO, "false",
-                "Nation has NEVER checked their balance using the command", true, false),
-        WITHDRAW_DEPOSITS(CHECK_DEPOSITS, "\uD83C\uDFE7", AuditSeverity.INFO, "false",
-                "Nation has never received funds from the alliance", false, false),
-        OBTAIN_RESOURCES(FINISH_OBJECTIVES, "\uD83C\uDFE7", AuditSeverity.DANGER, "daily upkeep missing",
-                "Missing resources for nation upkeep", false, true),
-        SAFEKEEP(FINISH_OBJECTIVES, "\uD83C\uDFE6", AuditSeverity.WARNING, "amount to deposit",
-                "Exceeds 3x alliance warchest, and 7d of nation upkeep", false, true),
-        OBTAIN_WARCHEST(OBTAIN_RESOURCES, "\uD83C\uDFE7", AuditSeverity.WARNING, "resources missing",
-                "C10+, Has >80% planes and has below the warchest requirements", false, true),
-        BUY_CITY(FINISH_OBJECTIVES, "\uD83C\uDFD9", AuditSeverity.INFO, "cities",
-                "Nation is c10+ or has raided $200M, is at peace, and has no city timer", false, false),
-        BUY_PROJECT(FINISH_OBJECTIVES, "\uD83D\uDE80", AuditSeverity.INFO, "free project slots",
-                "Nation has no project timer and free project slots", false, false),
-        ACTIVITY_CENTER(FINISH_OBJECTIVES, "\uD83D\uDE80", AuditSeverity.WARNING, "BUY/SELL",
-                "Nation is above AC city cutoff OR nation has not purchased activity center and has free project slots and no timer", false, false),
-        BUY_INFRA(FINISH_OBJECTIVES, "\uD83C\uDFD7", AuditSeverity.WARNING, "city ids",
-                "Nation has less than 1.2k infra worth of buildings in their cities (bot does not recommend rebuilding damaged infra)", false, false),
-        BUY_LAND(FINISH_OBJECTIVES, "\uD83C\uDFDE", AuditSeverity.WARNING, "city ids",
-                "Nation has below 800 land, or >33% less land than infra in their cities and less than 2k land", false, false),
-        UNPOWERED(FINISH_OBJECTIVES, "\uD83D\uDD0C", AuditSeverity.DANGER, "city ids",
-                "Nation has unpowered cities", false, false),
-        OVERPOWERED(FINISH_OBJECTIVES, "\u26A1", AuditSeverity.DANGER, "city ids",
-                "Nation has cities with excess power plants", false, false),
-        NOT_NUCLEAR(FINISH_OBJECTIVES, "\u2622", AuditSeverity.WARNING, "city ids",
-                "Nation has cities with no nuclear power plants", false, false),
-        FREE_SLOTS(FINISH_OBJECTIVES, "\uD83D\uDEA7", AuditSeverity.DANGER, "city ids",
-                "Nation has cities with free building slots", false, false),
-        NEGATIVE_REVENUE(FINISH_OBJECTIVES, "\uD83E\uDD7A", AuditSeverity.DANGER, "city ids",
-                "Nation has cities with negative revenue", false, false),
-        MISSING_PRODUCTION_BONUS(FINISH_OBJECTIVES, "\uD83D\uDCC8", AuditSeverity.WARNING, "city ids",
-                "Nation has cities with two or more resources missing production bonus", false, false),
-        EXCESS_HOSPITAL(FINISH_OBJECTIVES, "\uD83C\uDFE5", AuditSeverity.WARNING, "city ids",
-                "Nation has cities with excess hospitals", false, false),
-        EXCESS_POLICE(FINISH_OBJECTIVES, "\uD83D\uDE93", AuditSeverity.WARNING, "city ids",
-                "Nation has cities with excess police stations", false, false),
-        EXCESS_RECYCLING(FINISH_OBJECTIVES, "\u267B", AuditSeverity.WARNING, "city ids",
-                "Nation has cities with excess recycling centers", false, false),
-        GENERATE_CITY_BUILDS(MISSING_PRODUCTION_BONUS, "", AuditSeverity.INFO, "false",
-                "Nation has not used the bot to generate city builds", true, false),
-//        ROI(GENERATE_CITY_BUILDS, "", AuditSeverity.INFO, "false",
-//                "Nation has not used the bot to generate ROI", true, false),
-        BLOCKADED("\uD83D\uDEA2", AuditSeverity.WARNING, "blockader nation ids",
-                "Nation is blockaded by other nations", false, false),
-//        LOSE_A_WAR(RAID_TURN_CHANGE, "", AuditSeverity.INFO),
-//        PLAN_A_RAID_WITH_FRIENDS(LOSE_A_WAR, "", AuditSeverity.INFO),
-//        CREATE_A_WAR_ROOM(PLAN_A_RAID_WITH_FRIENDS, "", AuditSeverity.INFO),
-        ;
-
-        public final AuditType required;
-        public final String emoji, infoType;
-        public final AuditSeverity severity;
-        public final String description;
-        public final boolean requiresDiscord, requiresApi;
-
-        AuditType(String emoji, AuditSeverity severity, String infoType, String description, boolean requiresDiscord, boolean requiresApi) {
-            this(null, emoji, severity, infoType, description, requiresDiscord, requiresApi);
-        }
-
-        AuditType(AuditType required, String emoji, AuditSeverity severity, String infoType, String description, boolean requiresDiscord, boolean requiresApi) {
-            this.required = required;
-            this.emoji = emoji;
-            this.severity = severity;
-            this.infoType = infoType;
-            this.description = description;
-            this.requiresDiscord = requiresDiscord;
-            this.requiresApi = requiresApi;
-        }
-
-        @Command(desc = "Audit severity")
-        public AuditSeverity getSeverity() {
-            return severity;
-        }
-
-
-        @Command(desc = "Audit requires API access")
-        public boolean requiresApi() {
-            return requiresApi;
-        }
-
-        @Command(desc = "Audit requries member has discord")
-        public boolean requiresDiscord() {
-            return requiresDiscord;
-        }
-
-        @Command(desc = "Audit emoji")
-        public String getEmoji() {
-            return emoji;
-        }
-
-        @Command(desc = "The required audit, or null")
-        public AuditType getRequired() {
-            return required;
-        }
-
-        @Command(desc = "Name of the audit")
-        public String getName() {
-            return name();
-        }
     }
 
     private Map<Integer, Alliance> alliances = new HashMap<>();

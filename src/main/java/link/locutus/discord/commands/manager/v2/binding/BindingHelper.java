@@ -1,9 +1,10 @@
 package link.locutus.discord.commands.manager.v2.binding;
 
-import com.google.gson.reflect.TypeToken;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.math.ReflectionUtil;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
@@ -26,7 +27,7 @@ public class BindingHelper {
         if (input.equalsIgnoreCase("*")) {
             return new ArrayList<>(Arrays.asList(emum.getEnumConstants()));
         }
-        List<T> result = new ArrayList<>();
+        List<T> result = new ObjectArrayList<>();
         for (String s : StringMan.split(input, ',')) {
             result.add(emum(emum, s));
         }
@@ -68,10 +69,7 @@ public class BindingHelper {
         if (desc == null) desc = method.getName();
 
         if (binding.multiple()) {
-            Class<?>[] types = binding.types();
-            Type primary = types[0];
-            Type[] rest = Arrays.copyOfRange(types, 1, types.length);
-            Type type = TypeToken.getParameterized(primary, rest).getType();
+            Type type = ReflectionUtil.buildNestedType(binding.types());
             MethodParser parser = new MethodParser(this, method, desc, binding, type);
             Key key = parser.getKey();
             store.addParser(key, parser);

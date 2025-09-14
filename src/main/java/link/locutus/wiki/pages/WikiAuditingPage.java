@@ -1,7 +1,7 @@
 package link.locutus.wiki.pages;
 
 import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.task.ia.IACheckup;
+import link.locutus.discord.util.task.ia.AuditType;
 import link.locutus.wiki.BotWikiGen;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
@@ -39,7 +39,7 @@ public class WikiAuditingPage extends BotWikiGen {
         commandMarkdownSpoiler(CM.alerts.audit.optout.cmd),
         "# Create or send audit reports",
         "## List of Audit Types",
-        MarkupUtil.spoiler("CLick to show", "\n\n" + Arrays.stream(IACheckup.AuditType.values())
+        MarkupUtil.spoiler("CLick to show", "\n\n" + Arrays.stream(AuditType.values())
             .map(auditType -> "- [" + auditType.severity.name() + "] " + auditType.getName() + ": " + auditType.description)
             .reduce((a, b) -> a + "\n" + b)
             .orElse("No audit types available.")),

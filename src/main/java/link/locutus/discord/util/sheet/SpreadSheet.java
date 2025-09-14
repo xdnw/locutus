@@ -621,21 +621,6 @@ public class SpreadSheet {
         return url;
     }
 
-    public static void main(String[] args) {
-        String key = args[0];
-        try {
-            SpreadSheet sheet = SpreadSheet.create(key);
-            // set header and row
-            sheet.setHeader(List.of("hello", "world"));
-            sheet.addRow(List.of("first", "row"));
-            sheet.updateClearCurrentTab();
-            sheet.updateWrite();
-            System.out.println("DONE");
-        } catch (Throwable e) {
-            e.printStackTrace();
-        }
-    }
-
     public void addRow(String tab, List<?> list) {
         List<List<Object>> values = this.getCachedValues(tab);
         synchronized (values) {

@@ -5,6 +5,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ReflectionUtil;
+import org.apache.commons.lang3.reflect.TypeUtils;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
@@ -18,6 +19,7 @@ public class Key<T> {
     private final Annotation[] annotations;
 
     private boolean isDefault;
+    private final int hash;
 
     private Key(Type type, Class annotationClass) {
         this(type, Collections.singletonList(annotationClass));
@@ -39,6 +41,7 @@ public class Key<T> {
         }
         this.binding = null;
         this.annotations = null;
+        this.hash = TypeUtils.toString(type).hashCode();
     }
 
     public String keyNameMarkdown() {
@@ -78,6 +81,7 @@ public class Key<T> {
             }
             annotationTypes.add(annType);
         }
+        this.hash = TypeUtils.toString(type).hashCode();
     }
 
     public static <T> Key<T> of(Type type, Class annotationClass) {
@@ -147,8 +151,8 @@ public class Key<T> {
         if (o == null || getClass() != o.getClass()) return false;
 
         Key key = (Key) o;
-
-        if (!Objects.equals(type, key.type)) return false;
+        if (hash != key.hash) return false;
+        if (!TypeUtils.equals(type, key.type)) return false;
         if (key.annotationTypes == annotationTypes) return true;
         if (annotationTypes.size() != key.annotationTypes.size()) return false;
         for (Class<?> clazz : annotationTypes) {
@@ -159,8 +163,7 @@ public class Key<T> {
 
     @Override
     public int hashCode() {
-        int result = type != null ? type.hashCode() : 0;
-        return result;
+        return this.hash;
     }
 
     @Override

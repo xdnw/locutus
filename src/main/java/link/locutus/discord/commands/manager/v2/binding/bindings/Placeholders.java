@@ -760,7 +760,7 @@ public abstract class Placeholders<T, M> extends BindingHelper {
                     throw new IllegalArgumentException("Cannot call `" + arg + "` on function: `" + previousFunc.getName() + "` as return type is not public: `" + ((Class<?>) previousFunc.getType()).getSimpleName() + "`");
                 }
             }
-            ParametricCallable command = placeholders.get(functionName);
+            ParametricCallable<?> command = placeholders.get(functionName);
             if (command == null) {
                 if (throwError) {
                     throw throwUnknownCommand(functionName);

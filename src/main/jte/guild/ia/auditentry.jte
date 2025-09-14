@@ -15,6 +15,7 @@
 @import link.locutus.discord.util.offshore.test.IACategory
 @import link.locutus.discord.util.offshore.test.IAChannel
 @import link.locutus.discord.util.task.ia.IACheckup
+@import link.locutus.discord.util.task.ia.AuditType
 @import net.dv8tion.jda.api.entities.Guild
 @import net.dv8tion.jda.api.entities.Member
 @import net.dv8tion.jda.api.entities.Role
@@ -31,7 +32,7 @@
 @import java.util.concurrent.TimeUnit
 @import java.util.stream.Collectors
 @param WebStore ws
-@param IACheckup.AuditType type
+@param AuditType type
 @param DBNation nation
 @param String message
 

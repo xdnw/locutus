@@ -80,7 +80,7 @@ public class PageHandler implements Handler {
         this.store = new SimpleValueStore<>();
 
         new PrimitiveBindings().register(store);
-        new DiscordBindings().register(store);
+//        new DiscordBindings().register(store);
         new PWBindings().register(store);
         new GPTBindings().register(store);
         new SheetBindings().register(store);
@@ -136,7 +136,7 @@ public class PageHandler implements Handler {
         }
 
         Set<Parser> parsers = new HashSet<>();
-        for (ParametricCallable cmd : Locutus.cmd().getV2().getCommands().getParametricCallables(f -> {
+        for (ParametricCallable<?> cmd : Locutus.cmd().getV2().getCommands().getParametricCallables(f -> {
             RolePermission rolePerm = f.getMethod().getAnnotation(RolePermission.class);
             if (rolePerm != null && (rolePerm.root() || rolePerm.alliance() || rolePerm.guild() > 0)) {
                 return false;
@@ -532,7 +532,7 @@ public class PageHandler implements Handler {
                     }
                     boolean run = isPost || (cmd instanceof ParametricCallable param && param.isViewable());
                     Object result;
-                    if (cmd instanceof ParametricCallable parametric && run) {
+                    if (cmd instanceof ParametricCallable<?> parametric && run) {
                         Map<String, Object> queryMap;
                         // where type = List<String>
                         Set<String> allowList = parametric.getUserParameters().stream().filter(f -> {

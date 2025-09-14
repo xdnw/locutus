@@ -19,15 +19,18 @@ import java.util.function.Predicate;
 public class WebOption {
     private Key key;
     private boolean allowCompletions;
+    private boolean allowCustomOption;
     private List<String> options;
     private TriFunction<GuildDB, User, DBNation, WebOptions> queryOptions;
     private boolean allowQuery;
-    private List<String> compositeTypes;
+    private boolean largeQuery;
+
+    private List<Class<?>> compositeTypes2;
     private boolean requiresGuild;
     private boolean requiresNation;
     private boolean requiresUser;
 
-    private static Set<Class> ignoreClass = new HashSet<>(Arrays.asList(
+    private static final Set<Class<?>> ignoreClass = new HashSet<>(Arrays.asList(
             Set.class,
             Map.class,
             List.class,
@@ -45,8 +48,8 @@ public class WebOption {
             String.class
     ));
 
-    public WebOption setCompositeTypes(String... types) {
-        this.compositeTypes = Arrays.asList(types);
+    public WebOption setCompositeTypes(Class<?>... types) {
+        this.compositeTypes2 = Arrays.asList(types);
         return this;
     }
 
@@ -63,6 +66,15 @@ public class WebOption {
     public WebOption setRequiresUser() {
         this.requiresUser = true;
         return this;
+    }
+
+    public WebOption setAllowCustomOption() {
+        this.allowCustomOption = true;
+        return this;
+    }
+
+    public boolean isAllowCustomOption() {
+        return allowCustomOption;
     }
 
     public static List<Class> getComponentClasses(Type type) {
@@ -115,9 +127,10 @@ public class WebOption {
         return this;
     }
 
-    public WebOption setQueryMap(TriFunction<GuildDB, User, DBNation, WebOptions> queryOptions) {
+    public WebOption setQueryMap(TriFunction<GuildDB, User, DBNation, WebOptions> queryOptions, boolean isLarge) {
         this.queryOptions = queryOptions::apply;
         allowQuery = true;
+        this.largeQuery = isLarge;
         return this;
     }
 
@@ -170,7 +183,8 @@ public class WebOption {
         if (options != null) {
             json.put("options", options);
         }
-        if (compositeTypes != null) {
+        if (compositeTypes2 != null) {
+            List<String> compositeTypes = compositeTypes2.stream().map(Class::getSimpleName).toList();
             json.put("composite", compositeTypes);
         }
         if (isAllowQuery()) {
@@ -187,6 +201,9 @@ public class WebOption {
         }
         if (requiresUser) {
             json.put("user", true);
+        }
+        if (allowCustomOption) {
+            json.put("custom", true);
         }
         return json;
     }

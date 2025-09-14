@@ -57,6 +57,7 @@ import link.locutus.discord.util.offshore.test.IAChannel;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
+import link.locutus.discord.util.task.ia.AuditType;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.util.task.mail.MailApiResponse;
 import link.locutus.discord.util.task.mail.MailApiSuccess;
@@ -777,30 +778,6 @@ public class UnsortedCommands {
             }
         }).page(page - 1, perPage).build(channel, command, getClass().getSimpleName());
         return null;
-    }
-
-    public enum ClearRolesEnum {
-        UNUSED("Alliance name roles which have no members"),
-        ALLIANCE("All alliance name roles"),
-        DELETED_ALLIANCES("Alliance name roles with no valid in-game alliance"),
-        INACTIVE_ALLIANCES("Alliance name roles with no active members"),
-        NOT_ALLOW_LISTED("Alliance name roles not in the allow list (defined by settings:`" + GuildKey.AUTOROLE_ALLIANCES.name() + "," + GuildKey.AUTOROLE_TOP_X.name() + "` and coalition:`" + Coalition.MASKEDALLIANCES.name() + "`"),
-
-        NON_MEMBERS("Users who are not in the alliance in-game"),
-        NON_ALLIES("Users who are not in the alliance, or the `allies` / `offshore` coalition in-game")
-
-        ;
-
-        private final String desc;
-
-        ClearRolesEnum(String s) {
-            this.desc = s;
-        }
-
-        @Override
-        public String toString() {
-            return name() + ": `" + desc + "`";
-        }
     }
 
     public String clearAllianceRolesDesc() {
@@ -1814,7 +1791,7 @@ public class UnsortedCommands {
                               @Arg("Nations to audit")
                               NationList nationList,
                               @Arg("Only perform these audits (default: all)")
-                              @Default Set<IACheckup.AuditType> audits,
+                              @Default Set<AuditType> audits,
                               @Arg("Ping the user on discord with their audit")
                               @Switch("u") boolean pingUser,
                               @Arg("Mail the audit to each nation in-game")
@@ -1851,16 +1828,16 @@ public class UnsortedCommands {
 
         CompletableFuture<IMessageBuilder> msg = channel.send("Please wait...");
 
-        Map<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> auditResults = new HashMap<>();
+        Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> auditResults = new HashMap<>();
 
         ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations, DBNation.class);
 
-        IACheckup.AuditType[] allowed = audits == null || audits.isEmpty() ? IACheckup.AuditType.values() : audits.toArray(new IACheckup.AuditType[0]);
+        AuditType[] allowed = audits == null || audits.isEmpty() ? AuditType.values() : audits.toArray(new AuditType[0]);
         for (DBNation nation : nations) {
             StringBuilder output = new StringBuilder();
             int failed = 0;
 
-            Map<IACheckup.AuditType, Map.Entry<Object, String>> auditResult = checkup.checkup(cacheStore, nation, allowed, nations.size() == 1, skipUpdate);
+            Map<AuditType, Map.Entry<Object, String>> auditResult = checkup.checkup(cacheStore, nation, allowed, nations.size() == 1, skipUpdate);
             auditResults.put(nation, auditResult);
 
             if (auditResult != null) {
@@ -1868,8 +1845,8 @@ public class UnsortedCommands {
             }
 
             if (!auditResult.isEmpty()) {
-                for (Map.Entry<IACheckup.AuditType, Map.Entry<Object, String>> entry : auditResult.entrySet()) {
-                    IACheckup.AuditType type = entry.getKey();
+                for (Map.Entry<AuditType, Map.Entry<Object, String>> entry : auditResult.entrySet()) {
+                    AuditType type = entry.getKey();
                     Map.Entry<Object, String> info = entry.getValue();
                     if (info == null || info.getValue() == null) continue;
                     failed++;
@@ -2218,9 +2195,9 @@ public class UnsortedCommands {
                              @Arg("The nations to audit\n" +
                                      "Must be in your alliance") @Default Set<DBNation> nations,
                              @Arg("The audits to include in the sheet\n" +
-                                     "Defaults to all audits")@Switch("i") Set<IACheckup.AuditType> includeAudits,
+                                     "Defaults to all audits")@Switch("i") Set<AuditType> includeAudits,
                              @Arg("The audits to exclude from the sheet\n" +
-                                     "Defaults to none") @Switch("e") Set<IACheckup.AuditType> excludeAudits,
+                                     "Defaults to none") @Switch("e") Set<AuditType> excludeAudits,
                              @Arg("Update nation information before running the audit\n" +
                                      "Otherwise the audit will be run on the last fetched info")@Switch("u") boolean forceUpdate,
                              @Arg("Include full descriptions in the audit sheet results\n" +
@@ -2232,7 +2209,7 @@ public class UnsortedCommands {
                              @Switch("s") SpreadSheet sheet) throws IOException, ExecutionException, InterruptedException, GeneralSecurityException {
         if (includeAudits == null) {
             includeAudits = new ObjectLinkedOpenHashSet<>();
-            for (IACheckup.AuditType value : IACheckup.AuditType.values()) {
+            for (AuditType value : AuditType.values()) {
                 if (excludeAudits == null || !excludeAudits.contains(value)) {
                     includeAudits.add(value);
                 }
@@ -2242,8 +2219,8 @@ public class UnsortedCommands {
             includeAudits.removeAll(excludeAudits);
         }
         if (warningOrHigher) includeAudits.removeIf(f -> f.severity.ordinal() < IACheckup.AuditSeverity.WARNING.ordinal());
-        if (skipApiAudits) includeAudits.removeIf(IACheckup.AuditType::requiresApi);
-        if (skipDiscordAudits) includeAudits.removeIf(IACheckup.AuditType::requiresDiscord);
+        if (skipApiAudits) includeAudits.removeIf(AuditType::requiresApi);
+        if (skipDiscordAudits) includeAudits.removeIf(AuditType::requiresDiscord);
 
         if (nations == null) {
             nations = db.getAllianceList().getNations(true, 0, true);
@@ -2282,8 +2259,8 @@ public class UnsortedCommands {
             throw new IllegalArgumentException(msg.toString());
         }
         IACheckup checkup = new IACheckup(db, db.getAllianceList().subList(aaNations), false);
-        IACheckup.AuditType[] audits = includeAudits.toArray(new IACheckup.AuditType[0]);
-        Map<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> auditResults = checkup.checkup(nations, null, audits, !forceUpdate);
+        AuditType[] audits = includeAudits.toArray(new AuditType[0]);
+        Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> auditResults = checkup.checkup(nations, null, audits, !forceUpdate);
 
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.IA_SHEET);
@@ -2298,19 +2275,19 @@ public class UnsortedCommands {
                 "avg_infra",
                 "off"
         ));
-        for (IACheckup.AuditType type : audits) {
+        for (AuditType type : audits) {
             header.add(type.name().toLowerCase(Locale.ROOT));
         }
         sheet.setHeader(header);
 
         IACategory iaCat = db.getIACategory();
 
-        Map<IACheckup.AuditType, Integer> failedCount = new LinkedHashMap<>();
+        Map<AuditType, Integer> failedCount = new LinkedHashMap<>();
         Map<IACheckup.AuditSeverity, Integer> failedBySeverity = new LinkedHashMap<>();
         Map<IACheckup.AuditSeverity, Integer> nationBySeverity = new LinkedHashMap<>();
-        Map<IACheckup.AuditType, Set<DBNation>> failedNations = new Object2ObjectOpenHashMap<>();
+        Map<AuditType, Set<DBNation>> failedNations = new Object2ObjectOpenHashMap<>();
 
-        for (Map.Entry<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> entry : auditResults.entrySet()) {
+        for (Map.Entry<DBNation, Map<AuditType, Map.Entry<Object, String>>> entry : auditResults.entrySet()) {
             DBNation nation = entry.getKey();
             header.set(0, nation.getSheetUrl());
 
@@ -2338,11 +2315,11 @@ public class UnsortedCommands {
             header.set(5, MathMan.format(nation.getAvg_infra()));
             header.set(6, MathMan.format(nation.getOff()));
 
-            Map<IACheckup.AuditType, Map.Entry<Object, String>> auditMap = entry.getValue();
+            Map<AuditType, Map.Entry<Object, String>> auditMap = entry.getValue();
             IACheckup.AuditSeverity highest = null;
 
             int i = 7;
-            for (IACheckup.AuditType audit : audits) {
+            for (AuditType audit : audits) {
                 Map.Entry<Object, String> value = auditMap.get(audit);
                 if (value == null || value.getValue() == null) {
                     header.set(i, "");
@@ -2392,15 +2369,15 @@ public class UnsortedCommands {
             msg.append("## \\# Nations By Severity\n- `" + StringMan.getString(nationBySeverity) + "`\n");
         }
         msg.append("## Audit Description:\n");
-        for (IACheckup.AuditType audit : includeAudits) {
+        for (AuditType audit : includeAudits) {
             msg.append("- " + audit.name() + "[" + audit.infoType + "]: " + audit.description + "\n");
         }
 
         // Map<IACheckup.AuditType, Set<DBNation>> failedNations = new Object2ObjectOpenHashMap<>();
         Set<Integer> unregisteredNationIds = new IntOpenHashSet();
         StringBuilder listByAudit = new StringBuilder();
-        for (Map.Entry<IACheckup.AuditType, Set<DBNation>> entry : failedNations.entrySet()) {
-            IACheckup.AuditType type = entry.getKey();
+        for (Map.Entry<AuditType, Set<DBNation>> entry : failedNations.entrySet()) {
+            AuditType type = entry.getKey();
             Set<DBNation> auditNations = entry.getValue();
 
             List<Integer> nationIds = new IntArrayList();

@@ -4,6 +4,7 @@ import com.google.common.base.Predicates;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.gson.reflect.TypeToken;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -66,7 +67,7 @@ public class PWGPTHandler {
         return PlayerGPTConfig;
     }
 
-    public LimitManager getProviderManager() {
+    public LimitManager getLimitManager() {
         return limitManager;
     }
 
@@ -170,7 +171,7 @@ public class PWGPTHandler {
     private void registerCommandEmbeddings() {
         EmbeddingSource source = sourceMap.get(EmbeddingType.Command);
         Set<Method> methods = new HashSet<>();
-        Set<ParametricCallable> registerCommands = new HashSet<>();
+        Set<ParametricCallable> registerCommands = new ObjectLinkedOpenHashSet<>();
         for (ParametricCallable callable : cmdManager.getCommands().getParametricCallables(Predicates.alwaysTrue())) {
             if (callable.simpleDesc().isEmpty()) continue;
             if (methods.contains(callable.getMethod())) continue;

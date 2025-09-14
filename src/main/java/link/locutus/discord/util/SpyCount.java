@@ -440,7 +440,7 @@ public class SpyCount {
     }
 
     public static class SpyOp {
-        public SpyCount.Operation operation;
+        public Operation operation;
         public int spies;
         public int safety;
 
@@ -448,66 +448,6 @@ public class SpyCount {
             this.operation = operation;
             this.spies = spies;
             this.safety = safety;
-        }
-    }
-
-    public static enum Safety {
-        QUICK(1, 1),
-        NORMAL(2, 2.8284271428571428571428571428571),
-        COVERT(3, 5.1961524285714285714285714285714d);
-
-        public final int id;
-        private final double costFactor;
-
-        Safety(int id, double costFactor) {
-            this.id = id;
-            this.costFactor = costFactor;
-        }
-
-        public double getCostFactor() {
-            return costFactor;
-        }
-
-        public static Safety byId(int safety) {
-            switch (safety) {
-                case 1: return QUICK;
-                case 2: return NORMAL;
-                case 3: return COVERT;
-            }
-            return null;
-        }
-    }
-
-    public enum Operation {
-        INTEL(1, 1, null),
-        NUKE(5, 18.74971745, MilitaryUnit.NUKE),
-        MISSILE(4, 12.49979948, MilitaryUnit.MISSILE),
-        SHIPS(3, 8.437383791, MilitaryUnit.SHIP),
-        AIRCRAFT(2, 4.999927084, MilitaryUnit.AIRCRAFT),
-        TANKS(1.5, 2.343723796, MilitaryUnit.TANK),
-        SPIES(1.5, 2.812461264, MilitaryUnit.SPIES),
-        SOLDIER(1, 1.249990886, MilitaryUnit.SOLDIER)
-        ;
-
-        public final double odds;
-        public final double lossFactor;
-        public final MilitaryUnit unit;
-
-        Operation(double odds, double lossFactor, MilitaryUnit unit) {
-            this.odds = odds;
-            this.lossFactor = lossFactor;
-            this.unit = unit;
-        }
-
-        public static final Operation[] values = values();
-
-        public static Operation getByUnit(MilitaryUnit unit) {
-            for (Operation op : values) {
-                if (op.unit == unit) {
-                    return op;
-                }
-            }
-            return null;
         }
     }
 

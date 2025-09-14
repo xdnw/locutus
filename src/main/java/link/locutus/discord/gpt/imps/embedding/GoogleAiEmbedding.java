@@ -110,7 +110,6 @@
 
         @Override
         public float[] fetch(String text) {
-            System.out.println("Fetching embedding for text: ```\n" + text + "\n```");
             try {
                 var response = client.models.embedContent(modelName, text, config);
                 List<ContentEmbedding> floatList = response.embeddings().orElse(null);

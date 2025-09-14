@@ -16,6 +16,7 @@
 @import link.locutus.discord.util.offshore.test.IACategory
 @import link.locutus.discord.util.offshore.test.IAChannel
 @import link.locutus.discord.util.task.ia.IACheckup
+@import link.locutus.discord.util.task.ia.AuditType
 @import net.dv8tion.jda.api.entities.Guild
 @import net.dv8tion.jda.api.entities.Member
 @import net.dv8tion.jda.api.entities.Role
@@ -35,7 +36,7 @@
 @param DBNation mentee
 @param IAChannel myChan
 @param IACategory.SortedCategory category
-@param Map<IACheckup.AuditType, Map.Entry<Object, String>> checkup
+@param Map<AuditType, Map.Entry<Object, String>> checkup
 
 <tr>
     <td><a href="${mentee.getUrl()}">${mentee.getNation()}</a></td>
@@ -69,7 +70,7 @@
                 </h2>
                 <div id="collapseAudit${mentee.getNation_id()}" class="accordion-collapse collapse" aria-labelledby="headingAudit${mentee.getNation_id()}" data-bs-parent="#auditAccordion${mentee.getNation_id()}">
                     <div class="accordion-body bg-light">
-        @for (Map.Entry<IACheckup.AuditType, Map.Entry<Object, String>> entry : checkup.entrySet())
+        @for (Map.Entry<AuditType, Map.Entry<Object, String>> entry : checkup.entrySet())
             @if(entry.getValue() != null && entry.getValue().getValue() != null)
                 <div role="alert" class="alert p-1 my-1 border alert-dismissible fade show
                 @if(entry.getKey().severity == IACheckup.AuditSeverity.INFO)

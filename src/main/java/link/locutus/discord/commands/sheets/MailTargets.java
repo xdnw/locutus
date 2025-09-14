@@ -187,8 +187,8 @@ public class MailTargets extends Command {
 //                int missileNuke = 0;
                 double cost = 0;
                 for (Spyop op : mySpyOps) {
-                    if (op.operation == SpyCount.Operation.INTEL) intelOps++;
-                    if (op.operation == SpyCount.Operation.SPIES) killSpies++;
+                    if (op.operation == Operation.INTEL) intelOps++;
+                    if (op.operation == Operation.SPIES) killSpies++;
 //                    if (op.operation == SpyCount.Operation.MISSILE && op.defender.getMissiles() <= 4) missileNuke++;
 //                    if (op.operation == SpyCount.Operation.NUKE && op.defender.getNukes() <= 4) missileNuke++;
                     else
@@ -231,7 +231,7 @@ public class MailTargets extends Command {
                     String spyUrl = baseUrl + spyop.defender.getNation_id();
                     String attStr = spyop.operation.name() + "|" + safety + "|" + spyop.spies + "\"";
                     mail.append((i + 1) + ". " + nationUrl + " | ");
-                    if (spyop.operation != SpyCount.Operation.INTEL) mail.append("kill ");
+                    if (spyop.operation != Operation.INTEL) mail.append("kill ");
                     else mail.append("gather ");
                     mail.append(spyop.operation.name().toLowerCase() + " using " + spyop.spies + " spies on " + safety);
 

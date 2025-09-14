@@ -1,9 +1,9 @@
 package link.locutus.wiki.pages;
 
+import link.locutus.discord.db.entities.ClearRolesEnum;
 import link.locutus.wiki.BotWikiGen;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
-import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.guild.GuildKey;
@@ -56,7 +56,7 @@ public class WikiAutoMaskingPage extends BotWikiGen {
                 "### Add specific alliances",
                 CM.coalition.add.cmd.alliances("").coalitionName(Coalition.MASKEDALLIANCES.name()).toString(),
                 "## Clear alliance roles",
-                "Options\n- " + StringMan.join(UnsortedCommands.ClearRolesEnum.values(), "\n- "),
+                "Options\n- " + StringMan.join(ClearRolesEnum.values(), "\n- "),
                 CM.role.clearAllianceRoles.cmd.type("").toString(),
                 "# Applicant / Member roles",
                 "Register your alliance:",

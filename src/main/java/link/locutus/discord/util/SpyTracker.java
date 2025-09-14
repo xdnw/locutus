@@ -526,7 +526,7 @@ public class SpyTracker {
         public String entryToString(DBNation attacker, Map.Entry<Integer, Integer> killRange, long diff, long attackerMs) {
             int attSpies = attacker.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, 24);;
 
-            double odds = SpyCount.getOdds(attSpies, originalSpies, 3, SpyCount.Operation.getByUnit(unit), defender);
+            double odds = SpyCount.getOdds(attSpies, originalSpies, 3, Operation.getByUnit(unit), defender);
 
             StringBuilder message = new StringBuilder();
             message.append(attacker.getMarkdownUrl() + " | " + attacker.getAllianceUrlMarkup() + " | " + MathMan.format(odds) + "%");

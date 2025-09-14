@@ -1195,6 +1195,7 @@ public final class Locutus extends ListenerAdapter {
 
     @Override
     public void onMessageReceived(@NotNull MessageReceivedEvent event) {
+        System.out.println("RECEIVED MESSAGE | " + event.getMessage().getType());
         try {
             Guild guild = event.isFromGuild() ? event.getGuild() : null;
             if (guild != null) {

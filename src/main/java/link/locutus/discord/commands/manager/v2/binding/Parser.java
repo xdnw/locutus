@@ -5,6 +5,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
+import link.locutus.discord.util.math.ReflectionUtil;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -19,17 +20,23 @@ public interface Parser<T> {
 
     boolean isConsumer(ValueStore store);
 
-    Key getKey();
+    Key<?> getKey();
 
     String getDescription();
 
-    default String getWebTypeStr() {
-        Key key = getKey();
+    default Key<?> getWebTypeOrNull() {
+        Key<?> key = getKey();
         Binding binding = key.getBinding();
-        if (binding != null && !binding.webType().isEmpty()) {
-            return binding.webType();
+        if (binding != null && binding.webType().length > 0) {
+            Class<?>[] arr = binding.webType();
+            if (arr.length > 1) {
+                Type type = ReflectionUtil.buildNestedType(arr);
+                return Key.of(type);
+            } else {
+                return Key.of((Type) arr[0]);
+            }
         }
-        return key.toSimpleString();
+        return null;
     }
 
     default T apply(LocalValueStore store, ValidatorStore validators, PermissionHandler permisser, String... args) {

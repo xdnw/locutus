@@ -2,7 +2,7 @@ import io.github.kobylynskyi.graphql.codegen.gradle.GraphQLCodegenGradleTask
 import nu.studer.gradle.jooq.JooqEdition
 
 buildscript {
-    ext.kotlin_version = '1.7.10'
+//    ext.kotlin_version = '2.2.20'
     repositories {
         mavenCentral()
         gradlePluginPortal()
@@ -12,7 +12,7 @@ buildscript {
     }
     dependencies {
 //        classpath "io.jooby:jooby-gradle-plugin:2.8.5"
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+//        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath 'org.jooq:jooq-codegen:3.19.13'
         classpath 'org.xerial:sqlite-jdbc:3.50.3.0'
         classpath 'com.gradleup.shadow:shadow-gradle-plugin:8.3.0'
@@ -21,6 +21,7 @@ buildscript {
 
 plugins {
     id 'java'
+//    id 'org.jetbrains.kotlin.jvm' version "$kotlin_version"
     id "idea"
     id "io.github.kobylynskyi.graphql.codegen" version "5.4.0"
     id 'com.gradleup.shadow' version '8.3.0'
@@ -29,16 +30,7 @@ plugins {
     id "gg.jte.gradle" version "3.2.1"
     id 'cz.habarta.typescript-generator' version '3.2.1263'
     id "com.github.ben-manes.versions" version "0.51.0"
-//    id "nebula.lint" version "19.0.3"
 }
-
-apply plugin: "kotlin"
-apply plugin: 'java'
-//apply plugin: "nebula.lint"
-
-//gradleLint {
-//    rules=['unused-dependency']
-//}
 
 group 'link.locutus'
 version '1.0-SNAPSHOT'
@@ -49,8 +41,7 @@ java {
     }
 }
 
-
-generateTypeScript {
+tasks.named('generateTypeScript') {
     jsonLibrary = 'jackson2'
     classes = [
             'link.locutus.discord.web.commands.binding.value_types.CacheType',
@@ -115,16 +106,7 @@ publishing {
     }
 }
 
-compileJava.options.compilerArgs.addAll('-Xmaxerrs', '1000')
-compileJava.options.compilerArgs.add '-parameters'
-compileTestJava.options.compilerArgs.add '-parameters'
-
-
-import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
-
-def brotliVersion = "1.18.0"
-def operatingSystem = DefaultNativePlatform.getCurrentOperatingSystem()
-def currentArchitecture = DefaultNativePlatform.getCurrentArchitecture()
+def brotliVersion = "1.20.0"
 
 dependencies {
     implementation 'org.msgpack:msgpack-core:0.9.10'
@@ -133,11 +115,13 @@ dependencies {
     implementation 'com.vladsch.flexmark:flexmark-all:0.64.8'
     implementation 'org.jgrapht:jgrapht-core:1.5.2'
     implementation 'org.jgrapht:jgrapht-ext:1.5.2'
-    implementation 'com.amazonaws:aws-java-sdk-bom:1.12.788'
-    implementation 'com.amazonaws:aws-java-sdk-s3:1.12.788'
+    implementation platform('com.amazonaws:aws-java-sdk-bom:1.12.788')
+    implementation 'com.amazonaws:aws-java-sdk-s3'
 
-    implementation 'org.apache.logging.log4j:log4j-core:2.23.1'
-    implementation 'org.apache.logging.log4j:log4j-api:2.13.3'
+    implementation platform('org.apache.logging.log4j:log4j-bom:2.23.1')
+    implementation 'org.apache.logging.log4j:log4j-core'
+    implementation 'org.apache.logging.log4j:log4j-api'
+
     implementation 'commons-logging:commons-logging:1.3.5'
     implementation("org.slf4j:slf4j-simple:2.1.0-alpha1")
 
@@ -167,14 +151,11 @@ dependencies {
     implementation 'io.javalin.community.ssl:ssl-plugin:6.7.0'
     implementation 'io.javalin:javalin-rendering:6.7.0'
 
-//    implementation 'com.nixxcode.jvmbrotli:jvmbrotli:0.2.0'
     implementation "com.aayushatharva.brotli4j:brotli4j:$brotliVersion"
     runtimeOnly("""com.aayushatharva.brotli4j:native-windows-x86_64:$brotliVersion""")
 
     implementation 'com.ptsmods:mysqlw:1.9.2'
     implementation 'org.openjdk.nashorn:nashorn-core:15.6'
-
-
 
     implementation 'de.erichseifert.gral:gral-core:0.11'
 
@@ -182,24 +163,15 @@ dependencies {
         exclude group: 'org.freemarker'
     }
 
-    // https://mvnrepository.com/artifact/it.unimi.dsi/fastutil
     implementation group: 'it.unimi.dsi', name: 'fastutil', version: '8.5.16'
 
-    // https://mvnrepository.com/artifact/com.opencsv/opencsv
     implementation group: 'com.opencsv', name: 'opencsv', version: '5.12.0'
 
-//    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
     implementation 'in.wilsonl.minifyhtml:minify-html:0.15.0'
 
-//    implementation "org.springframework.boot:spring-boot-starter-web:2.4.4"
-//    implementation "org.springframework.boot:spring-boot-starter-data-mongodb:2.4.4"
-
     implementation "com.graphql-java-kickstart:graphql-spring-boot-starter:11.1.0"
-//    implementation "com.graphql-java-kickstart:graphiql-spring-boot-starter:11.1.0"
-//    implementation 'org.springframework:spring-web:6.1.3'
 
 
-//    implementation "com.graphql-java:graphql-java-extended-scalars:16.0.1"
     implementation "io.github.kobylynskyi:graphql-java-codegen:5.4.0"
 
     implementation "org.apache.httpcomponents:httpclient:4.5.14"
@@ -214,8 +186,9 @@ dependencies {
 
 
     implementation('org.jooq:jooq:3.19.13')
-    implementation("org.jooq:jooq-meta:3.19.13")
-    implementation("org.jooq:jooq-codegen:3.19.13")
+    jooqGenerator("org.jooq:jooq-meta:3.19.13")
+    jooqGenerator("org.jooq:jooq-codegen:3.19.13")
+    compileOnly "jakarta.xml.bind:jakarta.xml.bind-api:4.0.2"
 
 
     implementation 'com.openai:openai-java:3.1.2'
@@ -230,26 +203,16 @@ dependencies {
     implementation 'com.google.cloud:google-cloud-vision:3.70.0'
     implementation 'com.google.cloud:google-cloud-language:2.74.0'
 
-//    implementation 'com.github.javaparser:javaparser-symbol-solver-core:3.25.3'
-//    implementation 'com.github.javaparser:javaparser-core:3.25.3'
     implementation 'com.knuddels:jtokkit:1.1.0'
-    // https://mvnrepository.com/artifact/org.tensorflow/tensorflow
-//    implementation 'org.tensorflow:tensorflow:1.15.0'
-//    implementation 'org.apache.commons:commons-lang3:3.12.0'
-    // https://mvnrepository.com/artifact/org.apache.commons/commons-text
-//    implementation 'org.apache.commons:commons-text:1.10.0'
-//    implementation 'gg.acai:chatgpt-java:1.0.2'
     implementation platform("ai.djl:bom:0.34.0")
     implementation "ai.djl:api:0.34.0"
     runtimeOnly "ai.djl.pytorch:pytorch-engine:0.34.0"
     runtimeOnly "ai.djl.pytorch:pytorch-model-zoo:0.34.0"
     implementation "ai.djl.onnxruntime:onnxruntime-engine:0.34.0"
     implementation "ai.djl.huggingface:tokenizers:0.34.0"
-    runtimeOnly 'ai.djl.pytorch:pytorch-native-cu124:2.5.0:win-x86_64'
+    runtimeOnly 'ai.djl.pytorch:pytorch-native-cu124:2.5.1:win-x86_64'
     runtimeOnly 'ai.djl.pytorch:pytorch-jni:2.7.1-0.34.0'
     implementation 'ai.djl.sentencepiece:sentencepiece:0.34.0'
-//    implementation 'net.sourceforge.tess4j:tess4j:4.5.1'
-//    implementation 'org.bytedeco:javacv:1.5.6'
     implementation 'cn.easyproject:easyocr:3.0.4-RELEASE'
     implementation 'com.vdurmont:emoji-java:5.1.1'
     implementation 'info.debatty:java-string-similarity:2.0.0'
@@ -258,7 +221,13 @@ dependencies {
 configurations {
     configureEach {
         exclude group: 'org.springframework.boot', module: 'spring-boot-starter-logging'
+
+        resolutionStrategy {
+            cacheDynamicVersionsFor 24, 'hours'
+            cacheChangingModulesFor 24, 'hours'
+        }
     }
+
 }
 
 jooq {
@@ -429,67 +398,7 @@ jooq {
     }
 }
 
-
-/**
- * Generate requests and model from external service
- */
-
-compileJava.dependsOn "graphqlCodegenProductService"
-tasks.register('graphqlCodegenProductService', GraphQLCodegenGradleTask) {
-    graphqlSchemas.includePattern = "schema\\.graphqls"
-    outputDir = new File("$buildDir/generated")
-    modelPackageName = "com.politicsandwar.graphql.model"
-    customTypesMapping = [
-            Date        : "java.util.Date",
-            DateTime    : "java.util.Date",
-            DateTimeAuto: "java.time.Instant"
-    ]
-    useObjectMapperForRequestSerialization = [
-            "DateTime",
-            "DateTimeAuto",
-            "java.util.Date",
-    ]
-    parentInterfaces {
-        queryResolver = "graphql.kickstart.tools.GraphQLQueryResolver"
-        mutationResolver = "graphql.kickstart.tools.GraphQLMutationResolver"
-        subscriptionResolver = "graphql.kickstart.tools.GraphQLSubscriptionResolver"
-        resolver = "graphql.kickstart.tools.GraphQLResolver<{{TYPE}}>"
-    }
-    generateApis = true
-    generateClient = true
-    generateParameterizedFieldsResolvers = false
-    generateBuilder = true
-    generateToString = true
-
-    supportUnknownFields = true
-    unknownFieldsPropertyName = "additionalFields"
-
-    onlyIf {
-        !outputDir.exists() || outputDir.listFiles().length == 0
-    }
-}
-
-tasks.withType(JavaCompile).configureEach {
-    options.incremental = true
-}
-
-sourceSets {
-    main {
-        java {
-            srcDirs 'src/main/java'
-            srcDirs "$buildDir/generated"
-            srcDirs "$buildDir/generated-src"
-            srcDirs "$buildDir/generated-sources"
-        }
-        resources {
-            srcDirs "src/main/resources/log"
-            srcDirs "src/main/resources/css"
-            srcDirs "src/main/resources/js"
-            srcDirs "src/main/resources/img"
-        }
-    }
-}
-
+// Enable when wanting to generate the classes (I currently run it once then disable)
 //sourceSets.main.java.srcDirs (
 //        tasks.named('generateBankJooq').flatMap { it.outputDir },
 //        tasks.named('generateLocutusJooq').flatMap { it.outputDir },
@@ -499,25 +408,138 @@ sourceSets {
 //        tasks.named('generateWebJooq').flatMap { it.outputDir }
 //)
 
-jar {
-    from('src/main/resources/') {
+/**
+ * Generate requests and model from external service
+ */
+
+def graphqlSchemasDir = layout.projectDirectory.dir("src/main/resources/graphql")
+def graphqlGeneratedDir = layout.buildDirectory.dir("generated/graphql")  // narrow, dedicated
+
+tasks.named('graphqlCodegen', GraphQLCodegenGradleTask) {
+    // Inputs (schemas)
+    graphqlSchemas.rootDir = graphqlSchemasDir.asFile
+    graphqlSchemas.includePattern = "schema\\.graphqls"   // adjust if multiple files
+
+    // Output (only this dir is added to the source set)
+    outputDir = graphqlGeneratedDir.get().asFile
+    outputs.dir(graphqlGeneratedDir)  // ok to keep; ensures Gradle tracks it
+
+    // Package / model settings
+    modelPackageName = "com.politicsandwar.graphql.model"
+
+    customTypesMapping = [
+            Date         : "java.util.Date",
+            DateTime     : "java.util.Date",
+            DateTimeAuto : "java.time.Instant"
+    ]
+    useObjectMapperForRequestSerialization = [
+            "DateTime",
+            "DateTimeAuto",
+            "java.util.Date",
+    ]
+
+    parentInterfaces {
+        queryResolver        = "graphql.kickstart.tools.GraphQLQueryResolver"
+        mutationResolver     = "graphql.kickstart.tools.GraphQLMutationResolver"
+        subscriptionResolver = "graphql.kickstart.tools.GraphQLSubscriptionResolver"
+        resolver             = "graphql.kickstart.tools.GraphQLResolver<{{TYPE}}>"
+    }
+
+    generateApis = true
+    generateClient = true
+    generateParameterizedFieldsResolvers = false
+    generateBuilder = true
+    generateToString = true
+    supportUnknownFields = true
+    unknownFieldsPropertyName = "additionalFields"
+
+    // Precise incremental inputs
+    inputs.files(fileTree(graphqlSchemasDir) {
+        include("**/*.graphqls")
+    }).withPropertyName("graphqlSchemas").withPathSensitivity(PathSensitivity.RELATIVE)
+
+    // Capture config that affects output so Gradle knows when to rerun
+    inputs.property("graphqlCodegenConfigFingerprint", [
+            generateApis,
+            generateClient,
+            generateBuilder,
+            modelPackageName,
+            customTypesMapping.hashCode(),
+            parentInterfaces.queryResolver,
+            parentInterfaces.mutationResolver,
+            parentInterfaces.subscriptionResolver
+    ].join("|"))
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.verbose = false
+    options.debug = false // remove when debugging
+    options.release = 22
+    options.incremental = true
+    options.fork = true
+    options.forkOptions.memoryInitialSize = "1g"
+    options.forkOptions.memoryMaximumSize = "3g"
+    options.forkOptions.jvmArgs = ['-XX:+UseZGC']
+    options.compilerArgs += [
+            "-parameters",
+            "-Xmaxerrs", "1000",
+            "-proc:none"
+    ]
+}
+
+// JTE setup with proper java.nio.file.Path usage and task selection
+def explicitlyRequestsShadow = gradle.startParameter.taskNames.any { it == 'shadowJar' || it.endsWith(':shadowJar') }
+def forcePrecompile = providers.gradleProperty('withJtePrecompile').isPresent()
+def jteGeneratedDir = layout.buildDirectory.dir("generated-sources")
+
+jte {
+    // Avoid org.gradle.model.Path clash
+    sourceDirectory = file("src/main/jte").toPath()
+    targetDirectory = layout.buildDirectory.dir("generated-sources").get().asFile.toPath()
+
+    if (explicitlyRequestsShadow || forcePrecompile) {
+        precompile()
+    } else {
+        generate()
+    }
+}
+
+tasks.named('shadowJar') {
+    dependsOn tasks.matching { it.name == 'generateJte' || it.name == 'precompileJte' }
+
+    zip64 = true
+    archiveBaseName = "${name}-${project.name}"
+    archiveClassifier.set('')
+    from('src/main/resources') {
         include 'lib/win32-x86-amd64/brotli.dll'
     }
     manifest {
         attributes(
-                'Class-Path': configurations.runtimeClasspath.files.collect { it.getName() }.join(' '),
-                'Main-Class': 'link.locutus.discord.Locutus'
+            'Main-Class': 'link.locutus.discord.Locutus'
         )
     }
 }
 
-shadowJar {
-//    minimize()
-    zip64=true
-    archiveBaseName = "${name}-${project.name}"
+sourceSets {
+    main {
+        java {
+            srcDir 'src/main/java'
+        }
+        resources {
+            srcDir 'src/main/resources'
+        }
+    }
 }
 
-build.dependsOn(shadowJar);
+// Add generated sources explicitly
+sourceSets.main.java.srcDir(graphqlGeneratedDir)
+sourceSets.main.java.srcDir(jteGeneratedDir)
+
+// Add generated JTE sources
+tasks.named('compileJava') {
+    dependsOn(tasks.named('graphqlCodegen'))
+    mustRunAfter tasks.matching { it.name == 'generateJte' || it.name == 'precompileJte' }
+}
 
 tasks.register('findDependency') {
     doLast {

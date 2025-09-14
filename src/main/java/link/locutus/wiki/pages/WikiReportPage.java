@@ -1,9 +1,9 @@
 package link.locutus.wiki.pages;
 
+import link.locutus.discord.db.ReportType;
 import link.locutus.wiki.BotWikiGen;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
-import link.locutus.discord.db.ReportManager;
 
 import java.util.Arrays;
 import java.util.stream.Collectors;
@@ -34,7 +34,7 @@ public class WikiReportPage extends BotWikiGen {
                 
                 The following are reportable offenses:""",
                 // dot points `- `
-                Arrays.stream(ReportManager.ReportType.values()).map(r -> "- `" + r.name() + "`: " + r.getDescription()).collect(Collectors.joining("\n")),
+                Arrays.stream(ReportType.values()).map(r -> "- `" + r.name() + "`: " + r.getDescription()).collect(Collectors.joining("\n")),
                 "# Creating and editing a report",
                 commandMarkdownSpoiler(CM.report.add.cmd),
                 commandMarkdownSpoiler(CM.report.remove.cmd),

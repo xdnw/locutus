@@ -135,7 +135,7 @@ public interface CommandCallable {
         return aliases().get(0);
     }
 
-    default Set<ParametricCallable> getParametricCallables(Predicate<ParametricCallable> returnIf) {
+    default Set<ParametricCallable<?>> getParametricCallables(Predicate<ParametricCallable<?>> returnIf) {
         return Collections.emptySet();
     }
 
@@ -178,7 +178,7 @@ public interface CommandCallable {
                 callable.generatePojo(path, output, indent + 4);
             }
             if (!name.isEmpty()) output.append(indentStr).append("}\n");
-        } else if (this instanceof ParametricCallable callable) {
+        } else if (this instanceof ParametricCallable<?> callable) {
             Method method = callable.getMethod();
             List<String> params = callable.getUserParameterMap().values().stream().map(ParameterData::getName).toList();
 

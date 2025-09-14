@@ -30,11 +30,11 @@ public class NewsletterManager {
     }
 
     private void createTables() {
-        String createNewsletters = "CREATE TABLE NEWSLETTERS (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, date_created BIGINT NOT NULL, last_sent BIGINT NOT NULL, send_interval BIGINT NOT NULL, sendConfirmationChannel BIGINT, pingRole BIGINT)";
+        String createNewsletters = "CREATE TABLE IF NOT EXISTS NEWSLETTERS (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, date_created BIGINT NOT NULL, last_sent BIGINT NOT NULL, send_interval BIGINT NOT NULL, sendConfirmationChannel BIGINT, pingRole BIGINT)";
         // make (newsletter, channel_id combined primary)
-        String createChannels = "CREATE TABLE NEWSLETTER_CHANNELS (newsletter INTEGER NOT NULL, channel_id BIGINT NOT NULL, date_created BIGINT NOT NULL, FOREIGN KEY(newsletter) REFERENCES NEWSLETTERS(id), PRIMARY KEY(newsletter, channel_id))";
+        String createChannels = "CREATE TABLE IF NOT EXISTS NEWSLETTER_CHANNELS (newsletter INTEGER NOT NULL, channel_id BIGINT NOT NULL, date_created BIGINT NOT NULL, FOREIGN KEY(newsletter) REFERENCES NEWSLETTERS(id), PRIMARY KEY(newsletter, channel_id))";
         // newsletter id, nation id, long date
-        String subscriptions = "CREATE TABLE NEWSLETTER_SUBSCRIPTIONS (newsletter INTEGER NOT NULL, nation_id INTEGER NOT NULL, date_created BIGINT NOT NULL, FOREIGN KEY(newsletter) REFERENCES NEWSLETTERS(id), PRIMARY KEY(newsletter, nation_id))";
+        String subscriptions = "CREATE TABLE IF NOT EXISTS NEWSLETTER_SUBSCRIPTIONS (newsletter INTEGER NOT NULL, nation_id INTEGER NOT NULL, date_created BIGINT NOT NULL, FOREIGN KEY(newsletter) REFERENCES NEWSLETTERS(id), PRIMARY KEY(newsletter, nation_id))";
 
         db.executeStmt(createNewsletters);
         db.executeStmt(createChannels);

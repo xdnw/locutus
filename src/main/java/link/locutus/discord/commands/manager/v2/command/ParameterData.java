@@ -1,8 +1,13 @@
 package link.locutus.discord.commands.manager.v2.command;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
-import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.annotation.ArgChoice;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
+import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.util.StringMan;
 
 import java.lang.annotation.Annotation;
@@ -29,8 +34,9 @@ public class ParameterData {
         if (isFlag()) arg.put("flag", getFlag());
         if (this.desc != null && !desc.isEmpty()) arg.put("desc", desc);
         if (group != -1) arg.put("group", group);
-        String webType = binding.getWebTypeStr();
-        arg.put("type", webType);
+        Key<?> webType = binding.getWebTypeOrNull();
+        if (webType == null) webType = binding.getKey();
+        arg.put("type", webType.toSimpleString());
         if (defaultValue != null && defaultValue.length != 0) {
             arg.put("def", getDefaultValueString());
         }
@@ -49,6 +55,55 @@ public class ParameterData {
         if (filter != null) {
             arg.put("filter", filter.value());
         }
+        return arg;
+    }
+
+    public Map<String, Object> toToolJson(Map<Key<?>, Map<String, Object>> primitiveCache) {
+        Map<String, Object> arg = new Object2ObjectLinkedOpenHashMap<>();
+
+        if (defaultValue != null && defaultValue.length != 0) {
+            arg.put("default", getDefaultValueString());
+        }
+        ArgChoice choiceAnn = getAnnotation(ArgChoice.class);
+        if (choiceAnn != null) {
+            arg.put("enum", Arrays.asList(choiceAnn.value()));
+        }
+
+        Range range = getAnnotation(Range.class);
+        if (range != null) {
+            if (range.min() != Double.NEGATIVE_INFINITY)
+                arg.put("minimum", range.min());
+            if (range.max() != Double.POSITIVE_INFINITY)
+                arg.put("maximum", range.max());
+        }
+        Filter filter = getAnnotation(Filter.class);
+        if (filter != null) {
+            arg.put("pattern", filter.value());
+        }
+        Key<?> key = binding.getKey();
+        Binding keyBinding = key.getBinding();
+        String[] examples = keyBinding.examples();
+        if (examples != null && examples.length > 0) {
+            arg.put("examples", Arrays.asList(examples));
+        }
+        if (this.desc != null && !desc.isEmpty()) {
+            arg.put("description", this.desc);
+        }
+
+        Map<String, Object> primitiveType = primitiveCache.get(key);
+        if (primitiveType == null && key.getAnnotations().length != 0) {
+            primitiveType = GPTUtil.toJsonSchema(type, false);
+            primitiveCache.put(key, primitiveType);
+        }
+        if (primitiveType != null) {
+            arg.putAll(primitiveType);
+        } else {
+            Key<?> bindingWebType = binding.getWebTypeOrNull();
+            if (bindingWebType == null) bindingWebType = key;
+            String definitionName = GPTUtil.getJsonName(bindingWebType.toSimpleString());
+            arg.put("$ref", definitionName);
+        }
+
         return arg;
     }
 

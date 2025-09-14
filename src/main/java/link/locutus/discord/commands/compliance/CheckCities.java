@@ -22,6 +22,7 @@ import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.test.IACategory;
+import link.locutus.discord.util.task.ia.AuditType;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.util.task.mail.MailApiResponse;
 import net.dv8tion.jda.api.entities.Guild;
@@ -32,7 +33,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 public class CheckCities extends Command {
-    private final Map<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> auditResults = new HashMap<>();
+    private final Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> auditResults = new HashMap<>();
 
     public CheckCities() {
         super("checkup", "check-cities", "checkcities", "Normalmaaudit", CommandCategory.INTERNAL_AFFAIRS, CommandCategory.MEMBER);
@@ -128,7 +129,7 @@ public class CheckCities extends Command {
         for (DBNation nation : nations) {
             int failed = 0;
 
-            Map<IACheckup.AuditType, Map.Entry<Object, String>> auditResult = null;
+            Map<AuditType, Map.Entry<Object, String>> auditResult = null;
             if (page != null) {
                 auditResult = auditResults.get(nation);
             }
@@ -151,8 +152,8 @@ public class CheckCities extends Command {
 
             assert auditResult != null;
             if (!auditResult.isEmpty()) {
-                for (Map.Entry<IACheckup.AuditType, Map.Entry<Object, String>> entry : auditResult.entrySet()) {
-                    IACheckup.AuditType type = entry.getKey();
+                for (Map.Entry<AuditType, Map.Entry<Object, String>> entry : auditResult.entrySet()) {
+                    AuditType type = entry.getKey();
                     Map.Entry<Object, String> info = entry.getValue();
                     if (info == null || info.getValue() == null) continue;
                     failed++;
@@ -199,7 +200,7 @@ public class CheckCities extends Command {
         return null;
     }
 
-    private void createEmbed(IMessageIO channel, DBNation nation, Map<IACheckup.AuditType, Map.Entry<Object, String>> auditResult, Integer page) {
+    private void createEmbed(IMessageIO channel, DBNation nation, Map<AuditType, Map.Entry<Object, String>> auditResult, Integer page) {
         IACheckup.createEmbed(channel, Settings.commandPrefix(true) + "Checkup " + nation.getNation_id(), nation, auditResult, page);
     }
 }

@@ -22,6 +22,7 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.offshore.test.IAChannel;
+import link.locutus.discord.util.task.ia.AuditType;
 import link.locutus.discord.util.task.ia.IACheckup;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -159,7 +160,7 @@ public class IAPages {
     public Object memberAuditIndex(WebStore ws, @Me GuildDB db) throws IOException {
         AllianceList alliance = db.getAllianceList();
         IACheckup checkup = new IACheckup(db, alliance, true);
-        Map<IACheckup.AuditType, Map<DBNation, String>> allianceAuditResults = new LinkedHashMap<>();
+        Map<AuditType, Map<DBNation, String>> allianceAuditResults = new LinkedHashMap<>();
 
 
         List<DBNation> allNations = new ArrayList<>(alliance.getNations(true, 0, true));
@@ -170,22 +171,22 @@ public class IAPages {
 
         Map<DBNation, String> inactiveMap = inactive.stream().collect(Collectors.toMap(f -> f,
                 f -> f.getNation() + " is " + TimeUtil.minutesToTime(f.active_m()) + " inactive"));
-        allianceAuditResults.put(IACheckup.AuditType.INACTIVE, inactiveMap);
+        allianceAuditResults.put(AuditType.INACTIVE, inactiveMap);
 
         ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(allNations, DBNation.class);
 
         for (DBNation nation : allNations) {
-            Map<IACheckup.AuditType, Map.Entry<Object, String>> audit = checkup.checkupSafe(cacheStore, nation, true, true);
-            for (Map.Entry<IACheckup.AuditType, Map.Entry<Object, String>> entry : audit.entrySet()) {
+            Map<AuditType, Map.Entry<Object, String>> audit = checkup.checkupSafe(cacheStore, nation, true, true);
+            for (Map.Entry<AuditType, Map.Entry<Object, String>> entry : audit.entrySet()) {
                 Map<DBNation, String> nationMap = allianceAuditResults.computeIfAbsent(entry.getKey(), f -> new HashMap<>());
                 nationMap.put(nation, entry.getValue().getValue());
             }
         }
-        Map<IACheckup.AuditType, Map<DBNation, String>> allianceAuditResultsSorted = new LinkedHashMap<>();
+        Map<AuditType, Map<DBNation, String>> allianceAuditResultsSorted = new LinkedHashMap<>();
 
-        List<IACheckup.AuditType> auditTypes = new ArrayList<>(Arrays.asList(IACheckup.AuditType.values()));
+        List<AuditType> auditTypes = new ArrayList<>(Arrays.asList(AuditType.values()));
         Collections.sort(auditTypes, (o1, o2) -> Integer.compare(o2.severity.ordinal(), o1.severity.ordinal()));
-        for (IACheckup.AuditType type : auditTypes) {
+        for (AuditType type : auditTypes) {
             Map<DBNation, String> values = allianceAuditResults.get(type);
             if (values != null) allianceAuditResultsSorted.put(type, values);
         }

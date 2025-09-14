@@ -19,6 +19,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.MathOperation;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
@@ -26,7 +27,6 @@ import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
-import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationModifier;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
@@ -59,7 +59,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.test.IACategory;
-import link.locutus.discord.util.task.ia.IACheckup;
+import link.locutus.discord.util.task.ia.AuditType;
 import link.locutus.discord.util.task.mail.Mail;
 import link.locutus.discord.util.trade.TradeManager;
 import net.dv8tion.jda.api.entities.Guild;
@@ -136,7 +136,7 @@ public class PWBindings extends BindingHelper {
 
     @Binding(value = "The name of a nation attribute\n" +
             "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>", examples = {"color", "war_policy", "continent"},
-    webType = "ICommand<DBNation>")
+    webType = {ICommand.class, DBNation.class})
     @NationAttributeCallable
     public ParametricCallable nationAttribute(NationPlaceholders placeholders, ValueStore store, String input) {
         List<ParametricCallable> options = placeholders.getParametricCallables();
@@ -161,7 +161,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "A discord slash command reference for the bot")
-    public static ICommand slashCommand(String input) {
+    public static ICommand<?> slashCommand(String input) {
         input = stripPrefix(input);
         List<String> split = StringMan.split(input, ' ');
         CommandCallable command = Locutus.imp().getCommandManager().getV2().getCallable(split);
@@ -172,8 +172,8 @@ public class PWBindings extends BindingHelper {
             String optionsStr = "- `" + prefix + String.join("`\n- `" + prefix, group.primarySubCommandIds()) + "`";
             throw new IllegalArgumentException("Command `" + input + "` is a group, not an endpoint. Please specify a sub command:\n" + optionsStr);
         }
-        if (!(command instanceof ICommand)) throw new IllegalArgumentException("Command `" + input + "` is not a command endpoint");
-        return (ICommand) command;
+        if (!(command instanceof ICommand<?>)) throw new IllegalArgumentException("Command `" + input + "` is not a command endpoint");
+        return (ICommand<?>) command;
     }
 
     @Binding(value = "A grant request id")
@@ -269,13 +269,13 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "A comma separated list of the status of a nation's loan")
-    public Set<DBLoan.Status> LoanStatuses(String input) {
-        return emumSet(DBLoan.Status.class, input);
+    public Set<Status> LoanStatuses(String input) {
+        return emumSet(Status.class, input);
     }
 
     @Binding(value = "The status of a nation's loan")
-    public DBLoan.Status LoanStatus(String input) {
-        return emum(DBLoan.Status.class, input);
+    public Status LoanStatus(String input) {
+        return emum(Status.class, input);
     }
 
     @Binding(value = "The guild setting category")
@@ -310,7 +310,7 @@ public class PWBindings extends BindingHelper {
         return bans.get(0);
     }
 
-    @Binding
+    @Binding(value = "A guild loan by id", examples = {"1234"})
     @GuildLoan
     public DBLoan loan(LoanManager manager, String input) {
         int id = PrimitiveBindings.Integer(input);
@@ -572,7 +572,7 @@ public class PWBindings extends BindingHelper {
 
     @Binding(examples = ("#grant #city=1"), value = "A DepositType optionally with a value and a city tag\n" +
             "See: <https://github.com/xdnw/locutus/wiki/deposits#transfer-notes>",
-    webType = "DepositType")
+    webType = DepositType.class)
     public static DepositType.DepositTypeInfo DepositTypeInfo(String input) {
         DepositType type = null;
         long value = 0;
@@ -848,17 +848,17 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "A comma separated list of audit types")
-    public Set<IACheckup.AuditType> auditTypes(ValueStore store, String input) {
-        Set<IACheckup.AuditType> audits = Locutus.cmd().getV2().getPlaceholders().get(IACheckup.AuditType.class).parseSet(store, input);
+    public Set<AuditType> auditTypes(ValueStore store, String input) {
+        Set<AuditType> audits = Locutus.cmd().getV2().getPlaceholders().get(AuditType.class).parseSet(store, input);
         if (audits == null || audits.isEmpty()) {
-            throw new IllegalArgumentException("No audit types found in: " + input + ". Options: " + StringMan.getString(IACheckup.AuditType.values()));
+            throw new IllegalArgumentException("No audit types found in: " + input + ". Options: " + StringMan.getString(AuditType.values()));
         }
         return audits;
     }
 
     @Binding(value = "An audit type")
-    public static IACheckup.AuditType auditType(String input) {
-        return emum(IACheckup.AuditType.class, input);
+    public static AuditType auditType(String input) {
+        return emum(AuditType.class, input);
     }
 
     @Binding(value = "An in-game  color bloc")
@@ -881,14 +881,14 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "A comma separated list of spy operation types")
-    public Set<SpyCount.Operation> opTypes(String input) {
-        Set<SpyCount.Operation> allowedOpTypes = new ObjectLinkedOpenHashSet<>();
+    public Set<Operation> opTypes(String input) {
+        Set<Operation> allowedOpTypes = new ObjectLinkedOpenHashSet<>();
         for (String type : input.split(",")) {
             if (type.equalsIgnoreCase("*")) {
-                allowedOpTypes.addAll(Arrays.asList(SpyCount.Operation.values()));
-                allowedOpTypes.remove(SpyCount.Operation.INTEL);
+                allowedOpTypes.addAll(Arrays.asList(Operation.values()));
+                allowedOpTypes.remove(Operation.INTEL);
             } else {
-                SpyCount.Operation op = StringMan.parseUpper(SpyCount.Operation.class, type);
+                Operation op = StringMan.parseUpper(Operation.class, type);
                 allowedOpTypes.add(op);
             }
         }
@@ -939,19 +939,19 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "borg,AA:Cataclysm,#position>1", value = "A comma separated list of nations, alliances and filters",
-            webType = "Set<DBNation>")
+            webType = {Set.class, DBNation.class})
     public static NationList nationList(ParameterData data, @Default @Me Guild guild, String input, @Default @Me User author, @Default @Me DBNation me) {
         return new SimpleNationList(nations(data, guild, input, author, me)).setFilter(input);
     }
 
     @Binding(examples = "#position>1,#cities<=5", value = "A comma separated list of filters (can include nations and alliances)",
-    webType = "Predicate<DBNation>")
+    webType = {Predicate.class, DBNation.class})
     public NationFilter nationFilter(@Default @Me User author, @Default @Me DBNation nation, @Default @Me Guild guild, String input) {
         return new NationFilterString(input, guild, author, nation);
     }
 
     @Binding(examples = "score,soldiers", value = "A comma separated list of numeric nation attributes",
-    webType = "Set<TypedFunction<DBNation,Double>>")
+    webType = {Set.class, TypedFunction.class, DBNation.class, Double.class })
     public Set<NationAttributeDouble> nationMetricDoubles(ValueStore store, String input) {
         Set<NationAttributeDouble> metrics = new ObjectLinkedOpenHashSet<>();
         for (String arg : StringMan.split(input, ',')) {
@@ -1412,8 +1412,8 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding
-    public ReportManager.ReportType reportType(String input) {
-        return emum(ReportManager.ReportType.class, input);
+    public ReportType reportType(String input) {
+        return emum(ReportType.class, input);
     }
 
     @Binding(value = "One of the default in-game position levels")
@@ -1475,8 +1475,8 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "Types of users to clear roles of")
-    public UnsortedCommands.ClearRolesEnum clearRolesEnum(String input) {
-        return emum(UnsortedCommands.ClearRolesEnum.class, input);
+    public ClearRolesEnum clearRolesEnum(String input) {
+        return emum(ClearRolesEnum.class, input);
     }
 
     @Binding(value = "The mode for calculating war costs")
@@ -1520,8 +1520,8 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "Spy safety level")
-    public SpyCount.Safety safety(String input) {
-        return emum(SpyCount.Safety.class, input);
+    public Safety safety(String input) {
+        return emum(Safety.class, input);
     }
 
     @Binding(value = "One of the default Bot coalition names")
@@ -1612,7 +1612,7 @@ public class PWBindings extends BindingHelper {
             A completed nation attribute that accepts no arguments and returns a number
             To get the attribute for an attribute with arguments, you must provide a value in brackets
             See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>""", examples = {"score", "ships", "land", "getCitiesSince(5d)"},
-    webType = "TypedFunction<DBNation,Double>")
+    webType = { TypedFunction.class, DBNation.class, Double.class })
     public NationAttributeDouble nationMetricDouble(ValueStore store, String input) {
         NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
         NationAttributeDouble metric = placeholders.getMetricDouble(store, input);
@@ -1688,15 +1688,15 @@ public class PWBindings extends BindingHelper {
         throw new IllegalArgumentException("Bracket " + taxId + " not found for alliance: " + StringMan.getString(db.getAllianceIds()) + ". If the bracket was just created, please try again in a minute.");
     }
 
-    @Binding
+    @Binding(value = "A report id", examples = "1234")
     @ReportPerms
-    public ReportManager.Report getReport(ReportManager manager, int id) {
+    public Report getReport(ReportManager manager, int id) {
         return getReportAll(manager, id);
     }
 
-    @Binding
-    public ReportManager.Report getReportAll(ReportManager manager, int id) {
-        ReportManager.Report report = manager.getReport(id);
+    @Binding(value = "A report id", examples = "1234")
+    public Report getReportAll(ReportManager manager, int id) {
+        Report report = manager.getReport(id);
         if (report == null) {
             throw new IllegalArgumentException("No report found with id: `" + id + "`");
         }
@@ -1752,12 +1752,12 @@ public class PWBindings extends BindingHelper {
         return placeholders.parseFilter(store, input);
     }
 
-    @Binding
+    @Binding(value = "A nation event trigger type for sending in-game recruitment messages")
     public MessageTrigger trigger(String trigger) {
         return emum(MessageTrigger.class, trigger);
     }
 
-    @Binding
+    @Binding(value = "Whether to calculate purchase cost for a daily rebuy or based on the full unit cap")
     public MMRBuyMode mmrBuyMode(String trigger) {
         return emum(MMRBuyMode.class, trigger);
     }

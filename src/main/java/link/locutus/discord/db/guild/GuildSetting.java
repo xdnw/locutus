@@ -167,8 +167,8 @@ public abstract class GuildSetting<T> {
         return getCommandObjRaw(db, value);
     }
 
-    public Set<ParametricCallable> getCallables() {
-        Set<ParametricCallable> callables = Locutus.imp().getCommandManager().getV2().getCommands().getParametricCallables(f -> f.getObject() == this);
+    public Set<ParametricCallable<?>> getCallables() {
+        Set<ParametricCallable<?>> callables = Locutus.imp().getCommandManager().getV2().getCommands().getParametricCallables(f -> f.getObject() == this);
         callables.removeIf(f -> {
             String id = f.getPrimaryCommandId().toLowerCase();
             return id.startsWith("remove") || id.startsWith("delete") || id.startsWith("unregister");
@@ -184,9 +184,9 @@ public abstract class GuildSetting<T> {
     }
 
     private String getCommandObjRaw(GuildDB db, Object value) {
-        Set<ParametricCallable> callables = getCallables();
+        Set<ParametricCallable<?>> callables = getCallables();
         if (value != null) {
-            for (ParametricCallable callable : callables) {
+            for (ParametricCallable<?> callable : callables) {
                 for (ParameterData parameter : callable.getUserParameters()) {
                     Type type = parameter.getBinding().getKey().getType();
                     if ((type instanceof Class clazz && clazz.isAssignableFrom(value.getClass())) || callables.size() == 1) {
@@ -217,7 +217,7 @@ public abstract class GuildSetting<T> {
         return getCommandMention(getCallables());
     }
 
-    private String getCommandMention(Set<ParametricCallable> callables) {
+    private String getCommandMention(Set<ParametricCallable<?>> callables) {
         List<String> result = new ArrayList<>();
         for (ParametricCallable callable : callables) {
             result.add(SlashCommandManager.getSlashMention(callable));

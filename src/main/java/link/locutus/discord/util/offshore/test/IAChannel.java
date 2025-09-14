@@ -11,6 +11,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.task.ia.AuditType;
 import link.locutus.discord.util.task.ia.IACheckup;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
@@ -68,7 +69,7 @@ public class IAChannel {
         return channel;
     }
 
-    public void update(Map<IACheckup.AuditType, Map.Entry<Object, String>> audits) {
+    public void update(Map<AuditType, Map.Entry<Object, String>> audits) {
         Set<String> emojis = new ObjectLinkedOpenHashSet<>();
         if (audits == null) {
             if (nation.getVm_turns() > 0) {
@@ -86,8 +87,8 @@ public class IAChannel {
                 emojis.add("\uD83D\uDCDB");
             }
         } else {
-            for (Map.Entry<IACheckup.AuditType, Map.Entry<Object, String>> entry : audits.entrySet()) {
-                IACheckup.AuditType type = entry.getKey();
+            for (Map.Entry<AuditType, Map.Entry<Object, String>> entry : audits.entrySet()) {
+                AuditType type = entry.getKey();
                 Map.Entry<Object, String> result = entry.getValue();
                 emojis.add(type.emoji);
             }

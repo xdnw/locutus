@@ -1,0 +1,4182 @@
+type Query {
+  me: ApiKeyDetails
+  treasures: [Treasure]
+  colors: [Color]
+  game_info: GameInfo
+  top_trade_info: TopTradeInfo
+  nation_resource_stats(
+    before: DateTime
+    after: DateTime
+    orderBy: [QueryNationResourceStatsOrderByOrderByClause!]
+  ): [NationResourceStat]
+  nations(
+    id: [Int]
+    min_id: [Int]
+    max_id: [Int]
+    nation_name: [String]
+    leader_name: [String]
+    alliance_id: [Int]
+    alliance_position: [Int]
+    alliance_position_id: [Int]
+    color: [String]
+    created_before: DateTime
+    created_after: DateTime
+    active_since: DateTime
+    active_before: DateTime
+    min_score: Float
+    max_score: Float
+    cities: [Int]
+    min_cities: Int
+    max_cities: Int
+    vmode: Boolean
+    discord: [String]
+    discord_id: [String]
+    tax_id: [Int]
+    continent: [Continents]
+    orderBy: [QueryNationsOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 500.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): NationPaginator
+  alliances(
+    id: [Int]
+    name: [String]
+    color: [String]
+    orderBy: [QueryAlliancesOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 500.
+    first: Int = 10
+
+    # The offset from which items are returned.
+    page: Int
+  ): AlliancePaginator
+  tradeprices(
+    # Limits number of fetched items. Maximum allowed value: 500.
+    first: Int = 30
+
+    # The offset from which items are returned.
+    page: Int
+  ): TradepricePaginator
+  trades(
+    id: [Int]
+    min_id: Int
+    max_id: Int
+    before: DateTime
+    after: DateTime
+    type: TradeType
+    nation_id: [Int]
+    offer_resource: [String]
+    buy_or_sell: String
+    accepted: Boolean
+    original_trade_id: [Int]
+    orderBy: [QueryTradesOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 1000.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): TradePaginator
+  wars(
+    id: [Int]
+    min_id: Int
+    max_id: Int
+    before: DateTime
+    after: DateTime
+    ended_before: DateTime
+    ended_after: DateTime
+    attid: [Int]
+    defid: [Int]
+    or_id: [Int]
+    days_ago: Int
+
+    # By default, will return only active wars. Pass this as false to return all wars.
+    active: Boolean = true
+
+    # NOTE: When using this, you must pass active as false for INACTIVE to work properly. By default, will return all wars. Pass INACTIVE for inactive wars and ACTIVE for active wars.
+    status: WarActivity = ALL
+    nation_id: [Int]
+    alliance_id: [Int]
+    orderBy: [QueryWarsOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 1000.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): WarPaginator
+  bounties(
+    nation_id: [Int]
+    min_amount: Float
+    max_amount: Float
+    orderBy: [QueryBountiesOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 1000.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): BountyPaginator
+  warattacks(
+    id: [Int]
+    min_id: Int
+    max_id: Int
+    war_id: [Int]
+    before: DateTime
+    after: DateTime
+    orderBy: [QueryWarattacksOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 1000.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): WarAttackPaginator
+  treaties(
+    id: [Int]
+    orderBy: [QueryTreatiesOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 1000.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): TreatyPaginator
+  cities(
+    id: [Int]
+    nation_id: [Int]
+    orderBy: [QueryCitiesOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 500.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): CityPaginator
+  bankrecs(
+    id: [Int]
+    min_id: Int
+    max_id: Int
+    before: DateTime
+    after: DateTime
+    stype: [Int]
+    rtype: [Int]
+
+    # A type stype or rtype can be.
+    or_type: [Int]
+    sid: [Int]
+    rid: [Int]
+
+    # An id sid or rid can be.
+    or_id: [Int]
+    orderBy: [QueryBankrecsOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 1000.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): BankrecPaginator
+  baseball_games(
+    id: [Int]
+    min_id: Int
+    max_id: Int
+    team_id: [Int]
+    orderBy: [QueryBaseballGamesOrderByOrderByClause!]
+    open: Boolean
+    max_wager: Float
+    min_wager: Float
+    wager: [Float]
+
+    # Limits number of fetched items. Maximum allowed value: 1000.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): BBGamePaginator
+  baseball_teams(
+    id: [Int]
+    orderBy: [QueryBaseballTeamsOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 1000.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): BBTeamPaginator
+  baseball_players(
+    id: [Int]
+    team_id: [Int]
+    orderBy: [QueryBaseballPlayersOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 1000.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): BBPlayerPaginator
+  treasure_trades(
+    id: [Int]
+    nation_id: [Int]
+    min_id: Int
+    max_id: Int
+    orderBy: [QueryTreasureTradesOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 1000.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): TreasureTradePaginator
+  embargoes(
+    id: [Int]
+    nation_id: [Int]
+    min_id: Int
+    max_id: Int
+    orderBy: [QueryEmbargoesOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 1000.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): EmbargoPaginator
+  resource_stats(
+    before: DateTime
+    after: DateTime
+    orderBy: [QueryResourceStatsOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 1000.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): ResourceStatPaginator
+  activity_stats(
+    before: DateTime
+    after: DateTime
+    orderBy: [QueryActivityStatsOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 1000.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): ActivityStatPaginator
+  banned_nations(
+    nation_id: [Int]
+    leader_name: [String]
+    nation_name: [String]
+    orderBy: [QueryBannedNationsOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 500.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): BannedNationPaginator
+  bulletins(
+    id: [Int]
+    min_id: Int
+    max_id: Int
+    before: DateTime
+    after: DateTime
+    edited_before: DateTime
+    edited_since: DateTime
+    nation_id: [Int]
+    type: Int
+    alliance_id: [Int]
+    orderBy: [QueryBulletinsOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 500.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): BulletinPaginator
+  bulletin_replies(
+    id: [Int]
+    min_id: Int
+    max_id: Int
+    bulletin_id: [Int]
+    bulletin_min_id: Int
+    bulletin_max_id: Int
+    before: DateTime
+    after: DateTime
+    edited_before: DateTime
+    edited_since: DateTime
+    nation_id: [Int]
+    leader_name: [String]
+    nation_name: [String]
+    orderBy: [QueryBulletinRepliesOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 500.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): BulletinReplyPaginator
+}
+
+type ApiKeyDetails {
+  # Nation the API key belongs to
+  nation: Nation
+
+  # The API key itself
+  key: String
+
+  # The number of requests made to the API using the key for the day
+  requests: Int
+
+  # Max requests per day the key is allowed (generally 2,000 for non-VIP nations and 15,000 for VIP nations)
+  max_requests: Int
+
+  # List of permissions the API Key has
+  permissions: ApiKeyPermissions
+
+  # Bitwise value of permissions
+  permission_bits: Int
+}
+
+type Nation {
+  # ID of the nation
+  id: Int
+
+  # ID of the alliance the nation is currently in (returns 0 if None)
+  alliance_id: Int
+
+  # Enumeration representing the position of the nation in their alliance ('NOALLIANCE', 'APPLICANT', 'MEMBER', 'OFFICER', 'HEIR', or 'LEADER')
+  alliance_position: AlliancePositionEnum
+
+  # ID of the nation's position in their alliance
+  alliance_position_id: Int
+
+  # The nation's alliance position
+  alliance_position_info: AlliancePosition
+
+  # The nation's alliance
+  alliance: Alliance
+
+  # Name of the nation
+  nation_name: String
+
+  # Name of the nation's leader
+  leader_name: String
+
+  # Abbreviation/acronym for the continent the nation is on ('na' for North America, 'sa' for South America, 'as' for Asia, 'an' for Antarctica, 'eu' for Europe, 'af' for Africa, 'au' for Australia)
+  continent: String
+
+  # The war policy the nation is on [deprecated]
+#  warpolicy: String @deprecated(reason: "Use war_policy instead.")
+
+  # Enumeration representing the war policy the nation is currently on ('ATTRITION', 'TURTLE', 'BLITZKRIEG', 'FORTRESS', 'MONEYBAGS', 'PIRATE', 'TACTICIAN', 'GUARDIAN', 'COVERT', or 'ARCANE')
+  war_policy: WarPolicy
+
+  # Number of turns until this nation can change its war policy
+  war_policy_turns: Int
+
+  # The domestic policy the nation is on [deprecated]
+#  dompolicy: String @deprecated(reason: "Use domestic_policy instead.")
+
+  # Enumeration representing the domestic policy the nation is currently on ('MANIFEST_DESTINY', 'OPEN_MARKETS', 'TECHNOLOGICAL_ADVANCEMENT', 'IMPERIALISM', 'URBANIZATION', or 'RAPID_EXPANSION')
+  domestic_policy: DomesticPolicy
+
+  # Number of turns until this nation can change its domestic policy
+  domestic_policy_turns: Int
+
+  # The color the nation is on ('white', 'green', etc.)
+  color: String
+
+  # Number of cities the nation has
+  num_cities: Int
+
+  # List of the nation's cities
+  cities: [City!]!
+
+  # The nation's score
+  score: Float
+
+  # The nation's update timezone, this field will return null unless you are an officer or higher in the same alliance as this nation and this nation allows alliance bank access or you are this nation
+  update_tz: Float
+
+  # Population of the nation
+  population: Int
+
+  # Link to the nation's flag in-game
+  flag: String
+
+  # Number of turns the nation has left in vacation mode [deprecated]
+#  vmode: Int @deprecated(reason: "Use vacation_mode_turns instead.")
+
+  # Number of turns the nation has left in vacation mode
+  vacation_mode_turns: Int
+
+  # Number of turns the nation has left in beige [deprecated]
+#  beigeturns: Int @deprecated(reason: "Use beige_turns instead.")
+
+  # Number of turns the nation has left in beige
+  beige_turns: Int
+
+  # Whether or not the nation can have an espionage operation performed on them
+  espionage_available: Boolean
+
+  # The date and time that the nation was last active
+  last_active: DateTimeAuto
+
+  # The date and time that the nation was founded
+  date: DateTimeAuto
+
+  # Number of soldiers the nation has
+  soldiers: Int
+
+  # Number of tanks the nation has
+  tanks: Int
+
+  # Number of aircraft the nation has
+  aircraft: Int
+
+  # Number of ships the nation has
+  ships: Int
+
+  # Number of missiles the nation has
+  missiles: Int
+
+  # Number of nukes the nation has
+  nukes: Int
+
+  # Number of spies the nation has, this field will return null unless you are an officer or higher in the same alliance as this nation and this nation allows alliance bank access or you are this nation
+  spies: Int
+
+  # Number of soldiers the nation bought today, this field will return null unless you are this nation
+  soldiers_today: Int
+
+  # Number of tanks the nation bought today, this field will return null unless you are this nation
+  tanks_today: Int
+
+  # Number of aircraft the nation bought today, this field will return null unless you are this nation
+  aircraft_today: Int
+
+  # Number of ships the nation bought today, this field will return null unless you are this nation
+  ships_today: Int
+
+  # Number of missiles the nation bought today, this field will return null unless you are this nation
+  missiles_today: Int
+
+  # Number of nukes the nation bought today, this field will return null unless you are this nation
+  nukes_today: Int
+
+  # Number of spies the nation bought today, this field will return null unless you are this nation
+  spies_today: Int
+
+  # The Discord username of the nation
+  discord: String
+
+  # String representing the numerical ID of the nation's Discord
+  discord_id: String
+
+  # List of treasures the nation has
+  treasures: [Treasure!]!
+
+  # All offensive wars the nation has been in within the last 14 days [deprecated]
+#  offensive_wars: [War!]! @deprecated(reason: "Use wars instead")
+
+  # All defensive wars the nation has been in within the last 14 days [deprecated]
+#  defensive_wars: [War!]! @deprecated(reason: "Use wars instead")
+
+  # All wars the nations has been in within last 14 days
+  wars(
+    # Selects wars with IDs greater than or equal to the specified ID
+    min_id: Int
+
+    # Selects wars with IDs less than or equal to the specified ID
+    max_id: Int
+
+    # Selects wars that started on or before the specified date
+    before: DateTime
+
+    # Selects wars that started on or after the specified date
+    after: DateTime
+
+    # Selects wars that ended on or before the specified date
+    ended_before: DateTime
+
+    # Selects wars that ended on or after the specified date
+    ended_after: DateTime
+
+    # Selects wars initiated by the nation with the specified ID
+    attid: [Int]
+
+    # Selects wars against the nation with the specified ID
+    defid: [Int]
+
+    # Whether or not to include wars that are no longer active
+    active: Boolean
+
+    # NOTE: When using this, you must pass active as false for INACTIVE to work properly. By default, will return all wars. Pass INACTIVE for inactive wars and ACTIVE for active wars.
+    status: WarActivity = ALL
+
+    # Limits the number of wars returned
+    limit: Int
+
+    # Clause telling how to order the data returned e.g. wars(orderBy: {column: Int, order: ASC})
+    orderBy: [NationWarsOrderByOrderByClause!]
+  ): [War!]!
+
+  # All sent bank transactions within the last 14 days
+#  sent_bankrecs: [Bankrec!]! @deprecated(reason: "Use bankrecs instead")
+
+  # All received bank transactions within the last 14 days
+#  received_bankrecs: [Bankrec!]! @deprecated(reason: "Use bankrecs instead")
+
+  # All bank transactions within the last 14 days
+  bankrecs(
+    # Selects bank transactions with IDs greather than or equal to the specified ID
+    min_id: Int
+
+    # Selects bank transactions with IDs less than or equal to the specified ID
+    max_id: Int
+
+    # Selects bank transactions that occurred on or before the specified date
+    before: DateTime
+
+    # Selects bank transactions that occurred on or after the specified dates
+    after: DateTime
+
+    # Selects bank transactions sent by a nation (1) or an alliance (2)
+    stype: [Int]
+
+    # Selects bank transactions received by a nation (1) or an alliance (2)
+    rtype: [Int]
+
+    # Selects bank transactions sent OR received by a nation (1) or an alliance (2)
+    or_type: [Int]
+
+    # Selects bank transactions sent by the nation or alliance with the specified ID
+    sid: [Int]
+
+    # Selects bank transactions received by the nation or alliance with the specified ID
+    rid: [Int]
+
+    # Selects bank transactions sent OR receieved by the nation or alliance with the specified ID
+    or_id: [Int]
+
+    # Limits the number of returned bank records
+    limit: Int
+
+    # Clause telling how to order the data returned e.g. bankrecs(orderBy: {column: Int, order: ASC})
+    orderBy: [NationBankrecsOrderByOrderByClause!]
+  ): [Bankrec]
+
+  # All trades the nation has pending or accepted
+  trades(
+    # Selects trades with IDs greater than or equal to the specified ID
+    min_id: Int
+
+    # Selects trades with IDs less than or equal to the specified ID
+    max_id: Int
+
+    # Selects trades posted on or before the specified date
+    before: DateTime
+
+    # Selects trades posted on or after the specified date
+    after: DateTime
+
+    # Selects trades of the specified type ('GLOBAL', 'PERSONAL', or 'ALLIANCE')
+    type: TradeType
+
+    # Selects trades of the specified resource
+    offer_resource: [String]
+
+    # Selects trades of the specified type ('buy' or 'sell')
+    buy_or_sell: String
+
+    # Selects active (false) or accepted (true) trades
+    accepted: Boolean
+    original_trade_id: [Int]
+
+    # Clause telling how to order the data returned e.g. trades(orderBy: {column: Int, order: ASC})
+    orderBy: [NationTradesOrderByOrderByClause!]
+  ): [Trade]
+
+  # All tax records within the last 14 days, this field will return null unless you are an officer or higher in the same alliance as this nation and this nation allows alliance bank access or you are this nation
+  taxrecs(
+    # Selects all records with IDs greater than or equal to the provided ID
+    min_id: Int
+
+    # Selects all records with IDs less than or equal to the provided ID
+    max_id: Int
+
+    # Selects all records that occurred on or before the specified date
+    before: DateTime
+
+    # Selects all records that occurred on or after the specified date
+    after: DateTime
+
+    # Selects records sent by a nation (1) or an alliance (2)
+    stype: [Int]
+
+    # Selects records received by a nation (1) or an alliance (2)
+    rtype: [Int]
+
+    # Selects records sent OR received by a nation (1) or an alliance (2)
+    or_type: [Int]
+
+    # Selects records sent by the nation or alliance with the specified ID
+    sid: [Int]
+
+    # Selects records received by the nation or alliance with the specified ID
+    rid: [Int]
+
+    # Selects records sent OR receieved by the nation or alliance with the specified ID
+    or_id: [Int]
+
+    # Limits the number of returned tax records
+    limit: Int
+
+    # Clause telling how to order the data returned e.g. taxrecs(orderBy: {column: Int, order: ASC})
+    orderBy: [NationTaxrecsOrderByOrderByClause!]
+  ): [Bankrec]
+
+  # All bounties currently on the nation
+  bounties(
+    # Selects all bounties placed on or before the specified date
+    before: DateTime
+
+    # Selects all bounties placed on or after the specified date
+    after: DateTime
+
+    # Limits the number of bounties to return
+    limit: Int
+  ): [Bounty]
+
+  # Number of turns since the nation has last purchased a city
+  turns_since_last_city: Int
+
+  # Number of turns sine the nation has last purchased a project
+  turns_since_last_project: Int
+
+  # Amount of money currently held by the nation, this field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  money: Float
+
+  # Amount of coal currently held by the nation, this field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  coal: Float
+
+  # Amount of oil currently held by the nation, this field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  oil: Float
+
+  # Amount of uranium currently held by the nation, this field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  uranium: Float
+
+  # Amount of iron currently held by the nation, this field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  iron: Float
+
+  # Amount of bauxite currently held by the nation, this field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  bauxite: Float
+
+  # Amount of lead currently held by the nation, this field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  lead: Float
+
+  # Amount of gasoline currently held by the nation, this field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  gasoline: Float
+
+  # Amount of munitions currently held by the nation, this field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  munitions: Float
+
+  # Amount of steel currently held by the nation, this field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  steel: Float
+
+  # Amount of aluminum currently held by the nation, this field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  aluminum: Float
+
+  # Amount of food currently held by the nation, this field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  food: Float
+
+  # Number of credits currently held by the nation, this field will return null unless you are an officer or higher in the same alliance as this nation, and this nation allows alliance bank access or you are this nation
+  credits: Int
+
+  # Number of projects the nation has
+  projects: Int
+
+  # String representing the bit sequence of projects the nation has in this order (note: binary is read right to left, so if the nation has ironworks it will be a 1 at the rightmost bit): Ironworks, Bauxiteworks, Arms Stockpile, Emergency Gasoline Reserve, Mass Irrigation, International Trade Center, Missile Launch Pad, Nuclear Research Facility, Iron Dome, Vital Defense System, Central Intelligence Agency, Center for Civil Engineering, Propaganda Bureau, Uranium Enrichment Program, Urban Planning, Advanced Urban Planning, Space Program, Spy Satellite, Moon Landing, Pirate Economy, Recycling Initiative, Telecommunications Satellite, Green Technologies, Arable Land Agency, Clinical Research Center, Specialized Police Training Program, Advanced Engineering Corps, Government Support Agency, Research and Development Center, Activity Center, Metropolitan Planning, Military Salvage, Fallout Shelter, Bureau of Domestic Affairs, Advanced Pirate Economy, Mars Landing, Surveillance Network, Guiding Satellite, Nuclear Launch Facility
+  project_bits: Long
+
+  # Whether or not the nation has the Ironworks project [deprecated]
+#  ironw: Boolean @deprecated(reason: "Use iron_works instead")
+
+  # Whether or not the nation has the Ironworks project
+  iron_works: Boolean
+
+  # Whether or not the nation has the Bauxiteworks project [deprecated]
+#  bauxitew: Boolean @deprecated(reason: "Use bauxite_works instead")
+
+  # Whether or not the nation has the Bauxiteworks project
+  bauxite_works: Boolean
+
+  # Whether or not the nation has the Arms Stockpile project [deprecated]
+#  armss: Boolean @deprecated(reason: "Use arms_stockpile instead")
+
+  # Whether or not the nation has the Arms Stockpile project
+  arms_stockpile: Boolean
+
+  # Whether or not the nation has the Emergency Gasoline Reserve project [deprecated]
+#  egr: Boolean @deprecated(reason: "Use emergency_gasoline_reserve instead")
+
+  # Whether or not the nation has the Emergency Gasoline Reserve project
+  emergency_gasoline_reserve: Boolean
+
+  # Whether or not the nation has the Mass Irrigation project [deprecated]
+#  massirr: Boolean @deprecated(reason: "Use mass_irrigation instead")
+
+  # Whether or not the nation has the Mass Irrigation project
+  mass_irrigation: Boolean
+
+  # Whether or not the nation has the International Trade Center project [deprecated]
+#  itc: Boolean @deprecated(reason: "Use international_trade_center instead")
+
+  # Whether or not the nation has the International Trade Center project
+  international_trade_center: Boolean
+
+  # Whether or not the nation has the Missile Launch Pad project [deprecated]
+#  mlp: Boolean @deprecated(reason: "Use missile_launch_pad instead")
+
+  # Whether or not the nation has the Missile Launch Pad project
+  missile_launch_pad: Boolean
+
+  # Whether or not the nation has the Nuclear Research Facility project [deprecated]
+#  nrf: Boolean @deprecated(reason: "Use nuclear_research_facility instead")
+
+  # Whether or not the nation has the Nuclear Research Facility project
+  nuclear_research_facility: Boolean
+
+  # Whether or not the nation has the Iron Dome project [deprecated]
+#  irond: Boolean @deprecated(reason: "Use iron_dome instead")
+
+  # Whether or not the nation has the Iron Dome project
+  iron_dome: Boolean
+
+  # Whether or not the nation has the Vital Defense System project [deprecated]
+#  vds: Boolean @deprecated(reason: "Use vital_defense_system instead")
+
+  # Whether or not the nation has the Vital Defense System project
+  vital_defense_system: Boolean
+
+  # Whether or not the nation has the Central Intelligence Agency project [deprecated]
+#  cia: Boolean @deprecated(reason: "Use central_intelligence_agency instead")
+
+  # Whether or not the nation has the Central Intelligence Agency project
+  central_intelligence_agency: Boolean
+
+  # Whether or not the nation has the Center for Civil Engineering project [deprecated]
+#  cfce: Boolean @deprecated(reason: "Use center_for_civil_engineering instead")
+
+  # Whether or not the nation has the Center for Civil Engineering project
+  center_for_civil_engineering: Boolean
+
+  # Whether or not the nation has the Propaganda Bureau project [deprecated]
+#  propb: Boolean @deprecated(reason: "Use propaganda_bureau instead")
+
+  # Whether or not the nation has the Propaganda Bureau project
+  propaganda_bureau: Boolean
+
+  # Whether or not the nation has the Uranium Enrichment Program project [deprecated]
+#  uap: Boolean @deprecated(reason: "Use uranium_enrichment_program instead")
+
+  # Whether or not the nation has the Uranium Enrichment Program project
+  uranium_enrichment_program: Boolean
+
+  # Whether or not the nation has the Urban Planning project [deprecated]
+#  city_planning: Boolean @deprecated(reason: "Use urban_planning instead")
+
+  # Whether or not the nation has the Urban Planning project
+  urban_planning: Boolean
+
+  # Whether or not the nation has the Advanced Urban Planning project [deprecated]
+#  adv_city_planning: Boolean @deprecated(reason: "Use advanced_urban_planning instead")
+
+  # Whether or not the nation has the Advanced Urban Planning project
+  advanced_urban_planning: Boolean
+
+  # Whether or not the nation has the Space Program project
+  space_program: Boolean
+
+  # Whether or not the nation has the Spy Satellite project
+  spy_satellite: Boolean
+
+  # Whether or not the nation has the Moon Landing project
+  moon_landing: Boolean
+
+  # Whether or not the nation has the Pirate Economy project
+  pirate_economy: Boolean
+
+  # Whether or not the nation has the Recycling Initiative project
+  recycling_initiative: Boolean
+
+  # Whether or not the nation has the Telecommunications Satellite project [deprecated]
+#  telecom_satellite: Boolean @deprecated(reason: "Use telecommunications_satellite instead")
+
+  # Whether or not the nation has the Telecommunications Satellite project
+  telecommunications_satellite: Boolean
+
+  # Whether or not the nation has the Green Technologies project [deprecated]
+#  green_tech: Boolean @deprecated(reason: "Use green_technologies instead")
+
+  # Whether or not the nation has the Green Technologies project
+  green_technologies: Boolean
+
+  # Whether or not the nation has the Arable Land Agency project
+  arable_land_agency: Boolean
+
+  # Whether or not the nation has the Clinical Research Center project
+  clinical_research_center: Boolean
+
+  # Whether or not the nation has the Specialized Police Training Program project [deprecated]
+#  specialized_police_training: Boolean @deprecated(reason: "Use specialized_police_training_program instead")
+
+  # Whether or not the nation has the Specialized Police Training Program project
+  specialized_police_training_program: Boolean
+
+  # Whether or not the nation has the Advanced Engineering Corps project [deprecated]
+#  adv_engineering_corps: Boolean @deprecated(reason: "Use advanced_engineering_corps instead")
+
+  # Whether or not the nation has the Advanced Engineering Corps project
+  advanced_engineering_corps: Boolean
+
+  # Whether or not the nation has the Government Support Agency project
+  government_support_agency: Boolean
+
+  # Whether or not the nation has the Research and Development Center project
+  research_and_development_center: Boolean
+
+  # Whether or not the nation has the Resource Production Center project
+#  resource_production_center: Boolean @deprecated(reason: "Use activity_center instead")
+
+  # Whether or not the nation has the Metropolitan Planning project
+  metropolitan_planning: Boolean
+
+  # Whether or not the nation has the Military Salvage project
+  military_salvage: Boolean
+
+  # Whether or not the nation has the Fallout Shelter project
+  fallout_shelter: Boolean
+
+  # Whether or not the nation has the Activity Center project
+  activity_center: Boolean
+
+  # Whether or not the nation has the Bureau of Domestic Affairs project
+  bureau_of_domestic_affairs: Boolean
+
+  # Whether or not the nation has the Advanced Pirate Economy project
+  advanced_pirate_economy: Boolean
+
+  # Whether or not the nation has the Mars Landing project
+  mars_landing: Boolean
+
+  # Whether or not the nation has the Surveillance Network project
+  surveillance_network: Boolean
+
+  # Whether or not the nation has the Guiding Satellite project
+  guiding_satellite: Boolean
+
+  # Whether or not the nation has the Nuclear Launch Facility projedt
+  nuclear_launch_facility: Boolean
+
+  # Date when the nation built the Moon Landing project.
+  moon_landing_date: DateTimeAuto
+
+  # Date when the nation built the Mars Landing project.
+  mars_landing_date: DateTimeAuto
+
+  # How many wars the nation has won
+  wars_won: Int
+
+  # How many wars the nation has lost
+  wars_lost: Int
+
+  # ID of the tax bracket the nation is on
+  tax_id: Int
+
+  # How many days the nation has been in their alliance
+  alliance_seniority: Int
+
+  # The nation's baseball team
+  baseball_team: BBTeam
+
+  # Gross National Income (GNI) of the nation
+  gross_national_income: Float
+
+  # Gross Domestic Product (GDP) of the nation
+  gross_domestic_product: Float
+
+  # How many soldiers the nation has lost
+  soldier_casualties: Int
+
+  # How many soldiers the nation has killed
+  soldier_kills: Int
+
+  # How many tanks the nation has lost
+  tank_casualties: Int
+
+  # How many tanks he nation has killed
+  tank_kills: Int
+
+  # How many aircraft the nation has lost
+  aircraft_casualties: Int
+
+  # How many aircraft the nation has killed
+  aircraft_kills: Int
+
+  # How many ships the nation has lost
+  ship_casualties: Int
+
+  # How many ships the nation has killed
+  ship_kills: Int
+
+  # How many missiles the nation has launched
+  missile_casualties: Int
+
+  # How many missiles the nation has eaten/received
+  missile_kills: Int
+
+  # How many nukes the nation has launched
+  nuke_casualties: Int
+
+  # How many nukes the nation has eaten/received
+  nuke_kills: Int
+
+  # How many spies the nation has lost
+  spy_casualties: Int
+
+  # How many spies the nation has killed
+  spy_kills: Int
+
+  # How many espionage attacks the nation has performed since their last military reset
+  spy_attacks: Int
+
+  # How much money the nation has looted across all wars
+  money_looted: Float
+
+  # How much infrastructure the nation has destroyed
+  total_infrastructure_destroyed: Float
+
+  # How much infrastructure the nation has lost
+  total_infrastructure_lost: Float
+
+  # Whether or not the nation has VIP
+  vip: Boolean
+  commendations: Int
+  denouncements: Int
+
+  # How many offensive wars the nation is actively engaged in
+  offensive_wars_count: Int
+
+  # How many defensive wars the nation is actively engaged in
+  defensive_wars_count: Int
+  economic_policy: EconomicPolicy
+  social_policy: SocialPolicy
+  government_type: GovernmentType
+  credits_redeemed_this_month: Int
+  alliance_join_date: DateTimeAuto
+
+  # The awards which the nation has on their nation page.
+  awards: [Award]
+  bulletins(
+    id: [Int]
+    min_id: Int
+    max_id: Int
+    before: DateTime
+    after: DateTime
+    edited_before: DateTime
+    edited_since: DateTime
+    alliance_id: [Int]
+    orderBy: [NationBulletinsOrderByOrderByClause!]
+  ): [Bulletin]
+  bulletin_replies(
+    id: [Int]
+    min_id: Int
+    max_id: Int
+    bulletin_id: [Int]
+    bulletin_min_id: Int
+    bulletin_max_id: Int
+    before: DateTime
+    after: DateTime
+    edited_before: DateTime
+    edited_since: DateTime
+    orderBy: [NationBulletinRepliesOrderByOrderByClause!]
+  ): [BulletinReply]
+
+  # The total City Discount the nation has left
+  cities_discount: Float
+  military_research: MilitaryResearch
+}
+
+enum AlliancePositionEnum {
+  NOALLIANCE
+  APPLICANT
+  MEMBER
+  OFFICER
+  HEIR
+  LEADER
+}
+
+type AlliancePosition {
+  # ID of the position (0 = default applicant, 232 = default member, 231 = default officer, 230 = default heir, 229 = default leader)
+  id: Int
+
+  # Date and time the position was created
+  date: DateTimeAuto
+
+  # ID of the alliance the position belongs to
+  alliance_id: Int
+
+  # Name of the position
+  name: String
+
+  # The nation ID of the nation that created the position
+  creator_id: Int
+
+  # The nation ID of the nation the last edited the position
+  last_editor_id: Int
+
+  # Date and time the position was last modified
+  date_modified: DateTimeAuto
+
+  # Integer value corresponding to the position's level (0-9; 3 = default member, 5 = default officer, 8 = default heir, 9 = default leader)
+  position_level: Int
+
+  # Whether or not the position is the game's default leader position
+  leader: Boolean
+
+  # Whether or not the position is the game's default heir position
+  heir: Boolean
+
+  # Whether or not the position is the game's default officer position
+  officer: Boolean
+
+  # Whether or not the position is the game's default member position
+  member: Boolean
+
+  # Integer representation of the binary permissions (read right to left in the Alliance Positions table; checked = 1, unchecked = 0.0)
+  permissions: Int
+
+  # Whether or not nations with the position can view the bank
+  view_bank: Boolean
+
+  # Whether or not nations with the position can withdraw from the bank
+  withdraw_bank: Boolean
+
+  # Whether or not nations with the position can edit the permissions of other positions
+  change_permissions: Boolean
+
+  # Whether or not nations with the position can view spy counts of members
+  see_spies: Boolean
+
+  # Whether or not nations with the position can view military reset times of members
+  see_reset_timers: Boolean
+
+  # Whether or not nations with the position can view and edit tax brackets
+  tax_brackets: Boolean
+
+  # Whether or not nations with the position can post announcements
+  post_announcements: Boolean
+
+  # Whether or not nations with the position can manage announcements
+  manage_announcements: Boolean
+
+  # Whether or not nations with the position can accept applicants into the alliance
+  accept_applicants: Boolean
+
+  # Whether or not nations with the position can remove members from the alliance
+  remove_members: Boolean
+
+  # Whether or not nations with the position can edit the alliance's information (description, flag, links, etc.)
+  edit_alliance_info: Boolean
+
+  # Whether or not nations with the position can view, send, cancel, and reject treaties
+  manage_treaties: Boolean
+
+  # Whether or not nations with the position can view, propose, and cancel market sharing agreements
+  manage_market_share: Boolean
+
+  # Whether or not nations with the position can start and end embargoes
+  manage_embargoes: Boolean
+
+  # Whether or not nations with the position can promote themselves to leader
+  promote_self_to_leader: Boolean
+}
+
+# A datetime string with format `YYYY-MM-DD HH:MM:SS`, e.g. `2018-05-23 13:43:32`.
+scalar DateTimeAuto
+
+type Alliance {
+  # The alliance's id
+  id: Int
+
+  # The alliance's name
+  name: String
+
+  # The alliance's acronym
+  acronym: String
+
+  # The alliance's current score
+  score: Float
+
+  # The color bloc the alliance is on
+  color: String
+
+  # The date and time the alliance was founded
+  date: DateTimeAuto
+
+  # List of nations in the alliance (includes applicants)
+  nations(
+    # Selects all nations with an ID greater than or equal to the provided ID
+    min_id: [Int]
+
+    # Selects all nations with an ID less than or equal to the provided ID
+    max_id: [Int]
+
+    # Selects all nations with the position whose ID matches the provided ID
+    alliance_position: [Int]
+
+    # Selects all nations who are on the provided color bloc
+    color: [String]
+
+    # Selects all nations with a score greater than or equal to the provided score
+    min_score: Float
+
+    # Selects all nations with a score less than or equal to the provided score
+    max_score: Float
+
+    # Selects all nations with the specified number of cities
+    cities: [Int]
+
+    # Selects all nations with greater than or equal to the specified number of cities
+    min_cities: Int
+
+    # Selects all nations with less than or equal to the specified number of cities
+    max_cities: Int
+
+    # Selects all nations in the tax bracket whose ID is provided
+    tax_id: [Int]
+
+    # Selects all nations that are (true) or are not (false) in vacation mode
+    vmode: Boolean
+
+    # Limits the number of nations returned
+    limit: Int
+
+    # Clause telling how to order the data returned e.g. nations(orderBy: {column: Int, order: ASC})
+    orderBy: [AllianceNationsOrderByOrderByClause!]
+  ): [Nation!]!
+
+  # The average score of all nations in the alliance (not including applicants)
+  average_score: Float
+
+  # Treaties the alliance has sent and that were approved [deprecated]
+#  sent_treaties: [Treaty!]! @deprecated(reason: "Use treaties instead")
+
+  # Treaties the alliance has received and approved [deprecated]
+#  received_treaties: [Treaty!]! @deprecated(reason: "Use treaties instead")
+
+  # Treaties the alliance has active or pending
+  treaties(
+    # Limits the number of treaties to return
+    limit: Int
+
+    # Clause telling how to order the data returned e.g. treaties(orderBy: {column: Int, order: ASC})
+    orderBy: [AllianceTreatiesOrderByOrderByClause!]
+  ): [Treaty!]!
+
+  # All positions in the alliance
+  alliance_positions: [AlliancePosition!]!
+
+  # Whether or not the alliance is accepting memebers [deprecated]
+#  acceptmem: Boolean @deprecated(reason: "Use accept_members instead.")
+
+  # Whether or not the alliance is accepting memebers
+  accept_members: Boolean
+
+  # Link to the alliance's flag in Politics and War
+  flag: String
+
+  # Link to the alliance's forum [deprecated]
+#  forumlink: String @deprecated(reason: "Use forum_link instead.")
+
+  # Link to the alliance's forum
+  forum_link: String
+
+  # Link to the alliance's Discord server [deprecated]
+#  irclink: String @deprecated(reason: "Use discord_link instead.")
+
+  # Link to the alliance's Discord server
+  discord_link: String
+
+  # Link to the alliance's wiki page
+  wiki_link: String
+
+  # All bank transactions within the last 14 days, this field will not return alliance to alliance transactions unless you are in this alliance and have access to view its bank
+  bankrecs(
+    # Selects all bank records with an ID greater than or equal to the provided ID
+    min_id: Int
+
+    # Selects all bank records with an ID less than or equal to the provided ID
+    max_id: Int
+
+    # Selects all bank records that occurred on or before the specified date
+    before: DateTime
+
+    # Selects all bank records that occurred on or after the specified date
+    after: DateTime
+
+    # Selects all bank records where the sender is a nation (1) or alliance (2)
+    stype: [Int]
+
+    # Selects all bank records where the receiver is a nation (1) or alliance (2)
+    rtype: [Int]
+
+    # Selects all bank records where the sender or receiver is a nation (1) or alliance (2)
+    or_type: [Int]
+
+    # Selects all bank records where the ID of the sender is the provided ID
+    sid: [Int]
+
+    # Selects all bank records where the ID of the receiver is the provided ID
+    rid: [Int]
+
+    # Selects all bank records where the ID of the sender or receiver is the provided ID
+    or_id: [Int]
+
+    # Limits the number of bank records to return
+    limit: Int
+
+    # Clause telling how to order the data returned e.g. bankrecs(orderBy: {column: Int, order: ASC})
+    orderBy: [AllianceBankrecsOrderByOrderByClause!]
+  ): [Bankrec]
+
+  # All tax records within the last 14 days, this field will return null unless you are in this alliance and have access to view its bank
+  taxrecs(
+    # Selects all tax records with an ID greater than or equal to the provided ID
+    min_id: Int
+
+    # Selects all tax records with an ID less than or equal to the provided ID
+    max_id: Int
+
+    # Selects all tax records that occurred on or before the specified date
+    before: DateTime
+
+    # Selects all tax records that occurred on or after the specified date
+    after: DateTime
+
+    # Selects all tax records where the sender is a nation (1) or alliance (2)
+    stype: [Int]
+
+    # Selects all tax records where the receiver is a nation (1) or alliance (2)
+    rtype: [Int]
+
+    # Selects all tax records where the sender or receiver is a nation (1) or alliance (2)
+    or_type: [Int]
+
+    # Selects all tax records where the ID of the sender is the provided ID
+    sid: [Int]
+
+    # Selects all tax records where the ID of the receiver is the provided ID
+    rid: [Int]
+
+    # Selects all tax records where the ID of the sender or receiver is the provided ID
+    or_id: [Int]
+
+    # Limits the number of tax records to return
+    limit: Int
+
+    # Clause telling how to order the data returned e.g. taxrecs(orderBy: {column: Int, order: ASC})
+    orderBy: [AllianceTaxrecsOrderByOrderByClause!]
+  ): [Bankrec]
+
+  # All tax brackets in the alliance, this field will return null unless you are an officer or higher in this alliance
+  tax_brackets(
+    # Selects the tax bracket with the given ID
+    id: [Int]
+
+    # Clause telling how to order the data returned e.g. tax_brackets(orderBy: {column: Int, order: ASC})
+    orderBy: [AllianceTaxBracketsOrderByOrderByClause!]
+  ): [TaxBracket]
+
+  # All wars within the last 14 days
+  wars(
+    # Selects all wars with an ID greater than or equal to the specified ID
+    min_id: Int
+
+    # Selects all wars with an ID less than or equal to the specified ID
+    max_id: Int
+
+    # Selects all wars that started on or before the specified date
+    before: DateTime
+
+    # Selects all wars that started on or after the specified date
+    after: DateTime
+
+    # Selects wars that ended on or before the specified date
+    ended_before: DateTime
+
+    # Selects wars that ended on or after the specified date
+    ended_after: DateTime
+
+    # Selects all wars where the attacker's ID is the specified ID
+    attid: [Int]
+
+    # Selects all wars where the defender's ID is the specified ID
+    defid: [Int]
+
+    # Selects all wars where the attacker's ID OR the defender's ID is the specified ID
+    or_id: [Int]
+
+    # Selects all wars that are active (true) or completed (false)
+    active: Boolean
+
+    # NOTE: When using this, you must pass active as false for INACTIVE to work properly. By default, will return all wars. Pass INACTIVE for inactive wars and ACTIVE for active wars.
+    status: WarActivity = ALL
+
+    # Limits the number of wars to return
+    limit: Int
+
+    # Clause telling how to order the data returned e.g. wars(orderBy: {column: Int, order: ASC})
+    orderBy: [AllianceWarsOrderByOrderByClause!]
+  ): [War!]!
+
+  # The amount of money in the alliance bank, this field will return null unless you are in this alliance and have access to view its bank
+  money: Float
+
+  # The amount of coal in the alliance bank, this field will return null unless you are in this alliance and have access to view its bank
+  coal: Float
+
+  # The amount of oil in the alliance bank, this field will return null unless you are in this alliance and have access to view its bank
+  oil: Float
+
+  # The amount of uranium in the alliance bank, this field will return null unless you are in this alliance and have access to view its bank
+  uranium: Float
+
+  # The amount of iron in the alliance bank, this field will return null unless you are in this alliance and have access to view its bank
+  iron: Float
+
+  # The amount of bauxite in the alliance bank, this field will return null unless you are in this alliance and have access to view its bank
+  bauxite: Float
+
+  # The amount of lead in the alliance bank, this field will return null unless you are in this alliance and have access to view its bank
+  lead: Float
+
+  # The amount of gasoline in the alliance bank, this field will return null unless you are in this alliance and have access to view its bank
+  gasoline: Float
+
+  # The amount of munitions in the alliance bank, this field will return null unless you are in this alliance and have access to view its bank
+  munitions: Float
+
+  # The amount of steel in the alliance bank, this field will return null unless you are in this alliance and have access to view its bank
+  steel: Float
+
+  # The amount of aluminum in the alliance bank, this field will return null unless you are in this alliance and have access to view its bank
+  aluminum: Float
+
+  # The amount of food in the alliance bank, this field will return null unless you are in this alliance and have access to view its bank
+  food: Float
+
+  # The awards which the alliane has on their alliance page.
+  awards: [Award]
+
+  # Ranking of the alliance in the leaderboards
+  rank: Int
+  bulletins(
+    id: [Int]
+    min_id: Int
+    max_id: Int
+    before: DateTime
+    after: DateTime
+    edited_before: DateTime
+    edited_since: DateTime
+    nation_id: [Int]
+    orderBy: [AllianceBulletinsOrderByOrderByClause!]
+  ): [Bulletin]
+}
+
+# Order by clause for Alliance.nations.orderBy.
+input AllianceNationsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: AllianceNationsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Alliance.nations.orderBy.
+enum AllianceNationsOrderByColumn {
+  ID
+  DATE
+  SOLDIERS
+  TANKS
+  AIRCRAFT
+  SHIPS
+  MISSILES
+  NUKES
+  CITIES
+}
+
+# Directions for ordering a list of records.
+enum SortOrder {
+  # Sort records in ascending order.
+  ASC
+
+  # Sort records in descending order.
+  DESC
+}
+
+type Treaty {
+  # ID of the treaty
+  id: Int
+
+  # Date and time the treaty was accepted
+  date: DateTimeAuto
+
+  # What type of treaty it is (MDP, ODP, protectorate etc.)
+  treaty_type: String
+
+  # Link to the treaty if provided
+  treaty_url: String
+
+  # Number of turns the treaty has left until it expires
+  turns_left: Int
+
+  # ID of the alliance sending the treaty
+  alliance1_id: Int
+
+  # Alliance sending the treaty
+  alliance1: Alliance
+
+  # ID of the alliance receiving the treaty
+  alliance2_id: Int
+
+  # Alliance receiving the treaty
+  alliance2: Alliance
+
+  # Whether or not the treaty was approved
+  approved: Boolean
+}
+
+# Order by clause for Alliance.treaties.orderBy.
+input AllianceTreatiesOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: AllianceTreatiesOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Alliance.treaties.orderBy.
+enum AllianceTreatiesOrderByColumn {
+  ID
+  DATE
+  TURNS_LEFT
+}
+
+# A datetime string with format `YYYY-MM-DD HH:MM:SS`, e.g. `2018-05-23 13:43:32`.
+scalar DateTime
+
+# Order by clause for Alliance.bankrecs.orderBy.
+input AllianceBankrecsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: AllianceBankrecsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Alliance.bankrecs.orderBy.
+enum AllianceBankrecsOrderByColumn {
+  ID
+  DATE
+  MONEY
+  COAL
+  OIL
+  URANIUM
+  IRON
+  BAUXITE
+  LEAD
+  GASOLINE
+  MUNITIONS
+  STEEL
+  ALUMINUM
+  FOOD
+}
+
+type Bankrec {
+  # ID of the bank record
+  id: Int
+
+  # Date and time of the record
+  date: DateTimeAuto
+
+  # ID of the sender (nation or alliance) [deprecated]
+#  sid: Int @deprecated(reason: "Use sender_id instead.")
+
+  # ID of the sender (nation or alliance)
+  sender_id: Int
+
+  # Whether the sender is a nation (1) or alliance (2) [deprecated]
+#  stype: Int @deprecated(reason: "Use sender_type instead.")
+
+  # Whether the sender is a nation (1) or alliance (2)
+  sender_type: Int
+
+  # Nation of the sender
+  sender: Nation
+
+  # ID of the receiver (nation or alliance) [deprecated]
+#  rid: Int @deprecated(reason: "Use receiver_id instead.")
+
+  # ID of the receiver (nation or alliance) [deprecated]
+#  recipient_id: Int @deprecated(reason: "Use receiver_id instead.")
+
+  # ID of the receiver (nation or alliance)
+  receiver_id: Int
+
+  # Whether the receiver is a nation (1) or alliance (2) [deprecated]
+#  rtype: Int @deprecated(reason: "Use receiver_type instead.")
+
+  # Whether the receiver is a nation (1) or alliance (2) [deprecated]
+#  recipient_type: Int @deprecated(reason: "Use receiver_type instead.")
+
+  # Whether the receiver is a nation (1) or alliance (2)
+  receiver_type: Int
+
+  # Nation of the receiver
+  receiver: Nation
+
+  # ID of the banker [deprecated]
+#  pid: Int @deprecated(reason: "Use banker_id instead.")
+
+  # ID of the banker
+  banker_id: Int
+
+  # Nation of the banker
+  banker: Nation
+
+  # Note (if any) included with the transaction by the banker
+  note: String
+
+  # Money sent in the transaction
+  money: Float
+
+  # Coal sent in the transaction
+  coal: Float
+
+  # Oil sent in the transaction
+  oil: Float
+
+  # Uranium sent in the transaction
+  uranium: Float
+
+  # Iron sent in the transaction
+  iron: Float
+
+  # Bauxite sent in the transaction
+  bauxite: Float
+
+  # Lead sent in the transaction
+  lead: Float
+
+  # Gasoline sent in the transaction
+  gasoline: Float
+
+  # Munitions sent in the transaction
+  munitions: Float
+
+  # Steel sent in the transaction
+  steel: Float
+
+  # Aluminum sent in the transaction
+  aluminum: Float
+
+  # Food sent in the transaction
+  food: Float
+
+  # Tax ID associated with the bank record (for tax records)
+  tax_id: Int
+}
+
+# Order by clause for Alliance.taxrecs.orderBy.
+input AllianceTaxrecsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: AllianceTaxrecsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Alliance.taxrecs.orderBy.
+enum AllianceTaxrecsOrderByColumn {
+  ID
+  DATE
+  MONEY
+  COAL
+  OIL
+  URANIUM
+  IRON
+  BAUXITE
+  LEAD
+  GASOLINE
+  MUNITIONS
+  STEEL
+  ALUMINUM
+  FOOD
+}
+
+# Order by clause for Alliance.tax_brackets.orderBy.
+input AllianceTaxBracketsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: AllianceTaxBracketsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Alliance.tax_brackets.orderBy.
+enum AllianceTaxBracketsOrderByColumn {
+  ID
+  DATE
+  DATE_MODIFIED
+  TAX_RATE
+  RESOURCE_RAX_RATE
+}
+
+type TaxBracket {
+  # ID of the tax bracket
+  id: Int
+
+  # ID of the alliance the tax bracket belongs to
+  alliance_id: Int
+
+  # Alliance the tax bracket belongs to
+  alliance: Alliance
+
+  # The date and time the tax bracket was created
+  date: DateTimeAuto
+
+  # The date and time the tax bracket was last modified
+  date_modified: DateTimeAuto
+
+  # ID of the nation that last modified the tax bracket
+  last_modifier_id: Int
+
+  # Nation that last modified the tax bracket
+  last_modifier: Nation
+
+  # Rate at which money is taxed on the tax bracket
+  tax_rate: Int
+
+  # Rate at which resources are taxed on the tax bracket
+  resource_tax_rate: Int
+
+  # Name of the tax bracket
+  bracket_name: String
+}
+
+enum WarActivity {
+  ALL
+  ACTIVE
+  INACTIVE
+}
+
+# Order by clause for Alliance.wars.orderBy.
+input AllianceWarsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: AllianceWarsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Alliance.wars.orderBy.
+enum AllianceWarsOrderByColumn {
+  ID
+  DATE
+}
+
+type War {
+  # ID of the war
+  id: Int
+
+  # Date and time the war was declared
+  date: DateTimeAuto
+
+  # When the war was ended through victory, peace, or expiration
+  end_date: DateTimeAuto
+
+  # Reason given for the war
+  reason: String
+
+  # Enumeration representing the war's type ('ORDINARY', 'ATTRITION', or 'RAID')
+  war_type: WarType
+
+  # ID of the nation that currently has ground control (0 if neither) [deprecated]
+#  groundcontrol: Int @deprecated(reason: "Use ground_control instead.")
+
+  # ID of the nation that currently has ground control (0 if neither)
+  ground_control: Int
+
+  # ID of the nation that currently has air superiority (0 if neither) [deprecated]
+#  airsuperiority: Int @deprecated(reason: "Use air_superiority instead.")
+
+  # ID of the nation that currently has air superiority (0 if neither)
+  air_superiority: Int
+
+  # ID of the nation that currently has the other blockaded (0 if neither) [deprecated]
+#  navalblockade: Int @deprecated(reason: "Use naval_blockade instead.")
+
+  # ID of the nation that currently has the other blockaded (0 if neither)
+  naval_blockade: Int
+
+  # ID of the nation that won the war (0 if neither due to peace or expiration) [deprecated]
+#  winner: Int @deprecated(reason: "Use winner_id instead.")
+
+  # ID of the nation that won the war (0 if neither due to peace or expiration)
+  winner_id: Int
+
+  # List of attacks performed
+  attacks(
+    min_id: Int
+    max_id: Int
+    war_id: [Int]
+    before: DateTime
+    after: DateTime
+    orderBy: [WarAttacksOrderByOrderByClause!]
+  ): [WarAttack!]!
+
+  # How many turns are left until the war expires [deprecated]
+#  turnsleft: Int @deprecated(reason: "Use turns_left instead.")
+
+  # How many turns are left until the war expires
+  turns_left: Int
+
+  # ID of the attacking nation [deprecated]
+#  attid: Int @deprecated(reason: "Use att_id instead.")
+
+  # ID of the attacking nation
+  att_id: Int
+
+  # ID of the alliance the attacking nation belongs to
+  att_alliance_id: Int
+
+  # Enumeration representing the position of the attacker in their alliance ('NOALLIANCE', 'APPLICANT', 'MEMBER', 'OFFICER', 'HEIR', or 'LEADER')
+  att_alliance_position: AlliancePositionEnum
+
+  # Attacking nation
+  attacker: Nation
+
+  # ID of the defending nation [deprecated]
+#  defid: Int @deprecated(reason: "Use def_id instead.")
+
+  # ID of the defending nation
+  def_id: Int
+
+  # ID of the alliance the defending nation belongs to
+  def_alliance_id: Int
+
+  # Enumeration representing the position of the defender in their alliance ('NOALLIANCE', 'APPLICANT', 'MEMBER', 'OFFICER', 'HEIR', or 'LEADER')
+  def_alliance_position: AlliancePositionEnum
+
+  # Defending nation
+  defender: Nation
+
+  # How many Military Action Points (MAPs) the attacker has [deprecated]
+#  attpoints: Int @deprecated(reason: "Use att_points instead.")
+
+  # How many Military Action Points (MAPs) the attacker has
+  att_points: Int
+
+  # How many Military Action Points (MAPs) the defender has [deprecated]
+#  defpoints: Int @deprecated(reason: "Use def_points instead.")
+
+  # How many Military Action Points (MAPs) the defender has
+  def_points: Int
+
+  # Whether or not the attacker is offering peace [deprecated]
+#  attpeace: Boolean @deprecated(reason: "Use att_peace instead.")
+
+  # Whether or not the attacker is offering peace
+  att_peace: Boolean
+
+  # Whether or not the defender is offering peace [deprecated]
+#  defpeace: Boolean @deprecated(reason: "Use def_peace instead.")
+
+  # Whether or not the defender is offering peace
+  def_peace: Boolean
+
+  # Remaining attacker resistance
+  att_resistance: Int
+
+  # Remaining defender resistance
+  def_resistance: Int
+
+  # Whether or not the attacker has fortified
+  att_fortify: Boolean
+
+  # Whether or not the defender has fortified
+  def_fortify: Boolean
+
+  # How much gasoline the attacker has used
+  att_gas_used: Float
+
+  # How much gasoline the defender has used
+  def_gas_used: Float
+
+  # How many munitions the attacker has used
+  att_mun_used: Float
+
+  # How many munitions the defender has used
+  def_mun_used: Float
+
+  # How much aluminum the attacker has used
+  att_alum_used: Float
+
+  # How much aluminum the defender has used
+  def_alum_used: Float
+
+  # How much steel the attacker has used
+  att_steel_used: Float
+
+  # How much steel the defender has used
+  def_steel_used: Float
+
+  # How much infrastructure the attacker has destroyed
+  att_infra_destroyed: Float
+
+  # How much infrastructure the defender has destroyed
+  def_infra_destroyed: Float
+
+  # How much money the attacker has looted
+  att_money_looted: Float
+
+  # How much money the defender has looted
+  def_money_looted: Float
+
+  # How many soldiers the defender has lost
+  def_soldiers_lost: Int
+
+  # How many soldiers the attacker has lost
+  att_soldiers_lost: Int
+
+  # How many tanks the defender has lost
+  def_tanks_lost: Int
+
+  # How many tanks the attacker has lost
+  att_tanks_lost: Int
+
+  # How many aircraft the defender has lost
+  def_aircraft_lost: Int
+
+  # How many aircraft the attacker has lost
+  att_aircraft_lost: Int
+
+  # How many ships the defender has lost
+  def_ships_lost: Int
+
+  # How many ships the attacker has lost
+  att_ships_lost: Int
+
+  # How many missiles the attacker has launched
+  att_missiles_used: Int
+
+  # How many missiles the defender has launched
+  def_missiles_used: Int
+
+  # How many nukes the attacker has launched
+  att_nukes_used: Int
+
+  # How many nukes the defender has launched
+  def_nukes_used: Int
+
+  # The value of infrastructure destroyed by the attacker
+  att_infra_destroyed_value: Float
+
+  # The value of infrastructure destroyed by the defender
+  def_infra_destroyed_value: Float
+
+  # How many soldiers the attacker has killed [deprecated]
+#  att_soldiers_killed: Int @deprecated(reason: "Use def_soldiers_lost instead")
+
+  # How many soldiers the defender has killed [deprecated]
+#  def_soldiers_killed: Int @deprecated(reason: "Use att_soldiers_lost instead")
+
+  # How many tanks the attacker has killed [deprecated]
+#  att_tanks_killed: Int @deprecated(reason: "Use def_tanks_lost instead")
+
+  # How many tanks the defender has killed [deprecated]
+#  def_tanks_killed: Int @deprecated(reason: "Use att_tanks_lost instead")
+
+  # How many aircraft the attacker has killed [deprecated]
+#  att_aircraft_killed: Int @deprecated(reason: "Use def_aircraft_lost instead")
+
+  # How many aircraft the defender has killed [deprecated]
+#  def_aircraft_killed: Int @deprecated(reason: "Use att_aircraft_lost instead")
+
+  # How many ships the attacker has killed [deprecated]
+#  att_ships_killed: Int @deprecated(reason: "Use def_ships_lost instead")
+
+  # How many ships the defender has killed [deprecated]
+#  def_ships_killed: Int @deprecated(reason: "Use att_ships_lost instead")
+}
+
+enum WarType {
+  ORDINARY
+  ATTRITION
+  RAID
+}
+
+# Order by clause for War.attacks.orderBy.
+input WarAttacksOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: WarAttacksOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for War.attacks.orderBy.
+enum WarAttacksOrderByColumn {
+  ID
+  DATE
+}
+
+type WarAttack {
+  # ID of the attack
+  id: Int
+
+  # Date and time of the attack
+  date: DateTimeAuto
+
+  # ID of the nation performing the attack [deprecated]
+#  attid: Int @deprecated(reason: "Use att_id instead.")
+
+  # ID of the nation performing the attack
+  att_id: Int
+
+  # Nation that performed the attack
+  attacker: Nation
+
+  # ID of the nation the attack was against [deprecated]
+#  defid: Int @deprecated(reason: "Use def_id instead.")
+
+  # ID of the nation the attack was against
+  def_id: Int
+
+  # Nation the attack was against
+  defender: Nation
+
+  # The type of attack performed, can be decyphered here: https://politicsandwar.fandom.com/wiki/War_Attacks_API
+  type: AttackType
+
+  # ID of the war the attack was performed in [deprecated]
+#  warid: Int @deprecated(reason: "Use war_id instead.")
+
+  # ID of the war the attack was performed in
+  war_id: Int
+
+  # War the attack was performed in
+  war: War
+
+  # ID of the nation that won the attack (defender if utter failure, attacker otherwise)
+  victor: Int
+
+  # Number representing the level of success of the attack (0 - utter failure, 1 - pyrrhic victory, 2 - moderate success, 3 - immense triumph)
+  success: Int
+
+  # Number of main units lost by the attacker (soldiers if ground attack, planes if airstrike, ships if naval attack)
+#  attcas1: Int @deprecated(reason: "Broken out into separate fields")
+
+  # Number of main units lost by the defender (soldiers if ground attack, planes if airstrike, ships if naval attack)
+#  defcas1: Int @deprecated(reason: "Broken out into separate fields")
+
+  # Number of secondary units lost by the attacker (only used for tanks in ground attacks)
+#  attcas2: Int @deprecated(reason: "Broken out into separate fields")
+
+  # Number of secondary units lost by the defender (only used for tanks in ground attacks or units targeted by an airstrike)
+#  defcas2: Int @deprecated(reason: "Broken out into separate fields")
+
+  # ID of the city the attack affected [deprecated]
+#  cityid: Int @deprecated(reason: "Use city_id instead.")
+
+  # ID of the city the attack affected
+  city_id: Int
+
+  # Infrastructure destroyed in the affected city [deprecated]
+#  infradestroyed: Float @deprecated(reason: "Use infra_destroyed instead.")
+
+  # Infrastructure destroyed in the affected city
+  infra_destroyed: Float
+
+  # Number of improvements destroyed in the attack (0-2) [deprecated]
+#  improvementslost: Int @deprecated(reason: "Use improvements_lost instead.")
+
+  # Number of improvements destroyed in the attack (0-2)
+#  improvements_lost: Int @deprecated(reason: "Use improvements_destroyed instead")
+
+  # Money stolen in the attack [deprecated]
+#  moneystolen: Float @deprecated(reason: "Use money_stolen instead.")
+
+  # Money stolen in the attack (returns 0 if attack type is VICTORY or ALLIANCELOOT; use money_looted for those)
+  money_stolen: Float
+
+  # String containing the entire text stating what the winner looted (note: contains '' and '
+  # ' for HTML formatting)
+  loot_info: String @deprecated(reason: "No longer in use")
+
+  # Resistance eliminated by the attack
+#  resistance_eliminated: Int @deprecated(reason: "Use resistance_lost instead.")
+
+  # The amount of resistance which was lost in the attack
+  resistance_lost: Int
+
+  # How much infrastructure was in the city prior to the attack
+  city_infra_before: Float
+
+  # Value of infrastructure destroyed in the attack
+  infra_destroyed_value: Float
+
+  # How many munitions the attacker used in the attack
+  att_mun_used: Float
+
+  # How many munitions the defender used in the attack
+  def_mun_used: Float
+
+  # How much gasoline the attacker used in the attack
+  att_gas_used: Float
+
+  # How much gasoline the defender used in the attack
+  def_gas_used: Float
+
+  # How many aircraft the attacker destroyed in the attack using tanks (only applies to ground attacks when the attacker has ground control, otherwise 0)
+#  aircraft_killed_by_tanks: Int @deprecated(reason: "No longer recorded separately")
+
+  # The amount of money destroyed in the attack
+  money_destroyed: Float
+
+  # How much aluminum was recovered via the military salvage project
+  military_salvage_aluminum: Float
+
+  # How much steel was recovered via the military salvage project
+  military_salvage_steel: Float
+
+  # How many soldiers were sent in the attack
+  att_soldiers_used: Int
+
+  # How many soldiers the attacker lost in the attack
+  att_soldiers_lost: Int
+
+  # How many soldiers were defending in the attack
+  def_soldiers_used: Int
+
+  # How many soldiers the defender lost in the attack
+  def_soldiers_lost: Int
+
+  # How many tanks were sent in the attack
+  att_tanks_used: Int
+
+  # How many tanks the attacker lost in the attack
+  att_tanks_lost: Int
+
+  # How many tanks were defending in the attack
+  def_tanks_used: Int
+
+  # How many tanks the defender lost in the attack
+  def_tanks_lost: Int
+
+  # How many aircraft were sent in the attack
+  att_aircraft_used: Int
+
+  # How many aircraft the attacker lost in the attack
+  att_aircraft_lost: Int
+
+  # How many aircraft were defending in the attack
+  def_aircraft_used: Int
+
+  # How many aircraft the defender lost in the attack
+  def_aircraft_lost: Int
+
+  # How many ships were sent on the attack
+  att_ships_used: Int
+
+  # How many ships the attacker lost in the attack
+  att_ships_lost: Int
+
+  # How many ships were defending in the attack
+  def_ships_used: Int
+
+  # How many ships the defender lost in the attack
+  def_ships_lost: Int
+
+  # How many missiles the attacker lost in the attack
+  att_missiles_lost: Int
+
+  # How many missiles the defender lost in the attack
+  def_missiles_lost: Int
+
+  # How many missiles the attacker lost in the attack
+  att_nukes_lost: Int
+
+  # How many nukes the defender lost in the attack
+  def_nukes_lost: Int
+
+  # A string of text saying which improvements were destroyed.
+  improvements_destroyed: [String]
+
+  # Percentage of the total infrastructure that was destroyed in the city
+  infra_destroyed_percentage: Float
+
+  # Infrastructure of the city before the attack
+  cities_infra_before: [CityInfraDamage]
+
+  # Money looted from the defender or their alliance bank (returns 0 unless type is VICTORY or ALLIANCELOOT)
+  money_looted: Float
+
+  # Total coal looted in the attack
+  coal_looted: Int
+
+  # Total oil looted in the attack
+  oil_looted: Int
+
+  # Total uranium looted in the attack
+  uranium_looted: Int
+
+  # Total iron looted in the attack
+  iron_looted: Int
+
+  # Total bauxite looted in the attack
+  bauxite_looted: Int
+
+  # Total lead looted in the attack
+  lead_looted: Int
+
+  # Total gasoline looted in the attack
+  gasoline_looted: Int
+
+  # Total munitions looted in the attack
+  munitions_looted: Int
+
+  # Total steeel looted in the attack
+  steel_looted: Int
+
+  # Total aluminum looted in the attack
+  aluminum_looted: Int
+
+  # Total food looted in the attack
+  food_looted: Int
+}
+
+enum AttackType {
+  AIRVINFRA
+  AIRVSOLDIERS
+  AIRVTANKS
+  AIRVMONEY
+  AIRVSHIPS
+  AIRVAIR
+  GROUND
+  MISSILE
+  MISSILEFAIL
+  NUKE
+  NUKEFAIL
+  NAVAL
+  NAVALVSHIPS
+  NAVALVINFRA
+  NAVALVGROUND
+  NAVALVAIR
+  FORTIFY
+  PEACE
+  VICTORY
+  ALLIANCELOOT
+}
+
+type CityInfraDamage {
+  # ID of the city that was damaged
+  id: Int
+
+  # Infrastructure of the city before it was attacked
+  infrastructure: Float
+}
+
+type Award {
+  name: String
+  image: String
+}
+
+# Order by clause for Alliance.bulletins.orderBy.
+input AllianceBulletinsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: AllianceBulletinsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Alliance.bulletins.orderBy.
+enum AllianceBulletinsOrderByColumn {
+  ID
+  DATE
+  LAST_EDIT_DATE
+  ACCOUNT_ID
+}
+
+type Bulletin {
+  # ID of the bulletin
+  id: Int!
+
+  # ID of the nation that posted the bulletin
+  nation_id: Int!
+
+  # Nation that posted the bulletin
+  nation: Nation
+
+  # ID of the alliance the bulletin was posted to, null if type is 1
+  alliance_id: Int
+
+  # Alliance the bulletin was posted to, null if type is 1
+  alliance: Alliance
+
+  # Type of bulletin: nation (1) or alliance (2)
+  type: Int!
+
+  # Headline/title of the bulletin
+  headline: String!
+
+  # Excerpt of the bulletin that is shown
+  excerpt: String
+
+  # Banner image of the bulletin
+  image: String
+
+  # Content of the bulletin
+  body: String
+
+  # Who the bulletin was written by, may be different from the nation's leader name
+  author: String
+
+  # Whether or not the bulletin is pinned
+  pinned: Boolean!
+
+  # How many likes the bulletin has
+  like_count: Int
+
+  # Whether or not the bulletin has replies enabled
+  replies_enabled: Boolean!
+
+  # Whether or not the bulletin was locked by moderators
+  locked: Boolean!
+
+  # When the bulletin was posted
+  date: DateTimeAuto!
+
+  # When the bulletin was last updated
+  edit_date: DateTimeAuto!
+
+  # Whether or not the bulletin has been archived by the poster
+  archived: Boolean!
+
+  # The bulletins replies
+  replies(
+    # Limits number of fetched items. Maximum allowed value: 500.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): BulletinReplyPaginator
+}
+
+# A paginated list of BulletinReply items.
+type BulletinReplyPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of BulletinReply items.
+  data: [BulletinReply!]!
+}
+
+# Information about pagination using a fully featured paginator.
+type PaginatorInfo {
+  # Number of items in the current page.
+  count: Int!
+
+  # Index of the current page.
+  currentPage: Int!
+
+  # Index of the first item in the current page.
+  firstItem: Int
+
+  # Are there more pages after this one?
+  hasMorePages: Boolean!
+
+  # Index of the last item in the current page.
+  lastItem: Int
+
+  # Index of the last available page.
+  lastPage: Int!
+
+  # Number of items per page.
+  perPage: Int!
+
+  # Number of total available items.
+  total: Int!
+}
+
+type BulletinReply {
+  # ID of the reply
+  id: Int!
+
+  # Date that the reply was posted
+  date: DateTimeAuto!
+
+  # ID of the nation posting the reply
+  nation_id: Int!
+
+  # Nation posting the reply
+  nation: Nation
+
+  # ID of the bulleting replied to
+  bulletin_id: Int!
+
+  # Bulletin that was replied to
+  bulletin: Bulletin
+
+  # Content of the reply
+  message: String!
+
+  # Date that the reply was last edited
+  edit_date: DateTimeAuto
+
+  # Name of the nation posting the reply
+  nation_name: String!
+
+  # Name of the leader posting the reply
+  leader_name: String!
+
+  # Number of likes the reply has received
+  like_count: Int
+}
+
+enum WarPolicy {
+  ATTRITION
+  TURTLE
+  BLITZKRIEG
+  FORTRESS
+  MONEYBAGS
+  PIRATE
+  TACTICIAN
+  GUARDIAN
+  COVERT
+  ARCANE
+}
+
+enum DomesticPolicy {
+  MANIFEST_DESTINY
+  OPEN_MARKETS
+  TECHNOLOGICAL_ADVANCEMENT
+  IMPERIALISM
+  URBANIZATION
+  RAPID_EXPANSION
+}
+
+type City {
+  # ID of the city
+  id: Int
+
+  # ID of the nation the city is in
+  nation_id: Int
+
+  # Nation the city is in
+  nation: Nation
+
+  # Name of the city
+  name: String
+
+  # Date the city was founded
+  date: Date
+
+  # Current infrastructure level in the city
+  infrastructure: Float
+
+  # Current land level in the city
+  land: Float
+
+  # Whether or not the city is powered
+  powered: Boolean
+
+  # Number of oil power plants [deprecated]
+#  oilpower: Int @deprecated(reason: "Use oil_power instead")
+
+  # Number of oil power plants
+  oil_power: Int
+
+  # Number of wind power plants [deprecated]
+#  windpower: Int @deprecated(reason: "Use wind_power instead")
+
+  # Number of wind power plants
+  wind_power: Int
+
+  # Number of coal power plants [deprecated]
+#  coalpower: Int @deprecated(reason: "Use coal_power instead")
+
+  # Number of coal power plants
+  coal_power: Int
+
+  # Number of nuclear power plants [deprecated]
+#  nuclearpower: Int @deprecated(reason: "Use nuclear_power instead")
+
+  # Number of nuclear power plants
+  nuclear_power: Int
+
+  # Number of coal mines [deprecated]
+#  coalmine: Int @deprecated(reason: "Use coal_mine instead")
+
+  # Number of coal mines
+  coal_mine: Int
+
+  # Number of oil wells [deprecated]
+#  oilwell: Int @deprecated(reason: "Use oil_well instead")
+
+  # Number of oil wells
+  oil_well: Int
+
+  # Number of uranium mines [deprecated]
+#  uramine: Int @deprecated(reason: "Use uranium_mine instead")
+
+  # Number of uranium mines
+  uranium_mine: Int
+
+  # Number of barracks
+  barracks: Int
+
+  # Number of farms
+  farm: Int
+
+  # Number of police stations [deprecated]
+#  policestation: Int @deprecated(reason: "Use police_station instead")
+
+  # Number of police stations
+  police_station: Int
+
+  # Number of hospitals
+  hospital: Int
+
+  # Number of recycling centers [deprecated]
+#  recyclingcenter: Int @deprecated(reason: "Use recycling_center instead")
+
+  # Number of recycling centers
+  recycling_center: Int
+
+  # Number of subways
+  subway: Int
+
+  # Number of supermarkets
+  supermarket: Int
+
+  # Number of banks
+  bank: Int
+
+  # Number of shopping malls [deprecated]
+#  mall: Int @deprecated(reason: "Use shopping_mall instead")
+
+  # Number of shopping malls
+  shopping_mall: Int
+
+  # Number of stadiums
+  stadium: Int
+
+  # Number of lead mines [deprecated]
+#  leadmine: Int @deprecated(reason: "Use lead_mine instead")
+
+  # Number of lead mines
+  lead_mine: Int
+
+  # Number of iron mines [deprecated]
+#  ironmine: Int @deprecated(reason: "Use iron_mine instead")
+
+  # Number of iron mines
+  iron_mine: Int
+
+  # Number of bauxite mines [deprecated]
+#  bauxitemine: Int @deprecated(reason: "Use bauxite_mine instead")
+
+  # Number of bauxite mines
+  bauxite_mine: Int
+
+  # Number of oil refineries [deprecated]
+#  gasrefinery: Int @deprecated(reason: "Use oil_refinery instead")
+
+  # Number of oil refineries
+  oil_refinery: Int
+
+  # Number of aluminum refineries [deprecated]
+#  aluminumrefinery: Int @deprecated(reason: "Use aluminum_refinery instead")
+
+  # Number of aluminum refineries
+  aluminum_refinery: Int
+
+  # Number of steel mills [deprecated]
+#  steelmill: Int @deprecated(reason: "Use steel_mill instead")
+
+  # Number of steel mills
+  steel_mill: Int
+
+  # Number of munitions factories [deprecated]
+#  munitionsfactory: Int @deprecated(reason: "Use munitions_factory instead")
+
+  # Number of munitions factories
+  munitions_factory: Int
+
+  # Number of (tank) factories
+  factory: Int
+
+  # Number of hangars [deprecated]
+#  airforcebase: Int @deprecated(reason: "Use hangar instead.")
+
+  # Number of hangars
+  hangar: Int
+
+  # Number of drydocks
+  drydock: Int
+
+  # Date the city was last nuked [deprecated]
+#  nukedate: Date @deprecated(reason: "Use nuke_date instead.")
+
+  # Date the city was last nuked
+  nuke_date: Date
+}
+
+# A date string with format `YYYY-MM-DD`, e.g. `2011-05-23`.
+scalar Date
+
+type Treasure {
+  # Name of the treasure
+  name: String
+
+  # What color bloc the treasure spawns on
+  color: String
+
+  # What continent the treasure spawns on
+  continent: String
+
+  # Bonus provided by the treasure to the nation holding it
+  bonus: Int
+
+  # The date the treasure spawned in [deprecated]
+#  spawndate: Date @deprecated(reason: "Use spawn_date instead.")
+
+  # The date the treasure spawned in
+  spawn_date: Date
+
+  # ID of the nation currently holding the treasure
+  nation_id: Int
+
+  # Nation currently holding the treasure
+  nation: Nation
+}
+
+# Order by clause for Nation.wars.orderBy.
+input NationWarsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: NationWarsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Nation.wars.orderBy.
+enum NationWarsOrderByColumn {
+  ID
+  DATE
+}
+
+# Order by clause for Nation.bankrecs.orderBy.
+input NationBankrecsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: NationBankrecsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Nation.bankrecs.orderBy.
+enum NationBankrecsOrderByColumn {
+  ID
+  DATE
+  MONEY
+  COAL
+  OIL
+  URANIUM
+  IRON
+  BAUXITE
+  LEAD
+  GASOLINE
+  MUNITIONS
+  STEEL
+  ALUMINUM
+  FOOD
+}
+
+enum TradeType {
+  GLOBAL
+  PERSONAL
+  ALLIANCE
+}
+
+# Order by clause for Nation.trades.orderBy.
+input NationTradesOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: NationTradesOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Nation.trades.orderBy.
+enum NationTradesOrderByColumn {
+  ID
+  DATE
+  DATE_ACCEPTED
+  OFFER_RESOURCE
+  OFFER_AMOUNT
+  RETURN_AMOUNT
+}
+
+type Trade {
+  # ID of the trade
+  id: Int
+
+  # An enumeration representing the type of trade (returns 'GLOBAL', 'PERSONAL', or 'ALLIANCE')
+  type: TradeType
+
+  # Date and time the trade was posted
+  date: DateTimeAuto
+
+  # ID of the nation selling [deprecated]
+#  sid: Int @deprecated(reason: "Use sender_id instead.")
+
+  # ID of the nation selling
+  sender_id: Int
+
+  # ID of the nation buying [deprecated]
+#  rid: Int @deprecated(reason: "Use receiver_id instead.")
+
+  # ID of the nation buying [deprecated]
+#  recipient_id: Int @deprecated(reason: "Use receiver_id instead.")
+
+  # ID of the nation buying
+  receiver_id: Int
+
+  # Nation of the seller
+  sender: Nation
+
+  # Nation of the buyer
+  receiver: Nation
+
+  # Which resource the offer is for
+  offer_resource: String
+
+  # Amount of the resource being sold/bought
+  offer_amount: Int
+
+  # Whether the offer is a buy offer or a sell offer ('buy' or 'sell')
+  buy_or_sell: String
+
+  # Price per unit (PPU) that the resource is being sold/bought for [deprecated]
+#  total: Int @deprecated(reason: "Use price instead")
+
+  # Price per unit (PPU) that the resource is being sold/bought for
+  price: Int
+
+  # Whether or not the offer has been accepted
+  accepted: Boolean
+
+  # Date and time the offer was accepted
+  date_accepted: DateTimeAuto
+
+  # ID of the trade before it was accepted
+  original_trade_id: Int
+}
+
+# Order by clause for Nation.taxrecs.orderBy.
+input NationTaxrecsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: NationTaxrecsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Nation.taxrecs.orderBy.
+enum NationTaxrecsOrderByColumn {
+  ID
+  DATE
+  MONEY
+  COAL
+  OIL
+  URANIUM
+  IRON
+  BAUXITE
+  LEAD
+  GASOLINE
+  MUNITIONS
+  STEEL
+  ALUMINUM
+  FOOD
+}
+
+type Bounty {
+  # ID of the bounty
+  id: Int
+
+  # Date and time the bounty was posted
+  date: DateTimeAuto
+
+  # ID of the nation the bounty is on
+  nation_id: Int
+
+  # Nation the bounty is on
+  nation: Nation
+
+  # Amount of the bounty
+  amount: Int
+
+  # An enumeration representing the bounty's type ('ORDINARY', 'ATTRITION', 'RAID', or 'NUCLEAR')
+  type: BountyType
+}
+
+enum BountyType {
+  ORDINARY
+  ATTRITION
+  RAID
+  NUCLEAR
+}
+
+type BBTeam {
+  # ID of the team
+  id: Int
+
+  # Date and time the team was founded
+  date: DateTimeAuto
+
+  # ID of the nation the team belongs to
+  nation_id: Int
+
+  # Nation the team belongs to
+  nation: Nation
+
+  # Name of the team
+  name: String
+
+  # Link to the team's logo
+  logo: String
+
+  # Link to the team's home jersey
+  home_jersey: String
+
+  # Link to the team's away jersey
+  away_jersey: String
+
+  # Name of the home stadium of the team
+  stadium: String
+
+  # Quality level of the team's home stadium
+  quality: Int
+
+  # Seating level of the team's home stadium
+  seating: Int
+
+  # Average overall rating of the players on the team
+  rating: Float
+
+  # How many games the team has won
+  wins: Int
+
+  # How many games the team has lost
+  glosses: Int
+
+  # How many runs the team has scored
+  runs: Int
+
+  # How many home runs the team has hit
+  homers: Int
+
+  # How many times the team made opponents strike out
+  strikeouts: Int
+
+  # Number of games the team has played
+  games_played: Int
+
+  # List of games the team has played
+  games(
+    # Selects all games where the game ID is greater than or equal to the provided ID
+    min_id: Int
+
+    # Selects all games where the game ID is less than or equal to the provided ID
+    max_id: Int
+
+    # Selects all games played on or before the specified date
+    before: DateTime
+
+    # Selects all games played on or after the specified date
+    after: DateTime
+
+    # Limits the number of entries to return
+    limit: Int
+
+    # Clause telling how to order the data returned e.g. games(orderBy: {column: Int, order: ASC})
+    orderBy: [BBTeamGamesOrderByOrderByClause!]
+  ): [BBGame]
+
+  # List of players on the team
+  players: [BBPlayer]
+}
+
+# Order by clause for BBTeam.games.orderBy.
+input BBTeamGamesOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: BBTeamGamesOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for BBTeam.games.orderBy.
+enum BBTeamGamesOrderByColumn {
+  ID
+  DATE
+  HTSCORE
+  ATSCORE
+}
+
+type BBGame {
+  # ID of the baseball game
+  id: Int
+
+  # Date and time that the game was played
+  date: DateTimeAuto
+
+  # ID of the home team
+  home_id: Int
+
+  # ID of the away team
+  away_id: Int
+
+  # The home team
+  home_team: BBTeam
+
+  # The away team
+  away_team: BBTeam
+
+  # ID of the nation hosting the game
+  home_nation_id: Int
+
+  # ID of the nation visiting
+  away_nation_id: Int
+
+  # Nation hosting the game
+  home_nation: Nation
+
+  # Nation visiting
+  away_nation: Nation
+
+  # Name of the stadium the game was played in (the home stadium)
+  stadium_name: String
+
+  # Number of runs scored by the home team
+  home_score: Int
+
+  # Number of runs scored by the away team
+  away_score: Int
+
+  # Seems to be just a string that states 'Game simulated.'
+  sim_text: String
+
+  # Entire HTML table of the game's results
+  highlights: String
+
+  # Revenue made by the home team from their stadium
+  home_revenue: Float
+
+  # How much the winning team earned
+  spoils: Float
+
+  # Whether the game is open (1) or not (0)
+  open: Int
+
+  # How much was wagered on the game
+  wager: Float
+}
+
+type BBPlayer {
+  # ID of the baseball player
+  id: Int
+
+  # Currently the date and time of the team's founding, possibly meant to be the date and time the player was added to the team
+  date: DateTimeAuto
+
+  # ID of the nation they belong to
+  nation_id: Int
+
+  # Nation they belong to
+  nation: Nation
+
+  # ID of the team they play for
+  team_id: Int
+
+  # The team they play for
+  team: BBTeam
+
+  # The name of the player
+  name: String
+
+  # The age of the player
+  age: Int
+
+  # The players position
+  position: String
+
+  # The player's pictching ability
+  pitching: Float
+
+  # The player's batting ability
+  batting: Float
+
+  # The player's speed
+  speed: Float
+
+  # The player's awareness
+  awareness: Float
+
+  # The player's overall performance (average of the player's three relevant skills)
+  overall: Float
+
+  # Days until the player's next birthday (note: 1 turn = 5 days for baseball players)
+  birthday: Int
+}
+
+enum EconomicPolicy {
+  EXTREME_LEFT
+  FAR_LEFT
+  LEFT
+  MODERATE
+  RIGHT
+  FAR_RIGHT
+  EXTREME_RIGHT
+}
+
+enum SocialPolicy {
+  ANARCHIST
+  LIBERTARIAN
+  LIBERAL
+  MODERATE
+  CONSERVATIVE
+  AUTHORITARIAN
+  FASCIST
+}
+
+enum GovernmentType {
+  ABSOLUTE_MONARCHY
+  ANARCHY
+  ARISTOCRACY
+  BANANA_REPUBLIC
+  COMMUNIST_DEMOCRACY
+  COMMUNIST_DICTATORSHIP
+  COMMUNIST_MONARCHY
+  COMMUNIST_REPUBLIC
+  COMMUNIST_THEOCRACY
+  CONSTITUTIONAL_MONARCHY
+  CONSTITUTIONAL_REPUBLIC
+  DEMARCHY
+  DEMOCRACY
+  DEMOCRATIC_REPUBLIC
+  DICTATORSHIP
+  FEDERAL_REPUBLIC
+  MONARCHY
+  NOOCRACY
+  OLIGARCHY
+  PARLIAMENTARY_DEMOCRACY
+  PARLIAMENTARY_REPUBLIC
+  PEOPLES_REPUBLIC
+  REPUBLIC
+  SOCIAL_DEMOCRACY
+  SOCIALIST_DICTATORSHIP
+  SOCIALIST_REPUBLIC
+  SOCIALIST_THEOCRACY
+  STRATOCRACY
+  TECHNOCRACY
+  THEOCRACY
+  THEOCRATIC_DEMOCRACY
+  THEOCRATIC_DICTATORSHIP
+  THEOCRATIC_REPUBLIC
+  MINDHIVE
+}
+
+# Order by clause for Nation.bulletins.orderBy.
+input NationBulletinsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: NationBulletinsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Nation.bulletins.orderBy.
+enum NationBulletinsOrderByColumn {
+  ID
+  DATE
+  LAST_EDIT_DATE
+}
+
+# Order by clause for Nation.bulletin_replies.orderBy.
+input NationBulletinRepliesOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: NationBulletinRepliesOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Nation.bulletin_replies.orderBy.
+enum NationBulletinRepliesOrderByColumn {
+  ID
+  DATE
+  EDIT_DATE
+  BULLETIN_ID
+}
+
+type MilitaryResearch {
+  ground_capacity: Int
+  ground_cost: Int
+  air_capacity: Int
+  air_cost: Int
+  naval_capacity: Int
+  naval_cost: Int
+}
+
+type ApiKeyPermissions {
+  nation_view_resources: Boolean
+  nation_deposit_to_bank: Boolean
+  nation_military_buys: Boolean
+  nation_see_reset_timers: Boolean
+  nation_see_spies: Boolean
+  nation_view_trades: Boolean
+  nation_accept_trade: Boolean
+  nation_send_message: Boolean
+  alliance_view_bank: Boolean
+  alliance_withdraw_bank: Boolean
+  alliance_change_permissions: Boolean
+  alliance_see_spies: Boolean
+  alliance_see_reset_timers: Boolean
+  alliance_tax_brackets: Boolean
+  alliance_accept_applicants: Boolean
+  alliance_remove_members: Boolean
+  alliance_manage_treaties: Boolean
+  alliance_promote_self_to_leader: Boolean
+}
+
+type Color {
+  # The color itself ('white', 'green', etc.)
+  color: String
+
+  # The current name of the color bloc
+  bloc_name: String
+
+  # The turn bonus for nations currently on the color bloc
+  turn_bonus: Int
+}
+
+type GameInfo {
+  # The current date and time in-game
+  game_date: DateTimeAuto
+
+  # Current radiation figures in-game
+  radiation: Radiation
+
+  # The current top 20% city Average
+  city_average: Float
+}
+
+type Radiation {
+  # Global radiation levels
+  global: Float
+
+  # Radiation levels in North America
+  north_america: Float
+
+  # Radiation levels in South America
+  south_america: Float
+
+  # Radiation levels in Europe
+  europe: Float
+
+  # Radiation levels in Africa
+  africa: Float
+
+  # Radiation levels in Asia
+  asia: Float
+
+  # Radiation levels in Australia
+  australia: Float
+
+  # Radiation levels in Antarctica
+  antarctica: Float
+}
+
+type TopTradeInfo {
+  # The current market index of the resource
+  market_index: Int
+
+  # Trade data for each resource. Pass nothing to get all resources.
+  resources(
+    # Which resource(s) to get trade data for. Accepts a single enum value or multiple in a list using []. EX: [OIL, COAL].
+    resource: [Resources]
+  ): [TopTradeResourceInfo]
+}
+
+enum Resources {
+  FOOD
+  COAL
+  OIL
+  URANIUM
+  LEAD
+  IRON
+  BAUXITE
+  GASOLINE
+  MUNITIONS
+  STEEL
+  ALUMINUM
+  CREDIT
+}
+
+type TopTradeResourceInfo {
+  # The name of the resource
+  resource: String
+
+  # The average price of the resource
+  average_price: Int
+
+  # The highest PPU buy offer on the market at the moment
+  best_buy_offer: Trade
+
+  # The lowest PPU sell offer on the market at the moment
+  best_sell_offer: Trade
+}
+
+# Order by clause for Query.nation_resource_stats.orderBy.
+input QueryNationResourceStatsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryNationResourceStatsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.nation_resource_stats.orderBy.
+enum QueryNationResourceStatsOrderByColumn {
+  DATE
+  MONEY
+  FOOD
+  STEEL
+  ALUMINUM
+  GASOLINE
+  MUNITIONS
+  URANIUM
+  COAL
+  OIL
+  IRON
+  BAUXITE
+  LEAD
+}
+
+type NationResourceStat {
+  # Date the stat was taken
+  date: DateTimeAuto
+
+  # Total money in the game / nations active in the past week
+  money: String
+
+  # Total food in the game / nations active in the past week
+  food: String
+
+  # Total steel in the game / nations active in the past week
+  steel: String
+
+  # Total aluminum in the game / nations active in the past week
+  aluminum: String
+
+  # Total gasoline in the game / nations active in the past week
+  gasoline: String
+
+  # Total munitions in the game / nations active in the past week
+  munitions: String
+
+  # Total uranium in the game / nations active in the past week
+  uranium: String
+
+  # Total coal in the game / nations active in the past week
+  coal: String
+
+  # Total oil in the game / nations active in the past week
+  oil: String
+
+  # Total iron in the game / nations active in the past week
+  iron: String
+
+  # Total bauxite in the game / nations active in the past week
+  bauxite: String
+
+  # Total lead in the game / nations active in the past week
+  lead: String
+}
+
+enum Continents {
+  AFRICA
+  ANTARCTICA
+  ASIA
+  AUSTRALIA
+  EUROPE
+  NORTH_AMERICA
+  SOUTH_AMERICA
+}
+
+# Order by clause for Query.nations.orderBy.
+input QueryNationsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryNationsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+enum QueryNationsOrderByColumn {
+  ID
+  DATE
+  SOLDIERS
+  SOLDIERS_LOST
+  SOLDIER_KILLS
+  TANKS
+  TANKS_LOST
+  TANK_KILLS
+  AIRCRAFT
+  AIRCRAFT_LOST
+  AIRCRAFT_KILLS
+  SHIPS
+  SHIPS_LOST
+  SHIP_KILLS
+  MISSILES
+  MISSILES_LAUNCHED
+  MISSILES_EATEN
+  NUKES
+  NUKES_LAUNCHED
+  NUKES_EATEN
+  CITIES
+  SCORE
+  GDP
+  POPULATION
+  APPROVAL_RATING
+  INFRA_DESTROYED
+  INFRA_LOST
+}
+
+# A paginated list of Nation items.
+type NationPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of Nation items.
+  data: [Nation!]!
+}
+
+# Order by clause for Query.alliances.orderBy.
+input QueryAlliancesOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryAlliancesOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.alliances.orderBy.
+enum QueryAlliancesOrderByColumn {
+  ID
+  DATE
+  SCORE
+}
+
+# A paginated list of Alliance items.
+type AlliancePaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of Alliance items.
+  data: [Alliance!]!
+}
+
+# A paginated list of Tradeprice items.
+type TradepricePaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of Tradeprice items.
+  data: [Tradeprice!]!
+}
+
+type Tradeprice {
+  # ID of the trade price data
+  id: Int
+
+  # Date the data was pulled (generally once a day)
+  date: Date
+
+  # Average price of coal
+  coal: Float
+
+  # Average price of oil
+  oil: Float
+
+  # Average price of uranium
+  uranium: Float
+
+  # Average price of iron
+  iron: Float
+
+  # Average price of bauxite
+  bauxite: Float
+
+  # Average price of lead
+  lead: Float
+
+  # Average price of gasoline
+  gasoline: Float
+
+  # Average price of munitions
+  munitions: Float
+
+  # Average price of steel
+  steel: Float
+
+  # Average price of aluminum
+  aluminum: Float
+
+  # Average price of food
+  food: Float
+
+  # Average price of credits
+  credits: Float
+}
+
+# Order by clause for Query.trades.orderBy.
+input QueryTradesOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryTradesOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+enum QueryTradesOrderByColumn {
+  ID
+  DATE
+  DATE_ACCEPTED
+  OFFER_RESOURCE
+  OFFER_AMOUNT
+#  RETURN_AMOUNT @deprecated(reason: "Use PRICE instead.")
+  PRICE
+}
+
+# A paginated list of Trade items.
+type TradePaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of Trade items.
+  data: [Trade!]!
+}
+
+# Order by clause for Query.wars.orderBy.
+input QueryWarsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryWarsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.wars.orderBy.
+enum QueryWarsOrderByColumn {
+  ID
+  DATE
+}
+
+# A paginated list of War items.
+type WarPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of War items.
+  data: [War!]!
+}
+
+# Order by clause for Query.bounties.orderBy.
+input QueryBountiesOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryBountiesOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.bounties.orderBy.
+enum QueryBountiesOrderByColumn {
+  ID
+  DATE
+  AMOUNT
+}
+
+# A paginated list of Bounty items.
+type BountyPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of Bounty items.
+  data: [Bounty!]!
+}
+
+# Order by clause for Query.warattacks.orderBy.
+input QueryWarattacksOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryWarattacksOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.warattacks.orderBy.
+enum QueryWarattacksOrderByColumn {
+  ID
+  DATE
+}
+
+# A paginated list of WarAttack items.
+type WarAttackPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of WarAttack items.
+  data: [WarAttack!]!
+}
+
+# Order by clause for Query.treaties.orderBy.
+input QueryTreatiesOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryTreatiesOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.treaties.orderBy.
+enum QueryTreatiesOrderByColumn {
+  ID
+  DATE
+  TURNS_LEFT
+}
+
+# A paginated list of Treaty items.
+type TreatyPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of Treaty items.
+  data: [Treaty!]!
+}
+
+# Order by clause for Query.cities.orderBy.
+input QueryCitiesOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryCitiesOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.cities.orderBy.
+enum QueryCitiesOrderByColumn {
+  ID
+  DATE
+  INFRASTRUCTURE
+  MAXINFRA
+  LAND
+}
+
+# A paginated list of City items.
+type CityPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of City items.
+  data: [City!]!
+}
+
+# Order by clause for Query.bankrecs.orderBy.
+input QueryBankrecsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryBankrecsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.bankrecs.orderBy.
+enum QueryBankrecsOrderByColumn {
+  ID
+  DATE
+  MONEY
+  COAL
+  OIL
+  URANIUM
+  IRON
+  BAUXITE
+  LEAD
+  GASOLINE
+  MUNITIONS
+  STEEL
+  ALUMINUM
+  FOOD
+}
+
+# A paginated list of Bankrec items.
+type BankrecPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of Bankrec items.
+  data: [Bankrec!]!
+}
+
+# Order by clause for Query.baseball_games.orderBy.
+input QueryBaseballGamesOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryBaseballGamesOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.baseball_games.orderBy.
+enum QueryBaseballGamesOrderByColumn {
+  ID
+  DATE
+  HTSCORE
+  ATSCORE
+}
+
+# A paginated list of BBGame items.
+type BBGamePaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of BBGame items.
+  data: [BBGame!]!
+}
+
+# Order by clause for Query.baseball_teams.orderBy.
+input QueryBaseballTeamsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryBaseballTeamsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.baseball_teams.orderBy.
+enum QueryBaseballTeamsOrderByColumn {
+  ID
+  DATE
+  QUALITY
+  SEATING
+  RATING
+  WINS
+  GLOSSES
+  RUNS
+  HOMERS
+  STRIKEOUTS
+  GAMES
+}
+
+# A paginated list of BBTeam items.
+type BBTeamPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of BBTeam items.
+  data: [BBTeam!]!
+}
+
+# Order by clause for Query.baseball_players.orderBy.
+input QueryBaseballPlayersOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryBaseballPlayersOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.baseball_players.orderBy.
+enum QueryBaseballPlayersOrderByColumn {
+  ID
+  DATE
+  AGE
+  PITCHING
+  BATTING
+  SPEED
+  AWARENESS
+  OVERALL
+}
+
+# A paginated list of BBPlayer items.
+type BBPlayerPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of BBPlayer items.
+  data: [BBPlayer!]!
+}
+
+# Order by clause for Query.treasure_trades.orderBy.
+input QueryTreasureTradesOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryTreasureTradesOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.treasure_trades.orderBy.
+enum QueryTreasureTradesOrderByColumn {
+  ID
+}
+
+# A paginated list of TreasureTrade items.
+type TreasureTradePaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of TreasureTrade items.
+  data: [TreasureTrade!]!
+}
+
+type TreasureTrade {
+  # ID of the treasure trade
+  id: Int
+
+  # The date the trade was offered
+  offer_date: DateTimeAuto
+
+  # The date the trade was accepted
+  accept_date: DateTimeAuto
+
+  # ID of the nation sending the trade
+  sender_id: Int
+
+  # Nation sending the trade
+  sender: Nation
+
+  # ID of the nation receiving the trade
+  receiver_id: Int
+
+  # Nation receiving the trade
+  receiver: Nation
+
+  # Whether or not the offer is to buy the treasure
+  buying: Boolean
+
+  # Whether or not the offer is to sell the treasure
+  selling: Boolean
+
+  # Name of the treasure being sold
+  treasure: String
+
+  # How much the treasure is being offered for or how much is being offered for the treasure
+  money: Int
+
+  # Whether or not the offer has been accepted
+  accepted: Boolean
+
+  # Whether or not the offer has been rejected
+  rejected: Boolean
+
+  # Whether or not the offer has been cancelled by the seller
+  seller_cancelled: Boolean
+}
+
+# Order by clause for Query.embargoes.orderBy.
+input QueryEmbargoesOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryEmbargoesOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.embargoes.orderBy.
+enum QueryEmbargoesOrderByColumn {
+  ID
+  DATE
+}
+
+# A paginated list of Embargo items.
+type EmbargoPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of Embargo items.
+  data: [Embargo!]!
+}
+
+type Embargo {
+  # ID of the embargo
+  id: Int
+
+  # Date the embargo was placed
+  date: Date
+
+  # ID of the nation that placed the embargo
+  sender_id: Int
+
+  # Nation that placed the embargo
+  sender: Nation
+
+  # ID of the nation that is being embargoed
+  receiver_id: Int
+
+  # Nation being embargoed
+  receiver: Nation
+
+  # Reason given for the embargo
+  reason: String
+
+  # Enumeration representing the type of the embargo ('NATION_TO_NATION', 'NATION_TO_ALLIANCE', 'ALLIANCE_TO_NATION', or 'ALLIANCE_TO_ALLIANCE')
+  type: EmbargoType
+}
+
+enum EmbargoType {
+  NATION_TO_NATION
+  NATION_TO_ALLIANCE
+  ALLIANCE_TO_NATION
+  ALLIANCE_TO_ALLIANCE
+}
+
+# Order by clause for Query.resource_stats.orderBy.
+input QueryResourceStatsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryResourceStatsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.resource_stats.orderBy.
+enum QueryResourceStatsOrderByColumn {
+  DATE
+  MONEY
+  FOOD
+  STEEL
+  ALUMINUM
+  GASOLINE
+  MUNITIONS
+  URANIUM
+  COAL
+  OIL
+  IRON
+  BAUXITE
+  LEAD
+}
+
+# A paginated list of ResourceStat items.
+type ResourceStatPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of ResourceStat items.
+  data: [ResourceStat!]!
+}
+
+type ResourceStat {
+  # Date the stat was taken
+  date: DateTimeAuto
+
+  # Total money in the game
+  money: String
+
+  # Total food in the game
+  food: String
+
+  # Total steel in the game
+  steel: String
+
+  # Total aluminum in the game
+  aluminum: String
+
+  # Total gasoline in the game
+  gasoline: String
+
+  # Total munitions in the game
+  munitions: String
+
+  # Total uranium in the game
+  uranium: String
+
+  # Total coal in the game
+  coal: String
+
+  # Total oil in the game
+  oil: String
+
+  # Total iron in the game
+  iron: String
+
+  # Total bauxite in the game
+  bauxite: String
+
+  # Total lead in the game
+  lead: String
+}
+
+# Order by clause for Query.activity_stats.orderBy.
+input QueryActivityStatsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryActivityStatsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.activity_stats.orderBy.
+enum QueryActivityStatsOrderByColumn {
+  DATE
+  TOTAL_NATIONS
+  NATIONS_CREATED
+  ACTIVE_1_DAY
+  ACTIVE_2_DAYS
+  ACTIVE_3_DAYS
+  ACTIVE_1_WEEK
+  ACTIVE_1_MONTH
+}
+
+# A paginated list of ActivityStat items.
+type ActivityStatPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of ActivityStat items.
+  data: [ActivityStat!]!
+}
+
+type ActivityStat {
+  # Date the stat was taken
+  date: DateTimeAuto
+
+  # Total nations in the game
+  total_nations: Int
+
+  # Total natons created today
+  nations_created: Int
+
+  # Nations active in the past 1 day
+  active_1_day: Int
+
+  # Nations active in the past 2 days
+  active_2_days: Int
+
+  # Nations active in the past 3 days
+  active_3_days: Int
+
+  # Nations active in the past 1 week
+  active_1_week: Int
+
+  # Nations active in the past 1 month
+  active_1_month: Int
+}
+
+# Order by clause for Query.banned_nations.orderBy.
+input QueryBannedNationsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryBannedNationsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+enum QueryBannedNationsOrderByColumn {
+  NATION_ID
+  DATE
+}
+
+# A paginated list of BannedNation items.
+type BannedNationPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of BannedNation items.
+  data: [BannedNation!]!
+}
+
+type BannedNation {
+  # ID of the banned nation
+  nation_id: Int
+
+  # Reason for the ban
+  reason: String
+
+  # Date of the ban
+  date: DateTimeAuto
+
+  # Days remaining on that ban. -1 indicates permanent ban and 0 indicates nation was deleted while banned.
+  days_left: Int
+}
+
+# Order by clause for Query.bulletins.orderBy.
+input QueryBulletinsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryBulletinsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.bulletins.orderBy.
+enum QueryBulletinsOrderByColumn {
+  ID
+  DATE
+  LAST_EDIT_DATE
+  ACCOUNT_ID
+}
+
+# A paginated list of Bulletin items.
+type BulletinPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of Bulletin items.
+  data: [Bulletin!]!
+}
+
+# Order by clause for Query.bulletin_replies.orderBy.
+input QueryBulletinRepliesOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryBulletinRepliesOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.bulletin_replies.orderBy.
+enum QueryBulletinRepliesOrderByColumn {
+  ID
+  DATE
+  EDIT_DATE
+  ACCOUNT_ID
+  BULLETIN_ID
+}
+
+type Mutation {
+  bankDeposit(
+    money: Float = 0.0
+    coal: Float = 0.0
+    oil: Float = 0.0
+    uranium: Float = 0.0
+    iron: Float = 0.0
+    bauxite: Float = 0.0
+    lead: Float = 0.0
+    gasoline: Float = 0.0
+    munitions: Float = 0.0
+    steel: Float = 0.0
+    aluminum: Float = 0.0
+    food: Float = 0.0
+    note: String
+  ): Bankrec!
+  bankWithdraw(
+    receiver: Int!
+    receiver_type: Int!
+    money: Float = 0.0
+    coal: Float = 0.0
+    oil: Float = 0.0
+    uranium: Float = 0.0
+    iron: Float = 0.0
+    bauxite: Float = 0.0
+    lead: Float = 0.0
+    gasoline: Float = 0.0
+    munitions: Float = 0.0
+    steel: Float = 0.0
+    aluminum: Float = 0.0
+    food: Float = 0.0
+    note: String
+  ): Bankrec!
+  approveTreaty(id: Int!): Treaty!
+  cancelTreaty(id: Int!): Treaty!
+  proposeTreaty(
+    alliance_id: Int!
+    length: Int!
+    type: String!
+    url: String
+  ): Treaty!
+  assignTaxBracket(id: Int!, target_id: Int!): TaxBracket!
+  createTaxBracket(
+    name: String!
+    money_tax_rate: Int!
+    resource_tax_rate: Int!
+  ): TaxBracket!
+  deleteTaxBracket(id: Int!): TaxBracket!
+  editTaxBracket(
+    id: Int!
+    name: String
+    money_tax_rate: Int
+    resource_tax_rate: Int
+  ): TaxBracket!
+  acceptPersonalTrade(id: Int!, offer_amount: Int): Trade!
+  declinePersonalTrade(id: Int!): Trade
+  assignAlliancePosition(
+    id: Int!
+    default_position: DefaultAlliancePosition
+    position_id: Int
+  ): AlliancePosition
+  createAlliancePosition(
+    name: String!
+    level: Int!
+    view_bank: Boolean = false
+    withdraw_bank: Boolean = false
+    change_permissions: Boolean = false
+    see_spies: Boolean = false
+    see_reset_timers: Boolean = false
+    tax_brackets: Boolean = false
+    post_announcements: Boolean = false
+    manage_announcements: Boolean = false
+    accept_applicants: Boolean = false
+    remove_members: Boolean = false
+    edit_alliance_info: Boolean = false
+    manage_treaties: Boolean = false
+    manage_market_share: Boolean = false
+    manage_embargoes: Boolean = false
+    promote_self_to_leader: Boolean = false
+  ): AlliancePosition!
+  deleteAlliancePosition(id: Int!): AlliancePosition!
+  editAlliancePosition(
+    id: Int!
+    name: String
+    level: Int
+    view_bank: Boolean
+    withdraw_bank: Boolean
+    change_permissions: Boolean
+    see_spies: Boolean
+    see_reset_timers: Boolean
+    tax_brackets: Boolean
+    post_announcements: Boolean
+    manage_announcements: Boolean
+    accept_applicants: Boolean
+    remove_members: Boolean
+    edit_alliance_info: Boolean
+    manage_treaties: Boolean
+    manage_market_share: Boolean
+    manage_embargoes: Boolean
+    promote_self_to_leader: Boolean
+  ): AlliancePosition!
+}
+
+enum DefaultAlliancePosition {
+  REMOVE
+  APPLICANT
+  MEMBER
+  OFFICER
+  HEIR
+  LEADER
+}
+
+# A datetime and timezone string in ISO 8601 format `YYYY-MM-DDTHH:MM:SS+00:00`, e.g. `2020-04-20T13:53:12+00:00`.
+scalar DateTimeTz
+
+# Information about pagination using a simple paginator.
+type SimplePaginatorInfo {
+  # Number of items in the current page.
+  count: Int!
+
+  # Index of the current page.
+  currentPage: Int!
+
+  # Index of the first item in the current page.
+  firstItem: Int
+
+  # Index of the last item in the current page.
+  lastItem: Int
+
+  # Number of items per page.
+  perPage: Int!
+
+  # Are there more pages after this one?
+  hasMorePages: Boolean!
+}
+
+# Information about pagination using a Relay style cursor connection.
+type PageInfo {
+  # When paginating forwards, are there more items?
+  hasNextPage: Boolean!
+
+  # When paginating backwards, are there more items?
+  hasPreviousPage: Boolean!
+
+  # The cursor to continue paginating backwards.
+  startCursor: String
+
+  # The cursor to continue paginating forwards.
+  endCursor: String
+
+  # Total number of nodes in the paginated connection.
+  total: Int!
+
+  # Number of nodes in the current page.
+  count: Int!
+
+  # Index of the current page.
+  currentPage: Int!
+
+  # Index of the last available page.
+  lastPage: Int!
+}
+
+# Aggregate functions when ordering by a relation without specifying a column.
+enum OrderByRelationAggregateFunction {
+  # Amount of items.
+  COUNT
+}
+
+# Aggregate functions when ordering by a relation that may specify a column.
+enum OrderByRelationWithColumnAggregateFunction {
+  # Average.
+  AVG
+
+  # Minimum.
+  MIN
+
+  # Maximum.
+  MAX
+
+  # Sum.
+  SUM
+
+  # Amount of items.
+  COUNT
+}
+
+# Allows ordering a list of records.
+input OrderByClause {
+  # The column that is used for ordering.
+  column: String!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}

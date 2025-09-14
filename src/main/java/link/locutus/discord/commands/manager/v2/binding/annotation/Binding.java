@@ -22,5 +22,5 @@ public @interface Binding {
      * e.g. NationList should defer -> DBNation
      * @return
      */
-    String webType() default "";
+    Class<?>[] webType() default {};
 }

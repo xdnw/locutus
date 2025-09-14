@@ -2,6 +2,8 @@ package link.locutus.discord.commands.manager.v2.command;
 
 import com.google.common.base.Predicates;
 import gg.jte.generated.precompiled.command.JtecommandgroupGenerated;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Logg;
@@ -20,7 +22,6 @@ import org.apache.commons.lang3.ArrayUtils;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -29,7 +30,7 @@ public class CommandGroup implements ICommandGroup {
     private final ValidatorStore validators;
     private final CommandCallable parent;
     private final List<String> aliases;
-    private final Map<String, CommandCallable> subcommands = new ConcurrentHashMap<>();
+    private final Map<String, CommandCallable> subcommands = Object2ObjectMaps.synchronize(new Object2ObjectLinkedOpenHashMap<>());
     private String help, desc;
 
     public CommandGroup(CommandCallable parent, String[] aliases, ValueStore store, ValidatorStore validators) {
@@ -289,9 +290,9 @@ public class CommandGroup implements ICommandGroup {
     }
 
     @Override
-    public Set<ParametricCallable> getParametricCallables(Predicate<ParametricCallable> returnIf) {
-        Set<ParametricCallable> result = new HashSet<>();
-        for (CommandCallable sub : new HashSet<>(getSubcommands().values())) {
+    public Set<ParametricCallable<?>> getParametricCallables(Predicate<ParametricCallable<?>> returnIf) {
+        Set<ParametricCallable<?>> result = new ObjectLinkedOpenHashSet<>();
+        for (CommandCallable sub : new ObjectLinkedOpenHashSet<>(getSubcommands().values())) {
             result.addAll(sub.getParametricCallables(returnIf));
         }
         return result;
@@ -342,9 +343,9 @@ public class CommandGroup implements ICommandGroup {
         Map<Class<?>, Object> instanceCache = new HashMap<>();
         register(remapping, new ArrayList<>(), instanceCache, true);
 
-        Set<ParametricCallable> allRegistered = getParametricCallables(Predicates.alwaysTrue());
+        Set<ParametricCallable<?>> allRegistered = getParametricCallables(Predicates.alwaysTrue());
         Set<Method> registeredMethods = new HashSet<>();
-        for (ParametricCallable callable : allRegistered) {
+        for (ParametricCallable<?> callable : allRegistered) {
             if (callable.getMethod() != null) {
                 registeredMethods.add(callable.getMethod());
             }
@@ -404,7 +405,7 @@ public class CommandGroup implements ICommandGroup {
             if (found == null) {
                 throw new IllegalStateException("No method found " + clazz + " | " + methodInfo.method());
             }
-            ParametricCallable callable = ParametricCallable.generateFromMethod(this, instance, found, store);
+            ParametricCallable<?> callable = ParametricCallable.generateFromMethod(this, instance, found, store);
             if (callable == null) {
                 throw new IllegalStateException("Method " + methodInfo.method() + " in " + methodInfo.clazz().getName() + " is not a valid @Command");
             }

@@ -3479,7 +3479,7 @@ public class GrantCommands {
         return null;
     }
 
-    @Command
+    @Command(desc = "Cancel a grant request")
     @RolePermission(value = {Roles.ECON, Roles.ECON_STAFF}, any=true)
     public String grantRequestCancel(@Me IMessageIO io, @Me User user, @Me GuildDB db, GrantRequest request) {
         if (!request.updateMessage(io, "Rejected by " + user.getAsMention())) {

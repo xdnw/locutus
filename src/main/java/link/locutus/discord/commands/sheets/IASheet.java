@@ -16,6 +16,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
+import link.locutus.discord.util.task.ia.AuditType;
 import link.locutus.discord.util.task.ia.IACheckup;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -74,7 +75,7 @@ public class IASheet extends Command {
 
         boolean individual = flags.contains('f') || nations.size() == 1;
         IACheckup checkup = new IACheckup(db, db.getAllianceList().subList(aaIds), false);
-        Map<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> allianceAuditMap = checkup.checkup(nations, nation -> new Consumer<DBNation>() {
+        Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> allianceAuditMap = checkup.checkup(nations, nation -> new Consumer<DBNation>() {
                     long start = System.currentTimeMillis();
                     @Override
                     public void accept(DBNation nation) {
@@ -95,7 +96,7 @@ public class IASheet extends Command {
 
         SpreadSheet sheet = SpreadSheet.create(db, SheetKey.IA_SHEET);
 
-        IACheckup.AuditType[] audits = IACheckup.AuditType.values();
+        AuditType[] audits = AuditType.values();
         int headerLength = audits.length + 5;
 
         Map<String, Map<DBNation, String>> auditTypeToNationMap = new LinkedHashMap<>();
@@ -116,11 +117,11 @@ public class IASheet extends Command {
             }
         }
 
-        for (Map.Entry<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> entry : allianceAuditMap.entrySet()) {
+        for (Map.Entry<DBNation, Map<AuditType, Map.Entry<Object, String>>> entry : allianceAuditMap.entrySet()) {
             DBNation nation = entry.getKey();
-            Map<IACheckup.AuditType, Map.Entry<Object, String>> auditResult = entry.getValue();
-            for (Map.Entry<IACheckup.AuditType, Map.Entry<Object, String>> auditTypeEntryEntry : auditResult.entrySet()) {
-                IACheckup.AuditType type = auditTypeEntryEntry.getKey();
+            Map<AuditType, Map.Entry<Object, String>> auditResult = entry.getValue();
+            for (Map.Entry<AuditType, Map.Entry<Object, String>> auditTypeEntryEntry : auditResult.entrySet()) {
+                AuditType type = auditTypeEntryEntry.getKey();
                 Map.Entry<Object, String> value = auditTypeEntryEntry.getValue();
                 String valueStr = value != null ? value.getValue() : null;
                 if (valueStr == null) continue;

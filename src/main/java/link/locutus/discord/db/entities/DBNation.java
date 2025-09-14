@@ -67,6 +67,7 @@ import link.locutus.discord.util.scheduler.ThrowingSupplier;
 import link.locutus.discord.util.sheet.SheetUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.MailTask;
+import link.locutus.discord.util.task.ia.AuditType;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.util.task.mail.MailApiResponse;
 import link.locutus.discord.util.task.mail.MailApiSuccess;
@@ -92,9 +93,6 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -421,7 +419,7 @@ public abstract class DBNation implements NationOrAlliance {
         return !hasProject(project) && project.canBuild(this) && getFreeProjectSlots() > 0;
     }
 
-    private Map.Entry<Object, String> getAuditRaw(ValueStore store, @Me GuildDB db, IACheckup.AuditType audit) throws IOException, ExecutionException, InterruptedException {
+    private Map.Entry<Object, String> getAuditRaw(ValueStore store, @Me GuildDB db, AuditType audit) throws IOException, ExecutionException, InterruptedException {
         ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, getAuditRaw.of(audit));
         List<DBNation> nations = scoped.getList(this);
         AllianceList aaList = db.getAllianceList().subList(nations);
@@ -430,28 +428,28 @@ public abstract class DBNation implements NationOrAlliance {
         if (!aaList.isInAlliance(this)) {
             throw new IllegalArgumentException("Nation " + data()._nationId() + " not in alliance: " + checkup.getAlliance().getIds());
         }
-        Map<IACheckup.AuditType, Map.Entry<Object, String>> result =
-                checkup.checkup(store, this, new IACheckup.AuditType[]{audit}, true, true);
+        Map<AuditType, Map.Entry<Object, String>> result =
+                checkup.checkup(store, this, new AuditType[]{audit}, true, true);
         return result.get(audit);
     }
 
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
     @Command(desc = "If the nation passes an audit")
-    public boolean passesAudit(ValueStore store, @Me GuildDB db, IACheckup.AuditType audit) throws IOException, ExecutionException, InterruptedException {
+    public boolean passesAudit(ValueStore store, @Me GuildDB db, AuditType audit) throws IOException, ExecutionException, InterruptedException {
         Map.Entry<Object, String> result = getAuditRaw(store, db, audit);
         return result == null || result.getKey() == null;
     }
 
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
     @Command(desc = "Get the Audit result raw value")
-    public String getAuditResult(ValueStore store, @Me GuildDB db, IACheckup.AuditType audit) throws IOException, ExecutionException, InterruptedException {
+    public String getAuditResult(ValueStore store, @Me GuildDB db, AuditType audit) throws IOException, ExecutionException, InterruptedException {
         Map.Entry<Object, String> result = getAuditRaw(store, db, audit);
         return result == null ? null : result.getKey() + "";
     }
 
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
     @Command(desc = "Get the Audit result message")
-    public String getAuditResultString(ValueStore store, @Me GuildDB db, IACheckup.AuditType audit) throws IOException, ExecutionException, InterruptedException {
+    public String getAuditResultString(ValueStore store, @Me GuildDB db, AuditType audit) throws IOException, ExecutionException, InterruptedException {
         Map.Entry<Object, String> result = getAuditRaw(store, db, audit);
         return result == null ? null : result.getValue();
     }
@@ -3964,7 +3962,7 @@ public abstract class DBNation implements NationOrAlliance {
     @Command
     public int getNumReports() {
         ReportManager reportManager = Locutus.imp().getNationDB().getReportManager();
-        List<ReportManager.Report> reports = reportManager.loadReports(getId(), getUserId(), null, null);
+        List<Report> reports = reportManager.loadReports(getId(), getUserId(), null, null);
         if (getSnapshot() != null) {
             reports.removeIf(report -> report.date < getSnapshot());
         }

@@ -1,10 +1,11 @@
 package link.locutus.discord.util.math;
 
+import com.google.gson.reflect.TypeToken;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
+import java.lang.reflect.*;
+import java.util.Arrays;
+import java.util.List;
 
 public class ReflectionUtil {
     public static Class getClassType(Type type) {
@@ -15,6 +16,58 @@ public class ReflectionUtil {
             return getClassType(((ParameterizedType) type).getRawType());
         }
         return null;
+    }
+
+    public static Type buildNestedType(Class<?>... sequence) {
+        if (sequence == null || sequence.length == 0) {
+            throw new IllegalArgumentException("Empty type sequence");
+        }
+        Cursor cursor = new Cursor();
+        Type result = parse(sequence, cursor);
+        if (cursor.pos != sequence.length) {
+            throw new IllegalArgumentException("Unused trailing classes starting at index " + cursor.pos + "\n" +
+                    "- Used: " + String.join(", ", Arrays.stream(sequence).limit(cursor.pos).map(Class::getSimpleName).toList()) + "\n" +
+                    "- Unused: " + String.join(", ", Arrays.stream(sequence).skip(cursor.pos).map(Class::getSimpleName).toList()));
+        }
+        return result;
+    }
+
+    private static final List<?> holder = null;
+    private static final Type wildcard;
+    static
+    {
+        try {
+            Field f = ReflectionUtil.class.getDeclaredField("holder");
+            Type listType = f.getGenericType();                         // ParameterizedType
+            ParameterizedType listPT = (ParameterizedType) listType;
+            wildcard = listPT.getActualTypeArguments()[0];
+        } catch (NoSuchFieldException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static Type parse(Class<?>[] seq, Cursor c) {
+        if (c.pos >= seq.length) {
+            throw new IllegalArgumentException("Unexpected end of sequence");
+        }
+        Class<?> raw = seq[c.pos++];
+
+        int paramCount = raw.getTypeParameters().length;
+        if (paramCount == 0) {
+            if (raw == WildcardType.class) {
+                return wildcard;
+            }
+            return raw;
+        }
+        Type[] args = new Type[paramCount];
+        for (int i = 0; i < paramCount; i++) {
+            args[i] = parse(seq, c);
+        }
+        return TypeToken.getParameterized(raw, args).getType();
+    }
+
+    private static final class Cursor {
+        int pos = 0;
     }
 
     public static Class<?> getWrapperClass(Class<?> primitiveClass) {

@@ -19,6 +19,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
+import link.locutus.discord.util.task.ia.AuditType;
 import link.locutus.discord.util.task.ia.IACheckup;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
@@ -544,12 +545,12 @@ public class IACategory {
         return output;
     }
 
-    public void update(Map<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> result) {
+    public void update(Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> result) {
         for (Map.Entry<DBNation, IAChannel> entry : channelMap.entrySet()) {
             DBNation nation = entry.getKey();
             IAChannel iaChannel = entry.getValue();
 
-            Map<IACheckup.AuditType, Map.Entry<Object, String>> audit = result.get(nation);
+            Map<AuditType, Map.Entry<Object, String>> audit = result.get(nation);
             if (audit == null) continue;
             audit = IACheckup.simplify(audit);
 
@@ -565,13 +566,13 @@ public class IACategory {
         }
     }
 
-    public Map<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> update() throws InterruptedException, ExecutionException, IOException {
+    public Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> update() throws InterruptedException, ExecutionException, IOException {
         ArrayList<DBNation> nations = new ArrayList<>(channelMap.keySet());
         ArrayList<DBNation> toCheckup = new ArrayList<>(nations);
         toCheckup.removeIf(f -> f.getVm_turns() > 0 || f.active_m() > 2880 || f.getPosition() <= 1);
         IACheckup checkup = new IACheckup(db, db.getAllianceList(), true);
 
-        Map<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> result = checkup.checkup(toCheckup, f -> {}, true);
+        Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> result = checkup.checkup(toCheckup, f -> {}, true);
 
         update(result);
 

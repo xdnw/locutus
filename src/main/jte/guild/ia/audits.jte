@@ -15,6 +15,7 @@
 @import link.locutus.discord.util.offshore.test.IACategory
 @import link.locutus.discord.util.offshore.test.IAChannel
 @import link.locutus.discord.util.task.ia.IACheckup
+@import link.locutus.discord.util.task.ia.AuditType
 @import net.dv8tion.jda.api.entities.Guild
 @import net.dv8tion.jda.api.entities.Member
 @import net.dv8tion.jda.api.entities.Role
@@ -32,7 +33,7 @@
 @import java.util.stream.Collectors
 @param WebStore ws
 @param GuildDB db
-@param Map<IACheckup.AuditType, Map<DBNation, String>> nationsByAudit
+@param Map<AuditType, Map<DBNation, String>> nationsByAudit
 @template.main(ws = ws, title = "Alliance audit results", content = @`
 <script>
 $(document).ready(function(){
@@ -53,7 +54,7 @@ $(document).ready(function(){
 <input class="form-control form-control-sm" id="myInput" type="text" placeholder="nation..">
 </div>
 <div class="container">
-@for (Map.Entry<IACheckup.AuditType, Map<DBNation, String>> entry : nationsByAudit.entrySet())
+@for (Map.Entry<AuditType, Map<DBNation, String>> entry : nationsByAudit.entrySet())
     @template.guild.ia.auditlist(ws = ws, type = entry.getKey(), nationMap = entry.getValue())
 @endfor
 </div>

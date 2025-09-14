@@ -42,7 +42,6 @@ public final class SqliteVecFetcher {
         String json = httpGet(REPO_RELEASES_API, token);
 
         // Find the first asset URL in the latest releases list that matches our platform suffix.
-        // Example match: "browser_download_url":"https://github.com/.../download/vX.Y.Z/sqlite-vec-...-loadable-windows-x86_64.tar.gz"
         Pattern urlPat = Pattern.compile("\"browser_download_url\"\\s*:\\s*\"([^\"]+?" + Pattern.quote(suffix) + ")\"");
         Matcher m = urlPat.matcher(json);
         if (!m.find()) {
@@ -72,13 +71,24 @@ public final class SqliteVecFetcher {
             return libPath;
         }
 
-        // Download asset
+        // If the asset tarball is already cached, extract from it instead of downloading.
+        Path cachedTgz = cacheDir.resolve(assetName);
+        if (Files.exists(cachedTgz)) {
+            extractSingleVecLibFromTarGz(cachedTgz, assetCacheDir, libExt);
+            if (Files.exists(libPath)) return libPath;
+            // if extraction failed to produce the lib, fall through to (re)download below
+        }
+
+        // Download asset to a temp file, copy it into cache, then extract
         Path tmpTgz = Files.createTempFile("sqlite-vec-", ".tar.gz");
         tmpTgz.toFile().deleteOnExit();
         httpDownload(assetUrl, tmpTgz, token);
 
+        // Save a cached copy (overwrite if present)
+        Files.copy(tmpTgz, cachedTgz, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
         // Extract only the vec0 library from the tar.gz
-        extractSingleVecLibFromTarGz(tmpTgz, assetCacheDir, libExt);
+        extractSingleVecLibFromTarGz(cachedTgz, assetCacheDir, libExt);
 
         if (!Files.exists(libPath)) {
             throw new IOException("Extracted archive but could not find vec0" + libExt);

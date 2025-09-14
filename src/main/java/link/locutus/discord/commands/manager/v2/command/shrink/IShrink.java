@@ -105,7 +105,7 @@ public interface IShrink {
         return originalSize - currentSize;
     }
 
-    default List<String> split(int maxContentLength, int minSize) {
+    default List<String> split(int maxContentLength) {
         String message = toString();
         if (message.contains("@everyone")) {
             message = message.replace("@everyone", "");
@@ -113,7 +113,7 @@ public interface IShrink {
         if (message.contains("@here")) {
             message = message.replace("@here", "");
         }
-        return DiscordUtil.wrap(message, maxContentLength, minSize);
+        return DiscordUtil.wrap(message, maxContentLength);
     }
 
 }

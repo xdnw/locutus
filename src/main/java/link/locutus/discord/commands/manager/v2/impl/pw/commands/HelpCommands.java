@@ -64,11 +64,11 @@ public class HelpCommands {
         StringBuilder body = new StringBuilder(argument.getNameDescriptionAndExamples(false, true, true, true));
 
         CommandManager2 cmdManager = Locutus.imp().getCommandManager().getV2();
-        Set<ParametricCallable> allCommands = cmdManager.getCommands().getParametricCallables(Predicates.alwaysTrue());
+        Set<ParametricCallable<?>> allCommands = cmdManager.getCommands().getParametricCallables(Predicates.alwaysTrue());
 
-        List<ParametricCallable> hasArgument = new ArrayList<>();
+        List<ParametricCallable<?>> hasArgument = new ArrayList<>();
         Set<Method> methods = new HashSet<>();
-        for (ParametricCallable callable : allCommands) {
+        for (ParametricCallable<?> callable : allCommands) {
             Method method = callable.getMethod();
             // add / skip if method already checked
             if (methods.contains(method)) continue;
@@ -100,7 +100,7 @@ public class HelpCommands {
     }
 
     @Command(desc = "Show the description, usage information and permissions for a command", viewable = true)
-    public String command(@Me IMessageIO io, ValueStore store, PermissionHandler permisser, ICommand command) {
+    public String command(@Me IMessageIO io, ValueStore store, PermissionHandler permisser, ICommand<?> command) {
         String body = command.toBasicMarkdown(store, permisser, "/", false, true, true);
         String title = "/" + command.getFullPath();
         if (body.length() > 4096) {

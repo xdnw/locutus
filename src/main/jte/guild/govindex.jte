@@ -14,6 +14,7 @@
 @import link.locutus.discord.db.entities.Coalition
 @import link.locutus.discord.Locutus
 @import link.locutus.discord.util.task.ia.IACheckup
+@import link.locutus.discord.util.task.ia.AuditType
 @import link.locutus.discord.user.Roles
 @import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel
 @import link.locutus.discord.config.Settings
@@ -24,7 +25,7 @@
 @param GuildDB db
 @param DBNation nation
 @param User author
-@param Map<IACheckup.AuditType, Map.Entry<Object, String>> checkup
+@param Map<AuditType, Map.Entry<Object, String>> checkup
 @template.main(ws = ws, title = "Guild Gov index", navbar = null, content = @`
 
 @if(Roles.MILCOM.has(author, db.getGuild()))

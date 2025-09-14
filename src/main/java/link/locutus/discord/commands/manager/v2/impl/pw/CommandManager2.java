@@ -72,11 +72,11 @@ public class CommandManager2 {
         Map<String, Object> optionsData = new LinkedHashMap<>();
 
         Set<Parser> parsers = new ObjectLinkedOpenHashSet<>();
-        for (ParametricCallable callable : commands.getParametricCallables(Predicates.alwaysTrue())) {
+        for (ParametricCallable<?> callable : commands.getParametricCallables(Predicates.alwaysTrue())) {
             for (ParameterData param : callable.getUserParameters()) {
                 Parser<?> parser = param.getBinding();
                 Binding binding = parser.getKey().getBinding();
-                if (binding != null && binding.webType().isEmpty()) {
+                if (binding != null && binding.webType().length == 0) {
                     parsers.add(parser);
                 }
             }
@@ -1147,5 +1147,17 @@ public class CommandManager2 {
                 throw new UnsupportedOperationException("Invalid command class " + next.getClass());
             }
         }
+    }
+
+    public void handleLanguage(Guild guild, IMessageIO channel, User msgUser, String content) {
+//        if (guild == null) return;
+//        PWGPTHandler gpt = getPwgptHandler();
+//        if (gpt == null) return;
+//        LimitManager limitManager = gpt.getLimitManager();
+//
+//        GuildDB db = Locutus.imp().getGuildDB(guild);
+//
+//        GptLimitTracker limitTracker = limitManager.getLimitTracker(db);
+//        result = limitTracker.submit(db, msgUser, nation, content);
     }
 }

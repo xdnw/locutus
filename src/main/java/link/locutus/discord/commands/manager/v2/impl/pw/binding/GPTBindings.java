@@ -75,7 +75,7 @@ public class GPTBindings extends BindingHelper {
     @Binding
     @Me
     public GptLimitTracker provider(PWGPTHandler handler, @Me GuildDB db) {
-        return handler.getProviderManager().getLimitTracker(db);
+        return handler.getLimitManager().getLimitTracker(db);
     }
 
     @Binding

@@ -1,15 +1,12 @@
 package link.locutus.discord.commands.manager.v2.command;
 
 import gg.jte.generated.precompiled.command.JteparametriccallableGenerated;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
-import link.locutus.discord.commands.manager.v2.binding.Key;
-import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
-import link.locutus.discord.commands.manager.v2.binding.Parser;
-import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.WebStore;
+import link.locutus.discord.commands.manager.v2.binding.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
@@ -24,12 +21,7 @@ import org.apache.commons.lang3.StringEscapeUtils;
 import org.json.JSONObject;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Array;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.Parameter;
-import java.lang.reflect.Type;
+import java.lang.reflect.*;
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
@@ -37,7 +29,7 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class ParametricCallable implements ICommand {
+public class ParametricCallable<T> implements ICommand<T> {
 
     private final Object object;
     private final Method method;
@@ -75,6 +67,17 @@ public class ParametricCallable implements ICommand {
         this.groups = clone.groups;
         this.groupDescs = clone.groupDescs;
         this.isViewable = clone.isViewable;
+    }
+
+    @Override
+    public Class<T> getType() {
+        if (this.method != null) {
+            return (Class<T>) method.getClass();
+        }
+        if (this.object != null) {
+            return (Class<T>) object.getClass();
+        }
+        return null;
     }
 
     public ParametricCallable(CommandCallable parent, ValueStore store, Object object, Method method, Command definition) {
@@ -995,7 +998,7 @@ public class ParametricCallable implements ICommand {
     }
 
     @Override
-    public Set<ParametricCallable> getParametricCallables(Predicate<ParametricCallable> returnIf) {
+    public Set<ParametricCallable<?>> getParametricCallables(Predicate<ParametricCallable<?>> returnIf) {
         return (returnIf.test(this)) ? Collections.singleton(this) : Collections.emptySet();
     }
 
@@ -1009,5 +1012,34 @@ public class ParametricCallable implements ICommand {
 
     public <T extends Annotation> T getAnnotation(Class<T> annClazz) {
         return method.getAnnotation(annClazz);
+    }
+
+    @Override
+    public Map<String, Object> toJsonSchema(Map<Key<?>, Map<String, Object>> primitiveCache) {
+        Map<String, Object> root = new Object2ObjectLinkedOpenHashMap<>();
+        root.put("type", "function");
+        root.put("name", getFullPath().replaceAll(" ", "-").toLowerCase(Locale.ROOT));
+        String desc = simpleDesc();
+        if (desc == null || desc.isEmpty()) {
+            throw new IllegalArgumentException("Command " + getFullPath() + " has no description, which is required for tool calls");
+        }
+        root.put("description", desc);
+        Map<String, Object> params = new Object2ObjectLinkedOpenHashMap<>();
+        params.put("type", "object");
+
+        Map<String, Object> properties = new Object2ObjectLinkedOpenHashMap<>();
+
+        List<String> required = new ArrayList<>();
+        for (ParameterData param : userParameters) {
+            String paramName = param.getName().toLowerCase(Locale.ROOT);
+            if (!param.isFlag() && param.getDefaultValue() != null) {
+                required.add(paramName);
+            }
+            properties.put(paramName, param.toToolJson(primitiveCache));
+        }
+
+        if (!properties.isEmpty()) root.put("properties", properties);
+        if (!required.isEmpty()) root.put("required", required);
+        return root;
     }
 }

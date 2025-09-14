@@ -16,6 +16,7 @@
 @import link.locutus.discord.db.entities.Coalition
 @import link.locutus.discord.Locutus
 @import link.locutus.discord.util.task.ia.IACheckup
+@import link.locutus.discord.util.task.ia.AuditType
 @import link.locutus.discord.user.Roles
 @import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel
 @import link.locutus.discord.util.PW
@@ -34,7 +35,7 @@
 @param  DBNation nation
 @param  User author
 @param  double[] deposits
-@param  Map<IACheckup.AuditType, Map.Entry<Object, String>> checkup
+@param  Map<AuditType, Map.Entry<Object, String>> checkup
 @param  Collection<JavaCity> cities
 @param  boolean isFightingActives
 @param  Map<DBWar, DBNation> offensives
@@ -56,7 +57,7 @@
     <div class="bg-lightcontainer mt-3 rounded shadow py-1">
         <h2 class=""><i class="bi bi-exclamation-diamond-fill text-danger px-1 me-2"></i>${checkup.size()} Audits</h2>
         <div>
-    @for (Map.Entry<IACheckup.AuditType, Map.Entry<Object, String>> entry : checkup.entrySet())
+    @for (Map.Entry<AuditType, Map.Entry<Object, String>> entry : checkup.entrySet())
         @if(entry.getValue() != null && entry.getValue().getValue() != null)
         <div role="alert" class="alert p-1 my-1 border alert-dismissible fade show
         @if(entry.getKey().severity == IACheckup.AuditSeverity.INFO)

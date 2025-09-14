@@ -114,7 +114,7 @@ public class GPTSearchUtil {
 
         DBNation nation = DiscordUtil.getNation(user);
         if (nation != null && useGPT && pwGpt != null) {
-            GptLimitTracker tracker = pwGpt.getProviderManager().getDefaultProvider(db, user, nation);
+            GptLimitTracker tracker = pwGpt.getLimitManager().getDefaultProvider(db, user, nation);
             IText2Text provider = pwGpt.getHandler().getText2Text();
             if (provider != null) {
                 closest = getClosest.apply(100);

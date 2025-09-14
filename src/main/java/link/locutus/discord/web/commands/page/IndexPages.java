@@ -38,6 +38,7 @@ import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.task.ia.AuditType;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.util.task.war.WarCard;
 import link.locutus.discord.web.WebUtil;
@@ -415,7 +416,7 @@ public class IndexPages extends PageHelper {
                 defensiveWars.put(war, other);
             }
         });
-        Map<IACheckup.AuditType, Map.Entry<Object, String>> checkupResult = new HashMap<>();
+        Map<AuditType, Map.Entry<Object, String>> checkupResult = new HashMap<>();
         if (db.isWhitelisted() && db.hasAlliance()) {
             try {
                 IACheckup checkup = new IACheckup(db, db.getAllianceList(), true);
@@ -429,7 +430,7 @@ public class IndexPages extends PageHelper {
 
         List<Announcement.PlayerAnnouncement> announcements = db.getPlayerAnnouncementsByNation(nation.getNation_id(), true);
 
-        Map<IACheckup.AuditType, Map.Entry<Object, String>> finalCheckupResult = checkupResult;
+        Map<AuditType, Map.Entry<Object, String>> finalCheckupResult = checkupResult;
         return WebStore.render(f -> JtememberindexGenerated.render(f, null, ws, db.getGuild(), db, finalNation, author, deposits, finalCheckupResult, cities, isFightingActives[0], offensiveWars, defensiveWars, warCards, recommendedAttack, announcements));
     }
 //

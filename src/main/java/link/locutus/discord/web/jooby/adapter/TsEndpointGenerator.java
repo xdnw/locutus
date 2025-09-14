@@ -197,7 +197,7 @@ public class TsEndpointGenerator {
 
     private static record TsEndpoint(String name, String declaration) {}
 
-    public static TsEndpoint generateTsEndpoint(ParametricCallable cmd) {
+    public static TsEndpoint generateTsEndpoint(ParametricCallable<?> cmd) {
         Method method = cmd.getMethod();
         Command cmdAnn = method.getAnnotation(Command.class);
         ReturnType returnType = method.getAnnotation(ReturnType.class);

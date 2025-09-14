@@ -159,16 +159,16 @@ public class LoanManager {
         return null;
     }
 
-    public List<DBLoan> getLoansByNations(Set<Integer> nationIds, Set<DBLoan.Status> loanStatus) {
+    public List<DBLoan> getLoansByNations(Set<Integer> nationIds, Set<Status> loanStatus) {
         Set<Long> ids = nationIds.stream().map(id -> getId(id, false)).collect(Collectors.toSet());
         return getLoansByIds(ids, loanStatus);
     }
 
-    public List<DBLoan> getLoansByStatus(Set<DBLoan.Status> requiredStatusOrNull) {
+    public List<DBLoan> getLoansByStatus(Set<Status> requiredStatusOrNull) {
         return getLoansByIds(null, requiredStatusOrNull);
     }
 
-    public List<DBLoan> getLoansByIds(Set<Long> ids, Set<DBLoan.Status> requiredStatusOrNull) {
+    public List<DBLoan> getLoansByIds(Set<Long> ids, Set<Status> requiredStatusOrNull) {
         List<DBLoan> loans = new ArrayList<>();
 
         String query = "select * FROM LOANS where";

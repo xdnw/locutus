@@ -40,7 +40,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.scheduler.ThrowingTriFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.util.task.ia.IACheckup;
+import link.locutus.discord.util.task.ia.AuditType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
@@ -92,7 +92,7 @@ public class PlaceholdersMap {
     public static Placeholders<DBTreasure, Void> TREASURES = null;
     public static Placeholders<NationColor, Void> NATION_COLORS = null;
     public static Placeholders<Building, Void> BUILDINGS = null;
-    public static Placeholders<IACheckup.AuditType, Void> AUDIT_TYPES = null;
+    public static Placeholders<AuditType, Void> AUDIT_TYPES = null;
     public static Placeholders<NationList, Void> NATION_LIST = null;
     public static Placeholders<DBBounty, Void> BOUNTIES = null;
     public static Placeholders<DBCity, Void> CITIES = null;
@@ -144,7 +144,7 @@ public class PlaceholdersMap {
         this.placeholders.put(DBTreasure.class, createTreasure());
         this.placeholders.put(NationColor.class, createNationColor());
         this.placeholders.put(Building.class, createBuilding());
-        this.placeholders.put(IACheckup.AuditType.class, createAuditType());
+        this.placeholders.put(AuditType.class, createAuditType());
         this.placeholders.put(NationList.class, createNationList());
         this.placeholders.put(DBBounty.class, createBounties());
         this.placeholders.put(DBCity.class, createCities());
@@ -3172,13 +3172,13 @@ public class PlaceholdersMap {
         };
     }
 
-    private Placeholders<IACheckup.AuditType, Void> createAuditType() {
-        return new StaticPlaceholders<IACheckup.AuditType>(IACheckup.AuditType.class, IACheckup.AuditType::values, store, validators, permisser,
+    private Placeholders<AuditType, Void> createAuditType() {
+        return new StaticPlaceholders<AuditType>(AuditType.class, AuditType::values, store, validators, permisser,
                 "A bot audit type for a nation",
-                (ThrowingTriFunction<Placeholders<IACheckup.AuditType, Void>, ValueStore, String, Set<IACheckup.AuditType>>) (inst, store, input) -> {
-                    Set<IACheckup.AuditType> selection = getSelection(inst, store, input);
+                (ThrowingTriFunction<Placeholders<AuditType, Void>, ValueStore, String, Set<AuditType>>) (inst, store, input) -> {
+                    Set<AuditType> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
-                    if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(IACheckup.AuditType.values()));
+                    if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(AuditType.values()));
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("audit"), true, (type, str) -> PWBindings.auditType(str));
                     }
@@ -3192,7 +3192,7 @@ public class PlaceholdersMap {
             @NoFormat
             @Command(desc = "Add an alias for a selection of Audit Types")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<IACheckup.AuditType> audit_types) {
+            public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<AuditType> audit_types) {
                 return _addSelectionAlias(this, command, db, name, audit_types, "audit_types");
             }
 
@@ -3200,30 +3200,30 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to a Audit Type sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                     @Default TypedFunction<IACheckup.AuditType, String> a,
-                                     @Default TypedFunction<IACheckup.AuditType, String> b,
-                                     @Default TypedFunction<IACheckup.AuditType, String> c,
-                                     @Default TypedFunction<IACheckup.AuditType, String> d,
-                                     @Default TypedFunction<IACheckup.AuditType, String> e,
-                                     @Default TypedFunction<IACheckup.AuditType, String> f,
-                                     @Default TypedFunction<IACheckup.AuditType, String> g,
-                                     @Default TypedFunction<IACheckup.AuditType, String> h,
-                                     @Default TypedFunction<IACheckup.AuditType, String> i,
-                                     @Default TypedFunction<IACheckup.AuditType, String> j,
-                                     @Default TypedFunction<IACheckup.AuditType, String> k,
-                                     @Default TypedFunction<IACheckup.AuditType, String> l,
-                                     @Default TypedFunction<IACheckup.AuditType, String> m,
-                                     @Default TypedFunction<IACheckup.AuditType, String> n,
-                                     @Default TypedFunction<IACheckup.AuditType, String> o,
-                                     @Default TypedFunction<IACheckup.AuditType, String> p,
-                                     @Default TypedFunction<IACheckup.AuditType, String> q,
-                                     @Default TypedFunction<IACheckup.AuditType, String> r,
-                                     @Default TypedFunction<IACheckup.AuditType, String> s,
-                                     @Default TypedFunction<IACheckup.AuditType, String> t,
-                                     @Default TypedFunction<IACheckup.AuditType, String> u,
-                                     @Default TypedFunction<IACheckup.AuditType, String> v,
-                                     @Default TypedFunction<IACheckup.AuditType, String> w,
-                                     @Default TypedFunction<IACheckup.AuditType, String> x) throws GeneralSecurityException, IOException {
+                                     @Default TypedFunction<AuditType, String> a,
+                                     @Default TypedFunction<AuditType, String> b,
+                                     @Default TypedFunction<AuditType, String> c,
+                                     @Default TypedFunction<AuditType, String> d,
+                                     @Default TypedFunction<AuditType, String> e,
+                                     @Default TypedFunction<AuditType, String> f,
+                                     @Default TypedFunction<AuditType, String> g,
+                                     @Default TypedFunction<AuditType, String> h,
+                                     @Default TypedFunction<AuditType, String> i,
+                                     @Default TypedFunction<AuditType, String> j,
+                                     @Default TypedFunction<AuditType, String> k,
+                                     @Default TypedFunction<AuditType, String> l,
+                                     @Default TypedFunction<AuditType, String> m,
+                                     @Default TypedFunction<AuditType, String> n,
+                                     @Default TypedFunction<AuditType, String> o,
+                                     @Default TypedFunction<AuditType, String> p,
+                                     @Default TypedFunction<AuditType, String> q,
+                                     @Default TypedFunction<AuditType, String> r,
+                                     @Default TypedFunction<AuditType, String> s,
+                                     @Default TypedFunction<AuditType, String> t,
+                                     @Default TypedFunction<AuditType, String> u,
+                                     @Default TypedFunction<AuditType, String> v,
+                                     @Default TypedFunction<AuditType, String> w,
+                                     @Default TypedFunction<AuditType, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
                         a, b, c, d, e, f, g, h, i, j,
                         k, l, m, n, o, p, q, r, s, t,

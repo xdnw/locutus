@@ -23,6 +23,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.TransferResult;
 import link.locutus.discord.util.sheet.SpreadSheet;
+import link.locutus.discord.util.task.ia.AuditType;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.web.commands.ReturnType;
 import link.locutus.discord.web.commands.binding.value_types.*;
@@ -47,15 +48,15 @@ public class IAEndpoints extends PageHelper {
         if (!db.isAllianceId(nation.getAlliance_id()) || nation.getPositionEnum().id < Rank.MEMBER.id) {
             return error("You are not a member of the guild's alliance.");
         }
-        Map<IACheckup.AuditType, Map.Entry<Object, String>> checkupResult = new HashMap<>();
+        Map<AuditType, Map.Entry<Object, String>> checkupResult = new HashMap<>();
         IACheckup checkup = new IACheckup(db, db.getAllianceList(), true);
         checkupResult = checkup.checkup(null, nation, true, true);
         checkupResult.entrySet().removeIf(f -> f.getValue() == null || f.getValue().getValue() == null);
 
 
         WebAudits audits = new WebAudits();
-        for (Map.Entry<IACheckup.AuditType, Map.Entry<Object, String>> entry : checkupResult.entrySet()) {
-            IACheckup.AuditType type = entry.getKey();
+        for (Map.Entry<AuditType, Map.Entry<Object, String>> entry : checkupResult.entrySet()) {
+            AuditType type = entry.getKey();
             Map.Entry<Object, String> value = entry.getValue();
             audits.values.add(new WebAudit(type.name(), type.getSeverity().ordinal(), value.getKey().toString(), value.getValue()));
         }

@@ -171,7 +171,7 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
     public List<NationAttribute> getMetrics(ValueStore store) {
         List<NationAttribute> result = new ArrayList<>();
         for (CommandCallable callable : getFilterCallables()) {
-            ParametricCallable cmd = (ParametricCallable) callable;
+            ParametricCallable<?> cmd = (ParametricCallable<?>) callable;
             if (cmd.getUserParameters().stream().anyMatch(f -> !f.isOptional())) continue;
             try {
                 String id = cmd.aliases().get(0);
@@ -226,7 +226,7 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
     public List<NationAttributeDouble> getMetricsDouble(ValueStore store) {
         List<NationAttributeDouble> result = new ArrayList<>();
         for (CommandCallable callable : getFilterCallables()) {
-            ParametricCallable cmd = (ParametricCallable) callable;
+            ParametricCallable<?> cmd = (ParametricCallable) callable;
             if (cmd.getUserParameters().stream().anyMatch(f -> !f.isOptional())) continue;
             try {
                 String id = cmd.aliases().get(0);

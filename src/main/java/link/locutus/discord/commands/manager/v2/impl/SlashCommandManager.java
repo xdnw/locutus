@@ -191,7 +191,7 @@ public class SlashCommandManager extends ListenerAdapter {
         return cmds;
     }
 
-    private boolean isAdmin(ParametricCallable cmd) {
+    private boolean isAdmin(ParametricCallable<?> cmd) {
         RolePermission rolePerm = cmd.getAnnotation(RolePermission.class);
         if (rolePerm == null) return false;
         return rolePerm.root() && rolePerm.value().length == 1 && rolePerm.value()[0] == Roles.ADMIN;

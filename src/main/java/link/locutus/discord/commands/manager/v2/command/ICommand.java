@@ -2,18 +2,17 @@ package link.locutus.discord.commands.manager.v2.command;
 
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import org.json.JSONObject;
 
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
-public interface ICommand extends CommandCallable {
+public interface ICommand<T> extends CommandCallable {
+    Class<T> getType();
+
     Collection<ParameterData> getParameters();
 
     List<ParameterData> getUserParameters();
@@ -51,4 +50,6 @@ public interface ICommand extends CommandCallable {
         }
         return result;
     }
+
+    Map<String, Object> toJsonSchema(Map<Key<?>, Map<String, Object>> primitiveCache);
 }

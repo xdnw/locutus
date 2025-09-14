@@ -163,7 +163,8 @@ public class SheetBindings extends BindingHelper {
 
     @Binding(value = "A google spreadsheet id or url\n" +
             "For shorthand, use a comma when specifying the sheet tab e.g. `sheet:ID,TAB_NAME`" +
-            "For a url, append `#gid=1234` or `#tab=tabName` to specify the id of the tab to use", examples = {"sheet:1X2Y3Z4", "https://docs.google.com/spreadsheets/d/1X2Y3Z4/edit#gid=0"})
+            "For a url, append `#gid=1234` or `#tab=tabName` to specify the id of the tab to use",
+            examples = {"sheet:1X2Y3Z4", "https://docs.google.com/spreadsheets/d/1X2Y3Z4/edit#gid=0"})
     public SpreadSheet sheet(String input) throws GeneralSecurityException, IOException {
         if (input.startsWith("sheet:")) {
         } else if (input.startsWith("https://docs.google.com/spreadsheets/")) {
@@ -173,7 +174,9 @@ public class SheetBindings extends BindingHelper {
         return SpreadSheet.create(input);
     }
 
-    @Binding(value = "A google spreadsheet id or url. Must have a `nation` or `leader` column as well as the names of each resource", examples = {"sheet:1X2Y3Z4", "https://docs.google.com/spreadsheets/d/1X2Y3Z4/edit#gid=0"})
+    @Binding(value = "A google spreadsheet id or url. Must have a `nation` or `leader` column as well as the names of each resource",
+            examples = {"sheet:1X2Y3Z4", "https://docs.google.com/spreadsheets/d/1X2Y3Z4/edit#gid=0"},
+    webType = SpreadSheet.class)
     public TransferSheet transferSheet(String input) throws GeneralSecurityException, IOException {
         sheet(input); // validate
         TransferSheet sheet = new TransferSheet(input);

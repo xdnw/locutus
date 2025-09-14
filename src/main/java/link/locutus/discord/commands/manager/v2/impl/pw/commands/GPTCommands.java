@@ -673,7 +673,7 @@ public class GPTCommands {
                 throw new IllegalStateException("No GPT instance found. Please have the bot owner enable it in the `config.yaml` or specify a `sheet` instead");
             }
 
-            GptLimitTracker provider = gpt.getProviderManager().getDefaultProvider(db, user, me);
+            GptLimitTracker provider = gpt.getLimitManager().getDefaultProvider(db, user, me);
 
             StringBuilder channelsBuilder = new StringBuilder();
             Category lastCategory = null;

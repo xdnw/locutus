@@ -151,7 +151,7 @@ Message: `$who Rose -l`
 //        }
 
 
-        List<ParametricCallable> commands = new ArrayList<>(group.getParametricCallables(Predicates.alwaysTrue()));
+        List<ParametricCallable<?>> commands = new ArrayList<>(group.getParametricCallables(Predicates.alwaysTrue()));
         // has any @Ignore annotation
         commands.removeIf(f -> f.getAnnotations().stream().anyMatch(a -> a.annotationType().equals(Config.Ignore.class)));
         commands.removeIf(f -> {
@@ -165,7 +165,7 @@ Message: `$who Rose -l`
 
         result.append(header);
 
-        for (ParametricCallable command : commands) {
+        for (ParametricCallable<?> command : commands) {
             result.append("## ").append(prefix).append(command.getFullPath());
             if (printReturnType) {
                 Type returnType = command.getReturnType();

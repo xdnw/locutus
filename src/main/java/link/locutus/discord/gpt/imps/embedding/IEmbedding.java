@@ -9,6 +9,7 @@ public interface IEmbedding extends Closeable, ITokenizer {
     String getTableName();
 
     default float[] fetchAndNormalize(String text) {
+        if (text.isEmpty()) throw new IllegalArgumentException("Text cannot be empty");
         return GPTUtil.handleVectorChunking(text, getSizeCap(), this::getSize, f -> {
             float[] vector = fetch(f);
             GPTUtil.normalize(vector);

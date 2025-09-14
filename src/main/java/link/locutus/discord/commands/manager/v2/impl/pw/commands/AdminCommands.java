@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.politicsandwar.graphql.model.AlliancePosition;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
@@ -121,10 +122,18 @@ import java.util.stream.Collectors;
 import static link.locutus.discord.commands.manager.v2.binding.annotation.Kw.*;
 
 public class AdminCommands {
-    @Command
+    @Command(desc = "Generate a sheet of inactive guilds and optionally leave them\n" +
+            "The following disqualify a guild:\n" +
+            "- Channel or Role created within 1y\n" +
+            "- Valid in-game alliance\n" +
+            "- Member or Bot joined the server within 1y\n" +
+            "- A server admin is registered to a valid nation\n" +
+            "- An account with an offshore\n" +
+            "Review the sheet and use `force`, or modify it and provide it as an argument for `servers` to leave multiple guilds at once.")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String cullInactiveGuilds(@Me JSONObject command, @Me GuildDB thisDb, @Me IMessageIO io,
-                                     @Default Set<GuildDB> servers, @Switch("s") SpreadSheet sheet, @Switch("f") boolean force) throws GeneralSecurityException, IOException {
+                                     @Default Set<GuildDB> servers, @Switch("s") SpreadSheet sheet,
+                                     @Switch("f") boolean force) throws GeneralSecurityException, IOException {
         if (servers != null) {
             if (!force) {
                 io.create()
@@ -282,26 +291,59 @@ public class AdminCommands {
         return null;
     }
 
-    @Command
+    @Command(desc = """
+            Automatically move funds to a new offshore alliance you have created in-game
+            Note: Available only in TEST server
+            You must have at least some funds in the alliance bank for this to work""")
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String newOffshore(@Me IMessageIO io, @Me DBNation nation, DBAlliance alliance) throws IOException {
+    public String newOffshore(@Me IMessageIO io, @Me GuildDB db, @Me DBNation nation,
+                              DBAlliance alliance) throws IOException {
         if (!Settings.INSTANCE.TEST) {
             throw new IllegalArgumentException("Creating new offshore is disabled in production");
         }
-        Auth auth = nation.getAuth(true);
+        Auth auth = nation.getAuth(false);
+        if (auth == null) {
+            throw new IllegalArgumentException("You do not have credentials provided in order to make an alliance in-game. See: " + CM.credentials.login.cmd.toSlashMention());
+        }
         if (alliance.getId() != nation.getAlliance_id()) {
             throw new IllegalArgumentException("Your nation is not in the alliance you specified (if it is, please use the `!sync <nation>` command and try again)");
         }
         if (alliance.getMemberDBNations().size() > 1) {
             throw new IllegalArgumentException("Alliance has more than 1 member. Please create a new alliance with only your nation");
         }
+        DBAlliancePosition leaderPos = alliance.getPositions().stream().filter(p -> p.getRank() == Rank.LEADER).findFirst().orElse(null);
+        if (leaderPos == null) {
+            throw new IllegalArgumentException("Failed to find leader position in alliance. See " + CM.admin.sync2.alliances.cmd.toSlashMention());
+        }
+        if (nation.getPositionEnum() != Rank.LEADER && nation.getPositionEnum() != Rank.HEIR) {
+            throw new IllegalArgumentException("You must be the alliance leader or heir to use this command");
+        }
+
+        PoliticsAndWarV3 setRankApi = nation.getApi(true);
+        if (setRankApi == null) {
+            throw new IllegalArgumentException("Failed to get api. Please ensure your api key is valid: " + CM.credentials.addApiKey.cmd.toSlashMention());
+        }
+
         // Send funds to new alliance
-        OffshoreInstance offshore = Locutus.imp().getRootBank();
+        OffshoreInstance offshore = db.getOffshore();
+        if (offshore == null) {
+            throw new IllegalArgumentException("This server does not have an offshore setup. See: " + CM.offshore.add.cmd.toSlashMention());
+        }
         DBAlliance offshoreAA = offshore.getAlliance();
         Auth offshoreAuth = offshoreAA.getAuth(AlliancePermission.WITHDRAW_BANK);
-        User offshoreUser = offshoreAuth.getNation().getUser();
+        if (offshoreAuth == null) {
+            throw new IllegalArgumentException("Failed to get credentials for offshore alliance. Please have an admin within the offshore alliance use " + CM.credentials.login.cmd.toSlashMention());
+        }
+        DBNation offshoreNation = offshoreAuth.getNation();
+        User offshoreUser = offshoreNation.getUser();
+        if (offshoreUser == null) {
+            throw new IllegalArgumentException("Failed to get discord user for " + offshoreNation.getMarkdownUrl() + ". See: " + CM.register.cmd.toSlashMention());
+        }
 
         Map<ResourceType, Double> stockpile = offshoreAA.getStockpile();
+        if (stockpile == null) {
+            throw new IllegalArgumentException("Failed to get stockpile for offshore alliance. Please ensure api for the offshore key is valid: " + CM.settings_default.registerApiKey.cmd.toSlashMention());
+        }
         if (stockpile.isEmpty()) {
             throw new IllegalArgumentException("Offshore alliance has no stockpile (send $1 to it for the purposes of this command)");
         }
@@ -321,17 +363,29 @@ public class AdminCommands {
         io.send("Left offshore alliance");
         offshoreAuth.apply(alliance);
         io.send("Applied to new alliance");
+
+        // set to member
+        AlliancePosition setLeaderResult = setRankApi.assignAlliancePosition(offshoreAuth.getNationId(), leaderPos.getId());
+        if (setLeaderResult == null) {
+            io.send("Failed to set position in new alliance. Please set " + offshoreNation.getMarkdownUrl() + " manually to leader");
+        } else {
+            offshoreNation.setAlliance_id(alliance.getId());
+            offshoreNation.setAlliancePositionId(leaderPos.getId());
+            io.send("Set position in new alliance to " + setLeaderResult);
+
+
+        }
         return BankCommands.addOffshore(io, offshoreUser, offshore.getGuildDB(), offshoreAuth.getNation(), null, alliance, false, false, true);
     }
 
-    @Command
+    @Command(desc = "Force re-register slash commands for this guild")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String upsertCommands(@Me Guild guild) {
         Locutus.imp().getSlashCommands().register(guild);
         return "Done! (Restart your discord client to see changes)";
     }
 
-    @Command
+    @Command(desc = "Sync the top 20% city average via the api")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncCityAvg(@Default Double force_value) {
         if (force_value != null) {
@@ -344,7 +398,7 @@ public class AdminCommands {
         }
     }
 
-    @Command
+    @Command(desc = "Force sync alliances from the api")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncAlliances() {
         Locutus.imp().getNationDB().updateAlliances(f -> {}, Event::post);
@@ -2441,7 +2495,7 @@ public class AdminCommands {
         return result.toString();
     }
 
-    @Command()
+    @Command(desc = "Fetch and update the cities of all nations using the API, and run associated events")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncCitiesTest(NationDB db) throws IOException, ParseException {
         StringBuilder result = new StringBuilder();

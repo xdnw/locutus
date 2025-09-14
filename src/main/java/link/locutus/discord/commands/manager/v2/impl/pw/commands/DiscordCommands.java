@@ -586,7 +586,7 @@ public class DiscordCommands {
             Create a discord modal for a bot command
             This will make a popup prompting for the command arguments you specify and submit any defaults you provide
             Note: This is intended to be used in conjuction with the card command""")
-    public String modal(@Me IMessageIO io, ICommand command,
+    public String modal(@Me IMessageIO io, ICommand<?> command,
                         @Arg("A comma separated list of the command arguments to prompt for") String arguments,
                         @Arg("The default arguments and values you want to submit to the command\n" +
                                 "Example: `myarg1:myvalue1 myarg2:myvalue2`")

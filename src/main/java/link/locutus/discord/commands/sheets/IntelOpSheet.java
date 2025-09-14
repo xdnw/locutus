@@ -13,7 +13,7 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.Spyop;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.SpyCount;
+import link.locutus.discord.util.Operation;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -158,7 +158,7 @@ public class IntelOpSheet extends Command {
                     List<Spyop> currentOps = targets.computeIfAbsent(enemy, f -> new ArrayList<>());
                     if (currentOps.size() > 1) continue;
                     if (currentOps.size() == 1 && currentOps.get(0).attacker == attacker) continue;
-                    Spyop op = new Spyop(attacker, enemy, 1, SpyCount.Operation.INTEL, 0, 3);
+                    Spyop op = new Spyop(attacker, enemy, 1, Operation.INTEL, 0, 3);
 
                     currentOps.add(op);
                     iter.remove();

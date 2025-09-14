@@ -12,11 +12,8 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PW;
-import link.locutus.discord.util.SpyCount;
-import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.io.PagePriority;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -49,7 +46,7 @@ public class CounterSpy extends Command {
     @Override
     public String desc() {
         return "Find a nation to do a spy op against the specified enemy\n" +
-                "Op types: " + StringMan.getString(SpyCount.Operation.values()) + " or `*` (for all op types)\n" +
+                "Op types: " + StringMan.getString(Operation.values()) + " or `*` (for all op types)\n" +
                 "The alliance argument is optional\n" +
                 "Use `success>80` to specify a cutoff for spyop success";
     }
@@ -101,14 +98,14 @@ public class CounterSpy extends Command {
         }
 
         if (enemy == null) return "Invalid enemy: `" + args.get(1) + "`";
-        SpyCount.Operation operation;
+        Operation operation;
         if (args.get(1).equalsIgnoreCase("*")) {
-            operation = SpyCount.Operation.INTEL;
+            operation = Operation.INTEL;
         } else {
             try {
-                operation = SpyCount.Operation.valueOf(args.get(1).toUpperCase());
+                operation = Operation.valueOf(args.get(1).toUpperCase());
             }catch (IllegalArgumentException e) {
-                return "Unknown op: `" + args.get(1) + "`" + ". Valid options are: " + StringMan.getString(SpyCount.Operation.values());
+                return "Unknown op: `" + args.get(1) + "`" + ". Valid options are: " + StringMan.getString(Operation.values());
             }
         }
         Set<DBNation> toCounter;
@@ -120,7 +117,7 @@ public class CounterSpy extends Command {
         }
         toCounter.removeIf(n -> n.getSpies() == 0 || !n.isInSpyRange(enemy) || n.active_m() > TimeUnit.DAYS.toMinutes(2));
 
-        List<Map.Entry<DBNation, Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>>>> netDamage = new ArrayList<>();
+        List<Map.Entry<DBNation, Map.Entry<Operation, Map.Entry<Integer, Double>>>> netDamage = new ArrayList<>();
 
         CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Please wait...");
 
@@ -144,11 +141,11 @@ public class CounterSpy extends Command {
 
                 }
 
-                SpyCount.Operation[] opTypes = SpyCount.Operation.values();
-                if (operation != SpyCount.Operation.INTEL) {
-                    opTypes = new SpyCount.Operation[] {operation};
+                Operation[] opTypes = Operation.values();
+                if (operation != Operation.INTEL) {
+                    opTypes = new Operation[] {operation};
                 }
-                Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(mySpies, enemy, counterWith.hasProject(Projects.SPY_SATELLITE), opTypes);
+                Map.Entry<Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(mySpies, enemy, counterWith.hasProject(Projects.SPY_SATELLITE), opTypes);
                 if (best != null) {
                     netDamage.add(new KeyValue<>(counterWith, best));
                 }
@@ -164,9 +161,9 @@ public class CounterSpy extends Command {
             StringBuilder body = new StringBuilder();
 
             int nationCount = 0;
-            for (Map.Entry<DBNation, Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>>> entry : netDamage) {
-                Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> opinfo = entry.getValue();
-                SpyCount.Operation op = opinfo.getKey();
+            for (Map.Entry<DBNation, Map.Entry<Operation, Map.Entry<Integer, Double>>> entry : netDamage) {
+                Map.Entry<Operation, Map.Entry<Integer, Double>> opinfo = entry.getValue();
+                Operation op = opinfo.getKey();
                 Map.Entry<Integer, Double> safetyDamage = opinfo.getValue();
 
                 DBNation nation = entry.getKey();
@@ -175,7 +172,7 @@ public class CounterSpy extends Command {
 
                 int attacking = entry.getKey().getSpies();
                 int spiesUsed = attacking;
-                if (operation != SpyCount.Operation.SPIES) {
+                if (operation != Operation.SPIES) {
                     spiesUsed = SpyCount.getRecommendedSpies(attacking, enemy.getSpies(), safety, operation, enemy);
                 }
 

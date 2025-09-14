@@ -214,7 +214,7 @@ public class SettingCommands {
         return response.toString();
     }
 
-    @Command
+    @Command(desc = "Import internal transactions from another guild, i.e. from balances that have been manually adjusted")
     @RolePermission(Roles.ADMIN)
     public String importTransactions(@Me GuildDB db, @Me User user, @Me JSONObject command, @Me IMessageIO io,
                                      Guild server, Set<DBNation> nations, @Switch("f") boolean force) {

@@ -233,7 +233,7 @@ public class EmbedCommands {
     @Command(desc = "Add a button to a discord embed from this bot which runs a command")
     @NoFormat
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public String addButton(@Me User user, @Me IMessageIO io, @Me JSONObject cmdJson, @Me Guild guild, Message message, String label, CommandBehavior behavior, ICommand command,
+    public String addButton(@Me User user, @Me IMessageIO io, @Me JSONObject cmdJson, @Me Guild guild, Message message, String label, CommandBehavior behavior, ICommand<?> command,
                             @Default @Arg("""
                                     The arguments and values you want to submit to the command
                                     Example: `myarg1:myvalue1 myarg2:myvalue2`
@@ -260,7 +260,7 @@ public class EmbedCommands {
     @Command(desc = "Add a modal button to a discord embed from this bot, which creates a prompt for a command")
     @NoFormat
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public String addModal(@Me User user, @Me IMessageIO io, @Me Guild guild, Message message, String label, CommandBehavior behavior, ICommand command,
+    public String addModal(@Me User user, @Me IMessageIO io, @Me Guild guild, Message message, String label, CommandBehavior behavior, ICommand<?> command,
                            @Arg("A comma separated list of the command arguments to prompt for\n" +
                                    "Arguments can be one of the named arguments for the command, or the name of any `{placeholder}` you have for `defaults`") String arguments,
                            @Arg("""
@@ -749,17 +749,17 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         }
 
       CM.spy.find.target spy = CM.spy.find.target.cmd.targets(
-                "~" + coalition + ",#active_m<1440").operations(SpyCount.Operation.SPIES.name());
+                "~" + coalition + ",#active_m<1440").operations(Operation.SPIES.name());
         CM.spy.find.target airplane = CM.spy.find.target.cmd.targets(
-                "~" + coalition + ",#active_m<1440").operations(SpyCount.Operation.AIRCRAFT.name());
+                "~" + coalition + ",#active_m<1440").operations(Operation.AIRCRAFT.name());
         CM.spy.find.target tank = CM.spy.find.target.cmd.targets(
-                "~" + coalition + ",#active_m<1440").operations(SpyCount.Operation.TANKS.name());
+                "~" + coalition + ",#active_m<1440").operations(Operation.TANKS.name());
         CM.spy.find.target ship = CM.spy.find.target.cmd.targets(
-                "~" + coalition + ",#active_m<1440").operations(SpyCount.Operation.SHIPS.name());
+                "~" + coalition + ",#active_m<1440").operations(Operation.SHIPS.name());
         CM.spy.find.target missile = CM.spy.find.target.cmd.targets(
-                "~" + coalition + ",#active_m<2880").operations(SpyCount.Operation.MISSILE.name());
+                "~" + coalition + ",#active_m<2880").operations(Operation.MISSILE.name());
         CM.spy.find.target nuke = CM.spy.find.target.cmd.targets(
-                "~" + coalition + ",#active_m<2880").operations(SpyCount.Operation.NUKE.name());
+                "~" + coalition + ",#active_m<2880").operations(Operation.NUKE.name());
         CM.spy.find.target dmg = CM.spy.find.target.cmd.targets(
                 "~" + coalition + ",#active_m<1440").operations("*");
         CM.spy.find.target kill = CM.spy.find.target.cmd.targets(
@@ -1311,7 +1311,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         .commandButton(behavior, channelId, CM.spy.sheet.generate.cmd.attackers(
                         "~" + allies + ",#vm_turns=0,#position>1,#active_m<1440,#cities>=10").defenders(
                         "~enemies,#vm_turns=0,#position>1,#active_m<1440,#cities>=10").allowedTypes(
-                        StringMan.join(Arrays.asList(SpyCount.Operation.SPIES.name(),SpyCount.Operation.AIRCRAFT.name()), ",")).forceUpdate(
+                        StringMan.join(Arrays.asList(Operation.SPIES.name(), Operation.AIRCRAFT.name()), ",")).forceUpdate(
                         "true").checkEspionageSlots(
                         "true").prioritizeKills(
                         "true").sheet(

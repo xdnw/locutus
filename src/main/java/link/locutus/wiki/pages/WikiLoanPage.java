@@ -1,9 +1,9 @@
 package link.locutus.wiki.pages;
 
+import link.locutus.discord.db.entities.Status;
 import link.locutus.wiki.BotWikiGen;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
-import link.locutus.discord.db.entities.DBLoan;
 
 import java.util.Arrays;
 import java.util.stream.Collectors;
@@ -27,7 +27,7 @@ public class WikiLoanPage extends BotWikiGen {
                 Only those with the `INTERNAL_AFFAIRS` role can update or remove a loan.
                 """,
                 "# Valid loan status\n" +
-                Arrays.stream(DBLoan.Status.values()).map(f -> "- " + f.name()).collect(Collectors.joining("\n")),
+                Arrays.stream(Status.values()).map(f -> "- " + f.name()).collect(Collectors.joining("\n")),
                 "# Adding, updating and removing a single loan",
                 commandMarkdownSpoiler(CM.report.loan.add.cmd),
                 commandMarkdownSpoiler(CM.report.loan.update.cmd),

@@ -27,6 +27,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.awt.*;
+import java.lang.reflect.WildcardType;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -34,7 +35,7 @@ import java.util.stream.Collectors;
 public class DiscordWebBindings extends WebBindingHelper {
 
     @HtmlInput
-    @Binding(types = ICommand.class)
+    @Binding(types = {ICommand.class, WildcardType.class})
     public String iCommand(@Me User user, @Default ParameterData param) {
         return command(user, param);
     }

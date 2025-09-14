@@ -1,5 +1,9 @@
 package link.locutus.discord.gpt.imps;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.util.StringMan;
@@ -38,14 +42,25 @@ public class SqliteVecStore implements AutoCloseable {
         }
 
         SQLiteConfig cfg = new SQLiteConfig();
-        cfg.enableLoadExtension(true);
-        this.conn = DriverManager.getConnection("jdbc:sqlite:" + dbFile.toString(), cfg.toProperties());
-        try (Statement st = conn.createStatement()) {
-            st.execute("PRAGMA foreign_keys=ON");
-        }
 
+        // allow extensions only if you need them
+        cfg.enableLoadExtension(true);
+
+        // helpful defaults for concurrent readers + occasional writers:
+        cfg.setJournalMode(SQLiteConfig.JournalMode.WAL);              // enables WAL mode
+        cfg.setSynchronous(SQLiteConfig.SynchronousMode.NORMAL);       // durability/throughput tradeoff
+        cfg.setBusyTimeout(10_000);                                    // wait up to 10s instead of failing fast
+        cfg.enforceForeignKeys(true);                                  // same as PRAGMA foreign_keys = ON
+
+        // optional: keep temp tables in memory for better perf if you create many temp tables
+        cfg.setTempStore(SQLiteConfig.TempStore.MEMORY);
+
+        this.conn = DriverManager.getConnection("jdbc:sqlite:" + dbFile.toString(), cfg.toProperties());
+
+        // JDBC-level settings
+        this.conn.setAutoCommit(false);                                // you will manage transactions manually
+        this.conn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
         // Load vec0.dll from resources to a temp file, then load the extension
-//        Path dll = extractResourceToTemp("/vec0.dll", "vec0-", ".dll");
 
         Path cacheDir = parent != null ? parent : Path.of(".");
         Path dll = SqliteVecFetcher.ensureLatestForCurrentPlatform(cacheDir);
@@ -292,22 +307,39 @@ public class SqliteVecStore implements AutoCloseable {
                     hash = StringMan.hash(text);
                 }
                 conn.setAutoCommit(false);
-                int affected;
-                try (PreparedStatement pm = conn.prepareStatement(
-                        "INSERT OR IGNORE INTO vector_meta(id, source_id, label) VALUES (?, ?, ?)")) {
+                int affected = 0;
+
+                String insertMetaReturning =
+                        "INSERT INTO vector_meta(id, source_id, label) VALUES (?, ?, ?)" +
+                                " ON CONFLICT(id) DO NOTHING RETURNING id"; // works in modern SQLite and Postgres
+
+                try (PreparedStatement pm = conn.prepareStatement(insertMetaReturning)) {
                     pm.setLong(1, hash);
                     pm.setInt(2, sourceId);
                     pm.setString(3, text);
-                    affected = pm.executeUpdate();
-                }
-                if (affected > 0) {
-                    float[] embedding = vectorSupplier.get();
-                    requireDim(embedding);
-                    try (PreparedStatement pv = conn.prepareStatement(
-                            "INSERT INTO vectors(rowid, embedding) VALUES (?, vec_f32(?))")) {
-                        pv.setLong(1, hash);                  // bind as rowid
-                        pv.setString(2, toJsonArray(embedding));
-                        pv.executeUpdate();
+                    boolean hasNext;
+                    try (ResultSet rs = pm.executeQuery()) {
+                        hasNext = rs.next();
+                    }
+                    if (hasNext) {
+                        System.out.println("Inserting meta for ID: " + hash);
+                        // meta was inserted — now compute embedding (expensive)
+                        float[] embedding = vectorSupplier.get();
+                        requireDim(embedding);
+                        String json = toJsonArray(embedding);
+
+                        // insert vector, but don't fail if someone else inserted it in the meantime
+                        try (PreparedStatement pv = conn.prepareStatement(
+                                "INSERT INTO vectors(rowid, embedding) VALUES (?, vec_f32(?))")) {
+                            pv.setLong(1, hash);
+                            pv.setString(2, json);
+                            pv.executeUpdate();
+                        }
+
+                        affected = 1;
+                    } else {
+                        System.out.println("Meta already exists for ID: " + hash);
+                        affected = 0;
                     }
                 }
                 conn.commit();
@@ -323,68 +355,127 @@ public class SqliteVecStore implements AutoCloseable {
         }
     }
 
-    public int addDocumentsIfNotExists(List<VectorRow> entries, Function<String, float[]> vectorFunc, int sourceId) {
+    public int addDocumentsIfNotExists(
+            List<VectorRow> entries,
+            Function<String, float[]> vectorFunc,
+            int sourceId) {
         if (entries == null || entries.isEmpty()) return 0;
+        if (entries.size() == 1) {
+            // keep your single-entry fast path unchanged
+            VectorRow row = entries.get(0);
+            Supplier<float[]> vecSupplier;
+            if (row.vector != null) {
+                vecSupplier = () -> row.vector;
+            } else if (vectorFunc != null) {
+                vecSupplier = () -> vectorFunc.apply(row.text);
+            } else {
+                throw new IllegalArgumentException("Missing embedding for label: " + row.text);
+            }
+            return addDocumentIfNotExists(row.text, row.id != 0L ? row.id : null, vecSupplier, sourceId);
+        }
+
+        final int SQLITE_MAX_VARS = 900; // keep under default 999; safe margin
+
+        // 1) compute ids and preserve order using primitive collections
+        LongArrayList ids = new LongArrayList(entries.size());
+        Long2ObjectLinkedOpenHashMap<VectorRow> idToEntry = new Long2ObjectLinkedOpenHashMap<>(entries.size());
+        for (VectorRow e : entries) {
+            long id = (e.id != 0L) ? e.id : StringMan.hash(e.text);
+            ids.add(id);
+            // keep first occurrence only
+            if (!idToEntry.containsKey(id)) idToEntry.put(id, e);
+        }
 
         try {
+            // 2) find existing ids in vector_meta via chunked IN (...) queries
+            LongOpenHashSet existing = new LongOpenHashSet();
+            for (int start = 0; start < ids.size(); start += SQLITE_MAX_VARS) {
+                int end = Math.min(ids.size(), start + SQLITE_MAX_VARS);
+                // build placeholders quickly
+                StringBuilder placeholders = new StringBuilder((end - start) * 2);
+                for (int i = start; i < end; ++i) {
+                    placeholders.append("?,");
+                }
+                placeholders.deleteCharAt(placeholders.length() - 1);
+                String sql = "SELECT id FROM vector_meta WHERE id IN (" + placeholders + ")";
+                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                    int idx = 1;
+                    for (int i = start; i < end; ++i) {
+                        ps.setLong(idx++, ids.getLong(i));
+                    }
+                    try (ResultSet rs = ps.executeQuery()) {
+                        while (rs.next()) existing.add(rs.getLong(1));
+                    }
+                }
+            }
+
+            // 3) build list of entries we actually need to insert (primitive-aware)
+            Long2ObjectLinkedOpenHashMap<VectorRow> toInsert = new Long2ObjectLinkedOpenHashMap<>();
+            for (Long2ObjectMap.Entry<VectorRow> ent : idToEntry.long2ObjectEntrySet()) {
+                long id = ent.getLongKey();
+                if (!existing.contains(id)) toInsert.put(id, ent.getValue());
+            }
+            if (toInsert.isEmpty()) return 0;
+
+            // 4) perform inserts inside a transaction (same as your code)
             boolean oldAuto = conn.getAutoCommit();
             conn.setAutoCommit(false);
-
-            int[] counts;
-            // 1) Insert meta rows (OR IGNORE) in batch
-            try (PreparedStatement pm = conn.prepareStatement(
-                    "INSERT OR IGNORE INTO vector_meta(id, source_id, label) VALUES (?, ?, ?)")) {
-                for (VectorRow e : entries) {
-                    String label = e.text;
-                    long id = (e.id != 0L) ? e.id : StringMan.hash(label);
-                    pm.setLong(1, id);
-                    pm.setInt(2, sourceId);
-                    pm.setString(3, label);
-                    pm.addBatch();
-                }
-                counts = pm.executeBatch();
-            }
-
-            // 2) For the rows actually inserted, compute/add vectors
-            int inserted = 0;
-            try (PreparedStatement pv = conn.prepareStatement(
-                    "INSERT INTO vectors(rowid, embedding) VALUES (?, vec_f32(?))")) {
-                for (int i = 0; i < entries.size(); i++) {
-                    int c = counts[i];
-                    boolean newlyInserted = (c > 0) || (c == Statement.SUCCESS_NO_INFO);
-                    if (!newlyInserted) continue;
-
-                    VectorRow e = entries.get(i);
-                    String label = e.text;
-                    long id = (e.id != 0L) ? e.id : StringMan.hash(label);
-
-                    float[] embedding = (e.vector != null) ? e.vector
-                            : (vectorFunc != null ? vectorFunc.apply(label) : null);
-                    if (embedding == null) {
-                        throw new IllegalArgumentException("Missing embedding for label: " + label);
+            int insertedVectors = 0;
+            try {
+                // insert meta rows in batches
+                try (PreparedStatement pm = conn.prepareStatement(
+                        "INSERT INTO vector_meta(id, source_id, label) VALUES (?, ?, ?)")) {
+                    int batchCount = 0;
+                    for (Long2ObjectMap.Entry<VectorRow> ent : toInsert.long2ObjectEntrySet()) {
+                        long id = ent.getLongKey();
+                        VectorRow e = ent.getValue();
+                        pm.setLong(1, id);
+                        pm.setInt(2, sourceId);
+                        pm.setString(3, e.text);
+                        pm.addBatch();
+                        if (++batchCount % 500 == 0) pm.executeBatch();
                     }
-                    requireDim(embedding);
+                    pm.executeBatch();
+                }
 
-                    pv.setLong(1, id);
-                    pv.setString(2, toJsonArray(embedding));
-                    pv.addBatch();
-                    inserted++;
-                }
-                if (inserted > 0) {
+                // compute embeddings only for newly-inserted rows and batch insert vectors
+                try (PreparedStatement pv = conn.prepareStatement(
+                        "INSERT INTO vectors(rowid, embedding) VALUES (?, vec_f32(?))")) {
+                    int batchCount = 0;
+                    for (Long2ObjectMap.Entry<VectorRow> ent : toInsert.long2ObjectEntrySet()) {
+                        long id = ent.getLongKey();
+                        VectorRow e = ent.getValue();
+
+                        float[] embedding = (e.vector != null) ? e.vector
+                                : (vectorFunc != null ? vectorFunc.apply(e.text) : null);
+                        if (embedding == null) {
+                            throw new IllegalArgumentException("Missing embedding for label: " + e.text);
+                        }
+                        requireDim(embedding);
+
+                        pv.setLong(1, id);
+                        pv.setString(2, toJsonArray(embedding));
+                        pv.addBatch();
+                        if (++batchCount % 500 == 0) pv.executeBatch();
+                    }
                     pv.executeBatch();
+                    insertedVectors = toInsert.size();
                 }
+
+                conn.commit();
+            } catch (SQLException | RuntimeException ex) {
+                try { conn.rollback(); } catch (SQLException ignore) {}
+                throw new RuntimeException(ex);
+            } finally {
+                conn.setAutoCommit(oldAuto);
             }
 
-            conn.commit();
-            conn.setAutoCommit(oldAuto);
-            return inserted;
+            return insertedVectors;
         } catch (SQLException e) {
-            try { conn.rollback(); } catch (SQLException ignore) {}
             throw new RuntimeException(e);
-        } finally {
-            try { if (!conn.getAutoCommit()) conn.setAutoCommit(true); } catch (SQLException ignore) {}
         }
     }
+
 
     public List<VectorRow> searchSimilarReranked(float[] query, int k, boolean fetchVector) {
         int ratio = 5;

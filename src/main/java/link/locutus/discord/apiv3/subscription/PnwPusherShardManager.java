@@ -13,6 +13,7 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -85,7 +86,11 @@ public class PnwPusherShardManager {
                 MessageChannel channel = db.getOrNull(GuildKey.ESPIONAGE_ALERT_CHANNEL);
                 if (channel != null && channel.canTalk()) {
                     try {
-                        RateLimitUtil.queueMessage(channel, "Disabling " + GuildKey.ESPIONAGE_ALERT_CHANNEL.name() + " (invalid key)", false);
+                        String msg = "Disabling " + GuildKey.ESPIONAGE_ALERT_CHANNEL.name() + " (invalid key)\n" +
+                                "- " + CM.settings.delete.cmd.key(GuildKey.API_KEY.name()) + "\n" +
+                                "- " + CM.settings_default.registerApiKey.cmd.toSlashMention() + "\n" +
+                                "- " + CM.settings_war_alerts.ESPIONAGE_ALERT_CHANNEL.cmd.toSlashMention();
+                        RateLimitUtil.queueMessage(channel, msg, false);
                     } catch (Throwable ignore2) {}
                 }
                 db.deleteInfo(GuildKey.ESPIONAGE_ALERT_CHANNEL);

@@ -13,6 +13,7 @@ import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.Operation;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -105,8 +106,8 @@ public class SpyCommand extends Command {
         int minSafety = requiredSafety == null ? 1 : requiredSafety;
         int maxSafety = requiredSafety == null ? 3 : requiredSafety;
 
-        for (SpyCount.Operation op : SpyCount.Operation.values()) {
-            Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(true, op != SpyCount.Operation.SOLDIER, 60, nation, minSafety, maxSafety, me.hasProject(Projects.SPY_SATELLITE), op);
+        for (Operation op : Operation.values()) {
+            Map.Entry<Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(true, op != Operation.SOLDIER, 60, nation, minSafety, maxSafety, me.hasProject(Projects.SPY_SATELLITE), op);
             if (best == null) continue;
 
             Map.Entry<Integer, Double> bestVal = best.getValue();
@@ -116,7 +117,7 @@ public class SpyCommand extends Command {
 
             double odds = SpyCount.getOdds(recommended, result, safetyOrd, op, nation);
 
-            if (op == SpyCount.Operation.SOLDIER && nation.getSoldiers() == 0) op = SpyCount.Operation.INTEL;
+            if (op == Operation.SOLDIER && nation.getSoldiers() == 0) op = Operation.INTEL;
             response.append("\n- ").append(op.name()).append(": ");
 
             String safety = safetyOrd == 3 ? "covert" : safetyOrd == 2 ? "normal" : "quick";

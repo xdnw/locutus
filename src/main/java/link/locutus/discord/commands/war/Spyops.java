@@ -18,6 +18,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.db.entities.Safety;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
@@ -50,7 +51,7 @@ public class Spyops extends Command {
 
     @Override
     public String help() {
-        return super.help() + " <alliance|coaltion|*> <" + StringMan.join(SpyCount.Operation.values(), "|") + ">";
+        return super.help() + " <alliance|coaltion|*> <" + StringMan.join(Operation.values(), "|") + ">";
     }
 
     @Override
@@ -63,7 +64,7 @@ public class Spyops extends Command {
         return "Find the optimal spy ops to use:\n" +
                 "Use `*` for the alliance to only include active wars against allies\n" +
                 "Use `*` for op type to automatically find the best op type\n" +
-                "Available op types: " + StringMan.join(SpyCount.Operation.values(), ", ") + "\n" +
+                "Available op types: " + StringMan.join(Operation.values(), ", ") + "\n" +
                 "Use `success>80` to specify a cutoff for spyop success\n\n" +
                 "e.g. `" + Settings.commandPrefix(true) + "spyop enemies spies` | `" + Settings.commandPrefix(true) + "spyop enemies * -s`\n" +
                 "Add `-s` to force an update of nations with full spy slots\n" +
@@ -140,18 +141,18 @@ public class Spyops extends Command {
             return "Please use " + CM.register.cmd.toSlashMention();
         }
 
-        SpyCount.Operation operation;
+        Operation operation;
         try {
-            operation = args.size() >= 1 ? SpyCount.Operation.valueOf(args.get(1).toUpperCase()) : SpyCount.Operation.INTEL;
+            operation = args.size() >= 1 ? Operation.valueOf(args.get(1).toUpperCase()) : Operation.INTEL;
 
-            if (operation.unit == null && operation != SpyCount.Operation.SPIES) {
+            if (operation.unit == null && operation != Operation.SPIES) {
                 return "Try `" + Settings.commandPrefix(true) + "loot <nation>`, `" + Settings.commandPrefix(true) + "who <nation>`, `" + Settings.commandPrefix(true) + "spies <nation>` or (buggy) `" + Settings.commandPrefix(true) + "DebugGetRss <nation>`";
             }
         } catch (IllegalArgumentException e) {
             if (!args.get(1).equalsIgnoreCase("*")) {
-                return "Invalid op type: `" + args.get(1) + "`" + ". Valid options are: " + StringMan.join(SpyCount.Operation.values(), ", ");
+                return "Invalid op type: `" + args.get(1) + "`" + ". Valid options are: " + StringMan.join(Operation.values(), ", ");
             }
-            operation = SpyCount.Operation.INTEL; // placeholder
+            operation = Operation.INTEL; // placeholder
         }
 
         Set<Integer> allies = new IntOpenHashSet();
@@ -210,7 +211,7 @@ public class Spyops extends Command {
         int mySpies = attacker.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE);
         long dcTime = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - (TimeUtil.getTurn() % 12));
 
-        List<Map.Entry<DBNation, Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>>>> netDamage = new ArrayList<>();
+        List<Map.Entry<DBNation, Map.Entry<Operation, Map.Entry<Integer, Double>>>> netDamage = new ArrayList<>();
 
         for (DBNation nation : nations) {
             Integer spies = nation.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE, false, flags.contains('f'));
@@ -226,29 +227,29 @@ public class Spyops extends Command {
                     break;
                 case INTEL:
             }
-            if (operation == SpyCount.Operation.SPIES && spies == 0) {
+            if (operation == Operation.SPIES && spies == 0) {
                 continue;
             }
-            SpyCount.Operation[] opTypes = SpyCount.Operation.values();
-            if (operation != SpyCount.Operation.INTEL) {
-                opTypes = new SpyCount.Operation[]{operation};
+            Operation[] opTypes = Operation.values();
+            if (operation != Operation.INTEL) {
+                opTypes = new Operation[]{operation};
             }
-            ArrayList<SpyCount.Operation> opTypesList = new ArrayList<>(Arrays.asList(opTypes));
+            ArrayList<Operation> opTypesList = new ArrayList<>(Arrays.asList(opTypes));
             int maxMissile = MilitaryUnit.MISSILE.getMaxPerDay(nation.getCities(), nation::hasProject, nation::getResearch);
-            if (opTypesList.contains(SpyCount.Operation.MISSILE) && nation.getMissiles() > 0 && nation.getMissiles() <= maxMissile) {
+            if (opTypesList.contains(Operation.MISSILE) && nation.getMissiles() > 0 && nation.getMissiles() <= maxMissile) {
                 Map<Long, Integer> purchases = nation.getUnitPurchaseHistory(MilitaryUnit.MISSILE, dcTime);
-                if (!purchases.isEmpty()) opTypesList.remove(SpyCount.Operation.MISSILE);
+                if (!purchases.isEmpty()) opTypesList.remove(Operation.MISSILE);
             }
 
             int maxNuke = MilitaryUnit.NUKE.getMaxPerDay(nation.getCities(), nation::hasProject, nation::getResearch);
-            if (opTypesList.contains(SpyCount.Operation.NUKE) && nation.getNukes() > 0 && nation.getNukes() <= maxNuke) {
+            if (opTypesList.contains(Operation.NUKE) && nation.getNukes() > 0 && nation.getNukes() <= maxNuke) {
                 Map<Long, Integer> purchases = nation.getUnitPurchaseHistory(MilitaryUnit.NUKE, dcTime);
-                if (!purchases.isEmpty()) opTypesList.remove(SpyCount.Operation.NUKE);
+                if (!purchases.isEmpty()) opTypesList.remove(Operation.NUKE);
             }
-            opTypes = opTypesList.toArray(new SpyCount.Operation[0]);
+            opTypes = opTypesList.toArray(new Operation[0]);
 
 
-            Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(!flags.contains('k'), mySpies, nation, me.hasProject(Projects.SPY_SATELLITE), opTypes);
+            Map.Entry<Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(!flags.contains('k'), mySpies, nation, me.hasProject(Projects.SPY_SATELLITE), opTypes);
             if (best != null) {
                 double netDamageCost = best.getValue().getValue();
 
@@ -270,9 +271,9 @@ public class Spyops extends Command {
 
         ArrayList<Map.Entry<DBNation, Runnable>> targets = new ArrayList<>();
 
-        for (Map.Entry<DBNation, Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>>> entry : netDamage) {
-            Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> opinfo = entry.getValue();
-            SpyCount.Operation op = opinfo.getKey();
+        for (Map.Entry<DBNation, Map.Entry<Operation, Map.Entry<Integer, Double>>> entry : netDamage) {
+            Map.Entry<Operation, Map.Entry<Integer, Double>> opinfo = entry.getValue();
+            Operation op = opinfo.getKey();
             Map.Entry<Integer, Double> safetyDamage = opinfo.getValue();
 
             DBNation nation = entry.getKey();
@@ -280,7 +281,7 @@ public class Spyops extends Command {
             Double damage = safetyDamage.getValue();
 
             int spiesUsed = mySpies;
-            if (operation != SpyCount.Operation.SPIES) {
+            if (operation != Operation.SPIES) {
                 Integer enemySpies = nation.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE, false, false);
                 spiesUsed = SpyCount.getRecommendedSpies(spiesUsed, enemySpies, safety, op, nation);
             }
@@ -301,7 +302,7 @@ public class Spyops extends Command {
                             .append(allianceUrl).append("\n");
 
                     body.append("Op: " + op.name()).append("\n")
-                            .append("Safety: " + SpyCount.Safety.byId(safety)).append("\n")
+                            .append("Safety: " + Safety.byId(safety)).append("\n")
                             .append("Enemy \uD83D\uDD0E: " + nation.getSpies()).append("\n")
                             .append("Attacker \uD83D\uDD0E: " + finalSpiesUsed).append("\n")
                             .append("Dmg: $" + MathMan.format(damage)).append("\n")

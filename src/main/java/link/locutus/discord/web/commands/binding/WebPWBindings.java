@@ -24,12 +24,13 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
-import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.Report;
 import link.locutus.discord.db.ReportManager;
+import link.locutus.discord.db.ReportType;
 import link.locutus.discord.db.conflict.Conflict;
 import link.locutus.discord.db.conflict.ConflictManager;
 import link.locutus.discord.db.entities.*;
@@ -47,7 +48,6 @@ import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.gpt.ProviderType;
 import link.locutus.discord.gpt.imps.embedding.EmbeddingType;
-import link.locutus.discord.gpt.pw.GptLimitTracker;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.pnw.*;
 import link.locutus.discord.pnw.json.CityBuild;
@@ -58,7 +58,7 @@ import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.sheet.GoogleDoc;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
-import link.locutus.discord.util.task.ia.IACheckup;
+import link.locutus.discord.util.task.ia.AuditType;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.HtmlInput;
 import net.dv8tion.jda.api.OnlineStatus;
@@ -263,19 +263,19 @@ public class WebPWBindings extends WebBindingHelper {
 
     @HtmlInput
     @ReportPerms
-    @Binding(types = ReportManager.Report.class)
+    @Binding(types = Report.class)
     public String reportsPerm(ParameterData param, ReportManager manager, @Me DBNation me, @Me User author, @Me GuildDB db) {
         return reportsImp(param, manager, me, author, db, true);
     }
 
     @HtmlInput
-    @Binding(types = ReportManager.Report.class)
+    @Binding(types = Report.class)
     public String reports(ParameterData param, ReportManager manager, @Me DBNation me, @Me User author, @Me GuildDB db) {
         return reportsImp(param, manager, me, author, db, false);
     }
 
     public String reportsImp(ParameterData param, ReportManager manager, @Me DBNation me, @Me User author, @Me GuildDB db, boolean checkPerms) {
-        List<ReportManager.Report> options = manager.loadReports(null);
+        List<Report> options = manager.loadReports(null);
         if (checkPerms) {
             options.removeIf(f -> !f.hasPermission(me, author, db));
         }
@@ -630,10 +630,10 @@ public class WebPWBindings extends WebBindingHelper {
             });
         }
         {
-            Key<String> key = Key.of(TypeToken.getParameterized(Set.class, IACheckup.AuditType.class).getType(), HtmlInput.class);
+            Key<String> key = Key.of(TypeToken.getParameterized(Set.class, AuditType.class).getType(), HtmlInput.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
-                    return multipleSelectEmum(IACheckup.AuditType.class, valueStore);
+                    return multipleSelectEmum(AuditType.class, valueStore);
                 }));
             });
         }
@@ -730,11 +730,11 @@ public class WebPWBindings extends WebBindingHelper {
             });
         }
         {
-            Key<String> key = Key.of(TypeToken.getParameterized(Set.class, SpyCount.Operation.class).getType(), HtmlInput.class);
+            Key<String> key = Key.of(TypeToken.getParameterized(Set.class, Operation.class).getType(), HtmlInput.class);
             addBinding(rootStore -> {
                 rootStore.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) store -> {
                     ParameterData param = (ParameterData) store.getProvided(ParameterData.class);
-                    List<SpyCount.Operation> options = Arrays.asList(SpyCount.Operation.values());
+                    List<Operation> options = Arrays.asList(Operation.values());
 
                     return multipleSelect(param, options, op -> new KeyValue<>(op.name(), op.name()), true);
                 }));
@@ -952,24 +952,24 @@ public class WebPWBindings extends WebBindingHelper {
     }
 
     @HtmlInput
-    @Binding(types= DBLoan.Status.class)
+    @Binding(types= Status.class)
     public String LoanStatus(ParameterData param) {
         return LoanStatuses(param, false);
     }
 
     @HtmlInput
-    @Binding(types= {Set.class, DBLoan.Status.class}, multiple = true)
+    @Binding(types= {Set.class, Status.class}, multiple = true)
     public String LoanStatuses(ParameterData param) {
         return LoanStatuses(param, true);
     }
     public String LoanStatuses(ParameterData param, boolean multiple) {
-        return multipleSelect(param, Arrays.asList(DBLoan.Status.values()), type -> new KeyValue<>(type.name(), type.name()), multiple);
+        return multipleSelect(param, Arrays.asList(Status.values()), type -> new KeyValue<>(type.name(), type.name()), multiple);
     }
 
     @HtmlInput
-    @Binding(types= IACheckup.AuditType.class)
+    @Binding(types= AuditType.class)
     public String AuditType(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(IACheckup.AuditType.values()), type -> new KeyValue<>(type.name() + " | " + type.emoji + " | " + type.severity.name(), type.name()));
+        return multipleSelect(param, Arrays.asList(AuditType.values()), type -> new KeyValue<>(type.name() + " | " + type.emoji + " | " + type.severity.name(), type.name()));
     }
 
     @HtmlInput
@@ -1047,9 +1047,9 @@ public class WebPWBindings extends WebBindingHelper {
 
 
     @HtmlInput
-    @Binding(types= UnsortedCommands.ClearRolesEnum.class)
+    @Binding(types= ClearRolesEnum.class)
     public String ClearRolesEnum(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(UnsortedCommands.ClearRolesEnum.values()), rank -> new KeyValue<>(rank.name(), rank.name()));
+        return multipleSelect(param, Arrays.asList(ClearRolesEnum.values()), rank -> new KeyValue<>(rank.name(), rank.name()));
     }
 
     @HtmlInput
@@ -1122,9 +1122,9 @@ public class WebPWBindings extends WebBindingHelper {
     }
 
     @HtmlInput
-    @Binding(types= SpyCount.Safety.class)
+    @Binding(types= Safety.class)
     public String spySafety(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(SpyCount.Safety.values()), arg -> new KeyValue<>(arg.name(), arg.name()));
+        return multipleSelect(param, Arrays.asList(Safety.values()), arg -> new KeyValue<>(arg.name(), arg.name()));
     }
 
     @HtmlInput
@@ -1134,9 +1134,9 @@ public class WebPWBindings extends WebBindingHelper {
     }
 
     @HtmlInput
-    @Binding(types= ReportManager.ReportType.class)
+    @Binding(types= ReportType.class)
     public String ReportType(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(ReportManager.ReportType.values()), arg -> new KeyValue<>(arg.name(), arg.name()));
+        return multipleSelect(param, Arrays.asList(ReportType.values()), arg -> new KeyValue<>(arg.name(), arg.name()));
     }
 
     @HtmlInput

@@ -11,8 +11,10 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeD
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationMeta;
+import link.locutus.discord.db.entities.Safety;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.pnw.Spyop;
+import link.locutus.discord.util.Operation;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.TimeUtil;
@@ -32,7 +34,7 @@ public class SpyBlitzGenerator {
 
     private final Map<DBNation, Double> attList;
     private final Map<DBNation, Double> defList;
-    private final Set<SpyCount.Operation> allowedTypes;
+    private final Set<Operation> allowedTypes;
     private final int maxDef;
     private final boolean checkEspionageSlots;
     private final Integer minRequiredSpies;
@@ -48,7 +50,7 @@ public class SpyBlitzGenerator {
         return this;
     }
 
-    public SpyBlitzGenerator(Set<DBNation> attackers, Set<DBNation> defenders, Set<SpyCount.Operation> allowedTypes, boolean forceUpdate, int maxDef, boolean checkEspionageSlots, Integer minRequiredSpies, boolean prioritizeKills) {
+    public SpyBlitzGenerator(Set<DBNation> attackers, Set<DBNation> defenders, Set<Operation> allowedTypes, boolean forceUpdate, int maxDef, boolean checkEspionageSlots, Integer minRequiredSpies, boolean prioritizeKills) {
         this.allowedTypes = allowedTypes;
         this.maxDef = maxDef;
         this.checkEspionageSlots = checkEspionageSlots;
@@ -84,7 +86,7 @@ public class SpyBlitzGenerator {
 
         List<Spyop> ops = new ArrayList<>();
 
-        Set<SpyCount.Operation> allowedOpTypes = new HashSet<>(allowedTypes);
+        Set<Operation> allowedOpTypes = new HashSet<>(allowedTypes);
 
         Function<Double, Double> enemySpyRatio = new Function<Double, Double>() {
             @Override
@@ -119,15 +121,15 @@ public class SpyBlitzGenerator {
                 }
 
                 double spyRatio = enemySpyRatio.apply(defender.getScore());
-                for (SpyCount.Operation operation : allowedOpTypes) {
-                    if (mySpies >= 30 && defender.getSpies() > 9 && operation != SpyCount.Operation.SPIES && allowedOpTypes.contains(SpyCount.Operation.SPIES)) {
+                for (Operation operation : allowedOpTypes) {
+                    if (mySpies >= 30 && defender.getSpies() > 9 && operation != Operation.SPIES && allowedOpTypes.contains(Operation.SPIES)) {
                          continue;
                     }
 //                    if (defender.getSpies() > Math.min(6, attacker.getSpies() / 3d) && operation != SpyCount.Operation.SPIES && mySpies >= 30) {
 //                        continue;
 //                    }
                     if (operation.unit == null) continue;
-                    if (operation != SpyCount.Operation.SPIES) {
+                    if (operation != Operation.SPIES) {
                         int units = defender.getUnits(operation.unit);
                         if (units == 0) continue;
                         switch (operation.unit) {
@@ -140,8 +142,8 @@ public class SpyBlitzGenerator {
                                 break;
                         }
                     }
-                    SpyCount.Operation[] opTypes = new SpyCount.Operation[]{operation};
-                    Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(!prioritizeKills, mySpies, defender, attacker.hasProject(Projects.SPY_SATELLITE), opTypes);
+                    Operation[] opTypes = new Operation[]{operation};
+                    Map.Entry<Operation, Map.Entry<Integer, Double>> best = SpyCount.getBestOp(!prioritizeKills, mySpies, defender, attacker.hasProject(Projects.SPY_SATELLITE), opTypes);
 
                     if (best == null) continue;
 
@@ -150,10 +152,10 @@ public class SpyBlitzGenerator {
 
                     opNetDamage *= defValue;
 
-                    if (operation == SpyCount.Operation.SPIES) {
+                    if (operation == Operation.SPIES) {
                         opNetDamage = opNetDamage * (1 - spyRatioFactor) + opNetDamage * spyRatio * spyRatioFactor;
                     }
-                    if (operation == SpyCount.Operation.NUKE) {
+                    if (operation == Operation.NUKE) {
                         int perDay = MilitaryUnit.NUKE.getMaxPerDay(defender.getCities(), defender::hasProject, defender::getResearch);
                         if (defender.getNukes() <= perDay) {
                             ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
@@ -167,7 +169,7 @@ public class SpyBlitzGenerator {
                             opNetDamage *= 2;
                         }
                     }
-                    if (operation == SpyCount.Operation.MISSILE) {
+                    if (operation == Operation.MISSILE) {
                         Integer missileCap = MilitaryUnit.MISSILE.getMaxPerDay(defender.getCities(), defender::hasProject, defender::getResearch);
                         if (defender.getMissiles() == missileCap) {
                             ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
@@ -191,7 +193,7 @@ public class SpyBlitzGenerator {
                     if (operation.unit != MilitaryUnit.AIRCRAFT && operation.unit != MilitaryUnit.SPIES) opNetDamage /= 2;
 
                     Integer defSpies = defender.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, false, false);
-                    if (defSpies < 48 && operation == SpyCount.Operation.NUKE) defSpies += 3;
+                    if (defSpies < 48 && operation == Operation.NUKE) defSpies += 3;
                     int safety = bestValue.getKey();
                     int numSpies = (int) Math.ceil(Math.min(mySpies, SpyCount.getRequiredSpies(defSpies, safety, operation, defender)));
 
@@ -603,34 +605,34 @@ public class SpyBlitzGenerator {
         DBNation target = DiscordUtil.parseNation(targetStr, false, null);
         if (target == null) return null;
 
-        SpyCount.Operation op;
+        Operation op;
         if (type.contains("spies") || type.toLowerCase(Locale.ROOT).contains("vs spy")) {
-            op = SpyCount.Operation.SPIES;
+            op = Operation.SPIES;
         } else if (type.contains("tank")) {
-            op = SpyCount.Operation.TANKS;
+            op = Operation.TANKS;
         } else if (type.contains("nuke") || type.contains("nuclear")) {
-            op = SpyCount.Operation.NUKE;
+            op = Operation.NUKE;
         } else if (type.contains("missile")) {
-            op = SpyCount.Operation.MISSILE;
+            op = Operation.MISSILE;
         } else if (type.contains("soldier")) {
-            op = SpyCount.Operation.SOLDIER;
+            op = Operation.SOLDIER;
         } else if (type.contains("ship") || type.contains("navy")) {
-            op = SpyCount.Operation.SHIPS;
+            op = Operation.SHIPS;
         } else if (type.contains("aircraft") || type.contains("plane")) {
-            op = SpyCount.Operation.AIRCRAFT;
+            op = Operation.AIRCRAFT;
         } else if (type.contains("intel")) {
-            op = SpyCount.Operation.INTEL;
+            op = Operation.INTEL;
         } else {
             Logg.text("Invalid op type " + type + " | " + targetStr);
             return null;
         }
 
-        SpyCount.Safety safety = SpyCount.Safety.COVERT;
+        Safety safety = Safety.COVERT;
         safetyStr = safetyStr.toLowerCase();
         if (safetyStr.contains("normal")) {
-            safety = SpyCount.Safety.NORMAL;
+            safety = Safety.NORMAL;
         } else if (safetyStr.contains("quick")) {
-            safety = SpyCount.Safety.QUICK;
+            safety = Safety.QUICK;
         }
 
         Integer attSpies = att.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, update != null && !update.contains(att), false);
@@ -773,7 +775,7 @@ public class SpyBlitzGenerator {
                         attacker = other;
                     }
 
-                    SpyCount.Operation opType = SpyCount.Operation.valueOf(split[1]);
+                    Operation opType = Operation.valueOf(split[1]);
                     int spies = Integer.parseInt(split[3]);
                     int safety = 3;
                     switch (split[2].toLowerCase()) {
@@ -817,43 +819,43 @@ public class SpyBlitzGenerator {
                             break;
                     }
 
-                    SpyCount.Operation type = null;
+                    Operation type = null;
                     switch (row.get(j + 1).toString().toLowerCase().replace("spy vs ", "").trim()) {
                         case "spy":
                         case "spies":
-                            type = SpyCount.Operation.SPIES;
+                            type = Operation.SPIES;
                             break;
                         case "nuke":
                         case "nukes":
                         case "nuclear":
-                            type = SpyCount.Operation.NUKE;
+                            type = Operation.NUKE;
                             break;
                         case "tank":
                         case "tanks":
-                            type = SpyCount.Operation.TANKS;
+                            type = Operation.TANKS;
                             break;
                         case "aircraft":
                         case "air":
                         case "plane":
                         case "planes":
-                            type = SpyCount.Operation.AIRCRAFT;
+                            type = Operation.AIRCRAFT;
                             break;
                         case "soldier":
                         case "soldiers":
-                            type = SpyCount.Operation.SOLDIER;
+                            type = Operation.SOLDIER;
                             break;
                         case "ship":
                         case "ships":
                         case "navy":
                         case "naval":
-                            type = SpyCount.Operation.SHIPS;
+                            type = Operation.SHIPS;
                             break;
                         case "misile":
                         case "misiles":
-                            type = SpyCount.Operation.MISSILE;
+                            type = Operation.MISSILE;
                             break;
                         case "intel":
-                            type = SpyCount.Operation.INTEL;
+                            type = Operation.INTEL;
                             break;
                     }
 

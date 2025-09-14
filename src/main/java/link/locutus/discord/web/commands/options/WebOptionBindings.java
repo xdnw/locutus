@@ -8,18 +8,23 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
+import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
+import link.locutus.discord.commands.manager.v2.binding.annotation.PlaceholderType;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.command.WebOption;
+import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.Report;
 import link.locutus.discord.db.ReportManager;
 import link.locutus.discord.db.conflict.Conflict;
+import link.locutus.discord.db.conflict.ConflictManager;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.grant.AGrantTemplate;
 import link.locutus.discord.db.entities.grant.GrantTemplateManager;
@@ -43,6 +48,7 @@ import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.awt.*;
+import java.lang.reflect.WildcardType;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -75,7 +81,7 @@ public class WebOptionBindings extends BindingHelper {
                 data.addWithIcon(g.getId(), g.getName(), g.getDescription(), g.getIconUrl());
             }
             return data;
-        });
+        }, false);
     }
 
     @Binding(types = {AppMenu.class})
@@ -86,7 +92,7 @@ public class WebOptionBindings extends BindingHelper {
                 data.addSubtext(menu.title, menu.description.split("\n")[0]);
             }
             return data;
-        });
+        }, false);
     }
 
     @Binding(types = {MenuState.class})
@@ -103,7 +109,7 @@ public class WebOptionBindings extends BindingHelper {
                 data.add(c.getId(), c.getName());
             }
             return data;
-        });
+        }, false);
     }
 //Role
     @Binding(types = Role.class)
@@ -114,7 +120,7 @@ public class WebOptionBindings extends BindingHelper {
                 data.addWithColor(r.getId(), r.getName(), String.format("#%06X", (0xFFFFFF & r.getColorRaw())));
             }
             return data;
-        });
+        }, false);
     }
 //TextChannel
     @Binding(types = TextChannel.class)
@@ -132,7 +138,7 @@ public class WebOptionBindings extends BindingHelper {
                 data.add(c.getId(), c.getName(), category == null ? null : category.getName());
             }
             return data;
-        });
+        }, false);
     }
 //ICategorizableChannel
     @Binding(types = ICategorizableChannel.class)
@@ -148,13 +154,13 @@ public class WebOptionBindings extends BindingHelper {
                 data.add(m.getId(), m.getEffectiveName());
             }
             return data;
-        });
+        },  true);
     }
 //CommandCallable
-    @Binding(types = ICommand.class)
+    @Binding(types = {ICommand.class, WildcardType.class})
     public WebOption getCommandCallable() {
-        List<ParametricCallable> options = new ArrayList<>(Locutus.imp().getCommandManager().getV2().getCommands().getParametricCallables(Predicates.alwaysTrue()));
-        return new WebOption(ICommand.class).setOptions(options.stream().map(CommandCallable::getFullPath).toList());
+        List<ParametricCallable<?>> options = new ArrayList<>(Locutus.imp().getCommandManager().getV2().getCommands().getParametricCallables(Predicates.alwaysTrue()));
+        return new WebOption(Key.of(ICommand.class, WildcardType.class)).setOptions(options.stream().map(CommandCallable::getFullPath).toList());
     }
 
 //MessageChannel - just return textChannel()
@@ -171,7 +177,7 @@ public class WebOptionBindings extends BindingHelper {
                 data.add(u.getId(), u.getName());
             }
             return data;
-        });
+        }, true);
     }
 //TaxBracket
     @Binding(types = TaxBracket.class)
@@ -185,7 +191,7 @@ public class WebOptionBindings extends BindingHelper {
                 data.add(entry.getKey(), bracket.getName(), bracket.getSubText());
             }
             return data;
-        });
+        }, false);
     }
 //Project - return list Projects.values -> name()
     @Binding(types = Project.class)
@@ -210,30 +216,33 @@ public class WebOptionBindings extends BindingHelper {
                 data.add(loan.loanId, loan.getLineString(true, true));
             }
             return data;
-        });
+        }, true);
     }
 //Report - locutus - report manager -> get reports
-    @Binding(types = ReportManager.Report.class)
+    @Binding(types = Report.class)
     public WebOption getReport() {
-        return new WebOption(ReportManager.Report.class).setQueryMap((db, user, nation) -> {
+        return new WebOption(Report.class).setQueryMap((db, user, nation) -> {
             WebOptions data = new WebOptions(true).withText();
             ReportManager reportManager = Locutus.imp().getNationDB().getReportManager();
-            for (ReportManager.Report report : reportManager.loadReports()) {
+            for (Report report : reportManager.loadReports()) {
                 data.add(report.reportId, report.getTitle());
             }
             return data;
-        });
+        }, true);
     }
 //Conflict - locutus -> conflict manager -> conflicts
     @Binding(types = Conflict.class)
     public WebOption getConflict() {
         return new WebOption(Conflict.class).setQueryMap((db, user, nation) -> {
             WebOptions data = new WebOptions(true).withText();
-            for (Conflict conflict : Locutus.imp().getWarDb().getConflicts().getConflictMap().values()) {
-                data.add(conflict.getId(), conflict.getName());
+            ConflictManager conflicts = Locutus.imp().getWarDb().getConflicts();
+            if (conflicts != null) {
+                for (Conflict conflict : Locutus.imp().getWarDb().getConflicts().getConflictMap().values()) {
+                    data.add(conflict.getId(), conflict.getName());
+                }
             }
             return data;
-        });
+        }, true);
     }
 //GuildSetting
     @Binding(types = GuildSetting.class)
@@ -255,7 +264,7 @@ public class WebOptionBindings extends BindingHelper {
                 data.add(source.source_id, source.source_name);
             }
             return data;
-        });
+        }, false);
     }
 //DBAlliancePosition
     @Binding(types = DBAlliancePosition.class)
@@ -267,7 +276,7 @@ public class WebOptionBindings extends BindingHelper {
                 data.add(position.getId(), aaList.size() > 1 ? position.getQualifiedName() : position.getName());
             }
             return data;
-        });
+        }, false);
     }
 //SheetTemplate
     @Binding(types = SheetTemplate.class)
@@ -282,8 +291,32 @@ public class WebOptionBindings extends BindingHelper {
                         entry.getValue().getColumns().toString());
             }
             return data;
-        });
+        }, false);
     }
+
+    @PlaceholderType
+    @Binding(types = Class.class)
+    public WebOption getPlaceholderType() {
+        Set<Class<?>> types = Locutus.cmd().getV2().getPlaceholders().getTypes();
+        List<String> options = types.stream().map(PlaceholdersMap::getClassName).toList();
+        return new WebOption(Class.class).setOptions(options);
+    }
+
+    @GuildCoalition
+    @Binding(types = String.class)
+    public WebOption guildCoalition() {
+        return new WebOption(String.class).setRequiresGuild().setAllowCustomOption().setQueryMap((db, user, nation) -> {
+            Set<String> coalitions = new ObjectLinkedOpenHashSet<>();
+            for (Coalition value : Coalition.values()) coalitions.add(value.name());
+            coalitions.addAll(db.getCoalitionNames());
+            WebOptions data = new WebOptions(false).withText();
+            for (String coalition : coalitions) {
+                data.add(coalition);
+            }
+            return data;
+        }, false);
+    }
+
 //CustomSheet
     @Binding(types = CustomSheet.class)
     public WebOption getCustomSheet() {
@@ -294,7 +327,7 @@ public class WebOptionBindings extends BindingHelper {
                 data.add(entry.getKey());
             }
             return data;
-        });
+        }, false);
     }
 //SelectionAlias
     @Binding(types = SelectionAlias.class)
@@ -311,7 +344,7 @@ public class WebOptionBindings extends BindingHelper {
                 data.add(alias.getName(), PlaceholdersMap.getClassName(alias.getType()) + ":" + alias.getName(), alias.getSelection());
             }
             return data;
-        });
+        }, false);
     }
 //DBBounty
     @Binding(types = DBBounty.class)
@@ -322,26 +355,26 @@ public class WebOptionBindings extends BindingHelper {
                 data.add(bounty.getId(), bounty.toLineString());
             }
             return data;
-        });
+        }, true);
     }
     //NationOrAllianceOrGuild -> set components to nation, alliance and guild
     @Binding(types = NationOrAllianceOrGuild.class)
     public WebOption getNationOrAllianceOrGuild() {
-        return new WebOption(DBNation.class).setCompositeTypes("DBNation", "DBAlliance", "GuildDB");
+        return new WebOption(DBNation.class).setCompositeTypes(DBNation.class, DBAlliance.class, GuildDB.class);
     }
     @Binding(types = GuildOrAlliance.class)
     public WebOption getGuildOrAlliance() {
-        return new WebOption(GuildOrAlliance.class).setCompositeTypes("GuildDB", "DBAlliance");
+        return new WebOption(GuildOrAlliance.class).setCompositeTypes(GuildDB.class, DBAlliance.class);
     }
     //NationOrAlliance
     @Binding(types = NationOrAlliance.class)
     public WebOption getNationOrAlliance() {
-        return new WebOption(DBNation.class).setCompositeTypes("DBNation", "DBAlliance");
+        return new WebOption(DBNation.class).setCompositeTypes(DBNation.class, DBAlliance.class);
     }
 // NationOrAllianceOrGuildOrTaxid
     @Binding(types = NationOrAllianceOrGuildOrTaxid.class)
     public WebOption getNationOrAllianceOrGuildOrTaxid() {
-        return new WebOption(DBNation.class).setCompositeTypes("DBNation", "DBAlliance", "GuildDB", "TaxBracket");
+        return new WebOption(DBNation.class).setCompositeTypes(DBNation.class, DBAlliance.class, GuildDB.class, TaxBracket.class);
     }
     //Treaty
     @Binding(types = Treaty.class)
@@ -352,7 +385,7 @@ public class WebOptionBindings extends BindingHelper {
                 data.add(treaty.getId(), treaty.toLineString(), treaty.getTurnsRemaining() + "");
             }
             return data;
-        });
+        }, true);
     }
 //DBBan
     @Binding(types = DBBan.class)
@@ -365,7 +398,7 @@ public class WebOptionBindings extends BindingHelper {
                 data.add(entry.getKey(), PW.getName(ban.nation_id, false), ban.reason);
             }
             return data;
-        });
+        }, true);
     }
 //DBTreasure
     @Binding(types = DBTreasure.class)
@@ -383,7 +416,7 @@ public class WebOptionBindings extends BindingHelper {
                 data.add(template.getName(), template.getType().name() + ":" + template.getName());
             }
             return data;
-        });
+        }, false);
     }
 //Newsletter
     @Binding(types = Newsletter.class)
@@ -398,7 +431,7 @@ public class WebOptionBindings extends BindingHelper {
                 }
             }
             return data;
-        });
+        }, false);
     }
 //DBNation
     @Binding(types = DBNation.class)
@@ -409,7 +442,7 @@ public class WebOptionBindings extends BindingHelper {
                 data.add(n.getId(), n.getName());
             }
             return data;
-        });
+        }, true);
     }
 //DBAlliance - prefix with AA:<id>
     @Binding(types = DBAlliance.class)
@@ -420,7 +453,7 @@ public class WebOptionBindings extends BindingHelper {
                 data.add("AA:" + aa.getId(), aa.getName());
             }
             return data;
-        });
+        }, true);
     }
 //GuildDB
     @Binding(types = GuildDB.class)
@@ -431,7 +464,7 @@ public class WebOptionBindings extends BindingHelper {
                 data.add(guild.getId(), guild.getName());
             }
             return data;
-        });
+        }, true);
     }
 //    AllianceDepositLimit
 //    NationDepositLimit

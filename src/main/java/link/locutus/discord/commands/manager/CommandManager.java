@@ -156,6 +156,18 @@ public class CommandManager {
                 return true;
             }
 
+            if (returnNotFound && (channel instanceof DiscordChannelIO discChan)) {
+                Message message = discChan.getUserMessage();
+                if (message == null) return false;
+                MessageType type = message.getType();
+                System.out.println("TYPE " + type);
+                Runnable task = () -> getV2().handleLanguage(guild, channel, msgUser, content);
+                if (async) {
+                    executor.submit(task);
+                } else {
+                    task.run();
+                }
+            }
             return false;
         }
 
@@ -167,6 +179,7 @@ public class CommandManager {
 
         // Channel blacklisting / whitelisting
         if (isModernPrefix(char0) || jsonCommand) {
+            System.out.println("RUN MODERN OR JSON");
             try {
                 modernized.run(guild, channel, msgUser, content, async, returnNotFound);
             } catch (Throwable e) {
@@ -181,12 +194,18 @@ public class CommandManager {
 
                 String arg0 = content1.indexOf(' ') != -1 ? content1.substring(0, content1.indexOf(' ')) : content1;
                 if (arg0.isEmpty() || arg0.charAt(0) != prefix1) {
+                    // TODO handle arbitrary message here
+                    System.out.println("NO ARG0 OR NO PREFIX" + arg0);
+                    if (returnNotFound) {
+
+                    }
                     return;
                 }
                 arg0 = arg0.substring(1);
 
                 Command cmd = commandMap.get(arg0.toLowerCase());
                 if (cmd == null) {
+                    System.out.println("NO CMD FOUND");
                     if (returnNotFound) {
                         List<String> validIds = new ArrayList<>(commandMap.keySet());
                         List<String> closest = StringMan.getClosest(arg0, validIds, false);

@@ -37,6 +37,7 @@ public class Chunker {
     public static List<String> getChunks(String text, int tokenSizeCap, Function<String, Integer> getSize) {
         if (text == null) return List.of();
         if (text.isEmpty() || tokenSizeCap == Integer.MAX_VALUE) return List.of(text);
+        System.out.println("Chunking text: " + (text.length() > 100 ? text.substring(0, 100) + "..." : text));
         if (tokenSizeCap <= 0) throw new IllegalArgumentException("tokenSizeCap must be > 0");
 
         Session session = new Session(tokenSizeCap, getSize);
