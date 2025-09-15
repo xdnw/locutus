@@ -1543,7 +1543,7 @@ public final class PW {
         for (DBNation attacker : attackers) {
             scoreRange[(int) attacker.getScore()] += valueFunc.apply(attacker);
         }
-        int total = 0;
+        double total = 0;
         for (int i = 0; i < scoreRange.length; i++) {
             total += scoreRange[i];
             scoreRange[i] = total;
