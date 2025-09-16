@@ -1,3 +1,14 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
+}
+
 rootProject.name = 'Locutus'
 
 dependencyResolutionManagement {
@@ -5,22 +16,11 @@ dependencyResolutionManagement {
     repositories {
         mavenLocal()
         mavenCentral()
-        maven {
-            url "https://zoidberg.ukp.informatik.tu-darmstadt.de/artifactory/public-releases/"
-        }
-        maven {
-            name 'm2-dv8tion'
-            url 'https://m2.dv8tion.net/releases'
-        }
-        maven {
-            url "https://repo1.maven.org/maven2"
-        }
-        flatDir {
-            dirs 'libs'
-        }
-        gradlePluginPortal()
-        maven { url 'https://jitpack.io' }
-        maven { url 'https://raw.github.com/AcaiSoftware/chatgpt-java/repository/' }
-        maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
+        maven { url = uri("https://zoidberg.ukp.informatik.tu-darmstadt.de/artifactory/public-releases/") }
+        maven { name = "m2-dv8tion"; url = uri("https://m2.dv8tion.net/releases") }
+        maven { url = uri("https://jitpack.io") }
+        maven { url = uri("https://raw.github.com/AcaiSoftware/chatgpt-java/repository/") }
+        maven { url = uri("https://oss.sonatype.org/content/repositories/snapshots/") }
+//        flatDir { dirs = ["libs"] }
     }
 }

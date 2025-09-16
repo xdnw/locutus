@@ -2,17 +2,15 @@ import io.github.kobylynskyi.graphql.codegen.gradle.GraphQLCodegenGradleTask
 import nu.studer.gradle.jooq.JooqEdition
 
 buildscript {
-//    ext.kotlin_version = '2.2.20'
     repositories {
         mavenCentral()
         gradlePluginPortal()
         maven {
-            url "https://plugins.gradle.org/m2/"
+            url = uri("https://plugins.gradle.org/m2/")
         }
     }
     dependencies {
 //        classpath "io.jooby:jooby-gradle-plugin:2.8.5"
-//        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath 'org.jooq:jooq-codegen:3.19.13'
         classpath 'org.xerial:sqlite-jdbc:3.50.3.0'
         classpath 'com.gradleup.shadow:shadow-gradle-plugin:8.3.0'
@@ -20,87 +18,127 @@ buildscript {
 }
 
 plugins {
+//    id 'com.autonomousapps.dependency-analysis' version '3.0.2' apply false
+//    id "com.github.ben-manes.versions" version "0.51.0"
+    id 'application'
     id 'java'
-//    id 'org.jetbrains.kotlin.jvm' version "$kotlin_version"
     id "idea"
-    id "io.github.kobylynskyi.graphql.codegen" version "5.4.0"
-    id 'com.gradleup.shadow' version '8.3.0'
-    id "nu.studer.jooq" version "9.0"
-    id 'maven-publish'
-    id "gg.jte.gradle" version "3.2.1"
-    id 'cz.habarta.typescript-generator' version '3.2.1263'
-    id "com.github.ben-manes.versions" version "0.51.0"
+    id 'com.gradleup.shadow' version '8.3.0' apply false
+    id "nu.studer.jooq" version "9.0" apply false
+    id "io.github.kobylynskyi.graphql.codegen" version "5.4.0" apply false
+    id 'cz.habarta.typescript-generator' version '3.2.1263' apply false
+    id "gg.jte.gradle" version "3.2.1" apply false
 }
 
-group 'link.locutus'
-version '1.0-SNAPSHOT'
-
-java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(22))
+application { mainClass = 'link.locutus.discord._test._Custom' }
+tasks.register('runCustomMain', JavaExec) {
+    group = 'application'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'link.locutus.discord._test._Custom'
+    standardInput = System.in
+    if (project.hasProperty('appArgs')) {
+        args = project.property('appArgs').toString().split(/\s+/)
     }
 }
 
-tasks.named('generateTypeScript') {
-    jsonLibrary = 'jackson2'
-    classes = [
-            'link.locutus.discord.web.commands.binding.value_types.CacheType',
-            'link.locutus.discord.web.commands.binding.value_types.CoalitionGraph',
-            'link.locutus.discord.web.commands.binding.value_types.CoalitionGraphs',
-            'link.locutus.discord.web.commands.binding.value_types.DiscordRole',
-            'link.locutus.discord.web.commands.binding.value_types.GraphType',
-            'link.locutus.discord.web.commands.binding.value_types.NationTaxInfo',
-            'link.locutus.discord.web.commands.binding.value_types.SetGuild',
-            'link.locutus.discord.web.commands.binding.value_types.TaxExpenseBracket',
-            'link.locutus.discord.web.commands.binding.value_types.TradePriceByDayJson',
-            'link.locutus.discord.web.commands.binding.value_types.WebAnnouncement',
-            'link.locutus.discord.web.commands.binding.value_types.WebAnnouncements',
-            'link.locutus.discord.web.commands.binding.value_types.WebAudit',
-            'link.locutus.discord.web.commands.binding.value_types.WebAudits',
-            'link.locutus.discord.web.commands.binding.value_types.WebBalance',
-            'link.locutus.discord.web.commands.binding.value_types.WebBankAccess',
-            'link.locutus.discord.web.commands.binding.value_types.WebBulkQuery',
-            'link.locutus.discord.web.commands.binding.value_types.WebGraph',
-            'link.locutus.discord.web.commands.binding.value_types.WebInt',
-            'link.locutus.discord.web.commands.binding.value_types.WebMyEnemies',
-            'link.locutus.discord.web.commands.binding.value_types.WebMyWar',
-            'link.locutus.discord.web.commands.binding.value_types.WebMyWars',
-            'link.locutus.discord.web.commands.binding.value_types.WebOptions',
-            'link.locutus.discord.web.commands.binding.value_types.WebSession',
-            'link.locutus.discord.web.commands.binding.value_types.WebSuccess',
-            'link.locutus.discord.web.commands.binding.value_types.WebTable',
-            'link.locutus.discord.web.commands.binding.value_types.WebTableError',
-            'link.locutus.discord.web.commands.binding.value_types.WebTarget',
-            'link.locutus.discord.web.commands.binding.value_types.WebViewCommand',
-            'link.locutus.discord.web.commands.binding.value_types.WebTargets',
-            'link.locutus.discord.web.commands.binding.value_types.WebTransaction',
-            'link.locutus.discord.web.commands.binding.value_types.WebTransferResult',
-            'link.locutus.discord.web.commands.binding.value_types.WebUrl',
-            'link.locutus.discord.web.commands.binding.value_types.WebValue',
-            'link.locutus.discord.web.commands.binding.value_types.WebWarFinder',
-            'link.locutus.discord.web.commands.binding.value_types.TaxExpenses',
-            'link.locutus.discord.web.commands.binding.value_types.WebPermission',
-            'link.locutus.discord.util.task.multi.MultiResult',
-            'link.locutus.discord.util.task.multi.NetworkRow',
-            'link.locutus.discord.util.task.multi.SameNetworkTrade',
-            'link.locutus.discord.util.task.multi.AdvMultiReport',
-            'link.locutus.discord.util.task.multi.AdvMultiRow',
-    ]
-    outputKind = 'module'
-    nullableAnnotations = ['org.checkerframework.checker.nullness.qual.Nullable']
-    nullabilityDefinition = 'undefinedInlineUnion'
-    // set output file
-    outputFile = file('../lc_cmd_react/src/lib/apitypes.d.ts')
+def useJooq = providers.gradleProperty("jooq").isPresent()
+def useTs = providers.gradleProperty("ts").isPresent()
+def useShadow = gradle.startParameter.taskNames.any { it.endsWith("shadowJar") }
+def useGraphql = providers.gradleProperty("graphql").isPresent() || useShadow
+def useJtePrecompile = providers.gradleProperty("withJtePrecompile").isPresent() || useShadow
+
+//subprojects {
+//    // apply the analysis plugin to every subproject that builds code
+//    apply plugin: 'com.autonomousapps.dependency-analysis'
+//
+//    // optional: configure the plugin per subproject if needed
+//    dependencyAnalysis {
+//        // example configuration
+//        issues {
+//            onAny {
+//                severity('fail') // or 'warn' / 'ignore'
+//            }
+//        }
+//    }
+//}
+
+group = 'link.locutus'
+version = '1.0-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(22)
+        vendor = JvmVendorSpec.ADOPTIUM        // Or: JvmVendorSpec.AMAZON, AZUL, MICROSOFT, ORACLE
+        implementation = JvmImplementation.VENDOR_SPECIFIC
+    }
 }
 
-publishing {
-    repositories {
-        maven {
-            name = "GitHubPackages"
-            url = "https://maven.pkg.github.com/xdnw/locutus"
-            credentials {
-                username = System.getenv("GITHUB_ACTOR")
-                password = System.getenv("GITHUB_TOKEN")
+if (useTs) {
+    tasks.named('generateTypeScript') {
+        jsonLibrary = 'jackson2'
+        classes = [
+                'link.locutus.discord.web.commands.binding.value_types.CacheType',
+                'link.locutus.discord.web.commands.binding.value_types.CoalitionGraph',
+                'link.locutus.discord.web.commands.binding.value_types.CoalitionGraphs',
+                'link.locutus.discord.web.commands.binding.value_types.DiscordRole',
+                'link.locutus.discord.web.commands.binding.value_types.GraphType',
+                'link.locutus.discord.web.commands.binding.value_types.NationTaxInfo',
+                'link.locutus.discord.web.commands.binding.value_types.SetGuild',
+                'link.locutus.discord.web.commands.binding.value_types.TaxExpenseBracket',
+                'link.locutus.discord.web.commands.binding.value_types.TradePriceByDayJson',
+                'link.locutus.discord.web.commands.binding.value_types.WebAnnouncement',
+                'link.locutus.discord.web.commands.binding.value_types.WebAnnouncements',
+                'link.locutus.discord.web.commands.binding.value_types.WebAudit',
+                'link.locutus.discord.web.commands.binding.value_types.WebAudits',
+                'link.locutus.discord.web.commands.binding.value_types.WebBalance',
+                'link.locutus.discord.web.commands.binding.value_types.WebBankAccess',
+                'link.locutus.discord.web.commands.binding.value_types.WebBulkQuery',
+                'link.locutus.discord.web.commands.binding.value_types.WebGraph',
+                'link.locutus.discord.web.commands.binding.value_types.WebInt',
+                'link.locutus.discord.web.commands.binding.value_types.WebMyEnemies',
+                'link.locutus.discord.web.commands.binding.value_types.WebMyWar',
+                'link.locutus.discord.web.commands.binding.value_types.WebMyWars',
+                'link.locutus.discord.web.commands.binding.value_types.WebOptions',
+                'link.locutus.discord.web.commands.binding.value_types.WebSession',
+                'link.locutus.discord.web.commands.binding.value_types.WebSuccess',
+                'link.locutus.discord.web.commands.binding.value_types.WebTable',
+                'link.locutus.discord.web.commands.binding.value_types.WebTableError',
+                'link.locutus.discord.web.commands.binding.value_types.WebTarget',
+                'link.locutus.discord.web.commands.binding.value_types.WebViewCommand',
+                'link.locutus.discord.web.commands.binding.value_types.WebTargets',
+                'link.locutus.discord.web.commands.binding.value_types.WebTransaction',
+                'link.locutus.discord.web.commands.binding.value_types.WebTransferResult',
+                'link.locutus.discord.web.commands.binding.value_types.WebUrl',
+                'link.locutus.discord.web.commands.binding.value_types.WebValue',
+                'link.locutus.discord.web.commands.binding.value_types.WebWarFinder',
+                'link.locutus.discord.web.commands.binding.value_types.TaxExpenses',
+                'link.locutus.discord.web.commands.binding.value_types.WebPermission',
+                'link.locutus.discord.util.task.multi.MultiResult',
+                'link.locutus.discord.util.task.multi.NetworkRow',
+                'link.locutus.discord.util.task.multi.SameNetworkTrade',
+                'link.locutus.discord.util.task.multi.AdvMultiReport',
+                'link.locutus.discord.util.task.multi.AdvMultiRow',
+        ]
+        outputKind = 'module'
+        nullableAnnotations = ['org.checkerframework.checker.nullness.qual.Nullable']
+        nullabilityDefinition = 'undefinedInlineUnion'
+        // set output file
+        outputFile = file('../lc_cmd_react/src/lib/apitypes.d.ts')
+    }
+}
+
+if (providers.environmentVariable("GITHUB_ACTOR").isPresent() &&
+        providers.environmentVariable("GITHUB_TOKEN").isPresent()) {
+    plugins.apply("maven-publish")
+    publishing {
+        repositories {
+            maven {
+                name = "GitHubPackages"
+                url = "https://maven.pkg.github.com/xdnw/locutus"
+                credentials {
+                    username = System.getenv("GITHUB_ACTOR")
+                    password = System.getenv("GITHUB_TOKEN")
+                }
             }
         }
     }
@@ -131,8 +169,7 @@ dependencies {
 
     implementation 'com.google.http-client:google-http-client-jackson2:1.47.1'
 
-    implementation('org.xerial:sqlite-jdbc:3.50.3.0')
-    jooqGenerator 'org.xerial:sqlite-jdbc:3.50.3.0'
+    implementation 'org.xerial:sqlite-jdbc:3.50.3.0'
 
     implementation 'com.google.code.gson:gson:2.13.1'
     implementation 'org.jsoup:jsoup:1.21.1'
@@ -186,8 +223,6 @@ dependencies {
 
 
     implementation('org.jooq:jooq:3.19.13')
-    jooqGenerator("org.jooq:jooq-meta:3.19.13")
-    jooqGenerator("org.jooq:jooq-codegen:3.19.13")
     compileOnly "jakarta.xml.bind:jakarta.xml.bind-api:4.0.2"
 
 
@@ -208,9 +243,8 @@ dependencies {
     implementation "ai.djl:api:0.34.0"
     runtimeOnly "ai.djl.pytorch:pytorch-engine:0.34.0"
     runtimeOnly "ai.djl.pytorch:pytorch-model-zoo:0.34.0"
-    implementation "ai.djl.onnxruntime:onnxruntime-engine:0.34.0"
     implementation "ai.djl.huggingface:tokenizers:0.34.0"
-    runtimeOnly 'ai.djl.pytorch:pytorch-native-cu124:2.5.1:win-x86_64'
+//    runtimeOnly 'ai.djl.pytorch:pytorch-native-cu124:2.5.1:win-x86_64'
     runtimeOnly 'ai.djl.pytorch:pytorch-jni:2.7.1-0.34.0'
     implementation 'ai.djl.sentencepiece:sentencepiece:0.34.0'
     implementation 'cn.easyproject:easyocr:3.0.4-RELEASE'
@@ -230,168 +264,175 @@ configurations {
 
 }
 
-jooq {
-    version = "3.19.13"  // default (can be omitted)
-    edition = JooqEdition.OSS  // default (can be omitted)
-    configurations {
-        bank {
-            generateSchemaSourceOnCompilation = false; // default (can be omitted)
-            generationTool {
-                jdbc {
-                    driver = 'org.sqlite.JDBC'
-                    url = 'jdbc:sqlite:database/bank.db'
-                }
-                generator {
-                    name = 'org.jooq.codegen.DefaultGenerator'
-                    database {
-                        name = 'org.jooq.meta.sqlite.SQLiteDatabase'
+if (useJooq) {
+    dependencies {
+        jooqGenerator("org.jooq:jooq-meta:3.19.13")
+        jooqGenerator("org.jooq:jooq-codegen:3.19.13")
+        jooqGenerator 'org.xerial:sqlite-jdbc:3.50.3.0'
+    }
+    jooq {
+        version = "3.19.13"  // default (can be omitted)
+        edition = JooqEdition.OSS  // default (can be omitted)
+        configurations {
+            bank {
+                generateSchemaSourceOnCompilation = false; // default (can be omitted)
+                generationTool {
+                    jdbc {
+                        driver = 'org.sqlite.JDBC'
+                        url = 'jdbc:sqlite:database/bank.db'
                     }
-                    generate {
-                        deprecated = false
-                        records = true
-                        immutablePojos = true
-                        fluentSetters = true
-                    }
-                    target {
+                    generator {
+                        name = 'org.jooq.codegen.DefaultGenerator'
+                        database {
+                            name = 'org.jooq.meta.sqlite.SQLiteDatabase'
+                        }
+                        generate {
+                            deprecated = false
+                            records = true
+                            immutablePojos = true
+                            fluentSetters = true
+                        }
+                        target {
 
-                        packageName = 'org.example.jooq.bank'
+                            packageName = 'org.example.jooq.bank'
+                        }
+                        strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
                     }
-                    strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
-                }
-            }
-        }
-
-        locutus {
-            generateSchemaSourceOnCompilation = false; // default (can be omitted)
-
-            generationTool {
-                jdbc {
-                    driver = 'org.sqlite.JDBC'
-                    url = 'jdbc:sqlite:database/locutus.db'
-                }
-                generator {
-                    name = 'org.jooq.codegen.DefaultGenerator'
-                    database {
-                        name = 'org.jooq.meta.sqlite.SQLiteDatabase'
-                    }
-                    generate {
-                        deprecated = false
-                        records = true
-                        immutablePojos = true
-                        fluentSetters = true
-                    }
-                    target {
-                        packageName = 'org.example.jooq.locutus'
-                    }
-                    strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
                 }
             }
-        }
 
-        nations {
-            generateSchemaSourceOnCompilation = false; // default (can be omitted)
+            locutus {
+                generateSchemaSourceOnCompilation = false; // default (can be omitted)
 
-            generationTool {
-                jdbc {
-                    driver = 'org.sqlite.JDBC'
-                    url = 'jdbc:sqlite:database/nations.db'
-                }
-                generator {
-                    name = 'org.jooq.codegen.DefaultGenerator'
-                    database {
-                        name = 'org.jooq.meta.sqlite.SQLiteDatabase'
+                generationTool {
+                    jdbc {
+                        driver = 'org.sqlite.JDBC'
+                        url = 'jdbc:sqlite:database/locutus.db'
                     }
-                    generate {
-                        deprecated = false
-                        records = true
-                        immutablePojos = true
-                        fluentSetters = true
+                    generator {
+                        name = 'org.jooq.codegen.DefaultGenerator'
+                        database {
+                            name = 'org.jooq.meta.sqlite.SQLiteDatabase'
+                        }
+                        generate {
+                            deprecated = false
+                            records = true
+                            immutablePojos = true
+                            fluentSetters = true
+                        }
+                        target {
+                            packageName = 'org.example.jooq.locutus'
+                        }
+                        strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
                     }
-                    target {
-                        packageName = 'org.example.jooq.nations'
-                    }
-                    strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
-                }
-            }
-        }
-
-        trade {
-            generateSchemaSourceOnCompilation = false; // default (can be omitted)
-
-            generationTool {
-                jdbc {
-                    driver = 'org.sqlite.JDBC'
-                    url = 'jdbc:sqlite:database/trade.db'
-                }
-                generator {
-                    name = 'org.jooq.codegen.DefaultGenerator'
-                    database {
-                        name = 'org.jooq.meta.sqlite.SQLiteDatabase'
-                    }
-                    generate {
-                        deprecated = false
-                        records = true
-                        immutablePojos = true
-                        fluentSetters = true
-                    }
-                    target {
-                        packageName = 'org.example.jooq.trade'
-                    }
-                    strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
                 }
             }
-        }
 
-        war {
-            generateSchemaSourceOnCompilation = false; // default (can be omitted)
+            nations {
+                generateSchemaSourceOnCompilation = false; // default (can be omitted)
 
-            generationTool {
-                jdbc {
-                    driver = 'org.sqlite.JDBC'
-                    url = 'jdbc:sqlite:database/war.db'
-                }
-                generator {
-                    name = 'org.jooq.codegen.DefaultGenerator'
-                    database {
-                        name = 'org.jooq.meta.sqlite.SQLiteDatabase'
+                generationTool {
+                    jdbc {
+                        driver = 'org.sqlite.JDBC'
+                        url = 'jdbc:sqlite:database/nations.db'
                     }
-                    generate {
-                        deprecated = false
-                        records = true
-                        immutablePojos = true
-                        fluentSetters = true
+                    generator {
+                        name = 'org.jooq.codegen.DefaultGenerator'
+                        database {
+                            name = 'org.jooq.meta.sqlite.SQLiteDatabase'
+                        }
+                        generate {
+                            deprecated = false
+                            records = true
+                            immutablePojos = true
+                            fluentSetters = true
+                        }
+                        target {
+                            packageName = 'org.example.jooq.nations'
+                        }
+                        strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
                     }
-                    target {
-                        packageName = 'org.example.jooq.war'
-                    }
-                    strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
                 }
             }
-        }
 
-        web {
-            generateSchemaSourceOnCompilation = false; // default (can be omitted)
+            trade {
+                generateSchemaSourceOnCompilation = false; // default (can be omitted)
 
-            generationTool {
-                jdbc {
-                    driver = 'org.sqlite.JDBC'
-                    url = 'jdbc:sqlite:database/web.db'
+                generationTool {
+                    jdbc {
+                        driver = 'org.sqlite.JDBC'
+                        url = 'jdbc:sqlite:database/trade.db'
+                    }
+                    generator {
+                        name = 'org.jooq.codegen.DefaultGenerator'
+                        database {
+                            name = 'org.jooq.meta.sqlite.SQLiteDatabase'
+                        }
+                        generate {
+                            deprecated = false
+                            records = true
+                            immutablePojos = true
+                            fluentSetters = true
+                        }
+                        target {
+                            packageName = 'org.example.jooq.trade'
+                        }
+                        strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
+                    }
                 }
-                generator {
-                    name = 'org.jooq.codegen.DefaultGenerator'
-                    database {
-                        name = 'org.jooq.meta.sqlite.SQLiteDatabase'
+            }
+
+            war {
+                generateSchemaSourceOnCompilation = false; // default (can be omitted)
+
+                generationTool {
+                    jdbc {
+                        driver = 'org.sqlite.JDBC'
+                        url = 'jdbc:sqlite:database/war.db'
                     }
-                    generate {
-                        deprecated = false
-                        records = true
-                        immutablePojos = true
-                        fluentSetters = true
+                    generator {
+                        name = 'org.jooq.codegen.DefaultGenerator'
+                        database {
+                            name = 'org.jooq.meta.sqlite.SQLiteDatabase'
+                        }
+                        generate {
+                            deprecated = false
+                            records = true
+                            immutablePojos = true
+                            fluentSetters = true
+                        }
+                        target {
+                            packageName = 'org.example.jooq.war'
+                        }
+                        strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
                     }
-                    target {
-                        packageName = 'org.example.jooq.web'
+                }
+            }
+
+            web {
+                generateSchemaSourceOnCompilation = false; // default (can be omitted)
+
+                generationTool {
+                    jdbc {
+                        driver = 'org.sqlite.JDBC'
+                        url = 'jdbc:sqlite:database/web.db'
                     }
-                    strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
+                    generator {
+                        name = 'org.jooq.codegen.DefaultGenerator'
+                        database {
+                            name = 'org.jooq.meta.sqlite.SQLiteDatabase'
+                        }
+                        generate {
+                            deprecated = false
+                            records = true
+                            immutablePojos = true
+                            fluentSetters = true
+                        }
+                        target {
+                            packageName = 'org.example.jooq.web'
+                        }
+                        strategy.name = "org.jooq.codegen.DefaultGeneratorStrategy"
+                    }
                 }
             }
         }
@@ -413,73 +454,70 @@ jooq {
  */
 
 def graphqlSchemasDir = layout.projectDirectory.dir("src/main/resources/graphql")
-def graphqlGeneratedDir = layout.buildDirectory.dir("generated/graphql")  // narrow, dedicated
+def graphqlGeneratedDir = layout.buildDirectory.dir("generated")
 
-tasks.named('graphqlCodegen', GraphQLCodegenGradleTask) {
-    // Inputs (schemas)
-    graphqlSchemas.rootDir = graphqlSchemasDir.asFile
-    graphqlSchemas.includePattern = "schema\\.graphqls"   // adjust if multiple files
+if (useGraphql) {
+    apply plugin: 'io.github.kobylynskyi.graphql.codegen'
+    tasks.named('graphqlCodegen', GraphQLCodegenGradleTask) {
+        graphqlSchemas.rootDir = graphqlSchemasDir.asFile
+        graphqlSchemas.includePattern = "schema\\.graphqls"   // adjust if multiple files
 
-    // Output (only this dir is added to the source set)
-    outputDir = graphqlGeneratedDir.get().asFile
-    outputs.dir(graphqlGeneratedDir)  // ok to keep; ensures Gradle tracks it
+        outputDir = graphqlGeneratedDir.get().asFile
+        outputs.dir(graphqlGeneratedDir)
 
-    // Package / model settings
-    modelPackageName = "com.politicsandwar.graphql.model"
+        // Package / model settings
+        modelPackageName = "com.politicsandwar.graphql.model"
 
-    customTypesMapping = [
-            Date         : "java.util.Date",
-            DateTime     : "java.util.Date",
-            DateTimeAuto : "java.time.Instant"
-    ]
-    useObjectMapperForRequestSerialization = [
-            "DateTime",
-            "DateTimeAuto",
-            "java.util.Date",
-    ]
+        customTypesMapping = [
+                Date        : "java.util.Date",
+                DateTime    : "java.util.Date",
+                DateTimeAuto: "java.time.Instant"
+        ]
+        useObjectMapperForRequestSerialization = [
+                "DateTime",
+                "DateTimeAuto",
+                "java.util.Date",
+        ]
 
-    parentInterfaces {
-        queryResolver        = "graphql.kickstart.tools.GraphQLQueryResolver"
-        mutationResolver     = "graphql.kickstart.tools.GraphQLMutationResolver"
-        subscriptionResolver = "graphql.kickstart.tools.GraphQLSubscriptionResolver"
-        resolver             = "graphql.kickstart.tools.GraphQLResolver<{{TYPE}}>"
+        parentInterfaces {
+            queryResolver = "graphql.kickstart.tools.GraphQLQueryResolver"
+            mutationResolver = "graphql.kickstart.tools.GraphQLMutationResolver"
+            subscriptionResolver = "graphql.kickstart.tools.GraphQLSubscriptionResolver"
+            resolver = "graphql.kickstart.tools.GraphQLResolver<{{TYPE}}>"
+        }
+
+        generateApis = true
+        generateClient = true
+        generateParameterizedFieldsResolvers = false
+        generateBuilder = true
+        generateToString = true
+        supportUnknownFields = true
+        unknownFieldsPropertyName = "additionalFields"
+
+        // Precise incremental inputs
+        inputs.files(fileTree(graphqlSchemasDir) {
+            include("**/*.graphqls")
+        }).withPropertyName("graphqlSchemas").withPathSensitivity(PathSensitivity.RELATIVE)
+
+        // Capture config that affects output so Gradle knows when to rerun
+        inputs.property("graphqlCodegenConfigFingerprint", [
+                generateApis,
+                generateClient,
+                generateBuilder,
+                modelPackageName,
+                customTypesMapping.hashCode(),
+                parentInterfaces.queryResolver,
+                parentInterfaces.mutationResolver,
+                parentInterfaces.subscriptionResolver
+        ].join("|"))
     }
-
-    generateApis = true
-    generateClient = true
-    generateParameterizedFieldsResolvers = false
-    generateBuilder = true
-    generateToString = true
-    supportUnknownFields = true
-    unknownFieldsPropertyName = "additionalFields"
-
-    // Precise incremental inputs
-    inputs.files(fileTree(graphqlSchemasDir) {
-        include("**/*.graphqls")
-    }).withPropertyName("graphqlSchemas").withPathSensitivity(PathSensitivity.RELATIVE)
-
-    // Capture config that affects output so Gradle knows when to rerun
-    inputs.property("graphqlCodegenConfigFingerprint", [
-            generateApis,
-            generateClient,
-            generateBuilder,
-            modelPackageName,
-            customTypesMapping.hashCode(),
-            parentInterfaces.queryResolver,
-            parentInterfaces.mutationResolver,
-            parentInterfaces.subscriptionResolver
-    ].join("|"))
 }
 
 tasks.withType(JavaCompile).configureEach {
+    options.fork = false
     options.verbose = false
-    options.debug = false // remove when debugging
     options.release = 22
     options.incremental = true
-    options.fork = true
-    options.forkOptions.memoryInitialSize = "1g"
-    options.forkOptions.memoryMaximumSize = "3g"
-    options.forkOptions.jvmArgs = ['-XX:+UseZGC']
     options.compilerArgs += [
             "-parameters",
             "-Xmaxerrs", "1000",
@@ -487,36 +525,42 @@ tasks.withType(JavaCompile).configureEach {
     ]
 }
 
-// JTE setup with proper java.nio.file.Path usage and task selection
 def explicitlyRequestsShadow = gradle.startParameter.taskNames.any { it == 'shadowJar' || it.endsWith(':shadowJar') }
 def forcePrecompile = providers.gradleProperty('withJtePrecompile').isPresent()
 def jteGeneratedDir = layout.buildDirectory.dir("generated-sources")
 
-jte {
-    // Avoid org.gradle.model.Path clash
-    sourceDirectory = file("src/main/jte").toPath()
-    targetDirectory = layout.buildDirectory.dir("generated-sources").get().asFile.toPath()
+if (useJtePrecompile) {
+    apply plugin: 'gg.jte.gradle'
+    jte {
+        sourceDirectory = file("src/main/jte").toPath()
+        targetDirectory = layout.buildDirectory.dir("generated-sources").get().asFile.toPath()
 
-    if (explicitlyRequestsShadow || forcePrecompile) {
-        precompile()
-    } else {
-        generate()
+        if (explicitlyRequestsShadow && forcePrecompile) {
+            precompile()
+        } else {
+            generate()
+        }
     }
 }
 
-tasks.named('shadowJar') {
-    dependsOn tasks.matching { it.name == 'generateJte' || it.name == 'precompileJte' }
+if (useShadow) {
+    apply plugin: 'com.gradleup.shadow'
+    tasks.named('shadowJar') {
+//    minimize()
 
-    zip64 = true
-    archiveBaseName = "${name}-${project.name}"
-    archiveClassifier.set('')
-    from('src/main/resources') {
-        include 'lib/win32-x86-amd64/brotli.dll'
-    }
-    manifest {
-        attributes(
-            'Main-Class': 'link.locutus.discord.Locutus'
-        )
+        mustRunAfter tasks.matching { it.name == 'generateJte' || it.name == 'precompileJte' }
+
+        zip64 = true
+        archiveBaseName = "${name}-${project.name}"
+        archiveClassifier.set('')
+        from('src/main/resources') {
+            include 'lib/win32-x86-amd64/brotli.dll'
+        }
+        manifest {
+            attributes(
+                    'Main-Class': 'link.locutus.discord.Locutus'
+            )
+        }
     }
 }
 
@@ -525,35 +569,40 @@ sourceSets {
         java {
             srcDir 'src/main/java'
         }
-        resources {
-            srcDir 'src/main/resources'
-        }
+//        resources {
+//            srcDir 'src/main/resources'
+//        }
     }
 }
 
-// Add generated sources explicitly
-sourceSets.main.java.srcDir(graphqlGeneratedDir)
-sourceSets.main.java.srcDir(jteGeneratedDir)
-
-// Add generated JTE sources
-tasks.named('compileJava') {
-    dependsOn(tasks.named('graphqlCodegen'))
-    mustRunAfter tasks.matching { it.name == 'generateJte' || it.name == 'precompileJte' }
+def addOptionalGeneratedSrc(String taskName, Provider<Directory> outputDir) {
+    def task = tasks.findByName(taskName)
+    if (task) {
+        sourceSets.main.java.srcDir(tasks.named(taskName).map { outputDir.get().asFile })
+        tasks.named('compileJava') { dependsOn tasks.named(taskName) }
+    } else {
+        sourceSets.main.java.srcDir(outputDir)
+    }
 }
 
-tasks.register('findDependency') {
-    doLast {
-        configurations.compileClasspath.resolvedConfiguration.firstLevelModuleDependencies.each { dependency ->
-            dependency.moduleArtifacts.each { artifact ->
-                def id = artifact.moduleVersion.id
-                if (id.name == 'ST4' || true) {
-                    println "Group: ${id.group}, Name: ${id.name}, Version: ${id.version}"
-//                    iterate dependency.children
-                    for (child in dependency.children) {
-                        println "Child: ${child}"
-                    }
-                }
-            }
-        }
-    }
+def jooqGeneratedDir = layout.buildDirectory.dir("generated-src")
+
+// GraphQL (optional)
+addOptionalGeneratedSrc('graphqlCodegen', graphqlGeneratedDir)
+
+// JTE: prefer precompile if present, otherwise generate
+def jteTask = tasks.findByName('precompileJte') ?: tasks.findByName('generateJte')
+if (jteTask) {
+    sourceSets.main.java.srcDir(tasks.named(jteTask.name).map { jteGeneratedDir.get().asFile })
+    tasks.named('compileJava') { dependsOn tasks.named(jteTask.name) }
+} else {
+    sourceSets.main.java.srcDir(jteGeneratedDir)
+}
+
+// legacy fallback dir (always present on classpath)
+sourceSets.main.java.srcDir(jooqGeneratedDir)
+
+// Optional: clean generated outputs
+tasks.named('clean') {
+    delete(graphqlGeneratedDir, jteGeneratedDir, jooqGeneratedDir)
 }
