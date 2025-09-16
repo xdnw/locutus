@@ -9,6 +9,7 @@ import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.DepositTypeInfo;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -2217,16 +2218,16 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(GRANT_REQUEST_CHANNEL));
 
-    public static final GuildSetting<DepositType.DepositTypeInfo> GRANT_REQUEST_NOTE = new GuildSetting<DepositType.DepositTypeInfo>(GuildSettingCategory.BANK_GRANTS, GRANT_REQUESTS, DepositType.DepositTypeInfo.class) {
+    public static final GuildSetting<DepositTypeInfo> GRANT_REQUEST_NOTE = new GuildSetting<DepositTypeInfo>(GuildSettingCategory.BANK_GRANTS, GRANT_REQUESTS, DepositTypeInfo.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
-        public String GRANT_REQUEST_NOTE(@Me GuildDB db, @Me User user, DepositType.DepositTypeInfo bank_note) {
+        public String GRANT_REQUEST_NOTE(@Me GuildDB db, @Me User user, DepositTypeInfo bank_note) {
             return GRANT_REQUEST_NOTE.setAndValidate(db, user, bank_note);
         }
 
         @Override
-        public String toString(DepositType.DepositTypeInfo value) {
+        public String toString(DepositTypeInfo value) {
             return value.toString();
         }
 

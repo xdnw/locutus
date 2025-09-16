@@ -58,28 +58,25 @@ public class PsonEncoder extends PsonWriter {
     }
 
     protected void write(Object obj) throws IOException {
-        if (obj == null)
+        if (obj == null) {
             writeNull();
-        else if (obj instanceof String)
-            writeString((String) obj);
-        else if (obj instanceof Long)
-            writeLong((long) obj);
-        else if (obj instanceof Float)
-            writeFloat((float) obj);
-        else if (obj instanceof Double)
-            writeDouble((double) obj);
-        else if (obj instanceof Boolean)
-            writeBool((boolean) obj);
-        else if (obj instanceof Integer || obj instanceof Short || obj instanceof Byte)
-            writeInt(((Number) obj).intValue());
-        else if (obj.getClass().isArray())
-            writeArray((Object[]) obj);
-        else if (obj instanceof List)
-            writeList((List) obj);
-        else if (obj instanceof Map)
-            writeMap((Map) obj);
-        else
-            writeObject(obj);
+            return;
+        }
+
+        switch (obj) {
+            case String s -> writeString(s);
+            case Long l -> writeLong(l);
+            case Float f -> writeFloat(f);
+            case Double d -> writeDouble(d);
+            case Boolean b -> writeBool(b);
+            case Integer i -> writeInt(i.intValue());
+            case Short sh -> writeInt(sh.intValue());
+            case Byte by -> writeInt(by.intValue());
+            case Object[] arr -> writeArray(arr);
+            case List<?> list -> writeList((List<Object>) list);
+            case Map<?, ?> map -> writeMap((Map<String, Object>) map);
+            default -> writeObject(obj);
+        }
     }
 
     @Override

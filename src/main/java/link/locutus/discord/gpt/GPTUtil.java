@@ -11,12 +11,12 @@ import com.openai.models.moderations.Moderation;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.MethodParser;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.command.WebOption;
@@ -555,19 +555,22 @@ public class GPTUtil {
 
         Map<Key<?>, Map<String, Object>> primitiveCache = new Object2ObjectLinkedOpenHashMap<>();
 
-        Set<Parser> argTypes = new ObjectLinkedOpenHashSet<>();
+        Set<Parser<?>> argTypes = new ObjectLinkedOpenHashSet<>();
+        Set<Key<?>> visited = new ObjectOpenHashSet<>();
 
         for (ParametricCallable<?> command : commands) {
             List<ParameterData> params = command.getUserParameters();
             for (ParameterData data : params) {
                 Parser<?> parser = data.getBinding();
-                Key<?> webType = parser.getWebTypeOrNull();
                 Key<?> key = parser.getKey();
+                if (!visited.add(key)) continue;
+
+                Key<?> webType = parser.getWebTypeOrNull();
                 try {
                     if (webType != null) {
-                        parser = htmlOptionsStore.get(webType);
+                        parser = store.get(webType);
                         if (parser == null) {
-                            throw new IllegalArgumentException("[Gpt-Tool] No parser for webType: " + webType + " (from " + data + ")");
+                            throw new IllegalArgumentException("[Gpt-Tool] No parser for webType: " + webType + " (from " + key + ")");
                         }
                         key = parser.getKey();
                     }
@@ -595,10 +598,9 @@ public class GPTUtil {
             String typeName = GPTUtil.getJsonName(key.toSimpleString());
             Parser<?> schemaBinding = schemaStore.get(key);
 
-            Binding binding = key.getBinding();
             String typeDesc = schemaBinding == null ? null : schemaBinding.getDescription();
-            if (typeDesc == null || typeDesc.isEmpty()) typeDesc = binding.value();
-            String[] examples = binding.examples();
+            if (typeDesc == null || typeDesc.isEmpty()) typeDesc = parser.getDescription();
+            String[] examples = parser.getExamples();
 
             argumentDef.put("type", typeName);
             if (!typeDesc.isEmpty()) argumentDef.put("description", typeDesc);
@@ -606,7 +608,7 @@ public class GPTUtil {
                 String classAndMethodOrNull = (parser instanceof MethodParser<?> methodParser) ?
                         methodParser.getMethod().getDeclaringClass().getSimpleName() + "." + methodParser.getMethod().getName()
                         : null;
-                System.err.println("[Gpt-Tool] " + "Error: No description for type " + key + " in JSON schema generation | " + classAndMethodOrNull + " | " + binding.value());
+                System.err.println("[Gpt-Tool] " + "Error: No description for type " + key + " in JSON schema generation | " + classAndMethodOrNull);
             }
             if (examples.length > 0) argumentDef.put("examples", Arrays.asList(examples));
 
@@ -634,6 +636,7 @@ public class GPTUtil {
                 List<String> options = option.getOptions();
                 if (options != null && !options.isEmpty()) {
                     if (option.isAllowCustomOption()) {
+                        // TODO FIXME CM REF
                         // "anyOf": [
                         //    {
                         //      "enum": ["optionA", "optionB", "optionC"]

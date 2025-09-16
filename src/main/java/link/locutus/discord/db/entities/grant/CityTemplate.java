@@ -1,6 +1,7 @@
 package link.locutus.discord.db.entities.grant;
 
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.DepositTypeInfo;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -239,7 +240,7 @@ public class CityTemplate extends AGrantTemplate<Integer> {
     }
 
     @Override
-    public DepositType.DepositTypeInfo getDepositType(DBNation receiver, Integer amount) {
+    public DepositTypeInfo getDepositType(DBNation receiver, Integer amount) {
         if (amount == null) amount = 1;
         return DepositType.CITY.withAmount(receiver.getCities() + amount);
     }

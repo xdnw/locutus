@@ -1,7 +1,7 @@
 package link.locutus.discord.commands.bank;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.DepositTypeInfo;
 import link.locutus.discord.apiv1.enums.EscrowMode;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
@@ -115,7 +115,7 @@ public class TransferCommand extends Command {
         String rssStr = args.size() > 3 ? args.get(1) + " " + args.get(2) : args.get(1);
         Map<ResourceType, Double> transfer = ResourceType.parseResources(rssStr);
         String noteStr = args.get(args.size() - 1);
-        DepositType.DepositTypeInfo depositType = PWBindings.DepositTypeInfo(noteStr);
+        DepositTypeInfo depositType = PWBindings.DepositTypeInfo(noteStr);
 
         if (flags.contains('t')) {
             if (tax_account != null) return "You can't specify both `tax_id` and `-t`";

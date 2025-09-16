@@ -62,7 +62,7 @@ public class RequestTracker {
         DOMAIN_RETRY_AFTER.put(domainId, expiresAt);
     }
 
-    public void runWithRetryAfter(PageRequestQueue.PageRequestTask task) {
+    public <T> void runWithRetryAfter(PageRequestQueue.PageRequestTask<T> task) {
         runWithRetryAfter(task, 0);
     }
 
@@ -76,7 +76,7 @@ public class RequestTracker {
         return e;
     }
 
-    private void runWithRetryAfter(final PageRequestQueue.PageRequestTask task, int depth) {
+    private <T> void runWithRetryAfter(final PageRequestQueue.PageRequestTask<T> task, int depth) {
         int domainId = getDomainId(task.getUrl());
 
         long now = System.currentTimeMillis();
@@ -100,7 +100,7 @@ public class RequestTracker {
                 }
             }
             addRequest(task.getUrl());
-            Supplier supplier = task.getTask();
+            Supplier<T> supplier = task.getTask();
             if (!task.complete(supplier.get())) {
                 new Exception().printStackTrace();
                 task.completeExceptionally(new RuntimeException("Task failed"));

@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.util.stream.Collectors;
 
@@ -40,7 +41,7 @@ public class ApiQuery<T extends Entity> {
   public Response fetchAPI() throws IOException {
     HttpURLConnection conn = null;
     try {
-      URL url = new URL(urlStr);
+      URL url = URI.create(urlStr).toURL();
       conn = (HttpURLConnection) url.openConnection();
       conn.addRequestProperty("User-Agent", Settings.USER_AGENT);
       conn.setRequestMethod("GET");

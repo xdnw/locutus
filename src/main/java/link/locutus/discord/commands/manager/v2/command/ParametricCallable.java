@@ -141,7 +141,7 @@ public class ParametricCallable<T> implements ICommand<T> {
             }
 
             Key<Object> key = Key.of(type, annotations);
-            Parser binding = store.get(key);
+            Parser<?> binding = store.get(key);
             if (binding == null) {
                 throw new IllegalStateException("No binding found for " + key + " for command: " + method.getDeclaringClass().getSimpleName() + "#" + method.getName());
             }

@@ -168,7 +168,7 @@ public class BankCommands {
 
                                    @Arg(value = "Note to add to the deposit\n" +
                                            "Defaults to deposits", group = 3)
-                                   @Switch("n") DepositType.DepositTypeInfo note,
+                                   @Switch("n") DepositTypeInfo note,
 
                                    @Arg(value = "The message to append to the mail or dm message\n" +
                                            "You must specify either `mailResults` or `dm` if this is set", group = 4)
@@ -1355,7 +1355,7 @@ public class BankCommands {
                                   @Arg(value = "Do not send money below the daily login bonus", group = 0) @Switch("dc") boolean no_daily_cash,
                                   @Arg(value = "Do not send ANY money", group = 0) @Switch("c") boolean no_cash,
 
-                                  @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 1, aliases = "deposittype") @Default("#tax") DepositType.DepositTypeInfo bank_note,
+                                  @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 1, aliases = "deposittype") @Default("#tax") DepositTypeInfo bank_note,
                                   @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 1) @Switch("e") @Timediff Long expire,
                                   @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 1) @Switch("d") @Timediff Long decay,
                                   @Arg(value = "Have the transfer valued as cash in nation holdings", group = 1, aliases = "deduct_as_cash") @Switch("m") boolean deduct_as_cash,
@@ -1896,7 +1896,7 @@ public class BankCommands {
                            @Arg(value = "Only send funds the receiver is lacking from the amount", aliases = "onlymissingfunds") @Switch("m") boolean only_send_missing,
 
                            @Arg(value = "Transfer note", group = 1, aliases = "deposittype")
-                           @Default("#deposit") DepositType.DepositTypeInfo bank_note,
+                           @Default("#deposit") DepositTypeInfo bank_note,
                            @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 1) @Switch("e") @Timediff Long expire,
                            @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 1) @Switch("d") @Timediff Long decay,
                            @Arg(value = "Transfer valued at cash equivalent in nation balance", group = 1, aliases = "convertcash") @Switch("c") boolean deduct_as_cash,
@@ -2191,7 +2191,7 @@ public class BankCommands {
 
                                   @Arg(value = "The nation or alliance to receive the transfer", group = 0) NationOrAlliance receiver,
                                   @Arg(value = "The resources to transfer", group = 0) @AllianceDepositLimit Map<ResourceType, Double> transfer,
-                                  @Arg(value = "The note to categorize the transfer", group = 0) DepositType.DepositTypeInfo bank_note,
+                                  @Arg(value = "The note to categorize the transfer", group = 0) DepositTypeInfo bank_note,
 
                                   @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation nation_account,
                                   @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance ingame_bank,
@@ -2935,7 +2935,7 @@ public class BankCommands {
                                           @Arg(value = "If grants are also converted", group = 1)
                                           @Switch("g") boolean includeGrants,
                                           @Arg(value = "Convert transfers of this note category", group = 1)
-                                          @Switch("t") DepositType.DepositTypeInfo depositType,
+                                          @Switch("t") DepositTypeInfo depositType,
 
                                           @Arg(value = "What factor to multiple the converted resources by\n" +
                                                   "e.g. Use a value below 1.0 to incur a fee", group = 2) @Switch("f")
@@ -3286,7 +3286,7 @@ public class BankCommands {
                                       @Arg(value = "The transfer sheet to use\nExpects a `nation` or `leader` column and either columns for each resource name or `resources`", group = 0) @Switch("s")
                                       TransferSheet sheet,
                                       @Arg(value = "The deposit type to use for the transfer\nDefaults to `#deposit`", group = 0) @Switch("bn")
-                                      DepositType.DepositTypeInfo bank_note,
+                                          DepositTypeInfo bank_note,
 
                                       @Arg(value = "The nation account to deduct from", group = 1) @Switch("n") DBNation nation_account,
                                       @Arg(value = "The alliance bank to send from\nDefaults to the offshore", group = 1) @Switch("a") DBAlliance ingame_bank,
@@ -3309,7 +3309,7 @@ public class BankCommands {
     }
 
 
-    public static String transferBulkWithErrors(@Me IMessageIO io, @Me JSONObject command, @Me User user, @Me DBNation me, @Me GuildDB db, TransferSheet sheet, DepositType.DepositTypeInfo depositType,
+    public static String transferBulkWithErrors(@Me IMessageIO io, @Me JSONObject command, @Me User user, @Me DBNation me, @Me GuildDB db, TransferSheet sheet, DepositTypeInfo depositType,
                                         @Arg("The nation account to deduct from") @Switch("n") DBNation nation_account,
                                         @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance ingame_bank,
                                         @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance offshore_account,
@@ -3436,7 +3436,7 @@ public class BankCommands {
                 }
             }
 
-            DepositType.DepositTypeInfo depositTypeFinal = depositType.clone();
+            DepositTypeInfo depositTypeFinal = depositType.clone();
             String note = notes.get(receiver);
             if (note != null) {
                 Map<DepositType, Object> parsed = Transaction2.parseTransferHashNotes(note, System.currentTimeMillis());

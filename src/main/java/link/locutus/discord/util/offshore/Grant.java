@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.DepositTypeInfo;
 import link.locutus.discord.apiv1.enums.EscrowMode;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
@@ -51,7 +52,7 @@ public class Grant {
 
     private final Set<String> notes;
 
-    private DepositType.DepositTypeInfo type;
+    private DepositTypeInfo type;
     private String title;
 
     private Function<DBNation, double[]> cost;
@@ -305,7 +306,7 @@ public class Grant {
         }
     }
 
-    public Grant(DBNation nation, DepositType.DepositTypeInfo type) {
+    public Grant(DBNation nation, DepositTypeInfo type) {
         this.nation = nation;
         this.cost = f -> ResourceType.getBuffer();
         this.requirements = new ObjectLinkedOpenHashSet<>();
@@ -401,7 +402,7 @@ public class Grant {
         return title;
     }
 
-    public DepositType.DepositTypeInfo getType() {
+    public DepositTypeInfo getType() {
         return type;
     }
 
@@ -425,7 +426,7 @@ public class Grant {
         return this;
     }
 
-    public Grant setType(DepositType.DepositTypeInfo type) {
+    public Grant setType(DepositTypeInfo type) {
         this.type = type;
         return this;
     }
@@ -496,7 +497,7 @@ public class Grant {
             boolean use_receiver_tax_account,
             Long expire,
             Long decay,
-            DepositType.DepositTypeInfo bank_note,
+            DepositTypeInfo bank_note,
             boolean deduct_as_cash,
             EscrowMode escrow_mode,
             boolean bypass_checks,
@@ -599,7 +600,7 @@ public class Grant {
                     errors.add(error);
                     continue;
                 }
-                DepositType.DepositTypeInfo note = grant.getType();
+                DepositTypeInfo note = grant.getType();
                 DepositType type = note.getType();
                 double[] resources = grant.cost().clone();
                 if (ResourceType.isZero(resources)) {

@@ -86,7 +86,7 @@ public class GrantCommands {
 
             @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
             @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
-            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 2, aliases = "deposittype") @Default("#grant") DepositType.DepositTypeInfo bank_note,
+            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 2, aliases = "deposittype") @Default("#grant") DepositTypeInfo bank_note,
 
             @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2)@Switch("c") boolean deduct_as_cash,
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
@@ -116,7 +116,7 @@ public class GrantCommands {
                     if (numBuy <= 0) {
                         return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new Object2DoubleOpenHashMap<>(), DepositType.CITY.withValue().toString()).addMessage("Nation already has " + amount + " cities");
                     }
-                    DepositType.DepositTypeInfo note = DepositType.CITY.withAmount(currentCity + numBuy);
+                    DepositTypeInfo note = DepositType.CITY.withAmount(currentCity + numBuy);
                     double cost = PW.City.cityCost(currentCity, currentCity + numBuy, manifest_destiny != null ? manifest_destiny : receiver.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY,
                             receiver.hasProject(Projects.URBAN_PLANNING),
                             receiver.hasProject(Projects.ADVANCED_URBAN_PLANNING),
@@ -168,7 +168,7 @@ public class GrantCommands {
             
             @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
             @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
-            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 2, aliases = "deposittype") @Default("#grant") DepositType.DepositTypeInfo bank_note,
+            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 2, aliases = "deposittype") @Default("#grant") DepositTypeInfo bank_note,
             @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2) @Switch("c") boolean deduct_as_cash,
 
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
@@ -230,7 +230,7 @@ public class GrantCommands {
 
             @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
             @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
-            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 2, aliases = "deposittype") @Default("#grant") DepositType.DepositTypeInfo bank_note,
+            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 2, aliases = "deposittype") @Default("#grant") DepositTypeInfo bank_note,
             @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2) @Switch("c") boolean deduct_as_cash,
 
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
@@ -307,7 +307,7 @@ public class GrantCommands {
             @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean use_receiver_tax_account,
             @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
             @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
-            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 2, aliases = "deposittype") @Default("#grant") DepositType.DepositTypeInfo bank_note,
+            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 2, aliases = "deposittype") @Default("#grant") DepositTypeInfo bank_note,
             @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2)@Switch("c") boolean deduct_as_cash,
 
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
@@ -374,7 +374,7 @@ public class GrantCommands {
             @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean use_receiver_tax_account,
             @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
             @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
-            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 2, aliases = "deposittype") @Default("#grant") DepositType.DepositTypeInfo bank_note,
+            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 2, aliases = "deposittype") @Default("#grant") DepositTypeInfo bank_note,
             @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2)@Switch("c") boolean deduct_as_cash,
 
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
@@ -444,7 +444,7 @@ public class GrantCommands {
             @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean use_receiver_tax_account,
             @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
             @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
-            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 2, aliases = "deposittype") @Default("#grant") DepositType.DepositTypeInfo bank_note,
+            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 2, aliases = "deposittype") @Default("#grant") DepositTypeInfo bank_note,
             @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2) @Switch("c") boolean deduct_as_cash,
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
             @Switch("pr") Roles ping_role,
@@ -518,7 +518,7 @@ public class GrantCommands {
             @Arg(value = "Deduct from the receiver's tax bracket account", group = 2) @Switch("ta") boolean use_receiver_tax_account,
             @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 3) @Switch("e") @Timediff Long expire,
             @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 3) @Switch("d") @Timediff Long decay,
-            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 3, aliases = "deposittype") @Default("#grant") DepositType.DepositTypeInfo bank_note,
+            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 3, aliases = "deposittype") @Default("#grant") DepositTypeInfo bank_note,
             @Arg(value = "Have the transfer valued as cash in nation holdings", group = 3)@Switch("c") boolean deduct_as_cash,
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 4) @Switch("em") EscrowMode escrow_mode,
             @Switch("pr") Roles ping_role,
@@ -598,7 +598,7 @@ public class GrantCommands {
             @Arg(value = "Deduct from the receiver's tax bracket account", group = 2) @Switch("ta") boolean use_receiver_tax_account,
             @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 3) @Switch("e") @Timediff Long expire,
             @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 3) @Switch("d") @Timediff Long decay,
-            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 3, aliases = "deposittype") @Default("#grant") DepositType.DepositTypeInfo bank_note,
+            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 3, aliases = "deposittype") @Default("#grant") DepositTypeInfo bank_note,
             @Arg(value = "Have the transfer valued as cash in nation holdings", group = 3) @Switch("c") boolean deduct_as_cash,
 
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 4) @Switch("em") EscrowMode escrow_mode,
@@ -713,7 +713,7 @@ public class GrantCommands {
             @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean use_receiver_tax_account,
             @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
             @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
-            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 2, aliases = "deposittype") @Default("#grant") DepositType.DepositTypeInfo bank_note,
+            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 2, aliases = "deposittype") @Default("#grant") DepositTypeInfo bank_note,
             @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2) @Switch("c") boolean deduct_as_cash,
 
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
@@ -759,7 +759,7 @@ public class GrantCommands {
             @Arg(value = "Deduct from the receiver's tax bracket account", group = 1) @Switch("ta") boolean use_receiver_tax_account,
             @Arg(value = "Have the transfer ignored from nation holdings after a timeframe", group = 2) @Switch("e") @Timediff Long expire,
             @Arg(value = "Have the transfer decrease linearly from balances over a timeframe", group = 2) @Switch("d") @Timediff Long decay,
-            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 2, aliases = "deposittype") @Default("#grant") DepositType.DepositTypeInfo bank_note,
+            @Arg(value = "Transfer note\nUse `#IGNORE` to not deduct from deposits", group = 2, aliases = "deposittype") @Default("#grant") DepositTypeInfo bank_note,
             @Arg(value = "Have the transfer valued as cash in nation holdings", group = 2) @Switch("c") boolean deduct_as_cash,
 
             @Arg(value = "The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never", group = 3) @Switch("em") EscrowMode escrow_mode,
@@ -1954,7 +1954,7 @@ public class GrantCommands {
 
         Object parsed = template.parse(receiver, customValue);
 
-        DepositType.DepositTypeInfo note = template.getDepositType(receiver, parsed);
+        DepositTypeInfo note = template.getDepositType(receiver, parsed);
         if (ignore) {
             note = note.ignore(true);
         }
@@ -3611,7 +3611,7 @@ public class GrantCommands {
         if (tax_account) {
             command.put("use_receiver_tax_account", "true");
         }
-        DepositType.DepositTypeInfo bankNote = GuildKey.GRANT_REQUEST_NOTE.getOrNull(db);
+        DepositTypeInfo bankNote = GuildKey.GRANT_REQUEST_NOTE.getOrNull(db);
         if (bankNote != null) {
             command.put("bank_note", bankNote.toString());
         } else {

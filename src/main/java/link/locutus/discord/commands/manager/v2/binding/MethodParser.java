@@ -4,7 +4,6 @@ import com.google.gson.internal.Primitives;
 import io.javalin.http.RedirectResponse;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Logg;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ReflectionUtil;
@@ -13,10 +12,10 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
-
-import static com.google.api.client.util.Preconditions.checkNotNull;
 
 public class MethodParser<T> implements Parser<T> {
     private final String desc;
@@ -25,24 +24,20 @@ public class MethodParser<T> implements Parser<T> {
     private final List<Key> params;
     private final List<Class> primaryClass;
     private final Object object;
+    private final Class<?>[] webType;
 
     private boolean isConsumerInit;
     private boolean isConsumer;
+    private String[] examples;
 
-    public MethodParser(Object object, Method method, String desc, Binding binding, Type ret) {
-        checkNotNull(binding);
+    public MethodParser(Object object, Method method, String desc, String[] examples, Type ret, Class<?>[] webType) {
         this.object = object;
         this.method = method;
+        this.examples = examples;
+        this.webType = webType;
         Annotation[] annotations = method.getAnnotations();
         if (ret == null) ret = method.getGenericReturnType();
-        if (annotations.length == 1) {
-            key = Key.of(binding, ret);
-        } else if (annotations.length == 2) {
-            Annotation annotation = annotations[0] == binding ? annotations[1] : annotations[0];
-            key = Key.of(binding, ret, annotation);
-        } else {
-            key = Key.of(binding, ret, annotations);
-        }
+        key = Key.of(ret, annotations);
 
         Type[] paramTypes = method.getGenericParameterTypes();
         Annotation[][] paramAnns = method.getParameterAnnotations();
@@ -54,13 +49,13 @@ public class MethodParser<T> implements Parser<T> {
             Type param = paramTypes[i];
             if (param != String.class) {
                 Annotation[] paramAnn = paramAnns[i];
-                Key paramKey;
+                Key<?> paramKey;
                 if (paramAnn.length == 1) {
-                    paramKey = Key.of(binding, param, paramAnn[0]);
+                    paramKey = Key.of(param, paramAnn[0]);
                 } else if (paramAnn.length == 0) {
-                    paramKey = Key.of(binding, param);
+                    paramKey = Key.of(param);
                 } else {
-                    paramKey = Key.of(binding, param, paramAnn);
+                    paramKey = Key.of(param, paramAnn);
                 }
                 this.params.add(paramKey);
             } else {
@@ -70,7 +65,17 @@ public class MethodParser<T> implements Parser<T> {
         }
         this.primaryClass = params.stream().map(f -> f == null ? null : ReflectionUtil.getClassType(f.getType())).collect(Collectors.toList());
         this.isConsumerInit = isConsumer;
-        this.desc = desc == null && binding != null ? binding.value() : desc;
+        this.desc = desc;
+    }
+
+    @Override
+    public String[] getExamples() {
+        return examples;
+    }
+
+    @Override
+    public Class<?>[] getWebType() {
+        return webType;
     }
 
     @Override
@@ -227,8 +232,6 @@ public class MethodParser<T> implements Parser<T> {
     public Map<String, Object> toJson() {
         Map<String, Object> obj = new LinkedHashMap<>();
         obj.put("desc", desc);
-        Binding binding = getKey().getBinding();
-        String[] examples = binding.examples();
         if (examples != null && examples.length > 0) {
             obj.put("examples", examples);
         }

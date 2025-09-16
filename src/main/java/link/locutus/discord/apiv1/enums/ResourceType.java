@@ -374,9 +374,9 @@ public enum ResourceType {
             return a;
         }
         for (ResourceType type : values) {
-            Number v1 = a.get(type);
-            Number v2 = b.get(type);
-            Number total = v1 == null ? v2 : (v2 == null ? v1 : MathMan.add(v1, v2));
+            T v1 = a.get(type);
+            T v2 = b.get(type);
+            T total = v1 == null ? v2 : (v2 == null ? v1 : (T) MathMan.add(v1, v2));
             if (total != null && total.doubleValue() != 0) {
                 a.put(type, (T) total);
             } else {

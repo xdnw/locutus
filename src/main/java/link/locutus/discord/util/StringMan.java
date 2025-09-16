@@ -706,28 +706,18 @@ public class StringMan {
         if (obj1 == null || obj2 == null) {
             return false;
         }
-        if (obj1.getClass().isArray() && obj2.getClass().isArray()) {
-            if (obj1 instanceof int[] && obj2 instanceof int[]) {
-                return Arrays.equals((int[]) obj1, (int[]) obj2);
-            } else if (obj1 instanceof long[] && obj2 instanceof long[]) {
-                return Arrays.equals((long[]) obj1, (long[]) obj2);
-            } else if (obj1 instanceof short[] && obj2 instanceof short[]) {
-                return Arrays.equals((short[]) obj1, (short[]) obj2);
-            } else if (obj1 instanceof byte[] && obj2 instanceof byte[]) {
-                return Arrays.equals((byte[]) obj1, (byte[]) obj2);
-            } else if (obj1 instanceof char[] && obj2 instanceof char[]) {
-                return Arrays.equals((char[]) obj1, (char[]) obj2);
-            } else if (obj1 instanceof float[] && obj2 instanceof float[]) {
-                return Arrays.equals((float[]) obj1, (float[]) obj2);
-            } else if (obj1 instanceof double[] && obj2 instanceof double[]) {
-                return Arrays.equals((double[]) obj1, (double[]) obj2);
-            } else if (obj1 instanceof boolean[] && obj2 instanceof boolean[]) {
-                return Arrays.equals((boolean[]) obj1, (boolean[]) obj2);
-            } else {
-                return Arrays.equals((Object[]) obj1, (Object[]) obj2);
-            }
-        }
-        return Objects.equals(obj1, obj2);
+        return switch (obj1) {
+            case int[] a when obj2 instanceof int[] b -> Arrays.equals(a, b);
+            case long[] a when obj2 instanceof long[] b -> Arrays.equals(a, b);
+            case short[] a when obj2 instanceof short[] b -> Arrays.equals(a, b);
+            case byte[] a when obj2 instanceof byte[] b -> Arrays.equals(a, b);
+            case char[] a when obj2 instanceof char[] b -> Arrays.equals(a, b);
+            case float[] a when obj2 instanceof float[] b -> Arrays.equals(a, b);
+            case double[] a when obj2 instanceof double[] b -> Arrays.equals(a, b);
+            case boolean[] a when obj2 instanceof boolean[] b -> Arrays.equals(a, b);
+            case Object[] a when obj2 instanceof Object[] b -> Arrays.deepEquals(a, b);
+            default -> Objects.equals(obj1, obj2);
+        };
     }
 
     public static JsonElement toJson(Object obj) {

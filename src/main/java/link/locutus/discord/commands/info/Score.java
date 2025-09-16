@@ -142,8 +142,8 @@ public class Score extends Command {
         if (score == 0) return usage("No score provided", channel);
 
         return "Score: " + MathMan.format(score) + "\n" +
-                "WarRange: " + MathMan.format(score * 0.75) + "- " + MathMan.format(score * PW.WAR_RANGE_MAX_MODIFIER) + "\n" +
-                "Can be Attacked By: " + MathMan.format(score / PW.WAR_RANGE_MAX_MODIFIER) + "- " + MathMan.format(score / 0.75) + "\n" +
-                "Spy range: " + MathMan.format(score * 0.4) + "- " + MathMan.format(score * 1.5);
+                "WarRange: " + MathMan.format(score * PW.WAR_RANGE_MIN_MODIFIER) + "- " + MathMan.format(score * PW.WAR_RANGE_MAX_MODIFIER) + "\n" +
+                "Can be Attacked By: " + MathMan.format(score / PW.WAR_RANGE_MAX_MODIFIER) + "- " + MathMan.format(score / PW.WAR_RANGE_MIN_MODIFIER) + "\n" +
+                "Spy range: " + MathMan.format(score * PW.SPY_RANGE_MIN_MODIFIER) + "- " + MathMan.format(score * PW.SPY_RANGE_MAX_MODIFIER);
     }
 }

@@ -73,6 +73,7 @@ import java.awt.*;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
+import java.lang.reflect.WildcardType;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -118,7 +119,7 @@ public class WebPWBindings extends WebBindingHelper {
         return multipleSelect(param, Arrays.asList(TreatyType.values()), s -> new KeyValue<>(s.name(), s.name()), true);
     }
     @HtmlInput
-    @Binding(types = {Set.class, GuildSetting.class}, multiple = true)
+    @Binding(types = {Set.class, GuildSetting.class, WildcardType.class}, multiple = true)
     public String GuildSettingSet(@Default ParameterData param) {
         return multipleSelect(param, Arrays.asList(GuildKey.values()), s -> new KeyValue<>(s.name(), s.name()), true);
     }
@@ -877,7 +878,7 @@ public class WebPWBindings extends WebBindingHelper {
     }
 
     @HtmlInput
-    @Binding(types= DepositType.DepositTypeInfo.class)
+    @Binding(types= DepositTypeInfo.class)
     public String DepositTypeInfo(ParameterData param) {
         return DepositType(param);
     }
@@ -1059,7 +1060,7 @@ public class WebPWBindings extends WebBindingHelper {
     }
 
     @HtmlInput
-    @Binding(types= GuildSetting.class)
+    @Binding(types = { GuildSetting.class, WildcardType.class })
     public String GuildSetting(@Me GuildDB db, @Me Guild guild, @Me User author, ParameterData param) {
         ArrayList<GuildSetting> options = new ArrayList<>(Arrays.asList(GuildKey.values()));
         options.removeIf(key -> {

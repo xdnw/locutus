@@ -1,15 +1,15 @@
 package com.jpson;
 
+import com.jpson.internal.ArrayUtils;
+import com.jpson.internal.BitConverter;
+import com.jpson.internal.ZigZag;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+
 import java.io.ByteArrayInputStream;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
-import com.jpson.internal.*;
+import java.util.*;
 
 /**
  * A high-level PSON decoder that maintains a dictionary.
@@ -127,7 +127,7 @@ class PsonDecoder {
         int count = ZigZag.readVarint32(input);
         if (allocationLimit > -1 && count > allocationLimit)
             throw new PsonException("allocation limit exceeded:" + count);
-        ArrayList list = new ArrayList();
+        List<Object> list = new ObjectArrayList<>();
         while (count-- > 0)
             list.add(decodeValue());
         return list;
@@ -137,7 +137,7 @@ class PsonDecoder {
         int count = ZigZag.readVarint32(input);
         if (allocationLimit > -1 && count > allocationLimit)
             throw new PsonException("allocation limit exceeded:" + count);
-        Map obj = new LinkedHashMap();
+        Map<String, Object> obj = new Object2ObjectLinkedOpenHashMap<>();
         while (count-- > 0) {
             byte strToken = (byte) input.read();
             switch (strToken) {

@@ -25,7 +25,7 @@ public class Response<T extends Entity> {
     }
 
     public T getEntity() throws JsonSyntaxException {
-        JsonElement jsonElement = new JsonParser().parse(jsonStr);
+        JsonElement jsonElement = JsonParser.parseString(jsonStr);
         JsonObject jsonObject = jsonElement.getAsJsonObject();
 
         if (jsonObject.has("error") || jsonObject.has("error_message") ||

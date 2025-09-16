@@ -1,7 +1,5 @@
 package link.locutus.discord.commands.manager.v2.binding;
 
-import link.locutus.discord.Logg;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
@@ -24,16 +22,19 @@ public interface Parser<T> {
 
     String getDescription();
 
+    String[] getExamples();
+
+    Class<?>[] getWebType();
+
     default Key<?> getWebTypeOrNull() {
         Key<?> key = getKey();
-        Binding binding = key.getBinding();
-        if (binding != null && binding.webType().length > 0) {
-            Class<?>[] arr = binding.webType();
-            if (arr.length > 1) {
-                Type type = ReflectionUtil.buildNestedType(arr);
+        Class<?>[] webType = getWebType();
+        if (webType != null && webType.length > 0) {
+            if (webType.length > 1) {
+                Type type = ReflectionUtil.buildNestedType(webType);
                 return Key.of(type);
             } else {
-                return Key.of((Type) arr[0]);
+                return Key.of((Type) webType[0]);
             }
         }
         return null;
@@ -90,13 +91,10 @@ public interface Parser<T> {
             }
         }
         if (printExamples) {
-            Binding binding = key.getBinding();
-            if (binding == null) {
-                Logg.text("No binding: " + key);
-            }
-            if (binding.examples() != null && binding.examples().length > 0) {
+            String[] examples = getExamples();
+            if (examples != null && examples.length > 0) {
                 result.append("Examples:\n");
-                for (String example : binding.examples()) {
+                for (String example : examples) {
                     result.append("- " + example + "\n");
                 }
             } else if (printErrors) {

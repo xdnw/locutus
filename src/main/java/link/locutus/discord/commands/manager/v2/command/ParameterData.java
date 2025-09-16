@@ -4,7 +4,6 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.annotation.ArgChoice;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.gpt.GPTUtil;
@@ -23,7 +22,7 @@ public class ParameterData {
     private boolean optional;
     private String[] defaultValue;
     private String name;
-    private Parser binding;
+    private Parser<?> binding;
     private String desc;
     private int group = -1;
 
@@ -81,8 +80,10 @@ public class ParameterData {
             arg.put("pattern", filter.value());
         }
         Key<?> key = binding.getKey();
-        Binding keyBinding = key.getBinding();
-        String[] examples = keyBinding.examples();
+        Key<?> webType = binding.getWebTypeOrNull();
+        if (webType != null) key = webType;
+
+        String[] examples = binding.getExamples();
         if (examples != null && examples.length > 0) {
             arg.put("examples", Arrays.asList(examples));
         }
@@ -229,10 +230,10 @@ public class ParameterData {
         }
         if (includeExample) {
             Key<?> key = getBinding().getKey();
-            Binding keyBinding = key.getBinding();
-            if (keyBinding != null && keyBinding.examples().length != 0) {
+            String[] examples = getBinding().getExamples();
+            if (examples != null && examples.length != 0) {
                 if (!isFlag() || isConsumeFlag()) {
-                    String example = examplePrefix + StringMan.join(keyBinding.examples(), "`, `" + examplePrefix);
+                    String example = examplePrefix + StringMan.join(examples, "`, `" + examplePrefix);
                     expanded.append("\n- e.g. `").append(example).append("`");
                 }
             }

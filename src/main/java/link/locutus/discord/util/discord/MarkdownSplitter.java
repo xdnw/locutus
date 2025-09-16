@@ -143,30 +143,21 @@ public class MarkdownSplitter {
             return Collections.singletonList(new SliceFragment(chars));
         }
 
-        // Oversized: dispatch by node type
-        if (node instanceof Heading) {
-            // Headings are atomic; forced split only if over max
-            return splitByLinesOrForce(chars);
-        } else if (node instanceof Paragraph) {
-            return splitParagraph((Paragraph) node);
-        } else if (node instanceof ThematicBreak) {
-            return Collections.singletonList(new SliceFragment(chars)); // Always small
-        } else if (node instanceof FencedCodeBlock) {
-            return splitFencedCodeBlock((FencedCodeBlock) node);
-        } else if (node instanceof IndentedCodeBlock) {
-            return splitIndentedCodeBlock((IndentedCodeBlock) node);
-        } else if (node instanceof BlockQuote) {
-            return splitBlockQuote((BlockQuote) node);
-        } else if (node instanceof BulletList || node instanceof OrderedList) {
-            return splitList((ListBlock) node);
-        } else if (node instanceof TableBlock) {
-            return splitTable((TableBlock) node);
-        } else if (node instanceof HtmlBlock || node instanceof FootnoteBlock || node instanceof HtmlCommentBlock) {
-            return splitByLinesOrForce(chars);
-        } else {
-            // Default handler for any other block: try lines, then force
-            return splitByLinesOrForce(chars);
-        }
+        return switch (node) {
+            case Heading h -> splitByLinesOrForce(h.getChars());
+            case Paragraph p -> splitParagraph(p);
+            case ThematicBreak t -> Collections.singletonList(new SliceFragment(t.getChars()));
+            case FencedCodeBlock f -> splitFencedCodeBlock(f);
+            case IndentedCodeBlock ic -> splitIndentedCodeBlock(ic);
+            case BlockQuote bq -> splitBlockQuote(bq);
+            case BulletList bl -> splitList(bl);
+            case OrderedList ol -> splitList(ol);
+            case TableBlock tb -> splitTable(tb);
+            case HtmlBlock hb -> splitByLinesOrForce(hb.getChars());
+            case FootnoteBlock fb -> splitByLinesOrForce(fb.getChars());
+            case HtmlCommentBlock hc -> splitByLinesOrForce(hc.getChars());
+            default -> splitByLinesOrForce(chars);
+        };
     }
 
     // Paragraph splitting: preserve inline atomics; split Text by newline > sentence > whitespace > forced

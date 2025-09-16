@@ -13,6 +13,16 @@ public class ProviderParser<T> implements Parser<T> {
         this.value = value;
     }
 
+    @Override
+    public String[] getExamples() {
+        return new String[0];
+    }
+
+    @Override
+    public Class<?>[] getWebType() {
+        return new Class[0];
+    }
+
     public T getValue() {
         return value;
     }

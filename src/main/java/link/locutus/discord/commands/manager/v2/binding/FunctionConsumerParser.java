@@ -40,6 +40,16 @@ public class FunctionConsumerParser<R> implements Parser<R> {
     }
 
     @Override
+    public String[] getExamples() {
+        return new String[0];
+    }
+
+    @Override
+    public Class<?>[] getWebType() {
+        return new Class[0];
+    }
+
+    @Override
     public Map<String, Object> toJson() {
         throw new UnsupportedOperationException();
     }

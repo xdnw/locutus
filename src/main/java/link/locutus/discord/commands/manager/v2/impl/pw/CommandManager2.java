@@ -6,7 +6,6 @@ import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.commands.manager.v2.binding.*;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
@@ -71,21 +70,21 @@ public class CommandManager2 {
         Set<String> checkedOptions = new HashSet<>();
         Map<String, Object> optionsData = new LinkedHashMap<>();
 
-        Set<Parser> parsers = new ObjectLinkedOpenHashSet<>();
+        Set<Parser<?>> parsers = new ObjectLinkedOpenHashSet<>();
         for (ParametricCallable<?> callable : commands.getParametricCallables(Predicates.alwaysTrue())) {
             for (ParameterData param : callable.getUserParameters()) {
                 Parser<?> parser = param.getBinding();
-                Binding binding = parser.getKey().getBinding();
-                if (binding != null && binding.webType().length == 0) {
+                Class<?>[] webType = parser.getWebType();
+                if (webType == null || webType.length == 0) {
                     parsers.add(parser);
                 }
             }
         }
-        for (Parser parser : parsers) {
-            Key key = parser.getKey();
+        for (Parser<?> parser : parsers) {
+            Key<?> key = parser.getKey();
             Map<String, Object> typeJson = parser.toJson();
             keysData.put(key.toSimpleString(), typeJson);
-            Parser optionParser = htmlOptionsStore.get(key);
+            Parser<?> optionParser = htmlOptionsStore.get(key);
             if (optionParser != null) {
                 WebOption option = (WebOption) optionParser.apply(store, null);
                 optionsData.computeIfAbsent(option.getName(), k -> option.toJson());

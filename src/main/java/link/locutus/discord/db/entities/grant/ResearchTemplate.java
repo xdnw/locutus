@@ -1,9 +1,6 @@
 package link.locutus.discord.db.entities.grant;
 
-import link.locutus.discord.apiv1.enums.DepositType;
-import link.locutus.discord.apiv1.enums.DomesticPolicy;
-import link.locutus.discord.apiv1.enums.Research;
-import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -210,7 +207,7 @@ public class ResearchTemplate extends AGrantTemplate<Void>{
     }
 
     @Override
-    public DepositType.DepositTypeInfo getDepositType(DBNation receiver, Void parsed) {
+    public DepositTypeInfo getDepositType(DBNation receiver, Void parsed) {
         return DepositType.RESEARCH.withAmount(Research.toBits(research));
     }
 

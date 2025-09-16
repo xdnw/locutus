@@ -52,7 +52,7 @@ public class SettingCommands {
 
     @Command(desc = "Delete an alliance or guild setting")
     @RolePermission(any = true, value = {Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS})
-    public String delete( @Me GuildDB db, @Me User author, GuildSetting key) {
+    public String delete( @Me GuildDB db, @Me User author, GuildSetting<?> key) {
         if (!key.hasPermission(db, author, null)) {
             return "You do not have permission to delete the key `" + key.name() + "`";
         }
@@ -63,7 +63,7 @@ public class SettingCommands {
         StringBuilder response = new StringBuilder();
         Object value = key.getOrNull(db, false);
         if (value != null) {
-            response.append("Previous value:\n```\n" + key.toReadableString(db, value) + "\n```\n");
+            response.append("Previous value:\n```\n" + ((GuildSetting) key).toReadableString(db, value) + "\n```\n");
         } else {
             response.append("Previous value (invalid):\n```\n" + valueRaw + "\n```\n");
         }
@@ -76,10 +76,11 @@ public class SettingCommands {
     @NoFormat
     public static String info(@Me Guild guild, @Me User author,
                            @Arg("The setting to change or view")
-                           @Default GuildSetting key,
+                           @Default GuildSetting<?> key,
                            @Arg("The value to set the setting to")
                            @Default @TextArea String value,
                            @Switch("a") boolean listAll) throws Exception {
+        GuildSetting keyGeneric = key;
         GuildDB db = Locutus.imp().getGuildDB(guild);
         if (db == null) return "Command must run in a guild.";
         if (value == null) {
@@ -112,7 +113,7 @@ public class SettingCommands {
                         response.append("**current value**: `" + valueStr + "`\n\n");
                         response.append("`!! A value is set but it is invalid`\n");
                     } else {
-                        response.append("**current value**: `" + key.toReadableString(db, valueObj) + "`\n\n");
+                        response.append("**current value**: `" + keyGeneric.toReadableString(db, valueObj) + "`\n\n");
                     }
                     response.append("`note: to delete, use: " + CM.settings.delete.cmd.key(key.name()).toSlashCommand(false) + "`\n");
                 } else {
@@ -182,12 +183,12 @@ public class SettingCommands {
             valueObj = null;
         } else {
             valueObj = key.parse(db, value);
-            valueObj = key.validate(db, author, valueObj);
+            valueObj = keyGeneric.validate(db, author, valueObj);
 
             if (valueObj == null) {
                 return "Invalid value for key `" + key.name() + "`";
             }
-            if (!key.hasPermission(db, author, valueObj)) return "No permission to set `" + key.name() + "` to `" + key.toReadableString(db, valueObj) + "`";
+            if (!keyGeneric.hasPermission(db, author, valueObj)) return "No permission to set `" + key.name() + "` to `" + keyGeneric.toReadableString(db, valueObj) + "`";
         }
         if (valueObj == null) {
             if (!key.has(db, false)) {
@@ -195,7 +196,7 @@ public class SettingCommands {
             }
             return key.delete(db, author);
         } else {
-            return key.set(db, author, valueObj);
+            return keyGeneric.set(db, author, valueObj);
         }
     }
 

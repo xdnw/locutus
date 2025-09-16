@@ -15,33 +15,116 @@ import java.util.stream.Collectors;
 public class Key<T> {
     private final Type type;
     private final Set<Class<?>> annotationTypes;
-    private final Binding binding;
     private final Annotation[] annotations;
 
     private boolean isDefault;
     private final int hash;
 
-    private Key(Type type, Class annotationClass) {
+    private Key(Type type, Class<?> annotationClass) {
         this(type, Collections.singletonList(annotationClass));
     }
+
     private Key(Type type, List<Class<?>> annotationClasses) {
         this.type = type;
-        this.annotationTypes = new ObjectLinkedOpenHashSet<>(annotationClasses);
-        if (!this.annotationTypes.isEmpty()) {
-            Iterator<Class<?>> iter = this.annotationTypes.iterator();
-            while (iter.hasNext()) {
-                Class<?> f = iter.next();
-                if (Binding.class.isAssignableFrom(f)) {
-                    iter.remove();
-                } else if (Default.class.isAssignableFrom(f)) {
-                    iter.remove();
-                    isDefault = true;
+        this.annotations = null; // This constructor variant does not carry full Annotation instances
+        this.hash = TypeUtils.toString(type).hashCode();
+
+        if (annotationClasses == null || annotationClasses.isEmpty()) {
+            this.annotationTypes = Collections.emptySet();
+            return;
+        }
+
+        // Fast path: expect tiny lists
+        Class<?>[] tmp = new Class<?>[annotationClasses.size()];
+        int count = 0;
+        boolean localDefault = false;
+
+        outer:
+        for (int i = 0, n = annotationClasses.size(); i < n; i++) {
+            Class<?> c = annotationClasses.get(i);
+            if (c == null) continue;
+            if (c == Binding.class) continue;
+            if (c == Default.class) {
+                localDefault = true;
+                continue;
+            }
+            // dedupe (tiny N => O(n^2) is fine and allocation-free)
+            for (int j = 0; j < count; j++) {
+                if (tmp[j] == c) continue outer;
+            }
+            tmp[count++] = c;
+        }
+
+        this.isDefault = localDefault;
+
+        if (count == 0) {
+            this.annotationTypes = Collections.emptySet();
+        } else if (count == 1) {
+            this.annotationTypes = Collections.singleton(tmp[0]);
+        } else {
+            // Use insertion-order preserving set only when truly needed
+            ObjectLinkedOpenHashSet<Class<?>> set = new ObjectLinkedOpenHashSet<>(count);
+            for (int i = 0; i < count; i++) {
+                set.add(tmp[i]);
+            }
+            this.annotationTypes = set;
+        }
+    }
+
+    private static final Annotation[] EMPTY_ANNOTATIONS = new Annotation[0];
+
+    private Key(Type type, Annotation... annotations) {
+        this.type = type;
+        this.hash = TypeUtils.toString(type).hashCode();
+
+        if (annotations == null || annotations.length == 0) {
+            this.annotations = EMPTY_ANNOTATIONS;
+            this.annotationTypes = Collections.emptySet();
+            return;
+        }
+
+        // Temporary storage for unique, non-filtered annotation types
+        Class<?>[] tmp = new Class<?>[annotations.length];
+        int count = 0;
+
+        for (Annotation annotation : annotations) {
+            if (annotation == null) continue;
+            Class<? extends Annotation> annType = annotation.annotationType();
+            if (annType == Binding.class) {
+                continue;
+            }
+            if (annType == Default.class) {
+                isDefault = true;
+                continue;
+            }
+            // Deduplicate manually (expected tiny N)
+            boolean exists = false;
+            for (int i = 0; i < count; i++) {
+                if (tmp[i] == annType) {
+                    exists = true;
+                    break;
                 }
             }
+            if (!exists) {
+                tmp[count++] = annType;
+            }
         }
-        this.binding = null;
-        this.annotations = null;
-        this.hash = TypeUtils.toString(type).hashCode();
+
+        // Assign original annotations array (retain previous behavior)
+        this.annotations = annotations;
+
+        if (count == 0) {
+            this.annotationTypes = Collections.emptySet();
+        } else if (count == 1) {
+            this.annotationTypes = Collections.singleton(tmp[0]);
+        } else {
+            // Use fastutil set only when truly needed
+            ObjectLinkedOpenHashSet<Class<?>> set = new ObjectLinkedOpenHashSet<>(count);
+            for (int i = 0; i < count; i++) {
+                set.add((Class<?>) tmp[i]);
+            }
+            this.annotationTypes = set;
+        }
     }
 
     public String keyNameMarkdown() {
@@ -66,24 +149,6 @@ public class Key<T> {
         this(type, Arrays.asList(annotationClasses));
     }
 
-    private Key(Binding binding, Type type, Annotation... annotations) {
-        this.binding = binding;
-        this.type = type;
-        this.annotationTypes = new ObjectLinkedOpenHashSet<>(annotations.length);
-        this.annotations = annotations;
-        for (Annotation annotation : annotations) {
-            Class<? extends Annotation> annType = annotation.annotationType();
-            if (annType == Binding.class) {
-                continue;
-            } else if (annType == Default.class) {
-                isDefault = true;
-                continue;
-            }
-            annotationTypes.add(annType);
-        }
-        this.hash = TypeUtils.toString(type).hashCode();
-    }
-
     public static <T> Key<T> of(Type type, Class annotationClass) {
         return new Key<>(type, annotationClass);
     }
@@ -97,15 +162,7 @@ public class Key<T> {
     }
 
     public static <T> Key<T> of(Type clazz, Annotation... annotations) {
-        return of(null, clazz, annotations);
-    }
-
-    public static <T> Key<T> of(Binding binding, Type clazz) {
-        return of(binding, clazz, new Annotation[0]);
-    }
-
-    public static <T> Key<T> of(Binding binding, Type clazz, Annotation... annotations) {
-        return new Key<>(binding, clazz, annotations);
+        return new Key<>(clazz, annotations);
     }
 
     public Key<T> append(Class<? extends Annotation> annotation) {
@@ -130,10 +187,6 @@ public class Key<T> {
             }
         }
         return null;
-    }
-
-    public Binding getBinding() {
-        return binding;
     }
 
     public Annotation[] getAnnotations() {

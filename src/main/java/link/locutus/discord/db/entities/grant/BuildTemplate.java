@@ -4,6 +4,7 @@ import com.google.common.base.Predicates;
 import com.google.gson.reflect.TypeToken;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.DepositTypeInfo;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -499,7 +500,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     }
 
     @Override
-    public DepositType.DepositTypeInfo getDepositType(DBNation receiver, Map<Integer, CityBuild> build) {
+    public DepositTypeInfo getDepositType(DBNation receiver, Map<Integer, CityBuild> build) {
         int cities = 0;
         if (onlyNewCities) {
             cities = build.size();

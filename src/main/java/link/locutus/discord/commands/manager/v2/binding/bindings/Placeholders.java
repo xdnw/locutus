@@ -267,7 +267,9 @@ public abstract class Placeholders<T, M> extends BindingHelper {
 
     private void registerCustom(ValueStore store, Method method, Type type) {
         Binding binding = method.getAnnotation(Binding.class);
-        MethodParser parser = new MethodParser(this, method, this.getDescription(), binding, type);
+        String desc = binding.value();
+        if (desc == null) desc = "";
+        MethodParser parser = new MethodParser(this, method, desc, binding.examples(), type, binding.webType());
         Key key = parser.getKey();
         Parser existing = store.get(key);
         if (existing != null) {

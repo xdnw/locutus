@@ -573,7 +573,7 @@ public class PWBindings extends BindingHelper {
     @Binding(examples = ("#grant #city=1"), value = "A DepositType optionally with a value and a city tag\n" +
             "See: <https://github.com/xdnw/locutus/wiki/deposits#transfer-notes>",
     webType = DepositType.class)
-    public static DepositType.DepositTypeInfo DepositTypeInfo(String input) {
+    public static DepositTypeInfo DepositTypeInfo(String input) {
         DepositType type = null;
         long value = 0;
         long city = 0;
@@ -617,7 +617,7 @@ public class PWBindings extends BindingHelper {
         if (type.isReserved()) {
             throw new IllegalArgumentException("The note `" + type + "` is reserved for internal use. Please use a different note.");
         }
-        return new DepositType.DepositTypeInfo(type, value, city, ignore);
+        return new DepositTypeInfo(type, value, city, ignore);
     }
 
     @Binding(value = "A range of city counts (inclusive)", examples = {"c1-10", "c11+"})
@@ -1463,10 +1463,10 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "Bot guild settings")
-    public static GuildSetting key(String input) {
+    public static GuildSetting<?> key(String input) {
         input = input.replaceAll("_", " ").toLowerCase();
-        GuildSetting[] constants = GuildKey.values();
-        for (GuildSetting constant : constants) {
+        GuildSetting<?>[] constants = GuildKey.values();
+        for (GuildSetting<?> constant : constants) {
             String name = constant.name().replaceAll("_", " ").toLowerCase();
             if (name.equals(input)) return constant;
         }

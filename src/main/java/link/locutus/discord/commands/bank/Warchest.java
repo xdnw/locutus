@@ -1,7 +1,7 @@
 package link.locutus.discord.commands.bank;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.DepositTypeInfo;
 import link.locutus.discord.apiv1.enums.EscrowMode;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -106,7 +106,7 @@ public class Warchest extends Command {
         if (perCity.isEmpty()) return "Invalid amount: `" + args.get(1) + "`";
         boolean ignoreInactives = !flags.contains('i');
 
-        DepositType.DepositTypeInfo type = PWBindings.DepositTypeInfo(args.get(2));
+        DepositTypeInfo type = PWBindings.DepositTypeInfo(args.get(2));
 
         String arg = args.get(0);
         List<DBNation> nations = new ArrayList<>(DiscordUtil.parseNations(guild, author, me, arg, false, false));

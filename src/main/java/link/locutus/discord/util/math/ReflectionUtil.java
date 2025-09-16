@@ -52,7 +52,7 @@ public class ReflectionUtil {
         }
         Class<?> raw = seq[c.pos++];
 
-        int paramCount = raw.getTypeParameters().length;
+        int paramCount = Math.min(raw.getTypeParameters().length, seq.length - c.pos);
         if (paramCount == 0) {
             if (raw == WildcardType.class) {
                 return wildcard;

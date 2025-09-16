@@ -160,7 +160,7 @@ public class IAEndpoints extends PageHelper {
     @HasOffshore
     @IsMemberIngameOrDiscord
     @ReturnType(WebTransferResult.class)
-    public Object withdraw(@Me GuildDB db, @Me User banker, @Me DBNation nationAccount, NationOrAlliance receiver, Map<ResourceType, Double> amount, DepositType.DepositTypeInfo note) throws IOException {
+    public Object withdraw(@Me GuildDB db, @Me User banker, @Me DBNation nationAccount, NationOrAlliance receiver, Map<ResourceType, Double> amount, DepositTypeInfo note) throws IOException {
         if (nationAccount == null) {
             return error("Please sign in with a valid nation to withdraw");
         }

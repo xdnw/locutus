@@ -138,7 +138,7 @@ public class PWCompleter extends BindingHelper {
                 OptionData.MAX_CHOICES);
     }
     @Autocomplete
-    @Binding(types={Set.class, GuildSetting.class}, multiple = true)
+    @Binding(types={Set.class, GuildSetting.class, WildcardType.class}, multiple = true)
     public List<String> GuildSetting(String input) {
         List<String> options = Arrays.stream(GuildKey.values()).map(GuildSetting::name).toList();
         return StringMan.autocompleteComma(input, options, OptionData.MAX_CHOICES);
@@ -198,7 +198,7 @@ public class PWCompleter extends BindingHelper {
     }
 
     @Autocomplete
-    @Binding(types={DepositType.DepositTypeInfo.class})
+    @Binding(types={DepositTypeInfo.class})
     public List<String> DepositTypeInfo(String input) {
         return StringMan.completeEnum(input, DepositType.class);
     }
@@ -569,7 +569,7 @@ public class PWCompleter extends BindingHelper {
     }
 
     @Autocomplete
-    @Binding(types={GuildSetting.class})
+    @Binding(types={GuildSetting.class, WildcardType.class})
     public List<String> setting(String input) {
         List<String> options = Arrays.asList(GuildKey.values()).stream().map(GuildSetting::name).collect(Collectors.toList());
         return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true);

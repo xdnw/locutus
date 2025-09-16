@@ -1,6 +1,7 @@
 package link.locutus.discord.db.entities.grant;
 
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.DepositTypeInfo;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
@@ -182,7 +183,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
     }
 
     @Override
-    public DepositType.DepositTypeInfo getDepositType(DBNation receiver, Integer parsed) {
+    public DepositTypeInfo getDepositType(DBNation receiver, Integer parsed) {
         return DepositType.RAWS.withValue();
     }
 

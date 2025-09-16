@@ -3,6 +3,7 @@ package link.locutus.discord.db.entities.grant;
 import com.google.gson.reflect.TypeToken;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.DepositTypeInfo;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
@@ -286,7 +287,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
     }
 
     @Override
-    public DepositType.DepositTypeInfo getDepositType(DBNation receiver, Map<ResourceType, Double> parsed) {
+    public DepositTypeInfo getDepositType(DBNation receiver, Map<ResourceType, Double> parsed) {
         return DepositType.WARCHEST.withValue();
     }
 

@@ -1912,7 +1912,7 @@ public class UnsortedCommands {
                                           "Only resources they are missing is sent", group = 0)
                                       Map<ResourceType, Double> resourcesPerCity,
                                   @Arg(value = "The transfer note to use\nDefaults to `#WARCHEST`", group = 0)
-                                      @Default DepositType.DepositTypeInfo bank_note,
+                                      @Default DepositTypeInfo bank_note,
                                   @Arg(value = "Do not check nation stockpile\nSends the full amount of resources to each nation", group = 2)
                                       @Switch("s") boolean skipStockpile,
                                   @Arg(value = "The nation account to deduct from", group = 1)

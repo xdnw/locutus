@@ -88,7 +88,7 @@ public interface IModalBuilder {
 
                 String name = param.getName();
                 TextInput.Builder builder = TextInput.create(param.getName(), desc, TextInputStyle.PARAGRAPH);
-                String[] examples = param.getBinding().getKey().getBinding().examples();
+                String[] examples = param.getBinding().getExamples();
                 if (examples != null && examples.length > 0) {
                     builder.setPlaceholder(examples[0]);
                 }

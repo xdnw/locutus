@@ -683,7 +683,7 @@ public class AdminCommands {
     @RolePermission(value = Roles.ADMIN, root = true)
     @Ephemeral
     public String unsetNews(@Me IMessageIO io, @Me JSONObject command,
-            GuildSetting setting, Set<GuildDB> guilds, MessageChannel news_channel,
+            GuildSetting<?> setting, Set<GuildDB> guilds, MessageChannel news_channel,
             @Switch("e") boolean unset_on_error,
             @Switch("f") boolean force) {
         if (!(news_channel instanceof NewsChannel)) {
@@ -954,7 +954,7 @@ public class AdminCommands {
     @Command(desc = "Generate a google spreadsheet for a guild setting value for a set of discord servers")
     @RolePermission(value = Roles.ADMIN, root = true)
     @Ephemeral
-    public String infoBulk(@Me GuildDB db, @Me IMessageIO io, GuildSetting setting, Set<GuildDB> guilds, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String infoBulk(@Me GuildDB db, @Me IMessageIO io, GuildSetting<?> setting, Set<GuildDB> guilds, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.SETTINGS_SERVERS);
         }
@@ -990,7 +990,7 @@ public class AdminCommands {
             String raw = setting.getRaw(otherDb, false);
             if (raw == null) continue;
             Object value = setting.getOrNull(otherDb, false);
-            String readable = value == null ? "![NULL]" : setting.toReadableString(db, value);
+            String readable = value == null ? "![NULL]" : ((GuildSetting) setting).toReadableString(db, value);
             boolean noPerms = !setting.allowed(db);
 
             header.set(0, otherDb.getIdLong() + "");

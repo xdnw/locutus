@@ -245,9 +245,9 @@ public class WebOptionBindings extends BindingHelper {
         }, true);
     }
 //GuildSetting
-    @Binding(types = GuildSetting.class)
+    @Binding(types = { GuildSetting.class, WildcardType.class })
     public WebOption getGuildSetting() {
-        return new WebOption(GuildSetting.class).setRequiresGuild()
+        return new WebOption(Key.of(GuildSetting.class, WildcardType.class)).setRequiresGuild()
                 .setOptions((Arrays.stream(GuildKey.values()).map(GuildSetting::name).toList()));
     }
 //EmbeddingSource

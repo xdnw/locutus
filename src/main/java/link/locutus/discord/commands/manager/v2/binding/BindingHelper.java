@@ -65,14 +65,20 @@ public class BindingHelper {
         if (binding == null) {
             return false;
         }
+        String[] examples = binding.examples();
         String desc = binding.value();
         if (desc == null) desc = method.getName();
 
         if (binding.multiple()) {
-            Type type = ReflectionUtil.buildNestedType(binding.types());
-            MethodParser parser = new MethodParser(this, method, desc, binding, type);
-            Key key = parser.getKey();
-            store.addParser(key, parser);
+            try {
+                Type type = ReflectionUtil.buildNestedType(binding.types());
+                MethodParser parser = new MethodParser(this, method, desc, examples, type, binding.webType());
+                Key key = parser.getKey();
+                store.addParser(key, parser);
+            } catch (IllegalArgumentException e) {
+                System.err.println("Failed to register multiple binding for method " + method.getDeclaringClass().getSimpleName() +"#" + method.getName() + ": " + e.getMessage());
+                throw e;
+            }
         } else {
             Class<?>[] typesArr = binding.types();
             Set<Type> types = new ObjectLinkedOpenHashSet<>(Math.max(1, typesArr.length));
@@ -81,7 +87,7 @@ public class BindingHelper {
                 types.add(method.getGenericReturnType());
             }
             for (Type ret : types) {
-                MethodParser parser = new MethodParser(this, method, desc, binding, ret);
+                MethodParser parser = new MethodParser(this, method, desc, examples, ret, binding.webType());
                 Key key = parser.getKey();
                 store.addParser(key, parser);
             }

@@ -584,7 +584,7 @@ public class DiscordUtil {
                 reactions = DiscordUtil.getReactions(embed);
                 initReactions = false;
             }
-            String id = button.getId();
+            String id = button.getCustomId();
             String label = button.getLabel();
             List<CommandInfo> cmds = parseCommands(guild, label, id, reactions, ref);
             if (cmds == null) continue;
@@ -794,7 +794,7 @@ public class DiscordUtil {
     private final static Map<Long, DBNation> temp = new ConcurrentHashMap<>();
 
     public static DBNation getNation(MessageReceivedEvent event) {
-        DBNation tempUser = temp.get(Thread.currentThread().getId());
+        DBNation tempUser = temp.get(Thread.currentThread().threadId());
         if (tempUser != null) {
             return tempUser;
         }
@@ -816,7 +816,7 @@ public class DiscordUtil {
     }
 
     public static void initThreadLocals() {
-        temp.remove(Thread.currentThread().getId());
+        temp.remove(Thread.currentThread().threadId());
     }
 
     public static <T> T withNation(DBNation nation, Callable<T> task) throws Exception {
@@ -826,16 +826,16 @@ public class DiscordUtil {
     public static <T> T withNation(DBNation nation, Callable<T> task, boolean remove) throws Exception {
         DBNation previous = null;
         if (remove) initThreadLocals();
-        else previous = temp.get(Thread.currentThread().getId());
+        else previous = temp.get(Thread.currentThread().threadId());
         try {
             if (nation != null) {
-                temp.put(Thread.currentThread().getId(), nation);
+                temp.put(Thread.currentThread().threadId(), nation);
             }
             return task.call();
         } finally {
-            if (remove || previous == null) temp.remove(Thread.currentThread().getId());
+            if (remove || previous == null) temp.remove(Thread.currentThread().threadId());
             else {
-                temp.put(Thread.currentThread().getId(), previous);
+                temp.put(Thread.currentThread().threadId(), previous);
             }
         }
     }

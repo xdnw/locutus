@@ -2,7 +2,7 @@ package link.locutus.discord.db.entities.grant;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.DepositTypeInfo;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.Key;
@@ -592,7 +592,7 @@ public abstract class AGrantTemplate<T> {
     }
 
     public abstract double[] getCost(GuildDB db, DBNation sender, DBNation receiver, T parsed);
-    public abstract DepositType.DepositTypeInfo getDepositType(DBNation receiver, T parsed);
+    public abstract DepositTypeInfo getDepositType(DBNation receiver, T parsed);
     public abstract String getInstructions(DBNation sender, DBNation receiver, T parsed);
 
     public abstract void setValues(PreparedStatement stmt) throws SQLException;

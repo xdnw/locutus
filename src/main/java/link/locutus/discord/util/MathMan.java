@@ -262,53 +262,40 @@ public class MathMan {
     public static Number add(Number a, Number b) {
         if (a == null) return b;
         if (b == null) return a;
-        if(a instanceof Double || b instanceof Double) {
-            return a.doubleValue() + b.doubleValue();
-        } else if(a instanceof Float || b instanceof Float) {
-            return a.floatValue() + b.floatValue();
-        } else if(a instanceof Long || b instanceof Long) {
-            return a.longValue() + b.longValue();
-        } else {
-            return a.intValue() + b.intValue();
-        }
+        return switch (a) {
+            case Double d -> a.doubleValue() + b.doubleValue();
+            case Float f  -> a.floatValue() + b.floatValue();
+            case Long l   -> a.longValue() + b.longValue();
+            default       -> a.intValue() + b.intValue();
+        };
     }
 
     public static Number subtract(Number a, Number b) {
         if (a == null) {
-            if (b == null) {
-                return 0d;
-            }
-            if(b instanceof Double) {
-                return - b.doubleValue();
-            } else if(b instanceof Float) {
-                return  - b.floatValue();
-            } else if(b instanceof Long) {
-                return - b.longValue();
-            } else {
-                return  - b.intValue();
-            }
+            return switch (b) {
+                case null -> 0d;
+                case Double v -> -b.doubleValue();
+                case Float v -> -b.floatValue();
+                case Long l -> -b.longValue();
+                default -> -b.intValue();
+            };
         }
-        if(a instanceof Double || b instanceof Double) {
-            return a.doubleValue() - b.doubleValue();
-        } else if(a instanceof Float || b instanceof Float) {
-            return a.floatValue() - b.floatValue();
-        } else if(a instanceof Long || b instanceof Long) {
-            return a.longValue() - b.longValue();
-        } else {
-            return a.intValue() - b.intValue();
-        }
+        if (b == null) return a;
+        return switch (a) {
+            case Double v -> a.doubleValue() - b.doubleValue();
+            case Float v -> a.floatValue() - b.floatValue();
+            case Long l -> a.longValue() - b.longValue();
+            default -> a.intValue() - b.intValue();
+        };
     }
 
     public static <T extends Number> T multiply(T a, T b) {
-        if(a instanceof Double || b instanceof Double) {
-            return (T) (Number) (a.doubleValue() * b.doubleValue());
-        } else if(a instanceof Float || b instanceof Float) {
-            return (T) (Number) (a.floatValue() * b.floatValue());
-        } else if(a instanceof Long || b instanceof Long) {
-            return (T) (Number) (a.longValue() * b.longValue());
-        } else {
-            return (T) (Number) (a.intValue() * b.intValue());
-        }
+        return switch (a) {
+            case Double d -> (T) (Number) Double.valueOf(d.doubleValue() * b.doubleValue());
+            case Float f  -> (T) (Number) Float.valueOf(f.floatValue() * b.floatValue());
+            case Long l   -> (T) (Number) Long.valueOf(l.longValue() * b.longValue());
+            default       -> (T) (Number) Integer.valueOf(a.intValue() * b.intValue());
+        };
     }
 
     public static Integer parseIntDef0(String input) {

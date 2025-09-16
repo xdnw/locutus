@@ -322,7 +322,7 @@ public class SqliteVecStore implements AutoCloseable {
                         hasNext = rs.next();
                     }
                     if (hasNext) {
-                        System.out.println("Inserting meta for ID: " + hash);
+                        System.out.println("Inserting meta for ID: " + hash + " | " + text);
                         // meta was inserted — now compute embedding (expensive)
                         float[] embedding = vectorSupplier.get();
                         requireDim(embedding);
