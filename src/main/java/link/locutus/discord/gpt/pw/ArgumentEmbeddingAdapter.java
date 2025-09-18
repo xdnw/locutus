@@ -27,7 +27,6 @@ public class ArgumentEmbeddingAdapter extends PWAdapter<Parser> {
         return parsersByName.get(name.toLowerCase(Locale.ROOT));
     }
 
-    @Override
     public EmbeddingType getType() {
         return EmbeddingType.Argument;
     }

@@ -149,12 +149,16 @@ public class Key<T> {
         this(type, Arrays.asList(annotationClasses));
     }
 
-    public static <T> Key<T> of(Type type, Class annotationClass) {
+    public static <T, A extends Annotation> Key<T> of(Type type, Class<A> annotationClass) {
         return new Key<>(type, annotationClass);
     }
 
-    public static <T> Key<T> of(Type type, Class... annotationClasses) {
+    public static <T> Key<T> of(Type type, Class<? extends Annotation>... annotationClasses) {
         return new Key<>(type, annotationClasses);
+    }
+
+    public static <T> Key<T> nested(Class<?>... clazzes) {
+        return of(ReflectionUtil.buildNestedType(clazzes));
     }
 
     public static <T> Key<T> of(Type clazz) {

@@ -13,7 +13,6 @@ public class CommandEmbeddingAdapter extends PWAdapter<ParametricCallable> {
         super(source, commands);
     }
 
-    @Override
     public EmbeddingType getType() {
         return EmbeddingType.Command;
     }

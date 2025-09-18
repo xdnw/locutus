@@ -739,13 +739,13 @@ public class PWBindings extends BindingHelper {
         if (lower.startsWith("guild:")) {
             input = input.substring(6);
             if (!MathMan.isInteger(input)) {
-                return guild(Long.parseLong(input));
+                return guildDb(Long.parseLong(input));
             }
             throw new IllegalArgumentException("Invalid guild id: " + input);
         }
         if (MathMan.isInteger(input)) {
             long id = Long.parseLong(input);
-            return guild(id);
+            return guildDb(id);
         }
         return alliance(data, input);
     }
@@ -1365,8 +1365,15 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "647252780817448972", value = "A discord guild id. See: <https://en.wikipedia.org/wiki/Template:Discord_server#Getting_Guild_ID>")
-    public static GuildDB guild(long guildId) {
+    public static GuildDB guildDb(long guildId) {
         GuildDB guild = Locutus.imp().getGuildDB(guildId);
+        if (guild == null) throw new IllegalStateException("No guild found for: " + guildId);
+        return guild;
+    }
+
+    @Binding(examples = "647252780817448972", value = "A discord guild id. See: <https://en.wikipedia.org/wiki/Template:Discord_server#Getting_Guild_ID>")
+    public static Guild guild(long guildId) {
+        Guild guild = Locutus.imp().getDiscordApi().getGuildById(guildId);
         if (guild == null) throw new IllegalStateException("No guild found for: " + guildId);
         return guild;
     }

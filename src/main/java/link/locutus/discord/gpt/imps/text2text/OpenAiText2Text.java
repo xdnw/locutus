@@ -1,12 +1,17 @@
 package link.locutus.discord.gpt.imps.text2text;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.google.gson.reflect.TypeToken;
 import com.knuddels.jtokkit.api.ModelType;
 import com.openai.client.OpenAIClient;
 import com.openai.models.ChatModel;
 import com.openai.models.chat.completions.ChatCompletion;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import link.locutus.discord.gpt.GPTUtil;
+import link.locutus.discord.web.WebUtil;
+import org.jooq.JSON;
 
+import java.lang.reflect.Type;
 import java.util.*;
 import java.util.function.IntConsumer;
 
@@ -28,14 +33,89 @@ public class OpenAiText2Text implements IText2Text {
         return model.asString();
     }
 
-    @Override
-    public String generate(String text, IntConsumer tokensUsed) {
-        OpenAiOptions optObj = defaultOptions;
+    public static class RerankResult {
+        public List<String> ranking;
+    }
+
+    public List<String> rerank(LinkedHashMap<String, String> items, String criterion, IntConsumer tokensUsed) {
+        Objects.requireNonNull(items, "items");
+        checkArgument(!items.isEmpty(), "items must not be empty");
+
+        // Build a compact instruction + items listing
+        StringBuilder user = new StringBuilder();
+        user.append("Criterion: ").append(criterion == null ? "rank by overall relevance" : criterion).append("\n");
+        user.append("Items:\n");
+        items.forEach((name, desc) -> {
+            user.append("- name: ").append(name).append("\n");
+            user.append("  description: ").append(desc == null ? "" : desc.replace("\n", " ").trim()).append("\n");
+        });
+
+        // Keep prompt free of schema/format instructions; structured output is enforced by responseFormat
+        String system = "You are a reranking engine. Rank the provided items by the given criterion.";
+
+        // Strict JSON Schema: ranking is a permutation of the provided item names
+        LinkedHashSet<String> itemNames = new LinkedHashSet<>(items.keySet());
+        Map<String, Object> itemSchema = new LinkedHashMap<>();
+        itemSchema.put("type", "string");
+        itemSchema.put("enum", new ArrayList<>(itemNames));
+
+        Map<String, Object> rankingSchema = new LinkedHashMap<>();
+        rankingSchema.put("type", "array");
+        rankingSchema.put("items", itemSchema);
+        rankingSchema.put("minItems", itemNames.size());
+        rankingSchema.put("maxItems", itemNames.size());
+        rankingSchema.put("uniqueItems", true);
+
+        Map<String, Object> properties = new LinkedHashMap<>();
+        properties.put("ranking", rankingSchema);
+
+        Map<String, Object> schema = new LinkedHashMap<>();
+        schema.put("type", "object");
+        schema.put("properties", properties);
+        schema.put("required", Collections.singletonList("ranking"));
+        schema.put("additionalProperties", false);
 
         ChatCompletionCreateParams.Builder builder = ChatCompletionCreateParams.builder()
-                .addUserMessage(text)
-                .model(this.model);
+                .addSystemMessage(system)
+                .addUserMessage(user.toString())
+                .model(this.model)
+                .responseFormat(RerankResult.class);
 
+        applyOptions(builder, defaultOptions);
+
+        ChatCompletion completion = service.chat().completions().create(builder.build());
+        String content = completion.choices().stream()
+                .map(c -> c.message().content().orElse(null))
+                .filter(Objects::nonNull)
+                .filter(s -> !s.isBlank())
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("No content in rerank response"));
+
+        // Update token usage
+        int tokens = completion.usage().map(u -> (int) u.totalTokens())
+                .orElseGet(() -> getSize(system + "\n" + user + "\n" + content));
+        if (tokensUsed != null) tokensUsed.accept(tokens);
+
+        // Parse JSON and normalize results (using Gson)
+        Type mapType = new TypeToken<Map<String, Object>>() {}.getType();
+        Map<String, Object> obj = WebUtil.GSON.fromJson(content, mapType);
+        Object rankingNode = obj == null ? null : obj.get("ranking");
+        checkArgument(rankingNode instanceof List, "Missing or invalid 'ranking' array in response");
+
+        LinkedHashSet<String> ordered = new LinkedHashSet<>();
+        @SuppressWarnings("unchecked")
+        List<Object> raw = (List<Object>) rankingNode;
+        for (Object v : raw) {
+            String name = String.valueOf(v);
+            if (items.containsKey(name)) ordered.add(name);
+        }
+        for (String name : items.keySet()) {
+            if (!ordered.contains(name)) ordered.add(name);
+        }
+        return new ArrayList<>(ordered);
+    }
+
+    private void applyOptions(ChatCompletionCreateParams.Builder builder, OpenAiOptions optObj) {
         if (optObj.temperature != null) {
             builder = builder.temperature(optObj.temperature);
         }
@@ -54,6 +134,15 @@ public class OpenAiText2Text implements IText2Text {
         if (optObj.maxTokens != null) {
             builder.maxTokens(optObj.maxTokens);
         }
+    }
+
+    @Override
+    public String generate(String text, IntConsumer tokensUsed) {
+        ChatCompletionCreateParams.Builder builder = ChatCompletionCreateParams.builder()
+                .addUserMessage(text)
+                .model(this.model);
+
+        applyOptions(builder, defaultOptions);
 
         ChatCompletionCreateParams completionRequest = builder.build();
         ChatCompletion completion = service.chat().completions().create(completionRequest);

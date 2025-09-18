@@ -25,7 +25,7 @@ public class PlaceholderCache<T> {
         if (selection == null || selection.isEmpty()) return store;
         PlaceholderCache<T> cache = new PlaceholderCache<>(selection);
         if (type == null) return store;
-        store.addProvider(Key.of(PlaceholderCache.class, type), cache);
+        store.addProvider(Key.nested(PlaceholderCache.class, type), cache);
         return store;
     }
 
@@ -38,7 +38,7 @@ public class PlaceholderCache<T> {
     }
 
     public static <T> ScopedPlaceholderCache<T> getScoped(ValueStore store, Class<T> clazz, MethodIdentity method) {
-        PlaceholderCache<T> cache = store == null ? null : (PlaceholderCache<T>) store.getProvided(Key.of(PlaceholderCache.class, clazz), false);
+        PlaceholderCache<T> cache = store == null ? null : (PlaceholderCache<T>) store.getProvided(Key.nested(PlaceholderCache.class, clazz), false);
         return getScoped(cache, method);
     }
 

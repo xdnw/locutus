@@ -294,7 +294,7 @@ public class GPTCommands {
 
     @Command(desc = """
             Save Google spreadsheet contents to a named embedding dataset.
-            Requires two columns labeled "fact" or "question" and "answer" for vectors.
+            Requires a columns labeled "text" for vectors.
             Search finds nearest fact, or searches questions and returns corresponding answers if two columns.""")
     @RolePermission(value = Roles.ADMIN)
     public String view_document(PWGPTHandler handler, @Me IMessageIO io, @Me GuildDB db, EmbeddingSource source, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
@@ -449,7 +449,7 @@ public class GPTCommands {
     public String find_command2(@Me IMessageIO io, ValueStore store, @Me GuildDB db, @Me User user, String search, @Default String instructions, @Switch("g") boolean useGPT, @Switch("n") Integer numResults) {
         Function<Integer, List<ParametricCallable>> getClosest = integer -> {
             PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
-            return pwGpt.getClosestCommands(store, search, 100, true);
+            return pwGpt.getClosest(EmbeddingType.Command, store, search, 100, true);
         };
 
         Function<ParametricCallable, String> getMention = command -> {
@@ -475,13 +475,14 @@ public class GPTCommands {
                 footer);
     }
 
-    @Command(desc = "Locate a nation placeholder you are looking for.\n" +
+    @Command(desc = "Locate a placeholder you are looking for.\n" +
             "Use keywords for relevant results, or ask a question.", viewable = true)
     @RolePermission(Roles.AI_COMMAND_ACCESS)
-    public String find_placeholder(NationPlaceholders placeholders, @Me IMessageIO io, ValueStore store, @Me GuildDB db, @Me User user, String search, @Default String instructions, @Switch("g") boolean useGPT, @Switch("n") Integer numResults) {
+    public String find_placeholder(@PlaceholderType Class<?> type, @Me IMessageIO io, ValueStore store, @Me GuildDB db, @Me User user, String search, @Default String instructions, @Switch("g") boolean useGPT, @Switch("n") Integer numResults) {
+        PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
+        EmbeddingSource source = pwGpt.getClassSource(type);
         Function<Integer, List<ParametricCallable>> getClosest = integer -> {
-            PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
-            return pwGpt.getClosestNationAttributes(store, search, 100, true);
+            return pwGpt.getClosest(source, store, search, 100, true);
         };
 
         Function<ParametricCallable, String> getMention = command -> {

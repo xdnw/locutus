@@ -552,7 +552,6 @@ public class WebPWBindings extends WebBindingHelper {
     }
 
     public WebPWBindings() {
-
         {
             Key<String> key = Key.of(TypeToken.getParameterized(Set.class, Member.class).getType(), HtmlInput.class);
             addBinding(store -> {

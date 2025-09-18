@@ -26,6 +26,7 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
+import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -37,9 +38,8 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.AllianceCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.NationCommands;
 import link.locutus.discord.commands.sync.SyncTaxes;
 import link.locutus.discord.commands.war.WarCatReason;
 import link.locutus.discord.commands.war.WarCategory;
@@ -82,6 +82,7 @@ import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import link.locutus.discord.util.update.AllianceListener;
 import link.locutus.discord.util.update.WarUpdateProcessor;
 import link.locutus.discord.web.commands.WM;
+import link.locutus.discord.web.jooby.PageHandler;
 import link.locutus.discord.web.jooby.WebRoot;
 import link.locutus.discord.web.jooby.handler.CommandResult;
 import link.locutus.wiki.WikiGenHandler;
@@ -662,16 +663,27 @@ public class AdminCommands {
 
     @Command(desc = "Regenerate the static command classes")
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String savePojos() throws IOException {
+    public static String savePojos() throws IOException {
         CommandManager2 manager = Locutus.cmd().getV2();
         manager.getCommands().savePojo(null, CM.class, "CM");
-        manager.getNationPlaceholders().getCommands().savePojo(null, NationCommands.class, "NationCommands");
-        manager.getAlliancePlaceholders().getCommands().savePojo(null, AllianceCommands.class, "AllianceCommands");
+
+        // use CM.class's package
+        String packageName = CM.class.getPackageName();
+        PlaceholdersMap phMap = manager.getPlaceholders();
+        for (Class<?> type : phMap.getTypes()) {
+            Placeholders<?, Object> ph = phMap.get(type);
+            String className = "CM_" + PlaceholdersMap.getClassName(type);
+            ph.getCommands().savePojo(null, packageName, className);
+        }
         if (WebRoot.getInstance() != null) {
-            WebRoot.getInstance().getPageHandler().getCommands().savePojo(null, WM.class, "WM");
+            PageHandler pageHandler = WebRoot.getInstance().getPageHandler();
+            if (pageHandler != null) {
+                pageHandler.getCommands().savePojo(null, WM.class, "WM");
+            }
         }
         return "Done!";
     }
+
     @Command(desc = "Run the militarization alerts task")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String runMilitarizationAlerts() {

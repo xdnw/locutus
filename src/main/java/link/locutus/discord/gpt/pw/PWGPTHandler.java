@@ -4,12 +4,16 @@ import com.google.common.base.Predicates;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.gson.reflect.TypeToken;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.EmbeddingSource;
@@ -29,13 +33,18 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiPredicate;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class PWGPTHandler {
 
     private final GptHandler handler;
-    private final BiMap<EmbeddingType, EmbeddingSource> sourceMap = HashBiMap.create();
+    private final BiMap<EmbeddingType, EmbeddingSource> baseSources = HashBiMap.create();
+    private final BiMap<Class<?>, EmbeddingSource> classSources = HashBiMap.create();
+
+
     private final Map<EmbeddingSource, IEmbeddingAdapter<?>> adapterMap2 = new ConcurrentHashMap<>();
+
     private final CommandManager2 cmdManager;
     private final PlayerGPTConfig PlayerGPTConfig;
 
@@ -75,25 +84,31 @@ public class PWGPTHandler {
         return handler;
     }
 
-    public void registerSources() {
+    public void registerSources(PlaceholdersMap placeholdersMap) {
         for (EmbeddingType type : EmbeddingType.values()) {
             EmbeddingSource source = handler.getSourceManager().getOrCreateSource(type.name(), 0);
             System.out.println("REMOVE:|| Register source " + type + " | " + source);
-            sourceMap.put(type, source);
+            baseSources.put(type, source);
+        }
+        for (Class<?> type : placeholdersMap.getTypes()) {
+            String name = PlaceholdersMap.getClassName(type);
+            EmbeddingSource source = handler.getSourceManager().getOrCreateSource(name, 0);
+            System.out.println("REMOVE:|| Register source " + type + " | " + source);
+            classSources.put(type, source);
         }
     }
 
     public EmbeddingSource getSource(EmbeddingType type) {
-        return sourceMap.get(type);
+        return baseSources.get(type);
     }
 
-    public void registerDefaults() {
-        registerSources();
+    public void registerDefaults(PlaceholdersMap placeholdersMap) {
+        registerSources(placeholdersMap);
 
         registerCommandEmbeddings();
         registerSettingEmbeddings();
-        registerNationMetricBindings();
         registerArgumentBindings();
+        registerPlaceholderBindings(placeholdersMap);
 //        try {
 //            registerWikiPagesLegacy();
 //        } catch (IOException e) {
@@ -169,7 +184,7 @@ public class PWGPTHandler {
 //    }
 
     private void registerCommandEmbeddings() {
-        EmbeddingSource source = sourceMap.get(EmbeddingType.Command);
+        EmbeddingSource source = baseSources.get(EmbeddingType.Command);
         Set<Method> methods = new HashSet<>();
         Set<ParametricCallable> registerCommands = new ObjectLinkedOpenHashSet<>();
         for (ParametricCallable callable : cmdManager.getCommands().getParametricCallables(Predicates.alwaysTrue())) {
@@ -189,30 +204,31 @@ public class PWGPTHandler {
     }
 
     private void registerSettingEmbeddings() {
-        EmbeddingSource source = sourceMap.get(EmbeddingType.Configuration);
+        EmbeddingSource source = baseSources.get(EmbeddingType.Configuration);
         Set<GuildSetting> settings = new HashSet<>();
         for (GuildSetting setting : GuildKey.values()) {
             if (setting.help().isEmpty()) continue;
             settings.add(setting);
         }
-
         SettingEmbeddingAdapter adapter = new SettingEmbeddingAdapter(source, settings);
         adapter.createEmbeddings(handler, true);
 
         adapterMap2.put(source, adapter);
     }
 
-    private void registerNationMetricBindings() {
-        EmbeddingSource source = sourceMap.get(EmbeddingType.Nation_Statistic);
-        Set<ParametricCallable> metrics = new HashSet<>(cmdManager.getNationPlaceholders().getParametricCallables());
-        NationAttributeAdapter adapter = new NationAttributeAdapter(source, metrics);
-        adapter.createEmbeddings(handler, true);
-
-        adapterMap2.put(source, adapter);
+    private void registerPlaceholderBindings(PlaceholdersMap placeholdersMap) {
+        for (Class<?> type : placeholdersMap.getTypes()) {
+            EmbeddingSource source = classSources.get(type);
+            Placeholders<?, Object> ph = placeholdersMap.get(type);
+            Set<ParametricCallable> metrics = new ObjectOpenHashSet<>(ph.getParametricCallables());
+            PlaceholderAdapter adapter = new PlaceholderAdapter(source, type, metrics);
+            adapter.createEmbeddings(handler, true);
+            adapterMap2.put(source, adapter);
+        }
     }
 
     private void registerArgumentBindings() {
-        EmbeddingSource source = sourceMap.get(EmbeddingType.Argument);
+        EmbeddingSource source = baseSources.get(EmbeddingType.Argument);
         ValueStore<Object> store = this.cmdManager.getStore();
         Map<Key, Parser> parsers = store.getParsers();
 
@@ -229,68 +245,52 @@ public class PWGPTHandler {
         adapterMap2.put(source, adapter);
     }
 
-    public List<ParametricCallable> getClosestCommands(ValueStore store, ParametricCallable command, int top) {
-        CommandEmbeddingAdapter adapter = (CommandEmbeddingAdapter) adapterMap2.get(sourceMap.get(EmbeddingType.Command));
-        String text = adapter.getDescription(command);
-        return getClosestCommands(store, text, top, false);
+    public <T> List<T> getClosest(EmbeddingSource source, ValueStore<?> store, T input, int top) {
+        return getClosest(source, store, f -> f.getDescription(input), top, false);
     }
 
-    public List<ParametricCallable> getClosestNationAttributes(ValueStore store, ParametricCallable cmd, int top) {
-        NationAttributeAdapter adapter = (NationAttributeAdapter) adapterMap2.get(sourceMap.get(EmbeddingType.Nation_Statistic));
-        String text = adapter.getDescription(cmd);
-        return getClosestNationAttributes(store, text, top, false);
+    public <T> List<T> getClosest(Class<?> classSource, ValueStore<?> store, T input, int top) {
+        EmbeddingSource source = classSources.get(classSource);
+        if (source == null) throw new IllegalArgumentException("No source found for class " + classSource);
+        return getClosest(source, store, f -> f.getDescription(input), top, false);
     }
 
-    public List<ParametricCallable> getClosestCommands(ValueStore store, String input, int top, boolean moderate) {
-        EmbeddingSource commandSource = sourceMap.get(EmbeddingType.Command);
-        List<EmbeddingInfo> closest = getClosest(store, input, top, Set.of(commandSource), false);
-        List<ParametricCallable> commands = new ArrayList<>();
-        CommandEmbeddingAdapter adapter = (CommandEmbeddingAdapter) adapterMap2.get(commandSource);
+    public <T> List<T> getClosest(EmbeddingSource source, ValueStore<?> store, String input, int top, boolean moderate) {
+        return getClosest(source, store, _ -> input, top, moderate);
+    }
+
+    public <T> List<T> getClosest(EmbeddingSource source, ValueStore<?> store, Function<IEmbeddingAdapter<T>, String> func, int top, boolean moderate) {
+        IEmbeddingAdapter<T> adapter = (IEmbeddingAdapter<T>) this.adapterMap2.get(source);
+        if (adapter == null) throw new IllegalArgumentException("No adapter found for source " + source);
+        String text = func.apply(adapter);
+        List<EmbeddingInfo> closest = getClosest(store, text, top, Set.of(source), moderate);
+        List<T> adapted = new ObjectArrayList<>(closest.size());
         for (EmbeddingInfo info : closest) {
-            ParametricCallable callable = adapter.getObject(info.hash);
-            commands.add(callable);
+            T entity = adapter.getObject(info.hash);
+            adapted.add(entity);
         }
-        return commands;
+        return adapted;
     }
 
-    public List<ParametricCallable> getClosestNationAttributes(ValueStore store, String input, int top, boolean moderate) {
-        EmbeddingSource typeSource = sourceMap.get(EmbeddingType.Nation_Statistic);
-        List<EmbeddingInfo> closest = getClosest(store, input, top, Set.of(typeSource), false);
-        List<ParametricCallable> list = new ArrayList<>();
-        NationAttributeAdapter adapter = (NationAttributeAdapter) adapterMap2.get(typeSource);
-        for (EmbeddingInfo info : closest) {
-            ParametricCallable obj = adapter.getObject(info.hash);
-            list.add(obj);
-        }
-        return list;
+    public <T> List<T> getClosest(EmbeddingType type, ValueStore<?> store, String input, int top, boolean moderate) {
+        EmbeddingSource source = baseSources.get(type);
+        if (source == null) throw new IllegalArgumentException("No source found for type " + type);
+        return getClosest(source, store, input, top, moderate);
     }
 
-    public List<Parser> getClosestArguments(ValueStore store, String input, int top) {
-        EmbeddingSource commandSource = sourceMap.get(EmbeddingType.Argument);
-        List<EmbeddingInfo> closest = getClosest(store, input, top, Set.of(commandSource), true);
-        List<Parser> commands = new ArrayList<>();
-        ArgumentEmbeddingAdapter adapter = (ArgumentEmbeddingAdapter) adapterMap2.get(commandSource);
-        for (EmbeddingInfo info : closest) {
-            Parser callable = adapter.getObject(info.hash);
-            commands.add(callable);
-        }
-        return commands;
+    public <T> List<T> getClosest(EmbeddingType type, ValueStore<?> store, T input, int top) {
+        EmbeddingSource source = baseSources.get(type);
+        if (source == null) throw new IllegalArgumentException("No source found for type " + type);
+        return getClosest(source, store, input, top);
     }
 
-    public List<GuildSetting> getClosestSettings(ValueStore store, String input, int top) {
-        EmbeddingSource settingSource = sourceMap.get(EmbeddingType.Configuration);
-        List<EmbeddingInfo> closest = getClosest(store, input, top, Set.of(settingSource), true);
-        List<GuildSetting> settings = new ArrayList<>();
-        SettingEmbeddingAdapter adapter = (SettingEmbeddingAdapter) adapterMap2.get(settingSource);
-        for (EmbeddingInfo info : closest) {
-            GuildSetting setting = adapter.getObject(info.hash);
-            settings.add(setting);
-        }
-        return settings;
+    public EmbeddingSource getClassSource(Class<?> type) {
+        return classSources.get(type);
     }
+
 
     public IEmbeddingAdapter getAdapter(EmbeddingType type) {
-        EmbeddingSource source = sourceMap.get(type);
+        EmbeddingSource source = baseSources.get(type);
         if (source == null) return null;
         return adapterMap2.get(source);
     }
@@ -301,7 +301,7 @@ public class PWGPTHandler {
 
     public List<EmbeddingInfo> getClosest(ValueStore store, String input, int top, Set<EmbeddingSource> allowedSources, boolean moderate) {
         EmbeddingType userInput = EmbeddingType.User_Input;
-        EmbeddingSource userInputSrc = sourceMap.get(userInput);
+        EmbeddingSource userInputSrc = baseSources.get(userInput);
 
         List<EmbeddingInfo> result = handler.getSourceManager().getClosest(userInputSrc, input, top, allowedSources, new BiPredicate<EmbeddingSource, Long>() {
             @Override
@@ -360,7 +360,7 @@ public class PWGPTHandler {
         if (wikiManager.getWikiPageBySourceId(source.source_id) != null) {
             return EmbeddingType.Game_Wiki_Page;
         }
-        return sourceMap.inverse().get(source);
+        return baseSources.inverse().get(source);
     }
 
     public Set<EmbeddingSource> getSelectedSources(Guild guild, DBNation nation, boolean allowRoot) {

@@ -139,32 +139,43 @@ public interface CommandCallable {
         return Collections.emptySet();
     }
 
-    default void savePojo(File root, Class clazz, String renameTo) throws IOException {
+    default void savePojo(File root, String packageName, String className) throws IOException {
         if (root == null) {
             root = new File("src/main/java");
         }
-        if (renameTo == null) {
-            renameTo = clazz.getSimpleName();
+        if (className == null || className.isEmpty()) {
+            throw new IllegalArgumentException("className must be provided");
         }
+        if (packageName == null) {
+            packageName = "";
+        }
+
         // get the path for the class
-        File javaFilePath = new File(root, clazz.getPackageName().replace('.', '/'));
-        File javaFile = new File(javaFilePath, renameTo + ".java");
+        File javaFilePath = new File(root, packageName.replace('.', '/'));
+        if (!javaFilePath.exists() && !javaFilePath.mkdirs()) {
+            throw new IOException("Failed to create directories for path: " + javaFilePath);
+        }
+        File javaFile = new File(javaFilePath, className + ".java");
 
         String header = """
-                package {package};
-                import link.locutus.discord.commands.manager.v2.command.AutoRegister;
-                import link.locutus.discord.commands.manager.v2.command.CommandRef;
-                public class""";
-        header = header.replace("{package}", clazz.getPackageName()) + " " + renameTo + " {\n";
+            package {package};
+            import link.locutus.discord.commands.manager.v2.command.AutoRegister;
+            import link.locutus.discord.commands.manager.v2.command.CommandRef;
+            public class""";
+        header = header.replace("{package}", packageName) + " " + className + " {\n";
 
         StringBuilder output = new StringBuilder(header);
         generatePojo("", output, 4);
         output.append("\n}\n");
 
-
-        // save to javaFile
-        // create if not exist using open option java
         Files.write(javaFile.toPath(), output.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+    }
+
+    default void savePojo(File root, Class clazz, String renameTo) throws IOException {
+        if (clazz == null) throw new IllegalArgumentException("clazz must not be null");
+        String packageName = clazz.getPackageName();
+        String className = (renameTo == null) ? clazz.getSimpleName() : renameTo;
+        savePojo(root, packageName, className);
     }
 
     default void generatePojo(String parentPath, StringBuilder output, int indent) {

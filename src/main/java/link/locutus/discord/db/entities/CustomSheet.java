@@ -162,7 +162,7 @@ public class CustomSheet {
                         // get write cache
                         PlaceholderCache<?> cache = new PlaceholderCache<>(selection);
                         LocalValueStore tabStore = new LocalValueStore<>(store);
-                        tabStore.addProvider(Key.of(PlaceholderCache.class, ph.getType()), cache);
+                        tabStore.addProvider(Key.nested(PlaceholderCache.class, ph.getType()), cache);
 
                         List<Function<Object, String>> functions = new ArrayList<>();
                         for (String column : columns) {

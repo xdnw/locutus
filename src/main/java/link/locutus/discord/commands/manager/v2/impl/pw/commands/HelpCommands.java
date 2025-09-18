@@ -10,8 +10,10 @@ import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.gpt.ModerationResult;
+import link.locutus.discord.gpt.imps.embedding.EmbeddingType;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.util.MarkupUtil;
 
@@ -111,7 +113,7 @@ public class HelpCommands {
 
         PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
         if (gpt != null && command instanceof ParametricCallable pc) {
-            List<ParametricCallable> closest = gpt.getClosestCommands(store, pc, 6);
+            List<ParametricCallable> closest = gpt.getClosest(EmbeddingType.Command, store, pc, 6);
             for (ParametricCallable callable : closest) {
                 if (callable.getMethod().equals(pc.getMethod())) continue;
                 embed = embed.commandButton(CommandBehavior.DELETE_MESSAGE,
@@ -134,7 +136,7 @@ public class HelpCommands {
         IMessageBuilder embed = io.create().embed(title, body);
         PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
         if (gpt != null) {
-            List<ParametricCallable> closest = gpt.getClosestNationAttributes(store, command, 6);
+            List<ParametricCallable> closest = gpt.getClosest(DBNation.class, store, command, 6);
             for (ParametricCallable other : closest) {
                 if (other.getMethod().equals(command.getMethod())) continue;
                 embed = embed.commandButton(CommandBehavior.DELETE_MESSAGE,
@@ -155,7 +157,7 @@ public class HelpCommands {
             msg.append("- More Info: " + CM.settings.info.cmd.key("YOUR_KEY_HERE") + "\n");
             msg.append("- To Delete: " + CM.settings.delete.cmd.key("YOUR_KEY_HERE") + "\n\n");
 
-            List<GuildSetting> results = getGPT().getClosestSettings(store, query, num_results);
+            List<GuildSetting> results = getGPT().getClosest(EmbeddingType.Configuration, store, query, num_results, true);
             for (int i = 0; i < results.size(); i++) {
                 GuildSetting obj = results.get(i);
                 msg.append("__**" + (i + 1) + ".**__ ");

@@ -695,7 +695,7 @@ public class CommandManager2 {
             this.commands.registerMethod(gptCommands, List.of("help"), "find_command2", "find_command");
 
             try {
-                pwgptHandler.registerDefaults();
+                pwgptHandler.registerDefaults(placeholders);
             } catch (Throwable e) {
                 e.printStackTrace();
                 Logg.text("Cannot register AI commands: " + e.getMessage());

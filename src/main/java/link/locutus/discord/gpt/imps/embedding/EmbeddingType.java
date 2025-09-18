@@ -7,8 +7,6 @@ public enum EmbeddingType {
 
     Argument,
 
-    Nation_Statistic,
-
     Formula,
 
     User_Input,

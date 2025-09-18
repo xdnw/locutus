@@ -5,12 +5,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
-import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
-import link.locutus.discord.commands.manager.v2.binding.Key;
-import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
-import link.locutus.discord.commands.manager.v2.binding.MethodParser;
-import link.locutus.discord.commands.manager.v2.binding.Parser;
-import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
@@ -23,9 +18,9 @@ import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.SelectionAlias;
 import link.locutus.discord.db.entities.SheetTemplate;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.math.LazyMathEntity;
@@ -41,13 +36,7 @@ import org.json.JSONObject;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -377,6 +366,54 @@ public abstract class Placeholders<T, M> extends BindingHelper {
     public abstract String getDescription();
     protected abstract Set<T> parseSingleElem(ValueStore store, String input);
     protected abstract Predicate<T> parseSingleFilter(ValueStore store, String input);
+
+    public Map<String, String> getExamples() {
+        Map<String, String> examples = new Object2ObjectLinkedOpenHashMap<>();
+        return examples;
+    }
+//    public Map<String, Object> toPredicateJson(ISourceManager embedSrc, String query) {
+//        StringBuilder schemaDesc = new StringBuilder();
+//        schemaDesc.append("Single-argument predicate DSL string\n");
+//        // A single-argument predicate DSL string.
+//        //Valid syntax:
+//        //
+//        //Selectors:
+//        for (SelectorInfo selectors : getSelectorInfo()) {
+//            // String format, String example, String desc
+//            // example may be null (omit it)
+//
+//        }
+//
+//        Set<String> sheetCols = getSheetColumns();
+//        if (sheetCols != null && !sheetCols.isEmpty()) {
+//
+//        }
+//        //- A Google Sheet URL containing a column of alliance identifiers (one of: alliance, {id}, {name}, {getname}, {getid})
+//        //
+//        //Filters:
+//        //- Placeholders or functions start with '#'
+//        //- Example: '#myBoolean', '#myFunc', '#myFunc(arg1,arg2)'
+//        //
+//        //Comparisons:
+//        //- '>=', '>', '<=', '<', '!=', '='
+//        //
+//        //Arithmetic:
+//        //- '+', '-', '*', '/', '^'
+//        //
+//        //Ternary operator:
+//        //- 'cond?then:else'
+//        //
+//        //Booleans automatically coerce to 1 or 0 in numeric expressions.
+//        //Parentheses may be used for grouping and subexpressions.
+//    }
+//
+//    public Map<String, Object> toSetJson(String query) {
+//
+//    }
+//
+//    public Map<String, Object> toTypedJson(String query) {
+//
+//    }
 
     public Set<T> deserializeSelection(ValueStore store, String input, M modifier) {
         return parseSet(store, input, modifier);
@@ -904,7 +941,7 @@ public abstract class Placeholders<T, M> extends BindingHelper {
             locals.addProvider(Key.of(Guild.class, Me.class), guild);
         }
         if (cache != null) {
-            locals.addProvider(Key.of(PlaceholderCache.class, getType()), cache);
+            locals.addProvider(Key.nested(PlaceholderCache.class, getType()), cache);
         }
         return locals;
     }
@@ -996,7 +1033,7 @@ public abstract class Placeholders<T, M> extends BindingHelper {
         if (startsWithEquals) {
             arg = arg.substring(1);
         }
-        if (cache != null) store.addProvider(Key.of(PlaceholderCache.class, getType()), cache);
+        if (cache != null) store.addProvider(Key.nested(PlaceholderCache.class, getType()), cache);
         TypedFunction<T, ?> result = this.formatRecursively(store, arg, null, 0, false, throwError);
         if (result.isResolved()) {
             Object value = result.applyCached(null);

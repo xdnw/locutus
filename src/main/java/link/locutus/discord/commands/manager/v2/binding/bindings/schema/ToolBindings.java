@@ -2,6 +2,8 @@ package link.locutus.discord.commands.manager.v2.binding.bindings.schema;
 
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.db.entities.MMRDouble;
 import link.locutus.discord.db.entities.MMRInt;
@@ -189,5 +191,32 @@ public class ToolBindings extends BindingHelper {
                         )
                 }
         );
+    }
+
+    @Timestamp
+    @Binding(types = long.class)
+    public static Map<String, Object> time() {
+        return Map.of(
+                "type", "string",
+                "format", "date-time"
+        );
+    }
+
+    @Timestamp
+    @Binding(types = Long.class)
+    public static Map<String, Object> time2() {
+        return time();
+    }
+
+    @Timediff
+    @Binding(types = long.class)
+    public static Map<String, Object> time3() {
+        return time();
+    }
+
+    @Timediff
+    @Binding(types = Long.class)
+    public static Map<String, Object> time4() {
+        return time();
     }
 }

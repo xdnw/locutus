@@ -550,7 +550,7 @@ public class GPTUtil {
         throw new IllegalArgumentException("Unsupported type: " + type.getTypeName());
     }
 
-    public static Map<String, Object> toJsonSchema(ValueStore store, ValueStore htmlOptionsStore, ValueStore schemaStore, Collection<ParametricCallable<?>> commands, GuildDB guildDB, User user, DBNation nation) {
+    public static Map<String, Object> toJsonSchema(ValueStore store, ValueStore htmlOptionsStore, ValueStore schemaStore, Collection<ParametricCallable<?>> commands, GuildDB guildDB, User user, DBNation nation, String input) {
         Map<String, Object> root = new Object2ObjectLinkedOpenHashMap<>();
 
         Map<Key<?>, Map<String, Object>> primitiveCache = new Object2ObjectLinkedOpenHashMap<>();
@@ -636,15 +636,17 @@ public class GPTUtil {
                 List<String> options = option.getOptions();
                 if (options != null && !options.isEmpty()) {
                     if (option.isAllowCustomOption()) {
-                        // TODO FIXME CM REF
-                        // "anyOf": [
-                        //    {
-                        //      "enum": ["optionA", "optionB", "optionC"]
-                        //    },
-                        //    {
-                        //      "type": "string",
-                        //    }
-                        //  ]
+                        return Map.of(
+                        "anyOf", List.of(
+                                Map.of(
+                                        "type", "string",
+                                        "enum", options
+                                ),
+                                Map.of(
+                                        "type", "string"
+                                )
+                            )
+                        );
                     }
                     return Map.of(
                             "type", "string",
@@ -712,7 +714,7 @@ public class GPTUtil {
         root.put("$defs", definitions);
 
         List<Map<String, Object>> tools = new ObjectArrayList<>();
-        for (ParametricCallable command : commands) {
+        for (ParametricCallable<?> command : commands) {
             String cmdName = command.getFullPath().toLowerCase();
             try {
                 Map<String, Object> schema = command.toJsonSchema(primitiveCache);

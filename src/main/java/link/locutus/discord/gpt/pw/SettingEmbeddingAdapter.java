@@ -17,7 +17,6 @@ public class SettingEmbeddingAdapter extends PWAdapter<GuildSetting> {
         super(source, objects);
     }
 
-    @Override
     public EmbeddingType getType() {
         return EmbeddingType.Configuration;
     }

@@ -2821,7 +2821,7 @@ public class GuildKey {
     }.requireValidAlliance().requiresOffshore();
 
 
-    public static final GuildSetting<List<CustomConditionMessage>> TIMED_MESSAGES = new GuildSetting<List<CustomConditionMessage>>(GuildSettingCategory.RECRUIT, null, Key.of(List.class, CustomConditionMessage.class)) {
+    public static final GuildSetting<List<CustomConditionMessage>> TIMED_MESSAGES = new GuildSetting<List<CustomConditionMessage>>(GuildSettingCategory.RECRUIT, null, Key.nested(List.class, CustomConditionMessage.class)) {
         @Override
         public List<CustomConditionMessage> parse(GuildDB db, String input) {
             JSONArray jsonArray = new JSONArray(input);

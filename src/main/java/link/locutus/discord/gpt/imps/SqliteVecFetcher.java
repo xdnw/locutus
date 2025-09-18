@@ -32,12 +32,32 @@ public final class SqliteVecFetcher {
     private SqliteVecFetcher() {}
 
     public static Path ensureLatestForCurrentPlatform(Path cacheDir) throws IOException, InterruptedException {
+        // Default to not checking unless asked
+        return ensureLatestForCurrentPlatform(cacheDir, false);
+    }
+
+    public static Path ensureLatestForCurrentPlatform(Path cacheDir, boolean checkForUpdates)
+            throws IOException, InterruptedException {
         Objects.requireNonNull(cacheDir, "cacheDir");
         Files.createDirectories(cacheDir);
 
         Platform p = detectPlatform();
-        String suffix = "-loadable-" + p.os + "-" + p.arch + ".tar.gz";
 
+        String libExt = switch (p.os) {
+            case "windows" -> ".dll";
+            case "linux" -> ".so";
+            case "macos" -> ".dylib";
+            default -> throw new IllegalStateException("Unsupported OS: " + p.os);
+        };
+
+        // If we already have a vec0 library and updates are not requested, return it without any network calls.
+        Path existing = findExistingLib(cacheDir, "vec0" + libExt);
+        if (existing != null && Files.exists(existing) && !checkForUpdates) {
+            return existing;
+        }
+
+        // We need to fetch/ensure the latest for this platform
+        String suffix = "-loadable-" + p.os + "-" + p.arch + ".tar.gz";
         String token = System.getenv("GITHUB_TOKEN");
         String json = httpGet(REPO_RELEASES_API, token);
 
@@ -60,14 +80,8 @@ public final class SqliteVecFetcher {
         Path assetCacheDir = cacheDir.resolve(assetName.replace(".tar.gz", ""));
         Files.createDirectories(assetCacheDir);
 
-        String libExt = switch (p.os) {
-            case "windows" -> ".dll";
-            case "linux" -> ".so";
-            case "macos" -> ".dylib";
-            default -> throw new IllegalStateException("Unsupported OS: " + p.os);
-        };
         Path libPath = assetCacheDir.resolve("vec0" + libExt);
-        if (Files.exists(libPath)) {
+        if (Files.exists(libPath) && !checkForUpdates) {
             return libPath;
         }
 
@@ -94,6 +108,25 @@ public final class SqliteVecFetcher {
             throw new IOException("Extracted archive but could not find vec0" + libExt);
         }
         return libPath;
+    }
+
+    // Find an existing vec0 library under the cache directory (pick the newest if multiple).
+    private static Path findExistingLib(Path cacheDir, String libFileName) throws IOException {
+        if (!Files.isDirectory(cacheDir)) return null;
+        try (java.util.stream.Stream<Path> s = Files.find(
+                cacheDir,
+                5,
+                (p, attr) -> attr.isRegularFile() && p.getFileName().toString().equals(libFileName))) {
+            return s.sorted((a, b) -> {
+                try {
+                    long mb = Files.getLastModifiedTime(b).toMillis();
+                    long ma = Files.getLastModifiedTime(a).toMillis();
+                    return Long.compare(mb, ma);
+                } catch (IOException e) {
+                    return 0;
+                }
+            }).findFirst().orElse(null);
+        }
     }
 
     // --- HTTP helpers ---

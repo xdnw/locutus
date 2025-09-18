@@ -569,10 +569,10 @@ public class PlaceholdersMap {
                     }
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("guild", "guild_id"), true,
-                                (type, str) -> PWBindings.guild(PrimitiveBindings.Long(str)));
+                                (type, str) -> PWBindings.guildDb(PrimitiveBindings.Long(str)));
                     }
                     long id = PrimitiveBindings.Long(input);
-                    GuildDB guild = PWBindings.guild(id);
+                    GuildDB guild = PWBindings.guildDb(id);
                     if (!admin && guild.getGuild().getMember(user) == null) {
                         throw new IllegalArgumentException("You (" + user + ") are not in the guild with id: `" + id + "`");
                     }
@@ -1494,7 +1494,7 @@ public class PlaceholdersMap {
             public Set<SelectorInfo> getSelectorInfo() {
                 return new ObjectLinkedOpenHashSet<>(List.of(
                         new SelectorInfo("TAX_ID", "12345", "Tax record ID"),
-                        new SelectorInfo("TAX_URL", "/tax/id=12345", "Tax URL"),
+                        new SelectorInfo("TAX_URL", "/tax/id=12345", "Tax path"),
                         new SelectorInfo("NATION", "Borg", "Nation name, id, leader, url, user id or mention (see nation type) - if in this guild's alliance"),
                         new SelectorInfo("ALLIANCE", "AA:Rose", "Alliance id, name, url or mention (see alliance type) - if in this guild"),
                         new SelectorInfo("*", null, "All tax records with the guild")

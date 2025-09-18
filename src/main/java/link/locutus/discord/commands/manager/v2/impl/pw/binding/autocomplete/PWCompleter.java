@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete;
 
 import com.google.common.base.Predicates;
 import com.google.gson.reflect.TypeToken;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -629,6 +630,33 @@ public class PWCompleter extends BindingHelper {
         return StringMan.completeEnum(input, Status.class);
     }
 
+    @Autocomplete
+    @Binding(types = {GuildDB.class})
+    public List<Map.Entry<String, String>> GuildDBOne(@Me User user, String input) {
+        if (user == null) return null;
+        List<GuildDB> options = user.getMutualGuilds().stream()
+                .map(Locutus.imp()::getGuildDB)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        options = StringMan.getClosest(input, options, GuildDB::getName, OptionData.MAX_CHOICES, true, false);
+        return options.stream()
+                .map(db -> KeyValue.of(db.getName(), db.getGuild().getId()))
+                .collect(Collectors.toList());
+    }
+
+    @Autocomplete
+    @Binding(types = {Guild.class})
+    public List<Map.Entry<String, String>> Guild(@Me User user, String input) {
+        if (user == null) return null;
+        List<Guild> options = new ObjectArrayList<>(user.getMutualGuilds());
+        options = StringMan.getClosest(input, options, Guild::getName, OptionData.MAX_CHOICES, true, false);
+        return options.stream()
+                .map(g -> KeyValue.of(g.getName(), g.getId()))
+                .collect(Collectors.toList());
+    }
+
+    public PWCompleter()
     {
         {
             Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, Category.class).getType(), Autocomplete.class);

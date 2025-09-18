@@ -37,6 +37,7 @@ import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.pnw.*;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.math.ReflectionUtil;
 import link.locutus.discord.web.commands.binding.value_types.WebOptions;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -160,7 +161,7 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = {ICommand.class, WildcardType.class})
     public WebOption getCommandCallable() {
         List<ParametricCallable<?>> options = new ArrayList<>(Locutus.imp().getCommandManager().getV2().getCommands().getParametricCallables(Predicates.alwaysTrue()));
-        return new WebOption(Key.of(ICommand.class, WildcardType.class)).setOptions(options.stream().map(CommandCallable::getFullPath).toList());
+        return new WebOption(Key.of(ReflectionUtil.buildNestedType(ICommand.class, WildcardType.class))).setOptions(options.stream().map(CommandCallable::getFullPath).toList());
     }
 
 //MessageChannel - just return textChannel()
@@ -247,7 +248,7 @@ public class WebOptionBindings extends BindingHelper {
 //GuildSetting
     @Binding(types = { GuildSetting.class, WildcardType.class })
     public WebOption getGuildSetting() {
-        return new WebOption(Key.of(GuildSetting.class, WildcardType.class)).setRequiresGuild()
+        return new WebOption(Key.of(ReflectionUtil.buildNestedType(GuildSetting.class, WildcardType.class))).setRequiresGuild()
                 .setOptions((Arrays.stream(GuildKey.values()).map(GuildSetting::name).toList()));
     }
 //EmbeddingSource
@@ -455,16 +456,28 @@ public class WebOptionBindings extends BindingHelper {
             return data;
         }, true);
     }
-//GuildDB
-    @Binding(types = GuildDB.class)
-    public WebOption getGuildDB() {
-        return new WebOption(GuildDB.class).setRequiresUser().setQueryMap((db, user, nation) -> {
-            WebOptions data = new WebOptions(false).withText();
+    private WebOptions mutualGuildOptions(User user) {
+        WebOptions data = new WebOptions(false).withText();
+        if (user != null) {
             for (Guild guild : user.getMutualGuilds()) {
                 data.add(guild.getId(), guild.getName());
             }
-            return data;
-        }, true);
+        }
+        return data;
+    }
+
+    private WebOption withMutualGuildQuery(WebOption option) {
+        return option.setRequiresUser().setQueryMap((db, user, nation) -> mutualGuildOptions(user), true);
+    }
+
+    @Binding(types = GuildDB.class)
+    public WebOption getGuildDB() {
+        return withMutualGuildQuery(new WebOption(GuildDB.class));
+    }
+
+    @Binding(types = Guild.class)
+    public WebOption getGuildB() {
+        return withMutualGuildQuery(new WebOption(Guild.class));
     }
 //    AllianceDepositLimit
 //    NationDepositLimit
