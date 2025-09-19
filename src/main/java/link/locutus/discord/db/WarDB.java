@@ -76,7 +76,7 @@ public class WarDB extends DBMainV2 {
     private final Int2ObjectOpenHashMap<Object> warsByAllianceId = new Int2ObjectOpenHashMap<>();
     private final Int2ObjectOpenHashMap<Object> warsByNationId = new Int2ObjectOpenHashMap<>();
     private final Object warsByNationLock = new Object();
-    private final Int2ObjectOpenHashMap<byte[][]> attacksByWarId3 = new Int2ObjectOpenHashMap<>();
+    private final Int2ObjectOpenHashMap<List<byte[]>> attacksByWarId2 = new Int2ObjectOpenHashMap<>();
     private ConflictManager conflictManager;
     public WarDB() throws SQLException {
         this("war");
@@ -2686,7 +2686,7 @@ public class WarDB extends DBMainV2 {
         if (values.isEmpty()) return;
 
         // sort attacks
-        ArrayList<AbstractCursor> valuesList = new ArrayList<>(values);
+        List<AbstractCursor> valuesList = new ObjectArrayList<>(values);
         valuesList.sort(Comparator.comparingInt(AbstractCursor::getWar_attack_id));
         values = valuesList;
 
@@ -2735,53 +2735,27 @@ public class WarDB extends DBMainV2 {
 
         // add to attacks map
         synchronized (attacksByWarId2) {
-            if (replaceAttack) {
-                outer:
-                for (AbstractCursor attack : values) {
-                    AttackEntry entry = AttackEntry.of(attack, attackCursorFactory);
-                    toSave.add(entry);
-                    List<byte[]> attacks = attacksByWarId2.get(attack.getWar_id());
-                    if (attacks != null && !attacks.isEmpty()) {
-                        for (int i = 0; i < attacks.size(); i++) {
-                            byte[] data = attacks.get(i);
-                            int id = attackCursorFactory.getId(data);
-                            if (id == attack.getId()) {
-                                attacks.set(i, entry.data());
-                                continue outer;
-                            }
-                        }
-                    } if (attacks == null) {
-                        attacks = new ObjectArrayList<>();
-                        attacksByWarId2.put(attack.getWar_id(), attacks);
-                    }
-
-                    attacks.add(entry.data());
-                }
-            } else {
-                for (AbstractCursor attack : values) {
-                    // AttackEntry(int id, int war_id, int attacker_id, int defender_id, long date, byte[] data) {
-                    AttackEntry entry = AttackEntry.of(attack, attackCursorFactory);
-                    toSave.add(entry);
-                    List<byte[]> attacks = attacksByWarId2.get(attack.getWar_id());
-
-                    Set<Integer> attackIds = attackIdsByWarId.get(attack.getWar_id());
-                    if (attackIds == null && attacks != null && !attacks.isEmpty()) {
-                        for (int i = 0; i < attacks.size(); i++) {
-                            byte[] data = attacks.get(i);
-                            int id = attackCursorFactory.getId(data);
-                            if (attackIds == null) attackIds = new IntOpenHashSet();
-                            attackIds.add(id);
+            outer:
+            for (AbstractCursor attack : values) {
+                AttackEntry entry = AttackEntry.of(attack, attackCursorFactory);
+                toSave.add(entry);
+                List<byte[]> attacks = attacksByWarId2.get(attack.getWar_id());
+                if (attacks != null && !attacks.isEmpty()) {
+                    for (int i = 0; i < attacks.size(); i++) {
+                        byte[] data = attacks.get(i);
+                        int id = attackCursorFactory.getId(data);
+                        if (id == attack.getId()) {
+                            if (replaceAttack) attacks.set(i, entry.data());
+                            continue outer;
                         }
                     }
-                    if (attackIds != null && attackIds.contains(attack.getWar_attack_id())) continue;
-                    if (attacks == null) {
-                        attacks = new ObjectArrayList<>();
-                        attacksByWarId2.put(attack.getWar_id(), attacks);
-                    }
-
-                    attacks.add(entry.data());
+                } if (attacks == null) {
+                    attacks = new ObjectArrayList<>(1);
+                    attacksByWarId2.put(attack.getWar_id(), attacks);
                 }
+                attacks.add(entry.data());
             }
+
             if (!Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS && values.size() > 1) {
                 long turn = TimeUtil.getTurn();
                 if (turn > lastUnloadAttacks) {
@@ -2860,14 +2834,14 @@ public class WarDB extends DBMainV2 {
                     synchronized (attackList) {
                         attackList.add(attack);
                         if (attackList.size() > 1000) {
-                            saveAttacks(attackList, eventConsumer);
+                            saveAttacks(attackList, eventConsumer, true, false);
                             attackList.clear();
                         }
                     }
                     return false;
                 }
             });
-            saveAttacks(attackList, eventConsumer);
+            saveAttacks(attackList, eventConsumer, true, false);
             return true;
         }
 
@@ -2987,7 +2961,7 @@ public class WarDB extends DBMainV2 {
         }
 
         { // add to db
-            saveAttacks(newAttacks, eventConsumer);
+            saveAttacks(newAttacks, eventConsumer, true, false);
         }
 
         if (runAlerts && eventConsumer != null) {
