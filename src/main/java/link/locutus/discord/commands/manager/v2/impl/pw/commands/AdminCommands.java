@@ -3166,15 +3166,17 @@ public class AdminCommands {
             Locutus.imp().getWarDb().updateAttacksAndWarsV3(runAlerts, Event::post, Settings.USE_V2);
         }
 
+        int numAttacks = 0;
         if (fixWars != null && !fixWars.isEmpty()) {
             AttackCursorFactory factory = new AttackCursorFactory(Locutus.imp().getWarDb());
             List<Integer> ids = fixWars.stream().map(DBWar::getWarId).collect(Collectors.toList());
             List<WarAttack> attacks = Locutus.imp().getV3().fetchAttacks(f -> f.setWar_id(ids), PoliticsAndWarV3.ErrorResponse.THROW);
             List<AbstractCursor> attacksAdapted = attacks.stream().map(f -> factory.load(f, true)).collect(Collectors.toList());
             Locutus.imp().getWarDb().saveAttacks(attacksAdapted, null, false, true);
+            numAttacks = attacksAdapted.size();
         }
 
-        return "Done: (alerts=" + runAlerts + ", fixAttacks=" + fixAttacks + ", fixWars=" + (fixWars == null ? "null" : fixWars.size()) + ")";
+        return "Done: (alerts=" + runAlerts + ", fixAttacks=" + fixAttacks + ", fixWars=" + (fixWars == null ? "null" : fixWars.size()) + "/" + numAttacks + ")";
     }
 //    SyncTrade
     @Command(desc = "Force a fetch and update of trades from the api")
