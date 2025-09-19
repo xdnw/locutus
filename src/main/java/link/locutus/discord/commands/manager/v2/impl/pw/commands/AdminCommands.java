@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import com.politicsandwar.graphql.model.ApiKeyDetails;
+import com.politicsandwar.graphql.model.WarAttack;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
@@ -3153,15 +3154,24 @@ public class AdminCommands {
 //    SyncAttacks
     @Command(desc = "Force a fetch and update of attacks from the api")
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String syncAttacks(boolean runAlerts, @Switch("f") boolean fixAttacks) throws IOException {
+    public String syncAttacks(boolean runAlerts, @Switch("f") boolean fixAttacks, @Switch("w") Set<DBWar> fixWars) throws IOException {
         if (fixAttacks) {
             Locutus.imp().getWarDb().reEncodeBadAttacks();
-            return "Done!";
-        } else {
+        }
+
+        if (runAlerts) {
             WarUpdateProcessor.checkActiveConflicts();
             Locutus.imp().getWarDb().updateAttacksAndWarsV3(runAlerts, Event::post, Settings.USE_V2);
-            return "Done!";
         }
+
+        if (fixWars != null && !fixWars.isEmpty()) {
+            List<Integer> ids = fixWars.stream().map(DBWar::getWarId).collect(Collectors.toList());
+            List<WarAttack> attacks = Locutus.imp().getV3().fetchAttacks(f -> f.setWar_id(ids), PoliticsAndWarV3.ErrorResponse.THROW);
+            Locutus.imp().getWarDb().saveAttacks();
+
+        }
+
+        return "Done: (alerts=" + runAlerts + ", fixAttacks=" + fixAttacks + ", fixWars=" + (fixWars == null ? "null" : fixWars.size()) + ")";
     }
 //    SyncTrade
     @Command(desc = "Force a fetch and update of trades from the api")

@@ -76,7 +76,7 @@ public class WarDB extends DBMainV2 {
     private final Int2ObjectOpenHashMap<Object> warsByAllianceId = new Int2ObjectOpenHashMap<>();
     private final Int2ObjectOpenHashMap<Object> warsByNationId = new Int2ObjectOpenHashMap<>();
     private final Object warsByNationLock = new Object();
-    private final Int2ObjectOpenHashMap<List<byte[]>> attacksByWarId2 = new Int2ObjectOpenHashMap<>();
+    private final Int2ObjectOpenHashMap<byte[][]> attacksByWarId3 = new Int2ObjectOpenHashMap<>();
     private ConflictManager conflictManager;
     public WarDB() throws SQLException {
         this("war");
@@ -716,7 +716,7 @@ public class WarDB extends DBMainV2 {
                         for (WarAttack v3Attack : attacks) {
                             attackList.add(factory.load(v3Attack, true));
                         }
-                        saveAttacks(attackList, null);
+                        saveAttacks(attackList, null, false, false);
                     } else {
                         attackList = new ObjectArrayList<>();
                         v3.fetchAttacksSince(null, v3Attack -> {
@@ -724,13 +724,13 @@ public class WarDB extends DBMainV2 {
                             synchronized (attackList) {
                                 attackList.add(attack);
                                 if (attackList.size() > 1000) {
-                                    saveAttacks(attackList, null);
+                                    saveAttacks(attackList, null, false, false);
                                     attackList.clear();
                                 }
                             }
                             return false;
                         });
-                        saveAttacks(attackList, null);
+                        saveAttacks(attackList, null, false, false);
                     }
 
                 }
@@ -2682,7 +2682,7 @@ public class WarDB extends DBMainV2 {
     private final AttackCursorFactory attackCursorFactory = new AttackCursorFactory(this);
     private long lastUnloadAttacks = 0;
 
-    public void saveAttacks(Collection<AbstractCursor> values, Consumer<Event> eventConsumer) {
+    public void saveAttacks(Collection<AbstractCursor> values, Consumer<Event> eventConsumer, boolean updateLoot, boolean replaceAttack) {
         if (values.isEmpty()) return;
 
         // sort attacks
@@ -2691,36 +2691,38 @@ public class WarDB extends DBMainV2 {
         values = valuesList;
 
         List<LootEntry> lootList = null;
-        for (AbstractCursor attack : values) {
-            if (attack.getAttack_type() != AttackType.VICTORY && attack.getAttack_type() != AttackType.A_LOOT) continue;
-
-            double[] loot = attack.getLoot();
-            double pct;
-            if (loot == null) {
-                pct = 1d;
-            } else {
-                pct = attack.getLootPercent();
-            }
-            if (pct == 0) pct = 0.1;
-            double factor = 1/pct;
-
-            double[] lootCopy;
-            if (loot != null) {
-                lootCopy = loot.clone();
-                for (int i = 0; i < lootCopy.length; i++) {
-                    lootCopy[i] = (lootCopy[i] * factor) - lootCopy[i];
+        if (updateLoot) {
+            for (AbstractCursor attack : values) {
+                if (attack.getAttack_type() != AttackType.VICTORY && attack.getAttack_type() != AttackType.A_LOOT)
+                    continue;
+                double[] loot = attack.getLoot();
+                double pct;
+                if (loot == null) {
+                    pct = 1d;
+                } else {
+                    pct = attack.getLootPercent();
                 }
-            } else {
-                lootCopy = ResourceType.getBuffer();
-            }
-            if (attack.getAttack_type() == AttackType.VICTORY) {
-                (lootList == null ? lootList = new ObjectArrayList<>() : lootList).add(
-                    LootEntry.forNation(attack.getDefender_id(), attack.getDate(), lootCopy, NationLootType.WAR_LOSS));
-            } else if (attack.getAttack_type() == AttackType.A_LOOT) {
-                int allianceId = attack.getAllianceIdLooted();
-                if (allianceId > 0) {
+                if (pct == 0) pct = 0.1;
+                double factor = 1 / pct;
+
+                double[] lootCopy;
+                if (loot != null) {
+                    lootCopy = loot.clone();
+                    for (int i = 0; i < lootCopy.length; i++) {
+                        lootCopy[i] = (lootCopy[i] * factor) - lootCopy[i];
+                    }
+                } else {
+                    lootCopy = ResourceType.getBuffer();
+                }
+                if (attack.getAttack_type() == AttackType.VICTORY) {
                     (lootList == null ? lootList = new ObjectArrayList<>() : lootList).add(
-                            LootEntry.forAlliance(allianceId, attack.getDate(), lootCopy, NationLootType.WAR_LOSS));
+                            LootEntry.forNation(attack.getDefender_id(), attack.getDate(), lootCopy, NationLootType.WAR_LOSS));
+                } else if (attack.getAttack_type() == AttackType.A_LOOT) {
+                    int allianceId = attack.getAllianceIdLooted();
+                    if (allianceId > 0) {
+                        (lootList == null ? lootList = new ObjectArrayList<>() : lootList).add(
+                                LootEntry.forAlliance(allianceId, attack.getDate(), lootCopy, NationLootType.WAR_LOSS));
+                    }
                 }
             }
         }
@@ -2729,33 +2731,56 @@ public class WarDB extends DBMainV2 {
             Locutus.imp().getNationDB().saveLoot(lootList, eventConsumer);
         }
 
-        List<AttackEntry> toSave = new ArrayList<>();
-        Map<Integer, Set<Integer>> attackIdsByWarId = new Int2ObjectOpenHashMap<>();
+        List<AttackEntry> toSave = new ObjectArrayList<>(values.size());
 
         // add to attacks map
         synchronized (attacksByWarId2) {
-            for (AbstractCursor attack : values) {
-                // AttackEntry(int id, int war_id, int attacker_id, int defender_id, long date, byte[] data) {
-                toSave.add(AttackEntry.of(attack, attackCursorFactory));
-                List<byte[]> attacks = attacksByWarId2.get(attack.getWar_id());
-
-                Set<Integer> attackIds = attackIdsByWarId.get(attack.getWar_id());
-                if (attackIds == null && attacks != null && !attacks.isEmpty()) {
-                    for (byte[] data : attacks) {
-                        int id = attackCursorFactory.getId(data);
-                        attackIds = new IntOpenHashSet();
-                        attackIds.add(id);
-                        attackIdsByWarId.put(attack.getWar_id(), attackIds);
+            if (replaceAttack) {
+                outer:
+                for (AbstractCursor attack : values) {
+                    AttackEntry entry = AttackEntry.of(attack, attackCursorFactory);
+                    toSave.add(entry);
+                    List<byte[]> attacks = attacksByWarId2.get(attack.getWar_id());
+                    if (attacks != null && !attacks.isEmpty()) {
+                        for (int i = 0; i < attacks.size(); i++) {
+                            byte[] data = attacks.get(i);
+                            int id = attackCursorFactory.getId(data);
+                            if (id == attack.getId()) {
+                                attacks.set(i, entry.data());
+                                continue outer;
+                            }
+                        }
+                    } if (attacks == null) {
+                        attacks = new ObjectArrayList<>();
+                        attacksByWarId2.put(attack.getWar_id(), attacks);
                     }
-                }
-                if (attackIds != null && attackIds.contains(attack.getWar_attack_id())) continue;
-                if (attacks == null) {
-                    attacks = new ObjectArrayList<>();
-                    attacksByWarId2.put(attack.getWar_id(), attacks);
-                }
 
-                byte[] data = attackCursorFactory.toBytes(attack);
-                attacks.add(data);
+                    attacks.add(entry.data());
+                }
+            } else {
+                for (AbstractCursor attack : values) {
+                    // AttackEntry(int id, int war_id, int attacker_id, int defender_id, long date, byte[] data) {
+                    AttackEntry entry = AttackEntry.of(attack, attackCursorFactory);
+                    toSave.add(entry);
+                    List<byte[]> attacks = attacksByWarId2.get(attack.getWar_id());
+
+                    Set<Integer> attackIds = attackIdsByWarId.get(attack.getWar_id());
+                    if (attackIds == null && attacks != null && !attacks.isEmpty()) {
+                        for (int i = 0; i < attacks.size(); i++) {
+                            byte[] data = attacks.get(i);
+                            int id = attackCursorFactory.getId(data);
+                            if (attackIds == null) attackIds = new IntOpenHashSet();
+                            attackIds.add(id);
+                        }
+                    }
+                    if (attackIds != null && attackIds.contains(attack.getWar_attack_id())) continue;
+                    if (attacks == null) {
+                        attacks = new ObjectArrayList<>();
+                        attacksByWarId2.put(attack.getWar_id(), attacks);
+                    }
+
+                    attacks.add(entry.data());
+                }
             }
             if (!Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS && values.size() > 1) {
                 long turn = TimeUtil.getTurn();
@@ -3469,7 +3494,7 @@ public class WarDB extends DBMainV2 {
     }
 
     public int countWarsByNation(int nation_id, long date, Long endDate) {
-        if (endDate == null || endDate == Long.MAX_VALUE) return countWarsByNation(nation_id, date);
+        if (endDate == null || endDate == java.lang.Long.MAX_VALUE) return countWarsByNation(nation_id, date);
         int result;
         synchronized (warsByNationLock) {
             Object wars = warsByNationId.get(nation_id);
