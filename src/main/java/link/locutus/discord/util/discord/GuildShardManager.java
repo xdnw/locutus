@@ -186,6 +186,9 @@ public class GuildShardManager {
     }
 
     public Guild getGuildById(long id) {
+        if (defaultShardManager != null) {
+            return defaultShardManager.getGuildById(id);
+        }
         JDA api = getApiByGuildId(id);
         if (api == null) {
             return null;

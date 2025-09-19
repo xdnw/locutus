@@ -1480,6 +1480,7 @@ public class GuildKey {
             return "The guild to defer war rooms to";
         }
     }.setupRequirements(f -> f.requires(ENABLE_WAR_ROOMS).requires(ALLIANCE_ID));
+
     public static GuildSetting<Map.Entry<Integer, Long>> DELEGATE_SERVER = new GuildSetting<Map.Entry<Integer, Long>>(GuildSettingCategory.DEFAULT, Map.class, Integer.class, Long.class) {
         @NoFormat
         @Command(descMethod = "help")
@@ -2250,7 +2251,7 @@ public class GuildKey {
         public String help() {
             return "The #channel for users to request grants in. No additional functionality is added, you can setup a ticket bot or an embed there";
         }
-    }.setupRequirements(f -> f.requireValidAlliance().requiresRole(Roles.ECON_GRANT_SELF, true).requiresOffshore());
+    }.setupRequirements(f -> f.requireValidAlliance().requiresOffshore());
 
     public static GuildSetting<Boolean> GRANT_REQUEST_TAX_ACCOUNT = new GuildBooleanSetting(GuildSettingCategory.BANK_INFO) {
         @NoFormat

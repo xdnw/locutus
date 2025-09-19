@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.table.imp;
 
 import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
@@ -26,7 +27,7 @@ public class StockpileValueByDay extends SimpleTable<Void> {
         TradeDB tradeDB = manager.getTradeDb();
         long minDay = Long.MAX_VALUE;
         long maxDay = Long.MIN_VALUE;
-        List<ResourceType> resources = new ArrayList<>(Arrays.asList(ResourceType.values()));
+        List<ResourceType> resources = new ObjectArrayList<>(Arrays.asList(ResourceType.values()));
         resources.remove(ResourceType.CREDITS);
         resources.remove(ResourceType.MONEY);
 
