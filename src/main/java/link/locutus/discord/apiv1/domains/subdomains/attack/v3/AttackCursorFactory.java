@@ -251,7 +251,7 @@ public class AttackCursorFactory {
 
     public synchronized byte[] toBytes(AbstractCursor cursor) {
         buffer.reset();
-        buffer.writeBits(cursor.getAttack_type().ordinal(), 4);
+        buffer.writeBits(cursor.getAttack_type().ordinal(), 5);
         cursor.serialize(buffer);
         return buffer.getWrittenBytes();
     }
@@ -268,7 +268,7 @@ public class AttackCursorFactory {
 
     public synchronized AbstractCursor load(DBWar war, byte[] data, boolean create) {
         buffer.setBytes(data);
-        AttackType type = AttackType.values[(int) buffer.readBits(4)];
+        AttackType type = AttackType.values[(int) buffer.readBits(5)];
         AbstractCursor cursor = create ? create(type) : getCursor(type);
         if (cursor == null) {
             throw new UnsupportedOperationException("Attack type not supported: " + type);
@@ -280,7 +280,7 @@ public class AttackCursorFactory {
 
     public synchronized AbstractCursor loadWithType(DBWar war, byte[] data, boolean create, Predicate<AttackType> testType) {
         buffer.setBytes(data);
-        AttackType type = AttackType.values[(int) buffer.readBits(4)];
+        AttackType type = AttackType.values[(int) buffer.readBits(5)];
         if (!testType.test(type)) {
             return null;
         }
@@ -295,7 +295,7 @@ public class AttackCursorFactory {
 
     public synchronized VictoryCursor loadWithTypeVictoryLegacy(DBWar war, byte[] data, boolean create) {
         buffer.setBytes(data);
-        AttackType type = AttackType.values[(int) buffer.readBits(4)];
+        AttackType type = AttackType.values[(int) buffer.readBits(5)];
         if (type != AttackType.VICTORY) {
             return null;
         }
@@ -314,9 +314,19 @@ public class AttackCursorFactory {
         return buffer.readInt();
     }
 
-    public synchronized AttackEntry shouldReEncode(DBWar war, byte[] data) {
+    public synchronized byte[] reEncode5(DBWar dummyWar, byte[] data) {
         buffer.setBytes(data);
         AttackType type = AttackType.values[(int) buffer.readBits(4)];
+        AbstractCursor cursor = getCursor(type);
+        cursor.initialize(dummyWar, buffer);
+        cursor.load(null, buffer);
+        byte[] out = toBytes(cursor);
+        return out;
+    }
+
+    public synchronized AttackEntry shouldReEncode(DBWar war, byte[] data) {
+        buffer.setBytes(data);
+        AttackType type = AttackType.values[(int) buffer.readBits(5)];
         AbstractCursor cursor = getCursor(type);
         if (cursor == null) {
             throw new UnsupportedOperationException("Attack type not supported: " + type);
@@ -325,7 +335,6 @@ public class AttackCursorFactory {
         cursor.load(war, buffer);
         byte[] out = toBytes(cursor);
         if (out.length != data.length) {
-            String originalStr = cursor.toString();
             buffer.setBytes(data);
             buffer.readBits(4);
             cursor.initialize(war, buffer);
@@ -338,7 +347,7 @@ public class AttackCursorFactory {
     public synchronized AbstractCursor loadWithPretest(DBWar war, byte[] data, boolean create, Predicate<AbstractCursor> testInitial) {
         buffer.setBytes(data);
 
-        AttackType type = AttackType.values[(int) buffer.readBits(4)];
+        AttackType type = AttackType.values[(int) buffer.readBits(5)];
         AbstractCursor cursor = create ? create(type) : getCursor(type);
         if (cursor == null) {
             throw new UnsupportedOperationException("Attack type not supported: " + type);
@@ -353,7 +362,7 @@ public class AttackCursorFactory {
 
     public synchronized AbstractCursor loadWithTypePretest(DBWar war, byte[] data, boolean create, Predicate<AttackType> testType, Predicate<AbstractCursor> testInitial) {
         buffer.setBytes(data);
-        AttackType type = AttackType.values[(int) buffer.readBits(4)];
+        AttackType type = AttackType.values[(int) buffer.readBits(5)];
         if (!testType.test(type)) {
             return null;
         }
