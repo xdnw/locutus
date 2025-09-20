@@ -3156,7 +3156,7 @@ public class AdminCommands {
 //    SyncAttacks
     @Command(desc = "Force a fetch and update of attacks from the api")
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String syncAttacks(boolean runAlerts, @Switch("f") boolean fixAttacks, @Switch("w") Set<DBWar> fixWars) throws IOException {
+    public String syncAttacks(@Switch("a") boolean runAlerts, @Switch("f") boolean fixAttacks, @Switch("w") Set<DBWar> fixWars) throws IOException {
         if (fixAttacks) {
             Locutus.imp().getWarDb().reEncodeBadAttacks();
         }
@@ -3174,6 +3174,10 @@ public class AdminCommands {
             List<AbstractCursor> attacksAdapted = attacks.stream().map(f -> factory.load(f, true)).collect(Collectors.toList());
             Locutus.imp().getWarDb().saveAttacks(attacksAdapted, null, false, true);
             numAttacks = attacksAdapted.size();
+            for (AbstractCursor attack : attacksAdapted) {
+                System.out.println("Attack: " + attack.getId() + " | " + attack);
+            }
+
         }
 
         return "Done: (alerts=" + runAlerts + ", fixAttacks=" + fixAttacks + ", fixWars=" + (fixWars == null ? "null" : fixWars.size()) + "/" + numAttacks + ")";
