@@ -213,6 +213,100 @@ public class WarDB extends DBMainV2 {
         }
     }
 
+    private void reserializeAttacks5() {
+        Logg.info("Starting attacks 5bit re-encode. This may take a while...");
+        // Ensure metadata table exists and check if already run
+        executeStmt("CREATE TABLE IF NOT EXISTS war_metadata (key TEXT PRIMARY KEY, value TEXT)");
+        boolean alreadyRun = select(
+                "SELECT value FROM war_metadata WHERE key = ?",
+                (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setString(1, "attacks5_reserialized"),
+                (ThrowingFunction<ResultSet, Boolean>) rs -> rs.next() && "true".equals(rs.getString("value"))
+        );
+        if (alreadyRun) {
+            Logg.info("Attacks v5 re-encode already completed. Skipping.");
+            return;
+        }
+
+        AttackCursorFactory factory = new AttackCursorFactory(this);
+        DBWar dummy = new DBWar(0, 2, 1, 0, 0, WarType.RAID, WarStatus.ATTACKER_VICTORY, 0, 0, 0, 0);
+
+        String selectSql = "SELECT id, data FROM `attacks3`";
+        String updateSql = "UPDATE `attacks3` SET `data` = ? WHERE `id` = ?";
+
+        Connection conn = getConnection(); // do not close shared connection
+        boolean originalAutoCommit = true;
+        try {
+            originalAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+
+            long processed = 0;
+            long updated = 0;
+            long skipped = 0;
+            int batchSize = 0;
+            final int BATCH_LIMIT = 1000;
+
+            try (PreparedStatement selectStmt = conn.prepareStatement(selectSql);
+                 PreparedStatement updateStmt = conn.prepareStatement(updateSql);
+                 ResultSet rs = selectStmt.executeQuery()) {
+
+                while (rs.next()) {
+                    int id = rs.getInt("id");
+                    byte[] data = rs.getBytes("data");
+
+                    byte[] newData;
+                    try {
+                        newData = factory.reEncode5(dummy, data);
+                    } catch (Throwable t) {
+                        Logg.error("Failed to re-encode attack id=" + id + ": " + t.getMessage());
+                        skipped++;
+                        processed++;
+                        continue;
+                    }
+
+                    if (newData == null || Arrays.equals(newData, data)) {
+                        skipped++;
+                    } else {
+                        updateStmt.setBytes(1, newData);
+                        updateStmt.setInt(2, id);
+                        updateStmt.addBatch();
+                        batchSize++;
+                        updated++;
+                    }
+
+                    processed++;
+                    if (batchSize >= BATCH_LIMIT) {
+                        updateStmt.executeBatch();
+                        conn.commit();
+                        batchSize = 0;
+                        Logg.text("Reserialized v5 progress - processed=" + processed + ", updated=" + updated + ", skipped=" + skipped);
+                    }
+                }
+
+                if (batchSize > 0) {
+                    updateStmt.executeBatch();
+                    conn.commit();
+                }
+            }
+        } catch (SQLException e) {
+            try {
+                conn.rollback();
+            } catch (SQLException ignore) {
+                // ignored
+            }
+            throw new RuntimeException(e);
+        } finally {
+            try {
+                conn.setAutoCommit(originalAutoCommit);
+            } catch (SQLException ignore) {
+                // ignored
+            }
+        }
+
+        update("INSERT OR REPLACE INTO war_metadata (key, value) VALUES (?, ?)",
+                "attacks5_reserialized", "true");
+        Logg.info("Attacks 5bit re-encode completed.");
+    }
+
     private void reserializedVictoryAttacks() {
         AttackCursorFactory loader = new AttackCursorFactory(this);
         DBWar dummy = new DBWar(0, 2, 1, 0, 0, WarType.RAID, WarStatus.ATTACKER_VICTORY, 0, 0, 0, 0);
@@ -515,11 +609,11 @@ public class WarDB extends DBMainV2 {
         }
     }
 
-    public void importLegacyAttacks() {
+    public boolean importLegacyAttacks() {
         try {
             // if attacks2 does not exist, return
             if (!tableExists("attacks2")) {
-                return;
+                return false;
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -570,6 +664,7 @@ public class WarDB extends DBMainV2 {
         if (countRows >= attacks.size() && countRows > 0) {
             executeStmt("DROP TABLE `attacks2`");
         }
+        return true;
     }
 
     private void setWar(DBWar war) {
@@ -694,9 +789,10 @@ public class WarDB extends DBMainV2 {
 
     public WarDB load() {
         loadWars(Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_TURNS);
-        fixAttacks();
         if (Settings.INSTANCE.TASKS.LOAD_ACTIVE_ATTACKS) {
-            importLegacyAttacks();
+            if (!importLegacyAttacks()) {
+                reserializeAttacks5();
+            }
             loadAttacks(Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS, Settings.INSTANCE.TASKS.LOAD_ACTIVE_ATTACKS);
 
             if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS) {
@@ -1289,6 +1385,10 @@ public class WarDB extends DBMainV2 {
         }
     }
 
+    private void reEncodeAttacks() {
+        // iterate all attacks byte[] and
+    }
+
     @Override
     public void createTables() {
         {
@@ -1339,55 +1439,6 @@ public class WarDB extends DBMainV2 {
         };
 
         {
-//            String nations = "CREATE TABLE IF NOT EXISTS `attacks2` (" +
-//                    "`war_attack_id` INT NOT NULL PRIMARY KEY, " +
-//                    "`date` BIGINT NOT NULL, " +
-//                    "war_id INT NOT NULL, " +
-//                    "attacker_nation_id INT NOT NULL, " +
-//                    "defender_nation_id INT NOT NULL, " +
-//                    "attack_type INT NOT NULL, " +
-//                    "victor INT NOT NULL, " +
-//                    "success INT NOT NULL," +
-//                    "attcas1 INT NOT NULL," +
-//                    "attcas2 INT NOT NULL," +
-//                    "defcas1 INT NOT NULL," +
-//                    "defcas2 INT NOT NULL," +
-//                    "defcas3 INT NOT NULL," +
-//                    "city_id INT NOT NULL," + // Not used anymore
-//                    "infra_destroyed INT," +
-//                    "improvements_destroyed INT," +
-//                    "money_looted BIGINT," +
-//                    "looted INT," +
-//                    "loot BLOB," +
-//                    "pct_looted INT," +
-//                    "city_infra_before INT," +
-//                    "infra_destroyed_value INT," +
-//                    "att_gas_used INT," +
-//                    "att_mun_used INT," +
-//                    "def_gas_used INT," +
-//                    "def_mun_used INT" +
-//                    ")";
-//            try (Statement stmt = getConnection().createStatement()) {
-//                stmt.addBatch(nations);
-//                stmt.executeBatch();
-//                stmt.clearBatch();
-//            } catch (SQLException e) {
-//                e.printStackTrace();
-//            }
-//            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_warid ON attacks2 (war_id);");
-//            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_attacker_nation_id ON attacks2 (attacker_nation_id);");
-//            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_defender_nation_id ON attacks2 (defender_nation_id);");
-//            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_date ON attacks2 (date);");
-
-            // if not exist,
-            // id (int)
-            // war_id (int)
-            // attacker_nation_id (int)
-            // defender_nation_id (int)
-            // date (long)
-            // data (byte[])
-            // create index for war_id, attacker_nation_id, defender_nation_id, date
-
             String attacksTable = "CREATE TABLE IF NOT EXISTS `ATTACKS3` (" +
                     "`id` INTEGER PRIMARY KEY, " +
                     "`war_id` INT NOT NULL, " +
@@ -2679,7 +2730,7 @@ public class WarDB extends DBMainV2 {
 //        return query;
 //    }
 
-    private final AttackCursorFactory attackCursorFactory = new AttackCursorFactory(this);
+    public final AttackCursorFactory attackCursorFactory = new AttackCursorFactory(this);
     private long lastUnloadAttacks = 0;
 
     public void saveAttacks(Collection<AbstractCursor> values, Consumer<Event> eventConsumer, boolean updateLoot, boolean replaceAttack) {
@@ -2745,7 +2796,9 @@ public class WarDB extends DBMainV2 {
                         byte[] data = attacks.get(i);
                         int id = attackCursorFactory.getId(data);
                         if (id == attack.getId()) {
-                            if (replaceAttack) attacks.set(i, entry.data());
+                            if (replaceAttack) {
+                                attacks.set(i, entry.data());
+                            }
                             continue outer;
                         }
                     }
@@ -3033,13 +3086,12 @@ public class WarDB extends DBMainV2 {
         Logg.text("Loaded " + attacks.size() + " attacks " + attacksByWarId2.containsKey(2114621));
     }
 
-    private boolean fixAttack(int attackId, Consumer<AbstractCursor> onEach) {
+    private void fixAttack(int attackId, Consumer<AbstractCursor> onEach) {
         Set<AbstractCursor> attacks = getAttacksById(Set.of(attackId));
-        if (attacks.isEmpty()) return false;
+        if (attacks.isEmpty()) return;
         AbstractCursor attack = attacks.iterator().next();
         onEach.accept(attack);
         saveAttacksDb(List.of(AttackEntry.of(attack, attackCursorFactory)));
-        return true;
     }
 
     private void fixAttacks() {
