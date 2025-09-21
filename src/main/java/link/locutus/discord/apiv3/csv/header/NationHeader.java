@@ -1,17 +1,11 @@
 package link.locutus.discord.apiv3.csv.header;
 
-import link.locutus.discord.apiv1.enums.Continent;
-import link.locutus.discord.apiv1.enums.DomesticPolicy;
-import link.locutus.discord.apiv1.enums.NationColor;
-import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.apiv1.enums.WarPolicy;
+import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.csv.column.*;
 import link.locutus.discord.apiv3.csv.file.Dictionary;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.TimeUtil;
-
-import java.text.ParseException;
 
 public class NationHeader extends DataHeader<DBNation> {
 

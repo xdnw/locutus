@@ -16,6 +16,10 @@ public class DoubleColumn<P> extends NumberColumn<P, Double> {
         return 8;
     }
 
+    @Override
+    public Double getDefault() {
+        return 0.0;
+    }
 
     @Override
     public Double read(byte[] buffer, int offset) throws IOException {

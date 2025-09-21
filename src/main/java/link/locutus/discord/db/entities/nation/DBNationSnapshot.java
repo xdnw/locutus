@@ -58,7 +58,7 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
     @Override
     public long _leavingVm() {
         if (wrapper.header.vm_turns.getOffset() == -1) return 0;
-        int vmTurns = wrapper.get(wrapper.header.vm_turns, offset);
+        int vmTurns = wrapper.getSafe(wrapper.header.vm_turns, offset);
         if (vmTurns > 0) return TimeUtil.getTurn(wrapper.date) + vmTurns;
         return 0;
     }
@@ -147,7 +147,7 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
     public boolean hasProject(Project project) {
         ProjectColumn col = hasProject.apply(project, wrapper.header);
         if (col == null) return false;
-        return wrapper.get(col, offset);
+        return wrapper.getSafe(col, offset);
     }
 
     @Override
@@ -224,7 +224,7 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
     @Override
     public int getVm_turns() {
         if (wrapper.header.vm_turns.getOffset() == -1) return 0;
-        return wrapper.get(wrapper.header.vm_turns, offset);
+        return wrapper.getSafe(wrapper.header.vm_turns, offset);
     }
 
     @Override
@@ -336,7 +336,7 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
 
     @Override
     public int _spies() {
-        return wrapper.get(wrapper.header.spies, offset);
+        return wrapper.getSafe(wrapper.header.spies, offset);
     }
 
     @Override
@@ -376,7 +376,7 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
 
     @Override
     public long _beigeTimer() {
-        int turns = wrapper.get(wrapper.header.beige_turns_remaining, offset);
+        int turns = wrapper.getSafe(wrapper.header.beige_turns_remaining, offset);
         return TimeUtil.getTurn(wrapper.date) + turns;
     }
 

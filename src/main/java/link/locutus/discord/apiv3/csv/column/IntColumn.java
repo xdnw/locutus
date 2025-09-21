@@ -17,6 +17,11 @@ public class IntColumn<P> extends NumberColumn<P, Integer> {
     }
 
     @Override
+    public Integer getDefault() {
+        return 0;
+    }
+
+    @Override
     public int getBytes() {
         return 4;
     }

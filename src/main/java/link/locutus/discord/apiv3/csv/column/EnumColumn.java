@@ -18,6 +18,11 @@ public class EnumColumn<P, V extends Enum> extends ColumnInfo<P, V> {
         this(header, enumClass, setter, string -> (V) Enum.valueOf(enumClass, string.toUpperCase(Locale.ROOT)));
     }
 
+    @Override
+    public V getDefault() {
+        return constants[0];
+    }
+
     public EnumColumn(DataHeader<P> header, Class<V> enumClass, BiConsumer<P, V> setter, Function<String, V> parser) {
         super(header, setter);
         this.enumClass = enumClass;

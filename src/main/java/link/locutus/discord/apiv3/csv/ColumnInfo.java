@@ -24,6 +24,8 @@ public abstract class ColumnInfo<P, V> {
         this.alwaysSkip = setter == null;
     }
 
+    public abstract V getDefault();
+
     public String getName() {
         return name;
     }
