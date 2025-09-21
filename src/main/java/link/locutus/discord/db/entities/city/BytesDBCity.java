@@ -70,6 +70,14 @@ public class BytesDBCity extends DBCity {
         }
     };
 
+    private <T> T getSafe(ColumnInfo<DBCity, T> get) {
+        try {
+            return get.readSafe(this.wrapper.data, get.getOffset() + this.offset);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private <T> T get(ColumnInfo<DBCity, T> get) {
         try {
             return get.read(this.wrapper.data, get.getOffset() + this.offset);
@@ -117,7 +125,7 @@ public class BytesDBCity extends DBCity {
     }
 
     public boolean isPowered() {
-        return get(wrapper.header.powered);
+        return getSafe(wrapper.header.powered);
     }
 
     public byte[] getBuildings3() {

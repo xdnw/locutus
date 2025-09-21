@@ -24,6 +24,8 @@ public abstract class ColumnInfo<P, V> {
         this.alwaysSkip = setter == null;
     }
 
+    public abstract V getDefault();
+
     public String getName() {
         return name;
     }
@@ -57,6 +59,11 @@ public abstract class ColumnInfo<P, V> {
 
     public int getIndex() {
         return index;
+    }
+
+    public V readSafe(byte[] buffer, int offset) throws IOException {
+        if (offset == -1) return getDefault();
+        return read(buffer, offset);
     }
 
     public abstract V read(byte[] buffer, int offset) throws IOException;
