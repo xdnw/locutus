@@ -199,17 +199,18 @@ public class BankCommands {
             throw new IllegalArgumentException("Cannot specify `sheetAmounts` to deposit with other deposit modes.");
         }
         if (nations.isEmpty()) return "No nations found";
+        boolean hasNonGuild = nations.stream().anyMatch(f -> !db.isAllianceId(f.getAlliance_id()));
 
         boolean isOther = nations.size() > 1 || me.getNation_id() != nations.iterator().next().getNation_id();
 
         if (mailResults && !Roles.MAIL.has(author, db.getGuild()) && isOther) {
-            throw new IllegalArgumentException("No permission for `mailResults`. " + Roles.MAIL.toDiscordRoleNameElseInstructions(db.getGuild()));
+            throw new IllegalArgumentException("No permission for `mailResults`. Missing role: " + Roles.MAIL.toDiscordRoleNameElseInstructions(db.getGuild()));
         }
-        if (dm && !Roles.MAIL.hasOnRoot(author) && isOther) {
-            throw new IllegalArgumentException("No permission for `dm`. " + Roles.MAIL.toDiscordRoleNameElseInstructions(Locutus.imp().getServer()));
+        if (dm && (hasNonGuild || customMessage != null) && !Roles.MAIL.hasOnRoot(author) && isOther) {
+            throw new IllegalArgumentException("No permission for `dm`. Missing role on " + Locutus.imp().getRootDb().getGuild() + ": " + Roles.MAIL.toDiscordRoleNameElseInstructions(Locutus.imp().getServer()));
         }
         if (useApi && isOther && !Roles.ECON.has(author, db.getGuild())) {
-            throw new IllegalArgumentException("No permission for `useApi`. " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
+            throw new IllegalArgumentException("No permission for `useApi`. Missing role: " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
         }
         Set<Long> allowed = Roles.ECON_STAFF.getAllowedAccounts(author, db);
         Map<DBNation, OffshoreInstance.TransferStatus> statuses = new LinkedHashMap<>();
@@ -2087,6 +2088,7 @@ public class BankCommands {
                     Map<DepositType, Object> noteMap = tx.getNoteMap();
                     Object expire3 = noteMap.get(DepositType.EXPIRE);
                     Object decay3 = noteMap.get(DepositType.DECAY);
+                    if (expire3 == null && decay3 == null) continue;
                     long expireEpoch = Long.MAX_VALUE;
                     long decayEpoch = Long.MAX_VALUE;
                     if (expire3 instanceof Number n) {
@@ -2095,29 +2097,28 @@ public class BankCommands {
                     if (decay3 instanceof Number n) {
                         decayEpoch = n.longValue();
                     }
-                    expireEpoch = Math.min(expireEpoch, decayEpoch);
-                    if (expireEpoch > now) {
+                    if ((decayEpoch != Long.MAX_VALUE || expireEpoch != Long.MAX_VALUE) && (expireEpoch > now && decayEpoch > now)) {
+                        System.out.println("RESETTING NOTE: " + tx.note + " | exp: " + expireEpoch + " dec: " + decayEpoch + " now: " + now);
                         String noteCopy = tx.note.toLowerCase(Locale.ROOT)
                                 .replaceAll("#expire=[a-zA-Z0-9:]+", "")
                                 .replaceAll("#decay=[a-zA-Z0-9:]+", "");
-                        if (expire3 instanceof Number) {
+                        if (expireEpoch != Long.MAX_VALUE && expire3 instanceof Number) {
                             noteCopy += " #expire=" + "timestamp:" + expireEpoch;
                         }
-                        if (decay3 instanceof Number) {
+                        if (decayEpoch != Long.MAX_VALUE && decay3 instanceof Number) {
                             noteCopy += " #decay=" + "timestamp:" + decayEpoch;
                         }
                         noteCopy = noteCopy.trim();
 
-                        tx.tx_datetime = System.currentTimeMillis();
                         int sign = entry.getKey();
                         if (sign == 1) {
                             response.append("Subtracting `" + nation.getQualifiedId() + " " + ResourceType.toString(tx.resources) + " " + noteCopy + "`\n");
                             ResourceType.subtract(totalExpire, tx.resources);
-                            if (force) db.subBalance(now, nation, me.getNation_id(), noteCopy, tx.resources);
+                            if (force) db.subBalance(decayEpoch == Long.MAX_VALUE ? now : tx.tx_datetime, nation, me.getNation_id(), noteCopy, tx.resources);
                         } else if (sign == -1) {
                             response.append("Adding `" + nation.getQualifiedId() + " " + ResourceType.toString(tx.resources) + " " + noteCopy + "`\n");
                             ResourceType.add(totalExpire, tx.resources);
-                            if (force) db.addBalance(now, nation, me.getNation_id(), noteCopy, tx.resources);
+                            if (force) db.addBalance(decayEpoch == Long.MAX_VALUE ? now : tx.tx_datetime, nation, me.getNation_id(), noteCopy, tx.resources);
                         } else {
                             Logg.error("Invalid sign for deposits reset " + sign);
                         }
@@ -2853,7 +2854,7 @@ public class BankCommands {
     @Command(desc = "Get a sheet of ingame transfers for nations, filtered by the sender", viewable = true)
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String IngameNationTransfersBySender(@Me IMessageIO channel, @Me @Default GuildDB db, @Me @Default User author,
-    Set<NationOrAlliance> senders, @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
+    @AllowDeleted Set<NationOrAlliance> senders, @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
         Set<Long> senderIds = senders.stream().map(NationOrAllianceOrGuild::getIdLong).collect(Collectors.toSet());
         Set<Integer> hasAdmin = new IntOpenHashSet();
@@ -2881,7 +2882,7 @@ public class BankCommands {
     }, viewable = true)
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String IngameNationTransfersByReceiver(@Me IMessageIO channel, @Me @Default GuildDB db, @Me @Default User author,
-                                                  Set<NationOrAlliance> receivers, @Arg(value = "Only list transfers after this time", group = 0)
+                                                  @AllowDeleted Set<NationOrAlliance> receivers, @Arg(value = "Only list transfers after this time", group = 0)
                                                       @Timestamp @Default Long startTime,
                                                   @Arg(value = "Only list transfers before this time", group = 0)
                                                       @Timestamp @Default Long endTime, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
@@ -4092,7 +4093,7 @@ public class BankCommands {
 
         } else if (nationOrAllianceOrGuild.isNation()) {
             DBNation nation = nationOrAllianceOrGuild.asNation();
-            if (nation != me && !Roles.INTERNAL_AFFAIRS.has(author, guild) && !Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild) && !Roles.ECON.has(author, guild) && !Roles.ECON_STAFF.has(author, guild)) return "You do not have permission to check other nation's deposits";
+            if (nation != me && !Roles.INTERNAL_AFFAIRS.has(author, guild) && !Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild) && !Roles.ECON.has(author, guild) && !Roles.ECON_STAFF.has(author, guild) && !Roles.MILCOM.has(author, guild)) return "You do not have permission to check other nation's deposits";
 
             BiConsumer<Transaction2, Long> getExpiring = null;
             SpreadSheet sheet;
@@ -4119,8 +4120,10 @@ public class BankCommands {
                     Integer sign = PW.getSign(record, nation.getId(), offshoreIdsFinal);
                     if (sign == null) return; // not for this nation
                     hasRow[0] = true;
-                    if (dateVal <= now) return;
                     Long decayVal = (Long) record.getNoteMap().get(DepositType.DECAY);
+                    Long expireVal = (Long) record.getNoteMap().get(DepositType.EXPIRE);
+                    if (decayVal == null && expireVal == null) return; // no value
+                    if ((decayVal != null && decayVal < now) || (expireVal != null && expireVal < now)) return; // already expired
 
                     List<Object> row = new ObjectArrayList<>();
                     row.add(sign);
@@ -4128,11 +4131,11 @@ public class BankCommands {
                     row.add(TimeUtil.format(TimeUtil.YYYY_MM_DD_HH_MM_SS, record.tx_datetime));
                     row.add(ResourceType.convertedTotal(record.resources));
 
-                    if (dateVal != null) {
+                    if (decayVal != null) {
                         double[] principal = record.resources.clone();
-                        double decayFactor = 1 - ((now - record.tx_datetime) / (double) (dateVal - record.tx_datetime));
+                        double decayFactor = 1 - ((now - record.tx_datetime) / (double) (decayVal - record.tx_datetime));
                         double[] remaining = PW.multiply(principal.clone(), decayFactor);
-                        double decayFactorPerDay = (double) TimeUnit.DAYS.toMillis(1) / (dateVal - record.tx_datetime);
+                        double decayFactorPerDay = (double) TimeUnit.DAYS.toMillis(1) / (decayVal - record.tx_datetime);
                         double[] decayPerDay = ResourceType.getBuffer();
                         for (int i = 0; i < principal.length; i++) {
                             double remainingVal = remaining[i];

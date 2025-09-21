@@ -48,6 +48,8 @@ public enum WarCatReason {
     MESSAGE_SYNC("Message sync", false),
     PURGE_COMMAND("/war room purge", false),
 
+    ERROR("An unknown error occurred", false),
+
     ;
 
     public boolean isExisting() {

@@ -2269,17 +2269,21 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     public Map<ResourceType, Double> getStockpile() {
-        ApiKeyPool pool;
-        ApiKeyPool.ApiKey myKey = getApiKey(false);
-
         DBAlliance alliance = getAlliance();
-        if (myKey != null) {
-            pool  = ApiKeyPool.create(myKey);
-        } else if (getPositionEnum().id <= Rank.APPLICANT.id || alliance == null) {
-            throw new IllegalArgumentException("Nation " + data()._nation() + " is not member in an alliance");
-        } else {
+        ApiKeyPool pool = null;
+        if (alliance != null && getPositionEnum().id > Rank.APPLICANT.id) {
             pool = alliance.getApiKeys(AlliancePermission.SEE_SPIES);
-            if (pool == null) {
+        }
+        if (pool == null) {
+            ApiKeyPool.ApiKey myKey = getApiKey(false);
+            if (myKey != null) {
+                pool  = ApiKeyPool.create(myKey);
+            }
+        }
+        if (pool == null) {
+            if (getPositionEnum().id <= Rank.APPLICANT.id || alliance == null) {
+                throw new IllegalArgumentException("Nation " + data()._nation() + " is not member in an alliance");
+            } else {
                 throw new IllegalArgumentException("No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention());
             }
         }
@@ -6638,7 +6642,7 @@ public abstract class DBNation implements NationOrAlliance {
             Includes projects, infra, land, cities, buildings, units, and research
             Does not factor in cost reduction policies or projects""")
     public double costConverted() {
-        int total = 0;
+        double total = 0;
         total += projectValue();
         total += infraValue();
         total += landValue();

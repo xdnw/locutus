@@ -2,6 +2,8 @@ package link.locutus.discord;
 
 import com.google.common.eventbus.AsyncEventBus;
 import com.google.common.eventbus.EventBus;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord._main.Backup;
@@ -66,10 +68,7 @@ import net.dv8tion.jda.api.entities.emoji.EmojiUnion;
 import net.dv8tion.jda.api.events.channel.ChannelCreateEvent;
 import net.dv8tion.jda.api.events.channel.ChannelDeleteEvent;
 import net.dv8tion.jda.api.events.channel.update.ChannelUpdateParentEvent;
-import net.dv8tion.jda.api.events.guild.GuildAvailableEvent;
-import net.dv8tion.jda.api.events.guild.GuildBanEvent;
-import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
-import net.dv8tion.jda.api.events.guild.GuildReadyEvent;
+import net.dv8tion.jda.api.events.guild.*;
 import net.dv8tion.jda.api.events.guild.invite.GuildInviteCreateEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberRoleAddEvent;
@@ -77,6 +76,7 @@ import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
+import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.InteractionHook;
@@ -233,6 +233,16 @@ public final class Locutus extends ListenerAdapter {
                 e.printStackTrace();
                 Logg.text("Failed to update slash commands: " + e.getMessage());
             }
+
+            if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB && Settings.INSTANCE.WEB.PORT > 0) {
+                try {
+                    new WebRoot(Settings.INSTANCE.WEB.PORT, Settings.INSTANCE.WEB.ENABLE_SSL);
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+                Logg.text("Initialized Web Interface (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
+            }
+
             setSelfUser(manager);
 //            jda.awaitStatus(JDA.Status.LOADING_SUBSYSTEMS);
             Logg.text("Discord Gateway: " + manager.getStatus() + " (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
@@ -243,61 +253,14 @@ public final class Locutus extends ListenerAdapter {
             }
             Logg.text("Discord Gateway: " + manager.getStatus() + " (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
             setSelfUser(manager);
-            if (Settings.INSTANCE.ENABLED_COMPONENTS.CREATE_DATABASES_ON_STARTUP) {
-                initDBPartial(true);
-            }
             Logg.text("Initialized Guild Databases " + manager.getStatus() + " (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
-            Guild rootGuild = manager.getGuildById(Settings.INSTANCE.ROOT_SERVER);
-            if (rootGuild != null) {
-                this.server = rootGuild;
-            } else {
-                throw new IllegalStateException("Invalid guild: " + Settings.INSTANCE.ROOT_SERVER + " as `root-server` in " + Settings.INSTANCE.getDefaultFile().getAbsolutePath());
-            }
+
             if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS) {
                 initRepeatingTasks();
                 Logg.text("Initialized API fetching tasks (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
             }
-            {
-                List<GuildDB> queue = new ArrayList<>(guildDatabases.values());
-                // sort by GuildDB.getLastModified (highest first)
-                queue.sort(Comparator.comparingLong(GuildDB::getLastModified).reversed());
+}
 
-                AtomicInteger index = new AtomicInteger(0);
-                Runnable[] queueFunc = new Runnable[1];
-                queueFunc[0] = new Runnable() {
-                    @Override
-                    public void run() {
-                        GuildDB db = queue.size() > index.get() ? queue.get(index.getAndIncrement()) : null;
-                        if (db == null || !db.getGuild().isLoaded()) {
-                            Logg.text("Done loading all guild members");
-                            return;
-                        }
-                        Guild guild = db.getGuild();
-                        Logg.text("Loading members for " + guild);
-                        guild.loadMembers().onSuccess(members -> {
-                            for (Member member : members) {
-                                GuildShardManager.updateUserName(member);
-                            }
-                            Logg.text("Loaded " + members.size() + " members for " + guild);
-                            queueFunc[0].run();
-                        }).onError(f -> {
-                            Logg.text("Failed to load members for " + guild);
-                            queueFunc[0].run();
-                        });
-                    }
-                };
-                queueFunc[0].run();
-            }
-        }
-
-        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB && Settings.INSTANCE.WEB.PORT > 0) {
-            try {
-                new WebRoot(Settings.INSTANCE.WEB.PORT, Settings.INSTANCE.WEB.ENABLE_SSL);
-            } catch (Throwable e) {
-                e.printStackTrace();
-            }
-            Logg.text("Initialized Web Interface (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
-        }
         if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS && Settings.INSTANCE.ENABLED_COMPONENTS.SUBSCRIPTIONS) {
             this.pusher = new PnwPusherShardManager();
             executor.submit(new Runnable() {
@@ -331,9 +294,49 @@ public final class Locutus extends ListenerAdapter {
         return this;
     }
 
+    private void onGuildLoad(Guild guild, JDA jda) {
+        manager.put(guild.getIdLong(), jda);
+        getGuildDB(guild);
+        runLoadMembersTask(guild);
+    }
+
+    private final Set<Long> loadedMembersSet = new LongOpenHashSet();
+    private final Object memberLoadLock = new Object();
+    private CompletableFuture<Void> memberLoadChain = CompletableFuture.completedFuture(null);
+
+    private Future<Void> runLoadMembersTask(Guild guild) {
+        synchronized (loadedMembersSet) {
+            if (!loadedMembersSet.add(guild.getIdLong())) {
+                return CompletableFuture.completedFuture(null);
+            }
+        }
+        final CompletableFuture<Void> next = new CompletableFuture<>();
+        final CompletableFuture<Void> prev;
+        synchronized (memberLoadLock) {
+            prev = memberLoadChain;
+            memberLoadChain = next;
+        }
+
+        prev.handle((v, t) -> null).thenRunAsync(() -> {
+            Logg.text("Loading members for " + guild);
+            guild.loadMembers().onSuccess(members -> {
+                for (Member member : members) {
+                    GuildShardManager.updateUserName(member);
+                }
+                Logg.text("Loaded " + members.size() + " members for " + guild);
+                next.complete(null);
+            }).onError(err -> {
+                Logg.text("Failed to load members for " + guild);
+                next.completeExceptionally(err);
+            });
+        }, executor);
+
+        return next;
+    }
+
     @Override
     public void onGuildReady(@NotNull GuildReadyEvent event) {
-        manager.put(event.getGuild().getIdLong(), event.getJDA());
+        onGuildLoad(event.getGuild(), event.getJDA());
     }
 
     private void setSelfUser(GuildShardManager manager) {
@@ -343,6 +346,14 @@ public final class Locutus extends ListenerAdapter {
             if (appId > 0) {
                 Settings.INSTANCE.APPLICATION_ID = appId;
             }
+        }
+    }
+
+    @Override
+    public void onReady(@NotNull ReadyEvent event) {
+        JDA jda = event.getJDA();
+        for (Guild guild : jda.getGuilds()) {
+            onGuildLoad(guild, jda);
         }
     }
 
@@ -414,25 +425,19 @@ public final class Locutus extends ListenerAdapter {
         return getGuildDB(guild);
     }
 
-    private void initDBPartial(boolean deleteTimeLocks) {
-        if (deleteTimeLocks) {
-            TimeUtil.deleteOldTimeLocks();
-        }
-        synchronized (guildDatabases) {
-            for (Guild guild : manager.getGuilds()) {
-                getGuildDB(guild.getIdLong());
-            }
-        }
-    }
+//    private void initDBPartial(boolean deleteTimeLocks) {
+//        if (deleteTimeLocks) {
+//            TimeUtil.deleteOldTimeLocks();
+//        }
+//        synchronized (guildDatabases) {
+//            for (Guild guild : manager.getGuilds()) {
+//                getGuildDB(guild.getIdLong());
+//            }
+//        }
+//    }
 
     private Map<Long, GuildDB> initGuildDB() {
-        if (guildDatabases.isEmpty()) return guildDatabases;
-        synchronized (guildDatabases) {
-            if (guildDatabases.isEmpty()) {
-                initDBPartial(false);
-            }
-            return guildDatabases;
-        }
+        return guildDatabases;
     }
 
     public GuildDB getGuildDBByAA(int allianceId) {
@@ -869,6 +874,9 @@ public final class Locutus extends ListenerAdapter {
     }
 
     public Guild getServer() {
+        if (this.server == null && manager != null) {
+            this.server = manager.getGuildById(Settings.INSTANCE.ROOT_SERVER);
+        }
         return server;
     }
 
@@ -919,12 +927,7 @@ public final class Locutus extends ListenerAdapter {
 
     @Override
     public void onGuildJoin(@Nonnull GuildJoinEvent event) {
-        manager.put(event.getGuild().getIdLong(), event.getJDA());
-        event.getGuild().loadMembers().onSuccess(members -> {
-             for (Member member : members) {
-                 GuildShardManager.updateUserName(member);
-             }
-        });
+        onGuildLoad(event.getGuild(), event.getJDA());
         if (Settings.INSTANCE.TEST && getSlashCommands() instanceof SlashCommandManager slash) {
             slash.register(event.getGuild());
         }

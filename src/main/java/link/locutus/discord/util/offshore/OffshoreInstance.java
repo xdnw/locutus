@@ -28,6 +28,7 @@ import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
+import link.locutus.discord.util.scheduler.ThrowingSupplier;
 import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -480,6 +481,9 @@ public class OffshoreInstance {
     }
 
     public TransferResult transferFromNationAccountWithRoleChecks(Supplier<Map<Long, AccessType>> allowedIdsGet, User banker, DBNation nationAccount, DBAlliance allianceAccount, TaxBracket tax_account, GuildDB senderDB, Long senderChannel, NationOrAlliance receiver, double[] amount, DepositTypeInfo depositType, Long expire, Long decay, UUID grantToken, boolean convertCash, EscrowMode escrowMode, boolean requireConfirmation, boolean bypassChecks) throws IOException {
+        if (expire != null && decay != null) {
+            return new TransferResult(TransferStatus.INVALID_NOTE, receiver, amount, depositType.toString()).addMessage("You cannot set both `expire` and `decay`, please choose one");
+        }
         if (!TimeUtil.checkTurnChange()) {
 //            return KeyValue.of(TransferStatus.TURN_CHANGE, "You cannot transfer close to turn change");
             return new TransferResult(TransferStatus.TURN_CHANGE, receiver, amount, depositType.toString()).addMessage("You cannot transfer close to turn change");
@@ -667,7 +671,7 @@ public class OffshoreInstance {
         Object lockObj = requireConfirmation ? new Object() : BANK_LOCK;
 
         synchronized (lockObj) {
-            double[] myDeposits = null;
+            double[] myDeposits;
             if (nationAccount != null) {
                 if (disabledNations.containsKey(nationAccount.getId())) {
                     // Account temporarily disabled due to error. Use CM.bank.unlockTransfers.cmd.toSlashMention() to re-enable
@@ -710,7 +714,11 @@ public class OffshoreInstance {
                     Map.Entry<double[], TransferResult> result = checkNationDeposits(senderDB, nationAccount, allowedIds, receiver, amount, txValue, depositType, ignoreGrants, allowNegative, reqMsg, forceUpdate, allowUpdate);
                     if (result.getValue() != null) return result.getValue();
                     myDeposits = result.getKey();
+                } else {
+                    myDeposits = null;
                 }
+            } else {
+                myDeposits = null;
             }
 
             if (tax_account != null) {
@@ -879,8 +887,9 @@ public class OffshoreInstance {
 
             boolean hasEcon = allowedIds.containsValue(AccessType.ECON);
 
-            if (nationAccount != null && !depositType.isIgnored() && (banker == null || !hasEcon)) {
-                double[] myNewDeposits = nationAccount.getNetDeposits(null, senderDB, !ignoreGrants, -1L, true);
+            DBNation finalNationAccount = nationAccount;
+            Supplier<TransferResult> checkDisabled = (ThrowingSupplier<TransferResult>) () -> {
+                double[] myNewDeposits = finalNationAccount.getNetDeposits(null, senderDB, !ignoreGrants, -1L, true);
                 // ensure myDeposits and myNewDeposits difference is amount
                 double[] diff = ResourceType.getBuffer();
                 for (int i = 0; i < amount.length; i++) {
@@ -888,13 +897,19 @@ public class OffshoreInstance {
                 }
                 for (int i = 0; i < amount.length; i++) {
                     if (Math.round((diff[i] - amount[i]) * 100) > 1) {
-                        disabledNations.put(nationAccount.getId(), System.currentTimeMillis());
+                        disabledNations.put(finalNationAccount.getId(), System.currentTimeMillis());
                         String[] message = {"Internal error: " + ResourceType.toString(diff) + " != " + ResourceType.toString(amount),
-                        "Nation Account: `" + nationAccount.getMarkdownUrl() + "` has been temporarily disabled. Have a guild admin use: " + CM.bank.unlockTransfers.cmd.toSlashMention()};
+                                "Nation Account: `" + finalNationAccount.getMarkdownUrl() + "` has been temporarily disabled. Have a guild admin use: " + CM.bank.unlockTransfers.cmd.toSlashMention()};
 //                        return KeyValue.of(TransferStatus.OTHER, message);
                         return new TransferResult(TransferStatus.OTHER, receiver, amount, ingameNote).addMessage(message);
                     }
                 }
+                return null;
+            };
+
+            if (isInternalTransfer && !depositType.isIgnored() && (!hasEcon)) {
+                TransferResult result = checkDisabled.get();
+                if (result != null) return result;
             }
 
             if (tax_account != null) {

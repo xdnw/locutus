@@ -213,6 +213,100 @@ public class WarDB extends DBMainV2 {
         }
     }
 
+    private synchronized void reserializeAttacks5() {
+        Logg.info("Starting attacks 5bit re-encode. This may take a while...");
+        // Ensure metadata table exists and check if already run
+        executeStmt("CREATE TABLE IF NOT EXISTS war_metadata (key TEXT PRIMARY KEY, value TEXT)");
+        boolean alreadyRun = select(
+                "SELECT value FROM war_metadata WHERE key = ?",
+                (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setString(1, "attacks5_reserialized"),
+                (ThrowingFunction<ResultSet, Boolean>) rs -> rs.next() && "true".equals(rs.getString("value"))
+        );
+        if (alreadyRun) {
+            Logg.info("Attacks v5 re-encode already completed. Skipping.");
+            return;
+        }
+
+        AttackCursorFactory factory = new AttackCursorFactory(this);
+        DBWar dummy = new DBWar(0, 2, 1, 0, 0, WarType.RAID, WarStatus.ATTACKER_VICTORY, 0, 0, 0, 0);
+
+        String selectSql = "SELECT id, data FROM `attacks3`";
+        String updateSql = "UPDATE `attacks3` SET `data` = ? WHERE `id` = ?";
+
+        Connection conn = getConnection(); // do not close shared connection
+        boolean originalAutoCommit = true;
+        try {
+            originalAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+
+            long processed = 0;
+            long updated = 0;
+            long skipped = 0;
+            int batchSize = 0;
+            final int BATCH_LIMIT = 1000;
+
+            try (PreparedStatement selectStmt = conn.prepareStatement(selectSql);
+                 PreparedStatement updateStmt = conn.prepareStatement(updateSql);
+                 ResultSet rs = selectStmt.executeQuery()) {
+
+                while (rs.next()) {
+                    int id = rs.getInt("id");
+                    byte[] data = rs.getBytes("data");
+
+                    byte[] newData;
+                    try {
+                        newData = factory.reEncode5(dummy, data);
+                    } catch (Throwable t) {
+                        Logg.error("Failed to re-encode attack id=" + id + ": " + t.getMessage());
+                        skipped++;
+                        processed++;
+                        continue;
+                    }
+
+                    if (newData == null || Arrays.equals(newData, data)) {
+                        skipped++;
+                    } else {
+                        updateStmt.setBytes(1, newData);
+                        updateStmt.setInt(2, id);
+                        updateStmt.addBatch();
+                        batchSize++;
+                        updated++;
+                    }
+
+                    processed++;
+                    if (batchSize >= BATCH_LIMIT) {
+                        updateStmt.executeBatch();
+                        conn.commit();
+                        batchSize = 0;
+                        Logg.text("Reserialized v5 progress - processed=" + processed + ", updated=" + updated + ", skipped=" + skipped);
+                    }
+                }
+
+                if (batchSize > 0) {
+                    updateStmt.executeBatch();
+                    conn.commit();
+                }
+            }
+        } catch (SQLException e) {
+            try {
+                conn.rollback();
+            } catch (SQLException ignore) {
+                // ignored
+            }
+            throw new RuntimeException(e);
+        } finally {
+            try {
+                conn.setAutoCommit(originalAutoCommit);
+            } catch (SQLException ignore) {
+                // ignored
+            }
+        }
+
+        update("INSERT OR REPLACE INTO war_metadata (key, value) VALUES (?, ?)",
+                "attacks5_reserialized", "true");
+        Logg.info("Attacks 5bit re-encode completed.");
+    }
+
     private void reserializedVictoryAttacks() {
         AttackCursorFactory loader = new AttackCursorFactory(this);
         DBWar dummy = new DBWar(0, 2, 1, 0, 0, WarType.RAID, WarStatus.ATTACKER_VICTORY, 0, 0, 0, 0);
@@ -515,11 +609,11 @@ public class WarDB extends DBMainV2 {
         }
     }
 
-    public void importLegacyAttacks() {
+    public boolean importLegacyAttacks() {
         try {
             // if attacks2 does not exist, return
             if (!tableExists("attacks2")) {
-                return;
+                return false;
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -570,6 +664,7 @@ public class WarDB extends DBMainV2 {
         if (countRows >= attacks.size() && countRows > 0) {
             executeStmt("DROP TABLE `attacks2`");
         }
+        return true;
     }
 
     private void setWar(DBWar war) {
@@ -694,9 +789,10 @@ public class WarDB extends DBMainV2 {
 
     public WarDB load() {
         loadWars(Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_TURNS);
-        fixAttacks();
         if (Settings.INSTANCE.TASKS.LOAD_ACTIVE_ATTACKS) {
-            importLegacyAttacks();
+            if (!importLegacyAttacks()) {
+                reserializeAttacks5();
+            }
             loadAttacks(Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS, Settings.INSTANCE.TASKS.LOAD_ACTIVE_ATTACKS);
 
             if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS) {
@@ -716,7 +812,7 @@ public class WarDB extends DBMainV2 {
                         for (WarAttack v3Attack : attacks) {
                             attackList.add(factory.load(v3Attack, true));
                         }
-                        saveAttacks(attackList, null);
+                        saveAttacks(attackList, null, false, false);
                     } else {
                         attackList = new ObjectArrayList<>();
                         v3.fetchAttacksSince(null, v3Attack -> {
@@ -724,13 +820,13 @@ public class WarDB extends DBMainV2 {
                             synchronized (attackList) {
                                 attackList.add(attack);
                                 if (attackList.size() > 1000) {
-                                    saveAttacks(attackList, null);
+                                    saveAttacks(attackList, null, false, false);
                                     attackList.clear();
                                 }
                             }
                             return false;
                         });
-                        saveAttacks(attackList, null);
+                        saveAttacks(attackList, null, false, false);
                     }
 
                 }
@@ -1289,6 +1385,10 @@ public class WarDB extends DBMainV2 {
         }
     }
 
+    private void reEncodeAttacks() {
+        // iterate all attacks byte[] and
+    }
+
     @Override
     public void createTables() {
         {
@@ -1339,55 +1439,6 @@ public class WarDB extends DBMainV2 {
         };
 
         {
-//            String nations = "CREATE TABLE IF NOT EXISTS `attacks2` (" +
-//                    "`war_attack_id` INT NOT NULL PRIMARY KEY, " +
-//                    "`date` BIGINT NOT NULL, " +
-//                    "war_id INT NOT NULL, " +
-//                    "attacker_nation_id INT NOT NULL, " +
-//                    "defender_nation_id INT NOT NULL, " +
-//                    "attack_type INT NOT NULL, " +
-//                    "victor INT NOT NULL, " +
-//                    "success INT NOT NULL," +
-//                    "attcas1 INT NOT NULL," +
-//                    "attcas2 INT NOT NULL," +
-//                    "defcas1 INT NOT NULL," +
-//                    "defcas2 INT NOT NULL," +
-//                    "defcas3 INT NOT NULL," +
-//                    "city_id INT NOT NULL," + // Not used anymore
-//                    "infra_destroyed INT," +
-//                    "improvements_destroyed INT," +
-//                    "money_looted BIGINT," +
-//                    "looted INT," +
-//                    "loot BLOB," +
-//                    "pct_looted INT," +
-//                    "city_infra_before INT," +
-//                    "infra_destroyed_value INT," +
-//                    "att_gas_used INT," +
-//                    "att_mun_used INT," +
-//                    "def_gas_used INT," +
-//                    "def_mun_used INT" +
-//                    ")";
-//            try (Statement stmt = getConnection().createStatement()) {
-//                stmt.addBatch(nations);
-//                stmt.executeBatch();
-//                stmt.clearBatch();
-//            } catch (SQLException e) {
-//                e.printStackTrace();
-//            }
-//            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_warid ON attacks2 (war_id);");
-//            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_attacker_nation_id ON attacks2 (attacker_nation_id);");
-//            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_defender_nation_id ON attacks2 (defender_nation_id);");
-//            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_date ON attacks2 (date);");
-
-            // if not exist,
-            // id (int)
-            // war_id (int)
-            // attacker_nation_id (int)
-            // defender_nation_id (int)
-            // date (long)
-            // data (byte[])
-            // create index for war_id, attacker_nation_id, defender_nation_id, date
-
             String attacksTable = "CREATE TABLE IF NOT EXISTS `ATTACKS3` (" +
                     "`id` INTEGER PRIMARY KEY, " +
                     "`war_id` INT NOT NULL, " +
@@ -2679,48 +2730,50 @@ public class WarDB extends DBMainV2 {
 //        return query;
 //    }
 
-    private final AttackCursorFactory attackCursorFactory = new AttackCursorFactory(this);
+    public final AttackCursorFactory attackCursorFactory = new AttackCursorFactory(this);
     private long lastUnloadAttacks = 0;
 
-    public void saveAttacks(Collection<AbstractCursor> values, Consumer<Event> eventConsumer) {
+    public void saveAttacks(Collection<AbstractCursor> values, Consumer<Event> eventConsumer, boolean updateLoot, boolean replaceAttack) {
         if (values.isEmpty()) return;
 
         // sort attacks
-        ArrayList<AbstractCursor> valuesList = new ArrayList<>(values);
+        List<AbstractCursor> valuesList = new ObjectArrayList<>(values);
         valuesList.sort(Comparator.comparingInt(AbstractCursor::getWar_attack_id));
         values = valuesList;
 
         List<LootEntry> lootList = null;
-        for (AbstractCursor attack : values) {
-            if (attack.getAttack_type() != AttackType.VICTORY && attack.getAttack_type() != AttackType.A_LOOT) continue;
-
-            double[] loot = attack.getLoot();
-            double pct;
-            if (loot == null) {
-                pct = 1d;
-            } else {
-                pct = attack.getLootPercent();
-            }
-            if (pct == 0) pct = 0.1;
-            double factor = 1/pct;
-
-            double[] lootCopy;
-            if (loot != null) {
-                lootCopy = loot.clone();
-                for (int i = 0; i < lootCopy.length; i++) {
-                    lootCopy[i] = (lootCopy[i] * factor) - lootCopy[i];
+        if (updateLoot) {
+            for (AbstractCursor attack : values) {
+                if (attack.getAttack_type() != AttackType.VICTORY && attack.getAttack_type() != AttackType.A_LOOT)
+                    continue;
+                double[] loot = attack.getLoot();
+                double pct;
+                if (loot == null) {
+                    pct = 1d;
+                } else {
+                    pct = attack.getLootPercent();
                 }
-            } else {
-                lootCopy = ResourceType.getBuffer();
-            }
-            if (attack.getAttack_type() == AttackType.VICTORY) {
-                (lootList == null ? lootList = new ObjectArrayList<>() : lootList).add(
-                    LootEntry.forNation(attack.getDefender_id(), attack.getDate(), lootCopy, NationLootType.WAR_LOSS));
-            } else if (attack.getAttack_type() == AttackType.A_LOOT) {
-                int allianceId = attack.getAllianceIdLooted();
-                if (allianceId > 0) {
+                if (pct == 0) pct = 0.1;
+                double factor = 1 / pct;
+
+                double[] lootCopy;
+                if (loot != null) {
+                    lootCopy = loot.clone();
+                    for (int i = 0; i < lootCopy.length; i++) {
+                        lootCopy[i] = (lootCopy[i] * factor) - lootCopy[i];
+                    }
+                } else {
+                    lootCopy = ResourceType.getBuffer();
+                }
+                if (attack.getAttack_type() == AttackType.VICTORY) {
                     (lootList == null ? lootList = new ObjectArrayList<>() : lootList).add(
-                            LootEntry.forAlliance(allianceId, attack.getDate(), lootCopy, NationLootType.WAR_LOSS));
+                            LootEntry.forNation(attack.getDefender_id(), attack.getDate(), lootCopy, NationLootType.WAR_LOSS));
+                } else if (attack.getAttack_type() == AttackType.A_LOOT) {
+                    int allianceId = attack.getAllianceIdLooted();
+                    if (allianceId > 0) {
+                        (lootList == null ? lootList = new ObjectArrayList<>() : lootList).add(
+                                LootEntry.forAlliance(allianceId, attack.getDate(), lootCopy, NationLootType.WAR_LOSS));
+                    }
                 }
             }
         }
@@ -2729,34 +2782,33 @@ public class WarDB extends DBMainV2 {
             Locutus.imp().getNationDB().saveLoot(lootList, eventConsumer);
         }
 
-        List<AttackEntry> toSave = new ArrayList<>();
-        Map<Integer, Set<Integer>> attackIdsByWarId = new Int2ObjectOpenHashMap<>();
+        List<AttackEntry> toSave = new ObjectArrayList<>(values.size());
 
         // add to attacks map
         synchronized (attacksByWarId2) {
+            outer:
             for (AbstractCursor attack : values) {
-                // AttackEntry(int id, int war_id, int attacker_id, int defender_id, long date, byte[] data) {
-                toSave.add(AttackEntry.of(attack, attackCursorFactory));
+                AttackEntry entry = AttackEntry.of(attack, attackCursorFactory);
+                toSave.add(entry);
                 List<byte[]> attacks = attacksByWarId2.get(attack.getWar_id());
-
-                Set<Integer> attackIds = attackIdsByWarId.get(attack.getWar_id());
-                if (attackIds == null && attacks != null && !attacks.isEmpty()) {
-                    for (byte[] data : attacks) {
+                if (attacks != null && !attacks.isEmpty()) {
+                    for (int i = 0; i < attacks.size(); i++) {
+                        byte[] data = attacks.get(i);
                         int id = attackCursorFactory.getId(data);
-                        attackIds = new IntOpenHashSet();
-                        attackIds.add(id);
-                        attackIdsByWarId.put(attack.getWar_id(), attackIds);
+                        if (id == attack.getId()) {
+                            if (replaceAttack) {
+                                attacks.set(i, entry.data());
+                            }
+                            continue outer;
+                        }
                     }
-                }
-                if (attackIds != null && attackIds.contains(attack.getWar_attack_id())) continue;
-                if (attacks == null) {
-                    attacks = new ObjectArrayList<>();
+                } if (attacks == null) {
+                    attacks = new ObjectArrayList<>(1);
                     attacksByWarId2.put(attack.getWar_id(), attacks);
                 }
-
-                byte[] data = attackCursorFactory.toBytes(attack);
-                attacks.add(data);
+                attacks.add(entry.data());
             }
+
             if (!Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS && values.size() > 1) {
                 long turn = TimeUtil.getTurn();
                 if (turn > lastUnloadAttacks) {
@@ -2835,14 +2887,14 @@ public class WarDB extends DBMainV2 {
                     synchronized (attackList) {
                         attackList.add(attack);
                         if (attackList.size() > 1000) {
-                            saveAttacks(attackList, eventConsumer);
+                            saveAttacks(attackList, eventConsumer, true, false);
                             attackList.clear();
                         }
                     }
                     return false;
                 }
             });
-            saveAttacks(attackList, eventConsumer);
+            saveAttacks(attackList, eventConsumer, true, false);
             return true;
         }
 
@@ -2962,7 +3014,7 @@ public class WarDB extends DBMainV2 {
         }
 
         { // add to db
-            saveAttacks(newAttacks, eventConsumer);
+            saveAttacks(newAttacks, eventConsumer, true, false);
         }
 
         if (runAlerts && eventConsumer != null) {
@@ -3034,13 +3086,12 @@ public class WarDB extends DBMainV2 {
         Logg.text("Loaded " + attacks.size() + " attacks " + attacksByWarId2.containsKey(2114621));
     }
 
-    private boolean fixAttack(int attackId, Consumer<AbstractCursor> onEach) {
+    private void fixAttack(int attackId, Consumer<AbstractCursor> onEach) {
         Set<AbstractCursor> attacks = getAttacksById(Set.of(attackId));
-        if (attacks.isEmpty()) return false;
+        if (attacks.isEmpty()) return;
         AbstractCursor attack = attacks.iterator().next();
         onEach.accept(attack);
         saveAttacksDb(List.of(AttackEntry.of(attack, attackCursorFactory)));
-        return true;
     }
 
     private void fixAttacks() {
@@ -3469,7 +3520,7 @@ public class WarDB extends DBMainV2 {
     }
 
     public int countWarsByNation(int nation_id, long date, Long endDate) {
-        if (endDate == null || endDate == Long.MAX_VALUE) return countWarsByNation(nation_id, date);
+        if (endDate == null || endDate == java.lang.Long.MAX_VALUE) return countWarsByNation(nation_id, date);
         int result;
         synchronized (warsByNationLock) {
             Object wars = warsByNationId.get(nation_id);

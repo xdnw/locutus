@@ -305,8 +305,10 @@ public class TimeUtil {
                 case "s":
                     time += nums;
                     break;
+                case "month":
+                    throw new IllegalArgumentException("Invalid unit: " + letters + ". Months are not supported due to variable length. Use '30d' instead.");
                 default:
-                    throw new IllegalArgumentException("Unknown unit: " + letters);
+                    throw new IllegalArgumentException("Unknown unit: " + letters + ". Valid units are year (y), week (w), day (d), hour (h), minute (m), second (s).");
             }
         }
         if (time < 1000 && MathMan.isInteger(string)) {

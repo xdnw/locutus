@@ -885,11 +885,13 @@ public class UtilityCommands {
     }
     @Command(desc = "Rank the number of wars between two coalitions by nation or alliance\n" +
             "Defaults to alliance ranking", viewable = true)
-    public String warRanking(@Me JSONObject command, @Me IMessageIO channel, @Timestamp long time, Set<NationOrAlliance> attackers, Set<NationOrAlliance> defenders,
+    public String warRanking(@Me JSONObject command, @Me IMessageIO channel, @Timestamp long time, @AllowDeleted Set<NationOrAlliance> attackers, @AllowDeleted Set<NationOrAlliance> defenders,
                              @Arg("Only include offensive wars in the ranking")
                              @Switch("o") boolean onlyOffensives,
                              @Arg("Only include defensive wars in the ranking")
                              @Switch("d") boolean onlyDefensives,
+                             @Switch("c") @Arg("Only rank the `attackers` side")
+                             boolean only_rank_attackers,
                              @Arg("Rank the average wars per alliance member")
                              @Switch("n") boolean normalizePerMember,
                              @Arg("Ignore inactive nations when determining alliance member counts")
@@ -908,12 +910,27 @@ public class UtilityCommands {
             public void accept(DBWar dbWar, GroupedRankBuilder<Integer, DBWar> builder) {
                 if (warType != null && dbWar.getWarType() != warType) return;
                 if (statuses != null && !statuses.contains(dbWar.getStatus())) return;
-                if (!rankByNation) {
-                    if (dbWar.getAttacker_aa() != 0 && !onlyDefensives) builder.put(dbWar.getAttacker_aa(), dbWar);
-                    if (dbWar.getDefender_aa() != 0 && !onlyOffensives) builder.put(dbWar.getDefender_aa(), dbWar);
+
+                boolean includeAttacker;
+                boolean includeDefender;
+                if (only_rank_attackers) {
+                    if (parser.getIsPrimary().apply(dbWar)) {
+                        includeAttacker = true;
+                        includeDefender = false;
+                    } else {
+                        includeAttacker = false;
+                        includeDefender = true;
+                    }
                 } else {
-                    if (!onlyDefensives) builder.put(dbWar.getAttacker_id(), dbWar);
-                    if (!onlyOffensives) builder.put(dbWar.getDefender_id(), dbWar);
+                    includeAttacker = true;
+                    includeDefender = true;
+                }
+                if (!rankByNation) {
+                    if (includeAttacker && dbWar.getAttacker_aa() != 0 && !onlyDefensives) builder.put(dbWar.getAttacker_aa(), dbWar);
+                    if (includeDefender && dbWar.getDefender_aa() != 0 && !onlyOffensives) builder.put(dbWar.getDefender_aa(), dbWar);
+                } else {
+                    if (includeAttacker && !onlyDefensives) builder.put(dbWar.getAttacker_id(), dbWar);
+                    if (includeDefender && !onlyOffensives) builder.put(dbWar.getDefender_id(), dbWar);
                 }
             }
         }).sumValues(f -> 1d);

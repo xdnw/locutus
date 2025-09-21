@@ -61,8 +61,14 @@ public class WarRoom {
             this.channel = channel;
 
             if (oldChannelId == 0 && channel != null && updateUsers) {
-                updatePin(true);
-                addInitialParticipants(isPlanning());
+                if (!channel.canTalk()) {
+                    if (logChan != null) {
+                        RateLimitUtil.queueMessage(logChan, "Cannot talk in channel: " + channel.getAsMention(), true, 60);
+                    }
+                } else {
+                    updatePin(true);
+                    addInitialParticipants(isPlanning());
+                }
             }
 
             if (oldChannel != null) {

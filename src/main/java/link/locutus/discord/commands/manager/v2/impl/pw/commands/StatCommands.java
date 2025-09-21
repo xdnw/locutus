@@ -127,9 +127,11 @@ public class StatCommands {
                                  @Arg(value = "End time of the period to rank\n" +
                                          "Defaults to now", group = 0)
                                  @Timestamp @Default Long timeEnd,
+                                 @AllowDeleted
                                  @Arg(value = "Nations required to be in the conflicts\n" +
                                          "Defaults to all existing nations", group = 1)
                                  @Default("*") Set<NationOrAlliance> coalition1,
+                                 @AllowDeleted
                                  @Arg(value = "Nations required to be in the conflicts against `coalition1`\n" +
                                          "Defaults to all nations", group = 1)
                                  @Default() Set<NationOrAlliance> coalition2,
@@ -294,7 +296,7 @@ public class StatCommands {
                     "War and Attack Filters"
             })
     public String myloot(@Me IMessageIO channel, @Me DBNation nation, @Me JSONObject command,
-                         @Arg(value = "Nations required to be in the conflicts against you\nDefaults to all nations", group = 0)
+                         @AllowDeleted @Arg(value = "Nations required to be in the conflicts against you\nDefaults to all nations", group = 0)
                          Set<NationOrAlliance> coalition2,
 
                          @Arg(value = "Start time of the period to include", group = 1)
@@ -367,9 +369,9 @@ public class StatCommands {
     public static String warsCost(@Me IMessageIO channel,
                            @Me JSONObject command,
                           @Arg(value = "Nations required to be in the conflict against `coalition2`", group = 0)
-                          Set<NationOrAlliance> coalition1,
+                                      @AllowDeleted Set<NationOrAlliance> coalition1,
                           @Arg(value = "Nations required to be in the conflicts against `coalition1`", group = 0)
-                          Set<NationOrAlliance> coalition2,
+                                      @AllowDeleted Set<NationOrAlliance> coalition2,
                            @Arg(value = "Start time of the period to include", group = 1)
                            @Timestamp long timeStart,
                                   @Arg(value = "End time of the period to rank\n" +
@@ -1434,6 +1436,7 @@ public class StatCommands {
                                      @Switch("c") boolean attach_csv,
                                      @Switch("s") boolean attach_sheet) throws IOException {
         if (end_time == null) end_time = System.currentTimeMillis();
+        if (end_time <= start_time) throw new IllegalArgumentException("End time must be after start time");
         long endTurn = Math.min(TimeUtil.getTurn(), TimeUtil.getTurn(end_time));
         long startTurn = TimeUtil.getTurn(start_time);
 
@@ -1589,8 +1592,8 @@ public class StatCommands {
             viewable = true)
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public static String WarCostByResourceSheet(@Me IMessageIO channel, @Me JSONObject command, @Me @Default GuildDB db,
-                                                Set<NationOrAlliance> attackers,
-                                                Set<NationOrAlliance> defenders,
+                                                @AllowDeleted Set<NationOrAlliance> attackers,
+                                                @AllowDeleted Set<NationOrAlliance> defenders,
                                                 @Timestamp long time,
                                                 @Switch("c") boolean excludeConsumption,
                                                 @Switch("i") boolean excludeInfra,
@@ -1876,7 +1879,7 @@ public class StatCommands {
             - Offenses: Attacking a nation which fights back
             - Wars: Combination of defensive and offensive wars (not raids)""", viewable = true)
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
-    public String WarCostSheet(@Me IMessageIO channel, @Me @Default GuildDB db, Set<NationOrAlliance> attackers, Set<NationOrAlliance> defenders, @Timestamp long time, @Default @Timestamp Long endTime,
+    public String WarCostSheet(@Me IMessageIO channel, @Me @Default GuildDB db, @AllowDeleted Set<NationOrAlliance> attackers, @AllowDeleted  Set<NationOrAlliance> defenders, @Timestamp long time, @Default @Timestamp Long endTime,
                                @Switch("c") boolean excludeConsumption,
                                @Switch("i") boolean excludeInfra,
                                @Switch("l") boolean excludeLoot,
@@ -2320,8 +2323,8 @@ public class StatCommands {
     @Command(desc = "Create a google sheet of nations and the number of bad attacks they did over a timeframe", viewable = true)
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public void attackBreakdownSheet(@Me IMessageIO io, @Me @Default GuildDB db,
-                                     Set<NationOrAlliance> attackers,
-                                     Set<NationOrAlliance> defenders,
+                                     @AllowDeleted Set<NationOrAlliance> attackers,
+                                     @AllowDeleted Set<NationOrAlliance> defenders,
                                      @Timestamp Long start,
                                      @Timestamp @Default Long end,
                                      @Switch("s") SpreadSheet sheet,
@@ -2772,9 +2775,9 @@ public class StatCommands {
     public String attackTypeBreakdownAB(@Me IMessageIO channel,
                                         @Me JSONObject command,
                                         @Arg(value = "Nations required to be in the conflict against `coalition2`", group = 0)
-                                            Set<NationOrAlliance> coalition1,
+                                            @AllowDeleted Set<NationOrAlliance> coalition1,
                                         @Arg(value = "Nations required to be in the conflicts against `coalition1`", group = 0)
-                                            Set<NationOrAlliance> coalition2,
+                                            @AllowDeleted Set<NationOrAlliance> coalition2,
                                         @Arg(value = "Start time of the period to include", group = 1)
                                             @Timestamp long timeStart,
                                         @Arg(value = "End time of the period to rank\n" +
@@ -2846,7 +2849,7 @@ public class StatCommands {
 
     @Command(desc = "Get a line graph by day of the war stats between two coalitions", viewable = true)
     public String warCostsByDay(@Me @Default GuildDB db, @Me IMessageIO io, @Me JSONObject command,
-            Set<NationOrAlliance> coalition1, Set<NationOrAlliance> coalition2,
+                                @AllowDeleted Set<NationOrAlliance> coalition1, @AllowDeleted Set<NationOrAlliance> coalition2,
             WarCostByDayMode type,
             @Timestamp long time_start,
             @Default @Timestamp Long time_end,
@@ -2908,16 +2911,16 @@ public class StatCommands {
             @Timestamp long time_start,
             @Default @Timestamp Long time_end,
 
-            @Switch("c1") Set<NationOrAlliance> coalition1,
-            @Switch("c2") Set<NationOrAlliance> coalition2,
-            @Switch("c3") Set<NationOrAlliance> coalition3,
-            @Switch("c4") Set<NationOrAlliance> coalition4,
-            @Switch("c5") Set<NationOrAlliance> coalition5,
-            @Switch("c6") Set<NationOrAlliance> coalition6,
-            @Switch("c7") Set<NationOrAlliance> coalition7,
-            @Switch("c8") Set<NationOrAlliance> coalition8,
-            @Switch("c9") Set<NationOrAlliance> coalition9,
-            @Switch("c10") Set<NationOrAlliance> coalition10,
+            @AllowDeleted @Switch("c1") Set<NationOrAlliance> coalition1,
+            @AllowDeleted @Switch("c2") Set<NationOrAlliance> coalition2,
+            @AllowDeleted @Switch("c3") Set<NationOrAlliance> coalition3,
+            @AllowDeleted @Switch("c4") Set<NationOrAlliance> coalition4,
+            @AllowDeleted @Switch("c5") Set<NationOrAlliance> coalition5,
+            @AllowDeleted @Switch("c6") Set<NationOrAlliance> coalition6,
+            @AllowDeleted @Switch("c7") Set<NationOrAlliance> coalition7,
+            @AllowDeleted @Switch("c8") Set<NationOrAlliance> coalition8,
+            @AllowDeleted @Switch("c9") Set<NationOrAlliance> coalition9,
+            @AllowDeleted @Switch("c10") Set<NationOrAlliance> coalition10,
 
             @Switch("o") boolean running_total,
             @Switch("s") Set<WarStatus> allowedWarStatus,

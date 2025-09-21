@@ -2203,7 +2203,7 @@ public class GuildKey {
         public String help() {
             return "The #channel for users to request grants in. No additional functionality is added, you can setup a ticket bot or an embed there";
         }
-    }.setupRequirements(f -> f.requireValidAlliance().requiresRole(Roles.ECON_GRANT_SELF, true).requiresOffshore());
+    }.setupRequirements(f -> f.requireValidAlliance().requiresOffshore());
 
     public static final GuildSetting<Boolean> GRANT_REQUEST_TAX_ACCOUNT = new GuildBooleanSetting(GuildSettingCategory.BANK_GRANTS, GRANT_REQUESTS) {
         @NoFormat

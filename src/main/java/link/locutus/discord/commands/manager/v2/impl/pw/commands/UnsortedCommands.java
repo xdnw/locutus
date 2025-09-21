@@ -560,7 +560,7 @@ public class UnsortedCommands {
     }
 
     @Command(desc = "List the public resource imports or exports of a nation or alliance to other nations or alliances over a period of time", viewable = true)
-    public String inflows(Set<NationOrAlliance> nationOrAlliances,
+    public String inflows(@AllowDeleted Set<NationOrAlliance> nationOrAlliances,
                           @Arg("Date to start from")
                           @Timestamp long cutoffMs,
                           @Arg("Do not show inflows")

@@ -14,7 +14,11 @@ public class NationCreateEvent extends NationChangeEvent2 {
     protected void postToGuilds() {
         super.postToGuilds();
         for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
-            db.getHandler().onGlobalNationCreate(this);
+            try {
+                db.getHandler().onGlobalNationCreate(this);
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
         }
 
     }

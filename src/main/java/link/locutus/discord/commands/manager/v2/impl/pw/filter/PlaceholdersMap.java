@@ -369,7 +369,7 @@ public class PlaceholdersMap {
             coalitionStr = input.substring("coalition:".length());
             isCoalition = true;
         }
-        Set<Integer> coalition = db.getCoalition(coalitionStr);
+        Set<Integer> coalition = db == null ? null : db.getCoalition(coalitionStr);
         if (!coalition.isEmpty()) {
             return coalition.stream().map(DBAlliance::getOrCreate).collect(Collectors.toSet());
         }
