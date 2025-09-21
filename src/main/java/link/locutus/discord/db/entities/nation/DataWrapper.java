@@ -27,7 +27,7 @@ public abstract class DataWrapper<T extends DataHeader> {
     public abstract Function<Integer, Map<Integer, DBCity>> getGetCities();
 
     public <T, V> V getSafe(ColumnInfo<T, V> get, int offset) {
-        if (offset == -1) return get.getDefault();
+        if (get.getOffset() == -1) return get.getDefault();
         return get(get, offset);
     }
 

@@ -61,11 +61,6 @@ public abstract class ColumnInfo<P, V> {
         return index;
     }
 
-    public V readSafe(byte[] buffer, int offset) throws IOException {
-        if (offset == -1) return getDefault();
-        return read(buffer, offset);
-    }
-
     public abstract V read(byte[] buffer, int offset) throws IOException;
 
     public final void skip(DataInputStream dis) throws IOException {

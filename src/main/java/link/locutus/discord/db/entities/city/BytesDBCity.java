@@ -72,7 +72,8 @@ public class BytesDBCity extends DBCity {
 
     private <T> T getSafe(ColumnInfo<DBCity, T> get) {
         try {
-            return get.readSafe(this.wrapper.data, get.getOffset() + this.offset);
+            if (get.getOffset() == -1) return get.getDefault();
+            return get.read(this.wrapper.data, get.getOffset() + this.offset);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
