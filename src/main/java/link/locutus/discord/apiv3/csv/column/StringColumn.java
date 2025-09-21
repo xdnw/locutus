@@ -23,6 +23,11 @@ public class StringColumn<P> extends ColumnInfo<P, String> {
     }
 
     @Override
+    public String getDefault() {
+        return "";
+    }
+
+    @Override
     public String get() {
         if (cacheValue != null) {
             return cacheValue;

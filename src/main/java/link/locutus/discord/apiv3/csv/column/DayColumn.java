@@ -20,6 +20,11 @@ public class DayColumn<P> extends NumberColumn<P, Long> {
     }
 
     @Override
+    public Long getDefault() {
+        return 0L;
+    }
+
+    @Override
     public int getBytes() {
         return 2;
     }

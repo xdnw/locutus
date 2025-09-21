@@ -18,6 +18,11 @@ public class BooleanColumn<P> extends ColumnInfo<P, Boolean> {
     }
 
     @Override
+    public Boolean getDefault() {
+        return false;
+    }
+
+    @Override
     public int getBytes() {
         return 1;
     }
