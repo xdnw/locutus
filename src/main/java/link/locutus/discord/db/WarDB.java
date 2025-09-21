@@ -213,7 +213,7 @@ public class WarDB extends DBMainV2 {
         }
     }
 
-    private void reserializeAttacks5() {
+    private synchronized void reserializeAttacks5() {
         Logg.info("Starting attacks 5bit re-encode. This may take a while...");
         // Ensure metadata table exists and check if already run
         executeStmt("CREATE TABLE IF NOT EXISTS war_metadata (key TEXT PRIMARY KEY, value TEXT)");
