@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 public class DiscordWebBindings extends WebBindingHelper {
 
     @HtmlInput
-    @Binding(types = {ICommand.class, WildcardType.class})
+    @Binding(types = {ICommand.class, WildcardType.class}, multiple = true)
     public String iCommand(@Me User user, @Default ParameterData param) {
         return command(user, param);
     }

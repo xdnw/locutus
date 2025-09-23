@@ -614,10 +614,10 @@ public class OptimalBuild extends Command {
                 double roi;
                 if (cost < 0) {
                     roi = Double.POSITIVE_INFINITY;
-                    result.append("\nROI (weekly): ").append(MathMan.format(roi)).append(" (no cost to import)");
+                    result.append("\nROI (weekly): ").append(MathMan.format(roi)).append(" (no cost to import)\n");
                 } else {
                     roi = ((netProfit / cost) / days) * 7 * 100;
-                    result.append("\nROI (weekly): ").append(MathMan.format(roi)).append("%");
+                    result.append("\nROI (weekly): ").append(MathMan.format(roi)).append("%\n");
                 }
             }
         }
@@ -626,9 +626,9 @@ public class OptimalBuild extends Command {
         String emoji = "Grant";
         String command = Settings.commandPrefix(true) + "grant {usermention} " + json;
 
-        result.append(" Disease: ").append(optimized.calcDisease(hasProject)).append("\n");
+        result.append(" Disease: ").append(MathMan.format(optimized.calcDisease(hasProject))).append("\n");
         result.append(" Pollution: ").append(optimized.calcPollution(hasProject)).append("\n");
-        result.append(" Crime: ").append(optimized.calcCrime(hasProject)).append("\n");
+        result.append(" Crime: ").append(MathMan.format(optimized.calcCrime(hasProject))).append("\n");
         result.append(" Commerce: ").append(optimized.calcCommerce(hasProject) + "/" + optimized.getMaxCommerce(hasProject)).append("\n");
         result.append(" Population: ").append(optimized.calcPopulation(hasProject)).append("\n");
 

@@ -201,7 +201,7 @@ public class WebPWBindings extends WebBindingHelper {
 
     @HtmlInput
     @PlaceholderType
-    @Binding(types = {Class.class})
+    @Binding(types = {Class.class, WildcardType.class}, multiple = true)
     public String clazz(ParameterData param) {
         Set<Class<?>> types = Locutus.cmd().getV2().getPlaceholders().getTypes();
         List<String> options = types.stream().map(PlaceholdersMap::getClassName).collect(Collectors.toList());
@@ -1059,7 +1059,7 @@ public class WebPWBindings extends WebBindingHelper {
     }
 
     @HtmlInput
-    @Binding(types = { GuildSetting.class, WildcardType.class })
+    @Binding(types = { GuildSetting.class, WildcardType.class }, multiple = true)
     public String GuildSetting(@Me GuildDB db, @Me Guild guild, @Me User author, ParameterData param) {
         ArrayList<GuildSetting> options = new ArrayList<>(Arrays.asList(GuildKey.values()));
         options.removeIf(key -> {

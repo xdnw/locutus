@@ -64,7 +64,7 @@ import java.util.stream.Collectors;
 public class PWCompleter extends BindingHelper {
     @Autocomplete
     @PlaceholderType
-    @Binding(types={Class.class})
+    @Binding(types={Class.class, WildcardType.class}, multiple = true)
     public List<String> PlaceholderType(String input) {
         PlaceholdersMap phMap = Locutus.cmd().getV2().getPlaceholders();
         List<String> options = phMap.getTypes().stream().map(PlaceholdersMap::getClassName).collect(Collectors.toList());
@@ -163,7 +163,7 @@ public class PWCompleter extends BindingHelper {
     }
 
     @Autocomplete
-    @Binding(types={ICommand.class, WildcardType.class})
+    @Binding(types={ICommand.class, WildcardType.class}, multiple = true)
     public List<String> commandEndpoint(String input) {
         return command(input);
     }
@@ -570,7 +570,7 @@ public class PWCompleter extends BindingHelper {
     }
 
     @Autocomplete
-    @Binding(types={GuildSetting.class, WildcardType.class})
+    @Binding(types={GuildSetting.class, WildcardType.class}, multiple = true)
     public List<String> setting(String input) {
         List<String> options = Arrays.asList(GuildKey.values()).stream().map(GuildSetting::name).collect(Collectors.toList());
         return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true);

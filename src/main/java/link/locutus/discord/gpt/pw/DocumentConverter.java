@@ -7,7 +7,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.Chunker;
 import link.locutus.discord.gpt.GptHandler;
-import link.locutus.discord.gpt.ISourceManager;
+import link.locutus.discord.gpt.IVectorDB;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
 import link.locutus.discord.gpt.imps.embedding.IEmbedding;
 import link.locutus.discord.gpt.imps.moderator.IModerator;
@@ -29,14 +29,14 @@ public class DocumentConverter {
     private final GptHandler handler;
     private final IEmbedding embedding;
     private final IModerator moderator;
-    private final ISourceManager sourceManager;
+    private final IVectorDB sourceManager;
 
     public DocumentConverter(LimitManager limitManager, GptHandler handler) {
         this.limitManager = limitManager;
         this.handler = handler;
         this.embedding = handler.getEmbedding();
         this.moderator = handler.getModerator();
-        this.sourceManager = handler.getSourceManager();
+        this.sourceManager = handler.getVectorDB();
     }
 
     public GptHandler getHandler() {
@@ -102,8 +102,8 @@ public class DocumentConverter {
 
     public List<ConvertingDocument> getDocumentConversions(Guild guild) {
         List<ConvertingDocument> documents = new ArrayList<>();
-        for (ConvertingDocument document : handler.getSourceManager().getUnconvertedDocuments()) {
-            EmbeddingSource source = handler.getSourceManager().getEmbeddingSource(document.source_id);
+        for (ConvertingDocument document : handler.getVectorDB().getUnconvertedDocuments()) {
+            EmbeddingSource source = handler.getVectorDB().getEmbeddingSource(document.source_id);
             if (source != null) {
                 documents.add(document);
             }
@@ -112,8 +112,8 @@ public class DocumentConverter {
     }
 
     public ConvertingDocument createDocument(User user, GuildDB db, String documentName, String markdown, String prompt) {
-        EmbeddingSource source = handler.getSourceManager().getOrCreateSource(documentName, db.getIdLong());
-        long hash = handler.getSourceManager().getHash(markdown);
+        EmbeddingSource source = handler.getVectorDB().getOrCreateSource(documentName, db.getIdLong());
+        long hash = handler.getVectorDB().getHash(markdown);
         if (hash == source.source_hash) {
             throw new IllegalArgumentException("An identical document already exists: `" + documentName + "`. See: " + CM.chat.dataset.view.cmd.source(source.getQualifiedName()));
         }
@@ -131,7 +131,7 @@ public class DocumentConverter {
         document.date = System.currentTimeMillis();
         document.hash = hash;
 
-        handler.getSourceManager().addDocument(List.of(document));
+        handler.getVectorDB().addDocument(List.of(document));
 
         this.submitDocument(db, document, true);
 
@@ -148,10 +148,10 @@ public class DocumentConverter {
             }
             return;
         }
-        EmbeddingSource source = handler.getSourceManager().getEmbeddingSource(document.source_id);
+        EmbeddingSource source = handler.getVectorDB().getEmbeddingSource(document.source_id);
         if (source == null) {
             String msg = "Cannot find document source `" + document.source_id + "` in guild " + db.getGuild() + " (was it deleted?)";
-            handler.getSourceManager().setDocumentError(document, msg);
+            handler.getVectorDB().setDocumentError(document, msg);
             if (throwError) {
                 throw new IllegalArgumentException(msg);
             }
@@ -162,7 +162,7 @@ public class DocumentConverter {
         if (guildId == 0) {
             // TODO set error
             String msg = "Document `" + source.getQualifiedName() + "` (`#" + source.source_id + "`) has no assigned guild";
-            handler.getSourceManager().setDocumentError(document, msg);
+            handler.getVectorDB().setDocumentError(document, msg);
             if (throwError) {
                 throw new IllegalArgumentException(msg);
             }
@@ -172,7 +172,7 @@ public class DocumentConverter {
         Member member = db.getGuild().getMemberById(document.user);
         if (member == null) {
             String msg = "Document submitted by user `" + DiscordUtil.getUserName(document.user) + "` but cannot be found in " + db.getGuild();
-            handler.getSourceManager().setDocumentError(document, msg);
+            handler.getVectorDB().setDocumentError(document, msg);
             if (throwError) {
                 throw new IllegalArgumentException(msg);
             }
@@ -183,7 +183,7 @@ public class DocumentConverter {
         GptLimitTracker tracker = getLimitManager().getLimitTracker(db);
         if (tracker == null) {
             String msg = "Cannot find provider for document `" + source.getQualifiedName() + "` (`#" + source.source_id + "`) in guild " + db.getGuild();
-            handler.getSourceManager().setDocumentError(document, msg);
+            handler.getVectorDB().setDocumentError(document, msg);
             if (throwError) {
                 throw new IllegalArgumentException(msg);
             }
@@ -193,7 +193,7 @@ public class DocumentConverter {
         DBNation nation = DiscordUtil.getNation(user);
         if (nation == null) {
             String msg = "Cannot find nation for user `" + user.getName() + "` in guild " + db.getGuild();
-            handler.getSourceManager().setDocumentError(document, msg);
+            handler.getVectorDB().setDocumentError(document, msg);
             if (throwError) {
                 throw new IllegalArgumentException(msg);
             }
@@ -203,7 +203,7 @@ public class DocumentConverter {
         IText2Text text2Text = handler.getText2Text();
         if (text2Text == null) {
             String msg = "Text2Text provider is not available for document `" + source.getQualifiedName() + "` (`#" + source.source_id + "`) in guild " + db.getGuild();
-            handler.getSourceManager().setDocumentError(document, msg);
+            handler.getVectorDB().setDocumentError(document, msg);
             if (throwError) {
                 throw new IllegalArgumentException(msg);
             }
@@ -235,7 +235,7 @@ public class DocumentConverter {
 
             Boolean status = conversionStatus.get(document.source_id);
             if (status == Boolean.FALSE) {
-                handler.getSourceManager().setDocumentErrorIfAbsent(document, "Document conversion manually cancelled");
+                handler.getVectorDB().setDocumentErrorIfAbsent(document, "Document conversion manually cancelled");
                 if (throwError) {
                     throw new IllegalArgumentException(document.error);
                 }
@@ -285,10 +285,10 @@ public class DocumentConverter {
 
                         handler.registerEmbeddings(source, facts, false, false);
                         source.source_hash = document.hash;
-                        handler.getSourceManager().updateSources(List.of(source));
+                        handler.getVectorDB().updateSources(List.of(source));
 
                         document.text = remaining;
-                        handler.getSourceManager().addDocument(List.of(document));
+                        handler.getVectorDB().addDocument(List.of(document));
 
                         conversionStatus.remove(document.source_id);
                         if (isLastChunk) {
@@ -300,14 +300,14 @@ public class DocumentConverter {
                 }).exceptionally(e -> {
                     e.printStackTrace();
                     synchronized (lock) {
-                        handler.getSourceManager().setDocumentError(document, e.getMessage());
+                        handler.getVectorDB().setDocumentError(document, e.getMessage());
                         conversionStatus.remove(document.source_id);
                         return null;
                     }
                 });
 
             } catch (Throwable e) {
-                handler.getSourceManager().setDocumentError(document, e.getMessage());
+                handler.getVectorDB().setDocumentError(document, e.getMessage());
                 conversionStatus.remove(document.source_id);
             }
         }
@@ -316,7 +316,7 @@ public class DocumentConverter {
     public void pauseConversion(ConvertingDocument document, String reason) {
         conversionStatus.put(document.source_id, false);
         document.error = "Paused: " + reason;
-        handler.getSourceManager().addDocument(List.of(document));
+        handler.getVectorDB().addDocument(List.of(document));
     }
 
     public String resumeConversion(GuildDB db, ConvertingDocument document) {
@@ -324,24 +324,24 @@ public class DocumentConverter {
         boolean removed = conversionStatus.remove(document.source_id, false);
         String existingError = document.error;
         document.error = null;
-        handler.getSourceManager().addDocument(List.of(document));
+        handler.getVectorDB().addDocument(List.of(document));
         submitDocument(db, document, true);
         return existingError;
     }
 
     private void setConverted(ConvertingDocument document) {
         document.converted = true;
-        handler.getSourceManager().addDocument(List.of(document));
+        handler.getVectorDB().addDocument(List.of(document));
         // get or create source
-        EmbeddingSource source = handler.getSourceManager().getEmbeddingSource(document.source_id);
+        EmbeddingSource source = handler.getVectorDB().getEmbeddingSource(document.source_id);
         if (source != null) {
             source.source_hash = document.hash;
-            handler.getSourceManager().updateSources(List.of(source));
+            handler.getVectorDB().updateSources(List.of(source));
         } else {
             System.out.println("Cannot find source for document `#" + document.source_id + "`");
         }
 
-        handler.getSourceManager().deleteDocument(document.source_id);
+        handler.getVectorDB().deleteDocument(document.source_id);
     }
 
     public void initDocumentConversion(GuildDB db) {

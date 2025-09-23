@@ -13,7 +13,8 @@ import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import link.locutus.discord.Logg;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.ASourceManager;
+import link.locutus.discord.db.DBMainV3;
+import link.locutus.discord.db.VectorDB;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.imps.embedding.GoogleAiEmbedding;
 import link.locutus.discord.gpt.imps.embedding.IEmbedding;
@@ -26,7 +27,6 @@ import link.locutus.discord.gpt.imps.moderator.OpenAiModerator;
 import link.locutus.discord.gpt.imps.text2text.GoogleAiText2Text;
 import link.locutus.discord.gpt.imps.text2text.IText2Text;
 import link.locutus.discord.gpt.imps.text2text.OpenAiText2Text;
-import link.locutus.discord.gpt.pw.GptDatabase;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 
 import java.io.IOException;
@@ -35,14 +35,16 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.IntConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.pusher.client.util.internal.Preconditions.checkNotNull;
 import static link.locutus.discord.gpt.GPTUtil.createGoogleClient;
 
-public class GptHandler {
-    public ISourceManager sourceManager;
+public abstract class GptHandler {
+    private final DBMainV3 sqlDb;
+    private final  IVectorDB vectorDB;
 
     private IModerator moderator;
     private volatile IEmbedding embedding;
@@ -57,8 +59,10 @@ public class GptHandler {
     private Object initGoogleClientLock = new Object();
     private Client googleClient2;
 
-    public GptHandler(GptDatabase database) throws Exception {
-        this.sourceManager = new ASourceManager(database, getEmbedding());
+    public GptHandler() throws Exception {
+        VectorDB db = new VectorDB(getEmbedding());
+        this.vectorDB = db;
+        this.sqlDb = db;
     }
 
     private OpenAIClient getOrCreateOpenAiService() {
@@ -82,7 +86,7 @@ public class GptHandler {
         if (googleClient2 == null && !initGoogleClient) {
             synchronized (initGoogleClientLock) {
                 initGoogleClient = true;
-                this.googleClient2 = createGoogleClient(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.GOOGLE_AI.BASE_URL, Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.GOOGLE_AI.API_KEY);
+                this.googleClient2 = createGoogleClient(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.GOOGLE.BASE_URL, Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.GOOGLE.API_KEY);
             }
         }
         if (googleClient2 == null) {
@@ -91,8 +95,12 @@ public class GptHandler {
         return googleClient2;
     }
 
-    public ISourceManager getSourceManager() {
-        return sourceManager;
+    public IVectorDB getVectorDB() {
+        return vectorDB;
+    }
+
+    public DBMainV3 getSqlDb() {
+        return sqlDb;
     }
 
     public IEmbedding getEmbedding() {
@@ -110,7 +118,7 @@ public class GptHandler {
                             this.embedding = new OpenAiEmbedding(GPTUtil.getRegistry(), getOrCreateOpenAiService(), model);
                         }
                         case GOOGLE -> {
-                            String apiKey = Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.GOOGLE_AI.API_KEY;
+                            String apiKey = Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.GOOGLE.API_KEY;
                             if (apiKey.isEmpty()) {
                                 throw new IllegalArgumentException("Google AI API key must not be empty. Please check your `config.yml` file.");
                             }
@@ -159,6 +167,10 @@ public class GptHandler {
 
     }
 
+    public IntConsumer getUsageTracker(IText2Text t2) {
+        return (t) -> vectorDB.addUsage(t2.getId(), t);
+    }
+
     public IText2Text getText2Text() {
         if (this.text2TextList == null) {
             synchronized (this) {
@@ -178,14 +190,14 @@ public class GptHandler {
         synchronized (text2TextList) {
             if (text2TextList.size() == 1) {
                 IText2Text possible = text2TextList.keySet().iterator().next();
-                if (sourceManager.getUsage(possible.getId()) < text2TextList.get(possible)) {
+                if (vectorDB.getUsage(possible.getId()) < text2TextList.get(possible)) {
                     return possible;
                 }
                 throw new IllegalArgumentException("The only configured Text2Text model has reached its daily limit.");
             }
 
             return this.text2TextList.entrySet().stream()
-                    .filter(entry -> sourceManager.getUsage(entry.getKey().getId()) < entry.getValue())
+                    .filter(entry -> vectorDB.getUsage(entry.getKey().getId()) < entry.getValue())
                     .map(Map.Entry::getKey)
                     .findFirst()
                     .orElseThrow(() -> new IllegalArgumentException("All Text2Text models have reached their daily limit."));
@@ -241,21 +253,21 @@ public class GptHandler {
         // iterate over descriptionAndExpandedStream
         IEmbedding embeddingFinal = getEmbedding();
         descriptionStream.forEach(description -> {
-            long hash = sourceManager.getHash(description);
+            long hash = vectorDB.getHash(description);
             if (hashesSet.add(hash)) {
-                sourceManager.createEmbeddingIfNotExist(embeddingFinal, hash, description, source, moderateFunc);
+                vectorDB.createEmbeddingIfNotExist(embeddingFinal, hash, description, source, moderateFunc);
             } else {
                 Logg.info("Skipping duplicate description: ```\n" + description + "\n```");
             }
             hashes.add(hash);
         });
         if (deleteMissing) {
-            sourceManager.deleteMissing(source, hashesSet);
+            vectorDB.deleteMissing(source, hashesSet);
         }
         return hashes;
     }
 
     public float[] getEmbedding(EmbeddingSource source, String text) {
-        return sourceManager.getEmbedding(source, text, this::checkModeration);
+        return vectorDB.getEmbedding(source, text, this::checkModeration);
     }
 }

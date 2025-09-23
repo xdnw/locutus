@@ -2,9 +2,10 @@ package link.locutus.discord.gpt.pw;
 
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Logg;
+import link.locutus.discord.db.DBMainV3;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.GptHandler;
-import link.locutus.discord.gpt.ISourceManager;
+import link.locutus.discord.gpt.IVectorDB;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.wiki.game.PWWikiUtil;
 import org.jooq.DSLContext;
@@ -15,12 +16,12 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class WikiManager {
     private final Map<Integer, WikiPagePW> gameWikiPagesBySourceId = new ConcurrentHashMap<>();
-    private final GptDatabase database;
-    private final ISourceManager embeddings;
+    private final IVectorDB embeddings;
     private final GptHandler handler;
+    private final DBMainV3 vectorSqlDb;
 
-    public WikiManager(GptDatabase database, ISourceManager embeddings, GptHandler handler) {
-        this.database = database;
+    public WikiManager(DBMainV3 vectorSqlDb, IVectorDB embeddings, GptHandler handler) {
+        this.vectorSqlDb = vectorSqlDb;
         this.embeddings = embeddings;
         this.handler = handler;
 
@@ -78,7 +79,7 @@ public class WikiManager {
 
 
     private DSLContext ctx() {
-        return database.ctx();
+        return vectorSqlDb.ctx();
     }
 
     public Set<String> getCategories() {

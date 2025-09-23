@@ -686,8 +686,8 @@ public class Settings extends Config {
         }
 
         @Create
-        public GOOGLE_AI GOOGLE_AI;
-        public static final class GOOGLE_AI {
+        public GOOGLE GOOGLE;
+        public static final class GOOGLE {
             @Comment({"Your gemini API key from https://console.cloud.google.com/apis/credentials (optional)"})
             public String API_KEY = "";
 

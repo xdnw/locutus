@@ -21,7 +21,6 @@ import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.gpt.GptHandler;
-import link.locutus.discord.gpt.ISourceManager;
 import link.locutus.discord.gpt.imps.embedding.EmbeddingInfo;
 import link.locutus.discord.gpt.imps.embedding.EmbeddingType;
 import link.locutus.discord.gpt.imps.embedding.IEmbeddingAdapter;
@@ -36,9 +35,8 @@ import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class PWGPTHandler {
+public class PWGPTHandler extends GptHandler {
 
-    private final GptHandler handler;
     private final BiMap<EmbeddingType, EmbeddingSource> baseSources = HashBiMap.create();
     private final BiMap<Class<?>, EmbeddingSource> classSources = HashBiMap.create();
 
@@ -51,17 +49,14 @@ public class PWGPTHandler {
     private final LimitManager limitManager;
     private final DocumentConverter converter;
 
-    private final GptDatabase database;
     private final WikiManager wikiManager;
 
     public PWGPTHandler(CommandManager2 manager) throws Exception {
-        this.database = new GptDatabase();
         this.cmdManager = manager;
-        this.handler = new GptHandler(database);
-        this.limitManager = new LimitManager(handler);
+        this.limitManager = new LimitManager(this);
         this.PlayerGPTConfig = new PlayerGPTConfig();
-        this.converter = new DocumentConverter(limitManager, handler);
-        this.wikiManager = new WikiManager(database, handler.getSourceManager(), handler);
+        this.converter = new DocumentConverter(limitManager, this);
+        this.wikiManager = new WikiManager(getSqlDb(), getVectorDB(), this);
     }
 
     public WikiManager getWikiManager() {
@@ -80,19 +75,15 @@ public class PWGPTHandler {
         return limitManager;
     }
 
-    public GptHandler getHandler() {
-        return handler;
-    }
-
     public void registerSources(PlaceholdersMap placeholdersMap) {
         for (EmbeddingType type : EmbeddingType.values()) {
-            EmbeddingSource source = handler.getSourceManager().getOrCreateSource(type.name(), 0);
+            EmbeddingSource source = getVectorDB().getOrCreateSource(type.name(), 0);
             System.out.println("REMOVE:|| Register source " + type + " | " + source);
             baseSources.put(type, source);
         }
         for (Class<?> type : placeholdersMap.getTypes()) {
             String name = PlaceholdersMap.getClassName(type);
-            EmbeddingSource source = handler.getSourceManager().getOrCreateSource(name, 0);
+            EmbeddingSource source = getVectorDB().getOrCreateSource(name, 0);
             System.out.println("REMOVE:|| Register source " + type + " | " + source);
             classSources.put(type, source);
         }
@@ -194,13 +185,13 @@ public class PWGPTHandler {
             registerCommands.add(callable);
         }
         CommandEmbeddingAdapter adapter = new CommandEmbeddingAdapter(source, registerCommands);
-        adapter.createEmbeddings(handler, true);
+        adapter.createEmbeddings(this, true);
 
         adapterMap2.put(source, adapter);
     }
 
     public Set<EmbeddingSource> getSources(Guild guild, boolean allowRoot) {
-        return handler.getSourceManager().getSources(guildId -> (allowRoot && (guildId == 0 || guildId == Settings.INSTANCE.ROOT_SERVER || guildId == Settings.INSTANCE.ROOT_COALITION_SERVER || guildId == Settings.INSTANCE.FORUM_FEED_SERVER)) || guildId == guild.getIdLong(), src -> true);
+        return getVectorDB().getSources(guildId -> (allowRoot && (guildId == 0 || guildId == Settings.INSTANCE.ROOT_SERVER || guildId == Settings.INSTANCE.ROOT_COALITION_SERVER || guildId == Settings.INSTANCE.FORUM_FEED_SERVER)) || guildId == guild.getIdLong(), src -> true);
     }
 
     private void registerSettingEmbeddings() {
@@ -211,7 +202,7 @@ public class PWGPTHandler {
             settings.add(setting);
         }
         SettingEmbeddingAdapter adapter = new SettingEmbeddingAdapter(source, settings);
-        adapter.createEmbeddings(handler, true);
+        adapter.createEmbeddings(this, true);
 
         adapterMap2.put(source, adapter);
     }
@@ -222,7 +213,7 @@ public class PWGPTHandler {
             Placeholders<?, Object> ph = placeholdersMap.get(type);
             Set<ParametricCallable> metrics = new ObjectOpenHashSet<>(ph.getParametricCallables());
             PlaceholderAdapter adapter = new PlaceholderAdapter(source, type, metrics);
-            adapter.createEmbeddings(handler, true);
+            adapter.createEmbeddings(this, true);
             adapterMap2.put(source, adapter);
         }
     }
@@ -240,7 +231,7 @@ public class PWGPTHandler {
         }
 
         ArgumentEmbeddingAdapter adapter = new ArgumentEmbeddingAdapter(source, consumeParsers);
-        adapter.createEmbeddings(handler, true);
+        adapter.createEmbeddings(this, true);
 
         adapterMap2.put(source, adapter);
     }
@@ -288,7 +279,6 @@ public class PWGPTHandler {
         return classSources.get(type);
     }
 
-
     public IEmbeddingAdapter getAdapter(EmbeddingType type) {
         EmbeddingSource source = baseSources.get(type);
         if (source == null) return null;
@@ -303,7 +293,7 @@ public class PWGPTHandler {
         EmbeddingType userInput = EmbeddingType.User_Input;
         EmbeddingSource userInputSrc = baseSources.get(userInput);
 
-        List<EmbeddingInfo> result = handler.getSourceManager().getClosest(userInputSrc, input, top, allowedSources, new BiPredicate<EmbeddingSource, Long>() {
+        List<EmbeddingInfo> result = getVectorDB().getClosest(userInputSrc, input, top, allowedSources, new BiPredicate<EmbeddingSource, Long>() {
             @Override
             public boolean test(EmbeddingSource embeddingSource, Long hash) {
                 IEmbeddingAdapter<?> adapter = adapterMap2.get(embeddingSource);
@@ -316,7 +306,7 @@ public class PWGPTHandler {
                 }
                 return true;
             }
-        }, moderate ? handler::checkModeration : null);
+        }, moderate ? this::checkModeration : null);
         return result;
     }
 
@@ -400,9 +390,5 @@ public class PWGPTHandler {
         }
 
         return sources;
-    }
-
-    public ISourceManager getSourceManager() {
-        return getHandler().getSourceManager();
     }
 }

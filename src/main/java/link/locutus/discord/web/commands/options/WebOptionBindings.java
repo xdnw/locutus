@@ -37,7 +37,6 @@ import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.pnw.*;
 import link.locutus.discord.util.PW;
-import link.locutus.discord.util.math.ReflectionUtil;
 import link.locutus.discord.web.commands.binding.value_types.WebOptions;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -158,10 +157,10 @@ public class WebOptionBindings extends BindingHelper {
         },  true);
     }
 //CommandCallable
-    @Binding(types = {ICommand.class, WildcardType.class})
+    @Binding(types = {ICommand.class, WildcardType.class}, multiple = true)
     public WebOption getCommandCallable() {
         List<ParametricCallable<?>> options = new ArrayList<>(Locutus.imp().getCommandManager().getV2().getCommands().getParametricCallables(Predicates.alwaysTrue()));
-        return new WebOption(Key.of(ReflectionUtil.buildNestedType(ICommand.class, WildcardType.class))).setOptions(options.stream().map(CommandCallable::getFullPath).toList());
+        return new WebOption(Key.nested(ICommand.class, WildcardType.class)).setOptions(options.stream().map(CommandCallable::getFullPath).toList());
     }
 
 //MessageChannel - just return textChannel()
@@ -246,9 +245,9 @@ public class WebOptionBindings extends BindingHelper {
         }, true);
     }
 //GuildSetting
-    @Binding(types = { GuildSetting.class, WildcardType.class })
+    @Binding(types = { GuildSetting.class, WildcardType.class }, multiple = true)
     public WebOption getGuildSetting() {
-        return new WebOption(Key.of(ReflectionUtil.buildNestedType(GuildSetting.class, WildcardType.class))).setRequiresGuild()
+        return new WebOption(Key.nested(GuildSetting.class, WildcardType.class)).setRequiresGuild()
                 .setOptions((Arrays.stream(GuildKey.values()).map(GuildSetting::name).toList()));
     }
 //EmbeddingSource
@@ -296,7 +295,7 @@ public class WebOptionBindings extends BindingHelper {
     }
 
     @PlaceholderType
-    @Binding(types = Class.class)
+    @Binding(types = { Class.class, WildcardType.class }, multiple = true)
     public WebOption getPlaceholderType() {
         Set<Class<?>> types = Locutus.cmd().getV2().getPlaceholders().getTypes();
         List<String> options = types.stream().map(PlaceholdersMap::getClassName).toList();

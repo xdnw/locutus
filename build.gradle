@@ -1,3 +1,12 @@
+/**
+ * Generate JTE
+ * .\gradlew -PwithJtePrecompile generateJte
+ * Include JTE in shadowJar (with precompile)
+ * .\gradlew -PwithJtePrecompile shadowJar
+ *
+ * Generate GraphQL
+ * .\gradlew -Pgraphql graphqlCodegen
+ */
 import io.github.kobylynskyi.graphql.codegen.gradle.GraphQLCodegenGradleTask
 import nu.studer.gradle.jooq.JooqEdition
 

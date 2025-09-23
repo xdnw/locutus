@@ -14,14 +14,12 @@ import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-public interface ISourceManager {
+public interface IVectorDB {
     long getHash(String text);
     float[] getEmbedding(String text);
     float[] getEmbedding(long hash);
     float[] getOrCreateEmbedding(IEmbedding provider, long embeddingHash, String embeddingText, EmbeddingSource source, boolean save, ThrowingConsumer<String> moderate);
     void createEmbeddingIfNotExist(IEmbedding provider, long embeddingHash, String embeddingText, EmbeddingSource source, ThrowingConsumer<String> moderate);
-
-
     EmbeddingSource getSource(String name, long guild_id);
     EmbeddingSource getOrCreateSource(String name, long guild_id);
     void updateSources(List<EmbeddingSource> sources);

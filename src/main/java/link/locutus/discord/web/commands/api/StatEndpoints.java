@@ -26,7 +26,7 @@ public class StatEndpoints {
     // TODO validate permissions
     @Command(viewable = true)
     @ReturnType(WebTable.class)
-    public <T> WebTable table(ValueStore store, @Me @Default User user, @PlaceholderType Class type,
+    public <T> WebTable table(ValueStore store, @Me @Default User user, @PlaceholderType Class<?> type,
                               String selection_str,
                               @TextArea List<String> columns) {
         Class<T> typeCasted = (Class<T>) type;

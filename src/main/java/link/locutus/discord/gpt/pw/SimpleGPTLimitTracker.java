@@ -79,7 +79,7 @@ public class SimpleGPTLimitTracker extends GptLimitTracker {
         this(
                 handler::getModerator,
                 handler::getText2Text,
-                (t2t, tokens) -> handler.getSourceManager().addUsage(t2t.getId(), tokens),
+                (t2t, tokens) -> handler.getVectorDB().addUsage(t2t.getId(), tokens),
                 allowMultipleThreads,
                 logger
         );

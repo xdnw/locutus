@@ -15,6 +15,7 @@ import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 
+import java.lang.reflect.WildcardType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -44,7 +45,8 @@ public class SheetCompleter extends BindingHelper {
     }
 
     @Autocomplete
-    @Binding(types = {PlaceholderType.class, Class.class})
+    @PlaceholderType
+    @Binding(types = {Class.class, WildcardType.class}, multiple = true)
     public List<String> PlaceholderType(String input) {
         Set<Class<?>> optionClasses = Locutus.cmd().getV2().getPlaceholders().getTypes();
         List<String> options = optionClasses.stream().map(PlaceholdersMap::getClassName).collect(Collectors.toList());

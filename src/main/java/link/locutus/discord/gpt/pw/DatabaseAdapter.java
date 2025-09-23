@@ -1,12 +1,12 @@
 package link.locutus.discord.gpt.pw;
 
-import link.locutus.discord.gpt.ISourceManager;
+import link.locutus.discord.gpt.IVectorDB;
 import link.locutus.discord.gpt.imps.embedding.IEmbeddingAdapter;
 
 public class DatabaseAdapter implements IEmbeddingAdapter<Long> {
-    private final ISourceManager database;
+    private final IVectorDB database;
 
-    public DatabaseAdapter(ISourceManager database) {
+    public DatabaseAdapter(IVectorDB database) {
         this.database = database;
     }
 

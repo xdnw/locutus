@@ -36,7 +36,7 @@ public class SheetBindings extends BindingHelper {
     @PlaceholderType
     @Binding(value = "An entity type for a placeholder\n" +
             "Used for sheets or formatted messages", examples = {"nation", "city", "alliance", "war"})
-    public static Class type(String input) {
+    public static Class<?> type(String input) {
         Set<Class<?>> types = Locutus.cmd().getV2().getPlaceholders().getTypes();
         for (Class<?> type : types) {
             if (PlaceholdersMap.getClassName(type).equalsIgnoreCase(input) || type.getSimpleName().equalsIgnoreCase(input)) {

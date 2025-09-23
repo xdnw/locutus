@@ -7,20 +7,19 @@ import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Logg;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.EmbeddingSource;
-import link.locutus.discord.gpt.ISourceManager;
+import link.locutus.discord.gpt.IVectorDB;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
 import link.locutus.discord.gpt.imps.SqliteVecStore;
 import link.locutus.discord.gpt.imps.VectorRow;
 import link.locutus.discord.gpt.imps.embedding.EmbeddingInfo;
 import link.locutus.discord.gpt.imps.embedding.IEmbedding;
-import link.locutus.discord.gpt.pw.GptDatabase;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.scheduler.ThrowingSupplier;
 import org.jetbrains.annotations.Nullable;
-import org.jooq.DSLContext;
 import org.jooq.Record;
 
 import java.io.Closeable;
@@ -34,20 +33,19 @@ import java.util.stream.Collectors;
 
 import static graphql.com.google.common.base.Preconditions.checkArgument;
 
-public class ASourceManager implements ISourceManager, Closeable {
+public class VectorDB extends DBMainV3 implements IVectorDB, Closeable {
 
     private final IEmbedding embedding;
 
     private volatile boolean loaded = false;
     private final Map<Integer, EmbeddingSource> embeddingSources;
     private final Map<Integer, ConvertingDocument> unconvertedDocuments;
-    private final GptDatabase database;
     private final SqliteVecStore vectors;
 
     private final Map<String, Integer> usageCache = new ConcurrentHashMap<>();
 
-    public ASourceManager(GptDatabase database, IEmbedding embedding) throws Exception {
-        this.database = database;
+    public VectorDB(IEmbedding embedding) throws Exception {
+        super(Settings.INSTANCE.DATABASE, "gpt", false);
         this.embeddingSources = new ConcurrentHashMap<>();
         this.unconvertedDocuments = new ConcurrentHashMap<>();
 
@@ -56,7 +54,7 @@ public class ASourceManager implements ISourceManager, Closeable {
         this.vectors = new SqliteVecStore(Path.of("database", embedding.getTableName() + ".db"), embedding.getDimensions());
     }
 
-    public <T extends ASourceManager> T load() {
+    public <T extends VectorDB> T load() {
         if (loaded) return (T) this;
         loaded = true;
         createTables();
@@ -85,19 +83,6 @@ public class ASourceManager implements ISourceManager, Closeable {
             }
             return provider.fetchAndNormalize(embeddingText);
         }, source.source_id);
-    }
-
-    public GptDatabase getDatabase() {
-        return database;
-    }
-
-    @Override
-    public void close() {
-        database.close();
-    }
-
-    private DSLContext ctx() {
-        return database.ctx();
     }
 
     private void createSourcesTable() {

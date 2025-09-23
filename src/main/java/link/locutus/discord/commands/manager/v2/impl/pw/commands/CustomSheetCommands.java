@@ -144,7 +144,7 @@ public class CustomSheetCommands {
     @NoFormat
     @Command(desc = "List sheet templates for this guild", viewable = true)
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String listSheetTemplates(@Me GuildDB db, @Default @PlaceholderType Class type) {
+    public String listSheetTemplates(@Me GuildDB db, @Default @PlaceholderType Class<?> type) {
         List<String> errors = new ArrayList<>();
         Map<String, SheetTemplate> sheets = db.getSheetManager().getSheetTemplates(errors);
         if (type != null) {
@@ -175,7 +175,7 @@ public class CustomSheetCommands {
 
     @NoFormat
     @Command(desc = "List selection aliases for this guild", viewable = true)
-    public String listSelectionAliases(@Me GuildDB db, @Default @PlaceholderType Class type) {
+    public String listSelectionAliases(@Me GuildDB db, @Default @PlaceholderType Class<?> type) {
         Map<Class, Map<String, SelectionAlias>> selections = new LinkedHashMap<>(db.getSheetManager().getSelectionAliases());
         if (type != null) {
             selections.entrySet().removeIf(entry -> !entry.getKey().equals(type));

@@ -43,7 +43,7 @@ import static link.locutus.discord.web.jooby.PageHandler.CookieType.*;
 public class EndpointPages extends PageHelper {
     @Command
     @ReturnType(WebPermission.class)
-    public WebPermission permission(WebStore ws, ICommand command, @Me @Default User user, @Me @Default Guild guild) {
+    public WebPermission permission(WebStore ws, ICommand<?> command, @Me @Default User user, @Me @Default Guild guild) {
         try {
             command.validatePermissions(ws.store(), ws.permisser());
             return new WebPermission(null, true);

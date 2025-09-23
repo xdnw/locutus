@@ -2373,7 +2373,7 @@ public class UnsortedCommands {
             msg.append("- " + audit.name() + "[" + audit.infoType + "]: " + audit.description + "\n");
         }
 
-        // Map<IACheckup.AuditType, Set<DBNation>> failedNations = new Object2ObjectOpenHashMap<>();
+        // Map<AuditType, Set<DBNation>> failedNations = new Object2ObjectOpenHashMap<>();
         Set<Integer> unregisteredNationIds = new IntOpenHashSet();
         StringBuilder listByAudit = new StringBuilder();
         for (Map.Entry<AuditType, Set<DBNation>> entry : failedNations.entrySet()) {
