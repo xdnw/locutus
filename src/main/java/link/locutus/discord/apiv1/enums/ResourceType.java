@@ -10,6 +10,7 @@ import com.google.gson.JsonParseException;
 import com.politicsandwar.graphql.model.Bankrec;
 import it.unimi.dsi.fastutil.io.FastByteArrayInputStream;
 import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
+import it.unimi.dsi.fastutil.objects.Object2DoubleLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.ICity;
@@ -183,9 +184,37 @@ public enum ResourceType {
         return parseResources(arg, allowBodmas);
     }
 
+    private static final Pattern EMOJI_RSS_PATTERN = Pattern.compile(
+            "(?i)(Money|Food|Coal|Oil|Uranium|Lead|Iron|Bauxite|Gasoline|Munitions|Steel|Aluminum)\\s+([0-9][0-9,]*(?:\\.[0-9]+)?)"
+    );
+
     public static Map<ResourceType, Double> parseResources(String arg, boolean allowBodmas) {
         if (MathMan.isInteger(arg)) {
             throw new IllegalArgumentException("Please use `$" + arg + "` or `money=" + arg + "` for money, not `" + arg + "`");
+        }
+        if (arg.contains(":coal:")) {
+            String cleaned = arg.replaceAll("[\\r\\n]+", " ")
+                    .replaceAll("\\s+", " ")
+                    .trim();
+            Matcher matcher = EMOJI_RSS_PATTERN.matcher(cleaned);
+            Map<ResourceType, Double> map = new Object2DoubleLinkedOpenHashMap<>();
+            while (matcher.find()) {
+                String name = matcher.group(1);
+                String numStr = matcher.group(2).replace(",", "");
+                double value;
+                try {
+                    value = MathMan.parseDouble(numStr);
+                } catch (NumberFormatException e) {
+                    continue; // Skip malformed number
+                }
+                try {
+                    ResourceType type = ResourceType.parse(name); // Uses existing alias logic
+                    map.put(type, value);
+                } catch (Exception ignore) {
+                    // Skip unknown token
+                }
+            }
+            return map;
         }
         if (arg.contains(" AM ") || arg.contains(" PM ")) {
             arg = arg.replaceAll("([0-9]{1,2}:[0-9]{2})[ ](AM|PM)", "")
