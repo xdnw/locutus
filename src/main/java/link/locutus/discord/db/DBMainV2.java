@@ -1,6 +1,7 @@
 package link.locutus.discord.db;
 
 import com.ptsmods.mysqlw.Database;
+import link.locutus.discord.Logg;
 import link.locutus.discord.config.Settings;
 
 import java.io.Closeable;
@@ -39,6 +40,24 @@ public class DBMainV2 implements Closeable {
 //                    );
         }
         init();
+    }
+
+    protected void rebuild() {
+        try (Statement stmt = getConnection().createStatement()) {
+            // Run integrity check
+            try (ResultSet rs = stmt.executeQuery("PRAGMA integrity_check;")) {
+                while (rs.next()) {
+                    String result = rs.getString(1);
+                    Logg.info("PRAGMA integrity_check: " + result);
+                }
+            }
+            // Reindex all indexes
+            stmt.execute("REINDEX;");
+            Logg.info("REINDEX completed.");
+        } catch (SQLException e) {
+            e.printStackTrace();
+            Logg.error("Database integrity check or reindex failed");
+        }
     }
 
     public File getFile() {
@@ -194,7 +213,7 @@ public class DBMainV2 implements Closeable {
         }
     }
 
-    public <T> int[] executeBatch(Collection<T> objects, String query, BiConsumer<T, PreparedStatement> consumer) {
+    public synchronized <T> int[] executeBatch(Collection<T> objects, String query, BiConsumer<T, PreparedStatement> consumer) {
         if (objects.isEmpty()) return new int[0];
         synchronized (this) {
             return SQLUtil.executeBatch(getConnection(), objects, query, consumer);

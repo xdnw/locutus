@@ -1390,7 +1390,7 @@ public class WarDB extends DBMainV2 {
     }
 
     @Override
-    public void createTables() {
+    public synchronized void createTables() {
         {
             TablePreset.create("BOUNTIES_V3")
                     .putColumn("id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
@@ -2327,7 +2327,7 @@ public class WarDB extends DBMainV2 {
         return true;
     }
 
-    public void saveWars(Collection<DBWar> values, boolean addToMap) {
+    public synchronized void saveWars(Collection<DBWar> values, boolean addToMap) {
         if (values.isEmpty()) return;
         if (addToMap) {
             for (DBWar war : values) {
