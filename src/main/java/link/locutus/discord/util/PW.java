@@ -1035,7 +1035,7 @@ public final class PW {
             if (categorized.size() > 1) {
                 response.append("**Balance:** (`" + StringMan.join(balanceNotes, "`|`") + "`) worth: $" + MathMan.format(ResourceType.convertedTotal(balance)) + ")");
                 response.append("\n```").append(ResourceType.toString(balance)).append("``` ");
-            } else {
+            } else if (categorized.isEmpty()){
                 response.append("**No balance found**\n");
             }
         } else {
@@ -1098,6 +1098,7 @@ public final class PW {
     }
 
     public static Integer parseAllianceId(String arg) {
+        if (arg.length() == 1) return null;
         String lower = arg.toLowerCase();
         if (lower.startsWith("aa:")) arg = arg.substring(3);
         else if (lower.startsWith("alliance:")) arg = arg.substring(9);
