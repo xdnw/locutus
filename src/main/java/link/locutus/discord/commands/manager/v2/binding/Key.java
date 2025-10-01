@@ -157,6 +157,10 @@ public class Key<T> {
         return new Key<>(type, annotationClasses);
     }
 
+    public static <T> Key<T> nested(Collection<Class<?>> clazzes) {
+        return nested(clazzes.toArray(new Class[0]));
+    }
+
     public static <T> Key<T> nested(Class<?>... clazzes) {
         return of(ReflectionUtil.buildNestedType(clazzes));
     }

@@ -134,19 +134,6 @@ public class PWBindings extends BindingHelper {
         return bounty;
     }
 
-    @Binding(value = "The name of a nation attribute\n" +
-            "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>", examples = {"color", "war_policy", "continent"},
-    webType = {ICommand.class, DBNation.class})
-    @NationAttributeCallable
-    public ParametricCallable nationAttribute(NationPlaceholders placeholders, ValueStore store, String input) {
-        List<ParametricCallable> options = placeholders.getParametricCallables();
-        ParametricCallable metric = placeholders.get(input);
-        if (metric == null) {
-            throw new IllegalArgumentException("Invalid attribute: `" + input + "`. See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>");
-        }
-        return metric;
-    }
-
     private static String stripPrefix(String input) {
         if (input.startsWith(Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX)) {
             return input.substring(Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX.length());
@@ -950,25 +937,6 @@ public class PWBindings extends BindingHelper {
         return new NationFilterString(input, guild, author, nation);
     }
 
-    @Binding(examples = "score,soldiers", value = "A comma separated list of numeric nation attributes",
-    webType = {Set.class, TypedFunction.class, DBNation.class, Double.class })
-    public Set<NationAttributeDouble> nationMetricDoubles(ValueStore store, String input) {
-        Set<NationAttributeDouble> metrics = new ObjectLinkedOpenHashSet<>();
-        for (String arg : StringMan.split(input, ',')) {
-            metrics.add(nationMetricDouble(store, arg));
-        }
-        return metrics;
-    }
-
-    @Binding(examples = "warpolicy,color", value = "A comma separated list of nation attributes")
-    public Set<NationAttribute> nationMetrics(ValueStore store, String input) {
-        Set<NationAttribute> metrics = new ObjectLinkedOpenHashSet<>();
-        for (String arg : StringMan.split(input, ',')) {
-            metrics.add(nationMetric(store, arg));
-        }
-        return metrics;
-    }
-
     @Binding(examples = "borg,AA:Cataclysm", value = "A comma separated list of nations and alliances")
     public static Set<NationOrAlliance> nationOrAlliance(ParameterData data, @Default @Me Guild guild, String input, @Default @Me User author, @Default @Me DBNation me) {
         Set<NationOrAlliance> result = nationOrAlliance(data, guild, input, false, author, me);
@@ -1613,35 +1581,6 @@ public class PWBindings extends BindingHelper {
     @Binding(value = "A discord status for receiving alerts when a nation leaves beige")
     public NationMeta.BeigeAlertRequiredStatus BeigeAlertRequiredStatus(String input) {
         return StringMan.parseUpper(NationMeta.BeigeAlertRequiredStatus.class, input);
-    }
-
-    @Binding(value = """
-            A completed nation attribute that accepts no arguments and returns a number
-            To get the attribute for an attribute with arguments, you must provide a value in brackets
-            See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>""", examples = {"score", "ships", "land", "getCitiesSince(5d)"},
-    webType = { TypedFunction.class, DBNation.class, Double.class })
-    public NationAttributeDouble nationMetricDouble(ValueStore store, String input) {
-        NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
-        NationAttributeDouble metric = placeholders.getMetricDouble(store, input);
-        if (metric == null) {
-            String optionsStr = StringMan.getString(placeholders.getMetricsDouble(store).stream().map(NationAttribute::getName).collect(Collectors.toList()));
-            throw new IllegalArgumentException("Invalid metric: `" + input + "`. Options: " + optionsStr);
-        }
-        return metric;
-    }
-
-    @Binding(value = """
-            A completed nation attribute that accepts no arguments, returns an object, typically a string, number, boolean or enum
-            To get the attribute for an attribute with arguments, you must provide a value in brackets
-            See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>""", examples = {"color", "war_policy", "continent", "city(1)"})
-    public NationAttribute nationMetric(ValueStore store, String input) {
-        NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
-        NationAttribute metric = placeholders.getMetric(store, input, false);
-        if (metric == null) {
-            String optionsStr = StringMan.getString(placeholders.getMetrics(store).stream().map(NationAttribute::getName).collect(Collectors.toList()));
-            throw new IllegalArgumentException("Invalid metric: `" + input + "`. Options: " + optionsStr);
-        }
-        return metric;
     }
 
     @Binding(value = "An in-game treaty type")

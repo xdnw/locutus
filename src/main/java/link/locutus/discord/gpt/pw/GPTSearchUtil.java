@@ -61,7 +61,7 @@ public class GPTSearchUtil {
 
 
         if (instructions != null) useGPT = true;
-        PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
+        PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getGptHandler();
         if (numResults == null) numResults = 8;
         if (numResults > 25) {
             numResults = 25;

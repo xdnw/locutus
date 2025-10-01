@@ -12,18 +12,11 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.file.CitiesFile;
 import link.locutus.discord.apiv3.csv.file.NationsFile;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.table.imp.AlliancesNationMetricByDay;
 import link.locutus.discord.commands.manager.v2.table.imp.MetricByGroup;
 import link.locutus.discord.config.Settings;
@@ -49,16 +42,12 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.sql.SQLException;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.*;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 public class AllianceMetricCommands {
 
@@ -340,9 +329,9 @@ public class AllianceMetricCommands {
 
     @Command(desc = "Graph a set of nation metrics for the specified nations over a period of time based on daily nation and city snapshots")
     public void metricByGroup(@Me IMessageIO io, @Me @Default GuildDB db, @Me JSONObject command,
-                                Set<NationAttributeDouble> metrics,
+                                Set<TypedFunction<DBNation, Double>> metrics,
                                 NationList nations,
-                                @Default("getCities") NationAttributeDouble groupBy,
+                                @Default("getCities") TypedFunction<DBNation, Double> groupBy,
                                 @Switch("i") boolean includeInactives,
                                 @Switch("a") boolean includeApplicants,
                                 @Switch("t") boolean total,

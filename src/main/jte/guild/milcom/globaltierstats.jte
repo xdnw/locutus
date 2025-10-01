@@ -1,5 +1,5 @@
 @import link.locutus.discord.commands.manager.v2.binding.WebStore
-@import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble
+@import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction
 @import link.locutus.discord.commands.manager.v2.table.imp.EntityTable
 @import link.locutus.discord.commands.rankings.SphereGenerator
 @import link.locutus.discord.commands.manager.v2.table.TableNumberFormat
@@ -9,13 +9,14 @@
 @import java.util.Collections
 @import java.util.Set
 @import link.locutus.discord.commands.manager.v2.table.TimeNumericTable
+@import link.locutus.discord.db.entities.DBNation
 @import link.locutus.discord.web.WebUtil
 @import link.locutus.discord.web.commands.binding.value_types.GraphType
 @param WebStore ws
 @param SphereGenerator spheres
 @param Set<DBAlliance> alliances
-@param Set<NationAttributeDouble> metrics
-@param NationAttributeDouble groupBy
+@param Set<TypedFunction<DBNation, Double>> metrics
+@param TypedFunction<DBNation, Double> groupBy
 @param boolean total
 @param boolean removeVM
 @param int removeActiveM

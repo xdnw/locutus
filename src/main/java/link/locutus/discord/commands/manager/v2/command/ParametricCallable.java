@@ -72,7 +72,7 @@ public class ParametricCallable<T> implements ICommand<T> {
     @Override
     public Class<T> getType() {
         if (this.method != null) {
-            return (Class<T>) method.getClass();
+            return (Class<T>) method.getReturnType();
         }
         if (this.object != null) {
             return (Class<T>) object.getClass();
@@ -1038,8 +1038,11 @@ public class ParametricCallable<T> implements ICommand<T> {
             properties.put(paramName, param.toToolJson(primitiveCache));
         }
 
-        if (!properties.isEmpty()) root.put("properties", properties);
-        if (!required.isEmpty()) root.put("required", required);
+        if (!properties.isEmpty()) params.put("properties", properties);
+        if (!required.isEmpty()) params.put("required", required);
+        if (params.size() > 1) {
+            root.put("parameters", params);
+        }
         return root;
     }
 }

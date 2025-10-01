@@ -58,7 +58,7 @@ public class GPTBindings extends BindingHelper {
 
     @Binding
     public PWGPTHandler PWGPTHandler() {
-        return Locutus.imp().getCommandManager().getV2().getPwgptHandler();
+        return Locutus.imp().getCommandManager().getV2().getGptHandler();
     }
 
     @Binding(value = "A comma separated list of embedding types")

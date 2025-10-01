@@ -2,12 +2,15 @@ package link.locutus.discord.commands.manager.v2.table.imp;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.Attribute;
+import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.web.commands.binding.value_types.GraphType;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 public class EntityGroup<T> extends SimpleTable<Void> {
@@ -15,10 +18,10 @@ public class EntityGroup<T> extends SimpleTable<Void> {
     private final List<Map<Integer, List<T>>> byTierList;
     private final int min, max;
     private final boolean total;
-    private final Attribute<T, Double> metric;
+    private final TypedFunction<T, Double> metric;
     private GraphType type = GraphType.LINE;
 
-    public EntityGroup(String titlePrefix, Attribute<T, Double> metric, List<List<T>> coalitions, List<String> coalitionNames, Attribute<T, Double> groupBy, boolean total) {
+    public EntityGroup(String titlePrefix, TypedFunction<T, Double> metric, List<List<T>> coalitions, List<String> coalitionNames, TypedFunction<T, Double> groupBy, boolean total) {
         this.metric = metric;
         this.total = total;
 

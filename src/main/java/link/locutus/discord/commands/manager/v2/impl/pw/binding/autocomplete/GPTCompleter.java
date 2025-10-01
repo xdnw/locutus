@@ -49,7 +49,7 @@ public class GPTCompleter extends BindingHelper {
             Key<Object> key = Key.of(TypeToken.getParameterized(Set.class, EmbeddingSource.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
-                    PWGPTHandler handler = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
+                    PWGPTHandler handler = Locutus.imp().getCommandManager().getV2().getGptHandler();
                     Guild guild = (Guild) valueStore.getProvided(Key.of(Guild.class, Me.class));
                     List<EmbeddingSource> options = new ArrayList<>(handler.getSources(guild, true));
                     Map<String, EmbeddingSource> optionsMap = options.stream().collect(Collectors.toMap(f -> f.source_name.toLowerCase(Locale.ROOT), f -> f));

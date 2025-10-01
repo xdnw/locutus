@@ -30,8 +30,6 @@ import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.shrink.IShrink;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -613,7 +611,7 @@ public class StatCommands {
     public void nationRanking(@Me IMessageIO channel, @Me @Default GuildDB db,
                               @Me JSONObject command,
                               NationList nations,
-                              NationAttributeDouble attribute,
+                              TypedFunction<DBNation, Double> attribute,
                               @Switch("a") boolean groupByAlliance,
                               @Switch("r") boolean reverseOrder,
                               @Switch("s") @Timestamp Long snapshotDate,
@@ -719,7 +717,7 @@ public class StatCommands {
     @Command(desc = "Graph the attributes of the nations of two coalitions by city count\n" +
             "e.g. How many nations, soldiers etc. are at each city", viewable = true)
     public String attributeTierGraph(@Me IMessageIO channel, @Me @Default GuildDB db,
-                                     NationAttributeDouble metric,
+                                     TypedFunction<DBNation, Double> metric,
                                      NationList coalition1,
                                      NationList coalition2,
                                      @Switch("i") boolean includeInactives,
@@ -729,7 +727,7 @@ public class StatCommands {
                                      @Switch("j") boolean attachJson,
                                      @Switch("v") boolean attachCsv,
                                      @Switch("s") @Timestamp Long snapshotDate,
-                                     @Switch("g") NationAttributeDouble groupBy) throws IOException {
+                                     @Switch("g") TypedFunction<DBNation, Double> groupBy) throws IOException {
         Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db == null ? null : db.getGuild());
         Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db == null ? null : db.getGuild());
         int num1 = coalition1Nations.size();
@@ -992,10 +990,10 @@ public class StatCommands {
         coalition1Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 2880));
         coalition2Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 2880));
 
-        NationAttribute<Double> attribute = new NationAttribute<>("spies", "", double.class, f -> (double) f.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, 1));
+        TypedFunction<DBNation, Double> attribute = TypedFunction.create(DBNation.class, f -> (double) f.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, 1), "spies");
         List<List<DBNation>> coalitions = List.of(new ArrayList<>(coalition1Nations), new ArrayList<>(coalition2Nations));
         List<String> names = List.of(coalition1.getFilter(), coalition2.getFilter());
-        NationAttribute<Double> groupBy = new NationAttribute<>("cities", "", double.class, f -> (double) f.getCities());
+        TypedFunction<DBNation, Double> groupBy = TypedFunction.create(DBNation.class, f -> (double) f.getCities(), "cities");
 
         EntityGroup<DBNation> graph = new EntityGroup<DBNation>(null, attribute, coalitions, names, groupBy, total);
         IMessageBuilder msg = graph.setGraphType(barGraph ? GraphType.SIDE_BY_SIDE_BAR : GraphType.LINE)
@@ -1392,10 +1390,10 @@ public class StatCommands {
         nations1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
         nations2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
 
-        NationAttribute<Double> attribute = new NationAttribute<>("nations", "", double.class, f -> 1d);
+        TypedFunction<DBNation, Double> attribute = TypedFunction.create(DBNation.class, f -> 1d, "nations");
         List<List<DBNation>> coalitions = List.of(new ArrayList<>(nations1), new ArrayList<>(nations2));
         List<String> names = List.of(coalition1.getFilter(), coalition2.getFilter());
-        NationAttribute<Double> groupBy = new NationAttribute<>("city", "", double.class, f -> (double) f.getCities());
+        TypedFunction<DBNation, Double> groupBy = TypedFunction.create(DBNation.class, f -> (double) f.getCities(), "cities");
 
         EntityGroup<DBNation> graph = new EntityGroup<DBNation>(null, attribute, coalitions, names, groupBy, true);
         IMessageBuilder msg = graph.setGraphType(barGraph ? GraphType.SIDE_BY_SIDE_BAR : GraphType.LINE)
@@ -1520,7 +1518,7 @@ public class StatCommands {
                     if (arg.contains("{") && arg.contains("}")) {
                         arg = aaPlaceholders.format2(guild, me, author, arg, alliance, true);
                         if (arg.contains("{") && arg.contains("}")) {
-                            NationAttributeDouble metric = placeholders.getMetricDouble(store, arg.substring(1, arg.length() - 1));
+                            TypedFunction<DBNation, Double> metric = placeholders.getDoubleFunction(store, arg.substring(1, arg.length() - 1));
                             if (metric == null) {
                                 throw new IllegalAccessException("Unknown metric: `" + arg + "`");
                             }
@@ -3045,7 +3043,7 @@ public class StatCommands {
 
     @Command(desc = "Compare the tier stats of up to 10 alliances/nations on a single graph")
     public void compareTierStats(@Me IMessageIO io, @Me @Default GuildDB db, @Me JSONObject command,
-                                     NationAttributeDouble metric, NationAttributeDouble groupBy,
+                                     TypedFunction<DBNation, Double> metric, TypedFunction<DBNation, Double> groupBy,
                                      Set<DBNation> coalition1,
                                      @Default Set<DBNation> coalition2,
                                      @Default Set<DBNation> coalition3,

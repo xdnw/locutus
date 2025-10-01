@@ -8,8 +8,6 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.imp.*;
 import link.locutus.discord.db.GuildDB;
@@ -82,10 +80,10 @@ public class GraphEndpoints {
         coalition1Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 2880));
         coalition2Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 2880));
 
-        NationAttribute<Double> attribute = new NationAttribute<>("spies", "", double.class, f -> (double) f.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, 1));
+        TypedFunction<DBNation, Double> attribute = TypedFunction.create(DBNation.class, f -> (double) f.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, 1), "spies");
         List<List<DBNation>> coalitions = List.of(new ArrayList<>(coalition1Nations), new ArrayList<>(coalition2Nations));
         List<String> names = List.of(coalition1.getFilter(), coalition2.getFilter());
-        NationAttribute<Double> groupBy = new NationAttribute<>("cities", "", double.class, f -> (double) f.getCities());
+        TypedFunction<DBNation, Double> groupBy = TypedFunction.create(DBNation.class, f -> (double) f.getCities(), "cities");
 
         EntityGroup<DBNation> graph = new EntityGroup<DBNation>(null, attribute, coalitions, names, groupBy, total);
         return graph.setGraphType(barGraph ? GraphType.SIDE_BY_SIDE_BAR : GraphType.LINE).toHtmlJson();
@@ -103,10 +101,10 @@ public class GraphEndpoints {
         nations1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
         nations2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
 
-        NationAttribute<Double> attribute = new NationAttribute<>("nations", "", double.class, f -> 1d);
+        TypedFunction<DBNation, Double> attribute = TypedFunction.create(DBNation.class, f -> 1d, "nations");
         List<List<DBNation>> coalitions = List.of(new ArrayList<>(nations1), new ArrayList<>(nations2));
         List<String> names = List.of(coalition1.getFilter(), coalition2.getFilter());
-        NationAttribute<Double> groupBy = new NationAttribute<>("city", "", double.class, f -> (double) f.getCities());
+        TypedFunction<DBNation, Double> groupBy = TypedFunction.create(DBNation.class, f -> (double) f.getCities(), "cities");
 
         EntityGroup<DBNation> graph = new EntityGroup<DBNation>(null, attribute, coalitions, names, groupBy, true);
         return graph.setGraphType(barGraph ? GraphType.SIDE_BY_SIDE_BAR : GraphType.LINE).toHtmlJson();
@@ -115,9 +113,9 @@ public class GraphEndpoints {
     @Command(desc = "Graph a set of nation metrics for the specified nations over a period of time based on daily nation and city snapshots", viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph metricByGroup(@Me @Default GuildDB db,
-                                  Set<NationAttributeDouble> metrics,
+                                  Set<TypedFunction<DBNation, Double>> metrics,
                                   NationList nations,
-                                  @Default("getCities") NationAttributeDouble groupBy,
+                                  @Default("getCities") TypedFunction<DBNation, Double> groupBy,
                                   @Switch("i") boolean includeInactives,
                                   @Switch("a") boolean includeApplicants,
                                   @Switch("t") boolean total,
@@ -404,7 +402,7 @@ public class GraphEndpoints {
     @Command(desc = "Compare the tier stats of up to 10 alliances/nations on a single graph", viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph compareTierStats(@Me @Default GuildDB db, @Me JSONObject command,
-                                     NationAttributeDouble metric, NationAttributeDouble groupBy,
+                                     TypedFunction<DBNation, Double> metric, TypedFunction<DBNation, Double> groupBy,
                                      Set<DBNation> coalition1,
                                      @Default Set<DBNation> coalition2,
                                      @Default Set<DBNation> coalition3,

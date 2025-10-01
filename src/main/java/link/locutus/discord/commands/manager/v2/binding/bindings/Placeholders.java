@@ -3,6 +3,8 @@ package link.locutus.discord.commands.manager.v2.binding.bindings;
 import com.google.gson.reflect.TypeToken;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.commands.manager.v2.binding.*;
@@ -21,15 +23,19 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.SelectionAlias;
 import link.locutus.discord.db.entities.SheetTemplate;
+import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.math.LazyMathEntity;
 import link.locutus.discord.util.math.ReflectionUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
+import link.locutus.discord.web.WebUtil;
+import link.locutus.discord.web.commands.HtmlInput;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.commons.lang3.reflect.TypeUtils;
 import org.apache.commons.lang3.tuple.Triple;
 import org.json.JSONObject;
 
@@ -54,6 +60,7 @@ public abstract class Placeholders<T, M> extends BindingHelper {
     private final ValueStore store;
 
     private ParametricCallable createModifier;
+    private boolean isGeneric;
 
 //    private final ValueStore math2Type;
 //    private final ValueStore type2Math;
@@ -74,6 +81,14 @@ public abstract class Placeholders<T, M> extends BindingHelper {
         if (create != null) {
             this.createModifier = ParametricCallable.generateFromMethod(null, this, create, store);
         }
+    }
+
+    public boolean isGeneric() {
+        return isGeneric;
+    }
+
+    protected void setGeneric() {
+        this.isGeneric = true;
     }
 
     public ParametricCallable getCreateModifier() {
@@ -272,19 +287,181 @@ public abstract class Placeholders<T, M> extends BindingHelper {
         store.addParser(key, parser);
     }
 
+    public void registerWeb() {
+
+    }
+
+    public void registerWebLegacy(ValueStore store) {
+        Key<String> key = Key.of(TypeUtils.parameterize(ICommand.class, getType()), HtmlInput.class);
+        store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+            ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
+            List<CommandCallable> options = new ArrayList<>(getParametricCallables());
+            return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
+                names.add(obj.getFullPath());
+                subtext.add(obj.simpleDesc().split("\n")[0]);
+            });
+        }));
+    }
+
+    public void registerCompleters(ValueStore store) {
+        // Key<Object> key = Key.nested(Predicate.class, type);
+        // Selectors
+        // Predicate
+        // Set
+        // TypedFunction
+        //;     @Autocomplete
+        //    @Binding(types={TypedFunction.class, DBNation.class, Double.class}, multiple = true)
+        //    public List<String> NationPlaceholder(ArgumentStack stack, String input) {
+        //        NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
+        //        List<String> options = placeholders.getMetricsDouble(stack.getStore())
+        //                .stream().map(NationAttribute::getName).collect(Collectors.toList());
+        //        return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true);
+        //    }
+    }
+
+    public void registerTools(ValueStore store, PWGPTHandler gpt) {
+        int numFilters = 25;
+        Class<T> type = getType();
+        { // Predicate<T>
+            Key<Object> key = Key.nested(Predicate.class, type);
+            store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                String inputStr = (String) input;
+                String desc = getDSL(gpt, valueStore, inputStr, numFilters, Placeholders.DSLType.PREDICATE);
+                return Map.of("type", "string", "description", desc);
+            }));
+        }
+        { // Set<T>
+            Key<Object> key = Key.nested(Set.class, type);
+            store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                String inputStr = (String) input;
+                String desc = getDSL(gpt, valueStore, inputStr, numFilters, Placeholders.DSLType.SET);
+                return Map.of("type", "string", "description", desc);
+            }));
+        }
+        { // TypedFunction<T, String>
+            Key<Object> key = Key.of(TypeToken.getParameterized(TypedFunction.class, type, String.class).getType());
+            store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                String inputStr = (String) input;
+                String desc = getDSL(gpt, valueStore, inputStr, numFilters, Placeholders.DSLType.FORMATTER_STRING);
+                return Map.of("type", "string", "description", desc);
+            }));
+        }
+        { // TypedFunction<T, Double>
+            Key<Object> key = Key.of(TypeToken.getParameterized(TypedFunction.class, type, Double.class).getType());
+            store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                String inputStr = (String) input;
+                String desc = getDSL(gpt, valueStore, inputStr, numFilters, Placeholders.DSLType.FORMATTER_NUMBER);
+                return Map.of("type", "string", "description", desc);
+            }));
+        }
+        { // Set<TypedFunction<T, Double>>
+            Key<Object> key = Key.of(TypeUtils.parameterize(Set.class, TypeUtils.parameterize(TypedFunction.class, type, Double.class)));
+            store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                String inputStr = (String) input;
+                String desc = getDSL(gpt, valueStore, inputStr, numFilters, DSLType.FORMATTER_NUMBER_ARRAY);
+                return Map.of(
+                        "type", "array",
+                        "items", Map.of("type", "number"),
+                        "description", desc
+                );
+            }));
+        }
+        { // Set<TypedFunction<T, String>>
+            Key<Object> key = Key.of(TypeUtils.parameterize(Set.class, TypeUtils.parameterize(TypedFunction.class, type, String.class)));
+            store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                String inputStr = (String) input;
+                String desc = getDSL(gpt, valueStore, inputStr, numFilters, DSLType.FORMATTER_STRING_ARRAY);
+                return Map.of(
+                        "type", "array",
+                        "items", Map.of("type", "string"),
+                        "description", desc
+                );
+            }));
+        }
+        { // ICommand<T>
+            Key<Object> key = Key.nested(link.locutus.discord.commands.manager.v2.command.ICommand.class, type);
+            store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                // items is {"const": command name, "description": command description}
+                PermissionHandler permisser = (PermissionHandler) valueStore.getProvided(Key.of(PermissionHandler.class));
+                List<Map<String, String>> items = new ObjectArrayList<>();
+                for (ParametricCallable cmd : getParametricCallables()) {
+                    if (!cmd.hasPermission(valueStore, permisser)) {
+                        continue;
+                    }
+                    items.add(Map.of(
+                            "const", cmd.getPrimaryCommandId(),
+                            "description", cmd.simpleDesc()
+                    ));
+                }
+                return Map.of("type", "string", "oneOf", items);
+            }));
+        }
+    }
+
     public void register(ValueStore store) {
         try {
             Method methodSet = this.getClass().getMethod("parseSet", ValueStore.class, String.class);
             Method methodPredicate = this.getClass().getMethod("parseFilter", ValueStore.class, String.class);
             Method methodFormat = this.getClass().getMethod("getFormatFunction", ValueStore.class, String.class);
             Method methodDouble = this.getClass().getMethod("getDoubleFunction", ValueStore.class, String.class);
+            Method methodCommand = this.getClass().getMethod("getCommand", String.class);
+            Method methodFormatSet = this.getClass().getMethod("getFormatFunctionSet", ValueStore.class, String.class);
+            Method methodDoubleSet = this.getClass().getMethod("getDoubleFunctionSet", ValueStore.class, String.class);
             registerCustom(store, methodSet, TypeToken.getParameterized(Set.class, this.instanceType).getType());
             registerCustom(store, methodPredicate, TypeToken.getParameterized(Predicate.class, this.instanceType).getType());
             registerCustom(store, methodFormat, TypeToken.getParameterized(TypedFunction.class, this.instanceType, String.class).getType());
             registerCustom(store, methodDouble, TypeToken.getParameterized(TypedFunction.class, this.instanceType, Double.class).getType());
+            registerCustom(store, methodFormatSet, TypeToken.getParameterized(Set.class, TypeToken.getParameterized(TypedFunction.class, this.instanceType, String.class).getType()).getType());
+            registerCustom(store, methodDoubleSet, TypeToken.getParameterized(Set.class, TypeToken.getParameterized(TypedFunction.class, this.instanceType, Double.class).getType()).getType());
+            Key<Object> iCommandKey = Key.of(TypeToken.getParameterized(ICommand.class, this.getType()).getType());
+            registerCustom(store, methodCommand, iCommandKey.getType());
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
+    }
+    @Binding(value = "A comma separated list of text containing placeholders to format")
+    public Set<TypedFunction<T, String>> getFormatFunctionSet(ValueStore store, String input) {
+        if (input == null || input.isEmpty()) return Collections.emptySet();
+        List<String> split = StringMan.split(input, ',');
+        Set<TypedFunction<T, String>> result = new ObjectLinkedOpenHashSet<>();
+        for (String part : split) {
+            TypedFunction<T, String> func = getFormatFunction(store, part);
+            result.add(func);
+        }
+        return result;
+    }
+
+    @Binding(value = "A comma separated list of text containing placeholders to format to numeric values")
+    public Set<TypedFunction<T, Double>> getDoubleFunctionSet(ValueStore store, String input) {
+        if (input == null || input.isEmpty()) return Collections.emptySet();
+        List<String> split = StringMan.split(input, ',');
+        Set<TypedFunction<T, Double>> result = new ObjectLinkedOpenHashSet<>();
+        for (String part : split) {
+            TypedFunction<T, Double> func = getDoubleFunction(store, part);
+            result.add(func);
+        }
+        return result;
+    }
+
+    @Binding(value = "A placeholder name")
+    public ICommand<T> getCommand(String input) {
+        if (input.startsWith("#")) {
+            input = input.substring(1);
+        }
+        if (input.startsWith("{") && input.endsWith("}")) {
+            input = input.substring(1, input.length() - 1);
+        }
+        List<String> split = StringMan.split(input, ' ');
+        CommandCallable command = getCommands().getCallable(split);
+        if (command == null) throw new IllegalArgumentException("No command found for `" + input + "`");
+        if (command instanceof ICommandGroup group) {
+            String prefix = group.getFullPath();
+            if (!prefix.isEmpty()) prefix += " ";
+            String optionsStr = "- `" + prefix + String.join("`\n- `" + prefix, group.primarySubCommandIds()) + "`";
+            throw new IllegalArgumentException("Command `" + input + "` is a group, not an endpoint. Please specify a sub command:\n" + optionsStr);
+        }
+        if (!(command instanceof ICommand<?>)) throw new IllegalArgumentException("Command `" + input + "` is not a command endpoint");
+        return (ICommand<T>) command;
     }
 
     public Placeholders<T, M> register(Object obj) {
@@ -371,6 +548,131 @@ public abstract class Placeholders<T, M> extends BindingHelper {
         Map<String, String> examples = new Object2ObjectLinkedOpenHashMap<>();
         return examples;
     }
+
+    public static enum DSLType {
+        PREDICATE,
+        SET,
+        FORMATTER_NUMBER,
+        FORMATTER_STRING,
+        FORMATTER_NUMBER_ARRAY,
+        FORMATTER_STRING_ARRAY,
+    }
+
+    public String getDSL(PWGPTHandler gpt, ValueStore store, String query, int numFilters, DSLType type) {
+        String phDesc = getDescription();
+
+        List<ParametricCallable> filterList = null;
+        if (numFilters > 0) {
+            filterList = gpt.getClosestPlaceholder(getType(), store, query, numFilters, true);
+        }
+
+        if (type == DSLType.FORMATTER_STRING || type == DSLType.FORMATTER_NUMBER || type == DSLType.FORMATTER_NUMBER_ARRAY || type == DSLType.FORMATTER_STRING_ARRAY) {
+            String outKind = switch (type) {
+                case FORMATTER_NUMBER -> "number";
+                case FORMATTER_STRING -> "string";
+                case FORMATTER_NUMBER_ARRAY -> "number[]";
+                case FORMATTER_STRING_ARRAY -> "string[]";
+                default -> null;
+            };
+
+            String outNotes = (type == DSLType.FORMATTER_NUMBER)
+                    ? """
+                  - The full expression must evaluate to a numeric value.
+                  - String fragments are not allowed outside numeric sub‑expressions."""
+                    : """
+                  - Any value is converted to text via toString().
+                  - Math sub‑expressions are evaluated and concatenated""";
+            String argDesc =
+                ((type == DSLType.FORMATTER_NUMBER_ARRAY || type == DSLType.FORMATTER_STRING_ARRAY) ? "DSL: Array of formatters " : "DSL: formatter ") +
+                """
+                resolving to a {outKind}.
+                Syntax
+                - Placeholders: wrap in { and } (e.g., {name}, {fn(2,3)} or {fn(a:2 b:3)}).
+                - Operators: +, -, *, /, ^, %, ( ), and ternary cond?then:else.
+                - Chaining: {a.b} and nesting {fn({otherFn()})} allowed.
+                Coercions
+                - Booleans: true→1, false→0 in numeric contexts.
+                Output
+                {outNotes}
+                """
+                .replace("{outKind}", outKind)
+                .replace("{outNotes}", outNotes);
+
+            StringBuilder extra = new StringBuilder();
+            if (filterList != null && !filterList.isEmpty()) {
+                extra.append("\nPlaceholders you can use:\n");
+                for (ParametricCallable filter : filterList) {
+                    Map<String, ParameterData> params = filter.getUserParameterMap();
+                    String sig;
+                    if (params.isEmpty()) {
+                        sig = filter.getPrimaryCommandId();
+                    } else {
+                        sig = filter.getPrimaryCommandId() + "(" +
+                        params.entrySet().stream()
+                                .map(e -> e.getKey() + ":" + e.getValue().getBinding().getKey().toSimpleString())
+                                .collect(Collectors.joining(", ")) + ")";
+                    }
+                    extra.append("- {").append(sig).append("}\n");
+                }
+            }
+
+            return phDesc + "\n" + argDesc + extra.toString();
+        } else {
+            String argDesc = """
+                DSL: single-arg predicate.
+                Terms: selectors add; filters keep truthy.
+                Truthiness: true or !=0; false or 0.
+                Operators
+                , sequence (L→R): selectors union-add; filters restrict (keep truthy). Not boolean AND/OR.
+                &: selectors ∩; filters AND.
+                |: selectors ∪; filters OR.
+                (): group; filters apply only within the group.
+                Elements
+                Selectors{sel_required}:
+                {sel_list}
+                Filters: start with # (e.g., #flag, #fn(v1,v2), #fn(a:v1 b:v2). Inside filters: comparisons (>=, >, <=, <, !=, =), arithmetic (+, -, *, /, ^), ternary (cond?then:else). Booleans coerce to 1/0; non-zero is truthy.
+                """;
+            String selRequiredStr = type == DSLType.PREDICATE ? "(optional)" : "(required)";
+
+            List<String> selList = new ObjectArrayList<>();
+            for (SelectorInfo info : getSelectorInfo()) {
+                selList.add(info.toString());
+            }
+            String selDesc = String.join("\n", selList);
+
+            String fullDesc = phDesc + "\n" + argDesc
+                    .replace("{sel_required}", selRequiredStr)
+                    .replace("{sel_list}", selDesc);
+
+            if (filterList != null && !filterList.isEmpty()) {
+                StringBuilder extra = new StringBuilder();
+                extra.append("\nFilters you can use:\n");
+                for (ParametricCallable filter : filterList) {
+                    Map<String, ParameterData> params = filter.getUserParameterMap();
+                    String sig;
+                    if (params.isEmpty()) {
+                        sig = "#" + filter.getPrimaryCommandId();
+                    } else {
+                        sig = "#" + filter.getPrimaryCommandId() + "(" +
+                                params.entrySet().stream()
+                                        .map(e -> e.getKey() + ":" + e.getValue().getBinding().getKey().toSimpleString())
+                                        .collect(Collectors.joining(", ")) + ")";
+                    }
+                    extra.append("- ").append(sig).append("\n");
+                }
+                fullDesc = fullDesc + extra;
+            }
+            return fullDesc;
+        }
+        // TODO FIXME CM REF add mention of using tool call for listing more filters and for getting more detailed filter info
+
+
+
+
+
+
+    }
+
 //    public Map<String, Object> toPredicateJson(ISourceManager embedSrc, String query) {
 //        StringBuilder schemaDesc = new StringBuilder();
 //        schemaDesc.append("Single-argument predicate DSL string\n");
@@ -470,6 +772,10 @@ public abstract class Placeholders<T, M> extends BindingHelper {
                 }
             }
         }
+        return wrapHash(input);
+    }
+
+    public String wrapHash(String input) {
         return StringMan.wrapHashFunctions(input, new Predicate<String>() {
             @Override
             public boolean test(String s) {

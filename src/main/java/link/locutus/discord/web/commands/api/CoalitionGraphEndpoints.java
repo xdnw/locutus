@@ -4,7 +4,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
+import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.table.imp.CoalitionMetricsGraph;
 import link.locutus.discord.commands.manager.v2.table.imp.EntityTable;
 import link.locutus.discord.commands.rankings.SphereGenerator;
@@ -70,7 +70,7 @@ public class CoalitionGraphEndpoints {
     @Command(viewable = true)
     @NoFormat
     @ReturnType(CoalitionGraphs.class)
-    public CoalitionGraphs globalTierStats(Set<NationAttributeDouble> metrics, int topX, @Default("getCities") NationAttributeDouble groupBy, @Switch("t") boolean total) {
+    public CoalitionGraphs globalTierStats(Set<TypedFunction<DBNation, Double>> metrics, int topX, @Default("getCities") TypedFunction<DBNation, Double> groupBy, @Switch("t") boolean total) {
         if (topX > 250) throw new IllegalArgumentException("Treaty information is not available for those alliances (outside top 80)");
 
         boolean removeVM = true;

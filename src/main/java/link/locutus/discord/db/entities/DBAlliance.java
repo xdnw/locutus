@@ -19,10 +19,10 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.ScopedPlaceholderCache;
+import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.table.imp.CoalitionMetricsGraph;
 import link.locutus.discord.config.Settings;
@@ -680,19 +680,19 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     @Command(desc = "Sum of nation attribute for specific nations in alliance")
-    public double getTotal(@NoFormat NationAttributeDouble attribute, @NoFormat @Default NationFilter filter) {
+    public double getTotal(@NoFormat TypedFunction<DBNation, Double> attribute, @NoFormat @Default NationFilter filter) {
         Set<DBNation> nations = filter == null ? getNations() : getNations(filter.toCached(Long.MAX_VALUE));
         return nations.stream().mapToDouble(attribute::apply).sum();
     }
 
     @Command(desc = "Average of nation attribute for specific nations in alliance")
-    public double getAverage(@NoFormat NationAttributeDouble attribute, @NoFormat @Default NationFilter filter) {
+    public double getAverage(@NoFormat TypedFunction<DBNation, Double> attribute, @NoFormat @Default NationFilter filter) {
         Set<DBNation> nations = filter == null ? getNations() : getNations(filter.toCached(Long.MAX_VALUE));
         return nations.stream().mapToDouble(attribute::apply).average().orElse(0);
     }
 
     @Command(desc = "Returns the average value of the given attribute per another attribute (such as cities)")
-    public double getAveragePer(@NoFormat NationAttributeDouble attribute, @NoFormat NationAttributeDouble per, @Default NationFilter filter) {
+    public double getAveragePer(@NoFormat TypedFunction<DBNation, Double> attribute, @NoFormat TypedFunction<DBNation, Double> per, @Default NationFilter filter) {
         double total = 0;
         double perTotal = 0;
         for (DBNation nation : getNations(filter.toCached(Long.MAX_VALUE))) {

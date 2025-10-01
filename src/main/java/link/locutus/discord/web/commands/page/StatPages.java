@@ -7,20 +7,16 @@ import gg.jte.generated.precompiled.guild.milcom.JteglobalmilitarizationGenerate
 import gg.jte.generated.precompiled.guild.milcom.JteglobaltierstatsGenerated;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
-import link.locutus.discord.commands.manager.v2.table.imp.*;
-import link.locutus.discord.commands.rankings.SphereGenerator;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeNumericTable;
-import link.locutus.discord.db.entities.metric.AllianceMetric;
+import link.locutus.discord.commands.manager.v2.table.imp.*;
+import link.locutus.discord.commands.rankings.SphereGenerator;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.web.WebUtil;
@@ -115,7 +111,7 @@ public class StatPages {
 
     @Command()
     @NoFormat
-    public Object globalTierStats(WebStore ws, Set<NationAttributeDouble> metrics, int topX, @Default("getCities") NationAttributeDouble groupBy, @Switch("t") boolean total) {
+    public Object globalTierStats(WebStore ws, Set<TypedFunction<DBNation, Double>> metrics, int topX, @Default("getCities") TypedFunction<DBNation, Double> groupBy, @Switch("t") boolean total) {
         if (topX > 250) return "Treaty information is not available for those alliances (outside top 80)";
 
         boolean removeVM = true;
@@ -129,7 +125,7 @@ public class StatPages {
     }
 
     @Command()
-    public Object metricByGroup(WebStore ws, Set<NationAttributeDouble> metrics, Set<DBNation> coalition, @Default("getCities") NationAttributeDouble groupBy, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants, @Switch("t") boolean total) {
+    public Object metricByGroup(WebStore ws, Set<TypedFunction<DBNation, Double>> metrics, Set<DBNation> coalition, @Default("getCities") TypedFunction<DBNation, Double> groupBy, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants, @Switch("t") boolean total) {
         TimeNumericTable<NationList> table = new MetricByGroup(metrics, coalition, groupBy, includeInactives, includeApplicants, total);
         WebGraph graph = table.toHtmlJson(TimeFormat.SI_UNIT, TableNumberFormat.SI_UNIT, GraphType.LINE, 0);
         JsonElement json = WebUtil.GSON.toJsonTree(graph);
@@ -137,7 +133,7 @@ public class StatPages {
     }
 
     @Command(desc = "Compare the tier stats of up to 10 alliances/nations on a single graph")
-    public Object compareTierStats(WebStore ws, NationAttributeDouble metric, NationAttributeDouble groupBy,
+    public Object compareTierStats(WebStore ws, TypedFunction<DBNation, Double> metric, TypedFunction<DBNation, Double> groupBy,
                                    Set<DBAlliance> coalition1,
                                    @Default Set<DBAlliance> coalition2,
                                    @Default Set<DBAlliance> coalition3,

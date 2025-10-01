@@ -48,10 +48,9 @@ public class ReflectionUtil {
 
     private static Type parse(Class<?>[] seq, Cursor c) {
         if (c.pos >= seq.length) {
-            throw new IllegalArgumentException("Unexpected end of sequence");
+            throw new IllegalArgumentException("Unexpected end of sequence for input: " + Arrays.toString(seq) + " at index " + c.pos);
         }
         Class<?> raw = seq[c.pos++];
-
         int paramCount = Math.min(raw.getTypeParameters().length, seq.length - c.pos);
         if (paramCount == 0) {
             if (raw == WildcardType.class) {

@@ -5,7 +5,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
+import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.PW;
@@ -45,7 +45,7 @@ public interface Project {
     public QuadFunction<Integer, DBNation, Project, Double, RoiResult> getRoiFunction();
 
     @Command(desc = "Get average attribute for nations with this project")
-    default double getAvg(@NoFormat NationAttributeDouble attribute, @NoFormat @Default Set<DBNation> nations) {
+    default double getAvg(@NoFormat TypedFunction<DBNation, Double> attribute, @NoFormat @Default Set<DBNation> nations) {
         Collection<DBNation> all = nations;
         if (all == null) all = Locutus.imp().getNationDB().getAllNations();
         double total = 0;
@@ -59,7 +59,7 @@ public interface Project {
     }
 
     @Command(desc = "Get total attribute for nations with this project")
-    default double getTotal(@NoFormat NationAttributeDouble attribute, @NoFormat @Default Set<DBNation> nations) {
+    default double getTotal(@NoFormat TypedFunction<DBNation, Double> attribute, @NoFormat @Default Set<DBNation> nations) {
         Collection<DBNation> all = nations;
         if (all == null) all = Locutus.imp().getNationDB().getAllNations();
         double total = 0;

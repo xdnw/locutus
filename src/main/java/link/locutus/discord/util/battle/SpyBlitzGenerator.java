@@ -8,8 +8,8 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.builder.SummedMapRankBuilder;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationMeta;
@@ -45,8 +45,8 @@ public class SpyBlitzGenerator {
     private boolean forceUpdate;
 
     private Map<Integer, Double> allianceWeighting = new HashMap<>();
-    private NationAttributeDouble attackerPriority;
-    private NationAttributeDouble defenderPriority;
+    private TypedFunction<DBNation, Double> attackerPriority;
+    private TypedFunction<DBNation, Double> defenderPriority;
 
     public SpyBlitzGenerator setAllianceWeighting(DBAlliance alliance, double weight) {
         allianceWeighting.put(alliance.getAlliance_id(), weight);
@@ -284,10 +284,10 @@ public class SpyBlitzGenerator {
 
         return opsAgainstNations;
     }
-    public static double estimateValue(DBNation nation, boolean isAttacker, NationAttributeDouble priority) {
+    public static double estimateValue(DBNation nation, boolean isAttacker, TypedFunction<DBNation, Double> priority) {
         return estimateValue(nation, nation.getSpies(), isAttacker, priority);
     }
-    public static double estimateValue(DBNation nation, int spies, boolean isAttacker, NationAttributeDouble priority) {
+    public static double estimateValue(DBNation nation, int spies, boolean isAttacker, TypedFunction<DBNation, Double> priority) {
         String mmrBuilding = nation.getMMRBuildingStr();
         int barracks = (mmrBuilding.charAt(0) - '0');
         int factories = (mmrBuilding.charAt(1) - '0');
@@ -906,11 +906,11 @@ public class SpyBlitzGenerator {
         return targets;
     }
 
-    public void setAttackerWeighting(NationAttributeDouble weighting) {
+    public void setAttackerWeighting(TypedFunction<DBNation, Double> weighting) {
         this.attackerPriority = weighting;
     }
 
-    public void setDefenderWeighting(NationAttributeDouble defenderWeighting) {
+    public void setDefenderWeighting(TypedFunction<DBNation, Double> defenderWeighting) {
         this.defenderPriority = defenderWeighting;
     }
 }

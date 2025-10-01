@@ -73,6 +73,10 @@ public class WebOption {
         return this;
     }
 
+    public boolean isLargeQuery() {
+        return largeQuery;
+    }
+
     public boolean isAllowCustomOption() {
         return allowCustomOption;
     }

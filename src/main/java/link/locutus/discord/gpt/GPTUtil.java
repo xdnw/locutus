@@ -7,7 +7,6 @@ import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingRegistry;
 import com.knuddels.jtokkit.api.ModelType;
-import com.openai.models.moderations.Moderation;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
@@ -176,21 +175,9 @@ public class GPTUtil {
         return m.find() ? Integer.parseInt(m.group(1)) : null;
     }
 
-    public static void checkThrowModeration2(List<Moderation> moderations, String text) {
-        for (Moderation result : moderations) {
-            if (result.flagged()) {
-                String message = "Your submission has been flagged as inappropriate:\n" +
-                        "```json\n" + result.toString() + "\n```\n" +
-                        "The content submitted:\n" +
-                        "```json\n" + text.replaceAll("```", "\\`\\`\\`") + "\n```";
-                throw new IllegalArgumentException(message);
-            }
-        }
-    }
-
     public static void checkThrowModeration(String text) {
         if (text == null || text.isEmpty() || MathMan.isInteger(text)) return;
-        PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
+        PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getGptHandler();
         if (gpt != null) {
             List<ModerationResult> result = gpt.getModerator().moderate(text);
             GPTUtil.checkThrowModeration(result, "<redacted>");
@@ -477,7 +464,6 @@ public class GPTUtil {
                 schema.put("type", "object");
                 Type valueType = pt.getActualTypeArguments()[1];
                 Map<String, Object> child = generateSchema(Key.of(valueType), getOptions);
-                if (child == null) return null;
                 schema.put("additionalProperties", child);
                 return schema;
             }
@@ -486,7 +472,6 @@ public class GPTUtil {
                 schema.put("type", "array");
                 Type elementType = pt.getActualTypeArguments()[0];
                 Map<String, Object> child = generateSchema(Key.of(elementType), getOptions);
-                if (child == null) return null;
                 schema.put("items", child);
                 return schema;
             }
@@ -540,7 +525,6 @@ public class GPTUtil {
             } else if (cls.isArray()) {
                 schema.put("type", "array");
                 Map<String, Object> child = generateSchema(Key.of(cls.getComponentType()), getOptions);
-                if (child == null) return null;
                 schema.put("items", child);
             } else {
                 throw new IllegalArgumentException("Unsupported class type: " + cls.getTypeName());
@@ -570,7 +554,7 @@ public class GPTUtil {
                     if (webType != null) {
                         parser = store.get(webType);
                         if (parser == null) {
-                            throw new IllegalArgumentException("[Gpt-Tool] No parser for webType: " + webType + " (from " + key + ")");
+                            throw new IllegalArgumentException("[Gpt-Tool] No parser for webType: " + webType + " (from " + key + ") used in command: " + command.getFullPath());
                         }
                         key = parser.getKey();
                     }
@@ -590,6 +574,8 @@ public class GPTUtil {
         }
 
         Map<String, Object> definitions = new Object2ObjectLinkedOpenHashMap<>();
+
+        System.out.println("Found: " + argTypes.size() + " unique argument types for JSON schema generation.");
 
         for (Parser<?> parser : argTypes) {
             Key<?> key = parser.getKey();
@@ -613,7 +599,7 @@ public class GPTUtil {
             if (examples.length > 0) argumentDef.put("examples", Arrays.asList(examples));
 
             if (schemaBinding != null) {
-                Map<String, Object> map = (Map<String, Object>) schemaBinding.apply(store, null);
+                Map<String, Object> map = (Map<String, Object>) schemaBinding.apply(store, input);
                 argumentDef.putAll(map);
                 continue;
             }
@@ -653,47 +639,55 @@ public class GPTUtil {
                             "enum", options
                     );
                 }
-                WebOptions optionMeta = option.getQueryOptions(guildDB, user, nation);
-                if (optionMeta != null) {
-                    boolean isNumeric = optionMeta.key_numeric != null;
-                    if (optionMeta.text != null || optionMeta.subtext != null) {
-                        List<Map<String, Object>> oneOf = new ArrayList<>();
-                        List<?> keys = isNumeric ? optionMeta.key_numeric : optionMeta.key_string;
-                        List<String> texts = optionMeta.text;
-                        List<String> subtexts = optionMeta.subtext;
-                        int n = keys == null ? 0 : keys.size();
-                        for (int i = 0; i < n; i++) {
-                            Map<String, Object> entry = new LinkedHashMap<>();
-                            entry.put("const", keys.get(i));
-                            StringBuilder desc = new StringBuilder();
-                            if (texts != null && i < texts.size() && texts.get(i) != null && !texts.get(i).isEmpty()) {
-                                desc.append(texts.get(i));
+                if (!option.isLargeQuery()
+                        && (!option.isRequiresGuild() || guildDB != null)
+                        && (!option.isRequiresUser() || user != null)
+                        && (!option.isRequiresNation() || nation != null)) {
+                    try {
+                        WebOptions optionMeta = option.getQueryOptions(guildDB, user, nation);
+                        if (optionMeta != null) {
+                            boolean isNumeric = optionMeta.key_numeric != null;
+                            if (optionMeta.text != null || optionMeta.subtext != null) {
+                                List<Map<String, Object>> oneOf = new ObjectArrayList<>();
+                                List<?> keys = isNumeric ? optionMeta.key_numeric : optionMeta.key_string;
+                                List<String> texts = optionMeta.text;
+                                List<String> subtexts = optionMeta.subtext;
+                                int n = keys == null ? 0 : keys.size();
+                                for (int i = 0; i < n; i++) {
+                                    Object myConst = keys.get(i);
+                                    StringBuilder desc = new StringBuilder();
+                                    if (texts != null && i < texts.size() && texts.get(i) != null && !texts.get(i).isEmpty()) {
+                                        desc.append(texts.get(i));
+                                    }
+                                    if (subtexts != null && i < subtexts.size() && subtexts.get(i) != null && !subtexts.get(i).isEmpty()) {
+                                        if (desc.length() > 0) desc.append(" - ");
+                                        desc.append(subtexts.get(i));
+                                    }
+                                    if (desc.length() > 0) {
+                                        oneOf.add(Map.of("const", myConst, "description", desc.toString()));
+                                    } else {
+                                        oneOf.add(Map.of("const", myConst));
+                                    }
+                                }
+                                return Map.of(
+                                        "type", isNumeric ? "number" : "string",
+                                        "oneOf", oneOf
+                                );
                             }
-                            if (subtexts != null && i < subtexts.size() && subtexts.get(i) != null && !subtexts.get(i).isEmpty()) {
-                                if (desc.length() > 0) desc.append(" - ");
-                                desc.append(subtexts.get(i));
+                            if (isNumeric) {
+                                return Map.of(
+                                        "type", "number",
+                                        "enum", optionMeta.key_numeric
+                                );
+                            } else {
+                                return Map.of(
+                                        "type", "string",
+                                        "enum", optionMeta.key_string
+                                );
                             }
-                            if (desc.length() > 0) {
-                                entry.put("description", desc.toString());
-                            }
-
-                            oneOf.add(entry);
                         }
-                        return Map.of(
-                                "type", isNumeric ? "number" : "string",
-                                "oneOf", oneOf
-                        );
-                    }
-                    if (isNumeric) {
-                        return Map.of(
-                                "type", "number",
-                                "enum", optionMeta.key_numeric
-                        );
-                    } else {
-                        return Map.of(
-                                "type", "string",
-                                "enum", optionMeta.key_string
-                        );
+                    } catch (IllegalArgumentException e) {
+                        // ignore for now
                     }
                 }
 
@@ -703,7 +697,16 @@ public class GPTUtil {
             // generateSchema for the type
             try {
                 Map<String, Object> schema = generateSchema(key, getOptions);
-                definitions.putAll(schema);
+
+//                Object mock = MockSchema.generate(schema);
+//                System.out.println("\n\n------\n\n");
+//                System.out.println("MOCK " + key.toSimpleString() + ":\n"
+//                        + WebUtil.GSON.toJson(mock) + "\n\n" +
+//                        "SCHEMA:\n" +
+//                        WebUtil.GSON.toJson(schema));
+//                System.out.println("\n\n------\n\n");
+
+                argumentDef.putAll(schema);
             } catch (IllegalArgumentException e) {
                 System.err.println("[Gpt-Tool] " + key + " (2): " + e.getMessage());
             }

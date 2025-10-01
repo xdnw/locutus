@@ -4,6 +4,7 @@ import com.google.common.base.Predicates;
 import com.google.gson.reflect.TypeToken;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
+import link.locutus.discord._test.PredicateDslCompleter;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
@@ -12,16 +13,13 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
-import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
+import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.NationDepositLimit;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
-import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.Report;
@@ -39,7 +37,10 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.pnw.*;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.*;
+import link.locutus.discord.util.AutoAuditType;
+import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.Operation;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.task.ia.AuditType;
@@ -62,6 +63,42 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class PWCompleter extends BindingHelper {
+
+    @Autocomplete
+    @Binding(types={Set.class, DBNation.class}, multiple = true)
+    public List<String> nationCompleter(ValueStore store, String input) {
+        System.out.println("Get nation completer for input: " + input);
+        Parser<?> testExist = store.get(Key.of(DBNation.class, Autocomplete.class));
+        if (testExist == null) {
+            System.out.println("Parser for DBNation with Autocomplete not found");
+            throw new IllegalStateException("No parser for DBNation with Autocomplete found");
+        }
+
+        // Keep wrapped version for completion processing
+        Placeholders<DBNation, Object> ph = PlaceholdersMap.get().get(DBNation.class);
+        String wrappedInput = ph.wrapHash(input);
+
+        PredicateDslCompleter<DBNation> predicate = new PredicateDslCompleter<>(store, DBNation.class);
+        PredicateDslCompleter.CompletionResult result = predicate.apply(wrappedInput, wrappedInput.length());
+
+        System.out.println("Found " + result.getItems().size() + " items for input: " + wrappedInput);
+
+        // Build full replacement strings
+        LinkedHashSet<String> suggestions = new LinkedHashSet<>();
+        for (PredicateDslCompleter.CompletionItem item : result.getItems()) {
+            int from = Math.max(0, Math.min(item.getReplaceFrom(), wrappedInput.length()));
+            int to = Math.max(from, Math.min(item.getReplaceTo(), wrappedInput.length()));
+            String insert = item.getInsertText();
+
+            String completed = wrappedInput.substring(0, from) + insert + wrappedInput.substring(to);
+            suggestions.add(completed);
+
+            if (suggestions.size() >= OptionData.MAX_CHOICES) break;
+        }
+
+        return new ArrayList<>(suggestions);
+    }
+
     @Autocomplete
     @PlaceholderType
     @Binding(types={Class.class, WildcardType.class}, multiple = true)
@@ -577,28 +614,10 @@ public class PWCompleter extends BindingHelper {
     }
 
     @Autocomplete
-    @Binding(types={NationAttributeDouble.class})
-    public List<String> NationPlaceholder(ArgumentStack stack, String input) {
-        NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
-        List<String> options = placeholders.getMetricsDouble(stack.getStore())
-                .stream().map(NationAttribute::getName).collect(Collectors.toList());
-        return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true);
-    }
-
-    @Autocomplete
     @Binding(types={Parser.class})
     public List<String> Parser(ValueStore store, String input) {
         Map<Key, Parser> parsers = store.getParsers();
         List<String> options = parsers.entrySet().stream().filter(f -> f.getValue().isConsumer(store)).map(f -> f.getKey().toSimpleString()).collect(Collectors.toList());
-        return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true);
-    }
-
-    @Autocomplete
-    @NationAttributeCallable
-    @Binding(types={ParametricCallable.class})
-    public List<String> NationPlaceholderCommand(NationPlaceholders placeholders, String input) {
-        List<String> options = placeholders.getParametricCallables()
-                .stream().map(CommandCallable::getFullPath).collect(Collectors.toList());
         return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true);
     }
 

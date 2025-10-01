@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.manager.v2.binding.bindings;
 
+import org.jetbrains.annotations.NotNull;
+
 public record SelectorInfo(String format, String example, String desc) {
     @Override
     public boolean equals(Object obj) {
@@ -12,5 +14,14 @@ public record SelectorInfo(String format, String example, String desc) {
     @Override
     public int hashCode() {
         return format.hashCode();
+    }
+
+    @Override
+    public @NotNull String toString() {
+        String response = format() + " - " + desc();
+        if (example() != null && !example().isEmpty()) {
+            response += " (" + example() + ")";
+        }
+        return response;
     }
 }

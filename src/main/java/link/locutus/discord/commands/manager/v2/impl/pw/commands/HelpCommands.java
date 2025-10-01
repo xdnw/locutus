@@ -11,6 +11,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.gpt.ModerationResult;
 import link.locutus.discord.gpt.imps.embedding.EmbeddingType;
@@ -29,7 +30,7 @@ public class HelpCommands {
     }
 
     public PWGPTHandler getGPT() {
-        return Locutus.imp().getCommandManager().getV2().getPwgptHandler();
+        return Locutus.imp().getCommandManager().getV2().getGptHandler();
     }
 
 //    @Command
@@ -111,7 +112,7 @@ public class HelpCommands {
 
         IMessageBuilder embed = io.create().embed(title, body);
 
-        PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
+        PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getGptHandler();
         if (gpt != null && command instanceof ParametricCallable pc) {
             List<ParametricCallable> closest = gpt.getClosest(EmbeddingType.Command, store, pc, 6);
             for (ParametricCallable callable : closest) {
@@ -127,20 +128,23 @@ public class HelpCommands {
     }
 
     @Command(desc = "Show the description, usage information and permissions for a nation placeholder", viewable = true)
-    public String nation_placeholder(@Me IMessageIO io, ValueStore store, PermissionHandler permisser, @NationAttributeCallable ParametricCallable command) {
+    public String nation_placeholder(@Me IMessageIO io, ValueStore store, PermissionHandler permisser, ICommand<DBNation> command) {
         String body = command.toBasicMarkdown(store, permisser, "/", false, true, true);
         String title = "/" + command.getFullPath();
         if (body.length() > 4096) {
             return "#" + title + "\n" + body;
         }
         IMessageBuilder embed = io.create().embed(title, body);
-        PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
+        PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getGptHandler();
+        ParametricCallable commandParametric = (ParametricCallable) command;
+
         if (gpt != null) {
-            List<ParametricCallable> closest = gpt.getClosest(DBNation.class, store, command, 6);
+            EmbeddingSource source = gpt.getClassSource(DBNation.class);
+            List<ParametricCallable> closest = gpt.getClosest(source, store, commandParametric, 6);
             for (ParametricCallable other : closest) {
-                if (other.getMethod().equals(command.getMethod())) continue;
+                if (other.getMethod().equals(commandParametric.getMethod())) continue;
                 embed = embed.commandButton(CommandBehavior.DELETE_MESSAGE,
-                        CM.help.nation_placeholder.cmd.command(other.getFullPath()), other.getFullPath());
+                    CM.help.nation_placeholder.cmd.command(other.getFullPath()), other.getFullPath());
             }
         }
 

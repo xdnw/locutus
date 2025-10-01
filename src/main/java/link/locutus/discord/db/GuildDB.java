@@ -17,7 +17,6 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
@@ -154,7 +153,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         this.guild = guild;
         Logg.text(guild + " | AA:" + StringMan.getString(getInfoRaw(GuildKey.ALLIANCE_ID, false)));
         importLegacyRoles();
-        PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
+        PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getGptHandler();
         if (gpt != null) {
             gpt.getConverter().initDocumentConversion(this);
         }

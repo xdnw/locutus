@@ -23,7 +23,7 @@ public class WikiGenHandler {
 
     public WikiGenHandler(String pathRelative, CommandManager2 manager) {
         this.manager = manager;
-        this.gpt = manager.getPwgptHandler();
+        this.gpt = manager.getGptHandler();
         this.pathRelative = pathRelative;
     }
 

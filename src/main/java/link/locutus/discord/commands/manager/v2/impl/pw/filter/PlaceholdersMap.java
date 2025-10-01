@@ -192,6 +192,13 @@ public class PlaceholdersMap {
 //        this.placeholders.put(AGrantTemplate.class, createGrantTemplates());
     }
 
+    public static PlaceholdersMap get() {
+        if (INSTANCE == null) {
+            throw new IllegalStateException("Not initialized");
+        }
+        return INSTANCE;
+    }
+
     public <T, M> Placeholders<T, M> get(Class<T> type) {
         return (Placeholders<T, M>) this.placeholders.get(type);
     }

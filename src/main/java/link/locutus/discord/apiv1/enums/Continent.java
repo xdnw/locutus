@@ -8,8 +8,8 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.trade.TradeManager;
@@ -137,7 +137,7 @@ public enum Continent {
     }
 
     @Command(desc = "Returns the total value of the given attribute for the nations")
-    public double getTotal(@NoFormat NationAttributeDouble attribute, @NoFormat @Default NationFilter filter) {
+    public double getTotal(@NoFormat TypedFunction<DBNation, Double> attribute, @NoFormat @Default NationFilter filter) {
         double total = 0;
         for (DBNation nation : getNations(filter)) {
             total += attribute.apply(nation);
@@ -146,7 +146,7 @@ public enum Continent {
     }
 
     @Command(desc = "Returns the total value of the given attribute per nation")
-    public double getAverage(@NoFormat NationAttributeDouble attribute, @NoFormat @Default NationFilter filter) {
+    public double getAverage(@NoFormat TypedFunction<DBNation, Double> attribute, @NoFormat @Default NationFilter filter) {
         double total = 0;
         Set<DBNation> nations = getNations(filter);
         for (DBNation nation : nations) {
@@ -156,7 +156,7 @@ public enum Continent {
     }
 
     @Command(desc = "Returns the average value of the given attribute per another attribute (such as cities)")
-    public double getAveragePer(@NoFormat NationAttributeDouble attribute, @NoFormat NationAttributeDouble per, @NoFormat @Default NationFilter filter) {
+    public double getAveragePer(@NoFormat TypedFunction<DBNation, Double> attribute, @NoFormat TypedFunction<DBNation, Double> per, @NoFormat @Default NationFilter filter) {
         double total = 0;
         double perTotal = 0;
         for (DBNation nation : getNations(filter)) {

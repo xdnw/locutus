@@ -383,7 +383,7 @@ public class Settings extends Config {
         @Final
         @Comment({"Print the binding types which lack an autocomplete",
                 "Disabled by default, as its normal for some types not to have completion"})
-        public boolean PRINT_MISSING_AUTOCOMPLETE = false;
+        public boolean PRINT_MISSING_AUTOCOMPLETE = true;
 
         @Ignore
         @Final

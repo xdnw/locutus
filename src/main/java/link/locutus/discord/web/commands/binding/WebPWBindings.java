@@ -23,7 +23,6 @@ import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.config.Settings;
@@ -289,20 +288,6 @@ public class WebPWBindings extends WebBindingHelper {
         List<Newsletter> options = new ArrayList<>(manager.getNewsletters().values());
         return multipleSelect(param, options, f -> KeyValue.of(f.getName(), f.getId() + ""));
     }
-
-    @HtmlInput
-    @Binding(types = NationAttributeDouble.class)
-    public String nationMetricDouble(ArgumentStack stack, ParameterData param) {
-        NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
-        List<NationAttributeDouble> options = placeholders.getMetricsDouble(stack.getStore());
-
-        return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
-            names.add(obj.getName());
-            String desc = obj.getDesc();
-            subtext.add(desc);
-        });
-    }
-
 
     @HtmlInput
     @Binding(types=DBWar.class)
@@ -689,23 +674,6 @@ public class WebPWBindings extends WebBindingHelper {
                     List<Project> options = Arrays.asList(Projects.values);
 
                     return multipleSelect(param, options, t -> new KeyValue<>(t.name(), t.name()), true);
-                }));
-            });
-        }
-        {
-            Key<String> key = Key.of(TypeToken.getParameterized(Set.class, NationAttributeDouble.class).getType(), HtmlInput.class);
-            addBinding(store -> {
-                store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
-                    ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
-
-                    NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
-                    List<NationAttributeDouble> options = placeholders.getMetricsDouble(valueStore);
-
-                    return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
-                        names.add(obj.getName());
-                        String desc = obj.getDesc();
-                        subtext.add(desc);
-                    }, true);
                 }));
             });
         }

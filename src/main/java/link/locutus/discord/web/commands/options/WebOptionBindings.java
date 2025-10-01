@@ -183,6 +183,7 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = TaxBracket.class)
     public WebOption getTaxBracket() {
         return new WebOption(TaxBracket.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
+            if (db == null) throw new IllegalArgumentException("No guild provided.");
             if (!db.isValidAlliance()) throw new IllegalArgumentException("No alliance is registered. See " + CM.settings_default.registerAlliance.cmd.toSlashMention());
             Map<Integer, TaxBracket> brackets = db.getAllianceList().getTaxBrackets(TimeUnit.MINUTES.toMillis(120));
             WebOptions data = new WebOptions(true).withText().withSubtext();
@@ -254,7 +255,7 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = EmbeddingSource.class)
     public WebOption getEmbeddingSource() {
         return new WebOption(EmbeddingSource.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
-            PWGPTHandler gpt = Locutus.cmd().getV2().getPwgptHandler();
+            PWGPTHandler gpt = Locutus.cmd().getV2().getGptHandler();
             if (gpt == null) {
                 return new WebOptions(true);
             }
@@ -297,7 +298,7 @@ public class WebOptionBindings extends BindingHelper {
     @PlaceholderType
     @Binding(types = { Class.class, WildcardType.class }, multiple = true)
     public WebOption getPlaceholderType() {
-        Set<Class<?>> types = Locutus.cmd().getV2().getPlaceholders().getTypes();
+        Set<Class<?>> types = PlaceholdersMap.get().getTypes();
         List<String> options = types.stream().map(PlaceholdersMap::getClassName).toList();
         return new WebOption(Class.class).setOptions(options);
     }

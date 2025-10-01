@@ -240,10 +240,10 @@ public class PWGPTHandler extends GptHandler {
         return getClosest(source, store, f -> f.getDescription(input), top, false);
     }
 
-    public <T> List<T> getClosest(Class<?> classSource, ValueStore<?> store, T input, int top) {
+    public List<ParametricCallable> getClosestPlaceholder(Class<?> classSource, ValueStore<?> store, String input, int top, boolean moderate) {
         EmbeddingSource source = classSources.get(classSource);
         if (source == null) throw new IllegalArgumentException("No source found for class " + classSource);
-        return getClosest(source, store, f -> f.getDescription(input), top, false);
+        return getClosest(source, store, _ -> input, top, false);
     }
 
     public <T> List<T> getClosest(EmbeddingSource source, ValueStore<?> store, String input, int top, boolean moderate) {

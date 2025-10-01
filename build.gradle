@@ -43,7 +43,7 @@ application { mainClass = 'link.locutus.discord._test._Custom' }
 tasks.register('runCustomMain', JavaExec) {
     group = 'application'
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'link.locutus.discord._test._Custom'
+    mainClass = 'link.locutus.discord._test.ToolUseTest'
     standardInput = System.in
     if (project.hasProperty('appArgs')) {
         args = project.property('appArgs').toString().split(/\s+/)
@@ -235,7 +235,7 @@ dependencies {
     compileOnly "jakarta.xml.bind:jakarta.xml.bind-api:4.0.2"
 
 
-    implementation 'com.openai:openai-java:3.5.3'
+    implementation 'com.openai:openai-java:3.7.1'
 
     implementation 'com.google.genai:google-genai:1.17.0'
     implementation 'com.google.api-client:google-api-client:2.8.0'

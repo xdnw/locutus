@@ -632,6 +632,7 @@ public class SlashCommandManager extends ListenerAdapter {
                             parser = getCommands().getStore().get(completerKey);
                             if (parser != null && !parser.getKey().equals(emptyKey)) {
                                 option.setAutoComplete(true);
+                                System.out.println("Found autocomplete for " + param.getName() + " | " + parser.getKey());
                             } else {
                                 if (bindingKeys.add(completerKey) && Settings.INSTANCE.LEGACY_SETTINGS.PRINT_MISSING_AUTOCOMPLETE) {
                                     Logg.text("No autocomplete binding: " + binding.getKey());
@@ -753,10 +754,11 @@ public class SlashCommandManager extends ListenerAdapter {
         return OptionType.STRING;
     }
 
-    private Map<Long, Long> userIdToAutoCompleteTimeNs = new ConcurrentHashMap<>();
+    private final Map<Long, Long> userIdToAutoCompleteTimeNs = new ConcurrentHashMap<>();
 
     @Override
     public void onCommandAutoCompleteInteraction(@Nonnull CommandAutoCompleteInteractionEvent event) {
+        System.out.println("Autocomplete: " + event.getFullCommandName() + " | " + event.getFocusedOption().getName() + " = " + event.getFocusedOption().getValue());
         CommandManager2 manager = getCommands();
         long startNanos = System.nanoTime();
         User user = GuildShardManager.updateUserName(event.getUser());
@@ -812,6 +814,7 @@ public class SlashCommandManager extends ListenerAdapter {
                         Logg.text("[Autocomplete]" + user + " | No parser or completer found for `" + key + "` at `" + path + "`");
                         return;
                     }
+                    System.out.println("Found parser: " + parserKey + " | " + key);
 
                     LocalValueStore<Object> locals = new LocalValueStore<>(manager.getStore());
                     locals.addProvider(Key.of(User.class, Me.class), user);

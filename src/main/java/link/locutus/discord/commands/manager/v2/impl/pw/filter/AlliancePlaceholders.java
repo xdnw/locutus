@@ -10,13 +10,8 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.SelectorInfo;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
-import link.locutus.discord.commands.manager.v2.command.CommandCallable;
-import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.AllianceInstanceAttribute;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.AllianceInstanceAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.GuildDB;
@@ -30,16 +25,15 @@ import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.lang.reflect.Type;
 import java.security.GeneralSecurityException;
-import java.util.*;
-import java.util.function.Function;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class AlliancePlaceholders extends Placeholders<DBAlliance, Long> {
-    private final Map<String, AllianceInstanceAttribute> customMetrics = new HashMap<>();
-
     public AlliancePlaceholders(ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
         super(DBAlliance.class, Long.class, store, validators, permisser);
     }
@@ -47,19 +41,6 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance, Long> {
     @Override
     public String getName(DBAlliance o) {
         return o.getName();
-    }
-
-    public List<AllianceInstanceAttribute> getMetrics(ValueStore store) {
-        List<AllianceInstanceAttribute> result = new ArrayList<>();
-        for (CommandCallable cmd : getFilterCallables()) {
-            String id = cmd.aliases().get(0);
-            TypedFunction<DBAlliance, ?> typeFunction = formatRecursively(store, id, null, 0, false, false);
-            if (typeFunction == null) continue;
-
-            AllianceInstanceAttribute metric = new AllianceInstanceAttribute(cmd.getPrimaryCommandId(), cmd.simpleDesc(), typeFunction.getType(), typeFunction);
-            result.add(metric);
-        }
-        return result;
     }
 
     @Override
@@ -78,10 +59,6 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance, Long> {
     @Override
     public Set<String> getSheetColumns() {
         return new ObjectLinkedOpenHashSet<>(List.of("alliance", "{id}", "{name}", "{getname}", "{getid}"));
-    }
-
-    public AllianceInstanceAttributeDouble getMetricDouble(ValueStore store, String id) {
-        return getMetricDouble(store, id, false);
     }
 
     @NoFormat
@@ -123,68 +100,6 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance, Long> {
                 a, b, c, d, e, f, g, h, i, j,
                 k, l, m, n, o, p, q, r, s, t,
                 u, v, w, x);
-    }
-
-    public AllianceInstanceAttributeDouble getMetricDouble(ValueStore store, String id, boolean ignorePerms) {
-        ParametricCallable cmd = get(id);
-        if (cmd == null) return null;
-        TypedFunction<DBAlliance, ?> typeFunction;
-        try {
-            typeFunction = formatRecursively(store, id, null, 0, false, true);
-        } catch (CommandUsageException ignore) {
-            return null;
-        } catch (Throwable ignore2) {
-            if (!ignorePerms) throw ignore2;
-            return null;
-        }
-        if (typeFunction == null) {
-            return null;
-        }
-
-        Function<DBAlliance, ?> genericFunc = typeFunction;
-        Function<DBAlliance, Double> func;
-        Type type = typeFunction.getType();
-        if (type == int.class || type == Integer.class) {
-            func = aa -> ((Integer) genericFunc.apply(aa)).doubleValue();
-        } else if (type == double.class || type == Double.class) {
-            func = aa -> (Double) genericFunc.apply(aa);
-        } else if (type == short.class || type == Short.class) {
-            func = aa -> ((Short) genericFunc.apply(aa)).doubleValue();
-        } else if (type == byte.class || type == Byte.class) {
-            func = aa -> ((Byte) genericFunc.apply(aa)).doubleValue();
-        } else if (type == long.class || type == Long.class) {
-            func = aa -> ((Long) genericFunc.apply(aa)).doubleValue();
-        } else if (type == boolean.class || type == Boolean.class) {
-            func = aa -> ((Boolean) genericFunc.apply(aa)) ? 1d : 0d;
-        } else {
-            return null;
-        }
-        return new AllianceInstanceAttributeDouble(cmd.getPrimaryCommandId(), cmd.simpleDesc(), func);
-    }
-
-    public List<AllianceInstanceAttributeDouble> getMetricsDouble(ValueStore store) {
-        List<AllianceInstanceAttributeDouble> result = new ArrayList<>();
-        for (CommandCallable cmd : getFilterCallables()) {
-            String id = cmd.aliases().get(0);
-            AllianceInstanceAttributeDouble metric = getMetricDouble(store, id, true);
-            if (metric != null) {
-                result.add(metric);
-            }
-        }
-        for (Map.Entry<String, AllianceInstanceAttribute> entry : customMetrics.entrySet()) {
-            String id = entry.getKey();
-            AllianceInstanceAttributeDouble metric = getMetricDouble(store, id, true);
-            if (metric != null) {
-                result.add(metric);
-            }
-        }
-        return result;
-    }
-
-    public AllianceInstanceAttribute getMetric(ValueStore<?> store, String id, boolean ignorePerms) {
-        TypedFunction<DBAlliance, ?> typeFunction = formatRecursively(store, id, null, 0, false, true);
-        if (typeFunction == null) return null;
-        return new AllianceInstanceAttribute<>(id, "", typeFunction.getType(), typeFunction);
     }
 
     @Override

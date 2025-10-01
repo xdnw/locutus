@@ -19,6 +19,7 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
+import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.shrink.EmbedShrink;
@@ -27,7 +28,6 @@ import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.CoalitionPermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.sheets.SpySheet;
 import link.locutus.discord.commands.war.*;
@@ -2366,9 +2366,9 @@ public class WarCommands {
                                @Switch("p") Set<DBAlliance> prioritizeAlliances,
                            @Arg(value = "Fine grained control over attacker priority\n" +
                                    "e.g. `(#warpolicy=ARCANE?1.2:1)*(#active_m<1440?1.2:1)*(#hasProject(SS)?1.2:1)`", group = 2)
-                               @Switch("aw") NationAttributeDouble attackerWeighting,
+                               @Switch("aw") TypedFunction<DBNation, Double> attackerWeighting,
                            @Arg(value = "Fine grained control over defender priority", group = 2)
-                               @Switch("dw") NationAttributeDouble defenderWeighting,
+                               @Switch("dw") TypedFunction<DBNation, Double> defenderWeighting,
 
                            // No group
                            @Arg("Force an update of all participant spy count")

@@ -80,7 +80,7 @@ public class PageHandler implements Handler {
         this.store = new SimpleValueStore<>();
 
         new PrimitiveBindings().register(store);
-//        new DiscordBindings().register(store);
+        new DiscordBindings().register(store);
         new PWBindings().register(store);
         new GPTBindings().register(store);
         new SheetBindings().register(store);
@@ -94,7 +94,7 @@ public class PageHandler implements Handler {
         new JavalinBindings().register(store);
         new AuthBindings().register(store);
         //
-        new DiscordWebBindings().register(store);
+        new DiscordWebBindings(placeholders).register(store);
         new WebPWBindings().register(store);
         new PrimitiveWebBindings().register(store);
 

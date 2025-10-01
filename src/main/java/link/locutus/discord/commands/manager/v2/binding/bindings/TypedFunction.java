@@ -43,6 +43,10 @@ public abstract class TypedFunction<T, V> implements Function<T, V> {
         return createParents(type, function, name, parent == null ? null : List.of(parent));
     }
 
+    public static <T, V> TypedFunction<T, V> create(Type type, Function<T, V> function, String name) {
+        return createParents(type, function, name, null);
+    }
+
     public static <T, V> TypedFunction<T, V> createParents(Type type, Function<T, V> function, String name, Collection<TypedFunction<T, ?>> parents) {
         Map<T, V> resolved = new Object2ObjectOpenHashMap<>();
         return new TypedFunction<T, V>() {

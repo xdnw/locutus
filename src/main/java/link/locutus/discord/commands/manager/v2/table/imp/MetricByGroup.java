@@ -2,8 +2,7 @@ package link.locutus.discord.commands.manager.v2.table.imp;
 
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
+import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.db.entities.DBNation;
@@ -18,21 +17,21 @@ import java.util.function.Function;
 
 public class MetricByGroup extends SimpleTable<NationList> {
     private final double[] buffer;
-    private final NationAttributeDouble[] metricsArr;
+    private final TypedFunction<DBNation, Double>[] metricsArr;
     private final int min, max;
     private final boolean total;
     private final Map<Integer, NationList> byTier;
 
-    public MetricByGroup(Set<NationAttributeDouble> metrics,
+    public MetricByGroup(Set<TypedFunction<DBNation, Double>> metrics,
                          Set<DBNation> coalitionNations,
-                         @Default("getCities") NationAttributeDouble groupBy,
+                         @Default("getCities") TypedFunction<DBNation, Double> groupBy,
                          @Switch("i") boolean includeInactives,
                          @Switch("a") boolean includeApplicants,
                          @Switch("t") boolean total
     ) {
         coalitionNations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
-        this.metricsArr = metrics.toArray(new NationAttributeDouble[0]);
-        String[] labels = metrics.stream().map(NationAttribute::getName).toArray(String[]::new);
+        this.metricsArr = metrics.toArray(new TypedFunction[0]);
+        String[] labels = metrics.stream().map(TypedFunction::getName).toArray(String[]::new);
 
         NationList coalitionList = new SimpleNationList(coalitionNations);
 
@@ -78,7 +77,7 @@ public class MetricByGroup extends SimpleTable<NationList> {
             Arrays.fill(buffer, 0);
         } else {
             for (int i = 0; i < metricsArr.length; i++) {
-                NationAttributeDouble metric = metricsArr[i];
+                TypedFunction<DBNation, Double> metric = metricsArr[i];
                 double valueTotal = 0;
                 int count = 0;
 

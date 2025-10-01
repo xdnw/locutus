@@ -188,7 +188,7 @@ public class CommandManager2 {
         }
     }
 
-    public PWGPTHandler getPwgptHandler() {
+    public PWGPTHandler getGptHandler() {
         return pwgptHandler;
     }
 

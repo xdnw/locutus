@@ -4,9 +4,15 @@ import cn.easyproject.easyocr.ImageType;
 import com.google.common.base.Predicates;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.commands.manager.v2.binding.annotation.*;
-import link.locutus.discord.commands.manager.v2.command.*;
-import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
+import link.locutus.discord.commands.manager.v2.command.CommandCallable;
+import link.locutus.discord.commands.manager.v2.command.ICommand;
+import link.locutus.discord.commands.manager.v2.command.ParameterData;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.StringMan;
@@ -33,25 +39,19 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class DiscordWebBindings extends WebBindingHelper {
+    public DiscordWebBindings(PlaceholdersMap pm) {
+        addBinding(store -> {
+            for (Class<?> type : pm.getTypes()) {
+                pm.get(type).registerWebLegacy(store);
+            }
+        });
+    }
 
     @HtmlInput
     @Binding(types = {ICommand.class, WildcardType.class}, multiple = true)
     public String iCommand(@Me User user, @Default ParameterData param) {
         return command(user, param);
     }
-
-    @HtmlInput
-    @NationAttributeCallable
-    @Binding(types={ParametricCallable.class})
-    public String NationPlaceholderCommand(NationPlaceholders placeholders, @Default ParameterData param) {
-        List<CommandCallable> options = placeholders.getParametricCallables()
-                .stream().collect(Collectors.toList());
-        return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
-            names.add(obj.getFullPath());
-            subtext.add(obj.simpleDesc().split("\n")[0]);
-        });
-    }
-
 
     @HtmlInput
     @Binding(types = CommandCallable.class)

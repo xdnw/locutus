@@ -1,7 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 
 import com.google.common.base.Predicates;
-import io.javalin.http.RedirectResponse;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
@@ -13,16 +12,10 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.SelectorInfo;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
-import link.locutus.discord.commands.manager.v2.command.CommandCallable;
-import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.INationSnapshot;
 import link.locutus.discord.db.entities.DBNation;
@@ -42,17 +35,16 @@ import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.lang.reflect.Type;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
-import java.util.*;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
-
-    private final Map<String, NationAttribute> customMetrics = new HashMap<>();
 
     public NationPlaceholders(ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
         super(DBNation.class, NationModifier.class, store, validators, permisser);
@@ -77,10 +69,9 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
                 new SelectorInfo("ROLE_ID", "123456789012345678", "A discord role id"),
                 new SelectorInfo("@USER_MENTION", "@xdnw", "A discord user mention or name"),
                 new SelectorInfo("USER_ID", "123456789012345678", "A discord user id"),
-                new SelectorInfo(Settings.PNW_URL() + "/index.php?id=15&tax_id=TAX_ID", Settings.PNW_URL() + "/index.php?id=15&tax_id=1234", "A full tax url"),
                 new SelectorInfo("TAX_ID", "tax_id=1234", "A tax bracket id or url"),
                 new SelectorInfo("*", null, "All nations"),
-                new SelectorInfo("nation(<timestamp>,<includeVM:bool>):SELECTOR", "nation(5d,true):*", "As a sheet tab name; a snapshot selector, with optional timestamp and includeVM")
+                new SelectorInfo("nation(<timestamp>,[includeVM:bool]):SELECTOR", "nation(5d,true):*", "Snapshot at a specific date, optionally including vacation mode")
         ));
     }
 
@@ -166,84 +157,6 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
     @Override
     public String getDescription() {
         return CM.help.find_nation_placeholder.cmd.toSlashMention();
-    }
-
-    public List<NationAttribute> getMetrics(ValueStore store) {
-        List<NationAttribute> result = new ArrayList<>();
-        for (CommandCallable callable : getFilterCallables()) {
-            ParametricCallable<?> cmd = (ParametricCallable<?>) callable;
-            if (cmd.getUserParameters().stream().anyMatch(f -> !f.isOptional())) continue;
-            try {
-                String id = cmd.aliases().get(0);
-                try {
-                    TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, id, null, 0, false, false);
-                    if (typeFunction == null) continue;
-                    NationAttribute metric = new NationAttribute(cmd.getPrimaryCommandId(), cmd.simpleDesc(), typeFunction.getType(), typeFunction);
-                    result.add(metric);
-                } catch (IllegalStateException | CommandUsageException ignore) {
-                    continue;
-                }
-            } catch (RedirectResponse ignore) {}
-        }
-        return result;
-    }
-
-    public NationAttributeDouble getMetricDouble(ValueStore<?> store, String id) {
-        return getMetricDouble(store, id, false);
-    }
-
-    public NationAttribute getMetric(ValueStore<?> store, String id, boolean ignorePerms) {
-        TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, "{" + id + "}", null, 0, false,true);
-        if (typeFunction == null) return null;
-        return new NationAttribute<>(id, "", typeFunction.getType(), typeFunction);
-    }
-
-    public NationAttributeDouble getMetricDouble(ValueStore store, String id, boolean ignorePerms) {
-        TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, "{" + id + "}", null, 0, false, true);
-        if (typeFunction == null) return null;
-
-        TypedFunction<DBNation, ?> genericFunc = typeFunction;
-        Function<DBNation, Double> func;
-        Type type = typeFunction.getType();
-        if (type == int.class || type == Integer.class) {
-            func = nation -> ((Integer) genericFunc.applyCached(nation)).doubleValue();
-        } else if (type == double.class || type == Double.class) {
-            func = nation -> (Double) genericFunc.applyCached(nation);
-        } else if (type == short.class || type == Short.class) {
-            func = nation -> ((Short) genericFunc.applyCached(nation)).doubleValue();
-        } else if (type == byte.class || type == Byte.class) {
-            func = nation -> ((Byte) genericFunc.applyCached(nation)).doubleValue();
-        } else if (type == long.class || type == Long.class) {
-            func = nation -> ((Long) genericFunc.applyCached(nation)).doubleValue();
-        } else if (type == boolean.class || type == Boolean.class) {
-            func = nation -> ((Boolean) genericFunc.applyCached(nation)) ? 1d : 0d;
-        } else {
-            return null;
-        }
-        return new NationAttributeDouble(id, "", func);
-    }
-
-    public List<NationAttributeDouble> getMetricsDouble(ValueStore store) {
-        List<NationAttributeDouble> result = new ArrayList<>();
-        for (CommandCallable callable : getFilterCallables()) {
-            ParametricCallable<?> cmd = (ParametricCallable) callable;
-            if (cmd.getUserParameters().stream().anyMatch(f -> !f.isOptional())) continue;
-            try {
-                String id = cmd.aliases().get(0);
-                NationAttributeDouble metric = getMetricDouble(store, id, true);
-                if (metric != null) {
-                    result.add(metric);
-                }
-            } catch (RedirectResponse ignore) {}
-        }
-        for (Map.Entry<String, NationAttribute> entry : customMetrics.entrySet()) {
-            String id = entry.getKey();
-            NationAttributeDouble metric = getMetricDouble(store, id, true);
-            if (metric != null) {
-                result.add(metric);
-            }
-        }
-        return result;
     }
 
     @Override

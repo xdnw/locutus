@@ -1,8 +1,7 @@
 package link.locutus.discord.commands.manager.v2.table.imp;
 
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.Attribute;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
+import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -14,24 +13,24 @@ import java.util.function.Function;
 
 public class EntityTable<T> extends SimpleTable<Void> {
     private final double[] buffer;
-    private final List<Attribute<T, Double>> metricsList;
+    private final List<TypedFunction<T, Double>> metricsList;
     private int min, max;
     private final boolean total;
     private final Map<Integer, List<T>> byTier;
 
-         public static EntityTable<DBNation> create(String title, Set<NationAttributeDouble> metrics, Collection<DBAlliance> alliances, NationAttributeDouble groupBy, boolean total, boolean removeVM, int removeActiveM, boolean removeApps) {
+         public static EntityTable<DBNation> create(String title, Set<TypedFunction<DBNation, Double>> metrics, Collection<DBAlliance> alliances, TypedFunction<DBNation, Double> groupBy, boolean total, boolean removeVM, int removeActiveM, boolean removeApps) {
             List<DBNation> nations = toNations(Collections.singletonList(new ObjectLinkedOpenHashSet<>(alliances)), removeVM, removeActiveM, removeApps).get(0);
             return new EntityTable<>(title, (Set) metrics, nations, groupBy, total);
         }
 
-        public static <T> EntityTable<T> create(String title, Set<Attribute<T, Double>> metrics, Collection<T> coalition, Attribute<T, Double> groupBy, boolean total) {
+        public static <T> EntityTable<T> create(String title, Set<TypedFunction<T, Double>> metrics, Collection<T> coalition, TypedFunction<T, Double> groupBy, boolean total) {
             Set<T> nations = new HashSet<>(coalition);
             return new EntityTable<>(title, metrics, nations, groupBy, total);
         }
 
-    public EntityTable(String title, Set<Attribute<T, Double>> metrics, Collection<T> coalition, Attribute<T, Double> groupBy, boolean total) {
+    public EntityTable(String title, Set<TypedFunction<T, Double>> metrics, Collection<T> coalition, TypedFunction<T, Double> groupBy, boolean total) {
         this.metricsList = new ArrayList<>(metrics);
-        String[] labels = metrics.stream().map(Attribute::getName).toArray(String[]::new);
+        String[] labels = metrics.stream().map(TypedFunction::getName).toArray(String[]::new);
 
         Function<T, Integer> groupByInt = nation -> (int) Math.round(groupBy.apply(nation));
         this.byTier = new HashMap<>();
@@ -84,7 +83,7 @@ public class EntityTable<T> extends SimpleTable<Void> {
             Arrays.fill(buffer, 0);
         } else {
             for (int i = 0; i < metricsList.size(); i++) {
-                Attribute<T, Double> metric = metricsList.get(i);
+                TypedFunction<T, Double> metric = metricsList.get(i);
                 double valueTotal = 0;
                 int count = 0;
 

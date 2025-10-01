@@ -447,7 +447,7 @@ public class GPTCommands {
     @RolePermission(Roles.AI_COMMAND_ACCESS)
     public String find_command2(@Me IMessageIO io, ValueStore store, @Me GuildDB db, @Me User user, String search, @Default String instructions, @Switch("g") boolean useGPT, @Switch("n") Integer numResults) {
         Function<Integer, List<ParametricCallable>> getClosest = integer -> {
-            PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
+            PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getGptHandler();
             return pwGpt.getClosest(EmbeddingType.Command, store, search, 100, true);
         };
 
@@ -473,7 +473,7 @@ public class GPTCommands {
             "Use keywords for relevant results, or ask a question.", viewable = true)
     @RolePermission(Roles.AI_COMMAND_ACCESS)
     public String find_placeholder(@PlaceholderType Class<?> type, @Me IMessageIO io, ValueStore store, @Me GuildDB db, @Me User user, String search, @Default String instructions, @Switch("g") boolean useGPT, @Switch("n") Integer numResults) {
-        PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
+        PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getGptHandler();
         EmbeddingSource source = pwGpt.getClassSource(type);
         Function<Integer, List<ParametricCallable>> getClosest = integer -> {
             return pwGpt.getClosest(source, store, search, 100, true);
@@ -503,14 +503,14 @@ public class GPTCommands {
     @RolePermission(Roles.AI_COMMAND_ACCESS)
     public String find_argument(@Me IMessageIO io, ValueStore store, @Me GuildDB db, @Me User user, String search, @Default String instructions, @Switch("g") boolean useGPT, @Switch("n") Integer numResults) {
         Function<Integer, List<Parser>> getClosest = integer -> {
-            PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
+            PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getGptHandler();
             return pwGpt.getClosest(EmbeddingType.Argument, store, search, 100, true);
         };
 
         Function<String, Parser> getCommand = arg -> {
             arg = arg.replaceFirst("[1-8]\\.[ ]", "").trim();
             arg = arg.replace("`", "");
-            PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
+            PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getGptHandler();
             ArgumentEmbeddingAdapter adapter = (ArgumentEmbeddingAdapter) pwGpt.getAdapter(EmbeddingType.Argument);
             Parser parser = adapter.getParser(arg);
             if (parser == null) {
@@ -655,7 +655,7 @@ public class GPTCommands {
                 throw new IllegalArgumentException("Too many channels to emojify (" + channels.size() + " > 100). Please specify fewer categories with `includeCategories` or `excludeCategories`");
             }
 
-            PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
+            PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getGptHandler();
             if (gpt == null) {
                 throw new IllegalStateException("No GPT instance found. Please have the bot owner enable it in the `config.yaml` or specify a `sheet` instead");
             }

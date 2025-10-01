@@ -4,9 +4,12 @@ import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.db.entities.MMRDouble;
 import link.locutus.discord.db.entities.MMRInt;
+import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.Message;
@@ -17,6 +20,16 @@ import java.util.Map;
 import java.util.UUID;
 
 public class ToolBindings extends BindingHelper {
+
+    public ToolBindings(PWGPTHandler gpt, PlaceholdersMap pm) {
+        addBinding(store -> {
+            int numFilters = 25;
+            for (Class<?> type : pm.getTypes()) {
+                Placeholders<?, Object> ph = pm.get(type);
+                ph.registerTools(store, gpt);
+            }
+        });
+    }
 
     @Binding(types = Color.class)
     public static Map<String, Object> color() {
