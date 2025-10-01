@@ -416,9 +416,6 @@ public final class PredicateDslCompleter<T> implements BiFunction<String, Intege
                 if (canCloseCall) {
                     result.add(")", cursor, cursor).detail("Close call");
                 }
-                if (hasRemainingParams(argCtx.function, argCtx.alreadyNamedParams)) {
-                    result.add(",", cursor, cursor).detail("Next argument");
-                }
             } else if (canCloseCall) {
                 result.add(")", cursor, cursor).detail("Close call");
             }
@@ -1206,40 +1203,115 @@ public final class PredicateDslCompleter<T> implements BiFunction<String, Intege
             if (argsStart > argsEnd) return null; // cursor before '('
             String argRegion = input.substring(argsStart, argsEnd);
             // parse the last segment after the last comma that is not inside nested parens/braces
-            int lastComma = findLastTopLevelComma(argRegion);
-
-            int segmentStart = (lastComma < 0) ? 0 : lastComma + 1;
-            String seg = argRegion.substring(segmentStart).trim();
-
-            // Collect already named params in earlier segments:
+            int relCursor = argRegion.length();
             Set<String> already = new HashSet<>();
-            if (lastComma >= 0) {
-                String beforeSeg = argRegion.substring(0, segmentStart);
-                collectNamedParams(beforeSeg, already);
+
+            class Occ {
+                final int nameStart, nameEnd, colonPos, valueStart;
+                final String name;
+                Occ(int ns, int ne, int c, int vs, String n) {
+                    nameStart = ns; nameEnd = ne; colonPos = c; valueStart = vs; name = n;
+                }
+            }
+            List<Occ> occs = new ArrayList<>();
+
+            int brace = 0, paren = 0;
+            int p = 0;
+            while (p < argRegion.length()) {
+                char ch = argRegion.charAt(p);
+                if (ch == '{') { brace++; p++; continue; }
+                if (ch == '}') { brace = Math.max(0, brace - 1); p++; continue; }
+                if (ch == '(') { paren++; p++; continue; }
+                if (ch == ')') { paren = Math.max(0, paren - 1); p++; continue; }
+                if (brace == 0 && paren == 0) {
+                    // Potential name start
+                    if (CharClasses.isIdentStart(ch)) {
+                        int ns = p;
+                        int q = p + 1;
+                        while (q < argRegion.length() && CharClasses.isIdentChar(argRegion.charAt(q))) q++;
+                        // Skip ws
+                        int w = q;
+                        while (w < argRegion.length() && Character.isWhitespace(argRegion.charAt(w))) w++;
+                        if (w < argRegion.length() && argRegion.charAt(w) == ':') {
+                            String nm = argRegion.substring(ns, q);
+                            int colon = w;
+                            int vs = colon + 1;
+                            while (vs < argRegion.length() && Character.isWhitespace(argRegion.charAt(vs))) vs++;
+                            occs.add(new Occ(ns, q, colon, vs, nm));
+                            p = vs;
+                            continue;
+                        }
+                    }
+                }
+                p++;
             }
 
-            // Detect "name: value" or just "name" or direct value for positional
-            int colonIdx = seg.indexOf(':');
-            if (colonIdx < 0) {
-                // Expecting a name (preferred) or positional value
-                Span nameReplace = consumeWordSpan(input, argsStart + segmentStart + leadingWs(argRegion.substring(segmentStart)));
-                String namePrefix = seg; // whole segment is considered as name prefix
-                return new ArgumentContext(cursor, onType, cmd,
-                        true, namePrefix, nameReplace, false, null, null, already, null);
-            } else {
-                String name = seg.substring(0, colonIdx).trim();
-                Span nameReplace = locateSpan(input, argsStart + segmentStart, name);
-                Type paramType = typeOfParam(cmd, name);
-                int valueAbsStart = argsStart + segmentStart + seg.indexOf(':') + 1;
-                // Skip spaces before value
-                int ws = 0;
-                while (valueAbsStart + ws < cursor && Character.isWhitespace(input.charAt(valueAbsStart + ws))) ws++;
-                int valueStart = valueAbsStart + ws;
-                Span valueReplace = new Span(valueStart, cursor);
-                String valuePrefix = input.substring(valueReplace.start, cursor);
-                return new ArgumentContext(cursor, onType, cmd,
-                        false, null, null, true, valuePrefix, valueReplace, already, paramType);
+            // Determine current segment
+            Occ active = occs.isEmpty() ? null : occs.get(occs.size() - 1);
+
+            // Collect already-complete param names (exclude the active one if cursor inside its name or value)
+            for (int i = 0; i < occs.size(); i++) {
+                Occ o = occs.get(i);
+                boolean cursorInThisValue = relCursor >= o.valueStart;
+                if (i < occs.size() - 1) {
+                    already.add(o.name);
+                } else {
+                    // Last occurrence: if user already typed some non-empty value and a space after it, consider it complete.
+                    if (relCursor > o.valueStart) {
+                        // Heuristic: if there is at least one space after some value chars and then an ident-start char
+                        // user is starting next name; mark it complete
+                        String tail = argRegion.substring(o.valueStart, relCursor);
+                        if (tail.matches(".*\\S+\\s+\\S+")) {
+                            already.add(o.name);
+                            active = null; // next name being typed
+                        }
+                    }
+                }
             }
+
+            // If no active occurrence (starting first or next param)
+            if (active == null) {
+                String seg = argRegion.trim();
+                // Name prefix is whatever (possibly empty) trailing identifier
+                int segStartAbs = tokens.get(lparenIndex).end; // '(' absolute
+                int segWordStart = seg.isEmpty() ? relCursor : relCursor - trailingIdentLength(argRegion);
+                int absWordStart = tokens.get(lparenIndex).end + segWordStart;
+                Span nameReplace = new Span(absWordStart, cursor);
+                String namePrefix = input.substring(nameReplace.start, nameReplace.end);
+                return new ArgumentContext(cursor, onType, cmd,
+                        true, namePrefix, nameReplace,
+                        false, null, null,
+                        already, null);
+            }
+
+            // Active occurrence: decide if expecting value or still typing name (rare)
+            boolean cursorInName = relCursor <= active.nameEnd;
+            if (cursorInName) {
+                int absNameStart = tokens.get(lparenIndex).end + active.nameStart;
+                int absNameEnd = tokens.get(lparenIndex).end + active.nameEnd;
+                Span nameReplace = new Span(absNameStart, cursor);
+                String namePrefix = input.substring(nameReplace.start, cursor);
+                return new ArgumentContext(cursor, onType, cmd,
+                        true, namePrefix, nameReplace,
+                        false, null, null,
+                        already, null);
+            }
+
+            // Expecting / inside value
+            Type paramType = typeOfParam(cmd, active.name);
+            int absValueStart = tokens.get(lparenIndex).end + active.valueStart;
+            Span valueReplace = new Span(absValueStart, cursor);
+            String valuePrefix = input.substring(valueReplace.start, cursor);
+            return new ArgumentContext(cursor, onType, cmd,
+                    false, null, null,
+                    true, valuePrefix, valueReplace,
+                    already, paramType);
+        }
+
+        private static int trailingIdentLength(String s) {
+            int i = s.length() - 1;
+            while (i >= 0 && CharClasses.isIdentChar(s.charAt(i))) i--;
+            return s.length() - 1 - i;
         }
 
         private static Class<?> computeOnTypeBeforeIdent(List<Token> tokens, int identIdx, Class<?> rootType) {
@@ -1302,33 +1374,6 @@ public final class PredicateDslCompleter<T> implements BiFunction<String, Intege
 
         private static int leadingWs(String s) {
             int k = 0; while (k < s.length() && Character.isWhitespace(s.charAt(k))) k++; return k;
-        }
-
-        private static int findLastTopLevelComma(String s) {
-            int brace = 0, paren = 0;
-            int last = -1;
-            for (int i = 0; i < s.length(); i++) {
-                char c = s.charAt(i);
-                if (c == '{') brace++;
-                else if (c == '}') brace = Math.max(0, brace - 1);
-                else if (c == '(') paren++;
-                else if (c == ')') paren = Math.max(0, paren - 1);
-                else if (c == ',' && brace == 0 && paren == 0) last = i;
-            }
-            return last;
-        }
-
-        private static void collectNamedParams(String beforeSeg, Set<String> into) {
-            // best-effort: find occurrences of <ident> : <value> at top-level commas
-            String[] parts = beforeSeg.split(",");
-            for (String part : parts) {
-                String p = part.trim();
-                int idx = p.indexOf(':');
-                if (idx > 0) {
-                    String name = p.substring(0, idx).trim();
-                    if (!name.isEmpty()) into.add(name);
-                }
-            }
         }
 
         private static Span consumeWordSpan(String input, int at) {
