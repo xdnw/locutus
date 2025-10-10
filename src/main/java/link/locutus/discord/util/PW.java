@@ -602,9 +602,7 @@ public final class PW {
         boolean allowConversionDefault = guildDB.getOrNull(GuildKey.RESOURCE_CONVERSION) == Boolean.TRUE;
         if (allowConversionDefault && nation != null) {
             GuildDB delegate = guildDB.getDelegateServer();
-            if (delegate == null) {
-                delegate = guildDB;
-            }
+            if (delegate == null) delegate = guildDB;
             Role role = Roles.RESOURCE_CONVERSION.toRole2(delegate);
             if (role != null) {
                 allowConversionDefault = false;
@@ -838,20 +836,16 @@ public final class PW {
             Supplier<String> getHash = ArrayUtil.memorize(() -> Hashing.md5()
                     .hashString(Settings.INSTANCE.CONVERSION_SECRET + record.tx_id, StandardCharsets.UTF_8)
                     .toString());
-            boolean hasHash = false;
             String hash = null;
             if (value instanceof Number n) {
-                if (hash == null) hash = getHash.get();
+                hash = getHash.get();
                 if (record.note.contains(hash)) {
                     cashValue = n.doubleValue();
-                    hasHash = true;
                 }
             }
 
             if (cashValue == null) {
-
                 long oneWeek = TimeUnit.DAYS.toMillis(7);
-                long start = date - oneWeek;
                 TradeDB tradeDb = Locutus.imp().getTradeManager().getTradeDb();
 
                 Set<Byte> convertCached = null;
@@ -875,15 +869,23 @@ public final class PW {
                         convertCached = new ByteOpenHashSet();
                     }
                     convertCached.add((byte) resource.ordinal());
-                    Double avg = tradeDb.getWeeklyAverage(resource, date, null);
+                    Double avg = tradeDb.getWeeklyAverage(resource, date, resource.getMarketValue());
                     if (avg != null) {
                         cashValue += amt * avg * rate;
                     }
                 }
+                if (convertCached == null) {
+                    // No resources
+                    return;
+                }
+
                 if (setConvert) {
                     convert = convertCached;
+                    if (convert.isEmpty()) {
+                        convert = new ByteOpenHashSet(1);
+                        convert.add((byte) ResourceType.MONEY.ordinal());
+                    }
                 }
-                if (!hasHash)
                 {
                     if (hash == null) hash = getHash.get();
 
@@ -901,7 +903,6 @@ public final class PW {
                         note += " #rss=" + convertBits;
                     }
 
-
                     record.note = note.trim();
 
                     if (record.isInternal()) {
@@ -912,17 +913,15 @@ public final class PW {
                 }
             }
         }
-        if (cashValue != null) {
-            if (convert == null) {
-                Arrays.fill(amount, 0);
-            } else {
-                for (byte b : convert) {
-                    ResourceType rss = ResourceType.values[b];
-                    amount[rss.ordinal()] = 0;
-                }
+        if (convert == null) {
+            Arrays.fill(amount, 0);
+        } else {
+            for (byte b : convert) {
+                ResourceType rss = ResourceType.values[b];
+                amount[rss.ordinal()] = 0;
             }
-            amount[0] = cashValue;
         }
+        amount[0] = cashValue;
     }
 
     public static double WAR_RANGE_MAX_MODIFIER = 2.50;

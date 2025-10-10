@@ -94,5 +94,5 @@ public enum SheetKey {
     GUILD_CULLING,
     COLOR_REVENUE,
     PROJECT_COST,
-
+    CONVERSION_RATES,
 }

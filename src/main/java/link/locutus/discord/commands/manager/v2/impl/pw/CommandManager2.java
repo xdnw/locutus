@@ -259,6 +259,10 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "fixCashConversion", "fixCashConversion");
+        this.commands.registerMethod(new AdminCommands(), List.of("sheets_econ"), "conversionRates", "conversion_rates");
+
         this.commands.registerMethod(new TradeCommands(), List.of("trade", "create"), "createSell", "sell");
         this.commands.registerMethod(new TradeCommands(), List.of("trade", "create"), "createBuy", "buy");
         this.commands.registerMethod(new TradeCommands(), List.of("trade", "create"), "undercutSell", "undercut_sell");

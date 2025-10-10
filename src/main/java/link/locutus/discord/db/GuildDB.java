@@ -3642,7 +3642,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             Map<ResourceType, Double> rate = null;
             if (nation != null) {
                 for (Map.Entry<NationFilter, Map<ResourceType, Double>> entry : rates.entrySet()) {
-                    if (entry.getKey().test(nation)) {
+                    if (entry.getKey().getFilter().equals("*") || entry.getKey().test(nation)) {
                         rate = entry.getValue();
                         break;
                     }

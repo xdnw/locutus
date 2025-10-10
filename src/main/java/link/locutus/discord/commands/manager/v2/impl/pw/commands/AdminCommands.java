@@ -15,6 +15,7 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AttackCursorFactory;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.Continent;
+import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -3146,6 +3147,139 @@ public class AdminCommands {
             return "Deleted war rooms! See also: " + CM.admin.sync.warrooms.cmd.toSlashMention();
         }
     }
+
+    @Command(desc = "Fix bank transactions that have a cash entry but no rss entry, despite having rss resources")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String fixCashConversion(Set<DBNation> nations) {
+        int numFixed = 0;
+
+        Set<Long> nationIdsLong = nations.stream().map(f -> (long) f.getId()).collect(Collectors.toSet());
+        List<Transaction2> records = Locutus.imp().getBankDB().getTransactionsByBySender(nationIdsLong, 0);
+
+        for (Transaction2 tx : records) {
+            Map<DepositType, Object> notes = tx.getNoteMap();
+            Number cashObj = (Number) notes.get(DepositType.CASH);
+            if (cashObj == null) continue;
+
+            double expectedCashValueIfBroken = tx.resources[ResourceType.MONEY.ordinal()];
+            if (Math.abs(cashObj.doubleValue() - expectedCashValueIfBroken) > 0.01) continue;
+
+            Object rssObj = notes.get(DepositType.RSS);
+            if (rssObj != null) {
+                // is valid
+                continue;
+            }
+
+            boolean hasOtherRss = false;
+            for (ResourceType type : ResourceType.values()) {
+                if (type == ResourceType.MONEY || type == ResourceType.CREDITS) continue;
+                double val = tx.resources[type.ordinal()];
+                if (Math.abs(val) > 0.01) {
+                    hasOtherRss = true;
+                    break;
+                }
+            }
+            if (!hasOtherRss) {
+                // nothing else to mark, skip this transaction
+                continue;
+            }
+
+            // add a rss entry for money only
+            long rssBits = 1L << ResourceType.MONEY.ordinal();
+            String baseNote = tx.note == null ? "" : tx.note.trim();
+            String newNote = baseNote.isEmpty() ? "#rss=" + rssBits : baseNote + " #rss=" + rssBits;
+
+            numFixed++;
+            System.out.println("Fixing tx " + tx.tx_id + " for nation " + tx.sender_id + " | " + tx.note + " -> " + newNote);
+
+            // apply change and persist
+            tx.note = newNote;
+            Locutus.imp().getBankDB().addTransaction(tx, false);
+        }
+
+        return "Fixed " + numFixed + " transactions";
+    }
+
+    @Command(desc = "Show conversion rates")
+    @RolePermission(value = Roles.ADMIN)
+    public String conversionRates(@Me IMessageIO io, @Me GuildDB db, @Timestamp long date, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, SheetKey.CONVERSION_RATES);
+        }
+
+        Map<ResourceType, Double> weeklyAverage = new EnumMap<>(ResourceType.class);
+        for (ResourceType type : ResourceType.values) {
+            if (type == ResourceType.MONEY || type == ResourceType.CREDITS) continue;
+            Double value = Locutus.imp().getTradeDB().getWeeklyAverage(type, date, type.getMarketValue());
+            weeklyAverage.put(type, value);
+        }
+
+        GuildDB delegate = db.getDelegateServer();
+        if (delegate == null) delegate = db;
+        boolean allowConversionDefault = db.getOrNull(GuildKey.RESOURCE_CONVERSION) == Boolean.TRUE;
+        if (!allowConversionDefault) {
+            throw new IllegalArgumentException("Resource conversion is not enabled on this server. See: " + CM.settings_bank_access.RESOURCE_CONVERSION.cmd.toSlashMention());
+        }
+        Role role = Roles.RESOURCE_CONVERSION.toRole2(delegate);
+
+        // build header: basic columns + one column per resource (skip MONEY and CREDITS)
+        List<String> header = new ArrayList<>(Arrays.asList(
+                "nation",
+                "alliance",
+                "cities",
+                "has_role"
+        ));
+        List<ResourceType> resourceTypes = new ArrayList<>();
+        for (ResourceType rt : ResourceType.values()) {
+            if (rt == ResourceType.MONEY || rt == ResourceType.CREDITS) continue;
+            resourceTypes.add(rt);
+            header.add(rt.name().toLowerCase() + "_rate");
+        }
+        sheet.setHeader(header);
+
+        // populate rows
+        for (DBNation nation : nations) {
+            boolean hasRole = false;
+            if (role != null) {
+                User user = nation.getUser();
+                if (user != null) {
+                    Member member = delegate.getGuild().getMember(user);
+                    if (member != null) {
+                        hasRole = member.getRoles().contains(role);
+                    }
+                }
+            }
+
+            Function<ResourceType, Double> rate = db.getConversionRate(nation);
+
+            List<Object> row = new ArrayList<>();
+            row.add(nation.getNationUrlMarkup());
+            row.add(nation.getAllianceUrlMarkup());
+            row.add(nation.getCities());
+            row.add(hasRole);
+
+            for (ResourceType rt : resourceTypes) {
+                Double r = null;
+                try {
+                    r = rate.apply(rt);
+                } catch (Exception ignored) {
+                }
+                row.add(r == null ? "" : r);
+            }
+
+            // append row to sheet
+            sheet.addRow(row);
+        }
+
+        // write and attach
+        String footer = "Weekly Avg: " + weeklyAverage;
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
+        sheet.attach(io.create(), "conversion_rates", footer).send();
+
+        return null;
+    }
+
 //    SyncTreaties
     @Command(desc = "Force a fetch and update of treaties from the api")
     @RolePermission(value = Roles.ADMIN, root = true)
@@ -3163,7 +3297,7 @@ public class AdminCommands {
 
         if (runAlerts) {
             WarUpdateProcessor.checkActiveConflicts();
-            Locutus.imp().getWarDb().updateAttacksAndWarsV3(runAlerts, Event::post, Settings.USE_V2);
+            Locutus.imp().getWarDb().updateAttacksAndWarsV3(runAlerts, Event::post);
         }
 
         int numAttacks = 0;
@@ -3483,7 +3617,7 @@ public class AdminCommands {
 
     @Command(desc = "Set the v2 flag")
     public String setV2(boolean value) {
-        Settings.USE_V2 = value;
+        Settings.USE_FALLBACK = value;
         return "Done! Set v2 to " + value;
     }
 

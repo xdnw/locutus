@@ -155,13 +155,15 @@ public class TradeDB extends DBMainV2 {
     }
 
     public Double getWeeklyAverage(ResourceType type, long date, Double defaultValue) {
+        if (type == ResourceType.MONEY) return 1d;
+
         long day = TimeUtil.getDay(date);
         long today = TimeUtil.getDay();
         if (date == today) {
-            return defaultValue;
+            return type.getMarketValue();
         }
         long latestDayCalculated = lastDayWeeklyAverage[type.ordinal()];
-        if (latestDayCalculated == -1 || latestDayCalculated != today) {
+        if (latestDayCalculated == -1 || latestDayCalculated < today - 1) {
             synchronized (lastDayWeeklyAverage) {
                 latestDayCalculated = lastDayWeeklyAverage[type.ordinal()];
                 if (latestDayCalculated == -1) {
@@ -173,7 +175,8 @@ public class TradeDB extends DBMainV2 {
                 }
             }
         }
-        com.ptsmods.mysqlw.query.builder.SelectBuilder builder = getDb().selectBuilder("TRADE_WEEKLY_AVERAGE_2")
+
+        SelectBuilder builder = getDb().selectBuilder("TRADE_WEEKLY_AVERAGE_2")
                 .select("high")
                 .select("low")
                 .where(QueryCondition.equals("type", type.ordinal()).and(QueryCondition.equals("day", day)))
@@ -182,6 +185,7 @@ public class TradeDB extends DBMainV2 {
             if (rs.next()) {
                 return rs.getDouble(1);
             } else {
+                System.out.println("No weekly average found for " + type + " on day " + day);
                 return defaultValue;
             }
         } catch (SQLException e) {
@@ -383,7 +387,7 @@ public class TradeDB extends DBMainV2 {
     }
 
     private void recalculateWeeklyAverage(ResourceType type, long latestDayCalculated, long today) {
-        System.out.println("Recalculating weekly average since " + (TimeUtil.getDay() - latestDayCalculated) + " | " + latestDayCalculated + " | " + type);
+        System.out.println("Recalculating weekly average since " + (TimeUtil.getDay() - latestDayCalculated) + " | " + latestDayCalculated + " | " + TimeUtil.getDay() + " | " + type);
         long start = TimeUtil.getTimeFromDay(latestDayCalculated) - TimeUnit.DAYS.toMillis(7);
         long end = TimeUtil.getTimeFromDay(today);
 
