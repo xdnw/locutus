@@ -3112,7 +3112,7 @@ public class UtilityCommands {
 //    }
 
     @Command(desc = "Calculate how many days it takes to ROI on the last improvement slot for a specified infra level", viewable = true)
-    public String infraROI(DBCity city, @Range(min=600,max=3000) int infraLevel,
+    public String infraROI(DBCity city, @Range(min=600,max=3500) int infraLevel,
                            @Switch("c") Continent continent,
                            @Switch("r") Double rad_index,
                            @Switch("p") Set<Project> forceProjects,
