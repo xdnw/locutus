@@ -2868,7 +2868,19 @@ public class WarDB extends DBMainV2 {
         return latest[0];
     }
 
-    public boolean updateAttacksAndWarsV3(boolean runAlerts, Consumer<Event> eventConsumer, boolean v2) throws IOException {
+    public boolean updateAttacksAndWarsV3(boolean runAlerts, Consumer<Event> eventConsumer) throws IOException {
+        boolean v2 = PW.API.hasRecent500Error();
+        try {
+            return updateAttacksAndWarsV3(runAlerts, eventConsumer, v2);
+        } catch (Throwable e) {
+            if (!v2 && PW.API.is500Error(e)) {
+                return updateAttacksAndWarsV3(runAlerts, eventConsumer, true);
+            }
+            throw new RuntimeException(StringMan.stripApiKey(e.getMessage()));
+        }
+    }
+
+    private boolean updateAttacksAndWarsV3(boolean runAlerts, Consumer<Event> eventConsumer, boolean v2) throws IOException {
         AbstractCursor latest = getLatestAttack();
         Integer maxId = latest == null ? null : latest.getWar_attack_id();
         if (maxId == null || maxId == 0) runAlerts = false;

@@ -92,9 +92,6 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -1656,11 +1653,22 @@ public abstract class DBNation implements NationOrAlliance {
 
     public List<Transaction2> updateTransactions(boolean priority) {
         BankDB bankDb = Locutus.imp().getBankDB();
-        if (Settings.USE_V2) {
-            Locutus.imp().runEventsAsync(events -> bankDb.updateBankRecs(data()._nationId(), priority, events));
-        } else if (Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS > 0) {
-            Locutus.imp().runEventsAsync(f -> bankDb.updateBankRecs(priority, f));
-        } else {
+
+        boolean v2 = PW.API.hasRecent500Error();
+        if (!v2) {
+            try {
+                if (Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS > 0) {
+                    Locutus.imp().runEventsAsync(f -> bankDb.updateBankRecs(priority, f));
+                } else {
+                    Locutus.imp().runEventsAsync(events -> bankDb.updateBankRecs(data()._nationId(), priority, events));
+                }
+            } catch (Throwable e) {
+                if (!v2 && PW.API.is500Error(e)) {
+                    v2 = true;
+                } else throw new RuntimeException(StringMan.stripApiKey(e.getMessage()));
+            }
+        }
+        if (v2) {
             Locutus.imp().runEventsAsync(events -> bankDb.updateBankRecs(data()._nationId(), priority, events));
         }
         return Locutus.imp().getBankDB().getTransactionsByNation(data()._nationId());

@@ -66,6 +66,94 @@ import java.util.regex.Pattern;
 
 
 public final class PW {
+    public static class API {
+        // Settings.USE_FALLBACK is honored as a hard override
+// public final class Settings { public static boolean USE_FALLBACK = false; }
+
+        private static final Object LOCK = new Object();
+
+        private static final long MIN_BACKOFF_MS = TimeUnit.MINUTES.toMillis(1);    // initial
+        private static final long MAX_BACKOFF_MS = TimeUnit.MINUTES.toMillis(15);   // cap
+        private static final long ERROR_STALE_RESET_MS = TimeUnit.MINUTES.toMillis(5); // if no 500s for this long, reset counters
+
+        // State
+        private static volatile long last500Error = 0L;
+        private static volatile int consecutive500Errors = 0;
+        private static volatile long currentBackoffMs = 0L;
+        private static volatile long backoffUntil = 0L;
+
+        // Call this when catching exceptions from the primary. Returns true if it looks like a 500.
+        public static boolean is500Error(Throwable e) {
+            if (!looksLike500(e)) return false;
+
+            final long now = System.currentTimeMillis();
+            synchronized (LOCK) {
+                // If the last 500 was a while ago, treat this as a fresh incident
+                if (now - last500Error > ERROR_STALE_RESET_MS) {
+                    consecutive500Errors = 0;
+                    currentBackoffMs = 0;
+                }
+
+                last500Error = now;
+                consecutive500Errors++;
+
+                // Only start backoff after the second 500
+                if (consecutive500Errors >= 2) {
+                    currentBackoffMs = (currentBackoffMs == 0)
+                            ? MIN_BACKOFF_MS
+                            : Math.min(MAX_BACKOFF_MS, currentBackoffMs << 1); // double, capped
+                    backoffUntil = now + currentBackoffMs;
+                }
+            }
+            return true;
+        }
+
+        // Check this before using the primary. If true, prefer the fallback.
+        public static boolean hasRecent500Error() {
+            if (Settings.USE_FALLBACK) return true;
+
+            final long now = System.currentTimeMillis();
+            final long until = backoffUntil; // volatile read
+            return until > now;
+        }
+
+        // Optional helper: call this after a successful primary call to reset state.
+        public static void recordPrimarySuccess() {
+            synchronized (LOCK) {
+                consecutive500Errors = 0;
+                currentBackoffMs = 0;
+                backoffUntil = 0;
+                // Keep last500Error as historical
+            }
+        }
+
+        // Optional helper: how long until we try primary again.
+        public static long millisUntilPrimaryAllowed() {
+            final long now = System.currentTimeMillis();
+            final long until = backoffUntil;
+            return Math.max(0L, until - now);
+        }
+
+        public static boolean is500Message(String t) {
+            if (t == null) return false;
+            t = t.toLowerCase(Locale.ROOT);
+            return t.contains("500 internal server error")
+                    || t.contains("http 500")
+                    || t.contains(" status 500")
+                    || t.contains("is the game's api down?");
+        }
+
+        private static boolean looksLike500(Throwable t) {
+            while (t != null) {
+                final String msg = t.getMessage();
+                if (is500Message(msg)) {
+                    return true;
+                }
+                t = t.getCause();
+            }
+            return false;
+        }
+    }
 
     public static final class City {
         public static double getCostReduction(Predicate<Project> projects) {

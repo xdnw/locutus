@@ -17,7 +17,7 @@ public class Settings extends Config {
     @Comment({"Override use V2"})
     @Ignore
     @Final
-    public static boolean USE_V2 = false;
+    public static boolean USE_FALLBACK = false;
 
     @Comment({"Override use V2"})
     @Ignore

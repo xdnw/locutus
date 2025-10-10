@@ -834,7 +834,7 @@ public class BankCommands {
                 note = "#alliance=" + from.getAlliance_id();
             }
             note += " #tx_id=" + UUID.randomUUID().toString();
-            TransferResult response = bank.transferUnsafe2(null, to, resources, note, null);
+            TransferResult response = bank.transferWithRoute(null, to, resources, note, null);
             results.add(response);
         }
         Map.Entry<String, String> embed = TransferResult.toEmbed(results);
@@ -2763,8 +2763,8 @@ public class BankCommands {
                     aaTotalPositive[i] = aaDeposits[i] - aaTotalPositive[i];
                 }
                 String natDepTypes = noEscrowSheet ? "balances" : "balances (with escrow)";
-                footer.append("\n**Total " + type + "- nation " + natDepTypes + " (without negative balances)**:  Worth: $" + MathMan.format(ResourceType.convertedTotal(aaTotalPositive)) + "\n`" + ResourceType.toString(aaTotalPositive) + "`");
-                footer.append("\n**Total " + type + "- nation " + natDepTypes + "**:  Worth: $" + MathMan.format(ResourceType.convertedTotal(aaTotalNet)) + "\n`" + ResourceType.toString(aaTotalNet) + "`");
+                footer.append("\n**Total " + type + " - nation " + natDepTypes + " (without negative balances)**:  Worth: $" + MathMan.format(ResourceType.convertedTotal(aaTotalPositive)) + "\n`" + ResourceType.toString(aaTotalPositive) + "`");
+                footer.append("\n**Total " + type + " - nation " + natDepTypes + "**:  Worth: $" + MathMan.format(ResourceType.convertedTotal(aaTotalNet)) + "\n`" + ResourceType.toString(aaTotalNet) + "`");
             } else {
                 footer.append("\n**No funds are currently " + type + "**");
             }

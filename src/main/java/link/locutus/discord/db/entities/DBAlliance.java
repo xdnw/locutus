@@ -8,6 +8,7 @@ import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.AllianceMembers;
+import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -1320,12 +1321,47 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     public Map<ResourceType, Double> getStockpile(boolean throwError) {
-        PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.VIEW_BANK);
-        double[] stockpile = api.getAllianceStockpile(allianceId);
-        if (stockpile == null && throwError) {
-            api.throwInvalid(AlliancePermission.VIEW_BANK, "for alliance " + getMarkdownUrl());
+        boolean v2 = PW.API.hasRecent500Error();
+        if (!v2) {
+            try {
+                PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.VIEW_BANK);
+                if (api == null) {
+                    if (throwError) {
+                        GuildDB aaServer = getGuildDB();
+                        if (aaServer == null) {
+                            throw new IllegalArgumentException("No discord guild found for " + PW.getMarkdownUrl(allianceId, true) + ". Please invite locutus to a server for that alliance and run " + CM.settings_default.registerAlliance.cmd.toSlashMention());
+                        }
+                        throw new IllegalArgumentException("No API key with VIEW_BANK permission found for: `" + allianceId + "`. Please set one in the alliance server using " + CM.settings_default.registerApiKey.cmd.toSlashMention());
+                    }
+                    return null;
+                }
+                double[] stockpile = api.getAllianceStockpile(allianceId);
+                if (stockpile == null && throwError) {
+                    api.throwInvalid(AlliancePermission.VIEW_BANK, "for alliance " + getMarkdownUrl());
+                }
+                return stockpile == null ? null : ResourceType.resourcesToMap(stockpile);
+            } catch (Throwable e) {
+                if (!v2 && PW.API.is500Error(e)) {
+                    v2 = true;
+                } else {
+                    if (throwError) {
+                        throw new RuntimeException(StringMan.stripApiKey(e.getMessage()));
+                    }
+                    return null;
+                }
+            }
         }
-        return stockpile == null ? null : ResourceType.resourcesToMap(stockpile);
+        if (v2) {
+            try {
+                AllianceBankContainer funds = getApiV2().getBank(allianceId).getAllianceBanks().get(0);
+                double[] stockpile = ResourceType.resourcesToArray(PW.adapt(funds));
+                return ResourceType.resourcesToMap(stockpile);
+            } catch (IOException e) {
+                if (throwError) throw new RuntimeException(StringMan.stripApiKey(e.getMessage()));
+                return null;
+            }
+        }
+        return null;
     }
 
     public void updateCities() throws IOException, ParseException {
