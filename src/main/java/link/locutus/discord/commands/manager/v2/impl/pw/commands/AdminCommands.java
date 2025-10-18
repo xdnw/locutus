@@ -3454,9 +3454,28 @@ public class AdminCommands {
     @Command(desc = "View info about a guild with a given id", viewable = true)
     @RolePermission(value = Roles.ADMIN, root = true)
     public String guildInfo(Guild guild) {
-        return guild.getName() + "/" + guild.getIdLong() + "\n" +
-                "Owner: " + guild.getOwner() + "\n" +
-                "Members: " + StringMan.getString(guild.getMembers());
+        StringBuilder sb = new StringBuilder();
+        sb.append(guild.getName()).append("/").append(guild.getIdLong()).append("\n");
+        sb.append("Owner: ").append(guild.getOwner()).append("\n");
+        sb.append("Members:\n");
+        for (Member member : guild.getMembers()) {
+            User user = member.getUser();
+            String username = user.getName() + " (" + user.getIdLong() + ")";
+            StringBuilder line = new StringBuilder("- ").append(username);
+
+            DBNation nation = DiscordUtil.getNation(user.getIdLong());
+            if (nation != null) {
+                line.append(" | Nation: ").append(nation.getNation()).append("/").append(nation.getId()).append(nation.getAllianceName());
+            }
+
+            String roles = member.getRoles().stream().map(Role::getName).collect(Collectors.joining(", "));
+            if (!roles.isEmpty()) {
+                line.append(" | Roles: ").append(roles);
+            }
+
+            sb.append(line).append("\n");
+        }
+        return sb.toString().trim();
     }
 
     @Command(desc = "View meta information about a nation in the bot's database", viewable = true)
