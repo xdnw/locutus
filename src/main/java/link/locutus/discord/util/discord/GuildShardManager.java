@@ -38,6 +38,17 @@ public class GuildShardManager {
         }
     }
 
+    public void addEventListener(Object... listeners) {
+        if (defaultShardManager != null) {
+            defaultShardManager.addEventListener(listeners);
+        } else {
+            for (JDA instance : instances) {
+                instance.addEventListener(listeners);
+            }
+
+        }
+    }
+
     public GuildShardManager(ShardManager defaultShardManager) {
         this.defaultShardManager = defaultShardManager;
         for (JDA shard : defaultShardManager.getShards()) {

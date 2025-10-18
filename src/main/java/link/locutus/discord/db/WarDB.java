@@ -2880,7 +2880,7 @@ public class WarDB extends DBMainV2 {
         }
     }
 
-    private boolean updateAttacksAndWarsV3(boolean runAlerts, Consumer<Event> eventConsumer, boolean v2) throws IOException {
+    public boolean updateAttacksAndWarsV3(boolean runAlerts, Consumer<Event> eventConsumer, boolean v2) throws IOException {
         AbstractCursor latest = getLatestAttack();
         Integer maxId = latest == null ? null : latest.getWar_attack_id();
         if (maxId == null || maxId == 0) runAlerts = false;
