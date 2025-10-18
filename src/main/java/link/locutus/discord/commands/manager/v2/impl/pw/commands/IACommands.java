@@ -2627,7 +2627,7 @@ public class IACommands {
 
     @Command(desc = "Set the interview message")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public String setInterview(@Me GuildDB db, IACategory category, String message) {
+    public String setInterview(@Me GuildDB db, IACategory category, @AllowAttachment String message) {
         db.setCopyPasta("interview", message.replace("\\n", "\n"));
         return "Set `interview` to:\n```md\n" + message + "```\n\nUse " + CM.interview.questions.view.cmd.toSlashMention() + " to view";
     }
