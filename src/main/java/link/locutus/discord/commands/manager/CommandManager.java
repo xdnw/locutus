@@ -130,8 +130,8 @@ public class CommandManager {
             return false;
         }
 
-        String content = DiscordUtil.trimContent(command.trim());
-        if (content.length() == 0) {
+        String content = command == null ? null : DiscordUtil.trimContent(command.trim());
+        if (content == null || content.isEmpty()) {
             return false;
         }
 
