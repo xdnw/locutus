@@ -3460,6 +3460,7 @@ public class AdminCommands {
         sb.append("Members:\n");
         for (Member member : guild.getMembers()) {
             User user = member.getUser();
+            if (user.isBot() || user.isSystem()) continue;
             String username = user.getName() + " (" + user.getIdLong() + ")";
             StringBuilder line = new StringBuilder("- ").append(username);
 
@@ -3471,6 +3472,21 @@ public class AdminCommands {
             String roles = member.getRoles().stream().map(Role::getName).collect(Collectors.joining(", "));
             if (!roles.isEmpty()) {
                 line.append(" | Roles: ").append(roles);
+            }
+
+            boolean hasAdmin = member.hasPermission(Permission.ADMINISTRATOR);
+            if (hasAdmin) {
+                line.append(" | [ADMIN]");
+            } else {
+                boolean hasManage = member.hasPermission(Permission.MANAGE_SERVER);
+                if (hasManage) {
+                    line.append(" | [MANAGE_SERVER]");
+                } else {
+                    boolean hasManageChannel = member.hasPermission(Permission.MANAGE_CHANNEL);
+                    if (hasManageChannel) {
+                        line.append(" | [MANAGE_CHANNEL]");
+                    }
+                }
             }
 
             sb.append(line).append("\n");
