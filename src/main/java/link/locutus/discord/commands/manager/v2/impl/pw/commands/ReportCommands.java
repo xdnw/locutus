@@ -857,7 +857,8 @@ public class ReportCommands {
                 1022224780751011860L, // Micro Minute
                 580481635645128745L, // Thalmoria
                 1139041525817409539L, // Orbis Business & Innovation Forum
-                756580822739320883L // Black Label Media
+                756580822739320883L, // Black Label Media
+                1013577300584976454L // Rising Sun News
         ));
 
 
