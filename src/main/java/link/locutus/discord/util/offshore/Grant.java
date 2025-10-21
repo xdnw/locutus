@@ -12,11 +12,14 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.grant.AGrantTemplate;
 import link.locutus.discord.db.guild.SheetKey;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.util.scheduler.CachedSupplier;
+import link.locutus.discord.util.scheduler.ThrowingSupplier;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
 import net.dv8tion.jda.api.entities.Role;
@@ -31,6 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class Grant {
     public static final Map<Long, Map<UUID, Grant>> APPROVED_GRANTS_BY_GUILD = new ConcurrentHashMap<>();
@@ -511,13 +515,24 @@ public class Grant {
             throw new IllegalArgumentException("The argument `ping_when_sent` can only be used with a single receiver");
         }
 
+        Supplier<Map<DBNation, Map<ResourceType, Double>>> aaStockpileCached;
+        if (receivers.size() > 1) {
+            aaStockpileCached = new CachedSupplier<>((ThrowingSupplier<Map<DBNation, Map<ResourceType, Double>>>) () -> db.getAllianceList().getMemberStockpile(receivers::contains));
+        } else {
+            aaStockpileCached = null;
+        }
         BiFunction<DBNation, double[] , TransferResult> onlyMissingFunc = (nation, resourcesArr) -> {
             double[] costApplyMissing = resourcesArr.clone();
             if (onlySendMissingFunds) {
                 if (!db.isAllianceId(nation.getAlliance_id())) {
                     throw new IllegalArgumentException("Nation " + nation.getMarkdownUrl() + " is not in an alliance registered to this guild (currently: " + db.getAllianceIds() + ")");
                 }
-                Map<ResourceType, Double> stockpile = nation.getStockpile();
+                Map<ResourceType, Double> stockpile;
+                if (aaStockpileCached == null) {
+                    stockpile = nation.getStockpile();
+                } else {
+                    stockpile = aaStockpileCached.get().get(nation);
+                }
                 if (stockpile == null) {
                     return new TransferResult(OffshoreInstance.TransferStatus.ALLIANCE_ACCESS, nation, resourcesArr, baseNote.withValue().toString())
                             .addMessage( "Alliance information access is disabled from their **account** page");

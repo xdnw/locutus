@@ -1995,7 +1995,7 @@ public class UnsortedCommands {
         AllianceList aaList = db.getAllianceList().subList(nationSet);
 
         Map<DBNation, Map<ResourceType, Double>> fundsToSendNations = new LinkedHashMap<>();
-        Map<DBNation, Map<ResourceType, Double>> memberResources2 = aaList.getMemberStockpile();
+        Map<DBNation, Map<ResourceType, Double>> memberResources2 = skipStockpile ? null : aaList.getMemberStockpile(nationSet::contains);
 
         for (DBNation nation : nationSet) {
             Map<ResourceType, Double> stockpile;
