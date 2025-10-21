@@ -3134,6 +3134,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
 
         Set<Integer> allowedAAs = new IntOpenHashSet(getAllianceIds());
         allowedAAs.addAll(getCoalition(OFFSHORE));
+        allowedAAs.addAll(getCoalition(EXTENSION));
 
         for (Roles lcRole : lcRoles) {
             Set<Member> members = lcRole.getAll(this);

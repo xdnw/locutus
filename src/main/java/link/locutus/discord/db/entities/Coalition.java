@@ -159,7 +159,7 @@ public enum Coalition {
     }
 
     public boolean hasPermission(Guild guild, User user) {
-        return Roles.ADMIN.has(user, guild) ;
+        return Roles.ADMIN.has(user, guild);
     }
 
     @Override
