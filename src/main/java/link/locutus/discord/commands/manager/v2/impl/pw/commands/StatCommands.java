@@ -1196,6 +1196,7 @@ public class StatCommands {
         Map<Integer, Integer> victoryByEntity = new Int2IntOpenHashMap();
         Map<Integer, Integer> lossesByEntity = new Int2IntOpenHashMap();
         Map<Integer, Integer> expireByEntity = new Int2IntOpenHashMap();
+        Map<Integer, Integer> peaceByEntity = new Int2IntOpenHashMap();
 
         for (Map.Entry<Integer, DBWar> entry : parser.getWars().entrySet()) {
             DBWar war = entry.getValue();
@@ -1210,6 +1211,8 @@ public class StatCommands {
                 lossesByEntity.put(otherId, lossesByEntity.getOrDefault(otherId, 0) + 1);
             } else if (war.getStatus() == WarStatus.EXPIRED) {
                 expireByEntity.put(id, expireByEntity.getOrDefault(id, 0) + 1);
+            } else if (war.getStatus() == WarStatus.PEACE) {
+                peaceByEntity.put(id, peaceByEntity.getOrDefault(id, 0) + 1);
             }
         }
 
@@ -1221,7 +1224,10 @@ public class StatCommands {
                     .build(channel, command, "Losses");
         if (!expireByEntity.isEmpty())
             new SummedMapRankBuilder<>(expireByEntity).sort().nameKeys(f -> (isAA ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink())
-                    .build(channel, command, "Expiries");
+                    .build(channel, command, "Expired");
+        if (!peaceByEntity.isEmpty())
+            new SummedMapRankBuilder<>(peaceByEntity).sort().nameKeys(f -> (isAA ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink())
+                    .build(channel, command, "Peace");
     }
 
     @Command(desc = "Generate a graph of nation military levels by city count between two coalitions", viewable = true)
