@@ -1194,6 +1194,7 @@ public class StatCommands {
         WarParser parser = WarParser.ofAANatobj(null, attackers, null, defenders, time, Long.MAX_VALUE);
 
         Map<Integer, Integer> victoryByEntity = new Int2IntOpenHashMap();
+        Map<Integer, Integer> lossesByEntity = new Int2IntOpenHashMap();
         Map<Integer, Integer> expireByEntity = new Int2IntOpenHashMap();
 
         for (Map.Entry<Integer, DBWar> entry : parser.getWars().entrySet()) {
@@ -1205,6 +1206,8 @@ public class StatCommands {
 
             if (war.getStatus() == WarStatus.ATTACKER_VICTORY || war.getStatus() == WarStatus.DEFENDER_VICTORY) {
                 victoryByEntity.put(id, victoryByEntity.getOrDefault(id, 0) + 1);
+                int otherId = getId.apply(!primary, war);
+                lossesByEntity.put(otherId, lossesByEntity.getOrDefault(otherId, 0) + 1);
             } else if (war.getStatus() == WarStatus.EXPIRED) {
                 expireByEntity.put(id, expireByEntity.getOrDefault(id, 0) + 1);
             }
@@ -1213,6 +1216,9 @@ public class StatCommands {
         if (!victoryByEntity.isEmpty())
             new SummedMapRankBuilder<>(victoryByEntity).sort().nameKeys(f -> (isAA ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink())
                     .build(channel, command, "Victories");
+        if (!lossesByEntity.isEmpty())
+            new SummedMapRankBuilder<>(lossesByEntity).sort().nameKeys(f -> (isAA ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink())
+                    .build(channel, command, "Losses");
         if (!expireByEntity.isEmpty())
             new SummedMapRankBuilder<>(expireByEntity).sort().nameKeys(f -> (isAA ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink())
                     .build(channel, command, "Expiries");
