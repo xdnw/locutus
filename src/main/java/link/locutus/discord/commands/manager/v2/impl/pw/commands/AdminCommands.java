@@ -1386,7 +1386,7 @@ public class AdminCommands {
         if ((sendMail || sendDM) && keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention());
         Set<Integer> aaIds = db.getAllianceIds();
         if (sendMail || sendDM) {
-            GPTUtil.checkThrowModeration(announcement + "\n" + replacements);
+            if (!Roles.ADMIN.hasOnRoot(author)) GPTUtil.checkThrowModeration(announcement + "\n" + replacements);
         }
 
         List<String> errors = new ArrayList<>();
@@ -1868,7 +1868,7 @@ public class AdminCommands {
         if (users.isEmpty()) {
             return "No users found. Are they registered? " + CM.register.cmd.toSlashMention();
         }
-        GPTUtil.checkThrowModeration(message);
+        if (!Roles.ADMIN.hasOnRoot(author)) GPTUtil.checkThrowModeration(message);
         CompletableFuture<IMessageBuilder> msgFuture = io.sendMessage("Sending " + users.size() + " with " + errors.size() + " errors\n" + StringMan.join(errors, "\n"));
         for (User mention : users) {
             mention.openPrivateChannel().queue(f -> RateLimitUtil.queue(f.sendMessage(author.getAsMention() + " said: " + message + "\n\n(no reply)")));

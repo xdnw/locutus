@@ -638,7 +638,7 @@ public class GuildKey {
         public String validate(GuildDB db, User user, String value) {
             if (value.length() >= 50)
                 throw new IllegalArgumentException("Your subject line cannot be longer than 50 characters.");
-            GPTUtil.checkThrowModeration(value);
+            if (!Roles.ADMIN.hasOnRoot(user)) GPTUtil.checkThrowModeration(value);
             return value;
         }
 
@@ -673,7 +673,7 @@ public class GuildKey {
 
         @Override
         public String validate(GuildDB db, User user, String value) {
-            GPTUtil.checkThrowModeration(value);
+            if (!Roles.ADMIN.hasOnRoot(user)) GPTUtil.checkThrowModeration(value);
             return value;
         }
     }.setupRequirements(f -> f.requireValidAlliance().requires(RECRUIT_MESSAGE_SUBJECT).requires(ALLIANCE_ID).requires(API_KEY));
@@ -2942,7 +2942,7 @@ public class GuildKey {
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
         public String add_timed_message(@Me GuildDB db, @Me User user, @Timediff long timeDelay, String subject, String message, @Switch("t") @Default("CREATION") MessageTrigger trigger) {
-            GPTUtil.checkThrowModeration(subject + "\n" + message);
+            if (!Roles.ADMIN.hasOnRoot(user)) GPTUtil.checkThrowModeration(subject + "\n" + message);
 
             switch (trigger) {
                 case MEMBER_DEPARTURE, CREATION -> {

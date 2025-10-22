@@ -2491,7 +2491,7 @@ public class UnsortedCommands {
             throw new IllegalArgumentException("You do not have permission to create invites in " + inviteTo);
         }
         if (message != null) {
-            GPTUtil.checkThrowModeration(message);
+            if (!Roles.ADMIN.hasOnRoot(author)) GPTUtil.checkThrowModeration(message);
         }
 
         // dm user instructions find_announcement
