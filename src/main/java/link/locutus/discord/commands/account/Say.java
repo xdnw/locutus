@@ -40,7 +40,7 @@ public class Say extends Command {
         msg = msg.replace("@", "@\u200B");
         msg = msg.replace("&", "&\u200B");
 
-        if (!Roles.ADMIN.hasOnRoot(author)) GPTUtil.checkThrowModeration(msg);
+        if (!Roles.MAIL.hasOnRoot(author)) GPTUtil.checkThrowModeration(msg);
         NationPlaceholders formatter = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
         return formatter.format2(guild, me, author, msg.substring(5) + "\n\n- " + author.getAsMention(), me, false);
     }

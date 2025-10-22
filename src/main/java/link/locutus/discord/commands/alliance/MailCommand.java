@@ -83,7 +83,7 @@ public class MailCommand extends Command implements Noformat {
                 String content = DiscordUtil.trimContent(fullCommandRaw);
                 String body = content.substring(content.indexOf(' ', content.indexOf("message/id=")) + 1);
 
-                if (!Roles.ADMIN.hasOnRoot(author)) GPTUtil.checkThrowModeration(body);
+                if (!Roles.MAIL.hasOnRoot(author)) GPTUtil.checkThrowModeration(body);
                 String result = new MailRespondTask(auth, arg0, messageId, body, null).call();
                 return "Mail: " + result;
             }
@@ -139,7 +139,7 @@ public class MailCommand extends Command implements Noformat {
             if (!Roles.ADMIN.hasOnRoot(author)) {
                 message += "\n\n<i>This message was sent by: " + author.getName() + "</i>";
             }
-            if (!Roles.ADMIN.hasOnRoot(author)) GPTUtil.checkThrowModeration(subject + " " + message);
+            if (!Roles.MAIL.hasOnRoot(author)) GPTUtil.checkThrowModeration(subject + " " + message);
 
             CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Sending to...");
             IMessageBuilder msg = null;

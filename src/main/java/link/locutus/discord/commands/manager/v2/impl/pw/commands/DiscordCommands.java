@@ -131,7 +131,7 @@ public class DiscordCommands {
         msg = msg.replace("@", "@\u200B");
         msg = msg.replace("&", "&\u200B");
 
-        if (!Roles.ADMIN.hasOnRoot(author)) GPTUtil.checkThrowModeration(msg);
+        if (!Roles.MAIL.hasOnRoot(author)) GPTUtil.checkThrowModeration(msg);
 
         msg = msg + "\n\n- " + author.getAsMention();
 

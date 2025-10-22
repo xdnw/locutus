@@ -1308,7 +1308,7 @@ public class IACommands {
     public String reply(@Me DBNation me, @Me User author, @Arg("The nation you are replying to") DBNation receiver, @Arg("The url of the mail") String url, String message, @Arg("The account to reply with\nMust be the same account that received the mail") @Switch("s") DBNation sender) throws IOException {
         if (!url.contains("message/id=") && !MathMan.isInteger(url)) return "URL must be a message url";
         int messageId = MathMan.isInteger(url) ? Integer.parseInt(url) : Integer.parseInt(url.split("=")[1]);
-        if (!Roles.ADMIN.hasOnRoot(author)) GPTUtil.checkThrowModeration(message);
+        if (!Roles.MAIL.hasOnRoot(author)) GPTUtil.checkThrowModeration(message);
 
         Auth auth;
         if (sender == null) {
@@ -1536,7 +1536,7 @@ public class IACommands {
     public static String mail(@Me DBNation me, @Me JSONObject command, @Me GuildDB db, @Me IMessageIO channel, @Me User author, Set<DBNation> nations, String subject, @TextArea String message, @Switch("f") boolean force, @Arg("Send from the api key registered to the guild") @Switch("l") boolean sendFromGuildAccount, @Arg("The api key to use to send the mail") @Switch("a") String apiKey) throws IOException {
         subject = MarkupUtil.transformURLIntoLinks(subject);
         message = MarkupUtil.transformURLIntoLinks(message);
-        if (!Roles.ADMIN.hasOnRoot(author)) GPTUtil.checkThrowModeration(subject + " " + message);
+        if (!Roles.MAIL.hasOnRoot(author)) GPTUtil.checkThrowModeration(subject + " " + message);
 
         ApiKeyPool.ApiKey myKey = me.getApiKey(false);
 
@@ -1971,7 +1971,7 @@ public class IACommands {
         String checkModMsg = command;
         if (subject != null) checkModMsg += subject;
         if (body != null) checkModMsg += body;
-        if (!Roles.ADMIN.hasOnRoot(author)) GPTUtil.checkThrowModeration(checkModMsg);
+        if (!Roles.MAIL.hasOnRoot(author)) GPTUtil.checkThrowModeration(checkModMsg);
 
         List<String> header = new ArrayList<>(Arrays.asList(
                 "nation",
@@ -2107,7 +2107,7 @@ public class IACommands {
         Map<DBNation, Map.Entry<String, String>> messageMap = new LinkedHashMap<>();
         if (force) {
             String messagesJoined = messageMap.values().stream().map(e -> e.getKey() + " " + e.getValue()).collect(Collectors.joining("\n"));
-            if (!Roles.ADMIN.hasOnRoot(author)) GPTUtil.checkThrowModeration(messagesJoined);
+            if (!Roles.MAIL.hasOnRoot(author)) GPTUtil.checkThrowModeration(messagesJoined);
         }
 
         for (int i = 0; i < nationNames.size(); i++) {

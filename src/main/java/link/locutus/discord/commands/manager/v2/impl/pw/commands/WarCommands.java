@@ -3580,7 +3580,7 @@ public class WarCommands {
                               // No group
                               @Switch("f") boolean force) throws IOException, GeneralSecurityException {
         if(header != null) {
-            if (!Roles.ADMIN.hasOnRoot(author)) GPTUtil.checkThrowModeration(header);
+            if (!Roles.MAIL.hasOnRoot(author)) GPTUtil.checkThrowModeration(header);
         }
 
         ApiKeyPool.ApiKey myKey = me.getApiKey(false);
