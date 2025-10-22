@@ -2096,7 +2096,7 @@ public class StatCommands {
     }
 
     @Command(desc = """
-                Get the militirization levels of top 80 alliances.
+                Get the militarization levels of top 80 alliances.
                 Each bar is segmented into four sections, from bottom to top: (soldiers, tanks, planes, ships)
                 Each alliance is grouped by sphere and color coded.""", viewable = true)
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
@@ -2286,7 +2286,6 @@ public class StatCommands {
             plot.setBarWidth(0.9);
             plot.setBackground(Color.WHITE);
 
-            Color COLOR1 = Color.DARK_GRAY;
             // Format bars
             BarPlot.BarRenderer pointRenderer = (BarPlot.BarRenderer) plot.getPointRenderers(data).get(0);
             pointRenderer.setColor(new ColorMapper() {
@@ -2309,7 +2308,7 @@ public class StatCommands {
             pointRenderer.setValueColor(new ColorMapper() {
                 @Override
                 public Paint get(Number number) {
-                    return CIEDE2000.findComplement(colorFunction.apply(number));
+                    return CIEDE2000.findContrast(colorFunction.apply(number), Color.WHITE);
                 }
 
                 @Override

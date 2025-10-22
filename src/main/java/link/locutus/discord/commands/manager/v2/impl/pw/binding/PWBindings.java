@@ -88,6 +88,12 @@ public class PWBindings extends BindingHelper {
             conflict = manager.getConflictById(id);
             if (conflict != null) return conflict;
         }
+        // find by name
+        for (Conflict c : manager.getConflictMap().values()) {
+            if (c.getName().equalsIgnoreCase(nameOrId)) {
+                return c;
+            }
+        }
         throw new IllegalArgumentException("Unknown conflict: `" + nameOrId + "`. Options: " + StringMan.getString(manager.getConflictNames()));
     }
 

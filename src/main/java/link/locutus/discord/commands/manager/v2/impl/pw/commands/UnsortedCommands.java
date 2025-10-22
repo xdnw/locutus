@@ -2109,7 +2109,8 @@ public class UnsortedCommands {
 
                                @Arg(value = "Set the MMR (military building counts) of the city to optimize\n" +
                                        "Defaults to the current MMR of the build provided, else `0000`", group = 0)
-                               @Switch("x") @Filter("[0-9]{4}") String buildMMR,
+                               @Switch("x") @Filter(value = "[0-9]{4}", desc = "MMR must be 4 digits")
+                                   String buildMMR,
 
                                @Arg(value = """
                                        Set the age of the city to optimize

@@ -2,9 +2,11 @@ package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 
 import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -370,7 +372,7 @@ public class PlaceholdersMap {
             isCoalition = true;
         }
         Set<Integer> coalition = db == null ? null : db.getCoalition(coalitionStr);
-        if (!coalition.isEmpty()) {
+        if (coalition != null && !coalition.isEmpty()) {
             return coalition.stream().map(DBAlliance::getOrCreate).collect(Collectors.toSet());
         }
         if (isCoalition) {
@@ -1759,6 +1761,11 @@ public class PlaceholdersMap {
                 (ThrowingTriFunction<Placeholders<IAttack, Void>, ValueStore, String, Set<IAttack>>) (inst, store, input) -> {
                     Set<IAttack> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
+                    if (input.equalsIgnoreCase("*")) {
+                        Set<IAttack> attacks = new ObjectLinkedOpenHashSet<>();
+                        Locutus.imp().getWarDb().iterateAttacks(0, Long.MAX_VALUE, Predicates.alwaysTrue(), (war, attack) -> attacks.add(attack));
+                        return attacks;
+                    }
                     if (SpreadSheet.isSheet(input)) {
                         Set<Integer> attackIds = new IntOpenHashSet();
                         Set<Integer> warIds = new IntOpenHashSet();

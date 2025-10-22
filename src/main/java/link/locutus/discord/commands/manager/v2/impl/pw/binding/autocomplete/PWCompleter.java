@@ -253,7 +253,7 @@ public class PWCompleter extends BindingHelper {
             options.add(coalition.name());
         }
         for (String coalition : db.getCoalitionNames()) {
-            if (Coalition.getOrNull(coalition) != null) continue;
+            if (Coalition.parse(coalition) != null) continue;
             options.add(coalition);
         }
         return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true);

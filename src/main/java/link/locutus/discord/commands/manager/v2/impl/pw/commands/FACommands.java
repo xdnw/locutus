@@ -6,6 +6,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
@@ -48,7 +49,7 @@ public class FACommands {
         if (sphere == null) {
             return "No sphere found for " + rootAlliance.getName();
         }
-        if (Coalition.getOrNull(coalition) != null) {
+        if (Coalition.parse(coalition) != null) {
             return coalition + " is a reserved keyword";
         }
         Set<Long> existing = db.getCoalitionRaw(coalition);
@@ -186,8 +187,10 @@ public class FACommands {
 
     @Command(desc = "Create a new coalition with the provided alliances")
     @RolePermission(Roles.MEMBER)
-    public String createCoalition(@Me User user, @Me GuildDB db, Set<NationOrAllianceOrGuild> alliances, String coalitionName) {
-        Coalition coalition = Coalition.getOrNull(coalitionName);
+    public String createCoalition(@Me User user, @Me GuildDB db, Set<NationOrAllianceOrGuild> alliances,
+                                  @Filter(value = "^[^!#$^&*()+=\\[\\]{}:?/<>,-]+$", desc = "may not contain any of the following characters: !#$^&*()+=[]{}:?/<>,-")
+                                  String coalitionName) {
+        Coalition coalition = Coalition.parse(coalitionName);
         if ((coalition != null && !coalition.hasPermission(db.getGuild(), user)) ||
                 (coalition == null && !Roles.FOREIGN_AFFAIRS.has(user, db.getGuild()))
         ) {
@@ -221,7 +224,7 @@ public class FACommands {
     @Command(desc = "Delete an entire coalition")
     @RolePermission(Roles.FOREIGN_AFFAIRS)
     public String deleteCoalition(@Me User user, @Me GuildDB db, @GuildCoalition String coalitionName) {
-        Coalition coalition = Coalition.getOrNull(coalitionName);
+        Coalition coalition = Coalition.parse(coalitionName);
         if ((coalition != null && !coalition.hasPermission(db.getGuild(), user)) ||
                 (coalition == null && !Roles.FOREIGN_AFFAIRS.has(user, db.getGuild()))
         ) {
@@ -239,7 +242,7 @@ public class FACommands {
             "Note: Use `{prefix}coalition delete` to delete an entire coalition")
     @RolePermission(Roles.MEMBER)
     public String removeCoalition(@Me User user, @Me GuildDB db, Set<NationOrAllianceOrGuild> alliances, @GuildCoalition String coalitionName) {
-        Coalition coalition = Coalition.getOrNull(coalitionName);
+        Coalition coalition = Coalition.parse(coalitionName);
         if ((coalition != null && !coalition.hasPermission(db.getGuild(), user)) ||
                 (coalition == null && !Roles.FOREIGN_AFFAIRS.has(user, db.getGuild()))
         ) {

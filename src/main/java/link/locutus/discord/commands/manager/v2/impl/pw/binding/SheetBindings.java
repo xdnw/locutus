@@ -164,7 +164,7 @@ public class SheetBindings extends BindingHelper {
     @Binding(value = "A google spreadsheet id or url\n" +
             "For shorthand, use a comma when specifying the sheet tab e.g. `sheet:ID,TAB_NAME`" +
             "For a url, append `#gid=1234` or `#tab=tabName` to specify the id of the tab to use", examples = {"sheet:1X2Y3Z4", "https://docs.google.com/spreadsheets/d/1X2Y3Z4/edit#gid=0"})
-    public SpreadSheet sheet(String input) throws GeneralSecurityException, IOException {
+    public static SpreadSheet sheet(String input) throws GeneralSecurityException, IOException {
         if (input.startsWith("sheet:")) {
         } else if (input.startsWith("https://docs.google.com/spreadsheets/")) {
         } else {

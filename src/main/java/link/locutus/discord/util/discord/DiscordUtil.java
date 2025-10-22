@@ -21,6 +21,7 @@ import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.INationSnapshot;
 import link.locutus.discord.db.entities.Activity;
+import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.InterviewMessage;
 import link.locutus.discord.db.guild.GuildKey;
@@ -1670,7 +1671,10 @@ public class DiscordUtil {
                     if (coa.isEmpty()) {
                         GuildDB locutusStats = Locutus.imp().getGuildDB(Settings.INSTANCE.ROOT_COALITION_SERVER);
                         if (locutusStats != null) {
-                            coa = locutusStats.getCoalition(aaName);
+                            Coalition checkIfReserved = Coalition.parse(aaName);
+                            if (checkIfReserved == null) {
+                                coa = locutusStats.getCoalition(aaName);
+                            }
                         }
                         if (coa.isEmpty()) {
                             return null;

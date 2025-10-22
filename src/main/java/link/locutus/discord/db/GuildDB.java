@@ -3249,7 +3249,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             return;
         }
         loadCoalitions();
-        if (coalitionParsed == null) coalitionParsed = getCoalitionEnumOrNull(coalition);
+        if (coalitionParsed == null) coalitionParsed = Coalition.parse(coalition);
         Object lock = getLock(coalitionParsed);
         synchronized (lock) {
             long hash = coalitionName2Id.computeIfAbsent(coalition, StringMan::hash);
@@ -3279,7 +3279,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             return;
         }
         loadCoalitions();
-        if (coalitionParsed == null) coalitionParsed = getCoalitionEnumOrNull(coalition);
+        if (coalitionParsed == null) coalitionParsed = Coalition.parse(coalition);
         Object lock = getLock(coalitionParsed);
         synchronized (lock) {
             Long hash = coalitionName2Id.get(coalition);
@@ -3303,7 +3303,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         }
         String coalitionLower = coalition.toLowerCase(Locale.ROOT);
         loadCoalitions();
-        Coalition coalitionParsed = getCoalitionEnumOrNull(coalitionLower);
+        Coalition coalitionParsed = Coalition.parse(coalitionLower);
         Object lock = getLock(coalitionParsed);
 
         synchronized (lock) {
@@ -3318,13 +3318,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             }
             return Collections.emptySet();
         }
-    }
-
-    private Coalition getCoalitionEnumOrNull(String coalition) {
-        try {
-            return Coalition.valueOf(coalition.toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {}
-        return null;
     }
 
     private Object getLock(Coalition coalitionParsed) {

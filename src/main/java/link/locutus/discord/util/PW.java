@@ -616,7 +616,7 @@ public final class PW {
         GuildDB db = Locutus.imp().getRootCoalitionServer();
         if (db != null) {
             for (String coalition : db.getCoalitionNames()) {
-                Coalition namedCoal = Coalition.getOrNull(coalition);
+                Coalition namedCoal = Coalition.parse(coalition);
                 if (namedCoal != null) continue;
                 Set<Long> ids = db.getCoalitionRaw(coalition);
                 if (ids.contains((long) sphereId)) {
