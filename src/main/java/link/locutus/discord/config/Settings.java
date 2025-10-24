@@ -385,7 +385,7 @@ public class Settings extends Config {
         @Final
         @Comment({"Print the espionage debug information",
                 "Disabled by default, as it is verbose"})
-        public boolean PRINT_ESPIONAGE_DEBUG = true;
+        public boolean PRINT_ESPIONAGE_DEBUG = false;
 
         @Comment({"Whitelist a list of bot ids allowed to send messages to the bot",
         "Intended for testing purposes, DO NOT USE IN PRODUCTION"})
