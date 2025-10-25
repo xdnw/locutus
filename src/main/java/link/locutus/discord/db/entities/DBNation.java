@@ -4701,7 +4701,8 @@ public abstract class DBNation implements NationOrAlliance {
                 JsonObject obj = JsonParser.parseString(result).getAsJsonObject();
                 String generalMessage = obj.get("general_message").getAsString();
                 if (generalMessage.equalsIgnoreCase("This API key cannot be used for this API endpoint, it will only work for API v3.")) {
-                    return new MailApiResponse(MailApiSuccess.NON_MAIL_KEY, StringMan.stripApiKey(generalMessage));
+                    return new MailApiResponse(MailApiSuccess.NON_MAIL_KEY, "Only the api key in your original slot can be used (not a v3 api key slot that was created). See: " +
+                            CM.settings.delete.cmd.key(GuildKey.API_KEY.name()) + " and " + CM.settings_default.registerApiKey.cmd.toSlashMention());
                 }
                 return new MailApiResponse(MailApiSuccess.ERROR_MESSAGE, StringMan.stripApiKey(generalMessage));
             } catch (JsonSyntaxException e) {
