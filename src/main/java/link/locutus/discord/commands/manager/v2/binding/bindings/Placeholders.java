@@ -36,7 +36,6 @@ import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.lang3.reflect.TypeUtils;
-import org.apache.commons.lang3.tuple.Triple;
 import org.json.JSONObject;
 
 import java.lang.reflect.Method;
@@ -721,46 +720,6 @@ public abstract class Placeholders<T, M> extends BindingHelper {
         return parseSet(store, input, modifier);
     }
 
-    private static Triple<String, MathOperation, String> opSplit(String input) {
-        for (MathOperation op : MathOperation.values()) {
-            List<String> split = StringMan.split(input, op.code, 2);
-            if (split.size() == 2) {
-                return Triple.of(split.get(0), op, split.get(1));
-            }
-        }
-        return null;
-    }
-
-    protected Predicate<T> getSingleFilter(ValueStore store, String input) {
-        TypedFunction<T, ?> placeholder = formatRecursively(store, input, null, 0, false, true);
-        if (placeholder == null) {
-            throw throwUnknownCommand(input);
-        }
-        Function<T, ?> func = placeholder;
-        Type type = placeholder.getType();
-        Predicate<T> adapter;
-        if (type == String.class) {
-            throw new IllegalArgumentException("Cannot use String as filter: `" + input + "`. Please provide a condition e.g. `" + input + "=blah`");
-        } else if (type == boolean.class || type == Boolean.class) {
-            adapter = f -> {
-                if (f == null) return false;
-                return (Boolean) f;
-            };
-        } else if (type == byte.class || type == Byte.class || type == short.class || type == Short.class || type == int.class || type == Integer.class || type == long.class || type == Long.class || type == float.class || type == Float.class || type == double.class || type == Double.class || type == Number.class) {
-            adapter = f -> {
-                if (f == null) return false;
-                return ((Number) f).doubleValue() > 0;
-            };
-        } else {
-            throw new IllegalArgumentException("Only the following filter types are supported: String, Number, Boolean, not: `" + ((Class<?>) type).getSimpleName() + "`");
-        }
-        return f -> {
-            Object value = func.apply(f);
-            if (value instanceof String) return false;
-            return adapter.test((T) value);
-        };
-    }
-
     protected String wrapHashLegacy(ValueStore store2, String input) {
         if (input.contains("%")) {
             if (input.contains("%guild_alliances%")) {
@@ -812,6 +771,36 @@ public abstract class Placeholders<T, M> extends BindingHelper {
         return ArrayUtil.resolveQuery(input,
                 f -> parseSingleElem(store2, f),
                 s -> getSingleFilter(store2, s));
+    }
+
+    protected Predicate<T> getSingleFilter(ValueStore store, String input) {
+        TypedFunction<T, ?> placeholder = formatRecursively(store, input, null, 0, false, true);
+        if (placeholder == null) {
+            throw throwUnknownCommand(input);
+        }
+        Function<T, ?> func = placeholder;
+        Type type = placeholder.getType();
+        Predicate<T> adapter;
+        if (type == String.class) {
+            throw new IllegalArgumentException("Cannot use String as filter: `" + input + "`. Please provide a condition e.g. `" + input + "=blah`");
+        } else if (type == boolean.class || type == Boolean.class) {
+            adapter = f -> {
+                if (f == null) return false;
+                return (Boolean) f;
+            };
+        } else if (type == byte.class || type == Byte.class || type == short.class || type == Short.class || type == int.class || type == Integer.class || type == long.class || type == Long.class || type == float.class || type == Float.class || type == double.class || type == Double.class || type == Number.class) {
+            adapter = f -> {
+                if (f == null) return false;
+                return ((Number) f).doubleValue() > 0;
+            };
+        } else {
+            throw new IllegalArgumentException("Only the following filter types are supported: String, Number, Boolean, not: `" + ((Class<?>) type).getSimpleName() + "`");
+        }
+        return f -> {
+            Object value = func.apply(f);
+            if (value instanceof String) return false;
+            return adapter.test((T) value);
+        };
     }
 
     public TypedFunction<T, ?> formatRecursively(ValueStore store, String input, ParameterData param, int depth, boolean skipFormat, boolean throwError) {

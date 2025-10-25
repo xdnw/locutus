@@ -70,7 +70,6 @@ public class PWCompleter extends BindingHelper {
         System.out.println("Get nation completer for input: " + input);
         Parser<?> testExist = store.get(Key.of(DBNation.class, Autocomplete.class));
         if (testExist == null) {
-            System.out.println("Parser for DBNation with Autocomplete not found");
             throw new IllegalStateException("No parser for DBNation with Autocomplete found");
         }
 

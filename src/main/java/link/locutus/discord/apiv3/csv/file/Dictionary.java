@@ -23,6 +23,10 @@ public class Dictionary {
         this.saved = true;
     }
 
+    public ICodedStringMap getMap() {
+        return this.compressed;
+    }
+
     public Dictionary load() {
         if (loaded) return this;
         if (!file.exists()) {

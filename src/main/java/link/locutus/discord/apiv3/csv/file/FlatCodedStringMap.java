@@ -32,4 +32,18 @@ public class FlatCodedStringMap implements ICodedStringMap {
     public int size() {
         return list.size();
     }
+
+    @Override
+    public int countDuplicates() {
+        return list.size() - hashes.size();
+    }
+
+    @Override
+    public int stringLength() {
+        int total = 0;
+        for (String s : list) {
+            total += s.length();
+        }
+        return total;
+    }
 }
