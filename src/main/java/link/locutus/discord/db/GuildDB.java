@@ -2319,6 +2319,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
 
     private WarCategory warChannel;
     public boolean warChannelInit = false;
+    private long isInvalidWarServer;
 
     public boolean isAllyOfRoot() {
         return isAllyOfRoot(true);
@@ -2352,6 +2353,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     public void disableWarChannel() {
         this.warChannelInit = true;
         this.warChannel = null;
+        this.isInvalidWarServer = 0;
     }
 
     public WarCategory getWarChannel() {
@@ -2366,6 +2368,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
 
     public WarCategory getWarChannel(boolean throwException, boolean isWarServer, boolean create) {
         if (!create) {
+            if (isInvalidWarServer != 0 && isInvalidWarServer != getIdLong()) {
+                GuildDB otherDb = Locutus.imp().getGuildDB(isInvalidWarServer);
+                WarCategory result = warChannel = otherDb.getWarChannel(throwException, true, create);
+                if (result != null) isInvalidWarServer = 0;
+                return result;
+            }
             return warChannel;
         }
         Boolean enabled = getOrNull(GuildKey.ENABLE_WAR_ROOMS, false);
@@ -2401,7 +2409,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                 if (throwException) throw new IllegalArgumentException("There is a war server set " + GuildKey.WAR_SERVER.getCommandMention() + " in guild " + getGuild() + ". Please disable it via " + CM.settings.delete.cmd.key(GuildKey.WAR_SERVER.name()));
                 return null;
             }
-            return db.getWarChannel(throwException, true, create);
+            return warChannel = db.getWarChannel(throwException, true, create);
         }
 
         if (hasAlliance() || isWarServer) {
@@ -2415,6 +2423,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                             warChannel = new WarCategory(this, "warcat");
                             warCatError = null;
                             warCatErrorMsg = null;
+                            if (warServer == null) {
+                                String warServerStr = GuildKey.WAR_SERVER.getRaw(this, false);
+                                if (warServerStr != null && MathMan.isInteger(warServerStr)) {
+                                    isInvalidWarServer = Long.parseLong(warServerStr);
+                                }
+                            }
                         } catch (Throwable e) {
                             warCatError = e;
                             warCatErrorMsg = StringMan.stripApiKey(e.getMessage());

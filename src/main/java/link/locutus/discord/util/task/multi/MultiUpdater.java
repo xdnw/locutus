@@ -52,8 +52,6 @@ public class MultiUpdater {
         printMultiInfo();
     }
 
-    private Map<Integer, Integer> sharesUidInAa = new Int2IntOpenHashMap();
-
     private void init() {
         for (Map.Entry<Integer, BigInteger> entry : latestUids.entrySet()) {
             sharesUid.computeIfAbsent(entry.getValue(), f -> new IntOpenHashSet()).add(entry.getKey());
@@ -71,9 +69,6 @@ public class MultiUpdater {
                     DBNation nat2 = nations.get(j);
                     int activeM2 = nat2.active_m();
                     boolean sameAa = nat1.getAlliance_id() == nat2.getAlliance_id() && nat1.getAlliance_id() != 0;
-                    if (sameAa) {
-                        sharesUidInAa.merge(nat1.getNation_id(), 1, Integer::sum);
-                    }
                     if (Math.abs(activeM1 - activeM2) < 15) {
                         nationSharesTimeUid.merge(nat1.getNation_id(), 1, Integer::sum);
                         nationSharesTimeUid.merge(nat2.getNation_id(), 1, Integer::sum);
