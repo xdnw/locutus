@@ -957,7 +957,9 @@ public class ConflictCommands {
     public String addManualWars(ConflictManager manager, Conflict conflict, DBNation nation, DBAlliance mark_as_alliance) {
         long start = conflict.getStartMS();
         long end = conflict.getEndMS();
-        Set<DBWar> wars = Locutus.imp().getWarDb().getWarsByNationMatching(nation.getId(), f -> f.getDate() >= start && f.getDate() <= end);
+        if (end == -1) end = Long.MAX_VALUE;
+        long finalEnd = end;
+        Set<DBWar> wars = Locutus.imp().getWarDb().getWarsByNationMatching(nation.getId(), f -> f.getDate() >= start && f.getDate() <= finalEnd);
 
         CoalitionSide side1 = conflict.getSide(true);
         CoalitionSide side2 = conflict.getSide(false);

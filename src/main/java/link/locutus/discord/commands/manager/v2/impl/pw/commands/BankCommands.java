@@ -3375,7 +3375,7 @@ public class BankCommands {
             sheet.getSheet().attach(msg, "transfers", desc, true, desc.length());
 
             if (!errors.isEmpty()) {
-                desc.append("**Warnings**: `" + TransferResult.count(errors.values()) + "`\n");
+                desc.append("\n**Warnings**: `" + TransferResult.count(errors.values()) + "`\n");
                 msg = msg.file("errors.csv", TransferResult.toFileString(errors.values()));
             }
 
