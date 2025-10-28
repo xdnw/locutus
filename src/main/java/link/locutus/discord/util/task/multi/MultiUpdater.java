@@ -1,15 +1,15 @@
 package link.locutus.discord.util.task.multi;
 
+import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
 import it.unimi.dsi.fastutil.ints.Int2BooleanOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
-import link.locutus.discord.apiv1.entities.PwUid;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
@@ -22,12 +22,15 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Auth;
 
 import java.io.IOException;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
@@ -37,15 +40,18 @@ public class MultiUpdater {
     private final Auth auth;
     private Map<Integer, Long> lastUpdated = new Int2LongOpenHashMap();
     private final Set<Integer> verified;
-    private final Map<Integer, PwUid> latestUids;
-    private final Map<PwUid, Set<Integer>> sharesUid;
     private final SnapshotMultiData snapshotData;
 
-    private final Map<Integer, Integer> nationSharesUid = new Int2IntOpenHashMap();
-    private final Map<Integer, Integer> nationSharesTimeAA = new Int2IntOpenHashMap();
-    private final Map<Integer, Integer> nationSharesTimeUid = new Int2IntOpenHashMap();
-    private final Map<Integer, Integer> nationSharesTimeUidAndAA = new Int2IntOpenHashMap();
-    private final Map<Integer, Integer> allianceSharesTime = new Int2IntOpenHashMap();
+    private final Int2IntOpenHashMap nationSharesUid = new Int2IntOpenHashMap();
+    private final Int2IntOpenHashMap nationSharesTimeAA = new Int2IntOpenHashMap();
+    private final Int2IntOpenHashMap nationSharesTimeUid = new Int2IntOpenHashMap();
+    private final Int2IntOpenHashMap nationSharesTimeUidAndAA = new Int2IntOpenHashMap();
+    private final Int2IntOpenHashMap allianceSharesTime = new Int2IntOpenHashMap();
+    // TODO will use later
+    private final Int2IntOpenHashMap sharesUidInAa = new Int2IntOpenHashMap();
+    private final IntArrayList allianceNationIds = new IntArrayList();
+    private final IntArrayList allianceActiveMinutes = new IntArrayList();
+    private final BooleanArrayList allianceVerifiedFlags = new BooleanArrayList();
 
     public MultiUpdater() throws IOException, ParseException {
         this.auth = new Auth(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.USERNAME, Settings.INSTANCE.PASSWORD);
@@ -53,61 +59,133 @@ public class MultiUpdater {
         auth.setProxy(proxy.getNextProxy());
 
         this.verified = Locutus.imp().getDiscordDB().getVerified();
-        this.latestUids = Locutus.imp().getDiscordDB().getLatestUidByNation();
         this.snapshotData = new SnapshotMultiData();
-
-        this.sharesUid = new Object2ObjectOpenHashMap<>();
 
         init();
         printMultiInfo();
     }
 
-    private Map<Integer, Integer> sharesUidInAa = new Int2IntOpenHashMap();
+
 
     private void init() {
-        for (Map.Entry<Integer, PwUid> entry : latestUids.entrySet()) {
-            sharesUid.computeIfAbsent(entry.getValue(), f -> new IntOpenHashSet()).add(entry.getKey());
-        }
-        for (Map.Entry<PwUid, Set<Integer>> entry : sharesUid.entrySet()) {
-            List<DBNation> nations = sharesUid.get(entry.getKey()).stream().map(DBNation::getById).filter(Objects::nonNull).collect(Collectors.toList());
-            for (DBNation nation : nations) {
-                nationSharesUid.put(nation.getNation_id(), nations.size());
-            }
+        loadUidStatistics();      // no more Map<PwUid, Set<Integer>>
+        loadAllianceTimeShares(); // the second block is unchanged
+    }
 
-            for (int i = 0; i < nations.size(); i++) {
-                DBNation nat1 = nations.get(i);
-                int activeM1 = nat1.active_m();
-                for (int j = i + 1; j < nations.size(); j++) {
-                    DBNation nat2 = nations.get(j);
-                    int activeM2 = nat2.active_m();
-                    boolean sameAa = nat1.getAlliance_id() == nat2.getAlliance_id() && nat1.getAlliance_id() != 0;
-                    if (sameAa) {
-                        sharesUidInAa.merge(nat1.getNation_id(), 1, Integer::sum);
-                    }
-                    if (Math.abs(activeM1 - activeM2) < 15) {
-                        nationSharesTimeUid.merge(nat1.getNation_id(), 1, Integer::sum);
-                        nationSharesTimeUid.merge(nat2.getNation_id(), 1, Integer::sum);
-                        if (sameAa) {
-                            nationSharesTimeUidAndAA.merge(nat1.getNation_id(), 1, Integer::sum);
-                        }
+    private static final String LATEST_UUID_SQL = """
+        SELECT nation_id,
+               uuid
+        FROM (
+            SELECT u.nation_id,
+                   u.uuid,
+                   ROW_NUMBER() OVER (PARTITION BY u.nation_id ORDER BY u.date DESC) AS rn
+            FROM UUIDS u
+        ) x
+        WHERE rn = 1
+        ORDER BY uuid, nation_id
+        """;
+
+    private void loadUidStatistics() {
+        try (PreparedStatement ps = Locutus.imp().getDiscordDB().prepareQuery(LATEST_UUID_SQL);
+             ResultSet rs = ps.executeQuery()) {
+
+            byte[] lastUuid = null;
+            List<DBNation> group = new ObjectArrayList<>(4);     // typical group is tiny
+
+            while (rs.next()) {
+                byte[] uuidBytes = rs.getBytes("uuid");
+                if (lastUuid == null || !Arrays.equals(lastUuid, uuidBytes)) {
+                    handleUidGroup(group);                 // consume previous uuid
+                    group.clear();
+                    lastUuid = uuidBytes;
+                }
+
+                DBNation nation = DBNation.getById(rs.getInt("nation_id"));
+                if (nation != null) {
+                    group.add(nation);
+                }
+            }
+            handleUidGroup(group);                         // flush final group
+        } catch (SQLException e) {
+            throw new RuntimeException("Unable to load latest uuid data", e);
+        }
+    }
+
+    private void handleUidGroup(List<DBNation> nations) {
+        if (nations.isEmpty()) return;
+
+        final int groupSize = nations.size();
+        for (DBNation nation : nations) {
+            nationSharesUid.put(nation.getNation_id(), groupSize);
+        }
+        if (groupSize == 1) return;
+
+        for (int i = 0; i < groupSize; i++) {
+            DBNation n1 = nations.get(i);
+            final int n1Active = n1.active_m();
+            final int n1Id = n1.getNation_id();
+            final int n1AA = n1.getAlliance_id();
+
+            for (int j = i + 1; j < groupSize; j++) {
+                DBNation n2 = nations.get(j);
+                final boolean sameAA = n1AA != 0 && n1AA == n2.getAlliance_id();
+
+                if (sameAA) {
+                    sharesUidInAa.addTo(n1Id, 1);
+                }
+
+                if (Math.abs(n1Active - n2.active_m()) < 15) {
+                    nationSharesTimeUid.addTo(n1Id, 1);
+                    nationSharesTimeUid.addTo(n2.getNation_id(), 1);
+
+                    if (sameAA) {
+                        nationSharesTimeUidAndAA.addTo(n1Id, 1);
                     }
                 }
             }
         }
+    }
 
+    private void loadAllianceTimeShares() {
         Map<Integer, Boolean> isRegisted = new Int2BooleanOpenHashMap();
         for (DBAlliance alliance : Locutus.imp().getNationDB().getAlliances()) {
             Set<DBNation> members = alliance.getMemberDBNations();
+            int size = members.size();
+            if (size == 0) continue;
+            allianceNationIds.clear();
+            allianceActiveMinutes.clear();
+            allianceVerifiedFlags.clear();
+            allianceNationIds.ensureCapacity(size);
+            allianceActiveMinutes.ensureCapacity(size);
+            allianceVerifiedFlags.ensureCapacity(size);
             for (DBNation nation : members) {
-                boolean nat1Reg = isRegisted.computeIfAbsent(nation.getNation_id(), f -> nation.isVerified());
-                for (DBNation other : members) {
-                    boolean nat2Reg = isRegisted.computeIfAbsent(other.getNation_id(), f -> other.isVerified());
-                    if (nat1Reg && nat2Reg) continue;
-                    if (Math.abs(nation.active_m() - other.active_m()) < 15) {
-                        nationSharesTimeAA.merge(nation.getNation_id(), 1, Integer::sum);
-                        allianceSharesTime.merge(alliance.getAlliance_id(), 1, Integer::sum);
-                    }
+                allianceNationIds.add(nation.getNation_id());
+                allianceActiveMinutes.add(nation.active_m());
+                allianceVerifiedFlags.add(nation.isVerified());
+            }
+            int allianceId = alliance.getAlliance_id();
+            int allianceTotal = 0;
+            for (int i = 0; i < size; i++) {
+                final int id1 = allianceNationIds.getInt(i);
+                final int active1 = allianceActiveMinutes.getInt(i);
+                final boolean reg1 = allianceVerifiedFlags.getBoolean(i);
+                if (!reg1) {
+                    nationSharesTimeAA.addTo(id1, 1);
+                    allianceTotal++;
                 }
+                for (int j = i + 1; j < size; j++) {
+                    final int active2 = allianceActiveMinutes.getInt(j);
+                    if (Math.abs(active1 - active2) >= 15) continue;
+                    final boolean reg2 = allianceVerifiedFlags.getBoolean(j);
+                    if (reg1 && reg2) continue;
+                    final int id2 = allianceNationIds.getInt(j);
+                    nationSharesTimeAA.addTo(id1, 1);
+                    nationSharesTimeAA.addTo(id2, 1);
+                    allianceTotal += 2;
+                }
+            }
+            if (allianceTotal > 0) {
+                allianceSharesTime.addTo(allianceId, allianceTotal);
             }
         }
     }
@@ -131,12 +209,12 @@ public class MultiUpdater {
             } else if (nation.getDiscordString() != null && !nation.getDiscordString().isEmpty()) {
                 ageBased = Math.max(ageBased, TimeUnit.DAYS.toMillis(180));
             } else {
-                boolean sharesUid = nationSharesUid.getOrDefault(nation.getNation_id(), 0) > 0;
+                boolean sharesUid = nationSharesUid.get(nation.getNation_id()) > 0;;
                 if (!sharesUid) {
                     if (snapshotData.hasCustomFlag(nation.getNation_id()) || snapshotData.hasCustomPortrait(nation.getNation_id())) {
                         ageBased = Math.max(ageBased, TimeUnit.DAYS.toMillis(180));
                     } else {
-                        boolean sharesTime = nationSharesTimeAA.getOrDefault(nation.getNation_id(), 0) > 0;
+                        boolean sharesTime = nationSharesTimeAA.get(nation.getNation_id(), 0) > 0;
                         if (!sharesTime && snapshotData.hasCustomCurrency(nation.getNation_id()) && snapshotData.hasPickedLand(nation.getNation_id())) {
                             ageBased = Math.max(ageBased, TimeUnit.DAYS.toMillis(120));
                         }
@@ -206,27 +284,27 @@ public class MultiUpdater {
             weight *= 0.2;
         }
 
-        int sharesUid = nationSharesUid.getOrDefault(nation.getNation_id(), 0);
+        int sharesUid = nationSharesUid.get(nation.getNation_id());
         if (sharesUid > 0) {
             weight = weight * (1 + (Math.pow(0.2, sharesUid + 4) - 1) * 20);
         }
 
-        int timeAA = nationSharesTimeAA.getOrDefault(nation.getNation_id(), 0);
+        int timeAA = nationSharesTimeAA.get(nation.getNation_id());
         if (timeAA > 0) {
             weight = weight * (1 + (Math.pow(0.2, timeAA + 4) - 1) * 5);
         }
 
-        int timeUid = nationSharesTimeUid.getOrDefault(nation.getNation_id(), 0);
+        int timeUid = nationSharesTimeUid.get(nation.getNation_id());
         if (timeUid > 0) {
             weight = weight * (1 + (Math.pow(0.2, timeUid + 4) - 1) * 40);
         }
 
-        int timeUidAndAA = nationSharesTimeUidAndAA.getOrDefault(nation.getNation_id(), 0);
+        int timeUidAndAA = nationSharesTimeUidAndAA.get(nation.getNation_id());
         if (timeUidAndAA > 0) {
             weight = weight * (1 + (Math.pow(0.2, timeUidAndAA + 4) - 1) * 40);
         }
 
-        int allianceSharesTime = this.allianceSharesTime.getOrDefault(nation.getAlliance_id(), 0);
+        int allianceSharesTime = this.allianceSharesTime.get(nation.getAlliance_id());
         if (allianceSharesTime > 0) {
             weight = weight * (1 + (Math.pow(0.2, allianceSharesTime + 4) - 1) * 10);
         }
@@ -245,10 +323,11 @@ public class MultiUpdater {
             lastUpdatedQueue = now;
             Set<DBNation> nations = Locutus.imp().getNationDB().getAllNations();
             Map<DBNation, Double> weights = new Object2DoubleOpenHashMap<>();
+            final long nowMillis = System.currentTimeMillis();
             for (DBNation nation : nations) {
                 int fail = failCount.getOrDefault(nation.getNation_id(), 0);
                 if (fail >= 3) continue;
-                double weight = getNationWeight(nation, System.currentTimeMillis());
+                double weight = getNationWeight(nation, nowMillis);
                 if (weight < 0) continue;
                 weights.put(nation, weight);
             }

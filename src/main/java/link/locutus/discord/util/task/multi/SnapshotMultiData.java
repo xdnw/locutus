@@ -1,7 +1,7 @@
 package link.locutus.discord.util.task.multi;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
@@ -11,6 +11,7 @@ import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.file.NationsFile;
 import link.locutus.discord.apiv3.csv.header.NationHeaderReader;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 
 import java.io.IOException;
@@ -23,7 +24,7 @@ import java.util.function.BiFunction;
 public class SnapshotMultiData {
     public final Map<Continent, Long> mostCommonLocation = new Object2LongOpenHashMap<>();
     public final Map<Integer, MultiData> data = new Int2ObjectOpenHashMap<>();
-    public final Map<String, Integer> flagCounts = new Object2IntOpenHashMap<>();
+    public final Map<Long, Integer> flagCounts = new Long2ObjectOpenHashMap<>();
 
     public record MultiData(int nationId, Continent continent, long location, String currency, String flagUrl,
                             String portraitUrl, String leaderTitle, String nationTitle) {
@@ -44,7 +45,7 @@ public class SnapshotMultiData {
         MultiData natData = data.get(nationId);
         if (natData == null) return false;
         if (natData.flagUrl() == null || natData.flagUrl().isEmpty()) return false;
-        return flagCounts.getOrDefault(natData.flagUrl(), 0) <= 1;
+        return flagCounts.getOrDefault(StringMan.hash(natData.flagUrl()), 0) <= 1;
     }
 
     public boolean hasCustomCurrency(int nationId) {
@@ -104,7 +105,7 @@ public class SnapshotMultiData {
                             long pair = pairLocation.apply(lat, lon);
                             Continent continent = r.header.continent.get();
                             mostCommonLocationPairs.computeIfAbsent(continent, k -> new Object2ObjectOpenHashMap<>()).computeIfAbsent(pair, k -> new AtomicInteger()).incrementAndGet();
-                            flagCounts.merge(r.header.flag_url.get(), 1, Integer::sum);
+                            flagCounts.merge(StringMan.hash(r.header.flag_url.get()), 1, Integer::sum);
                             MultiData row = new MultiData(nationId, continent, pair, r.header.currency.get(), r.header.flag_url.get(), r.header.portrait_url.get(), r.header.leader_title.get(), r.header.nation_title.get());
                             data.put(nationId, row);
                         } catch (Throwable e) {
