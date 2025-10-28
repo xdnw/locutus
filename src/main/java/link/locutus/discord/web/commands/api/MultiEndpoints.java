@@ -1,6 +1,7 @@
 package link.locutus.discord.web.commands.api;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.entities.PwUid;
 import link.locutus.discord.commands.manager.v2.binding.annotation.AllowDeleted;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -13,7 +14,6 @@ import link.locutus.discord.web.commands.ReturnType;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
-import java.math.BigInteger;
 import java.text.ParseException;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -31,7 +31,7 @@ public class MultiEndpoints {
     }
 
     private static WeakReference<SnapshotMultiData> snapshotData = new WeakReference<>(null);
-    private static WeakReference<Map<Integer, BigInteger>> uids = new WeakReference<>(null);
+    private static WeakReference<Map<Integer, PwUid>> uids = new WeakReference<>(null);
 
     @Command(viewable = true)
     @ReturnType(AdvMultiReport.class)
@@ -43,7 +43,7 @@ public class MultiEndpoints {
                 snapshotData = new WeakReference<>(snapshot);
             }
 
-            Map<Integer, BigInteger> uidMap = uids.get();
+            Map<Integer, PwUid> uidMap = uids.get();
             if (uidMap == null) {
                 uidMap = Locutus.imp().getDiscordDB().getLatestUidByNation();
                 uids = new WeakReference<>(uidMap);

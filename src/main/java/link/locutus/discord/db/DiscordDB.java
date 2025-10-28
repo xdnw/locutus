@@ -17,6 +17,7 @@ import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.apiv1.entities.PwUid;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
@@ -38,13 +39,19 @@ import link.locutus.discord.util.task.multi.NetworkRow;
 import link.locutus.discord.util.task.multi.SameNetworkTrade;
 import net.dv8tion.jda.api.entities.User;
 
-import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -596,27 +603,27 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         }
     }
 
-    public void addUUID(int nationId, BigInteger uuid) {
-        Map<BigInteger, List<Map.Entry<Long, Long>>> existing = getUuids(nationId);
+    public void addUUID(int nationId, PwUid uuid) {
+        Map<PwUid, List<Map.Entry<Long, Long>>> existing = getUuids(nationId);
         if (existing != null && !existing.isEmpty()) {
-            Map.Entry<BigInteger, List<Map.Entry<Long, Long>>> first = existing.entrySet().iterator().next();
+            Map.Entry<PwUid, List<Map.Entry<Long, Long>>> first = existing.entrySet().iterator().next();
             Map.Entry<Long, Long> firstTime = first.getValue().get(0);
             if (first.getKey().equals(uuid)) return;
         }
         update("INSERT OR REPLACE INTO `UUIDS` (`nation_id`, `uuid`, `date`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, nationId);
-            stmt.setBytes(2, uuid.toByteArray());
+            stmt.setBytes(2, uuid.data());
             stmt.setLong(3, System.currentTimeMillis());
         });
     }
 
-    public List<Map.Entry<Integer, Long>> getUuids(BigInteger uuid) {
+    public List<Map.Entry<Integer, Long>> getUuids(PwUid uuid) {
         ArrayList<Map.Entry<Integer, Long>> list = new ArrayList<>();
         String query = "SELECT * FROM UUIDS WHERE uuid = ? ORDER BY date DESC";
         query(query, new ThrowingConsumer<PreparedStatement>() {
             @Override
             public void acceptThrows(PreparedStatement stmt) throws SQLException {
-                stmt.setBytes(1, uuid.toByteArray());
+                stmt.setBytes(1, uuid.data());
             }
         }, new ThrowingConsumer<ResultSet>() {
             @Override
@@ -630,15 +637,15 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         return list;
     }
 
-    public List<Map.Entry<Integer, Map.Entry<Long, BigInteger>>> getUuids() {
-        ArrayList<Map.Entry<Integer, Map.Entry<Long, BigInteger>>> list = new ArrayList<>();
+    public List<Map.Entry<Integer, Map.Entry<Long, PwUid>>> getUuids() {
+        ArrayList<Map.Entry<Integer, Map.Entry<Long, PwUid>>> list = new ArrayList<>();
         try (PreparedStatement stmt = prepareQuery("select * FROM UUIDS ORDER BY date DESC")) {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     int nationId = rs.getInt("nation_id");
                     byte[] bytes = rs.getBytes("uuid");
                     long date = rs.getLong("date");
-                    list.add(new KeyValue<>(nationId, new KeyValue<>(date, new BigInteger(bytes))));
+                    list.add(new KeyValue<>(nationId, new KeyValue<>(date, new PwUid(bytes))));
                 }
             }
             return list;
@@ -648,8 +655,8 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         }
     }
 
-    public Map<Integer, BigInteger> getLatestUidByNation() {
-        Map<Integer, BigInteger> latestUuidsMap = new HashMap<>();
+    public Map<Integer, PwUid> getLatestUidByNation() {
+        Map<Integer, PwUid> latestUuidsMap = new Int2ObjectOpenHashMap<>();
         String query = """
                 SELECT t1.nation_id, t1.uuid
                 FROM UUIDS t1
@@ -665,8 +672,8 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
                 i++;
                 int nationId = resultSet.getInt("nation_id");
                 byte[] uuidBytes = resultSet.getBytes("uuid");
-                BigInteger uuidBigInteger = new BigInteger(uuidBytes);
-                latestUuidsMap.put(nationId, uuidBigInteger);
+                PwUid uuid = new PwUid(uuidBytes);
+                latestUuidsMap.put(nationId, uuid);
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -732,14 +739,14 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         }
     }
 
-    public Map<BigInteger, Set<Integer>> getUuidMap() {
-            Map<BigInteger, Set<Integer>> multis = new HashMap<>();
+    public Map<PwUid, Set<Integer>> getUuidMap() {
+            Map<PwUid, Set<Integer>> multis = new HashMap<>();
         try (PreparedStatement stmt = prepareQuery("select * FROM UUIDS")) {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     int nationId = rs.getInt("nation_id");
                     byte[] bytes = rs.getBytes("uuid");
-                    BigInteger uuid = new BigInteger(bytes);
+                    PwUid uuid = new PwUid(bytes);
                     multis.computeIfAbsent(uuid, i -> Sets.newHashSet()).add(nationId);
                 }
             }
@@ -750,9 +757,9 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         }
     }
 
-    public BigInteger getLatestUuid(int nationId) {
-        Map<BigInteger, List<Map.Entry<Long, Long>>> uids = getUuids(nationId);
-        for (Map.Entry<BigInteger, List<Map.Entry<Long, Long>>> uidEntry : uids.entrySet()) {
+    public PwUid getLatestUuid(int nationId) {
+        Map<PwUid, List<Map.Entry<Long, Long>>> uids = getUuids(nationId);
+        for (Map.Entry<PwUid, List<Map.Entry<Long, Long>>> uidEntry : uids.entrySet()) {
             for (Map.Entry<Long, Long> timeEntry : uidEntry.getValue()) {
                 if (timeEntry.getValue() == Long.MAX_VALUE) return uidEntry.getKey();
             }
@@ -760,16 +767,16 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         return null;
     }
 
-    public void deleteUid(BigInteger uid) {
+    public void deleteUid(PwUid uid) {
         update("DELETE FROM UUIDS WHERE uuid = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setBytes(1, uid.toByteArray());
+            stmt.setBytes(1, uid.data());
         });
     }
 
-    public Map<BigInteger, List<Map.Entry<Long, Long>>> getUuids(int nationId) {
+    public Map<PwUid, List<Map.Entry<Long, Long>>> getUuids(int nationId) {
         long end = Long.MAX_VALUE;
 
-        Map<BigInteger, List<Map.Entry<Long, Long>>> result = new LinkedHashMap<>();
+        Map<PwUid, List<Map.Entry<Long, Long>>> result = new LinkedHashMap<>();
 
         try (PreparedStatement stmt = prepareQuery("select * FROM UUIDS WHERE nation_id = ? ORDER BY date DESC")) {
             stmt.setInt(1, nationId);
@@ -778,7 +785,7 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
                     byte[] bytes = rs.getBytes("uuid");
                     long start = rs.getLong("date");
 
-                    BigInteger uuid = new BigInteger(bytes);
+                    PwUid uuid = new PwUid(bytes);
 
                     List<Map.Entry<Long, Long>> list = result.computeIfAbsent(uuid, k -> new ArrayList<>());
                     list.add(new KeyValue<>(start, end));
@@ -792,10 +799,10 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         }
     }
 
-    public List<Map.Entry<BigInteger, Map.Entry<Long, Long>>> getUuidsByTime(int nationId) {
+    public List<Map.Entry<PwUid, Map.Entry<Long, Long>>> getUuidsByTime(int nationId) {
             long end = Long.MAX_VALUE;
 
-            List<Map.Entry<BigInteger, Map.Entry<Long, Long>>> list = new ArrayList<>();
+            List<Map.Entry<PwUid, Map.Entry<Long, Long>>> list = new ArrayList<>();
 
         try (PreparedStatement stmt = prepareQuery("select * FROM UUIDS WHERE nation_id = ? ORDER BY date DESC")) {
             stmt.setInt(1, nationId);
@@ -804,10 +811,10 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
                     byte[] bytes = rs.getBytes("uuid");
                     long start = rs.getLong("date");
 
-                    BigInteger uuid = new BigInteger(bytes);
+                    PwUid uuid = new PwUid(bytes);
 
                     Map.Entry<Long, Long> timePair = new KeyValue<>(start, end);
-                    Map.Entry<BigInteger, Map.Entry<Long, Long>> uuidPair = new KeyValue<>(uuid, timePair);
+                    Map.Entry<PwUid, Map.Entry<Long, Long>> uuidPair = new KeyValue<>(uuid, timePair);
                     list.add(uuidPair);
                     end = start;
                 }
@@ -819,10 +826,10 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         }
     }
 
-    public Set<Integer> getMultis(BigInteger uuid) {
+    public Set<Integer> getMultis(PwUid uuid) {
             Set<Integer> list = new ObjectLinkedOpenHashSet<>();
         try (PreparedStatement stmt = prepareQuery("select * FROM UUIDS WHERE uuid = ?")) {
-            stmt.setBytes(1, uuid.toByteArray());
+            stmt.setBytes(1, uuid.data());
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     int nationId = rs.getInt("nation_id");

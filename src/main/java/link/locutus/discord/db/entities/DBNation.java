@@ -3,17 +3,38 @@ package link.locutus.discord.db.entities;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
-import com.politicsandwar.graphql.model.*;
-import it.unimi.dsi.fastutil.ints.*;
+import com.politicsandwar.graphql.model.ApiKeyDetails;
+import com.politicsandwar.graphql.model.Bankrec;
+import com.politicsandwar.graphql.model.MilitaryResearch;
+import com.politicsandwar.graphql.model.Nation;
+import com.politicsandwar.graphql.model.NationResponseProjection;
+import com.politicsandwar.graphql.model.Trade;
+import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
+import it.unimi.dsi.fastutil.ints.IntArraySet;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.*;
+import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
-import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.apiv1.entities.PwUid;
 import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.Continent;
+import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.NationColor;
+import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.apiv1.enums.Research;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -28,7 +49,12 @@ import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.ApiKeyPermission;
 import link.locutus.discord.apiv3.enums.GameTimers;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.MethodIdentity;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
@@ -43,17 +69,61 @@ import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.*;
+import link.locutus.discord.db.BankDB;
+import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.NationDB;
+import link.locutus.discord.db.Report;
+import link.locutus.discord.db.ReportManager;
+import link.locutus.discord.db.TaxDeposit;
 import link.locutus.discord.db.entities.nation.DBNationData;
 import link.locutus.discord.db.entities.nation.DBNationGetter;
 import link.locutus.discord.db.entities.nation.DBNationSetter;
 import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
-import link.locutus.discord.event.nation.*;
-import link.locutus.discord.pnw.*;
+import link.locutus.discord.event.nation.NationChangeActiveEvent;
+import link.locutus.discord.event.nation.NationChangeAllianceEvent;
+import link.locutus.discord.event.nation.NationChangeCitiesEvent;
+import link.locutus.discord.event.nation.NationChangeColorEvent;
+import link.locutus.discord.event.nation.NationChangeContinentEvent;
+import link.locutus.discord.event.nation.NationChangeDCEvent;
+import link.locutus.discord.event.nation.NationChangeDomesticPolicyEvent;
+import link.locutus.discord.event.nation.NationChangeGNIEvent;
+import link.locutus.discord.event.nation.NationChangeLeaderEvent;
+import link.locutus.discord.event.nation.NationChangeNameEvent;
+import link.locutus.discord.event.nation.NationChangePositionEvent;
+import link.locutus.discord.event.nation.NationChangeRankEvent;
+import link.locutus.discord.event.nation.NationChangeSpyFullEvent;
+import link.locutus.discord.event.nation.NationChangeTaxBracketEvent;
+import link.locutus.discord.event.nation.NationChangeUnitEvent;
+import link.locutus.discord.event.nation.NationChangeVacationEvent;
+import link.locutus.discord.event.nation.NationChangeWarPolicyEvent;
+import link.locutus.discord.event.nation.NationCityTimerEndEvent;
+import link.locutus.discord.event.nation.NationColorTimerEndEvent;
+import link.locutus.discord.event.nation.NationCreateProjectEvent;
+import link.locutus.discord.event.nation.NationDeleteProjectEvent;
+import link.locutus.discord.event.nation.NationDomesticPolicyTimerEndEvent;
+import link.locutus.discord.event.nation.NationLeaveBeigeEvent;
+import link.locutus.discord.event.nation.NationLeaveVacationEvent;
+import link.locutus.discord.event.nation.NationProjectTimerEndEvent;
+import link.locutus.discord.event.nation.NationRegisterEvent;
+import link.locutus.discord.event.nation.NationWarPolicyTimerEndEvent;
+import link.locutus.discord.pnw.AllianceList;
+import link.locutus.discord.pnw.CityRanges;
+import link.locutus.discord.pnw.NationOrAlliance;
+import link.locutus.discord.pnw.NationScoreMap;
+import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.*;
+import link.locutus.discord.util.AlertUtil;
+import link.locutus.discord.util.FetchDeposit;
+import link.locutus.discord.util.FileUtil;
+import link.locutus.discord.util.MarkupUtil;
+import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PW;
+import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.SpyCount;
+import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
@@ -90,14 +160,29 @@ import org.jsoup.nodes.Element;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
-import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.function.*;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.commands.manager.v2.binding.bindings.MethodEnum.*;
@@ -4809,11 +4894,11 @@ public abstract class DBNation implements NationOrAlliance {
 
         if (Settings.INSTANCE.TASKS.AUTO_FETCH_UID && fetchUid) {
             try {
-                BigInteger uid = fetchUid(true);
+                PwUid uid = fetchUid(true);
                 for (Map.Entry<Integer, Long> entry : Locutus.imp().getDiscordDB().getUuids(uid)) {
                     int nationId = entry.getKey();
                     if (nationId == this.data()._nationId()) continue;
-                    BigInteger latest = Locutus.imp().getDiscordDB().getLatestUuid(nationId);
+                    PwUid latest = Locutus.imp().getDiscordDB().getLatestUuid(nationId);
                     if (latest != null && latest.equals(uid)) {
                         return nationId;
                     }
@@ -4827,13 +4912,13 @@ public abstract class DBNation implements NationOrAlliance {
         return 0;
     }
 
-    public BigInteger fetchUid(boolean priority) throws IOException {
+    public PwUid fetchUid(boolean priority) throws IOException {
         return new GetUid(this, priority).call();
     }
 
     @Command(desc = "The unique network id of this nation")
-    public BigInteger getLatestUid(@Default boolean do_not_fetch) throws IOException {
-        BigInteger latest = Locutus.imp().getDiscordDB().getLatestUuid(getId());
+    public PwUid getLatestUid(@Default boolean do_not_fetch) throws IOException {
+        PwUid latest = Locutus.imp().getDiscordDB().getLatestUuid(getId());
         if (latest == null && isValid() && !do_not_fetch) {
             latest = fetchUid(false);
         }
@@ -4868,9 +4953,9 @@ public abstract class DBNation implements NationOrAlliance {
 
 
     public Set<Integer> getMultis() {
-        Set<BigInteger> uuids = Locutus.imp().getDiscordDB().getUuids(getNation_id()).keySet();
+        Set<PwUid> uuids = Locutus.imp().getDiscordDB().getUuids(getNation_id()).keySet();
         Set<Integer> multiNations = new IntOpenHashSet();
-        for (BigInteger uuid : uuids) {
+        for (PwUid uuid : uuids) {
             Set<Integer> multis = Locutus.imp().getDiscordDB().getMultis(uuid);
             for (int nationId : multis) {
                 if (nationId == getNation_id()) continue;

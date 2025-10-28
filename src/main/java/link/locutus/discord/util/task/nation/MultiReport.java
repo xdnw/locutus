@@ -8,8 +8,13 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.entities.PwUid;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.DBBan;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBTrade;
+import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
@@ -18,16 +23,23 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.task.multi.GetUid;
 
-import java.math.BigInteger;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class MultiReport {
     private final int nationId;
-    private final Map<Integer, Set<BigInteger>>  uuidByNation = new LinkedHashMap<>();
-    private final Map<Integer, Map<BigInteger, Long>>  diffMap;
+    private final Map<Integer, Set<PwUid>>  uuidByNation = new LinkedHashMap<>();
+    private final Map<Integer, Map<PwUid, Long>>  diffMap;
     private final Map<Integer, Set<Map.Entry<DBWar, DBWar>>> illegalWarsByMulti;
     private final Map<Integer, Set<DBTrade>> illegalTradesByMulti;
 
@@ -49,12 +61,12 @@ public class MultiReport {
 
         response.append("**Possible multis for: **" + PW.getMarkdownUrl(nationId, false)).append("\n");
 
-        Set<BigInteger> myUUIDS = uuidByNation.get(nationId);
+        Set<PwUid> myUUIDS = uuidByNation.get(nationId);
 
         response.append("verified: ").append(Locutus.imp().getDiscordDB().isVerified(nationId)).append("\n");
         response.append("networks total: ").append(myUUIDS.size()).append('\n');
 
-        for (Map.Entry<Integer, Map<BigInteger, Long>> entry : diffMap.entrySet()) {
+        for (Map.Entry<Integer, Map<PwUid, Long>> entry : diffMap.entrySet()) {
             int nationId = entry.getKey();
             DBNation nation = Locutus.imp().getNationDB().getNationById(nationId);
 
@@ -64,14 +76,14 @@ public class MultiReport {
 
             response.append("**Possible multis for: **" + PW.getMarkdownUrl(nationId, false)).append("\n");
 
-            Set<BigInteger> multiUUIDS = uuidByNation.get(nationId);
-            Set<BigInteger> shared = new HashSet<>(multiUUIDS);
+            Set<PwUid> multiUUIDS = uuidByNation.get(nationId);
+            Set<PwUid> shared = new HashSet<>(multiUUIDS);
             shared.retainAll(myUUIDS);
 
             if (simple) {
-                Map<BigInteger, Long> diff = entry.getValue();
+                Map<PwUid, Long> diff = entry.getValue();
                 int concurrent = 0;
-                for (Map.Entry<BigInteger, Long> timeDiff : diff.entrySet()) {
+                for (Map.Entry<PwUid, Long> timeDiff : diff.entrySet()) {
                     if (timeDiff.getValue() <= TimeUnit.DAYS.toMillis(1)) concurrent++;
                 }
                 response.append("shared networks: " + shared.size() + "/" + multiUUIDS.size())
@@ -79,8 +91,8 @@ public class MultiReport {
                         .append("\n");
             } else {
                 response.append("shared networks: " + shared.size() + "/" + multiUUIDS.size()).append("\n");
-                Map<BigInteger, Long> diff = entry.getValue();
-                for (Map.Entry<BigInteger, Long> timeDiff : diff.entrySet()) {
+                Map<PwUid, Long> diff = entry.getValue();
+                for (Map.Entry<PwUid, Long> timeDiff : diff.entrySet()) {
                     String timeStr;
                     long uuidTimeDiff = timeDiff.getValue();
                     if (uuidTimeDiff == 0) timeStr = "concurrent";
@@ -203,12 +215,12 @@ public class MultiReport {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        Map<BigInteger, List<Map.Entry<Long, Long>>> uuidsByTime = Locutus.imp().getDiscordDB().getUuids(nationId);
+        Map<PwUid, List<Map.Entry<Long, Long>>> uuidsByTime = Locutus.imp().getDiscordDB().getUuids(nationId);
 
         uuidByNation.put(nationId, uuidsByTime.keySet());
 
         Set<Integer> multis = new IntOpenHashSet();
-        for (BigInteger uuid : uuidsByTime.keySet()) {
+        for (PwUid uuid : uuidsByTime.keySet()) {
             Set<Integer> currMultis = Locutus.imp().getDiscordDB().getMultis(uuid);
             multis.addAll(currMultis);
         }
@@ -232,13 +244,13 @@ public class MultiReport {
         }
 
         for (Integer multi : multis) {
-            Map<BigInteger, List<Map.Entry<Long, Long>>> multiUuids = Locutus.imp().getDiscordDB().getUuids(multi);
+            Map<PwUid, List<Map.Entry<Long, Long>>> multiUuids = Locutus.imp().getDiscordDB().getUuids(multi);
 
             uuidByNation.put(multi, multiUuids.keySet());
 
-            Map<BigInteger, Long> myDiffMap = new LinkedHashMap<>();
-            for (Map.Entry<BigInteger, List<Map.Entry<Long, Long>>> entry : uuidsByTime.entrySet()) {
-                BigInteger uuid = entry.getKey();
+            Map<PwUid, Long> myDiffMap = new LinkedHashMap<>();
+            for (Map.Entry<PwUid, List<Map.Entry<Long, Long>>> entry : uuidsByTime.entrySet()) {
+                PwUid uuid = entry.getKey();
                 List<Map.Entry<Long, Long>> multiTime = multiUuids.get(uuid);
                 if (multiTime == null) continue;
                 List<Map.Entry<Long, Long>> myTime = entry.getValue();
@@ -473,16 +485,16 @@ public class MultiReport {
         });
     }
 
-    public static long getTimeDiff(List<Map.Entry<Long, BigInteger>> mine, List<Map.Entry<Long, BigInteger>> other) {
+    public static long getTimeDiff(List<Map.Entry<Long, PwUid>> mine, List<Map.Entry<Long, PwUid>> other) {
         long end = Long.MAX_VALUE;
-        for (Map.Entry<Long, BigInteger> myEntry : mine) {
+        for (Map.Entry<Long, PwUid> myEntry : mine) {
             long start = myEntry.getKey();
-            BigInteger myUUID = myEntry.getValue();
+            PwUid myUUID = myEntry.getValue();
 
             long otherEnd = Long.MAX_VALUE;
-            for (Map.Entry<Long, BigInteger> otherEntry : other) {
+            for (Map.Entry<Long, PwUid> otherEntry : other) {
                 long otherStart = otherEntry.getKey();
-                BigInteger otherUUID = otherEntry.getValue();
+                PwUid otherUUID = otherEntry.getValue();
 
             }
         }

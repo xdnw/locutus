@@ -14,6 +14,7 @@ import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AttackCursorFactory;
+import link.locutus.discord.apiv1.entities.PwUid;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -108,7 +109,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Type;
-import java.math.BigInteger;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -2700,10 +2700,10 @@ public class AdminCommands {
 
         SnapshotMultiData orbisMultiData = new SnapshotMultiData();
 
-        Map<BigInteger, Integer> uidCounts = new Object2IntOpenHashMap<>();
-        Map<Integer, BigInteger> uidByNation = new Object2ObjectOpenHashMap<>();
+        Map<PwUid, Integer> uidCounts = new Object2IntOpenHashMap<>();
+        Map<Integer, PwUid> uidByNation = new Object2ObjectOpenHashMap<>();
         for (DBNation nation : nations) {
-            BigInteger uid = nation.getLatestUid(true);
+            PwUid uid = nation.getLatestUid(true);
             if (uid != null) {
                 uidCounts.merge(uid, 1, Integer::sum);
             }
@@ -2826,11 +2826,11 @@ public class AdminCommands {
         if (forceUpdate && nations.size() > 300 && !Roles.ADMIN.hasOnRoot(author)) {
             throw new IllegalArgumentException("Too many nations to update");
         }
-        Map<Integer, BigInteger> latestUids = Locutus.imp().getDiscordDB().getLatestUidByNation();
-        Map<BigInteger, Set<Integer>> uidsByNation = new HashMap<>();
-        Map<BigInteger, Set<DBNation>> uidsByNationExisting = new HashMap<>();
-        for (Map.Entry<Integer, BigInteger> entry : latestUids.entrySet()) {
-            BigInteger uid = entry.getValue();
+        Map<Integer, PwUid> latestUids = Locutus.imp().getDiscordDB().getLatestUidByNation();
+        Map<PwUid, Set<Integer>> uidsByNation = new HashMap<>();
+        Map<PwUid, Set<DBNation>> uidsByNationExisting = new HashMap<>();
+        for (Map.Entry<Integer, PwUid> entry : latestUids.entrySet()) {
+            PwUid uid = entry.getValue();
             int nationId = entry.getKey();
             uidsByNation.computeIfAbsent(uid, k -> new HashSet<>()).add(nationId);
             DBNation nation = DBNation.getById(nationId);
@@ -2870,7 +2870,7 @@ public class AdminCommands {
                     start = System.currentTimeMillis();
                 }
                 UPDATED_UID.put(nation.getId(), now);
-                BigInteger uid = nation.getLatestUid(true);
+                PwUid uid = nation.getLatestUid(true);
                 if (uid == null) {
                     uid = nation.getLatestUid(false);
                     if (i + 1 < nationsList.size()) {
@@ -2954,7 +2954,7 @@ public class AdminCommands {
         Map<DBNation, Set<DBBan>> sameNetworkBans = new HashMap<>();
 
         for (DBNation nation : nations) {
-            BigInteger uid = latestUids.get(nation.getId());
+            PwUid uid = latestUids.get(nation.getId());
             if (uid == null) continue;
             Set<Integer> nationIds = uidsByNation.get(uid);
 
@@ -2996,9 +2996,9 @@ public class AdminCommands {
 
         if (!uidsByNationExisting.isEmpty()) {
             response.append("## Active nations sharing the same network:\n");
-            for (Map.Entry<BigInteger, Set<DBNation>> entry : uidsByNationExisting.entrySet()) {
+            for (Map.Entry<PwUid, Set<DBNation>> entry : uidsByNationExisting.entrySet()) {
                 if (entry.getValue().isEmpty()) continue;
-                response.append(entry.getKey().toString(16)).append(":\n");
+                response.append(entry.getKey().toHexString()).append(":\n");
                 List<DBNation> sorted = new ArrayList<>(entry.getValue());
                 if (sortByAgeDays) {
                     sorted.sort(Comparator.comparingLong(DBNation::getAgeDays));
@@ -3263,11 +3263,11 @@ public class AdminCommands {
             Collection<DBNation> nations = Locutus.imp().getNationDB().getAllNations();
             for (DBNation nation : nations) {
                 if (!Locutus.imp().getDiscordDB().getUuids(nation.getNation_id()).isEmpty()) continue;
-                BigInteger uid = new GetUid(nation, false).call();
+                PwUid uid = new GetUid(nation, false).call();
             }
         } else {
-            Map<BigInteger, Set<Integer>> map = Locutus.imp().getDiscordDB().getUuidMap();
-            for (Map.Entry<BigInteger, Set<Integer>> entry : map.entrySet()) {
+            Map<PwUid, Set<Integer>> map = Locutus.imp().getDiscordDB().getUuidMap();
+            for (Map.Entry<PwUid, Set<Integer>> entry : map.entrySet()) {
                 if (entry.getValue().size() <= 1) continue;
 
                 for (int nationId : entry.getValue()) {

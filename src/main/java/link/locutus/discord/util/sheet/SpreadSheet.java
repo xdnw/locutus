@@ -678,25 +678,27 @@ public class SpreadSheet {
     }
 
     private List<Object> formatRow(String tab, List<?> row) {
-        List<Object> out = new ObjectArrayList<>();
-        for (Object value : row) {
-            if (value == null) {
-                out.add(null);
-            } else {
-                String valueStr = value.toString();
-                if (valueStr.contains("{")) {
-                    List<List<Object>> rows = getCachedValues(tab);
-                    int size;
-                    synchronized (rows) {
-                        size = rows.size();
-                    }
-                    valueStr = valueStr.replaceAll("[$]row", (size + 1) + "");
-                    valueStr = valueStr.replaceAll("[$]column", SheetUtil.getLetter(size + 1));
-                    out.add(valueStr);
-                } else {
-                    out.add(value);
-                }
+        List<Object> out = new ObjectArrayList<>(row.size());
+        Integer rowCount = null;
+
+        for (int i = 0; i < row.size(); i++) {
+            Object val = row.get(i);
+            if (!(val instanceof String)) { out.add(null); continue; }
+
+            String s = val.toString();
+            boolean hasRow = s.contains("$row");
+            boolean hasCol = s.contains("$column");
+            if (!hasRow && !hasCol) { out.add(val); continue; }
+
+            if (hasRow && rowCount == null) {
+                List<List<Object>> rows = getCachedValues(tab);
+                synchronized (rows) { rowCount = rows.size(); }
+                System.out.println("Format rows " + rowCount + " for value: " + s);
             }
+
+            if (hasRow) s = s.replace("$row", String.valueOf(rowCount + 1));
+            if (hasCol) s = s.replace("$column", SheetUtil.getLetter(i + 1));
+            out.add(s);
         }
         return out;
     }
@@ -953,25 +955,25 @@ public class SpreadSheet {
 
         try {
             List<String> tabNamesList = new ObjectArrayList<>(tabNames);
-            // Prepare the ranges for batch request
             List<String> ranges = tabNamesList.stream()
                     .map(tab -> tab + "!1:1")
                     .collect(Collectors.toList());
 
-            // Create the batch request
             Sheets.Spreadsheets.Values.BatchGet request = service.spreadsheets().values().batchGet(spreadsheetId)
                     .setRanges(ranges)
+                    .setValueRenderOption("FORMULA") // return formulas / raw cell input instead of displayed text
                     .setFields("valueRanges.values");
 
-            // Execute the batch request (wrapped)
             BatchGetValuesResponse response = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
                     () -> request.execute());
 
-            // Process the response
             List<ValueRange> valueRanges = response.getValueRanges();
             for (int i = 0; i < tabNamesList.size(); i++) {
                 String tabName = tabNamesList.get(i);
-                List<List<Object>> values = valueRanges.get(i).getValues();
+                List<List<Object>> values = Collections.emptyList();
+                if (valueRanges != null && i < valueRanges.size()) {
+                    values = valueRanges.get(i).getValues();
+                }
                 headers.put(tabName, values != null ? values : Collections.emptyList());
             }
         } catch (IOException e) {

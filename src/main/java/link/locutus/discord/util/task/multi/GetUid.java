@@ -1,5 +1,6 @@
 package link.locutus.discord.util.task.multi;
 
+import link.locutus.discord.apiv1.entities.PwUid;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.FileUtil;
@@ -10,21 +11,21 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
 import java.io.IOException;
-import java.math.BigInteger;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 
-public class GetUid implements Callable<BigInteger> {
+public class GetUid implements Callable<PwUid> {
     private final DBNation nation;
     private final boolean priority;
     private boolean verified;
-    private BigInteger uuid;
+    private PwUid uuid;
 
     public GetUid(DBNation nation, boolean priority) {
         this.nation = nation;
         this.priority = priority;
     }
     @Override
-    public BigInteger call() throws IOException {
+    public PwUid call() throws IOException {
         String url = nation.getUrl();
         PagePriority pp = (priority ? PagePriority.NATION_UID_MANUAL : PagePriority.NATION_UID_AUTO);
         String html = FileUtil.readStringFromURL(pp.ordinal(), pp.getAllowedBufferingMs(), pp.getAllowableDelayMs(), url);

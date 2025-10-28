@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.sync;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.entities.PwUid;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
@@ -12,7 +13,6 @@ import link.locutus.discord.util.task.multi.GetUid;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
-import java.math.BigInteger;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -42,11 +42,11 @@ public class SyncUid extends Command {
             for (DBNation nation : nations) {
                 if (!Locutus.imp().getDiscordDB().getUuids(nation.getNation_id()).isEmpty()) continue;
 
-                BigInteger uid = new GetUid(nation, false).call();
+                PwUid uid = new GetUid(nation, false).call();
             }
         } else {
-            Map<BigInteger, Set<Integer>> map = Locutus.imp().getDiscordDB().getUuidMap();
-            for (Map.Entry<BigInteger, Set<Integer>> entry : map.entrySet()) {
+            Map<PwUid, Set<Integer>> map = Locutus.imp().getDiscordDB().getUuidMap();
+            for (Map.Entry<PwUid, Set<Integer>> entry : map.entrySet()) {
                 if (entry.getValue().size() <= 1) continue;
 
                 for (int nationId : entry.getValue()) {

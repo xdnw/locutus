@@ -9,6 +9,7 @@ import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
+import link.locutus.discord.apiv1.entities.PwUid;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.Research;
@@ -24,13 +25,41 @@ import link.locutus.discord.commands.manager.v2.table.imp.MultiCoalitionMetricGr
 import link.locutus.discord.commands.manager.v2.table.imp.SimpleTable;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.AllianceChange;
+import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBAlliancePosition;
+import link.locutus.discord.db.entities.DBBan;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBTrade;
+import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.db.entities.EnemyAlertChannelMode;
+import link.locutus.discord.db.entities.NationMeta;
+import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.event.nation.*;
+import link.locutus.discord.event.nation.NationBanEvent;
+import link.locutus.discord.event.nation.NationChangeActiveEvent;
+import link.locutus.discord.event.nation.NationChangeAllianceEvent;
+import link.locutus.discord.event.nation.NationChangeDefEvent;
+import link.locutus.discord.event.nation.NationChangeLeaderEvent;
+import link.locutus.discord.event.nation.NationChangeNameEvent;
+import link.locutus.discord.event.nation.NationChangePositionEvent;
+import link.locutus.discord.event.nation.NationChangeRankEvent;
+import link.locutus.discord.event.nation.NationChangeUnitEvent;
+import link.locutus.discord.event.nation.NationChangeVacationEvent;
+import link.locutus.discord.event.nation.NationCreateEvent;
+import link.locutus.discord.event.nation.NationDeleteEvent;
+import link.locutus.discord.event.nation.NationLeaveBeigeEvent;
+import link.locutus.discord.event.nation.NationLeaveVacationEvent;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.*;
+import link.locutus.discord.util.AlertUtil;
+import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PW;
+import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
@@ -49,9 +78,14 @@ import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
@@ -64,7 +98,7 @@ public class NationUpdateProcessor {
     private static Map<Integer, Integer> ACTIVITY_ALERTS = new PassiveExpiringMap<Integer, Integer>(240, TimeUnit.MINUTES);
 
     public static class NationUpdate {
-        public BigInteger uuid;
+        public PwUid uuid;
         public boolean verified;
         public Map<Research, Integer> research;
     }
@@ -75,7 +109,7 @@ public class NationUpdateProcessor {
         Elements uuidTd = dom.select("td:contains(Unique ID)");
         if (!uuidTd.isEmpty()) {
             String hexString = uuidTd.first().nextElementSibling().text();
-            result.uuid = new BigInteger(hexString, 16);
+            result.uuid = PwUid.fromHexString(hexString);
             result.verified = dom.select(".fa-check-circle").size() > 0;
             if (result.verified) {
                 Locutus.imp().getDiscordDB().addVerified(nation.getNation_id());

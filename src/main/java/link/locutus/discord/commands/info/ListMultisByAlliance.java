@@ -4,6 +4,7 @@ import com.google.api.client.util.Sets;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.entities.PwUid;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
@@ -66,11 +67,11 @@ public class ListMultisByAlliance extends Command {
         int finalOldest = oldest;
         referredNations.entrySet().removeIf(e -> e.getValue().getNation_id() > finalOldest);
 
-        Map<BigInteger, Set<Integer>> multis = Locutus.imp().getDiscordDB().getUuidMap();
+        Map<PwUid, Set<Integer>> multis = Locutus.imp().getDiscordDB().getUuidMap();
         Map<Integer, Set<Integer>> multisByNation = new Int2ObjectOpenHashMap<>();
         Set<Integer> verified = Locutus.imp().getDiscordDB().getVerified();
 
-        for (Map.Entry<BigInteger, Set<Integer>> entry : multis.entrySet()) {
+        for (Map.Entry<PwUid, Set<Integer>> entry : multis.entrySet()) {
             for (Integer nationId : entry.getValue()) {
                 if (verified.contains(nationId)) continue;
 

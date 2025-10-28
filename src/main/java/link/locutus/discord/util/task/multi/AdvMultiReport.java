@@ -2,14 +2,16 @@ package link.locutus.discord.util.task.multi;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.entities.PwUid;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.entities.Activity;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.offshore.Auth;
 
-import java.math.BigInteger;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 public class AdvMultiReport {
     public final int nationId;
@@ -29,7 +31,7 @@ public class AdvMultiReport {
     public final long dateFetched;
     public final List<AdvMultiRow> rows;
 
-    public AdvMultiReport(DBNation nation, SnapshotMultiData snapshot, Map<Integer, BigInteger> nationUids, boolean updateIfAbsent, long updateIfOutdated) {
+    public AdvMultiReport(DBNation nation, SnapshotMultiData snapshot, Map<Integer, PwUid> nationUids, boolean updateIfAbsent, long updateIfOutdated) {
         this.rows = new ObjectArrayList<>();
         this.nationId = nation.getId();
         this.lastActive = nation.lastActiveMs();
@@ -44,7 +46,7 @@ public class AdvMultiReport {
         this.customization = snapshot.getCustomCount(nationId);
         this.banned = nation.hasPriorBan();
 
-        BigInteger uid = nationUids.get(nationId);
+        PwUid uid = nationUids.get(nationId);
 
         DiscordDB db = Locutus.imp().getDiscordDB();
         MultiResult data = db.getMultiResult(nationId);
@@ -63,7 +65,7 @@ public class AdvMultiReport {
 
         for (Map.Entry<Integer, NetworkRow> entry : networks.entrySet()) {
             int otherNationId = entry.getKey();
-            BigInteger otherUid = nationUids.get(otherNationId);
+            PwUid otherUid = nationUids.get(otherNationId);
             NetworkRow network = entry.getValue();
 
             DBNation otherNation = DBNation.getOrCreate(otherNationId);

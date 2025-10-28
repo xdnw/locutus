@@ -1,9 +1,15 @@
 package link.locutus.discord.util.task.multi;
 
-import it.unimi.dsi.fastutil.ints.*;
-import it.unimi.dsi.fastutil.objects.*;
+import it.unimi.dsi.fastutil.ints.Int2BooleanOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
+import link.locutus.discord.apiv1.entities.PwUid;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
@@ -16,9 +22,13 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Auth;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.text.ParseException;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
@@ -27,8 +37,8 @@ public class MultiUpdater {
     private final Auth auth;
     private Map<Integer, Long> lastUpdated = new Int2LongOpenHashMap();
     private final Set<Integer> verified;
-    private final Map<Integer, BigInteger> latestUids;
-    private final Map<BigInteger, Set<Integer>> sharesUid;
+    private final Map<Integer, PwUid> latestUids;
+    private final Map<PwUid, Set<Integer>> sharesUid;
     private final SnapshotMultiData snapshotData;
 
     private final Map<Integer, Integer> nationSharesUid = new Int2IntOpenHashMap();
@@ -55,10 +65,10 @@ public class MultiUpdater {
     private Map<Integer, Integer> sharesUidInAa = new Int2IntOpenHashMap();
 
     private void init() {
-        for (Map.Entry<Integer, BigInteger> entry : latestUids.entrySet()) {
+        for (Map.Entry<Integer, PwUid> entry : latestUids.entrySet()) {
             sharesUid.computeIfAbsent(entry.getValue(), f -> new IntOpenHashSet()).add(entry.getKey());
         }
-        for (Map.Entry<BigInteger, Set<Integer>> entry : sharesUid.entrySet()) {
+        for (Map.Entry<PwUid, Set<Integer>> entry : sharesUid.entrySet()) {
             List<DBNation> nations = sharesUid.get(entry.getKey()).stream().map(DBNation::getById).filter(Objects::nonNull).collect(Collectors.toList());
             for (DBNation nation : nations) {
                 nationSharesUid.put(nation.getNation_id(), nations.size());
