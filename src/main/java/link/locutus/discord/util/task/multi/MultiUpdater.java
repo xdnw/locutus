@@ -214,7 +214,7 @@ public class MultiUpdater {
                     if (snapshotData.hasCustomFlag(nation.getNation_id()) || snapshotData.hasCustomPortrait(nation.getNation_id())) {
                         ageBased = Math.max(ageBased, TimeUnit.DAYS.toMillis(180));
                     } else {
-                        boolean sharesTime = nationSharesTimeAA.get(nation.getNation_id(), 0) > 0;
+                        boolean sharesTime = nationSharesTimeAA.get(nation.getNation_id()) > 0;
                         if (!sharesTime && snapshotData.hasCustomCurrency(nation.getNation_id()) && snapshotData.hasPickedLand(nation.getNation_id())) {
                             ageBased = Math.max(ageBased, TimeUnit.DAYS.toMillis(120));
                         }
