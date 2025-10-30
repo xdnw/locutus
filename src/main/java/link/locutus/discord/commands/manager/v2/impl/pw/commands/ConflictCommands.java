@@ -328,7 +328,7 @@ public class ConflictCommands {
         if (MathMan.isInteger(name)) {
             throw new IllegalArgumentException("Conflict name cannot be a number (`" + name + "`)");
         }
-        String previousName = isCoalition1 ? conflict.getSide(true).getName() : isCoalition2 ? conflict.getSide(false).getName() : conflict.getName();
+        String previousName = isCoalition1 ? conflict.getCoalitionName(true) : isCoalition2 ? conflict.getCoalitionName(false) : conflict.getName();
         String sideName;
         if (isCoalition1) {
             sideName = "coalition 1";
@@ -629,7 +629,7 @@ public class ConflictCommands {
         for (Conflict wikiConflict : wikiConflicts) {
             Set<Conflict> existingSet = conflictsByWiki.get(wikiConflict.getWiki());
             if (existingSet == null) {
-                Conflict conflict = manager.addConflict(wikiConflict.getName(), db.getIdLong(), wikiConflict.getCategory(), wikiConflict.getSide(true).getName(), wikiConflict.getSide(false).getName(), wikiConflict.getWiki(), wikiConflict.getCasusBelli(), wikiConflict.getStatusDesc(), wikiConflict.getStartTurn(), wikiConflict.getEndTurn());
+                Conflict conflict = manager.addConflict(wikiConflict.getName(), db.getIdLong(), wikiConflict.getCategory(), wikiConflict.getCoalitionName(true), wikiConflict.getCoalitionName(false), wikiConflict.getWiki(), wikiConflict.getCasusBelli(), wikiConflict.getStatusDesc(), wikiConflict.getStartTurn(), wikiConflict.getEndTurn());
                 existingSet = Set.of(conflict);
                 if (loadWars) {
                     manager.loadVirtualConflict(conflict, true);
@@ -882,11 +882,7 @@ public class ConflictCommands {
 
         List<String> msgs = new ArrayList<>();
         DBTopic topic = Locutus.imp().getForumDb().loadTopic(topicId, topicUrlStub);
-        if (conflict.hasAnnouncement(topic.topic_id)) {
-            conflict.deleteAnnouncement(topic.topic_id);
-            msgs.add("Deleted previous announcement for " + topic.topic_name);
-        }
-        conflict.addAnnouncement(desc == null ? topic.topic_name : desc, topic, true);
+        conflict.addAnnouncement(desc == null ? topic.topic_name : desc, topic, true, false);
         msgs.add("Added announcement for " + topic.topic_name + "/" + topic.topic_id + " at " + DiscordUtil.timestamp(topic.timestamp, null));
         conflict.push(manager, null, false, false);
         return StringMan.join(msgs, "\n");

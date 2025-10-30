@@ -45,6 +45,7 @@ public class CoalitionSide {
     private final boolean isPrimary;
     private CoalitionSide otherSide;
     private final Set<Integer> coalition = new IntOpenHashSet();
+
     private final Map<Integer, Integer> allianceIdByNation = new Int2ObjectOpenHashMap<>();
     private final DamageStatGroup inflictedAndOffensiveStats = new DamageStatGroup();
     private final DamageStatGroup lossesAndDefensiveStats = new DamageStatGroup();
@@ -54,13 +55,15 @@ public class CoalitionSide {
     private final Map<Long, DayTierGraphData> graphDataByDay = new Long2ObjectArrayMap<>();
     private final Map<Long, Map<Integer, Map<Byte, Map.Entry<DamageStatGroup, DamageStatGroup>>>> damageByDayByAllianceByCity = new Long2ObjectArrayMap<>();
 
-    public void clearWarData() {
-        allianceIdByNation.clear();
+    private void clearWarData() {
         inflictedAndOffensiveStats.clear();
         lossesAndDefensiveStats.clear();
         damageByAlliance.clear();
         damageByNation.clear();
         damageByDayByAllianceByCity.clear();
+        graphDataByTurn.clear();
+        graphDataByDay.clear();
+        allianceIdByNation.clear();
     }
 
     public Set<Integer> getNationIds() {
@@ -249,7 +252,7 @@ public class CoalitionSide {
         this.isPrimary = isPrimary;
     }
 
-    public void setName(String name) {
+    public void setNameRaw(String name) {
         this.name = name;
     }
 

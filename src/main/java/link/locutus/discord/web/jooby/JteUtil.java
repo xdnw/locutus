@@ -141,7 +141,7 @@ public class JteUtil {
         for (T value : collection) {
             List<Object> array = new ObjectArrayList<>();
             if (value == null) {
-                for (Function<T, Object> function : functions) {
+                for (Function<T, Object> _ : functions) {
                     array.add("");
                 }
             } else {

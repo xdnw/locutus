@@ -1,7 +1,11 @@
 package link.locutus.discord.util;
 
 import com.google.common.base.Predicates;
-import com.google.gson.*;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import com.opencsv.CSVWriter;
 import info.debatty.java.stringsimilarity.CharacterSubstitutionInterface;
 import info.debatty.java.stringsimilarity.WeightedLevenshtein;
@@ -14,12 +18,29 @@ import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import org.apache.commons.lang3.StringUtils;
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.StringWriter;
 import java.lang.reflect.Array;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Formatter;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -1382,12 +1403,25 @@ public class StringMan {
 
     public static long hash(String input) {
         long hash = FNV_OFFSET_BASIS_64;
-        for (byte b : input.getBytes()) {
+        for (byte b : input.getBytes(StandardCharsets.UTF_8)) {
             hash ^= (b & 0xff);
             hash *= FNV_PRIME_64;
         }
         return hash + Long.MIN_VALUE;
     }
+
+    public static long hash(List<String> inputs) {
+        long hash = FNV_OFFSET_BASIS_64;
+        for (String input : inputs) {
+            for (byte b : input.getBytes(StandardCharsets.UTF_8)) {
+                hash ^= (b & 0xff);
+                hash *= FNV_PRIME_64;
+            }
+        }
+        return hash + Long.MIN_VALUE;
+    }
+
+
 //    private static long hash2(String input) {
 //        BigInteger value = StringMan.hash_fnv1a_64(input.getBytes());
 //        value = value.add(BigInteger.valueOf(Long.MIN_VALUE));

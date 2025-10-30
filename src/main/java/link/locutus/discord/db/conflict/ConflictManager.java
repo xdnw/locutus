@@ -1,14 +1,18 @@
 package link.locutus.discord.db.conflict;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Predicates;
 import com.google.common.eventbus.Subscribe;
 import com.ptsmods.mysqlw.Database;
-import it.unimi.dsi.fastutil.ints.*;
+import it.unimi.dsi.fastutil.ints.Int2ByteOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntArraySet;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
-import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -33,14 +37,31 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
+import link.locutus.discord.util.scheduler.ThrowingFunction;
 import link.locutus.discord.web.jooby.AwsManager;
 import link.locutus.discord.web.jooby.JteUtil;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.sql.*;
+import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.text.ParseException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
@@ -49,6 +70,8 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import static link.locutus.discord.db.conflict.ConflictField.*;
+
 public class ConflictManager {
     private final WarDB db;
     private final AwsManager aws;
@@ -56,16 +79,26 @@ public class ConflictManager {
 
     private final Map<Integer, Conflict> conflictById = new Int2ObjectOpenHashMap<>();
     private Conflict[] conflictArr;
-    private final Map<Integer, String> legacyNames2 = new Int2ObjectOpenHashMap<>();
-    private final Map<String, Map<Long, Integer>> legacyIdsByDate = new ConcurrentHashMap<>();
     private final Set<Integer> activeConflictsOrd = new IntOpenHashSet();
     private long lastTurn = 0;
     private final Map<Integer, Set<Integer>> activeConflictOrdByAllianceId = new Int2ObjectOpenHashMap<>();
     private final Map<Long, Map<Integer, int[]>> mapTurnAllianceConflictOrd = new Long2ObjectOpenHashMap<>();
 
+    private final Map<Integer, String> legacyNames2 = new Int2ObjectOpenHashMap<>();
+    private final Map<String, Map<Long, Integer>> legacyIdsByDate = new ConcurrentHashMap<>();
+
+    private final Set<Integer> conflictAlliances = new IntOpenHashSet();
+
+    private volatile boolean conflictHeaderHashInitialized = false;
+    private volatile long conflictHeaderHash = 0L;
+
     public ConflictManager(WarDB db) {
         this.db = db;
         this.aws = setupAws();
+    }
+
+    public WarDB getDb() {
+        return db;
     }
 
     private AwsManager setupAws() {
@@ -80,19 +113,23 @@ public class ConflictManager {
     }
 
     public void createTables() {
-//        // drop table conflicts
-//        db.executeStmt("DROP TABLE IF EXISTS conflict_participant");
-//        db.executeStmt("DROP TABLE IF EXISTS conflicts");
-//        db.executeStmt("DROP TABLE IF EXISTS conflict_announcements2");
-//        db.executeStmt("DROP TABLE IF EXISTS conflict_graphs2");
 
         db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_announcements2 (conflict_id INTEGER NOT NULL, topic_id INTEGER NOT NULL, description VARCHAR NOT NULL, PRIMARY KEY (conflict_id, topic_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
-        db.executeStmt("CREATE TABLE IF NOT EXISTS conflicts (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR NOT NULL, start BIGINT NOT NULL, end BIGINT NOT NULL, col1 VARCHAR NOT NULL, col2 VARCHAR NOT NULL, wiki VARCHAR NOT NULL, cb VARCHAR NOT NULL, status VARCHAR NOT NULL, category INTEGER NOT NULL, creator BIGINT NOT NULL)");
-        // add column `creator`
-        // add col1 and col2 (string) to conflicts, default ""
-//        db.executeStmt("ALTER TABLE conflicts ADD COLUMN col1 VARCHAR DEFAULT ''");
-//        db.executeStmt("ALTER TABLE conflicts ADD COLUMN col2 VARCHAR DEFAULT ''");
-        // add wiki column, default empty
+        String createConflicts = "CREATE TABLE IF NOT EXISTS conflicts (" +
+                String.join(", ",
+                        ID + " INTEGER PRIMARY KEY AUTOINCREMENT",
+                        NAME + " VARCHAR NOT NULL",
+                        START + " BIGINT NOT NULL",
+                        END + " BIGINT NOT NULL",
+                        COL1 + " VARCHAR NOT NULL",
+                        COL2 + " VARCHAR NOT NULL",
+                        WIKI + " VARCHAR NOT NULL",
+                        CB + " VARCHAR NOT NULL",
+                        STATUS + " VARCHAR NOT NULL",
+                        CATEGORY + " INTEGER NOT NULL",
+                        CREATOR + " BIGINT NOT NULL"
+                ) + ")";
+        db.executeStmt(createConflicts);
         db.executeStmt("ALTER TABLE conflicts ADD COLUMN creator BIGINT DEFAULT 0", true);
         db.executeStmt("ALTER TABLE conflicts ADD COLUMN wiki VARCHAR DEFAULT ''", true);
         db.executeStmt("ALTER TABLE conflicts ADD COLUMN cb VARCHAR DEFAULT ''", true);
@@ -111,6 +148,43 @@ public class ConflictManager {
 
         // create table if not exists MANUAL_WARS war_id, conflict_id, int alliance, primary key (war_id)
         db.executeStmt("CREATE TABLE IF NOT EXISTS MANUAL_WARS (war_id INT PRIMARY KEY, conflict_id INT NOT NULL, alliance INT NOT NULL)");
+
+        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_flat_cache (" +
+                "conflict_id INTEGER PRIMARY KEY, " +
+                "flat_gzip BLOB, " +
+                "graph_gzip BLOB, " +
+                "updated_ms BIGINT NOT NULL DEFAULT 0" +
+                ")");
+
+        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_row_cache (" +
+                "conflict_id INTEGER PRIMARY KEY, " +
+                "header_hash BIGINT NOT NULL, " +
+                "row_data BLOB NOT NULL, " +
+                "FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
+    }
+
+    public byte[] loadFlatCacheGzip(int conflictId) {
+        final byte[][] out = new byte[1][];
+        db.query("SELECT flat_gzip FROM conflict_flat_cache WHERE conflict_id = ?",
+                (ThrowingConsumer<PreparedStatement>)stmt -> stmt.setInt(1, conflictId),
+                (ThrowingConsumer<ResultSet>)rs -> { if (rs.next()) out[0] = rs.getBytes(1); });
+        return out[0];
+    }
+    public byte[] loadGraphCacheGzip(int conflictId) {
+        final byte[][] out = new byte[1][];
+        db.query("SELECT graph_gzip FROM conflict_flat_cache WHERE conflict_id = ?",
+                (ThrowingConsumer<PreparedStatement>)stmt -> stmt.setInt(1, conflictId),
+                (ThrowingConsumer<ResultSet>)rs -> { if (rs.next()) out[0] = rs.getBytes(1); });
+        return out[0];
+    }
+    public void saveFlatGraphCache(int conflictId, byte[] flat, byte[] graph) {
+        db.update("INSERT OR REPLACE INTO conflict_flat_cache (conflict_id, flat_gzip, graph_gzip, updated_ms) VALUES (?, ?, ?, ?)",
+                (ThrowingConsumer<PreparedStatement>) stmt -> {
+                    stmt.setInt(1, conflictId);
+                    stmt.setBytes(2, flat);
+                    stmt.setBytes(3, graph);
+                    stmt.setLong(4, System.currentTimeMillis());
+                });
     }
 
     private synchronized void importData(Database sourceDb, Database targetDb, String tableName) throws SQLException {
@@ -157,6 +231,7 @@ public class ConflictManager {
         // clear conflict_graphs2 and attack_subtypes
         db.executeStmt("DELETE FROM conflict_graphs2");
         db.executeStmt("DELETE FROM attack_subtypes");
+        db.executeStmt("DELETE FROM conflict_row_cache");
         for (String table : tables) {
             // clear all rows of table
             db.executeStmt("DELETE FROM " + table);
@@ -342,16 +417,21 @@ public class ConflictManager {
     public void onTurnChange(TurnChangeEvent event) {
         if (!conflictsLoaded) return;
         long turn = event.getCurrent();
-        List<Conflict> conflicts = getActiveConflicts();
-        if (!conflicts.isEmpty()) {
-            for (Conflict conflict : conflicts) {
+        List<Conflict> active = getActiveConflicts();
+        if (!active.isEmpty()) {
+            for (Conflict conflict : active) {
                 conflict.getSide(true).updateTurnChange(this, turn, true);
                 conflict.getSide(false).updateTurnChange(this, turn, true);
             }
-            for (Conflict conflict : conflicts) {
+            for (Conflict conflict : active) {
                 conflict.push(this, null, true, false);
             }
             pushIndex();
+        }
+        for (Conflict conflict : conflictArr) {
+            synchronized (loadConflictLock) {
+                conflict.tryUnload();
+            }
         }
     }
 
@@ -413,8 +493,79 @@ public class ConflictManager {
         }
     }
 
+    private void loadConflictParticipantsAndAnnouncements(List<Integer> conflictIds, boolean loadAllParticipants, boolean initInactive) {
+        Collections.sort(conflictIds);
+        String inClause = conflictIds.size() == 1 ? " = " + conflictIds.get(0) : " IN " + StringMan.getString(conflictIds);
+
+        if (initInactive) {
+            db.query("SELECT * FROM conflicts WHERE id " + inClause, stmt -> {
+            }, (ThrowingConsumer<ResultSet>) rs -> {
+                while (rs.next()) {
+                    int id = rs.getInt("id");
+                    if (!conflictIds.contains(id)) continue;
+                    Conflict conflict = conflictById.get(id);
+                    if (conflict != null) {
+                        conflict.initData(rs);
+                    }
+                }
+            });
+        }
+
+        if (loadAllParticipants || !conflictIds.isEmpty()) {
+            String whereClause = loadAllParticipants ? "" : " WHERE conflict_id " + inClause;
+            db.query("SELECT * FROM conflict_participant" + whereClause, stmt -> {
+            }, (ThrowingConsumer<ResultSet>) rs -> {
+                while (rs.next()) {
+                    int conflictId = rs.getInt("conflict_id");
+                    Conflict conflict = conflictById.get(conflictId);
+                    if (conflict == null) continue;
+                    int allianceId = rs.getInt("alliance_id");
+                    if (loadAllParticipants) conflictAlliances.add(allianceId);
+
+                    Conflict.ConflictData data = conflict.getData(false);
+                    if (data == null) continue;
+                    boolean side = rs.getBoolean("side");
+                    long startTurn = rs.getLong("start");
+                    long endTurn = rs.getLong("end");
+                    conflict.addParticipant(allianceId, side, false, true, startTurn, endTurn);
+                }
+            });
+        }
+
+        if (!conflictIds.isEmpty()) {
+            if (Locutus.imp().getForumDb() != null) {
+                Map<Integer, Map<Integer, String>> conflictsByTopic = new Int2ObjectOpenHashMap<>();
+                db.query("SELECT * FROM conflict_announcements2 WHERE conflict_id in " + inClause, stmt -> {
+                }, (ThrowingConsumer<ResultSet>) rs -> {
+                    while (rs.next()) {
+                        int conflictId = rs.getInt("conflict_id");
+                        String desc = rs.getString("description");
+                        int topicId = rs.getInt("topic_id");
+                        Conflict conflict = conflictById.get(conflictId);
+                        if (conflict != null) {
+                            conflictsByTopic.computeIfAbsent(topicId, k -> new Int2ObjectOpenHashMap<>()).put(conflictId, desc);
+                        }
+                    }
+                });
+                Map<Integer, DBTopic> topics = Locutus.imp().getForumDb().getTopics(conflictsByTopic.keySet());
+                for (Map.Entry<Integer, Map<Integer, String>> entry : conflictsByTopic.entrySet()) {
+                    DBTopic topic = topics.get(entry.getKey());
+                    if (topic != null) {
+                        for (Map.Entry<Integer, String> entry2 : entry.getValue().entrySet()) {
+                            Conflict conflict = conflictById.get(entry2.getKey());
+                            if (conflict != null) {
+                                conflict.addAnnouncement(entry2.getValue(), topic, false, true);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     public void loadConflicts() {
         List<Conflict> conflicts = new ArrayList<>();
+        List<Integer> activeConflictIds = new IntArrayList();
         conflictById.clear();
         db.query("SELECT * FROM conflicts", stmt -> {
         }, (ThrowingConsumer<ResultSet>) rs -> {
@@ -424,68 +575,17 @@ public class ConflictManager {
                 String name = rs.getString("name");
                 long startTurn = rs.getLong("start");
                 long endTurn = rs.getLong("end");
-                long createdByGuild = rs.getLong("creator");
-                String wiki = rs.getString("wiki");
-                String col1 = rs.getString("col1");
-                String col2 = rs.getString("col2");
-                ConflictCategory category = ConflictCategory.values[rs.getInt("category")];
-                if (col1.isEmpty()) col1 = "Coalition 1";
-                if (col2.isEmpty()) col2 = "Coalition 2";
-                String cb = rs.getString("cb");
-                String status = rs.getString("status");
-                Conflict conflict = new Conflict(id, ordinal++, createdByGuild, category, name, col1, col2, wiki, cb, status, startTurn, endTurn);
+                Conflict conflict = new Conflict(id, ordinal++, name, startTurn, endTurn);
+                if (conflict.isActive()) {
+                    conflict.initData(rs);
+                    activeConflictIds.add(conflict.getId());
+                }
                 conflicts.add(conflict);
                 conflictById.put(id, conflict);
             }
         });
         this.conflictArr = conflicts.toArray(new Conflict[0]);
 
-//        db.update("DELETE FROM conflict_participant WHERE alliance_id = 0");
-        db.query("SELECT * FROM conflict_participant", stmt -> {
-        }, (ThrowingConsumer<ResultSet>) rs -> {
-            while (rs.next()) {
-                int conflictId = rs.getInt("conflict_id");
-                int allianceId = rs.getInt("alliance_id");
-                boolean side = rs.getBoolean("side");
-                long startTurn = rs.getLong("start");
-                long endTurn = rs.getLong("end");
-                Conflict conflict = conflictById.get(conflictId);
-                if (conflict != null) {
-                    conflict.addParticipant(allianceId, side, false, startTurn, endTurn);
-                }
-            }
-        });
-
-        // load announcements
-        if (Locutus.imp().getForumDb() != null) {
-            Map<Integer, Map<Integer, String>> conflictsByTopic = new Int2ObjectOpenHashMap<>();
-            db.query("SELECT * FROM conflict_announcements2", stmt -> {
-            }, (ThrowingConsumer<ResultSet>) rs -> {
-                while (rs.next()) {
-                    int conflictId = rs.getInt("conflict_id");
-                    String desc = rs.getString("description");
-                    int topicId = rs.getInt("topic_id");
-                    Conflict conflict = conflictById.get(conflictId);
-                    if (conflict != null) {
-                        conflictsByTopic.computeIfAbsent(topicId, k -> new HashMap<>()).put(conflictId, desc);
-                    }
-                }
-            });
-
-            Map<Integer, DBTopic> topics = Locutus.imp().getForumDb().getTopics(conflictsByTopic.keySet());
-            for (Map.Entry<Integer, Map<Integer, String>> entry : conflictsByTopic.entrySet()) {
-                DBTopic topic = topics.get(entry.getKey());
-                if (topic != null) {
-                    for (Map.Entry<Integer, String> entry2 : entry.getValue().entrySet()) {
-                        Conflict conflict = conflictById.get(entry2.getKey());
-                        if (conflict != null) {
-                            conflict.addAnnouncement(entry2.getValue(), topic, false);
-                        }
-                    }
-                }
-            }
-        }
-        // load legacyNames
         db.query("SELECT * FROM legacy_names2", stmt -> {
         }, (ThrowingConsumer<ResultSet>) rs -> {
             while (rs.next()) {
@@ -498,7 +598,7 @@ public class ConflictManager {
             }
         });
 
-        for (Map.Entry<String, Integer> entry : getDefaultNames().entrySet()) {
+        for (Map.Entry<String, Integer> entry : LegacyAllianceNames.get().entrySet()) {
             String name = entry.getKey();
             int id = entry.getValue();
             if (!legacyNames2.containsKey(id)) {
@@ -511,27 +611,20 @@ public class ConflictManager {
             }
         }
 
-//        Set<Integer> empty = new HashSet<>();
-//        for (Map.Entry<Integer, Conflict> conflictEntry : conflictMap.entrySet()) {
-//            if (conflictEntry.getValue().getAllianceIds().isEmpty()) {
-//                empty.add(conflictEntry.getKey());
-//            }
-//        }
-        // delete empty conflicts
-//        db.executeStmt("DELETE FROM conflicts WHERE `id` in (" + StringMan.join(empty, ",") + ")");
-//        db.executeStmt("DELETE FROM conflict_announcements2 WHERE `conflict_id` in (" + StringMan.join(empty, ",") + ")");
-//        db.executeStmt("DELETE FROM conflict_participant WHERE `conflict_id` not in (" + StringMan.join(conflictMap.keySet(), ",") + ")");
-//        db.executeStmt("DELETE FROM conflict_announcements2");
-//        db.update("DELETE FROM conflict_graphs WHERE conflict_id = 0");
-//        db.executeStmt("DELETE FROM conflict_participant");
+        loadConflictParticipantsAndAnnouncements(activeConflictIds, true, false);
 
-
-//        System.out.println("Loaded " + conflictMap.size() + " conflicts in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
-//        if (legacyNames.isEmpty()) {
-//            saveDefaultNames();
-//        }
         Locutus.imp().getExecutor().submit(() -> {
-            loadConflictWars(null, false);
+            List<Conflict> actives = getActiveConflicts();
+            if (!actives.isEmpty()) {
+                loadConflictWars(actives, false);
+            }
+            for (Conflict conflict : conflictArr) {
+                if (!conflict.isActive()) {
+                    synchronized (loadConflictLock) {
+                        conflict.tryUnload();
+                    }
+                }
+            }
             Locutus.imp().getRepeatingTasks().addTask("Conflict Website", () -> {
                 if (!conflictsLoaded) return;
                 pushDirtyConflicts();
@@ -564,85 +657,98 @@ public class ConflictManager {
         });
     }
 
-    public void loadConflictWars(Collection<Conflict> conflicts, boolean clearBeforeUpdate) {
-        try {
-            initTurn();
-            if (clearBeforeUpdate) {
-                Collection<Conflict> tmp = conflicts == null ? Arrays.asList(conflictArr) : conflicts;
-                for (Conflict conflict : tmp) {
-                    conflict.clearWarData();
-                }
-            }
+    private final Object loadConflictLock = new Object();
 
-            long startMs, endMs;
-            Predicate<Integer> allowedConflicts;
-            if (conflicts != null) {
-                long startTurn = Long.MAX_VALUE;
-                long endTurn = 0;
-                for (Conflict conflict : conflicts) {
-                    startTurn = Math.min(startTurn, conflict.getStartTurn());
-                    endTurn = Math.max(endTurn, conflict.getEndTurn());
-                }
-                if (endTurn == 0) return;
-                startMs = TimeUtil.getTimeFromTurn(startTurn);
-                endMs = endTurn == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTimeFromTurn(endTurn);
+    public void loadConflictWars(Collection<Conflict> conflicts2, boolean clearBeforeUpdate) {
+        Collection<Conflict> conflictsFinal;
+        synchronized (conflictArr) {
+            conflictsFinal = conflicts2 == null ? Arrays.asList(conflictArr) : conflicts2;
+        }
+        if (conflictsFinal.isEmpty()) return;
 
-                boolean[] allowedConflictOrdsArr = new boolean[conflictArr.length];
-                for (Conflict conflict : conflicts) {
-                    allowedConflictOrdsArr[conflict.getOrdinal()] = true;
+        synchronized (loadConflictLock) {
+            try {
+                initTurn();
+                if (clearBeforeUpdate) {
+                    for (Conflict conflict : conflicts2) {
+                        conflict.clearWarData();
+                    }
                 }
-                allowedConflicts = f -> allowedConflictOrdsArr[f];
-            } else {
-                startMs = 0;
-                endMs = Long.MAX_VALUE;
-                allowedConflicts = Predicates.alwaysTrue();
-            }
+                // get the ids
+                // load conflcit data of those
+                {
+                    List<Integer> ids = conflictsFinal.stream().map(Conflict::getId).collect(Collectors.toList());
+                    loadConflictParticipantsAndAnnouncements(ids, false, true);
+                }
 
-            Set<DBWar> wars = new ObjectOpenHashSet<>();
-            for (DBWar war : this.db.getWars()) {
-                if (war.getDate() >= startMs && war.getDate() <= endMs) {
-                    if (updateWar(null, war, allowedConflicts)) {
+                long startMs, endMs;
+                Predicate<Integer> allowedConflicts;
+                if (conflicts2 != null) {
+                    long startTurn = Long.MAX_VALUE;
+                    long endTurn = 0;
+                    for (Conflict conflict : conflictsFinal) {
+                        startTurn = Math.min(startTurn, conflict.getStartTurn());
+                        endTurn = Math.max(endTurn, conflict.getEndTurn());
+                    }
+                    if (endTurn == 0) return;
+                    startMs = TimeUtil.getTimeFromTurn(startTurn);
+                    endMs = endTurn == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTimeFromTurn(endTurn);
+
+                    boolean[] allowedConflictOrdsArr = new boolean[conflictArr.length];
+                    for (Conflict conflict : conflictsFinal) {
+                        allowedConflictOrdsArr[conflict.getOrdinal()] = true;
+                    }
+                    allowedConflicts = f -> allowedConflictOrdsArr[f];
+                } else {
+                    startMs = 0;
+                    endMs = Long.MAX_VALUE;
+                    allowedConflicts = Predicates.alwaysTrue();
+                }
+
+                Set<DBWar> wars = new ObjectOpenHashSet<>();
+                for (DBWar war : this.db.getWars()) {
+                    if (war.getDate() >= startMs && war.getDate() <= endMs) {
+                        if (updateWar(null, war, allowedConflicts)) {
 //                        if (war.isActive() && TimeUtil.getTurn(war.getDate()) + 61 < currentTurn) {
 //                            System.out.println("INVALID WAR EXPIRED " + war.getWarId() + " | " + war.getDate() + " | " + war.getStatus());
 //                        }
+                            wars.add(war);
+                        }
+                    }
+                }
+
+                Set<DBWar> manualWars = loadManualWars(conflictsFinal);
+                for (DBWar war : manualWars) {
+                    if (updateWar(null, war, allowedConflicts)) {
                         wars.add(war);
                     }
                 }
-            }
 
-            Set<DBWar> manualWars = loadManualWars(conflicts);
-            for (DBWar war : manualWars) {
-                if (updateWar(null, war, allowedConflicts)) {
-                    wars.add(war);
-                }
-            }
+                if (!wars.isEmpty()) {
+                    Map<Integer, Byte> subTypes = loadSubTypes();
+                    Map<Integer, Byte> newSubTypes = new Int2ByteOpenHashMap();
+                    BiFunction<DBNation, Long, Integer> activityCache = new BiFunction<>() {
+                        private Map<Integer, Set<Long>> activity;
 
-            if (!wars.isEmpty()) {
-                Map<Integer, Byte> subTypes = loadSubTypes();
-                Map<Integer, Byte> newSubTypes = new Int2ByteOpenHashMap();
-                BiFunction<DBNation, Long, Integer> activityCache = new BiFunction<>() {
-                    private Map<Integer, Set<Long>> activity;
-                    @Override
-                    public Integer apply(DBNation nation, Long dateMs) {
-                        if (activity == null) {
-                            activity = Locutus.imp().getNationDB().getActivityByDay(startMs - TimeUnit.DAYS.toMillis(10), endMs);
-                        }
-                        Set<Long> natAct = activity.get(nation.getId());
-                        if (natAct == null) return Integer.MAX_VALUE;
-                        long currDay = TimeUtil.getDay(dateMs);
-                        for (long day = currDay; day >= currDay - 10; day--) {
-                            if (natAct.contains(day)) {
-                                return (int) (TimeUnit.DAYS.toMinutes((int) (currDay - day)));
+                        @Override
+                        public Integer apply(DBNation nation, Long dateMs) {
+                            if (activity == null) {
+                                activity = Locutus.imp().getNationDB().getActivityByDay(startMs - TimeUnit.DAYS.toMillis(10), endMs);
                             }
+                            Set<Long> natAct = activity.get(nation.getId());
+                            if (natAct == null) return Integer.MAX_VALUE;
+                            long currDay = TimeUtil.getDay(dateMs);
+                            for (long day = currDay; day >= currDay - 10; day--) {
+                                if (natAct.contains(day)) {
+                                    return (int) (TimeUnit.DAYS.toMinutes((int) (currDay - day)));
+                                }
+                            }
+                            return 20000;
                         }
-                        return 20000;
-                    }
-                };
-                db.iterateWarAttacks(wars, Predicates.alwaysTrue(), Predicates.alwaysTrue(), (war, attack) -> {
-                    if (TimeUtil.getTurn(war.getDate()) <= TimeUtil.getTurn(attack.getDate())) {
-                        updateAttack(war, attack, allowedConflicts, new Function<IAttack, AttackTypeSubCategory>() {
-                            @Override
-                            public AttackTypeSubCategory apply(IAttack a) {
+                    };
+                    db.iterateWarAttacks(wars, Predicates.alwaysTrue(), Predicates.alwaysTrue(), (war, attack) -> {
+                        if (TimeUtil.getTurn(war.getDate()) <= TimeUtil.getTurn(attack.getDate())) {
+                            updateAttack(war, attack, allowedConflicts, a -> {
                                 int id = a.getWar_attack_id();
                                 Byte cached = subTypes.get(id);
                                 if (cached != null) {
@@ -651,37 +757,48 @@ public class ConflictManager {
                                 AttackTypeSubCategory sub = a.getSubCategory(activityCache);
                                 newSubTypes.put(id, sub == null ? -1 : (byte) sub.ordinal());
                                 return sub;
-                            }
-                        });
-                    }
-                });
-                if (!newSubTypes.isEmpty()) {
-                    saveSubTypes(newSubTypes);
-                }
-            }
-
-            if (conflicts == null || conflicts.stream().anyMatch(f -> f.getId() != -1)) {
-                db.query("SELECT * FROM conflict_graphs2", stmt -> {
-                }, (ThrowingConsumer<ResultSet>) rs -> {
-                    while (rs.next()) {
-                        int conflictId = rs.getInt("conflict_id");
-                        boolean side = rs.getBoolean("side");
-                        int allianceId = rs.getInt("alliance_id");
-                        int metricOrd = rs.getInt("metric");
-                        long turnOrDay = rs.getLong("turn");
-                        int city = rs.getInt("city");
-                        int value = rs.getInt("value");
-                        Conflict conflict = conflictById.get(conflictId);
-                        if (conflict != null) {
-                            ConflictMetric metric = ConflictMetric.values[metricOrd];
-                            conflict.getSide(side).addGraphData(metric, allianceId, turnOrDay, city, value);
+                            });
                         }
+                    });
+                    if (!newSubTypes.isEmpty()) {
+                        saveSubTypes(newSubTypes);
                     }
-                });
+                }
+
+                {
+                    String whereClause;
+                    if (conflictsFinal.size() == 1) {
+                        whereClause = "WHERE conflict_id = " + conflictsFinal.iterator().next().getId();
+                    } else {
+                        List<Integer> idsSorted = new IntArrayList();
+                        for (Conflict conflict : conflictsFinal) {
+                            idsSorted.add(conflict.getId());
+                        }
+                        Collections.sort(idsSorted);
+                        whereClause = "WHERE conflict_id IN " + StringMan.getString(idsSorted);
+                    }
+                    db.query("SELECT * FROM conflict_graphs2 " + whereClause, stmt -> {
+                    }, (ThrowingConsumer<ResultSet>) rs -> {
+                        while (rs.next()) {
+                            int conflictId = rs.getInt("conflict_id");
+                            boolean side = rs.getBoolean("side");
+                            int allianceId = rs.getInt("alliance_id");
+                            int metricOrd = rs.getInt("metric");
+                            long turnOrDay = rs.getLong("turn");
+                            int city = rs.getInt("city");
+                            int value = rs.getInt("value");
+                            Conflict conflict = conflictById.get(conflictId);
+                            if (conflict != null) {
+                                ConflictMetric metric = ConflictMetric.values[metricOrd];
+                                conflict.getSide(side).addGraphData(metric, allianceId, turnOrDay, city, value);
+                            }
+                        }
+                    });
+                }
+                conflictsLoaded = true;
+            } catch (Throwable e) {
+                e.printStackTrace();
             }
-            conflictsLoaded = true;
-        } catch (Throwable e) {
-            e.printStackTrace();
         }
     }
 
@@ -724,324 +841,6 @@ public class ConflictManager {
         });
     }
 
-    private Map<String, Integer> getDefaultNames() {
-        Map<String, Integer> legacyIds = new HashMap<>();
-        legacyIds.put("Arrgh!", 913);
-        legacyIds.put("The Hive", 8819);
-        legacyIds.put("Zodiac", 4145);
-        legacyIds.put("Resplendent Inc.", 2844);
-        legacyIds.put("Phoenix", 1809);
-        legacyIds.put("Hogwarts", 9110);
-        legacyIds.put("Global United Nations", 107);
-        legacyIds.put("Blue Moon", 3003);
-        legacyIds.put("Animal Empire", 4158);
-        legacyIds.put("Cobalt", 770);
-        legacyIds.put("IKEA", 8777);
-        legacyIds.put("Ignis Aternum", 11713);
-        legacyIds.put("IronFront", 5462);
-        legacyIds.put("InGen", 1634);
-        legacyIds.put("Dutch East India Company", 9997);
-        legacyIds.put("The Chola", 2047);
-        legacyIds.put("The Kings Parliament", 1804);
-        legacyIds.put("Ex Machina", 7414);
-        legacyIds.put("DawnGuard", 11513);
-        legacyIds.put("Dawn Rising", 8520);
-        legacyIds.put("Clover Kingdom", 7094);
-        legacyIds.put("New Pacific Order", 2082);
-        legacyIds.put("Divine Phoenix Empire", 8173);
-        legacyIds.put("Divine Phoenix", 8173);
-        legacyIds.put("Aeterna", 11841);
-        legacyIds.put("The Empire of the Moonlit Sakura", 4623);
-        legacyIds.put("The Federation", 4638);
-        legacyIds.put("The Manhattan Cartel", 5851);
-        legacyIds.put("The North Western South Region of the Far East", 6703);
-        legacyIds.put("The Paladin", 11568);
-        legacyIds.put("The Rohirrim", 7540);
-        legacyIds.put("The Ronin Empire", 7376);
-        legacyIds.put("The Three Swords", 10374);
-        legacyIds.put("The United Armies", 5326);
-        legacyIds.put("ThunderStruck", 7635);
-        legacyIds.put("Titanio", 7642);
-        legacyIds.put("United Commerce Republic", 8651);
-        legacyIds.put("VooDoo", 8804);
-        legacyIds.put("Waffle House", 10936);
-        legacyIds.put("Swords of Sanghelios", 8173);
-        legacyIds.put("Terran Federation", 9110);
-        legacyIds.put("The Circus", 9521);
-        legacyIds.put("The Coal Mines (2nd)", 7094);
-        legacyIds.put("The Coven", 9573);
-        legacyIds.put("The Elites", 8429);
-        legacyIds.put("Order of the White Rose", 2510);
-        legacyIds.put("Polaris", 2358);
-        legacyIds.put("Prima Victoria", 7570);
-        legacyIds.put("Roman Empire", 9600);
-        legacyIds.put("Serene Repubblica Fiorentina", 9927);
-        legacyIds.put("Serene Wei", 1742);
-        legacyIds.put("Roz Wei", 1742);
-        legacyIds.put("Terminal Jest", 7620);
-        legacyIds.put("Nuclear Knights",1634);
-        legacyIds.put("Animation Domination", 4597);
-        legacyIds.put("Cornerstone", 1037);
-        legacyIds.put("Seven Kingdoms", 615);
-        legacyIds.put("Nordic Sea Raiders", 4341);
-        legacyIds.put("Soldiers of Liberty", 6215);
-        legacyIds.put("Spartan Brotherhood", 6161);
-        legacyIds.put("Spartan Republic", 7380);
-        legacyIds.put("Sunray 1-1", 9651);
-        legacyIds.put("Sunray Victoria", 10466);
-        legacyIds.put("Atlas Technological Cooperative", 7306);
-        legacyIds.put("Ghost Division", 9588);
-        legacyIds.put("Children of the Light", 7452);
-        legacyIds.put("iriririr", 12438);
-        legacyIds.put("United Nations 2", 12359);
-        legacyIds.put("insinsaneane", 12450);
-        legacyIds.put("Noble Wei", 12382);
-        legacyIds.put("Convent of Atom",7531);
-        legacyIds.put("The Ampersand",5722);
-        legacyIds.put("Brotherhood of the Clouds",7703);
-        legacyIds.put("Bank Robbers",7923);
-        legacyIds.put("The Outhouse",7990);
-        legacyIds.put("Not Rohans Bank",8014);
-        legacyIds.put("Democracy",8060);
-        legacyIds.put("Prusso Roman Imperial Union",7920);
-        legacyIds.put("Avalanche",8150);
-        legacyIds.put("Sanctuary",8368);
-        legacyIds.put("Union of Soviet Socialist Republics",8531);
-        legacyIds.put("Ad Astra",7719);
-        legacyIds.put("Otaku Shougaku",8594);
-        legacyIds.put("Wizards",8624);
-        legacyIds.put("MDC",8615);
-        legacyIds.put("Christmas",8614);
-        legacyIds.put("MySpacebarIsBroken",8678);
-        legacyIds.put("Lords of Wumbology",8703);
-        legacyIds.put("Paragon",8502);
-        legacyIds.put("Shuba2M",8909);
-        legacyIds.put("Shuba69M",8929);
-        legacyIds.put("Mensa HQ",8930);
-        legacyIds.put("Shuba99M",8955);
-        legacyIds.put("Not A Scam",8984);
-        legacyIds.put("The Dead Rabbits",7540);
-        legacyIds.put("The Vatican",9321);
-        legacyIds.put("High Temple",9341);
-        legacyIds.put("Shuba666M",9385);
-        legacyIds.put("Crimson Dragons",9406);
-        legacyIds.put("Apollo",9427);
-        legacyIds.put("Nibelheim",9580);
-        legacyIds.put("Starfleet",9850);
-        legacyIds.put("OTSN",9883);
-        legacyIds.put("The Knights Of The Round Table",9830);
-        legacyIds.put("Wayne Enterprises",9931);
-        legacyIds.put("LegoLand",9961);
-        legacyIds.put("Wayne Enterprises Inc",9971);
-        legacyIds.put("Paradise",9986);
-        legacyIds.put("The Afterlyfe",10060);
-        legacyIds.put("Esquire Templar",10070);
-        legacyIds.put("The Naughty Step",10074);
-        legacyIds.put("The Cove",10104);
-        legacyIds.put("Pacific Polar",10248);
-        legacyIds.put("Stigma",10326);
-        legacyIds.put("Sparkle Party People",10329);
-        legacyIds.put("Age of Darkness",10100);
-        legacyIds.put("Lunacy",9278);
-        legacyIds.put("The Entente",10396);
-        legacyIds.put("Crawling Crawfish Conundrum",10398);
-        legacyIds.put("Western Republic",10408);
-        legacyIds.put("General Patton",10411);
-        legacyIds.put("Crab Creation Contraption",10416);
-        legacyIds.put("The Bugs palace",10414);
-        legacyIds.put("Aggravated Conch Assault",10425);
-        legacyIds.put("Castle Wall",10436);
-        legacyIds.put("Mukbang Lobster ASMR",10440);
-        legacyIds.put("House of the Dragon",10445);
-        legacyIds.put("lobster emoji",10447);
-        legacyIds.put("LobsterGEDDON",10449);
-        legacyIds.put("ARMENIA FOREVER",10452);
-        legacyIds.put("Stigma 1",10450);
-        legacyIds.put("General Custer",10454);
-        legacyIds.put("Scyllarides Saloon",10464);
-        legacyIds.put("Camelot Squires",10468);
-        legacyIds.put("bruh momento",10467);
-        legacyIds.put("Limp Lobster",10474);
-        legacyIds.put("OSNAP",10472);
-        legacyIds.put("AAAAAAAAA",10486);
-        legacyIds.put("Alpha Lobster",10485);
-        legacyIds.put("Shuba73M",10489);
-        legacyIds.put("Borgs Assisted Loot Liberation Service",10504);
-        legacyIds.put("Cornhub",10521);
-        legacyIds.put("xXxJaredLetoFanxXx",10529);
-        legacyIds.put("Anti-Horridism Obocchama Kun Fan Club",10540);
-        legacyIds.put("Iraq Lobster",10552);
-        legacyIds.put("Mole Rats",10574);
-        legacyIds.put("God I Love Frogs",10573);
-        legacyIds.put("A-HOK Fan Club Fan Club",10583);
-        legacyIds.put("MyKeyboardIsBroken",10683);
-        legacyIds.put("Show Me The Money",10694);
-        legacyIds.put("Banana Stand London Branch",10709);
-        legacyIds.put("Sparkle of the Night",10712);
-        legacyIds.put("Cru Whole Hole",10716);
-        legacyIds.put("Arrghs offshore",10717);
-        legacyIds.put("Banana Stand New York",10720);
-        legacyIds.put("Anything",10739);
-        legacyIds.put("Banana Stand Los Angeles",10733);
-        legacyIds.put("Wayne Foundation",10746);
-        legacyIds.put("Banana Stand On The Run",10747);
-        legacyIds.put("Master Basters",10759);
-        legacyIds.put("Turkey land",10757);
-        legacyIds.put("Theres No Place Like Home",10764);
-        legacyIds.put("Drake - Hotline Bling",8520);
-        legacyIds.put("Yer A Wizard Harry",10783);
-        legacyIds.put("A Truth Universally Acknowledged",10805);
-        legacyIds.put("An Offer He Cant Refuse",10815);
-        legacyIds.put("HAHA England lost to France",10834);
-        legacyIds.put("Banco dei Medici",8520);
-        legacyIds.put("The Bank of Orbis",10092);
-        legacyIds.put("May The Force Be With You",10839);
-        legacyIds.put("Shaken Not Stirred",10845);
-        legacyIds.put("Shaken Not Stired",10848);
-        legacyIds.put("ET Phone Home",10854);
-        legacyIds.put("Cock of destiny",10855);
-        legacyIds.put("Yo Adrian",10868);
-        legacyIds.put("Autocephalous Patriarchate of the Free",10869);
-        legacyIds.put("Mama Always Said",10878);
-        legacyIds.put("offshoreassss",10887);
-        legacyIds.put("Youre Tacky and I Hate You",10905);
-        legacyIds.put("O Captain My Captain",10912);
-        legacyIds.put("HIDUDE GIB TIERING REPORT",10917);
-        legacyIds.put("Bank of The Holy Grail",10925);
-        legacyIds.put("Shuba45M",10933);
-        legacyIds.put("The IX Legion",10934);
-        legacyIds.put("Sparkle Forever",10946);
-        legacyIds.put("BOSNIA MODE",10949);
-        legacyIds.put("Jotunheimr",8429);
-        legacyIds.put("Fallen Monarchy",10988);
-        legacyIds.put("Gunga Ginga",11005);
-        legacyIds.put("Grand Union of Nations",11018);
-        legacyIds.put("Calamity",11019);
-        legacyIds.put("borgborgborgborgborgborgborg",11023);
-        legacyIds.put("Fargos",11027);
-        legacyIds.put("Event Horizon",11039);
-        legacyIds.put("CATA_IS_SO_COOL",11036);
-        legacyIds.put("Pasta Factory",11042);
-        legacyIds.put("MERDE",11059);
-        legacyIds.put("The Black League",11066);
-        legacyIds.put("United Nations Space Command",10995);
-        legacyIds.put("Loopsnake alliance",11064);
-        legacyIds.put("Old Praxis",11075);
-        legacyIds.put("DecaDeezKnuttz",11077);
-        legacyIds.put("Eurovision 2023 incoming",11090);
-        legacyIds.put("Animal Pharm",11165);
-        legacyIds.put("The Imperial Vault",11209);
-        legacyIds.put("The House of Bugs",11288);
-        legacyIds.put("Midnight Blues",11304);
-        legacyIds.put("Mace & Chain",11312);
-        legacyIds.put("Skull & Bones",11008);
-        legacyIds.put("Swiss Account",11350);
-        legacyIds.put("No offshore here",11353);
-        legacyIds.put("Dunce Cap Supreme",11359);
-        legacyIds.put("Aunt Jemima",11360);
-        legacyIds.put("Fortuna sucks",11372);
-        legacyIds.put("Home Hero",11375);
-        legacyIds.put("Pharm Animal",11368);
-        legacyIds.put("The Children of Yakub",11370);
-        legacyIds.put("Shuba65M",11371);
-        legacyIds.put("Tower of London",11376);
-        legacyIds.put("Tintagel Castle",11384);
-        legacyIds.put("Killer Tomatoes",11386);
-        legacyIds.put("Nessa Barrett",11391);
-        legacyIds.put("Legion of Dusk",11390);
-        legacyIds.put("The Semimortals",11394);
-        legacyIds.put("State of Orbis",11401);
-        legacyIds.put("King Tiger",11398);
-        legacyIds.put("Toilet Worshipping Lunatics",11403);
-        legacyIds.put("The Peaceful Warmongers",11405);
-        legacyIds.put("North Mexico",11407);
-        legacyIds.put("Ketamine Therapy",11406);
-        legacyIds.put("Kiwi Taxidermy",11420);
-        legacyIds.put("Kazakhstani Tramway",11435);
-        legacyIds.put("Prenadores de Burras Profesionales",11441);
-        legacyIds.put("Kidney Transplant",11444);
-        legacyIds.put("Shuba63m",11450);
-        legacyIds.put("Knockoff Tetragrammatons",11457);
-        legacyIds.put("Castillo de Coca",11454);
-        legacyIds.put("Kangaroo Testicles",11473);
-        legacyIds.put("New Church Republic",11494);
-        legacyIds.put("Kleptomaniac Tunisians",11493);
-        legacyIds.put("Shuba777M",11510);
-        legacyIds.put("Kitten Toes",11514);
-        legacyIds.put("Atlas Three",11515);
-        legacyIds.put("Kaleidoscope Technology",11525);
-        legacyIds.put("Koala Tornado",11531);
-        legacyIds.put("Skylines",11533);
-        legacyIds.put("Palo Mayombe",11604);
-        legacyIds.put("Mouseleys Superfan Fun Cheese Corner 5",11619);
-        legacyIds.put("General Area of Two Ostritches",11643);
-        legacyIds.put("The Persian Empire",10671);
-        legacyIds.put("Bakerstreet",11699);
-        legacyIds.put("The Radiant Syndication",11719);
-        legacyIds.put("Make More Monitors",11714);
-        legacyIds.put("Quack",11718);
-        legacyIds.put("Panama City Beach",11710);
-        legacyIds.put("Shadowhunters",11715);
-        legacyIds.put("Storm",11721);
-        legacyIds.put("Three Inch Surprise",11730);
-        legacyIds.put("Greywater Watch",11731);
-        legacyIds.put("Port St Lucie",11740);
-        legacyIds.put("The Orphanage",11746);
-        legacyIds.put("Halo Revived",11751);
-        legacyIds.put("Saint Augustine",11753);
-        legacyIds.put("Orange Brotherhood",11764);
-        legacyIds.put("Demon Slayer",11765);
-        legacyIds.put("The Hippo Horde",11763);
-        legacyIds.put("Yeehaw Junction",11769);
-        legacyIds.put("House Weeb",11772);
-        legacyIds.put("Ockey Multi Mass Production Facility 7",11779);
-        legacyIds.put("TCM Extension",11797);
-        legacyIds.put("Bohemian Grove",11811);
-        legacyIds.put("House Stark Crypto Wallet",11805);
-        legacyIds.put("Two Egg",11817);
-        legacyIds.put("Elfers",11830);
-        legacyIds.put("Gamblers Anonymous",11862);
-        legacyIds.put("Humza Useless",11876);
-        legacyIds.put("The Merry Men",11900);
-        legacyIds.put("Jacobite Rebellion",11899);
-        legacyIds.put("The Media",11912);
-        legacyIds.put("World of Farce",11952);
-        legacyIds.put("Lyra",12022);
-        legacyIds.put("Free Alrea",12029);
-        legacyIds.put("Black Banana",12031);
-        legacyIds.put("Cassiopeia",12034);
-        legacyIds.put("Basil Land",12036);
-        legacyIds.put("Better eclipse",12037);
-        legacyIds.put("Planet express",12043);
-        legacyIds.put("Seven WHO",12047);
-        legacyIds.put("Aquila",12057);
-        legacyIds.put("Rum Raiders",12062);
-        legacyIds.put("Free Alrea 3",12067);
-        legacyIds.put("Zapp spammigan",12068);
-        legacyIds.put("Eridanus",12064);
-        legacyIds.put("Neighborhood watch alliance",12066);
-        legacyIds.put("House Apathy",12069);
-        legacyIds.put("Free Alrea 4",12076);
-        legacyIds.put("Taurus",12084);
-        legacyIds.put("Vela",12090);
-        legacyIds.put("Chavez Nuestro que Estas en los Cielos",12102);
-        legacyIds.put("Cygnus",12134);
-        legacyIds.put("Thin Skin Singularity",12190);
-        legacyIds.put("Red Wine on THT",12261);
-        legacyIds.put("Cute Cats Cuddling in a Cayak",12290);
-        legacyIds.put("Narutos",12318);
-        legacyIds.put("insane",12344);
-        legacyIds.put("enasni",12362);
-        legacyIds.put("Tax Scheme",12364);
-        legacyIds.put("aneins",12369);
-        legacyIds.put("aneane",12380);
-        legacyIds.put("insane transposed",12421);
-        legacyIds.put("anti insane",12429);
-        legacyIds.put("Biker Haven", 11389);
-        legacyIds.put("Hegemoney", 11709);
-        return legacyIds;
-    }
-
     public void saveDataCsvAllianceNames() throws IOException, ParseException {
         Locutus.imp().getDataDumper(true).load().iterateAll(Predicates.alwaysTrue(),
                 (h, r) -> r.required(h.alliance_id, h.alliance),
@@ -1065,6 +864,7 @@ public class ConflictManager {
 //    }
 
     public void setStatus(int conflictId, String status) {
+        invalidateConflictRowCache(conflictId);
         db.update("UPDATE conflicts SET status = ? WHERE id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, status);
             stmt.setInt(2, conflictId);
@@ -1072,6 +872,7 @@ public class ConflictManager {
     }
 
     public void setCb(int conflictId, String cb) {
+        invalidateConflictRowCache(conflictId);
         db.update("UPDATE conflicts SET cb = ? WHERE id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, cb);
             stmt.setInt(2, conflictId);
@@ -1167,7 +968,7 @@ public class ConflictManager {
     }
 
     public void addAnnouncement(int conflictId, int topicId, String description) {
-        db.update("INSERT OR IGNORE INTO conflict_announcements2 (conflict_id, topic_id, description) VALUES (?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        db.update("INSERT OR REPLACE INTO conflict_announcements2 (conflict_id, topic_id, description) VALUES (?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, conflictId);
             stmt.setInt(2, topicId);
             stmt.setString(3, description);
@@ -1189,7 +990,7 @@ public class ConflictManager {
             clearGraphData(metric.iterator().next(), conflictId, side, turn);
             return;
         }
-        db.update("DELETE FROM conflict_graphs2 WHERE conflict_id = ? AND side = ? AND metric IN (" + metric.stream().map(Enum::ordinal).map(String::valueOf).collect(Collectors.joining(",")) + ") AND turn = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        db.update("DELETE FROM conflict_graphs2 WHERE conflict_id = ? AND side = ? AND metric IN (" + metric.stream().map(Enum::ordinal).map(java.lang.String::valueOf).collect(Collectors.joining(",")) + ") AND turn = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, conflictId);
             stmt.setBoolean(2, side);
             stmt.setLong(3, turn);
@@ -1241,7 +1042,7 @@ public class ConflictManager {
     }
 
     public Conflict addConflict(String name, long creator, ConflictCategory category, String col1, String col2, String wiki, String cb, String status, long turnStart, long turnEnd) {
-        String query = "INSERT INTO conflicts (name, col1, col2, wiki, start, end, category, cb, status, creator) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String query = "INSERT INTO conflicts (" + StringMan.join(Arrays.asList(NAME, COL1, COL2, WIKI, START, END, CATEGORY, CB, STATUS, CREATOR), ",") + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = db.getConnection().prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
             stmt.setString(1, name);
             stmt.setString(2, col1);
@@ -1257,7 +1058,8 @@ public class ConflictManager {
             ResultSet rs = stmt.getGeneratedKeys();
             if (rs.next()) {
                 int id = rs.getInt(1);
-                Conflict conflict = new Conflict(id, conflictArr.length, creator, category, name, col1, col2, wiki, cb, status, turnStart, turnEnd);
+                Conflict conflict = new Conflict(id, conflictArr.length, name, turnStart, turnEnd);
+                conflict.trySetData(col1, col2, creator, category, wiki, cb, status);
                 conflictById.put(id, conflict);
                 conflictArr = Arrays.copyOf(conflictArr, conflictArr.length + 1);
                 conflictArr[conflictArr.length - 1] = conflict;
@@ -1279,6 +1081,7 @@ public class ConflictManager {
     }
 
     protected void updateConflict(Conflict conflict, long start, long end) {
+        invalidateConflictRowCache(conflict.getId());
         int conflictOrd = conflict.getOrdinal();
         synchronized (activeConflictsOrd) {
             if (activeConflictsOrd.contains(conflictOrd)) {
@@ -1298,6 +1101,7 @@ public class ConflictManager {
     }
 
     public void updateConflictName(int conflictId, String name) {
+        invalidateConflictRowCache(conflictId);
         db.update("UPDATE conflicts SET name = ? WHERE id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, name);
             stmt.setInt(2, conflictId);
@@ -1305,6 +1109,7 @@ public class ConflictManager {
     }
 
     public void updateConflictName(int conflictId, String name, boolean isPrimary) {
+        invalidateConflictRowCache(conflictId);
         db.update("UPDATE conflicts SET `col" + (isPrimary ? "1" : "2") + "` = ? WHERE id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, name);
             stmt.setInt(2, conflictId);
@@ -1313,6 +1118,7 @@ public class ConflictManager {
 
 
     public void updateConflictWiki(int conflictId, String wiki) {
+        invalidateConflictRowCache(conflictId);
         db.update("UPDATE conflicts SET `wiki` = ? WHERE id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, wiki);
             stmt.setInt(2, conflictId);
@@ -1320,6 +1126,9 @@ public class ConflictManager {
     }
 
     protected void addParticipant(Conflict conflict, int allianceId, boolean side, long start, long end) {
+        synchronized (conflictAlliances) {
+            this.conflictAlliances.add(allianceId);
+        }
         db.update("INSERT OR REPLACE INTO conflict_participant (conflict_id, alliance_id, side, start, end) VALUES (?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, conflict.getId());
             stmt.setInt(2, allianceId);
@@ -1413,6 +1222,7 @@ public class ConflictManager {
     }
 
     public void deleteConflict(Conflict conflict) {
+        invalidateConflictRowCache(conflict.getId());
         synchronized (activeConflictsOrd) {
             synchronized (conflictById) {
                 if (conflictById.remove(conflict.getId()) != null) {
@@ -1448,30 +1258,13 @@ public class ConflictManager {
         return names;
     }
 
-    public byte[] getPsonGzip() {
-        Map<String, Object> root = new Object2ObjectLinkedOpenHashMap<>();
-        Map<Integer, Conflict> map = getConflictMap();
-        Map<Integer, String> aaNameById = new HashMap<>();
+    public void invalidateFlatGraphCache(int conflictId) {
+        db.update("DELETE FROM conflict_flat_cache WHERE conflict_id = ?",
+                (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setInt(1, conflictId));
+    }
 
-        Map<String, Function<Conflict, Object>> headerFuncs = new LinkedHashMap<>();
-        headerFuncs.put("id", Conflict::getId);
-        headerFuncs.put("name", Conflict::getName);
-        headerFuncs.put("c1_name", f -> f.getSide(true).getName());
-        headerFuncs.put("c2_name", f -> f.getSide(false).getName());
-        headerFuncs.put("start", f -> TimeUtil.getTimeFromTurn(f.getStartTurn()));
-        headerFuncs.put("end", f -> f.getEndTurn() == Long.MAX_VALUE ? -1 : TimeUtil.getTimeFromTurn(f.getEndTurn()));
-        headerFuncs.put("wars", Conflict::getTotalWars);
-        headerFuncs.put("active_wars", Conflict::getActiveWars);
-        headerFuncs.put("c1_dealt", f -> (long) f.getDamageConverted(true));
-        headerFuncs.put("c2_dealt", f -> (long) f.getDamageConverted(false));
-        headerFuncs.put("c1", f -> new IntArrayList(f.getCoalition1()));
-        headerFuncs.put("c2", f -> new IntArrayList(f.getCoalition2()));
-        headerFuncs.put("wiki", Conflict::getWiki);
-        headerFuncs.put("status", Conflict::getStatusDesc);
-        headerFuncs.put("cb", Conflict::getCasusBelli);
-        headerFuncs.put("posts", Conflict::getAnnouncementsList);
-        headerFuncs.put("source", Conflict::getGuildId);
-        headerFuncs.put("category", f -> f.getCategory().name());
+    public byte[] getPsonGzip() {
+        Map<String, Function<Conflict, Object>> headerFuncs = Conflict.createHeaderFuncs();
 
         List<String> headers = new ObjectArrayList<>();
         List<Function<Conflict, Object>> funcs = new ObjectArrayList<>();
@@ -1479,34 +1272,139 @@ public class ConflictManager {
             headers.add(entry.getKey());
             funcs.add(entry.getValue());
         }
-        root.put("headers", headers);
 
-        List<List<Object>> rows = new ObjectArrayList<>();
-        JteUtil.writeArray(rows, funcs, map.values());
-        root.put("conflicts", rows);
+        Map<Integer, Conflict> map = getConflictMap();
 
-        for (Conflict conflict : map.values()) {
-            for (int id : conflict.getAllianceIds()) {
-                if (!aaNameById.containsKey(id)) {
-                    String name = getAllianceNameOrNull(id);
-                    aaNameById.put(id, name == null ? "" : name);
+        Map<Integer, String> aaNameById = new Int2ObjectOpenHashMap<>();
+        synchronized (conflictAlliances) {
+            for (int allianceId : conflictAlliances) {
+                String name = getAllianceNameOrNull(allianceId);
+                if (name != null) {
+                    aaNameById.put(allianceId, name);
                 }
             }
         }
         List<Integer> allianceIds = new ArrayList<>(aaNameById.keySet());
         Collections.sort(allianceIds);
         List<String> aaNames = allianceIds.stream().map(aaNameById::get).toList();
-        root.put("alliance_ids", allianceIds);
-        root.put("alliance_names", aaNames);
 
         Map<Long, List<Long>> sourceSets = getSourceSets();
-        root.put("source_sets", getSourceSetStrings(sourceSets));
-        root.put("source_names", getSourceNames(sourceSets.keySet()));
 
-        try {
-            return JteUtil.compress(JteUtil.getSerializer().writeValueAsBytes(root));
-        } catch (JsonProcessingException e) {
+        ObjectMapper mapper = JteUtil.getSerializer();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        try (JsonGenerator gen = mapper.getFactory().createGenerator(out)) {
+            gen.writeStartObject();
+
+            gen.writeFieldName("headers");
+            mapper.writeValue(gen, headers);
+
+            long headerHash = ensureConflictHeaderHash(headers);
+            gen.writeFieldName("conflicts");
+            gen.writeStartArray();
+            for (Conflict conflict : map.values()) {
+                boolean cacheable = conflict.getId() > 0 && !conflict.isActive();
+                byte[] cached = cacheable ? loadConflictRowCache(conflict.getId(), headerHash) : null;
+                if (cached != null) {
+                    gen.writeRawValue(new String(cached, StandardCharsets.UTF_8));
+                    continue;
+                }
+                        List<Object> row = new ArrayList<>();
+                for (Function<Conflict, Object> func : funcs) {
+                    row.add(func.apply(conflict));
+                }
+                String rowJson = mapper.writeValueAsString(row);
+                gen.writeRawValue(rowJson);
+                if (cacheable) {
+                    saveConflictRowCache(conflict.getId(), headerHash, rowJson.getBytes(StandardCharsets.UTF_8));
+                }
+            }
+            gen.writeEndArray();
+
+            // write the rest of the fields in the same fashion…
+            gen.writeFieldName("alliance_ids");
+            mapper.writeValue(gen, allianceIds);
+
+            // the rest
+            gen.writeFieldName("alliance_names");
+            mapper.writeValue(gen, aaNames);
+
+            gen.writeFieldName("source_sets");
+            mapper.writeValue(gen, getSourceSetStrings(sourceSets));
+            gen.writeFieldName("source_names");
+            mapper.writeValue(gen, getSourceNames(sourceSets.keySet()));
+
+            gen.writeEndObject();
+        } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+
+        return JteUtil.compress(out.toByteArray());
+    }
+
+    private long ensureConflictHeaderHash(List<String> headers) {
+        if (headers == null) throw new IllegalArgumentException("headers cannot be null");
+        long computed = StringMan.hash(headers);
+
+        if (!conflictHeaderHashInitialized || conflictHeaderHash != computed) {
+            synchronized (this) {
+                if (!conflictHeaderHashInitialized || conflictHeaderHash != computed) {
+                    conflictHeaderHashInitialized = true;
+                    long previous = conflictHeaderHash;
+                    conflictHeaderHash = computed;
+
+                    if (previous != computed) {
+                        db.update("DELETE FROM conflict_row_cache WHERE header_hash != ?",
+                                (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setLong(1, computed));
+                    }
+                }
+            }
+        }
+        return conflictHeaderHash;
+    }
+
+    private byte[] loadConflictRowCache(int conflictId, long expectedHash) {
+        final byte[][] rowData = new byte[1][];
+        final boolean[] stale = new boolean[1];
+
+        db.query("SELECT header_hash, row_data FROM conflict_row_cache WHERE conflict_id = ?",
+                (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setInt(1, conflictId),
+                (ThrowingConsumer<ResultSet>) rs -> {
+                    if (rs.next()) {
+                        long storedHash = rs.getLong("header_hash");
+                        if (storedHash == expectedHash) {
+                            rowData[0] = rs.getBytes("row_data");
+                        } else {
+                            stale[0] = true;
+                        }
+                    }
+                });
+
+        if (stale[0]) {
+            invalidateConflictRowCache(conflictId);
+        }
+        return rowData[0];
+    }
+
+    private void saveConflictRowCache(int conflictId, long headerHash, byte[] rowData) {
+        if (rowData == null) return;
+        db.update("INSERT OR REPLACE INTO conflict_row_cache (conflict_id, header_hash, row_data) VALUES (?, ?, ?)",
+                (ThrowingConsumer<PreparedStatement>) stmt -> {
+                    stmt.setInt(1, conflictId);
+                    stmt.setLong(2, headerHash);
+                    stmt.setBytes(3, rowData);
+                });
+    }
+
+    public void invalidateConflictRowCache(int conflictId) {
+        db.update("DELETE FROM conflict_row_cache WHERE conflict_id = ?",
+                (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setInt(1, conflictId));
+    }
+
+    public void invalidateInactiveConflictCache(Conflict conflict) {
+        if (conflict == null) return;
+        if (conflict.getId() > 0 && !conflict.isActive()) {
+            invalidateConflictRowCache(conflict.getId());
         }
     }
 
@@ -1524,6 +1422,7 @@ public class ConflictManager {
     }
 
     public void updateConflictCategory(int conflictId, ConflictCategory category) {
+        invalidateConflictRowCache(conflictId);
         db.update("UPDATE conflicts SET category = ? WHERE id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, category.ordinal());
             stmt.setInt(2, conflictId);
@@ -1538,6 +1437,34 @@ public class ConflictManager {
         db.update("DELETE FROM conflict_announcements2 WHERE conflict_id = ? AND topic_id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, id);
             stmt.setInt(2, topicId);
+        });
+    }
+
+    public Object getConflictField(int conflictId, ConflictField field) {
+        return db.select("SELECT " + field.toString() + " FROM conflicts WHERE id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setInt(1, conflictId), (ThrowingFunction<ResultSet, Object>) rs -> {
+            if (rs.next()) {
+                return rs.getObject(1);
+            }
+            return null;
+        });
+
+    }
+
+    public void loadParticipantStartEndTimes(int id, Map<Integer, Long> startTimes, Map<Integer, Long> endTimes, CoalitionSide coalition_1, CoalitionSide coalition_2) {
+        String sideStr = coalition_1 != null || coalition_2 != null ? ", side" : "";
+        db.query("SELECT alliance_id, start, end" + (sideStr) + " FROM conflict_participant WHERE conflict_id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, id);
+        }, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                int allianceId = rs.getInt("alliance_id");
+                startTimes.put(allianceId, rs.getLong("start"));
+                endTimes.put(allianceId, rs.getLong("end"));
+                if (!sideStr.isEmpty()) {
+                    boolean side = rs.getBoolean("side");
+                    CoalitionSide col = side ? coalition_1 : coalition_2;
+                    if (col != null) col.add(allianceId);
+                }
+            }
         });
     }
 }

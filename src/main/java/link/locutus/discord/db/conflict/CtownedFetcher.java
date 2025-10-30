@@ -154,10 +154,10 @@ public class CtownedFetcher {
         if (conflict == null) {
             conflict = Locutus.imp().getWarDb().getConflicts().addConflict(conflictName, db.getIdLong(), category, col1Name, col2Name, wiki, "", "", TimeUtil.getTurn(startMs), endMs == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTurn(endMs));
         }
-        if (conflict.getSide(true).getName().equalsIgnoreCase("coalition 1")) {
+        if (conflict.getCoalitionName(true).equalsIgnoreCase("coalition 1")) {
             conflict.setName(col1Name, true);
         }
-        if (conflict.getSide(false).getName().equalsIgnoreCase("coalition 2")) {
+        if (conflict.getCoalitionName(false).equalsIgnoreCase("coalition 2")) {
             conflict.setName(col2Name, false);
         }
         if (!wiki.isEmpty() && conflict.getWiki().isEmpty()) {

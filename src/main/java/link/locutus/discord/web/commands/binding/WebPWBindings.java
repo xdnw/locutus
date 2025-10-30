@@ -1334,7 +1334,7 @@ public class WebPWBindings extends WebBindingHelper {
         List<Conflict> options = new ArrayList<>(manager.getConflictMap().values());
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             names.add(obj.getName());
-            subtext.add(obj.getId() + " | " + obj.getSide(true).getName() + " vs " + obj.getSide(false).getName());
+            subtext.add(obj.getId() + " | " + obj.getCoalitionName(true) + " vs " + obj.getCoalitionName(false));
             values.add(obj.getId());
         }, true);
     }

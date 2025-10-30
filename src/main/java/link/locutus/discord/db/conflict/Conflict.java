@@ -2,6 +2,7 @@ package link.locutus.discord.db.conflict;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import it.unimi.dsi.fastutil.bytes.Byte2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
@@ -31,14 +32,20 @@ import link.locutus.discord.db.entities.conflict.ConflictMetric;
 import link.locutus.discord.db.entities.conflict.DamageStatGroup;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.scheduler.ThrowingConsumer;
+import link.locutus.discord.util.scheduler.ThrowingFunction;
 import link.locutus.discord.web.jooby.AwsManager;
 import link.locutus.discord.web.jooby.JteUtil;
 
 import java.io.IOException;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -48,93 +55,305 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static link.locutus.discord.db.conflict.ConflictField.*;
+
 public class Conflict {
+    private String name;
     private final int id;
     private final int ordinal;
-    private ConflictCategory category;
-    private String wiki;
-    private String name;
     private long turnStart;
     private long turnEnd;
-    private final Map<Integer, Long> startTime = new Int2ObjectOpenHashMap<>();
-    private final Map<Integer, Long> endTime = new Int2ObjectOpenHashMap<>();
-    private final Map<Integer, Map<Integer, DamageStatGroup>> warsVsAlliance = new Int2ObjectOpenHashMap<>();
-    private final CoalitionSide coalition1;
-    private final CoalitionSide coalition2;
-    private byte[] flatStatsGzip;
-    private byte[] graphStatsGzip;
-    private volatile boolean dirtyWars = false;
-    private volatile boolean dirtyJson = true;
-    private final Map<String, DBTopic> announcements = new Object2ObjectLinkedOpenHashMap<>();
-    private String casusBelli = "";
-    private String statusDesc = "";
-    private long createdByServer;
 
-    public void clearWarData() {
-        warsVsAlliance.clear();;
-        coalition1.clearWarData();
-        coalition2.clearWarData();
-        dirtyWars = true;
-        dirtyJson = true;
+    private volatile boolean dirtyWars = false;
+    private volatile boolean dirtyJson = false;
+
+    private volatile ConflictData data;
+
+    public ConflictData getData(boolean create) {
+        ConflictData tmp = data;
+        if (tmp != null) return tmp;
+        if (create) {
+            synchronized (this) {
+                tmp = data = ConflictData.create(this);
+            }
+        }
+        return tmp;
     }
 
-    public Conflict(int id, int ordinal, long createdByServer, ConflictCategory category, String name, String col1, String col2, String wiki, String cb, String status, long turnStart, long turnEnd) {
+    public synchronized void trySetData(String col1, String col2, long creator, ConflictCategory category, String wiki, String cb, String status) {
+        ConflictData tmp = data;
+        if (tmp == null) return;
+        if (creator != 0) tmp.createdByServer = creator;
+        if (category != null) tmp.category = category;
+        if (wiki != null) tmp.wiki = wiki;
+        if (cb != null) tmp.casusBelli = cb;
+        if (status != null) tmp.statusDesc = status;
+        if (col1 != null && !col1.isEmpty()) tmp.col1 = col1;
+        if (col2 != null && !col2.isEmpty()) tmp.col2 = col2;
+
+    }
+
+    public ConflictData initData(ResultSet rs) throws SQLException {
+        ConflictData tmp = data;
+        if (tmp == null) {
+            synchronized (this) {
+                if (data == null) {
+                    tmp = data = ConflictData.create(id, rs);
+                } else {
+                    tmp = data;
+                    tmp.init(rs);
+                }
+            }
+        } else {
+            tmp.init(rs);
+        }
+        return tmp;
+    }
+
+    public static final class ConflictData {
+        public final int id;
+
+        private ConflictCategory category;
+        private String wiki = "";
+
+        private String col1, col2;
+
+        private CoalitionSide coalition_1;
+        private CoalitionSide coalition_2;
+
+        private volatile Map<Integer, Long> startTime2 = null;
+        private volatile Map<Integer, Long> endTime2 = null;
+
+        private Map<Integer, Map<Integer, DamageStatGroup>> warsVsAlliance2 = null;
+        private volatile Map<String, DBTopic> announcements2 = null;
+
+        private String casusBelli = "";
+        private String statusDesc = "";
+        private long createdByServer;
+
+        private ConflictData(int id) {
+            this.id = id;
+        }
+
+        public static ConflictData create(int id, ResultSet rs) throws SQLException {
+            ConflictData cd = new ConflictData(id);
+            cd.init(rs);
+            return cd;
+        }
+
+        public Map<Integer, Long> getStartTime() {
+            if (id <= 0) return new Int2LongOpenHashMap();
+            initStartEndTimes();
+            synchronized (startTime2) {
+                return new Int2LongOpenHashMap(startTime2);
+            }
+        }
+
+        public Map<Integer, Long> getEndTime() {
+            if (id <= 0) return new Int2LongOpenHashMap();
+            initStartEndTimes();
+            synchronized (endTime2) {
+                return new Int2LongOpenHashMap(endTime2);
+            }
+        }
+
+        private void initStartEndTimes() {
+            if (startTime2 == null) {
+                synchronized (this) {
+                    if (startTime2 == null) {
+                        startTime2 = new Int2LongOpenHashMap();
+                        endTime2 = new Int2LongOpenHashMap();
+                        Locutus.imp().getWarDb().getConflicts().loadParticipantStartEndTimes(id, startTime2, endTime2, coalition_1, coalition_2);
+                    }
+                }
+            }
+        }
+
+        public void init(ResultSet rs) throws SQLException {
+            createdByServer = rs.getLong(CREATOR.toString());
+            int categoryIdx = rs.getInt(CATEGORY.toString());
+            category = ConflictCategory.values()[categoryIdx];
+
+            String wikiTmp = rs.getString(WIKI.toString());
+            wiki = wikiTmp == null ? "" : wikiTmp;
+
+            String cbTmp = rs.getString(CB.toString());
+            casusBelli = cbTmp == null ? "" : cbTmp;
+
+            String statusTmp = rs.getString(STATUS.toString());
+            statusDesc = statusTmp == null ? "" : statusTmp;
+
+            String col1Tmp = rs.getString(COL1.toString());
+            String col2Tmp = rs.getString(COL2.toString());
+            col1 = col1Tmp == null ? "" : col1Tmp;
+            col2 = col2Tmp == null ? "" : col2Tmp;
+
+            if (col1.isEmpty()) col1 = "Coalition 1";
+            if (col2.isEmpty()) col2 = "Coalition 2";
+        }
+
+        public static ConflictData create(Conflict conflict) {
+            if (conflict.getId() <= 0) {
+                return new ConflictData(conflict.getId());
+            }
+            return conflict.getManager().getDb().select(
+                    "SELECT " + String.join(", ",
+                            COL1.toString(),
+                            COL2.toString(),
+                            WIKI.toString(),
+                            CB.toString(),
+                            STATUS.toString(),
+                            CATEGORY.toString(),
+                            CREATOR.toString()
+                    ) + " FROM conflicts WHERE id = ?",
+                    (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setInt(1, conflict.getId()),
+                    (ThrowingFunction<ResultSet, ConflictData>) rs -> create(conflict.getId(), rs)
+            );
+        }
+
+        public Map<String, DBTopic> getAnnouncement() {
+            if (id <= 0) return new Object2ObjectOpenHashMap<>();
+            if (announcements2 == null) {
+                synchronized (this) {
+                    if (announcements2 == null) {
+                        announcements2 = Locutus.imp().getWarDb().getConflicts().loadAnnouncements(id);
+                    }
+                }
+            }
+            synchronized (announcements2) {
+                return new Object2ObjectOpenHashMap<>(announcements2);
+            }
+        }
+
+        public Map<Integer, String> getAnnouncementsById() {
+            Map<Integer, String> map = new Int2ObjectOpenHashMap<>();
+            for (Map.Entry<String, DBTopic> entry : getAnnouncement().entrySet()) {
+                map.put(entry.getValue().topic_id, entry.getKey());
+            }
+            return map;
+        }
+    }
+
+    public void clearWarData() {
+        ConflictData tmp = data;
+        if (tmp != null) {
+            synchronized (tmp) {
+                if (tmp.coalition_1 != null) tmp.coalition_1.clearWarData();
+                if (tmp.coalition_2 != null) tmp.coalition_2.clearWarData();
+                if (tmp.warsVsAlliance2 != null) tmp.warsVsAlliance2 = null;
+            }
+        }
+    }
+
+    public synchronized void tryUnload() {
+        if (isActive()) return;
+        data = null;
+    }
+
+    public Conflict(int id, int ordinal, String name, long turnStart, long turnEnd) {
         this.id = id;
         this.ordinal = ordinal;
-        this.createdByServer = createdByServer;
-        this.category = category;
         this.name = name;
-        this.wiki = wiki == null ? "" : wiki;
-        this.casusBelli = cb == null ? "" : cb;
-        this.statusDesc = status == null ? "" : status;
         this.turnStart = turnStart;
         this.turnEnd = turnEnd;
-        this.coalition1 = new CoalitionSide(this, col1, true);
-        this.coalition2 = new CoalitionSide(this, col2, false);
-        this.coalition1.setOther(coalition2);
-        this.coalition2.setOther(coalition1);
+    }
+
+    public static Map<String, Function<Conflict, Object>> createHeaderFuncs() {
+        Map<String, Function<Conflict, Object>> headerFuncs = new LinkedHashMap<>();
+        headerFuncs.put("id", Conflict::getId);
+        headerFuncs.put("name", Conflict::getName);
+        headerFuncs.put("c1_name", f -> f.getCoalitionName(true));
+        headerFuncs.put("c2_name", f -> f.getCoalitionName(false));
+        headerFuncs.put("start", f -> TimeUtil.getTimeFromTurn(f.getStartTurn()));
+        headerFuncs.put("end", f -> f.getEndTurn() == Long.MAX_VALUE ? -1 : TimeUtil.getTimeFromTurn(f.getEndTurn()));
+        headerFuncs.put("wars", Conflict::getTotalWars);
+        headerFuncs.put("active_wars", Conflict::getActiveWars);
+        headerFuncs.put("c1_dealt", f -> (long) f.getDamageConverted(true));
+        headerFuncs.put("c2_dealt", f -> (long) f.getDamageConverted(false));
+        headerFuncs.put("c1", f -> new IntArrayList(f.getCoalition1()));
+        headerFuncs.put("c2", f -> new IntArrayList(f.getCoalition2()));
+        headerFuncs.put("wiki", Conflict::getWiki);
+        headerFuncs.put("status", Conflict::getStatusDesc);
+        headerFuncs.put("cb", Conflict::getCasusBelli);
+        headerFuncs.put("posts", Conflict::getAnnouncementsList);
+        headerFuncs.put("source", Conflict::getGuildId);
+        headerFuncs.put("category", f -> f.getCategory().name());
+        return headerFuncs;
+    }
+
+    private <T> T tryGet(ConflictField field, Function<ConflictData, T> onData) {
+        ConflictData tmp = data;
+        if (tmp != null) {
+            return onData.apply(tmp);
+        }
+        if (id > 0 && field != null) {
+            return (T) getManager().getConflictField(id, field);
+        }
+        return null;
+    }
+
+    public String getCoalitionName(boolean side) {
+        return tryGet(side ? COL1 : COL2, f -> side ? f.col1 : f.col2);
     }
 
     public void setCasusBelli(String casusBelli) {
-        this.casusBelli = casusBelli;
-        dirtyJson = true;
-        getManager().setCb(id, casusBelli);
+        ConflictData tmp = data;
+        if (tmp != null) {
+            tmp.casusBelli = casusBelli;
+        }
+        markDirty();
+        if (id > 0) getManager().setCb(id, casusBelli);
+    }
+
+    private void trySet(Consumer<ConflictData> onData) {
+        ConflictData tmp = data;
+        if (tmp != null) {
+            onData.accept(tmp);
+        }
     }
 
     public void setStatus(String status) {
-        this.statusDesc = status;
-        dirtyJson = true;
-        getManager().setStatus(id, status);
+        trySet(tmp -> tmp.statusDesc = status);
+        markDirty();
+        if (id > 0) getManager().setStatus(id, status);
     }
 
     @Command(desc = "The conflict category")
     public ConflictCategory getCategory() {
-        return category;
+        return tryGet(CATEGORY, f -> f.category);
     }
 
     public void setCategory(ConflictCategory category) {
-        this.category = category;
-        dirtyJson = true;
-        getManager().updateConflictCategory(id, category);
+        trySet(tmp -> tmp.category = category);
+        markDirty();
+        if (id > 0) getManager().updateConflictCategory(id, category);
     }
 
     public void setWiki(String wiki) {
-        this.wiki = wiki;
-        dirtyJson = true;
-        getManager().updateConflictWiki(id, wiki);
+        trySet(tmp -> tmp.wiki = wiki);
+        markDirty();
+        if (id > 0) getManager().updateConflictWiki(id, wiki);
     }
 
     public void setName(String name, boolean isPrimary) {
-        if (isPrimary) {
-            coalition1.setName(name);
-        } else {
-            coalition2.setName(name);
-        }
-        dirtyJson = true;
-        getManager().updateConflictName(id, name, isPrimary);
+        trySet(tmp -> {
+            if (isPrimary) {
+                tmp.col1 = name;
+                if (tmp.coalition1 != null)
+                    tmp.coalition1.setNameRaw(name);
+            } else {
+                tmp.col2 = name;
+                if (tmp.coalition2 != null)
+                    tmp.coalition2.setNameRaw(name);
+            }
+        });
+        markDirty();
+        if (id > 0) getManager().updateConflictName(id, name, isPrimary);
     }
 
     public void updateGraphsLegacy(ConflictManager manager) throws IOException, ParseException {
+        ConflictData tmp = getData(true);
+
         Set<Integer> nationIds = new IntOpenHashSet();
         nationIds.addAll(coalition1.getNationIds());
         nationIds.addAll(coalition2.getNationIds());
@@ -297,7 +516,7 @@ public class Conflict {
         manager.addGraphData(entries);
     }
 
-    public List<ConflictMetric.Entry> getGraphEntries() {
+    private List<ConflictMetric.Entry> getGraphEntries() {
         List<ConflictMetric.Entry> entries = new ObjectArrayList<>();
         entries.addAll(coalition1.getGraphEntries());
         entries.addAll(coalition2.getGraphEntries());
@@ -343,7 +562,7 @@ public class Conflict {
 
         root.put("coalitions", coalitions);
         try {
-            return graphStatsGzip = JteUtil.compress(JteUtil.getSerializer().writeValueAsBytes(root));
+            return JteUtil.compress(JteUtil.getSerializer().writeValueAsBytes(root));
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -391,12 +610,12 @@ public class Conflict {
 
     @Command(desc = "The status of the conflict")
     public String getStatusDesc() {
-        return statusDesc;
+        return tryGet(STATUS, f -> f.statusDesc);
     }
 
     @Command(desc = "The casus belli of the conflict")
     public String getCasusBelli() {
-        return casusBelli;
+        return tryGet(CB, f -> f.casusBelli);
     }
 
     public synchronized byte[] getPsonGzip(ConflictManager manager) {
@@ -478,7 +697,7 @@ public class Conflict {
             getWarWebEntry(current.getAttacker_aa(), current.getDefender_aa()).newWar(current, true);
         }
 
-        dirtyJson = true;
+        markDirty();
         return true;
     }
 
@@ -510,18 +729,7 @@ public class Conflict {
         getWarWebEntry(attackerAA, defenderAA).apply(attack, war, true);
         getWarWebEntry(defenderAA, attackerAA).apply(attack, war, false);
 
-        dirtyJson = true;
-    }
-
-
-    private void setParticipantTime(int allianceId, long start, long end) {
-        if (start > 0) {
-            startTime.put(allianceId, start);
-        }
-        if (end != Long.MAX_VALUE) {
-            endTime.put(allianceId, end);
-        }
-        dirtyJson = true;
+        markDirty();
     }
 
     private ConflictManager getManager() {
@@ -530,8 +738,8 @@ public class Conflict {
 
     public Conflict setName(String name) {
         this.name = name;
-        getManager().updateConflictName(id, name);
-        dirtyJson = true;
+        if (id > 0) getManager().updateConflictName(id, name);
+        markDirty();
         return this;
     }
 
@@ -539,8 +747,8 @@ public class Conflict {
         long newTurn = TimeUtil.getTurn(time);
         if (newTurn == turnStart) return this;
         this.turnStart = newTurn;
-        getManager().updateConflict(this, turnStart, turnEnd);
-        dirtyJson = true;
+        if (id > 0) getManager().updateConflict(this, turnStart, turnEnd);
+        markDirty();
         return this;
     }
 
@@ -548,44 +756,77 @@ public class Conflict {
         long newTurn = time == Long.MAX_VALUE ? time : TimeUtil.getTurn(time) + 1;
         if (newTurn == turnEnd) return this;
         this.turnEnd = newTurn;
-        getManager().updateConflict(this, turnStart, turnEnd);
-        dirtyJson = true;
+        if (id > 0) getManager().updateConflict(this, turnStart, turnEnd);
+        markDirty();
         return this;
     }
 
     public Conflict addParticipant(int allianceId, boolean side, Long start, Long end) {
-        return addParticipant(allianceId, side, true, start, end);
+        return addParticipant(allianceId, side, true, false, start, end);
     }
 
-    public Conflict addParticipant(int allianceId, boolean side, boolean save, Long start, Long end) {
-        if (start != null && start > 0 && start != Long.MAX_VALUE) {
-            startTime.put(allianceId, start);
-        } else {
-            startTime.remove(allianceId);
-        }
-        if (end != null && end != Long.MAX_VALUE) {
-            endTime.put(allianceId, end);
-        } else {
-            endTime.remove(allianceId);
-        }
-        if (side) coalition1.add(allianceId);
-        else coalition2.add(allianceId);
+    public Conflict addParticipant(int allianceId, boolean side, boolean save, boolean init, Long start, Long end) {
+        trySet(f -> {
+            if (init) {
+                if (f.startTime2 == null) {
+                    f.startTime2 = new Int2LongOpenHashMap();
+                }
+                if (f.endTime2 == null) {
+                    f.endTime2 = new Int2LongOpenHashMap();
+                }
+                if (f.coalition_1 == null) {
+                    f.coalition_1 = new CoalitionSide(this, f.col1, true);
+                }
+                if (f.coalition_2 == null) {
+                    f.coalition_2 = new CoalitionSide(this, f.col2, false);
+                }
+                f.coalition_1.setOther(f.coalition_2);
+                f.coalition_2.setOther(f.coalition_1);
+            }
+            if (f.startTime2 != null) {
+                if (start != null && start > 0 && start != Long.MAX_VALUE) {
+                    f.startTime2.put(allianceId, start);
+                } else {
+                    f.startTime2.remove(allianceId);
+                }
+            }
+            if (f.endTime2 != null) {
+                if (end != null && end != Long.MAX_VALUE) {
+                    f.endTime2.put(allianceId, end);
+                } else {
+                    f.endTime2.remove(allianceId);
+                }
+            }
+            CoalitionSide coal = (side ? f.coalition_1 : f.coalition_2);
+            if (coal != null) {
+                coal.add(allianceId);
+            }
+        });
+
+
         if (save) {
-            getManager().addParticipant(this, allianceId, side, startTime.getOrDefault(allianceId, 0L), endTime.getOrDefault(allianceId, Long.MAX_VALUE));
+            long startFinal = start == null ? 0L : start;
+            long endFinal = end == null ? Long.MAX_VALUE : end;
+            if (id > 0) getManager().addParticipant(this, allianceId, side, startFinal, endFinal);
             dirtyWars = true;
+            markDirty();
+        } else {
+            dirtyJson = true;
         }
-        dirtyJson = true;
+
         return this;
     }
 
     public Conflict removeParticipant(int allianceId) {
-        coalition1.remove(allianceId);
-        coalition2.remove(allianceId);
-        startTime.remove(allianceId);
-        endTime.remove(allianceId);
-        getManager().removeParticipant(this, allianceId);
+        trySet(tmp -> {
+            if (tmp.coalition_1 != null) tmp.coalition_1.remove(allianceId);
+            if (tmp.coalition_2 != null) tmp.coalition_2.remove(allianceId);
+            if (tmp.startTime2 != null) tmp.startTime2.remove(allianceId);
+            if (tmp.endTime2 != null) tmp.endTime2.remove(allianceId);
+        });
+        if (id > 0) getManager().removeParticipant(this, allianceId);
         dirtyWars = true;
-        dirtyJson = true;
+        markDirty();
         return this;
     }
 
@@ -639,6 +880,10 @@ public class Conflict {
     @Command(desc = "A number representing the side an alliance is on in the conflict\n" +
             "0 = No side, 1 = Primary/Coalition 1, 2 = Secondary/Coalition 2")
     public int getSide(DBAlliance alliance) {
+        // cd.coalition1 = new CoalitionSide(conflict, cd.col1, true);
+        //            cd.coalition2 = new CoalitionSide(conflict, cd.col2, false);
+        //            cd.coalition1.setOther(cd.coalition2);
+        //            cd.coalition2.setOther(cd.coalition1);
         if (coalition1.hasAlliance(alliance.getId())) return 1;
         if (coalition2.hasAlliance(alliance.getId())) return 2;
         return 0;
@@ -709,12 +954,18 @@ public class Conflict {
         return (isPrimary ? coalition1 : coalition2).getInflicted().getTotalConverted();
     }
 
-    public void addAnnouncement(String desc, DBTopic topic, boolean saveToDB) {
-        announcements.entrySet().removeIf(f -> f.getValue().topic_id == topic.topic_id);
-        announcements.put(desc, topic);
+    public void addAnnouncement(String desc, DBTopic topic, boolean saveToDB, boolean init) {
+        trySet(tmp -> {
+            if (tmp.announcements2 == null) {
+                if (!init) return;
+                tmp.announcements2 = new Object2ObjectOpenHashMap<>();
+            }
+            tmp.announcements2.entrySet().removeIf(f -> f.getValue().topic_id == topic.topic_id);
+            tmp.announcements2.put(desc, topic);
+        });
         if (saveToDB) {
-            getManager().addAnnouncement(id, topic.topic_id, desc);
-            dirtyJson = true;
+            if (id > 0) getManager().addAnnouncement(id, topic.topic_id, desc);
+            markDirty();
         }
     }
 
@@ -731,23 +982,19 @@ public class Conflict {
 
     @Command(desc = "The wiki link for this conflict (or null)")
     public String getWiki() {
-        return wiki;
+        return tryGet(WIKI, f -> f.wiki);
     }
 
     @Command(desc = "The discord guild that created this conflict (or null)")
     public GuildDB getGuild() {
-        return createdByServer <= 0 ? null : Locutus.imp().getGuildDB(createdByServer);
+        Long serverId = tryGet(CREATOR, f -> f.createdByServer);
+        return serverId == null || serverId <= 0 ? null : Locutus.imp().getGuildDB(serverId);
     }
 
     @Command(desc = "The id of the discord guild that created this conflict")
     public long getGuildId() {
-        return createdByServer;
-    }
-
-    public Map<String, DBTopic> getAnnouncement() {
-        synchronized (announcements) {
-            return new Object2ObjectOpenHashMap<>(announcements);
-        }
+        Long serverId = tryGet(CREATOR, f -> f.createdByServer);
+        return serverId == null ? -1 : serverId;
     }
 
     public boolean isActive() {
@@ -804,16 +1051,10 @@ public class Conflict {
         if (setName && !wikiConflict.getName().equalsIgnoreCase(getName())) {
             setName(wikiConflict.getName());
         }
-        if (!wikiConflict.getAnnouncement().isEmpty()) {
-            Map<Integer, String> annByIds = getAnnouncementsById();
-//            Map<Integer, String> wikiAnnById = wikiConflict.getAnnouncementsById();
-//            // delete old announcements
-//            for (Map.Entry<Integer, String> entry : annByIds.entrySet()) {
-//                if (!wikiAnnById.containsKey(entry.getKey())) {
-//                    deleteAnnouncement(entry.getKey());
-//                }
-//            }
-            for (Map.Entry<String, DBTopic> entry : wikiConflict.getAnnouncement().entrySet()) {
+        ConflictData tmp = wikiConflict.getData(false);
+        if (tmp != null) {
+            Map<Integer, String> annByIds = tmp.getAnnouncementsById();
+            for (Map.Entry<String, DBTopic> entry : tmp.getAnnouncement().entrySet()) {
                 if (entry.getKey().equalsIgnoreCase(annByIds.get(entry.getValue().topic_id))) continue;
                 addAnnouncement(entry.getKey(), entry.getValue(), true);
             }
@@ -828,19 +1069,16 @@ public class Conflict {
     }
 
     public void deleteAnnouncement(int topicId) {
-        getManager().removeAnnouncement(id, topicId);
-        announcements.entrySet().removeIf(f -> f.getValue().topic_id == topicId);
+        if (id > 0) getManager().removeAnnouncement(id, topicId);
+        trySet(tmp -> {
+            tmp.announcements.entrySet().removeIf(f -> f.getValue().topic_id == topicId);
+        });
     }
 
-    public boolean hasAnnouncement(int topicId) {
-        return announcements.values().stream().anyMatch(f -> f.topic_id == topicId);
-    }
-
-    private Map<Integer, String> getAnnouncementsById() {
-        Map<Integer, String> map = new Int2ObjectOpenHashMap<>();
-        for (Map.Entry<String, DBTopic> entry : announcements.entrySet()) {
-            map.put(entry.getValue().topic_id, entry.getKey());
+    private void markDirty() {
+        dirtyJson = true;
+        if (id > 0) {
+            getManager().invalidateInactiveConflictCache(this);
         }
-        return map;
     }
 }
