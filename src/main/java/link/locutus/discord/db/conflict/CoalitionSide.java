@@ -55,7 +55,7 @@ public class CoalitionSide {
     private final Map<Long, DayTierGraphData> graphDataByDay = new Long2ObjectArrayMap<>();
     private final Map<Long, Map<Integer, Map<Byte, Map.Entry<DamageStatGroup, DamageStatGroup>>>> damageByDayByAllianceByCity = new Long2ObjectArrayMap<>();
 
-    private void clearWarData() {
+    public void clearWarData() {
         inflictedAndOffensiveStats.clear();
         lossesAndDefensiveStats.clear();
         damageByAlliance.clear();

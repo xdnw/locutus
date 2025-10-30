@@ -13,6 +13,7 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -1466,5 +1467,23 @@ public class ConflictManager {
                 }
             }
         });
+    }
+
+    public Map<String, DBTopic> loadAnnouncements(int conflictId) {
+        Map<String, DBTopic> announcements = new Object2ObjectLinkedOpenHashMap<>();
+        db.query("SELECT * FROM conflict_announcements2 WHERE conflict_id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, conflictId);
+        }, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                int topicId = rs.getInt("topic_id");
+                String description = rs.getString("description");
+                DBTopic topic = Locutus.imp().getForumDb().getTopic(topicId);
+                if (topic != null) {
+                    announcements.put(description, topic);
+                }
+            }
+        });
+        return announcements;
+
     }
 }

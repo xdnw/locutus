@@ -339,12 +339,12 @@ public class Conflict {
         trySet(tmp -> {
             if (isPrimary) {
                 tmp.col1 = name;
-                if (tmp.coalition1 != null)
-                    tmp.coalition1.setNameRaw(name);
+                if (tmp.coalition_1 != null)
+                    tmp.coalition_1.setNameRaw(name);
             } else {
                 tmp.col2 = name;
-                if (tmp.coalition2 != null)
-                    tmp.coalition2.setNameRaw(name);
+                if (tmp.coalition_2 != null)
+                    tmp.coalition_2.setNameRaw(name);
             }
         });
         markDirty();
@@ -512,15 +512,10 @@ public class Conflict {
         }
 
         manager.deleteGraphData(getId());
-        List<ConflictMetric.Entry> entries = getGraphEntries();
-        manager.addGraphData(entries);
-    }
-
-    private List<ConflictMetric.Entry> getGraphEntries() {
         List<ConflictMetric.Entry> entries = new ObjectArrayList<>();
         entries.addAll(coalition1.getGraphEntries());
         entries.addAll(coalition2.getGraphEntries());
-        return entries;
+        manager.addGraphData(entries);
     }
 
     public synchronized byte[] getGraphPsonGzip(ConflictManager manager)  {
@@ -1056,7 +1051,7 @@ public class Conflict {
             Map<Integer, String> annByIds = tmp.getAnnouncementsById();
             for (Map.Entry<String, DBTopic> entry : tmp.getAnnouncement().entrySet()) {
                 if (entry.getKey().equalsIgnoreCase(annByIds.get(entry.getValue().topic_id))) continue;
-                addAnnouncement(entry.getKey(), entry.getValue(), true);
+                addAnnouncement(entry.getKey(), entry.getValue(), true, false);
             }
         }
         if (getCategory() != wikiConflict.getCategory()) {
