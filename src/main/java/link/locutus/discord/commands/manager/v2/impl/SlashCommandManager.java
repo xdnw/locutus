@@ -854,6 +854,9 @@ public class SlashCommandManager extends ListenerAdapter {
                             if (name.length() > MAX_STRING_VALUE_LENGTH) {
                                 name = name.substring(0, MAX_STRING_VALUE_LENGTH);
                             }
+                            if (value.length() > MAX_STRING_VALUE_LENGTH) {
+                                value = value.substring(0, MAX_STRING_VALUE_LENGTH);
+                            }
                             choices.add(new Choice(name, value));
                         }
                     }
