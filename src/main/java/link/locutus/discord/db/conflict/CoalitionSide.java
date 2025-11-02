@@ -41,6 +41,7 @@ import java.util.stream.Collectors;
 
 public class CoalitionSide {
     private final Conflict parent;
+    private volatile boolean loaded;
     private String name;
     private final boolean isPrimary;
     private CoalitionSide otherSide;
@@ -55,7 +56,7 @@ public class CoalitionSide {
     private final Map<Long, DayTierGraphData> graphDataByDay = new Long2ObjectArrayMap<>();
     private final Map<Long, Map<Integer, Map<Byte, Map.Entry<DamageStatGroup, DamageStatGroup>>>> damageByDayByAllianceByCity = new Long2ObjectArrayMap<>();
 
-    public void clearWarData() {
+    public synchronized void clearWarData() {
         inflictedAndOffensiveStats.clear();
         lossesAndDefensiveStats.clear();
         damageByAlliance.clear();
@@ -64,6 +65,15 @@ public class CoalitionSide {
         graphDataByTurn.clear();
         graphDataByDay.clear();
         allianceIdByNation.clear();
+        this.loaded = false;
+    }
+
+    public void setLoaded(boolean loaded) {
+        this.loaded = loaded;
+    }
+
+    public boolean isLoaded() {
+        return loaded;
     }
 
     public Set<Integer> getNationIds() {
@@ -246,10 +256,11 @@ public class CoalitionSide {
         return isLosses ? entry.getKey() : entry.getValue();
     }
 
-    public CoalitionSide(Conflict parent, String name, boolean isPrimary) {
+    public CoalitionSide(Conflict parent, String name, boolean isPrimary, boolean loaded) {
         this.parent = parent;
         this.name = name;
         this.isPrimary = isPrimary;
+        this.loaded = loaded;
     }
 
     public void setNameRaw(String name) {

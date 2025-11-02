@@ -175,6 +175,7 @@ public class ConflictCommands {
             msgFuture = io.send("Please wait...");
         }
         if (reinitialize_graphs) {
+            manager.ensureLoaded(conflicts);
             for (Conflict conflict : conflicts) {
                 io.updateOptionally(msgFuture, "Initializing graphs for " + conflict.getName() + "...");
                 conflict.updateGraphsLegacy(manager);

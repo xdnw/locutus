@@ -76,7 +76,7 @@ import static link.locutus.discord.db.conflict.ConflictField.*;
 public class ConflictManager {
     private final WarDB db;
     private final AwsManager aws;
-    private boolean conflictsLoaded = false;
+    private volatile boolean conflictsLoaded = false;
 
     private final Map<Integer, Conflict> conflictById = new Int2ObjectOpenHashMap<>();
     private Conflict[] conflictArr;
@@ -397,6 +397,7 @@ public class ConflictManager {
 
     @Subscribe
     public void onAttack(AttackEvent event) {
+        if (!this.conflictsLoaded) return;
         AbstractCursor attack = event.getAttack();
         DBWar war = event.getWar();
         if (war != null) {
@@ -523,7 +524,7 @@ public class ConflictManager {
                     int allianceId = rs.getInt("alliance_id");
                     if (loadAllParticipants) conflictAlliances.add(allianceId);
 
-                    Conflict.ConflictData data = conflict.getData(false);
+                    Conflict.ConflictMeta data = conflict.getData(false);
                     if (data == null) continue;
                     boolean side = rs.getBoolean("side");
                     long startTurn = rs.getLong("start");
@@ -612,12 +613,10 @@ public class ConflictManager {
             }
         }
 
-        loadConflictParticipantsAndAnnouncements(activeConflictIds, true, false);
-
         Locutus.imp().getExecutor().submit(() -> {
             List<Conflict> actives = getActiveConflicts();
             if (!actives.isEmpty()) {
-                loadConflictWars(actives, false);
+                loadConflictWars(actives, false, true);
             }
             for (Conflict conflict : conflictArr) {
                 if (!conflict.isActive()) {
@@ -631,6 +630,10 @@ public class ConflictManager {
                 pushDirtyConflicts();
             }, Settings.INSTANCE.TASKS.WAR_STATS_PUSH_INTERVAL, TimeUnit.MINUTES);
         });
+    }
+
+    public boolean isLoaded() {
+        return conflictsLoaded;
     }
 
     public void loadVirtualConflict(Conflict conflict, boolean clearBeforeUpdate) {
@@ -660,7 +663,20 @@ public class ConflictManager {
 
     private final Object loadConflictLock = new Object();
 
-    public void loadConflictWars(Collection<Conflict> conflicts2, boolean clearBeforeUpdate) {
+    public void ensureLoadedFully(Set<Conflict> conflicts) {
+        synchronized (loadConflictLock) {
+            List<Conflict> unloaded = new ObjectArrayList<>();
+            for (Conflict conflict : conflicts) {
+                if (conflict.isLoaded()) continue;
+                unloaded.add(conflict);
+            }
+            if (!unloaded.isEmpty()) {
+                loadConflictWars(unloaded, false, false);
+            }
+        }
+    }
+
+    public void loadConflictWars(Collection<Conflict> conflicts2, boolean clearBeforeUpdate, boolean isStartup) {
         Collection<Conflict> conflictsFinal;
         synchronized (conflictArr) {
             conflictsFinal = conflicts2 == null ? Arrays.asList(conflictArr) : conflicts2;
@@ -675,11 +691,9 @@ public class ConflictManager {
                         conflict.clearWarData();
                     }
                 }
-                // get the ids
-                // load conflcit data of those
                 {
                     List<Integer> ids = conflictsFinal.stream().map(Conflict::getId).collect(Collectors.toList());
-                    loadConflictParticipantsAndAnnouncements(ids, false, true);
+                    loadConflictParticipantsAndAnnouncements(ids, isStartup, !isStartup);
                 }
 
                 long startMs, endMs;
@@ -799,6 +813,10 @@ public class ConflictManager {
                 conflictsLoaded = true;
             } catch (Throwable e) {
                 e.printStackTrace();
+            }
+            for (Conflict conflict : conflictsFinal) {
+                conflict.getSide(true).setLoaded(true);
+                conflict.getSide(false).setLoaded(true);
             }
         }
     }
@@ -1402,7 +1420,7 @@ public class ConflictManager {
                 (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setInt(1, conflictId));
     }
 
-    public void invalidateInactiveConflictCache(Conflict conflict) {
+    public void invalidateInactiveConflictCache(Conflict conflict, boolean warData, boolean graphData, boolean participants, boolean meta) {
         if (conflict == null) return;
         if (conflict.getId() > 0 && !conflict.isActive()) {
             invalidateConflictRowCache(conflict.getId());
