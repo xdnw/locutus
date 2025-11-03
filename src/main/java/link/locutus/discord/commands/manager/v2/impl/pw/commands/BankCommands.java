@@ -4068,6 +4068,7 @@ public class BankCommands {
                     }
                     Map<ResourceType, Double> stock = alliance.getStockpile(true);
                     accountDeposits.put(DepositType.DEPOSIT, ResourceType.resourcesToArray(stock));
+                    footers.add("Note: No offshore is set. Showing alliance stockpile instead.");
                 } else {
                     return "No offshore is set. In this server, use " + CM.coalition.add.cmd.alliances("AA:" + alliance.getAlliance_id()).coalitionName(Coalition.OFFSHORE.name()) + " and from the offshore server use " + CM.coalition.add.cmd.alliances("AA:" + alliance.getAlliance_id()).coalitionName(Coalition.OFFSHORING.name());
                 }

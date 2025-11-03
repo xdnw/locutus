@@ -321,7 +321,9 @@ public class OffshoreInstance {
     public synchronized Map<ResourceType, Double> getDepositsAA(Set<Integer> allianceIds, boolean force) {
         allianceIds = new ObjectLinkedOpenHashSet<>(allianceIds);
         Set<Integer> allowed = getGuildDB().getCoalition(Coalition.OFFSHORING);
+
         allianceIds.removeIf(f -> !allowed.contains(f));
+
         if (allianceIds.isEmpty()) return new HashMap<>();
         List<Transaction2> toProcess = getTransactionsAA(allianceIds, force, 0, Long.MAX_VALUE);
         Set<Long> allianceIdsLong = allianceIds.stream().map(Integer::longValue).collect(Collectors.toSet());

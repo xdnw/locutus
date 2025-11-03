@@ -479,9 +479,9 @@ public final class PW {
         public static double cityCost(DBNation nation, int from, int to) {
             return cityCost(from, to,
                     nation != null && nation.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY,
-                    nation != null && nation.hasProject(Projects.URBAN_PLANNING),
-                    nation != null && nation.hasProject(Projects.ADVANCED_URBAN_PLANNING),
-                    nation != null && nation.hasProject(Projects.METROPOLITAN_PLANNING),
+//                    nation != null && nation.hasProject(Projects.URBAN_PLANNING),
+//                    nation != null && nation.hasProject(Projects.ADVANCED_URBAN_PLANNING),
+//                    nation != null && nation.hasProject(Projects.METROPOLITAN_PLANNING),
                     nation != null && nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY),
                     nation != null && nation.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS));
         }
@@ -494,14 +494,12 @@ public final class PW {
             return (int) Math.round(Math.max(10, ((infra_cents - diseaseDeaths - crimeDeaths) * ageBonus)));
         }
 
-        public static double cityCost(int from, int to, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency, boolean bureauOfDomesticAffairs) {
+        public static double cityCost(int from, int to, boolean manifestDestiny, boolean govSupportAgency, boolean bureauOfDomesticAffairs) {
             double total = 0;
             for (int city = Math.max(1, from); city < to; city++) {
                 total += nextCityCost(city,
                         manifestDestiny,
-                        cityPlanning,
-                        advCityPlanning,
-                        metPlanning, govSupportAgency, bureauOfDomesticAffairs);
+                        govSupportAgency, bureauOfDomesticAffairs);
             }
             return total;
         }
@@ -536,7 +534,8 @@ public final class PW {
 //            return Math.max(0, cost);
 //        }
 
-        public static double nextCityCost(int currentCity, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency, boolean bureauOfDomesticAffairs) {
+        // removed: , boolean cityPlanning, boolean advCityPlanning, boolean metPlanning
+        public static double nextCityCost(int currentCity, boolean manifestDestiny, boolean govSupportAgency, boolean bureauOfDomesticAffairs) {
             if (CITY_AVERAGE == -1) {
                 CITY_AVERAGE = Locutus.imp().getDiscordDB().getCityAverage(40.8216);
                 Logg.info("Loaded City Average: " + CITY_AVERAGE);

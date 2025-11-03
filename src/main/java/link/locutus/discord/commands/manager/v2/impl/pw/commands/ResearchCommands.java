@@ -153,7 +153,7 @@ public class ResearchCommands {
 
         double costFactor = military_doctrine ? 0.95 : 1;
         for (int cities = 1; cities < 70; cities++) {
-            double cityCost = PW.City.cityCost(cities - 1, cities, true, false, false, false, gov_support_agency, domestic_affairs);
+            double cityCost = PW.City.cityCost(cities - 1, cities, true, gov_support_agency, domestic_affairs);
             double maxCost = cityCost * percent_of_city_cost;
             Map<Research, Integer> levels = Research.findLevels(researchList, maxCost, costFactor);
             Map<ResourceType, Double> cost = Research.cost(Collections.emptyMap(), levels, costFactor);//.get(0, 0, 0, level, costFactor);

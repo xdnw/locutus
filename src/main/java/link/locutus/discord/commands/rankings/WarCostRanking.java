@@ -259,20 +259,7 @@ public class WarCostRanking extends Command {
                 };
             }
             if (getValue == null) {
-                getValue = (attacker, war, attack) -> {
-                    if (!damage) {
-                        return attack.getLossesConverted(war, attacker, units, infra, consumption, loot, buildings);
-                    } else {
-                        Arrays.fill(rssBuffer, 0);
-                        double total = 0;
-                        double[] losses = attack.addLosses(rssBuffer, war, attacker, units, infra, consumption, loot, buildings);
-                        for (ResourceType type : ResourceType.values) {
-                            double val = losses[type.ordinal()];
-                            if (val > 0) total += ResourceType.convertedTotal(type, val);
-                        }
-                        return total;
-                    }
-                };
+                getValue = (attacker, war, attack) -> attack.getLossesConverted(war, attacker, units, infra, consumption, loot, buildings);
             }
             valueFunc = getValue;
         }

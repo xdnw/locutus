@@ -965,31 +965,31 @@ public class GrantCmd extends Command {
     public String grantCity(DBNation me, int numBuy, Map<ResourceType, Double> resources, boolean force) throws IOException {
         int currentCity = me.getCities();
 
-        boolean cp = me.hasProject(Projects.URBAN_PLANNING);
-        boolean acp = me.hasProject(Projects.ADVANCED_URBAN_PLANNING);
-        boolean mp = me.hasProject(Projects.METROPOLITAN_PLANNING);
+//        boolean cp = me.hasProject(Projects.URBAN_PLANNING);
+//        boolean acp = me.hasProject(Projects.ADVANCED_URBAN_PLANNING);
+//        boolean mp = me.hasProject(Projects.METROPOLITAN_PLANNING);
         boolean manifest = me.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY;
         boolean gsa = me.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY);
         boolean bda = me.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
 
         double cost = 0;
         for (int i = currentCity; i < currentCity + numBuy; i++) {
-            cost += PW.City.nextCityCost(i, manifest, cp, acp, mp, gsa, bda);
+            cost += PW.City.nextCityCost(i, manifest, gsa, bda);
         }
 
         StringBuilder result = new StringBuilder();
 
-        if (currentCity >= Projects.URBAN_PLANNING.requiredCities() && !cp && !force) {
-            result.append(Projects.URBAN_PLANNING + " has not been built\n");
-        }
-
-        if (currentCity >= Projects.ADVANCED_URBAN_PLANNING.requiredCities() && !acp && !force) {
-            result.append(Projects.ADVANCED_URBAN_PLANNING + " has not been built\n");
-        }
-
-        if (currentCity >= Projects.METROPOLITAN_PLANNING.requiredCities() && !mp && !force) {
-            result.append(Projects.METROPOLITAN_PLANNING.requiredCities() + " has not been built\n");
-        }
+//        if (currentCity >= Projects.URBAN_PLANNING.requiredCities() && !cp && !force) {
+//            result.append(Projects.URBAN_PLANNING + " has not been built\n");
+//        }
+//
+//        if (currentCity >= Projects.ADVANCED_URBAN_PLANNING.requiredCities() && !acp && !force) {
+//            result.append(Projects.ADVANCED_URBAN_PLANNING + " has not been built\n");
+//        }
+//
+//        if (currentCity >= Projects.METROPOLITAN_PLANNING.requiredCities() && !mp && !force) {
+//            result.append(Projects.METROPOLITAN_PLANNING.requiredCities() + " has not been built\n");
+//        }
 
 
         if (currentCity > 10 && !manifest && !force) {

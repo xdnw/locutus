@@ -118,9 +118,6 @@ public class GrantCommands {
                     }
                     DepositType.DepositTypeInfo note = DepositType.CITY.withAmount(currentCity + numBuy);
                     double cost = PW.City.cityCost(currentCity, currentCity + numBuy, manifest_destiny != null ? manifest_destiny : receiver.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY,
-                            receiver.hasProject(Projects.URBAN_PLANNING),
-                            receiver.hasProject(Projects.ADVANCED_URBAN_PLANNING),
-                            receiver.hasProject(Projects.METROPOLITAN_PLANNING),
                             gov_support_agency != null ? gov_support_agency : receiver.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY),
                             domestic_affairs != null ? domestic_affairs : receiver.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS)
                     );
@@ -3350,12 +3347,12 @@ public class GrantCommands {
                     int to = from + citiesPurchased;
                     for (int city = from; city < to; city++) {
                         boolean manifestDestiny = nation.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY || force_policy.contains(DomesticPolicy.MANIFEST_DESTINY);
-                        boolean cityPlanning = nation.hasProject(Projects.URBAN_PLANNING) || (force_projects.contains(Projects.URBAN_PLANNING) && city >= Projects.URBAN_PLANNING.requiredCities());
-                        boolean advCityPlanning = nation.hasProject(Projects.ADVANCED_URBAN_PLANNING) || (force_projects.contains(Projects.ADVANCED_URBAN_PLANNING) && city >= Projects.ADVANCED_URBAN_PLANNING.requiredCities());
-                        boolean metPlanning = nation.hasProject(Projects.METROPOLITAN_PLANNING) || (force_projects.contains(Projects.METROPOLITAN_PLANNING) && city >= Projects.METROPOLITAN_PLANNING.requiredCities());
+//                        boolean cityPlanning = nation.hasProject(Projects.URBAN_PLANNING) || (force_projects.contains(Projects.URBAN_PLANNING) && city >= Projects.URBAN_PLANNING.requiredCities());
+//                        boolean advCityPlanning = nation.hasProject(Projects.ADVANCED_URBAN_PLANNING) || (force_projects.contains(Projects.ADVANCED_URBAN_PLANNING) && city >= Projects.ADVANCED_URBAN_PLANNING.requiredCities());
+//                        boolean metPlanning = nation.hasProject(Projects.METROPOLITAN_PLANNING) || (force_projects.contains(Projects.METROPOLITAN_PLANNING) && city >= Projects.METROPOLITAN_PLANNING.requiredCities());
                         boolean govSupportAgency = nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY) || force_projects.contains(Projects.GOVERNMENT_SUPPORT_AGENCY);
                         boolean domesticAffairs = nation.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS) || force_projects.contains(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
-                        cityCost += PW.City.nextCityCost(city, manifestDestiny, cityPlanning, advCityPlanning, metPlanning, govSupportAgency, domesticAffairs);
+                        cityCost += PW.City.nextCityCost(city, manifestDestiny, govSupportAgency, domesticAffairs);
                     }
                 }
             }

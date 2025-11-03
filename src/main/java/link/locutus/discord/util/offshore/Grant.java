@@ -174,26 +174,6 @@ public class Grant {
     }
 
     public static boolean hasGrantedCity(DBNation nation, Collection<Transaction2> transactions, int city) {
-        Set<Long> costs = new LongOpenHashSet();
-        for (boolean md : new boolean[]{true, false}) {
-            for (boolean cp : new boolean[]{true, false}) {
-                if (cp && !nation.hasProject(Projects.URBAN_PLANNING)) continue;
-                for (boolean aup : new boolean[]{true, false}) {
-                    if (aup && !nation.hasProject(Projects.ADVANCED_URBAN_PLANNING)) continue;
-                    for (boolean mp : new boolean[]{true, false}) {
-                        for (boolean gsa : new boolean[]{true, false}) {
-                            if (gsa && !nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY)) continue;
-                            for (boolean bda : new boolean[]{true, false}) {
-                                if (bda && !nation.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS)) continue;
-                                double cost = PW.City.nextCityCost(city - 1, md, cp, aup, mp, gsa, bda);
-                                costs.add(Math.round(cost));
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         for (Transaction2 transaction : transactions) {
             if (transaction.note == null) continue;
             if (!transaction.note.toLowerCase().contains("#city")) continue;
@@ -204,10 +184,6 @@ public class Grant {
                 int num = cities.iterator().next();
                 if (amount == null || amount <= 0) amount = 1d;
                 if (num + amount >= city) return false;
-            } else {
-                if (costs.contains(Math.round(transaction.resources[0]))) {
-                    return true;
-                }
             }
         }
         return false;

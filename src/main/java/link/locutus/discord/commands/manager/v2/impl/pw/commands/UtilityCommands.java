@@ -968,9 +968,6 @@ public class UtilityCommands {
 
         for (int i = Math.max(1, currentCity); i < maxCity; i++) {
             total += PW.City.nextCityCost(i, manifestDestiny,
-                    false,
-                    false,
-                    false,
                     governmentSupportAgency,
                     domestic_affairs);
         }
@@ -2808,12 +2805,12 @@ public class UtilityCommands {
             double nationCityCost = 0;
             for (int i = 1; i <= cities; i++) {
                 boolean manifest = true;
-                boolean cp = i > Projects.URBAN_PLANNING.requiredCities() && projects.contains(Projects.URBAN_PLANNING);
-                boolean acp = i > Projects.ADVANCED_URBAN_PLANNING.requiredCities() && projects.contains(Projects.ADVANCED_URBAN_PLANNING);
-                boolean mp = i > Projects.METROPOLITAN_PLANNING.requiredCities() && projects.contains(Projects.METROPOLITAN_PLANNING);
+//                boolean cp = i > Projects.URBAN_PLANNING.requiredCities() && projects.contains(Projects.URBAN_PLANNING);
+//                boolean acp = i > Projects.ADVANCED_URBAN_PLANNING.requiredCities() && projects.contains(Projects.ADVANCED_URBAN_PLANNING);
+//                boolean mp = i > Projects.METROPOLITAN_PLANNING.requiredCities() && projects.contains(Projects.METROPOLITAN_PLANNING);
                 boolean gsa = projects.contains(Projects.GOVERNMENT_SUPPORT_AGENCY);
                 boolean bda = projects.contains(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
-                nationCityCost += PW.City.nextCityCost(i, manifest, cp, acp, mp, gsa, bda);
+                nationCityCost += PW.City.nextCityCost(i, manifest, gsa, bda);
             }
 
             cityCost += nationCityCost;

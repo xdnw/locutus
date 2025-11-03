@@ -556,9 +556,10 @@ public abstract class DBNation implements NationOrAlliance {
                 lastLootDate = Math.max(lastLootDate, recent);
             }
         }
-        double cityCost = PW.City.nextCityCost(data()._cities(), true, hasProject(Projects.URBAN_PLANNING),
-                hasProject(Projects.ADVANCED_URBAN_PLANNING),
-                hasProject(Projects.METROPOLITAN_PLANNING),
+        // , hasProject(Projects.URBAN_PLANNING),
+        //                hasProject(Projects.ADVANCED_URBAN_PLANNING),
+        //                hasProject(Projects.METROPOLITAN_PLANNING)
+        double cityCost = PW.City.nextCityCost(data()._cities(), true,
                 hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY),
                 hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS));
         double maxStockpile = cityCost * 2;
@@ -6448,7 +6449,7 @@ public abstract class DBNation implements NationOrAlliance {
     @Command(desc = "Value of the cities this nation has\n" +
             "Cost reduction policies are not included")
     public double cityValue() {
-        return PW.City.cityCost(0, data()._cities(), false, false, false, false, false, false);
+        return PW.City.cityCost(0, data()._cities(), false, false, false);
     }
 
 

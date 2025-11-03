@@ -692,12 +692,12 @@ public enum AllianceMetric implements IAllianceMetric {
                 if (totalCities == null) continue;
                 int previousCities = totalCities - entry.getValue();
                 boolean md = manifestDestiny.get(nationId);
-                boolean up = urbanPlanningByNation.getOrDefault(nationId, false);
-                boolean aup = advancedUrbanPlanningByNation.getOrDefault(nationId, false);
-                boolean mp = metropolitanPlanningByNation.getOrDefault(nationId, false);
+//                boolean up = urbanPlanningByNation.getOrDefault(nationId, false);
+//                boolean aup = advancedUrbanPlanningByNation.getOrDefault(nationId, false);
+//                boolean mp = metropolitanPlanningByNation.getOrDefault(nationId, false);
                 boolean gsa = governmentSupportAgencyByNation.getOrDefault(nationId, false);
                 boolean bda = bdaByNation.getOrDefault(nationId, false);
-                double cost = PW.City.cityCost(previousCities, totalCities, md, up, aup, mp, gsa, bda);
+                double cost = PW.City.cityCost(previousCities, totalCities, md, gsa, bda);
                 int allianceId = allianceByNationId.get(nationId);
                 cities10D.merge(allianceId, cost, Double::sum);
             }
