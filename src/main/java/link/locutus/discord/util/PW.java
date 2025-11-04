@@ -181,7 +181,6 @@ public final class PW {
             int pollution = 0;
             long turns = TimeUtil.getTurn() - nukeTurn;
             if (turns < NUKE_TURN_MAX) {
-                double pollutionMax = 400d;
                 double nukePollution = (NUKE_TURN_MAX - turns) * NUKE_POLLUTION_MAX / (NUKE_TURN_MAX);
                 if (nukePollution > 0) {
                     pollution += (int) nukePollution;

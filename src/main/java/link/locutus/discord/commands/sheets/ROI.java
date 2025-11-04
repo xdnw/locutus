@@ -475,7 +475,7 @@ public class ROI extends Command {
             boolean gsa = nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY);
             boolean bda = nation.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
 
-            double cityCost = PW.City.nextCityCost(numCities, manifest || true, false, false, false, gsa, bda);
+            double cityCost = PW.City.nextCityCost(numCities, manifest || true, gsa, bda);
             double[] buildCost = existingCity.calculateCost(new JavaCity());
             double[] totalCost = buildCost.clone();
 
