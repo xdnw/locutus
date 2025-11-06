@@ -34,7 +34,7 @@ import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.scheduler.ThrowingFunction;
-import link.locutus.discord.web.jooby.AwsManager;
+import link.locutus.discord.web.jooby.ICloudStorage;
 import link.locutus.discord.web.jooby.JteUtil;
 
 import java.io.IOException;
@@ -42,14 +42,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -64,16 +57,65 @@ public class Conflict {
     private long turnStart;
     private long turnEnd;
 
-    // If the name, wiki, status, cb etc. change
-    private volatile boolean dirtyMeta = false;
-    // If participants change, the wars and graphs need to be recalculated
-    private volatile boolean dirtyParticipants = false;
-    // if wars/attacks are added
-    private volatile boolean dirtyWarData = false;
-    // if graph data is added (often the same as wars being dirty)
-    private volatile boolean dirtyGraphData = false;
-
     private volatile ConflictMeta data;
+
+    private long pushedIndex;
+    private long pushedPage;
+    private long pushedGraph;
+    private boolean recalcGraph;
+    private long latestWarOrAttack;
+
+    public Conflict(int id, int ordinal, String name, long turnStart, long turnEnd, long pushedIndex, long pushedPage, long pushedGraph, boolean recalcGraph) {
+        this.id = id;
+        this.ordinal = ordinal;
+        this.name = name;
+        this.turnStart = turnStart;
+        this.turnEnd = turnEnd;
+
+        this.pushedIndex = pushedIndex;
+        this.pushedPage = pushedPage;
+        this.pushedGraph = pushedGraph;
+        this.recalcGraph = recalcGraph;
+    }
+
+    public long getPushedIndex() {
+        return pushedIndex;
+    }
+
+    public long getPushedPage() {
+        return pushedPage;
+    }
+
+    public long getPushedGraph() {
+        return pushedGraph;
+    }
+
+    public void setPushedIndex(long pushedIndex) {
+        this.pushedIndex = pushedIndex;
+    }
+
+    public void setPushedPage(long pushedPage) {
+        this.pushedPage = pushedPage;
+    }
+
+    public void setPushedGraph(long pushedGraph) {
+        this.pushedGraph = pushedGraph;
+    }
+
+    public long getLatestWarAttack() {
+        return latestWarOrAttack;
+    }
+
+    public long getLatestGraphMs() {
+        ConflictMeta tmp = data;
+        if (tmp != null) {
+            CoalitionSide coal1 = tmp.coalition_1;
+            if (coal1 != null) {
+                return Math.max(coal1.getLatestGraphMs(), tmp.coalition_2.getLatestGraphMs());
+            }
+        }
+        return 0L;
+    }
 
     public ConflictMeta getData(boolean create) {
         ConflictMeta tmp = data;
@@ -311,37 +353,6 @@ public class Conflict {
         data = null;
     }
 
-    public Conflict(int id, int ordinal, String name, long turnStart, long turnEnd) {
-        this.id = id;
-        this.ordinal = ordinal;
-        this.name = name;
-        this.turnStart = turnStart;
-        this.turnEnd = turnEnd;
-    }
-
-    protected static Map<String, Function<Conflict, Object>> createHeaderFuncs() {
-        Map<String, Function<Conflict, Object>> headerFuncs = new LinkedHashMap<>();
-        headerFuncs.put("id", Conflict::getId);
-        headerFuncs.put("name", Conflict::getName);
-        headerFuncs.put("c1_name", f -> f.getCoalitionName(true));
-        headerFuncs.put("c2_name", f -> f.getCoalitionName(false));
-        headerFuncs.put("start", f -> TimeUtil.getTimeFromTurn(f.getStartTurn()));
-        headerFuncs.put("end", f -> f.getEndTurn() == Long.MAX_VALUE ? -1 : TimeUtil.getTimeFromTurn(f.getEndTurn()));
-        headerFuncs.put("wars", Conflict::getTotalWars);
-        headerFuncs.put("active_wars", Conflict::getActiveWars);
-        headerFuncs.put("c1_dealt", f -> (long) f.getDamageConverted(true));
-        headerFuncs.put("c2_dealt", f -> (long) f.getDamageConverted(false));
-        headerFuncs.put("c1", f -> new IntArrayList(f.getCoalition1()));
-        headerFuncs.put("c2", f -> new IntArrayList(f.getCoalition2()));
-        headerFuncs.put("wiki", Conflict::getWiki);
-        headerFuncs.put("status", Conflict::getStatusDesc);
-        headerFuncs.put("cb", Conflict::getCasusBelli);
-        headerFuncs.put("posts", Conflict::getAnnouncementsList);
-        headerFuncs.put("source", Conflict::getGuildId);
-        headerFuncs.put("category", f -> f.getCategory().name());
-        return headerFuncs;
-    }
-
     private <T> T tryGet(ConflictField field, Function<ConflictMeta, T> onData) {
         ConflictMeta tmp = data;
         if (tmp != null) {
@@ -362,8 +373,9 @@ public class Conflict {
         if (tmp != null) {
             tmp.casusBelli = casusBelli;
         }
-        markDirty(false, false, false, true);
-        if (id > 0) getManager().setCb(id, casusBelli);
+        if (id > 0) {
+            getManager().setCb(id, casusBelli);
+        }
     }
 
     private void trySet(Consumer<ConflictMeta> onData) {
@@ -375,7 +387,6 @@ public class Conflict {
 
     public void setStatus(String status) {
         trySet(tmp -> tmp.statusDesc = status);
-        markDirty(false, false, false, true);
         if (id > 0) getManager().setStatus(id, status);
     }
 
@@ -386,13 +397,11 @@ public class Conflict {
 
     public void setCategory(ConflictCategory category) {
         trySet(tmp -> tmp.category = category);
-        markDirty(false, false, false, true);
         if (id > 0) getManager().updateConflictCategory(id, category);
     }
 
     public void setWiki(String wiki) {
         trySet(tmp -> tmp.wiki = wiki);
-        markDirty(false, false, false, true);
         if (id > 0) getManager().updateConflictWiki(id, wiki);
     }
 
@@ -408,7 +417,6 @@ public class Conflict {
                     tmp.coalition_2.setNameRaw(name);
             }
         });
-        markDirty(false, false, false, true);
         if (id > 0) getManager().updateConflictName(id, name, isPrimary);
     }
 
@@ -593,8 +601,14 @@ public class Conflict {
         manager.addGraphData(entries);
     }
 
-    private synchronized byte[] getGraphBytesZip(ConflictManager manager)  {
-        // TODO should cache
+    private synchronized byte[] getGraphBytesZip(ConflictManager manager) throws IOException, ParseException {
+        if (recalcGraph) {
+            recalcGraph = false;
+            if (Locutus.imp().getDataDumper(false) != null) {
+                updateGraphsLegacy(getManager());
+            }
+        }
+
         Map<String, Object> root = new Object2ObjectLinkedOpenHashMap<>();
         root.put("name", getName());
         root.put("start", TimeUtil.getTimeFromTurn(turnStart));
@@ -641,6 +655,7 @@ public class Conflict {
 
     private Map<String, Object> warsVsAllianceJson(CoalitionSide coalition1, CoalitionSide coalition2, Map<Integer, Map<Integer, DamageStatGroup>> warsVsAlliance) {
         Map<ConflictColumn, Function<DamageStatGroup, Object>> combined = DamageStatGroup.createRanking();
+
         List<Map.Entry<ConflictColumn, Function<DamageStatGroup, Object>>> combinedList = new ObjectArrayList<>(combined.entrySet());
 
         Map<String, Object> result = new Object2ObjectLinkedOpenHashMap<>();
@@ -689,8 +704,15 @@ public class Conflict {
         return tryGet(CB, f -> f.casusBelli);
     }
 
-    private synchronized byte[] getWarBytesZip(ConflictManager manager) {
+    private synchronized byte[] getWarBytesZip(ConflictManager manager, boolean forceUpdateMeta, boolean forceUpdateStats) {
+        // get cached war bytes if available
+        Set<HeaderGroup> fetchGroups = new ObjectOpenHashSet<>();
+        cachedMap = forceUpdateMeta ? null : manager.loadConflictRowCache(id, expectedHashes, );
+
         try {
+            CoalitionSide coalition1 = getCoalition(true, true, true);
+            CoalitionSide coalition2 = getCoalition(false, true, true);
+
             Map<String, Object> root = new Object2ObjectLinkedOpenHashMap<>();
             root.put("name", getName());
             root.put("start", TimeUtil.getTimeFromTurn(turnStart));
@@ -710,8 +732,10 @@ public class Conflict {
             root.put("header_desc", new ObjectArrayList<>(damageHeader.keySet().stream().map(ConflictColumn::getDescription).toList()));
             root.put("header_group", new ObjectArrayList<>(damageHeader.keySet().stream().map(f -> f.getType().name()).toList()));
             root.put("header_type", new ObjectArrayList<>(damageHeader.keySet().stream().map(f -> f.isCount() ? 1 : 0).toList()));
-            root.put("war_web", warsVsAllianceJson());
+            root.put("war_web", warsVsAllianceJson(coalition1, coalition2, data.warsVsAlliance2));
+
             root.put("update_ms", System.currentTimeMillis());
+
             byte[] compressed = JteUtil.compress(JteUtil.getSerializer().writeValueAsBytes(root));
             return compressed;
         } catch (JsonProcessingException e) {
@@ -749,9 +773,10 @@ public class Conflict {
         return getDataWithWars().warsVsAlliance2.computeIfAbsent(aaId1, k -> new Int2ObjectOpenHashMap<>()).computeIfAbsent(aaId2, k -> new DamageStatGroup());
     }
 
-    public boolean updateWar(DBWar previous, DBWar current, long turn) {
+    public boolean updateWar(DBWar previous, DBWar current, long turn, long date) {
         CoalitionSide side = getCoalition(current.getAttacker_aa(), current.getDefender_aa(), turn);
         if (side == null) return false;
+        latestWarOrAttack = date;
 
         CoalitionSide otherSide = side.getOther();
         side.updateWar(previous, current, true);
@@ -761,7 +786,6 @@ public class Conflict {
             getWarWebEntry(current.getAttacker_aa(), current.getDefender_aa()).newWar(current, true);
         }
 
-        markDirty();
         return true;
     }
 
@@ -781,7 +805,9 @@ public class Conflict {
         CoalitionSide side = getCoalition(attackerAA, defenderAA, turn);
         if (side == null) return;
 
-        long day = TimeUtil.getDay(attack.getDate());
+        long date = attack.getDate();
+        latestWarOrAttack = date;
+        long day = TimeUtil.getDay(date);
 
         CoalitionSide otherSide = side.getOther();
         AttackTypeSubCategory subCategory = getCached.apply(attack);
@@ -793,7 +819,7 @@ public class Conflict {
         getWarWebEntry(attackerAA, defenderAA).apply(attack, war, true);
         getWarWebEntry(defenderAA, attackerAA).apply(attack, war, false);
 
-        markDirty();
+
     }
 
     private ConflictManager getManager() {
@@ -803,25 +829,31 @@ public class Conflict {
     public Conflict setName(String name) {
         this.name = name;
         if (id > 0) getManager().updateConflictName(id, name);
-        markDirty();
+        markDirtyIndexMeta();
         return this;
     }
 
     public Conflict setStart(long time) {
         long newTurn = TimeUtil.getTurn(time);
         if (newTurn == turnStart) return this;
+        if (id > 0) { getManager().updateConflict(this, turnStart, turnEnd);
+            markDirtyIndexMeta();
+            markGraphsInvalid();
+        }
         this.turnStart = newTurn;
-        if (id > 0) getManager().updateConflict(this, turnStart, turnEnd);
-        markDirty();
         return this;
     }
 
     public Conflict setEnd(long time) {
         long newTurn = time == Long.MAX_VALUE ? time : TimeUtil.getTurn(time) + 1;
         if (newTurn == turnEnd) return this;
+        if (id > 0) {
+            getManager().updateConflict(this, turnStart, turnEnd);
+            markDirtyIndexMeta();
+            markDirtyWar();
+            markGraphsInvalid();
+        }
         this.turnEnd = newTurn;
-        if (id > 0) getManager().updateConflict(this, turnStart, turnEnd);
-        markDirty();
         return this;
     }
 
@@ -867,9 +899,11 @@ public class Conflict {
         if (save) {
             long startFinal = start == null ? 0L : start;
             long endFinal = end == null ? Long.MAX_VALUE : end;
-            if (id > 0) getManager().addParticipant(this, allianceId, side, startFinal, endFinal);
-            dirtyParticipants = true;
-            markDirty();
+            if (id > 0) {
+                getManager().addParticipant(this, allianceId, side, startFinal, endFinal);
+                markDirtyWar();
+                markGraphsInvalid();
+            }
         }
 
         return this;
@@ -882,9 +916,11 @@ public class Conflict {
             if (tmp.startTime2 != null) tmp.startTime2.remove(allianceId);
             if (tmp.endTime2 != null) tmp.endTime2.remove(allianceId);
         });
-        if (id > 0) getManager().removeParticipant(this, allianceId);
-        dirtyParticipants = true;
-        markDirty();
+        if (id > 0) {
+            getManager().removeParticipant(this, allianceId);
+            markDirtyWar();
+            markGraphsInvalid();
+        }
         return this;
     }
 
@@ -1026,12 +1062,17 @@ public class Conflict {
         });
         if (saveToDB) {
             if (id > 0) getManager().addAnnouncement(id, topic.topic_id, desc);
-            markDirty();
         }
     }
 
-    private Map<String, List> getAnnouncementsList() {
-        Map<String, DBTopic> announcements = getData(true).getAnnouncement();
+    public Map<String, List> getAnnouncementsList() {
+        ConflictMeta tmp = getData(false);
+        Map<String, DBTopic> announcements;
+        if (tmp == null) {
+            announcements = Locutus.imp().getWarDb().getConflicts().loadAnnouncements(id);
+        } else {
+            announcements = tmp.getAnnouncement();
+        }
         synchronized (announcements) {
             Map<String, List> map = new Object2ObjectLinkedOpenHashMap<>();
             for (Map.Entry<String, DBTopic> entry : announcements.entrySet()) {
@@ -1072,19 +1113,21 @@ public class Conflict {
      * @param includeGraphs
      * @return List of URLs
      */
-    public List<String> push(ConflictManager manager, String webIdOrNull, boolean includeGraphs, boolean updateIndex) {
-        AwsManager aws = manager.getAws();
+    public List<String> pushChanges(ConflictManager manager, String webIdOrNull, boolean includeMainPage, boolean includeGraphs, boolean updateIndex) {
+        ICloudStorage aws = manager.getCloud();
         if (webIdOrNull == null) {
             if (getId() == -1) throw new IllegalArgumentException("Conflict has no id");
             webIdOrNull = Integer.toString(getId());
         }
         long ttl = isActive() ? TimeUnit.MINUTES.toSeconds(1) : TimeUnit.MINUTES.toSeconds(5);
-        String key = "conflicts/" + webIdOrNull + ".gzip";
-        byte[] value = getWarBytesZip(manager);
-        aws.putObject(key, value, ttl);
-
         List<String> urls = new ArrayList<>();
-        urls.add(aws.getLink(key));
+
+        if (includeMainPage) {
+            String key = "conflicts/" + webIdOrNull + ".gzip";
+            byte[] value = getWarBytesZip(manager);
+            aws.putObject(key, value, ttl);
+            urls.add(aws.getLink(key));
+        }
 
         if (includeGraphs) {
             String graphKey = "conflicts/graphs/" + webIdOrNull + ".gzip";
@@ -1097,23 +1140,6 @@ public class Conflict {
         }
         return urls;
     }
-
-    @Command(desc = "If the conflict has been updated since the last push")
-    public boolean hasNewWarData() {
-        return this.dirtyWarData;
-    }
-
-    @Command(desc = "If the conflict has been updated since the last push")
-    public boolean hasNewGraphData() {
-        return this.dirtyGraphData;
-    }
-
-    @Command(desc = "If the conflict has been updated since the last push")
-    public boolean hasNewParticipants() {
-        return this.dirtyParticipants;
-    }
-
-
 
     public void set(Conflict wikiConflict, boolean setName) {
         if (!wikiConflict.getStatusDesc().equalsIgnoreCase(getStatusDesc())) {
@@ -1150,12 +1176,10 @@ public class Conflict {
                 annMap.entrySet().removeIf(f -> f.getValue().topic_id == topicId);
             }
         });
+        markDirtyPageMeta();
     }
 
-    private void markDirty(boolean warData, boolean graphData, boolean participants, boolean meta) {
-        dirtyWarData = true;
-        if (id > 0) {
-            getManager().invalidateInactiveConflictCache(this, warData, graphData, participants, meta);
-        }
+    private void markGraphsInvalid() {
+        this.recalcGraph = true;
     }
 }

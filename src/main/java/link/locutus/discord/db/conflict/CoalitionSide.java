@@ -47,6 +47,8 @@ public class CoalitionSide {
     private CoalitionSide otherSide;
     private final Set<Integer> coalition = new IntOpenHashSet();
 
+    private volatile long latestGraphTurn = -1L;
+
     private final Map<Integer, Integer> allianceIdByNation = new Int2ObjectOpenHashMap<>();
     private final DamageStatGroup inflictedAndOffensiveStats = new DamageStatGroup();
     private final DamageStatGroup lossesAndDefensiveStats = new DamageStatGroup();
@@ -66,6 +68,15 @@ public class CoalitionSide {
         graphDataByDay.clear();
         allianceIdByNation.clear();
         this.loaded = false;
+        latestGraphTurn = -1L;
+    }
+
+    public long getLatestGraphTurn() {
+        return latestGraphTurn;
+    }
+
+    private void markLatestGraphTurn(long turn) {
+        if (turn > latestGraphTurn) latestGraphTurn = turn;
     }
 
     public void setLoaded(boolean loaded) {
@@ -95,6 +106,7 @@ public class CoalitionSide {
             graphDataByDay.computeIfAbsent(turnOrDay, k -> new DayTierGraphData()).getOrCreate(metric, allianceId).put((byte) city, value);
         } else {
             graphDataByTurn.computeIfAbsent(turnOrDay, k -> new TurnTierGraphData()).getOrCreate(metric, allianceId).put((byte) city, value);
+            markLatestGraphTurn(turnOrDay);
         }
     }
 
@@ -118,6 +130,7 @@ public class CoalitionSide {
             }
         }
         graphDataByTurn.put(turn, graphData);
+        markLatestGraphTurn(turn);
         if (save) {
             graphData.save(manager, getParent().getId(), isPrimary, turn);
         }
@@ -154,6 +167,7 @@ public class CoalitionSide {
             }
         }
         TurnTierGraphData turnGraph = graphDataByTurn.computeIfAbsent(turn, k -> new TurnTierGraphData());
+        markLatestGraphTurn(turn);
         turnGraph.update(nations);
         if (save) {
             turnGraph.save(manager, getParent().getId(), isPrimary, turn);

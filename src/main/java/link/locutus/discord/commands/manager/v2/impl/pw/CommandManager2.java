@@ -253,6 +253,7 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        this.commands.registerMethod(new TradeCommands(), List.of("conflict", "sync"), "importCloudData", "cloud_providers");
         this.commands.registerMethod(new TradeCommands(), List.of("trade", "create"), "createSell", "sell");
         this.commands.registerMethod(new TradeCommands(), List.of("trade", "create"), "createBuy", "buy");
         this.commands.registerMethod(new TradeCommands(), List.of("trade", "create"), "undercutSell", "undercut_sell");

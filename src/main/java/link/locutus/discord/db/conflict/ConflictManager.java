@@ -39,13 +39,13 @@ import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.scheduler.ThrowingFunction;
-import link.locutus.discord.web.jooby.AwsManager;
+import link.locutus.discord.web.jooby.ICloudStorage;
 import link.locutus.discord.web.jooby.JteUtil;
+import link.locutus.discord.web.jooby.S3CompatibleStorage;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -53,16 +53,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
@@ -75,7 +66,7 @@ import static link.locutus.discord.db.conflict.ConflictField.*;
 
 public class ConflictManager {
     private final WarDB db;
-    private final AwsManager aws;
+    private final ICloudStorage aws;
     private volatile boolean conflictsLoaded = false;
 
     private final Map<Integer, Conflict> conflictById = new Int2ObjectOpenHashMap<>();
@@ -93,29 +84,39 @@ public class ConflictManager {
     private volatile boolean conflictHeaderHashInitialized = false;
     private volatile long conflictHeaderHash = 0L;
 
+    private final Map<Integer, Map<HeaderGroup, Long>> cacheTimes = new Int2ObjectOpenHashMap<>();
+
     public ConflictManager(WarDB db) {
         this.db = db;
-        this.aws = setupAws();
+        this.aws = setupCloud();
     }
 
     public WarDB getDb() {
         return db;
     }
 
-    private AwsManager setupAws() {
-        String key = Settings.INSTANCE.WEB.S3.ACCESS_KEY;
-        String secret = Settings.INSTANCE.WEB.S3.SECRET_ACCESS_KEY;
-        String region = Settings.INSTANCE.WEB.S3.REGION;
-        String bucket = Settings.INSTANCE.WEB.S3.BUCKET;
-        if (!key.isEmpty() && !secret.isEmpty() && !region.isEmpty() && !bucket.isEmpty()) {
-            return new AwsManager(key, secret, bucket, region);
+    private ICloudStorage setupCloud() {
+        String provider = Settings.INSTANCE.WEB.CONFLICTS.PROVIDER;
+        if (provider == null) return null;
+        String p = provider.trim().toLowerCase(Locale.ROOT);
+
+        if (p.equals("s3") || p.equals("aws") || p.equals("amazon")) {
+            return S3CompatibleStorage.setupAwsS3();
+        } else if (p.equals("r2") || p.equals("cf") || p.equals("cloudflare")) {
+            return S3CompatibleStorage.setupCloudflareR2();
+        } else {
+            throw new IllegalArgumentException("Unknown cloud storage provider: " + provider + ". Supported: S3, R2");
         }
-        return null;
     }
 
     public void createTables() {
 
-        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_announcements2 (conflict_id INTEGER NOT NULL, topic_id INTEGER NOT NULL, description VARCHAR NOT NULL, PRIMARY KEY (conflict_id, topic_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
+        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_announcements2 (" +
+                "conflict_id INTEGER NOT NULL, " +
+                "topic_id INTEGER NOT NULL, " +
+                "description VARCHAR NOT NULL, " +
+                "PRIMARY KEY (conflict_id, topic_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
+
         String createConflicts = "CREATE TABLE IF NOT EXISTS conflicts (" +
                 String.join(", ",
                         ID + " INTEGER PRIMARY KEY AUTOINCREMENT",
@@ -128,7 +129,11 @@ public class ConflictManager {
                         CB + " VARCHAR NOT NULL",
                         STATUS + " VARCHAR NOT NULL",
                         CATEGORY + " INTEGER NOT NULL",
-                        CREATOR + " BIGINT NOT NULL"
+                        CREATOR + " BIGINT NOT NULL",
+                        PUSHED_INDEX + " BIGINT NOT NULL",
+                        PUSHED_PAGE + " BIGINT NOT NULL",
+                        PUSHED_GRAPH + " BIGINT NOT NULL",
+                        RECALC_GRAPH + " BOOLEAN NOT NULL"
                 ) + ")";
         db.executeStmt(createConflicts);
         db.executeStmt("ALTER TABLE conflicts ADD COLUMN creator BIGINT DEFAULT 0", true);
@@ -136,8 +141,16 @@ public class ConflictManager {
         db.executeStmt("ALTER TABLE conflicts ADD COLUMN cb VARCHAR DEFAULT ''", true);
         db.executeStmt("ALTER TABLE conflicts ADD COLUMN status VARCHAR DEFAULT ''", true);
         db.executeStmt("ALTER TABLE conflicts ADD COLUMN category INTEGER DEFAULT 0", true);
+        db.executeStmt("ALTER TABLE conflicts ADD COLUMN " + PUSHED_INDEX + " BIGINT DEFAULT 0", true);
+        db.executeStmt("ALTER TABLE conflicts ADD COLUMN " + PUSHED_PAGE + " BIGINT DEFAULT 0", true);
+        db.executeStmt("ALTER TABLE conflicts ADD COLUMN " + PUSHED_GRAPH + " BIGINT DEFAULT 0", true);
+        db.executeStmt("ALTER TABLE conflicts ADD COLUMN " + RECALC_GRAPH + " BOOLEAN DEFAULT 0", true);
 
-        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_participant (conflict_id INTEGER NOT NULL, alliance_id INTEGER NOT NULL, side BOOLEAN, start BIGINT NOT NULL, end BIGINT NOT NULL, PRIMARY KEY (conflict_id, alliance_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
+        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_participant (conflict_id INTEGER NOT NULL, " +
+                "alliance_id INTEGER NOT NULL, " +
+                "side BOOLEAN, start BIGINT NOT NULL, " +
+                "end BIGINT NOT NULL, " +
+                "PRIMARY KEY (conflict_id, alliance_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
         db.executeStmt("CREATE TABLE IF NOT EXISTS legacy_names2 (id INTEGER NOT NULL, name VARCHAR NOT NULL, date BIGINT DEFAULT 0, PRIMARY KEY (id, name, date))");
 
         db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_graphs2 (conflict_id INTEGER NOT NULL, side BOOLEAN NOT NULL, alliance_id INT NOT NULL, metric INTEGER NOT NULL, turn BIGINT NOT NULL, city INTEGER NOT NULL, value INTEGER NOT NULL, PRIMARY KEY (conflict_id, alliance_id, metric, turn, city), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
@@ -150,42 +163,14 @@ public class ConflictManager {
         // create table if not exists MANUAL_WARS war_id, conflict_id, int alliance, primary key (war_id)
         db.executeStmt("CREATE TABLE IF NOT EXISTS MANUAL_WARS (war_id INT PRIMARY KEY, conflict_id INT NOT NULL, alliance INT NOT NULL)");
 
-        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_flat_cache (" +
-                "conflict_id INTEGER PRIMARY KEY, " +
-                "flat_gzip BLOB, " +
-                "graph_gzip BLOB, " +
-                "updated_ms BIGINT NOT NULL DEFAULT 0" +
-                ")");
-
         db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_row_cache (" +
-                "conflict_id INTEGER PRIMARY KEY, " +
+                "conflict_id INTEGER, " +
                 "header_hash BIGINT NOT NULL, " +
                 "row_data BLOB NOT NULL, " +
-                "FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
-    }
-
-    public byte[] loadFlatCacheGzip(int conflictId) {
-        final byte[][] out = new byte[1][];
-        db.query("SELECT flat_gzip FROM conflict_flat_cache WHERE conflict_id = ?",
-                (ThrowingConsumer<PreparedStatement>)stmt -> stmt.setInt(1, conflictId),
-                (ThrowingConsumer<ResultSet>)rs -> { if (rs.next()) out[0] = rs.getBytes(1); });
-        return out[0];
-    }
-    public byte[] loadGraphCacheGzip(int conflictId) {
-        final byte[][] out = new byte[1][];
-        db.query("SELECT graph_gzip FROM conflict_flat_cache WHERE conflict_id = ?",
-                (ThrowingConsumer<PreparedStatement>)stmt -> stmt.setInt(1, conflictId),
-                (ThrowingConsumer<ResultSet>)rs -> { if (rs.next()) out[0] = rs.getBytes(1); });
-        return out[0];
-    }
-    public void saveFlatGraphCache(int conflictId, byte[] flat, byte[] graph) {
-        db.update("INSERT OR REPLACE INTO conflict_flat_cache (conflict_id, flat_gzip, graph_gzip, updated_ms) VALUES (?, ?, ?, ?)",
-                (ThrowingConsumer<PreparedStatement>) stmt -> {
-                    stmt.setInt(1, conflictId);
-                    stmt.setBytes(2, flat);
-                    stmt.setBytes(3, graph);
-                    stmt.setLong(4, System.currentTimeMillis());
-                });
+                "type INTEGER NOT NULL, " +
+                "updated_ms BIGINT NOT NULL DEFAULT 0, " +
+                "FOREIGN KEY(conflict_id) REFERENCES conflicts(id)," +
+                "PRIMARY KEY (conflict_id, type))");
     }
 
     private synchronized void importData(Database sourceDb, Database targetDb, String tableName) throws SQLException {
@@ -242,20 +227,46 @@ public class ConflictManager {
 
     public String pushIndex() {
         String key = "conflicts/index.gzip";
-        byte[] value = getPsonGzip();
+        byte[] value = getIndexBytesZip();
         aws.putObject(key, value,  60);
         return aws.getLink(key);
     }
 
     public boolean pushDirtyConflicts() {
-        boolean hasDirty = false;
+        boolean updateIndex = true;
         for (Conflict conflict : getActiveConflicts()) {
-            if (conflict.isDirty()) {
-                conflict.push(this, null, false, false);
-                hasDirty = true;
+            long lastPushPage = conflict.getPushedPage();
+            long lastPushGraph = conflict.getPushedGraph();
+            long lastPushIndex = conflict.getPushedIndex();
+
+            long lastWarUpdate = conflict.getLatestWarAttack();
+            long lastGraphUpdate = conflict.getLatestGraphMs();
+
+            boolean updatePageMeta = false;
+            boolean updatePageStats = false;
+            boolean updateGraph = false;
+            synchronized (cacheTimes) {
+                Map<HeaderGroup, Long> lastCacheTimes = cacheTimes.getOrDefault(conflict.getId(), Collections.emptyMap());
+                long lastPageMeta = lastCacheTimes.getOrDefault(HeaderGroup.PAGE_META, 0L);
+                long lastPageStats = lastCacheTimes.getOrDefault(HeaderGroup.PAGE_STATS, 0L);
+                long lastGraph = lastCacheTimes.getOrDefault(HeaderGroup.GRAPH, 0L);
+
+                if (lastPageMeta == 0L) updatePageMeta = true;
+                if (lastWarUpdate > lastPageStats) updatePageStats = true;
+                if (lastGraphUpdate > lastGraph) updateGraph = true;
             }
+
+            if (!updatePageMeta && !updatePageStats && !updateGraph) {
+                continue;
+            }
+
+            if (updatePageMeta || updatePageStats) {
+                updateIndex = true;
+            }
+
+            conflict.pushChanges(this, null, (updatePageMeta || updatePageStats), updateGraph, false);
         }
-        if (hasDirty) {
+        if (updateIndex) {
             pushIndex();
             return true;
         }
@@ -390,9 +401,10 @@ public class ConflictManager {
     }
 
     public boolean updateWar(DBWar previous, DBWar current, Predicate<Integer> allowedConflictords) {
-        long turn = TimeUtil.getTurn(current.getDate());
+        long date = current.getDate();
+        long turn = TimeUtil.getTurn(date);
         if (turn > lastTurn) initTurn();
-        return applyConflicts(allowedConflictords, turn, current.getAttacker_aa(), current.getDefender_aa(), f -> f.updateWar(previous, current, turn));
+        return applyConflicts(allowedConflictords, turn, current.getAttacker_aa(), current.getDefender_aa(), f -> f.updateWar(previous, current, turn, date));
     }
 
     @Subscribe
@@ -422,8 +434,8 @@ public class ConflictManager {
         List<Conflict> active = getActiveConflicts();
         if (!active.isEmpty()) {
             for (Conflict conflict : active) {
-                conflict.getSide(true).updateTurnChange(this, turn, true);
-                conflict.getSide(false).updateTurnChange(this, turn, true);
+                conflict.getCoalition(true, true, true).updateTurnChange(this, turn, true);
+                conflict.getCoalition(false, true, true).updateTurnChange(this, turn, true);
             }
             for (Conflict conflict : active) {
                 conflict.push(this, null, true, false);
@@ -569,6 +581,17 @@ public class ConflictManager {
         List<Conflict> conflicts = new ArrayList<>();
         List<Integer> activeConflictIds = new IntArrayList();
         conflictById.clear();
+
+        db.query("SELECT conflict_id, type, updated_ms from conflict_row_cache", stmt -> {
+        }, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                int conflictId = rs.getInt("conflict_id");
+                long updatedMs = rs.getLong("updated_ms");
+                HeaderGroup type = HeaderGroup.values[rs.getInt("type")];
+                cacheTimes.computeIfAbsent(conflictId, k -> new EnumMap<>(HeaderGroup.class)).put(type, updatedMs);
+            }
+        });
+
         db.query("SELECT * FROM conflicts", stmt -> {
         }, (ThrowingConsumer<ResultSet>) rs -> {
             int ordinal = 0;
@@ -577,7 +600,11 @@ public class ConflictManager {
                 String name = rs.getString("name");
                 long startTurn = rs.getLong("start");
                 long endTurn = rs.getLong("end");
-                Conflict conflict = new Conflict(id, ordinal++, name, startTurn, endTurn);
+                long pushedIndex = rs.getLong(PUSHED_INDEX.name());
+                long pushedPage = rs.getLong(PUSHED_PAGE.name());
+                long pushedGraph = rs.getLong(PUSHED_GRAPH.name());
+                boolean recalcGraph = rs.getBoolean(RECALC_GRAPH.name());
+                Conflict conflict = new Conflict(id, ordinal++, name, startTurn, endTurn, pushedIndex, pushedPage, pushedGraph, recalcGraph);
                 if (conflict.isActive()) {
                     conflict.initData(rs);
                     activeConflictIds.add(conflict.getId());
@@ -649,7 +676,8 @@ public class ConflictManager {
                 .withWarsForNationOrAlliance(null, aaIds::contains, f -> f.getDate() >= start && f.getDate() <= end);
         Set<DBWar> wars = new ObjectOpenHashSet<>();
         for (DBWar war : query.wars) {
-            if (conflict.updateWar(null, war, TimeUtil.getTurn(war.getDate()))) {
+            long date = war.getDate();
+            if (conflict.updateWar(null, war, TimeUtil.getTurn(date), date)) {
                 wars.add(war);
             }
         }
@@ -883,7 +911,7 @@ public class ConflictManager {
 //    }
 
     public void setStatus(int conflictId, String status) {
-        invalidateConflictRowCache(conflictId);
+        invalidateConflictRowCache(conflictId, HeaderGroup.INDEX_META, HeaderGroup.PAGE_META);
         db.update("UPDATE conflicts SET status = ? WHERE id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, status);
             stmt.setInt(2, conflictId);
@@ -891,7 +919,7 @@ public class ConflictManager {
     }
 
     public void setCb(int conflictId, String cb) {
-        invalidateConflictRowCache(conflictId);
+        invalidateConflictRowCache(conflictId, HeaderGroup.INDEX_META, HeaderGroup.PAGE_META);
         db.update("UPDATE conflicts SET cb = ? WHERE id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, cb);
             stmt.setInt(2, conflictId);
@@ -992,6 +1020,14 @@ public class ConflictManager {
             stmt.setInt(2, topicId);
             stmt.setString(3, description);
         });
+        invalidateConflictRowCache(conflictId, HeaderGroup.PAGE_META);
+    }
+
+    public void flagGraphRecalc(int conflictId) {
+        db.update("UPDATE conflicts SET " + RECALC_GRAPH + " = ? WHERE id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setLong(1, System.currentTimeMillis());
+            stmt.setInt(2, conflictId);
+        });
     }
 
     public void clearGraphData(ConflictMetric metric, int conflictId, boolean side, long turn) {
@@ -1077,7 +1113,7 @@ public class ConflictManager {
             ResultSet rs = stmt.getGeneratedKeys();
             if (rs.next()) {
                 int id = rs.getInt(1);
-                Conflict conflict = new Conflict(id, conflictArr.length, name, turnStart, turnEnd);
+                Conflict conflict = new Conflict(id, conflictArr.length, name, turnStart, turnEnd, true );
                 conflict.trySetData(col1, col2, creator, category, wiki, cb, status);
                 conflictById.put(id, conflict);
                 conflictArr = Arrays.copyOf(conflictArr, conflictArr.length + 1);
@@ -1100,7 +1136,15 @@ public class ConflictManager {
     }
 
     protected void updateConflict(Conflict conflict, long start, long end) {
-        invalidateConflictRowCache(conflict.getId());
+        boolean invalidateWarStarts = start < conflict.getStartTurn() || end > conflict.getEndTurn();
+        List<HeaderGroup> toInvalidate = new ObjectArrayList<>(Arrays.asList(HeaderGroup.INDEX_META, HeaderGroup.PAGE_META))
+        if (invalidateWarStarts) {
+            toInvalidate.add(HeaderGroup.INDEX_STATS);
+            toInvalidate.add(HeaderGroup.PAGE_STATS);
+            toInvalidate.add(HeaderGroup.GRAPH);
+        }
+        invalidateConflictRowCache(conflict.getId(), toInvalidate.toArray(new HeaderGroup[0]));
+
         int conflictOrd = conflict.getOrdinal();
         synchronized (activeConflictsOrd) {
             if (activeConflictsOrd.contains(conflictOrd)) {
@@ -1112,15 +1156,17 @@ public class ConflictManager {
             }
             addConflictsByAlliance(conflict, true);
         }
-        db.update("UPDATE conflicts SET start = ?, end = ? WHERE id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        db.update("UPDATE conflicts SET " + START + " = ?, " + END + " = ? WHERE id = ?",
+                (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setLong(1, start);
             stmt.setLong(2, end);
             stmt.setInt(3, conflict.getId());
         });
+        flagGraphRecalc(conflict.getId());
     }
 
     public void updateConflictName(int conflictId, String name) {
-        invalidateConflictRowCache(conflictId);
+        invalidateConflictRowCache(conflictId, HeaderGroup.INDEX_META, HeaderGroup.PAGE_META);
         db.update("UPDATE conflicts SET name = ? WHERE id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, name);
             stmt.setInt(2, conflictId);
@@ -1128,7 +1174,7 @@ public class ConflictManager {
     }
 
     public void updateConflictName(int conflictId, String name, boolean isPrimary) {
-        invalidateConflictRowCache(conflictId);
+        invalidateConflictRowCache(conflictId, HeaderGroup.INDEX_META, HeaderGroup.PAGE_META);
         db.update("UPDATE conflicts SET `col" + (isPrimary ? "1" : "2") + "` = ? WHERE id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, name);
             stmt.setInt(2, conflictId);
@@ -1137,7 +1183,7 @@ public class ConflictManager {
 
 
     public void updateConflictWiki(int conflictId, String wiki) {
-        invalidateConflictRowCache(conflictId);
+        invalidateConflictRowCache(conflictId, HeaderGroup.INDEX_META, HeaderGroup.PAGE_META);
         db.update("UPDATE conflicts SET `wiki` = ? WHERE id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, wiki);
             stmt.setInt(2, conflictId);
@@ -1158,6 +1204,9 @@ public class ConflictManager {
         DBAlliance aa = DBAlliance.get(allianceId);
         if (aa != null) addLegacyName(allianceId, aa.getName(), System.currentTimeMillis());
         addConflictsByAlliance(conflict, true);
+
+        invalidateConflictRowCache(conflict.getId(), HeaderGroup.INDEX_META);
+        invalidateConflictRowCache(conflict.getId(), HeaderGroup.INDEX_STATS);
     }
 
     protected void removeParticipant(Conflict conflict, int allianceId) {
@@ -1166,6 +1215,7 @@ public class ConflictManager {
             stmt.setInt(2, conflict.getId());
         });
         addConflictsByAlliance(conflict, true);
+        markConflictParticipant(conflict.getId());
     }
 
     public Map<Integer, Conflict> getConflictMap() {
@@ -1241,7 +1291,7 @@ public class ConflictManager {
     }
 
     public void deleteConflict(Conflict conflict) {
-        invalidateConflictRowCache(conflict.getId());
+        invalidateConflictRowCache(conflict.getId(), HeaderGroup.values);
         synchronized (activeConflictsOrd) {
             synchronized (conflictById) {
                 if (conflictById.remove(conflict.getId()) != null) {
@@ -1277,91 +1327,123 @@ public class ConflictManager {
         return names;
     }
 
-    public void invalidateFlatGraphCache(int conflictId) {
-        db.update("DELETE FROM conflict_flat_cache WHERE conflict_id = ?",
-                (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setInt(1, conflictId));
-    }
+    public byte[] getIndexBytesZip() {
+        synchronized (this.loadConflictLock) {
+            List<HeaderGroup> groups = Arrays.asList(HeaderGroup.values);
+            // build complete header list in group order
+            List<String> allHeaders = new ArrayList<>();
+            for (HeaderGroup g : groups) {
+                allHeaders.addAll(IndexHeaders.names(g));
+            }
 
-    public byte[] getPsonGzip() {
-        Map<String, Function<Conflict, Object>> headerFuncs = Conflict.createHeaderFuncs();
+            // precompute expected header hashes per group
+            Map<HeaderGroup, Long> expectedHashes = new EnumMap<>(HeaderGroup.class);
+            for (HeaderGroup g : groups) {
+                expectedHashes.put(g, ensureConflictHeaderHash(IndexHeaders.names(g), g));
+            }
 
-        List<String> headers = new ObjectArrayList<>();
-        List<Function<Conflict, Object>> funcs = new ObjectArrayList<>();
-        for (Map.Entry<String, Function<Conflict, Object>> entry : headerFuncs.entrySet()) {
-            headers.add(entry.getKey());
-            funcs.add(entry.getValue());
-        }
+            Map<Integer, Conflict> map = getConflictMap();
 
-        Map<Integer, Conflict> map = getConflictMap();
-
-        Map<Integer, String> aaNameById = new Int2ObjectOpenHashMap<>();
-        synchronized (conflictAlliances) {
-            for (int allianceId : conflictAlliances) {
-                String name = getAllianceNameOrNull(allianceId);
-                if (name != null) {
-                    aaNameById.put(allianceId, name);
+            Map<Integer, String> aaNameById = new Int2ObjectOpenHashMap<>();
+            synchronized (conflictAlliances) {
+                for (int allianceId : conflictAlliances) {
+                    String name = getAllianceNameOrNull(allianceId);
+                    if (name != null) aaNameById.put(allianceId, name);
                 }
             }
-        }
-        List<Integer> allianceIds = new ArrayList<>(aaNameById.keySet());
-        Collections.sort(allianceIds);
-        List<String> aaNames = allianceIds.stream().map(aaNameById::get).toList();
+            List<Integer> allianceIds = new ArrayList<>(aaNameById.keySet());
+            Collections.sort(allianceIds);
+            List<String> aaNames = allianceIds.stream().map(aaNameById::get).toList();
 
-        Map<Long, List<Long>> sourceSets = getSourceSets();
+            Map<Long, List<Long>> sourceSets = getSourceSets();
 
-        ObjectMapper mapper = JteUtil.getSerializer();
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
+            ObjectMapper mapper = JteUtil.getSerializer(); // MessagePack-backed
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
 
-        try (JsonGenerator gen = mapper.getFactory().createGenerator(out)) {
-            gen.writeStartObject();
+            try (JsonGenerator gen = mapper.getFactory().createGenerator(out)) {
+                gen.writeStartObject();
 
-            gen.writeFieldName("headers");
-            mapper.writeValue(gen, headers);
+                gen.writeFieldName("headers");
+                mapper.writeValue(gen, allHeaders);
 
-            long headerHash = ensureConflictHeaderHash(headers);
-            gen.writeFieldName("conflicts");
-            gen.writeStartArray();
-            for (Conflict conflict : map.values()) {
-                boolean cacheable = conflict.getId() > 0 && !conflict.isActive();
-                byte[] cached = cacheable ? loadConflictRowCache(conflict.getId(), headerHash) : null;
-                if (cached != null) {
-                    gen.writeRawValue(new String(cached, StandardCharsets.UTF_8));
-                    continue;
+                gen.writeFieldName("conflicts");
+                gen.writeStartArray();
+
+                for (Conflict conflict : map.values()) {
+                    boolean statsCacheable = conflict.getId() > 0 && !conflict.isActive();
+                    boolean basicCacheable = conflict.getId() > 0;
+
+                    Set<HeaderGroup> groupsToCheck = new ObjectOpenHashSet<>();
+                    if (basicCacheable) groupsToCheck.add(HeaderGroup.INDEX_META);
+                    if (statsCacheable) groupsToCheck.add(HeaderGroup.INDEX_STATS);
+
+                    Map<HeaderGroup, Map.Entry<Long, byte[]>> cachedByGroup = groupsToCheck.isEmpty()
+                            ? Collections.emptyMap()
+                            : loadConflictRowCache(conflict.getId(), expectedHashes, groupsToCheck);
+
+                    // Start one row (flattened concatenation of all groups' elements)
+                    gen.writeStartArray();
+
+                    for (HeaderGroup group : groups) {
+                        List<HeaderSpec<?>> specs = IndexHeaders.headers(group);
+
+                        Map.Entry<Long, byte[]> pair = cachedByGroup.get(group);
+                        if (pair != null) {
+                            byte[] cachedBytes = pair.getValue();
+                            long dateMs = pair.getKey();
+
+
+
+                            JteUtil.copyArrayElements(mapper.getFactory(), cachedBytes, gen);
+                            continue;
+                        }
+
+                        List<Object> part = new ArrayList<>(specs.size());
+                        for (HeaderSpec<?> spec : specs) {
+                            Function<Conflict, ?> func = spec.extractor();
+                            part.add(func.apply(conflict));
+                        }
+
+                        // write elements into current row (flatten)
+                        for (Object v : part) {
+                            mapper.writeValue(gen, v);
+                        }
+
+                        // cache as MessagePack array of the group's values
+                        boolean groupCacheable = (group == HeaderGroup.INDEX_STATS && basicCacheable)
+                                || (group == HeaderGroup.INDEX_STATS && statsCacheable);
+                        if (groupCacheable) {
+                            byte[] partMsgPack = mapper.writeValueAsBytes(part);
+                            saveConflictRowCache(conflict.getId(), expectedHashes.get(group), partMsgPack, group);
+                        }
+                    }
+
+                    gen.writeEndArray();
                 }
-                        List<Object> row = new ArrayList<>();
-                for (Function<Conflict, Object> func : funcs) {
-                    row.add(func.apply(conflict));
-                }
-                String rowJson = mapper.writeValueAsString(row);
-                gen.writeRawValue(rowJson);
-                if (cacheable) {
-                    saveConflictRowCache(conflict.getId(), headerHash, rowJson.getBytes(StandardCharsets.UTF_8));
-                }
+
+                gen.writeEndArray();
+
+                gen.writeFieldName("alliance_ids");
+                mapper.writeValue(gen, allianceIds);
+
+                gen.writeFieldName("alliance_names");
+                mapper.writeValue(gen, aaNames);
+
+                gen.writeFieldName("source_sets");
+                mapper.writeValue(gen, getSourceSetStrings(sourceSets));
+
+                gen.writeFieldName("source_names");
+                mapper.writeValue(gen, getSourceNames(sourceSets.keySet()));
+
+                gen.writeEndObject();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
-            gen.writeEndArray();
-
-            // write the rest of the fields in the same fashion…
-            gen.writeFieldName("alliance_ids");
-            mapper.writeValue(gen, allianceIds);
-
-            // the rest
-            gen.writeFieldName("alliance_names");
-            mapper.writeValue(gen, aaNames);
-
-            gen.writeFieldName("source_sets");
-            mapper.writeValue(gen, getSourceSetStrings(sourceSets));
-            gen.writeFieldName("source_names");
-            mapper.writeValue(gen, getSourceNames(sourceSets.keySet()));
-
-            gen.writeEndObject();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+            return JteUtil.compress(out.toByteArray());
         }
-
-        return JteUtil.compress(out.toByteArray());
     }
 
-    private long ensureConflictHeaderHash(List<String> headers) {
+    private long ensureConflictHeaderHash(List<String> headers, HeaderGroup group) {
         if (headers == null) throw new IllegalArgumentException("headers cannot be null");
         long computed = StringMan.hash(headers);
 
@@ -1373,8 +1455,24 @@ public class ConflictManager {
                     conflictHeaderHash = computed;
 
                     if (previous != computed) {
-                        db.update("DELETE FROM conflict_row_cache WHERE header_hash != ?",
-                                (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setLong(1, computed));
+                        // remove in-memory cache times for this group
+                        synchronized (cacheTimes) {
+                            Iterator<Map.Entry<Integer, Map<HeaderGroup, Long>>> iter = cacheTimes.entrySet().iterator();
+                            while (iter.hasNext()) {
+                                Map<HeaderGroup, Long> m = iter.next().getValue();
+                                if (m != null) {
+                                    m.remove(group);
+                                    if (m.isEmpty()) {
+                                        iter.remove();
+                                    }
+                                }
+                            }
+                        }
+                        db.update("DELETE FROM conflict_row_cache WHERE header_hash != ? AND type = ?",
+                                (ThrowingConsumer<PreparedStatement>) stmt -> {
+                                    stmt.setLong(1, computed);
+                                    stmt.setInt(2, group.ordinal());
+                                });
                     }
                 }
             }
@@ -1382,48 +1480,123 @@ public class ConflictManager {
         return conflictHeaderHash;
     }
 
-    private byte[] loadConflictRowCache(int conflictId, long expectedHash) {
-        final byte[][] rowData = new byte[1][];
-        final boolean[] stale = new boolean[1];
+    public Map<HeaderGroup, Map.Entry<Long, byte[]>> loadConflictRowCache(int conflictId, Set<HeaderGroup> groups) {
+        synchronized (cacheTimes) {
+            Map<HeaderGroup, Long> currentCacheTimes = cacheTimes.get(conflictId);
 
-        db.query("SELECT header_hash, row_data FROM conflict_row_cache WHERE conflict_id = ?",
-                (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setInt(1, conflictId),
-                (ThrowingConsumer<ResultSet>) rs -> {
-                    if (rs.next()) {
-                        long storedHash = rs.getLong("header_hash");
-                        if (storedHash == expectedHash) {
-                            rowData[0] = rs.getBytes("row_data");
-                        } else {
-                            stale[0] = true;
+            Map<HeaderGroup, Map.Entry<Long, byte[]>> result = new Object2ObjectLinkedOpenHashMap<>();
+            // Determine which types the caller wants to check
+            Set<HeaderGroup> typesToCheck = new LinkedHashSet<>(groups);
+
+            // If we have no cache times, or no requested types, nothing to fetch
+            if (currentCacheTimes == null || typesToCheck.isEmpty()) {
+                return result;
+            }
+
+            // Only fetch the types we know exist in the DB based on currentCacheTimes
+            typesToCheck.retainAll(currentCacheTimes.keySet());
+            if (typesToCheck.isEmpty()) {
+                return result;
+            }
+
+            List<Integer> typeOrds = typesToCheck.stream().map(Enum::ordinal).sorted().collect(Collectors.toList());
+            List<Integer> staleTypes = new IntArrayList();
+
+            String typeInOrEqual = typeOrds.size() == 1 ? "= ?" : "IN " + StringMan.getString(typeOrds);
+            String sql = "SELECT header_hash, row_data, type, updated_ms FROM conflict_row_cache WHERE conflict_id = ? AND type " + typeInOrEqual;
+
+            db.query(sql,
+                    (ThrowingConsumer<PreparedStatement>) stmt -> {
+                        stmt.setInt(1, conflictId);
+                        if (typeOrds.size() == 1) {
+                            stmt.setInt(2, typeOrds.get(0));
                         }
-                    }
-                });
+                    },
+                    (ThrowingConsumer<ResultSet>) rs -> {
+                        while (rs.next()) {
+                            int typeOrd = rs.getInt("type");
+                            HeaderGroup type = HeaderGroup.values[typeOrd];
 
-        if (stale[0]) {
-            invalidateConflictRowCache(conflictId);
+                            // Ensure the DB row matches our in-memory updated time
+                            long updatedMs = rs.getLong("updated_ms");
+                            Long expectedUpdated = currentCacheTimes.get(type);
+                            if (expectedUpdated == null || expectedUpdated.longValue() != updatedMs) {
+                                staleTypes.add(typeOrd);
+                                continue;
+                            }
+
+                            long storedHash = rs.getLong("header_hash");
+                            long expectedHash = type.getHash();
+                            if (storedHash == expectedHash) {
+                                byte[] data = rs.getBytes("row_data");
+                                result.put(type, Map.entry(updatedMs, data));
+                            } else {
+                                staleTypes.add(typeOrd);
+                            }
+                        }
+                    });
+
+            if (!staleTypes.isEmpty()) {
+                db.executeBatch(staleTypes, "DELETE FROM conflict_row_cache WHERE conflict_id = ? AND type = ?",
+                        (ThrowingBiConsumer<Integer, PreparedStatement>) (typeOrd, stmt) -> {
+                            stmt.setInt(1, conflictId);
+                            stmt.setInt(2, typeOrd);
+                        });
+
+                Map<HeaderGroup, Long> m = cacheTimes.get(conflictId);
+                if (m != null) {
+                    for (int typeOrd : staleTypes) {
+                        m.remove(HeaderGroup.values[typeOrd]);
+                    }
+                    if (m.isEmpty()) {
+                        cacheTimes.remove(conflictId);
+                    }
+                }
+            }
+            return result;
         }
-        return rowData[0];
     }
 
-    private void saveConflictRowCache(int conflictId, long headerHash, byte[] rowData) {
-        if (rowData == null) return;
-        db.update("INSERT OR REPLACE INTO conflict_row_cache (conflict_id, header_hash, row_data) VALUES (?, ?, ?)",
+    private void saveConflictRowCache(int conflictId, long headerHash, byte[] rowData, HeaderGroup type) {
+        if (rowData == null || type == null) return;
+        long time = System.currentTimeMillis();
+        db.update("INSERT OR REPLACE INTO conflict_row_cache (conflict_id, header_hash, row_data, type, updated_ms) VALUES (?, ?, ?, ?, ?)",
+        (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, conflictId);
+            stmt.setLong(2, headerHash);
+            stmt.setBytes(3, rowData);
+            stmt.setInt(4, type.ordinal());
+            stmt.setLong(5, time);
+        });
+        synchronized (cacheTimes) {
+            cacheTimes.computeIfAbsent(conflictId, f -> new EnumMap<>(HeaderGroup.class)).put(type, time);
+        }
+    }
+
+//    public void invalidateConflictRowCache(int conflictId) {
+//        db.update("DELETE FROM conflict_row_cache WHERE conflict_id = ?",
+//                (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setInt(1, conflictId));
+//    }
+
+    public void invalidateConflictRowCache(int conflictId, HeaderGroup... types) {
+        if (types.length == 0) {
+             throw new IllegalArgumentException("At least one HeaderGroup type must be specified");
+        }
+        String inOrEqual = types.length == 1 ? "= ?" : "IN " + StringMan.getString(Arrays.stream(types).map(Enum::ordinal).map(String::valueOf).toList());
+        db.update("DELETE FROM conflict_row_cache WHERE conflict_id = ? AND type " + inOrEqual,
                 (ThrowingConsumer<PreparedStatement>) stmt -> {
                     stmt.setInt(1, conflictId);
-                    stmt.setLong(2, headerHash);
-                    stmt.setBytes(3, rowData);
-                });
-    }
-
-    public void invalidateConflictRowCache(int conflictId) {
-        db.update("DELETE FROM conflict_row_cache WHERE conflict_id = ?",
-                (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setInt(1, conflictId));
-    }
-
-    public void invalidateInactiveConflictCache(Conflict conflict, boolean warData, boolean graphData, boolean participants, boolean meta) {
-        if (conflict == null) return;
-        if (conflict.getId() > 0 && !conflict.isActive()) {
-            invalidateConflictRowCache(conflict.getId());
+        });
+        synchronized (cacheTimes) {
+            Map<HeaderGroup, Long> m = cacheTimes.get(conflictId);
+            if (m != null) {
+                for (HeaderGroup type : types) {
+                    m.remove(type);
+                }
+                if (m.isEmpty()) {
+                    cacheTimes.remove(conflictId);
+                }
+            }
         }
     }
 
@@ -1441,14 +1614,14 @@ public class ConflictManager {
     }
 
     public void updateConflictCategory(int conflictId, ConflictCategory category) {
-        invalidateConflictRowCache(conflictId);
+        invalidateConflictRowCache(conflictId, HeaderGroup.INDEX_META, HeaderGroup.PAGE_META);
         db.update("UPDATE conflicts SET category = ? WHERE id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, category.ordinal());
             stmt.setInt(2, conflictId);
         });
     }
 
-    public AwsManager getAws() {
+    public ICloudStorage getCloud() {
         return aws;
     }
 
@@ -1457,6 +1630,7 @@ public class ConflictManager {
             stmt.setInt(1, id);
             stmt.setInt(2, topicId);
         });
+        invalidateConflictRowCache(id, HeaderGroup.PAGE_META);
     }
 
     public Object getConflictField(int conflictId, ConflictField field) {

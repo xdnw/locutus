@@ -506,12 +506,10 @@ public class Settings extends Config {
     public static class WEB {
         @Create
         public S3 S3;
-//        @Create
-//        public CHAT_EXPORTER CHAT_EXPORTER;
 
         @Comment({"(Optional) Configure AWS S3 bucket for caching war stats",
-        "The access key, secret key and region must be set to be enabled",
-        "Leave blank to disable"})
+                "The access key, secret key and region must be set to be enabled",
+                "Leave blank to disable"})
         public static final class S3 {
             @Comment("Access key for AWS S3 - for storing binary data")
             public String ACCESS_KEY = "";
@@ -524,6 +522,41 @@ public class Settings extends Config {
 
             @Comment("Name of AWS S3 bucket (e.g. `locutus`)")
             public String BUCKET = "";
+
+            @Comment("(Optional) Public base URL to serve assets from (e.g. https://<bucket>.s3.<region>.amazonaws.com)")
+            public String BASE_URL = "";
+        }
+
+        @Create
+        public R2 R2;
+
+        @Comment({"(Optional) Configure Cloudflare R2 bucket for caching war stats",
+                "The account id, access key, secret key and bucket name must be set to be enabled",
+                "Leave blank to disable"})
+        public static final class R2 {
+            @Comment("Cloudflare R2 account id")
+            public String ACCOUNT_ID = "";
+
+            @Comment("Access key for R2 - for storing binary data")
+            public String ACCESS_KEY = "";
+
+            @Comment("Secret access key for R2 - for storing binary data")
+            public String SECRET_ACCESS_KEY = "";
+
+            @Comment("Name of R2 bucket (e.g. `locutus`)")
+            public String BUCKET = "";
+
+            @Comment("(Optional) Public base URL to serve assets from (e.g. https://<account>.r2.cloudflarestorage.com)")
+            public String BASE_URL = "";
+        }
+
+        @Create
+        public CONFLICTS CONFLICTS;
+
+        @Comment({""})
+        public static final class CONFLICTS {
+            @Comment("Either S3 or R2")
+            public String PROVIDER = "S3";
 
             @Comment({
                     "The frontend url for war stats",

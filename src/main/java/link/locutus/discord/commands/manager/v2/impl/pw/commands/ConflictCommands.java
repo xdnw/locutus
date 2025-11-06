@@ -16,6 +16,9 @@ import link.locutus.discord.db.conflict.CtownedFetcher;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.web.jooby.CloudItem;
+import link.locutus.discord.web.jooby.ICloudStorage;
+import link.locutus.discord.web.jooby.S3CompatibleStorage;
 import link.locutus.wiki.game.PWWikiUtil;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -27,7 +30,6 @@ import link.locutus.discord.db.conflict.ConflictManager;
 import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.math.ArrayUtil;
-import link.locutus.discord.web.jooby.AwsManager;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
@@ -163,7 +165,7 @@ public class ConflictCommands {
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String syncConflictData(@Me IMessageIO io, ConflictManager manager, @Default Set<Conflict> conflicts, @Switch("u") boolean upload_graph, @Switch("w") boolean reinitialize_wars, @Switch("g") boolean reinitialize_graphs) throws IOException, ParseException {
-        AwsManager aws = manager.getAws();
+        AwsS3 aws = manager.getCloud();
         if (aws == null) {
             throw new IllegalArgumentException("AWS is not configured in `config.yaml`");
         }
@@ -424,14 +426,19 @@ public class ConflictCommands {
             "This does NOT update conflict stats")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
-    public String removeCoalition(Conflict conflict, Set<DBAlliance> alliances) {
+    public String removeCoalition(ConflictManager manager, Conflict conflict, Set<DBAlliance> alliances) {
         Set<DBAlliance> notRemoved = new ObjectLinkedOpenHashSet<>();
+        int numRemoved = 0;
         for (DBAlliance alliance : alliances) {
             if (conflict.getCoalition1().contains(alliance.getId()) || conflict.getCoalition2().contains(alliance.getId())) {
                 conflict.removeParticipant(alliance.getId());
+                numRemoved++;
             } else {
                 notRemoved.add(alliance);
             }
+        }
+        if (numRemoved > 0 && conflict.getId() > 0) {
+            manager.flagGraphRecalc(conflict.getId());
         }
         List<String> errors = new ArrayList<>();
         if (notRemoved.size() > 0) {
@@ -520,13 +527,19 @@ public class ConflictCommands {
                 throw new IllegalArgumentException("Alliance " + alliance.getMarkdownUrl() + " does not have active wars with the conflict participants. Please contact an administrator");
             }
         }
+        if (addCol1.isEmpty() && addCol2.isEmpty()) {
+            throw new IllegalArgumentException("No alliances to add");
+        }
         for (DBAlliance aa : addCol1) {
             conflict.addParticipant(aa.getId(), true, null, null);
         }
         for (DBAlliance aa : addCol2) {
             conflict.addParticipant(aa.getId(), false, null, null);
         }
-        manager.clearAllianceCache();
+        if (conflict.getId() > 0) {
+            manager.flagGraphRecalc(conflict.getId());
+            manager.clearAllianceCache();
+        }
         return "Added " + addCol1.size() + " alliances to coalition 1 and " + addCol2.size() + " alliances to coalition 2\n" +
                 "Note: this does NOT update conflict stats";
     }
@@ -826,7 +839,7 @@ public class ConflictCommands {
     public String purgeFeatured(ConflictManager manager, @Me IMessageIO io, @Me JSONObject command, @Default @Timestamp Long olderThan, @Switch("f") boolean force) {
         Set<String> deleted = new ObjectLinkedOpenHashSet<>();
         Set<String> kept = new ObjectLinkedOpenHashSet<>();
-        for (S3ObjectSummary object : manager.getAws().getObjects()) {
+        for (S3ObjectSummary object : manager.getCloud().getObjects()) {
             Date date = object.getLastModified();
             if (olderThan != null && olderThan < date.getTime()) {
                 continue;
@@ -839,7 +852,7 @@ public class ConflictCommands {
             if (conflict == null) {
                 deleted.add(id + "");
                 if (force) {
-                    manager.getAws().deleteObject(key);
+                    manager.getCloud().deleteObject(key);
                 }
             } else {
                 kept.add(id + "");
@@ -895,7 +908,7 @@ public class ConflictCommands {
     public String purgeTemporaryConflicts(ConflictManager manager, @Me IMessageIO io, @Me JSONObject command, @Timestamp long olderThan, @Switch("f") boolean force) {
         List<String> deleted = new ArrayList<>();
         List<String> kept = new ArrayList<>();
-        for (S3ObjectSummary object : manager.getAws().getObjects()) {
+        for (S3ObjectSummary object : manager.getCloud().getObjects()) {
             String key = object.getKey();
             boolean matches = key.matches("conflicts/n/[0-9]+/[a-z0-9-]+\\.gzip") || key.matches("conflicts/graphs/n/[0-9]+/[a-z0-9-]+\\.gzip");
             if (!matches) continue;
@@ -910,7 +923,7 @@ public class ConflictCommands {
             }
             deleted.add(nameStr);
             if (force) {
-                manager.getAws().deleteObject(key);
+                manager.getCloud().deleteObject(key);
             }
         }
         if (deleted.isEmpty()) {
@@ -984,5 +997,87 @@ public class ConflictCommands {
         return "Added " + toAdd.size() + " wars to the conflict.\n" +
                 "Note: this does not push the data to the site\n" +
                 "See: " + CM.conflict.sync.website.cmd.toSlashMention();
+    }
+
+    @Command(desc = "Move data between S3 configuration and R2")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String importCloudData(@Me IMessageIO io, ConflictManager manager, @Switch("s3") boolean fromS3, @Switch("r2") boolean fromR2) throws IOException {
+        if (fromS3 == fromR2) {
+            throw new IllegalArgumentException("Please specify either `s3` or `r2`");
+        }
+        ICloudStorage s3 = S3CompatibleStorage.setupAwsS3();
+        ICloudStorage r2 = S3CompatibleStorage.setupCloudflareR2();
+        List<String> errors = new ObjectArrayList<>();
+        if (s3 == null) errors.add("S3 is not configured in `config.yml`");
+        if (r2 == null) errors.add("R2 is not configured in `config.yml`");
+        if (!errors.isEmpty()) {
+            throw new IllegalArgumentException(StringMan.join(errors, "\n"));
+        }
+
+        ICloudStorage source = fromS3 ? s3 : r2;
+        ICloudStorage target = fromS3 ? r2 : s3;
+
+        CompletableFuture<IMessageBuilder> msgFuture = io.send("Please wait...");
+        long start = System.currentTimeMillis();
+
+        // Load listings
+        List<CloudItem> sourceObj = source.getObjects();
+        List<CloudItem> destObj = target.getObjects();
+
+        // Build dest index
+        Map<String, CloudItem> destIndex = new HashMap<>();
+        for (CloudItem d : destObj) {
+            destIndex.put(d.key(), d);
+        }
+
+        // Copy if not exists or source is newer
+        int examined = 0, copied = 0, skipped = 0, failed = 0;
+        long lastUpdate = System.currentTimeMillis();
+
+        for (CloudItem item : sourceObj) {
+            String key = item.key();
+            boolean matches =
+                    key.matches("conflicts/[0-9]+\\.gzip") ||
+                            key.matches("conflicts/graphs/[0-9]+\\.gzip") ||
+                            key.equals("conflicts/index.gzip");
+            if (!matches) continue;
+
+            examined++;
+            CloudItem dest = destIndex.get(key);
+            boolean shouldCopy = dest == null || (item.lastModified() > dest.lastModified() + 1000);
+
+            if (!shouldCopy) {
+                skipped++;
+            } else {
+                try {
+                    // Guess content type
+                    String contentType = key.endsWith(".gzip") ? "application/gzip" : "application/octet-stream";
+
+                    // Read from source and write to target
+                    byte[] data = source.getObject(key);
+                    if (data == null) {
+                        throw new IOException("Null payload for " + key);
+                    }
+                    target.putObject(key, data, contentType);
+                    copied++;
+                } catch (Exception ex) {
+                    failed++;
+                }
+            }
+
+            // Periodic progress update
+            long now = System.currentTimeMillis();
+            if (now - lastUpdate >= 10_000) {
+                io.updateOptionally(
+                        msgFuture,
+                        "Copying... examined: " + examined + ", copied: " + copied + ", skipped: " + skipped + ", errors: " + failed
+                );
+                lastUpdate = now;
+            }
+        }
+
+        long tookMs = System.currentTimeMillis() - start;
+        return "Done! examined: " + examined + ", copied: " + copied + ", skipped: " + skipped + ", errors: " + failed +
+                " in " + TimeUtil.secStr(tookMs / 1000);
     }
 }

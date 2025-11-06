@@ -1,6 +1,6 @@
 package link.locutus.discord.web.jooby;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -41,6 +41,25 @@ public class JteUtil {
             }
         }
         return serializer;
+    }
+
+    // Helper: copy inner elements of a MessagePack array into the current generator
+    public static void copyArrayElements(JsonFactory factory,
+                                         byte[] arrayBytes,
+                                         JsonGenerator gen) throws IOException {
+        try (JsonParser p = factory.createParser(arrayBytes)) {
+            JsonToken t = p.nextToken();
+            if (t != JsonToken.START_ARRAY) {
+                // Fallback: copy as single value/structure
+                if (t != null) {
+                    gen.copyCurrentStructure(p);
+                }
+                return;
+            }
+            while ((t = p.nextToken()) != JsonToken.END_ARRAY) {
+                gen.copyCurrentStructure(p);
+            }
+        }
     }
 
     public static String toB64(JsonObject json) {

@@ -11,7 +11,13 @@ public enum ConflictField {
     CB,
     STATUS,
     START,
-    END
+    END,
+
+    PUSHED_PAGE,
+    PUSHED_INDEX,
+    PUSHED_GRAPH,
+
+    RECALC_GRAPH,
 
     ;
 
