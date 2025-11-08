@@ -707,7 +707,13 @@ public class Conflict {
     private synchronized byte[] getWarBytesZip(ConflictManager manager, boolean forceUpdateMeta, boolean forceUpdateStats) {
         // get cached war bytes if available
         Set<HeaderGroup> fetchGroups = new ObjectOpenHashSet<>();
-        cachedMap = forceUpdateMeta ? null : manager.loadConflictRowCache(id, expectedHashes, );
+        if (!forceUpdateMeta) {
+            fetchGroups.add(HeaderGroup.PAGE_META);
+        }
+        if (!forceUpdateStats) {
+            fetchGroups.add(HeaderGroup.PAGE_STATS);
+        }
+        Map<HeaderGroup, Map.Entry<Long, byte[]>> cachedMap = fetchGroups.isEmpty() ? Collections.emptyMap() : manager.loadConflictRowCache(id, fetchGroups);
 
         try {
             CoalitionSide coalition1 = getCoalition(true, true, true);

@@ -1336,12 +1336,6 @@ public class ConflictManager {
                 allHeaders.addAll(IndexHeaders.names(g));
             }
 
-            // precompute expected header hashes per group
-            Map<HeaderGroup, Long> expectedHashes = new EnumMap<>(HeaderGroup.class);
-            for (HeaderGroup g : groups) {
-                expectedHashes.put(g, ensureConflictHeaderHash(IndexHeaders.names(g), g));
-            }
-
             Map<Integer, Conflict> map = getConflictMap();
 
             Map<Integer, String> aaNameById = new Int2ObjectOpenHashMap<>();
@@ -1379,7 +1373,7 @@ public class ConflictManager {
 
                     Map<HeaderGroup, Map.Entry<Long, byte[]>> cachedByGroup = groupsToCheck.isEmpty()
                             ? Collections.emptyMap()
-                            : loadConflictRowCache(conflict.getId(), expectedHashes, groupsToCheck);
+                            : loadConflictRowCache(conflict.getId(), groupsToCheck);
 
                     // Start one row (flattened concatenation of all groups' elements)
                     gen.writeStartArray();
