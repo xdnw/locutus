@@ -4031,8 +4031,8 @@ public class WarCommands {
     }, viewable = true)
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String warSheet(@Me IMessageIO io, @Me @Default GuildDB db,
-                           Set<DBNation> allies,
-                           Set<DBNation> enemies,
+                           @AllowDeleted Set<DBNation> allies,
+                           @AllowDeleted Set<DBNation> enemies,
                            @Arg(value = "Cutoff date for wars (default 5 days ago)", group = 0)
                            @Default("5d") @Timestamp long startTime,
                            @Switch("e") @Timestamp Long endTime,

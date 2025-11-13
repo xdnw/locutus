@@ -1415,8 +1415,8 @@ public final class PW {
         return Settings.PNW_URL() + "/nation/id=" + nationId;
     }
 
-    public static String getAllianceUrl(int cityId) {
-        return Settings.PNW_URL() + "/alliance/id=" + cityId;
+    public static String getAllianceUrl(int allianceId) {
+        return Settings.PNW_URL() + "/alliance/id=" + allianceId;
     }
 
     public static String getTradeUrl(ResourceType type, boolean isBuy) {

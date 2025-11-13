@@ -283,6 +283,7 @@ public class CommandManager2 {
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "reloadConfig", "config");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "cullInactiveGuilds", "cull_inactive_guilds");
 
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "alliance"), "addAllForNation", "add_all_for_nation");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "edit"), "addManualWars", "add_none_war");
         getCommands().registerMethod(new SettingCommands(), List.of("bank"), "importTransactions", "import_transfers");
         getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "info", "info");
