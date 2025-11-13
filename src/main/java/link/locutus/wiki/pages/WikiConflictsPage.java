@@ -54,7 +54,7 @@ public class WikiConflictsPage extends BotWikiGen {
                 commandMarkdownSpoiler(CM.conflict.alliance.add.cmd),
                 commandMarkdownSpoiler(CM.conflict.alliance.remove.cmd),
                 "#### Add all alliances for a specific nation",
-//                commandMarkdownSpoiler(CM.conflict.alliance.add_all_for_nation.cmd),
+                commandMarkdownSpoiler(CM.conflict.alliance.add_all_for_nation.cmd),
                 commandMarkdownSpoiler(CM.conflict.edit.add_none_war.cmd),
                 "#### Individual alliance start/end dates",
                 "Use `-1` for the start/end date to match the conflict start/end date",

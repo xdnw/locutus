@@ -476,9 +476,11 @@ public class ConflictCommands {
 
         for (DBAlliance alliance : alliances) {
             if (conflict.getCoalition1().contains(alliance.getId())) {
+                if (!isCoalition2) continue; // already in col1
                 throw new IllegalArgumentException("Alliance " + alliance.getMarkdownUrl() + " is already in coalition 1");
             }
             if (conflict.getCoalition2().contains(alliance.getId())) {
+                if (!isCoalition1) continue; // already in col2
                 throw new IllegalArgumentException("Alliance " + alliance.getMarkdownUrl() + " is already in coalition 2");
             }
             if (hasAdmin) {
@@ -1049,9 +1051,8 @@ public class ConflictCommands {
         return "Added " + toAdd.size() + " wars to the conflict.\n" +
                 "Note: this does not push the data to the site\n" +
                 "See: " + CM.conflict.sync.website.cmd.toSlashMention() + "\n" +
-                CM.conflict.edit.add_none_war.cmd.toSlashMention();
-                // + " and "
-//                + CM.conflict.alliance.add_all_for_nation.cmd.toSlashMention();
+                CM.conflict.edit.add_none_war.cmd.toSlashMention() + " and " +
+                CM.conflict.alliance.add_all_for_nation.cmd.toSlashMention();
     }
 
     @Command(desc = "Add all alliances this nation fought from during the conflict window.\n" +
