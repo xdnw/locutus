@@ -20,7 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public final class S3CompatibleStorage implements ICloudStorage {
+public final class S3CompatibleStorage implements CloudStorage {
 
     public enum Provider {
         AWS_S3,
@@ -52,7 +52,7 @@ public final class S3CompatibleStorage implements ICloudStorage {
         this.r2AccountId = r2AccountId;
     }
 
-    public static ICloudStorage setupAwsS3() {
+    public static CloudStorage setupAwsS3() {
         String accessKey = Settings.INSTANCE.WEB.S3.ACCESS_KEY;
         String secretKey = Settings.INSTANCE.WEB.S3.SECRET_ACCESS_KEY;
         String region = Settings.INSTANCE.WEB.S3.REGION;
@@ -66,7 +66,7 @@ public final class S3CompatibleStorage implements ICloudStorage {
         return null;
     }
 
-    public static ICloudStorage setupCloudflareR2() {
+    public static CloudStorage setupCloudflareR2() {
         String accountId = Settings.INSTANCE.WEB.R2.ACCOUNT_ID;
         String accessKey = Settings.INSTANCE.WEB.R2.ACCESS_KEY;
         String secretKey = Settings.INSTANCE.WEB.R2.SECRET_ACCESS_KEY;

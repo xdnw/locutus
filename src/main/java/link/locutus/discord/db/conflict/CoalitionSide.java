@@ -180,39 +180,44 @@ public class CoalitionSide {
         return allianceIds;
     }
 
-    public Map<String, Object> toMap(ConflictManager manager) {
+    public Map<String, Object> toMap(ConflictManager manager, boolean meta, boolean data) {
         Map<String, Object> root = new Object2ObjectLinkedOpenHashMap<>();
-        root.put("name", getName());
         List<Integer> allianceIds = new ArrayList<>(coalition);
+
         Collections.sort(allianceIds);
-        List<String> allianceNames = new ObjectArrayList<>();
-        for (int id : allianceIds) {
-            String aaName = manager.getAllianceNameOrNull(id);
-            if (aaName == null) aaName = "";
-            allianceNames.add(aaName);
+        if (meta) {
+            root.put("name", getName());
+            List<String> allianceNames = new ObjectArrayList<>();
+            for (int id : allianceIds) {
+                String aaName = manager.getAllianceNameOrNull(id);
+                if (aaName == null) aaName = "";
+                allianceNames.add(aaName);
+            }
+            root.put("alliance_ids", allianceIds);
+            root.put("alliance_names", allianceNames);
         }
-        root.put("alliance_ids", allianceIds);
-        root.put("alliance_names", allianceNames);
 
-        List<Integer> nationIds = new IntArrayList(damageByNation.keySet());
-        Collections.sort(nationIds);
-        List<String> nationNames = new ObjectArrayList<>();
-        for (int id : nationIds) {
-            DBNation nation = DBNation.getById(id);
-            String name = nation == null ? "" : nation.getName();
-            nationNames.add(name);
+        if (data) {
+            List<Integer> nationIds = new IntArrayList(damageByNation.keySet());
+            Collections.sort(nationIds);
+            List<String> nationNames = new ObjectArrayList<>();
+            for (int id : nationIds) {
+                DBNation nation = DBNation.getById(id);
+                String name = nation == null ? "" : nation.getName();
+                nationNames.add(name);
+            }
+            List<Integer> nationAAs = nationIds.stream().map(allianceIdByNation::get).collect(Collectors.toList());
+            root.put("nation_aa", nationAAs);
+            root.put("nation_ids", nationIds);
+            root.put("nation_names", nationNames);
+
+            Map<ConflictColumn, Function<DamageStatGroup, Object>> damageHeader = DamageStatGroup.createHeader();
+            List<List<Object>> damageData = new ObjectArrayList<>();
+            JteUtil.writeArray(damageData, damageHeader.values(), List.of(lossesAndDefensiveStats, inflictedAndOffensiveStats));
+            JteUtil.writeArray(damageData, damageHeader.values(), allianceIds, damageByAlliance);
+            JteUtil.writeArray(damageData, damageHeader.values(), nationIds, damageByNation);
+            root.put("damage", damageData);
         }
-        List<Integer> nationAAs = nationIds.stream().map(allianceIdByNation::get).collect(Collectors.toList());
-        root.put("nation_aa",nationAAs);
-        root.put("nation_ids", nationIds);
-        root.put("nation_names", nationNames);
-
-        Map<ConflictColumn, Function<DamageStatGroup, Object>> damageHeader = DamageStatGroup.createHeader();
-        List<List<Object>> damageData = new ObjectArrayList<>();
-        JteUtil.writeArray(damageData, damageHeader.values(), List.of(lossesAndDefensiveStats, inflictedAndOffensiveStats));
-        JteUtil.writeArray(damageData, damageHeader.values(), allianceIds, damageByAlliance);
-        JteUtil.writeArray(damageData, damageHeader.values(), nationIds, damageByNation);
-        root.put("damage", damageData);
         return root;
     }
 
@@ -566,7 +571,6 @@ public class CoalitionSide {
 
 
         Map<String, Object> root = new Object2ObjectLinkedOpenHashMap<>();
-        root.put("name", getName());
 
         List<Byte> citiesSorted = new ByteArrayList(cities);
         citiesSorted.sort(Byte::compareTo);
@@ -587,15 +591,6 @@ public class CoalitionSide {
         dayRoot.put("range", List.of(minDay, maxDay));
         dayRoot.put("data", toGraphMap(metricsDay, dayData, minDay, maxDay, allianceIds, citiesSorted));
         root.put("day", dayRoot);
-
-        List<String> allianceNames = new ObjectArrayList<>();
-        for (int id : allianceIds) {
-            String aaName = manager.getAllianceNameOrNull(id);
-            if (aaName == null) aaName = "";
-            allianceNames.add(aaName);
-        }
-        root.put("alliance_ids", allianceIds);
-        root.put("alliance_names", allianceNames);
 
         return root;
     }

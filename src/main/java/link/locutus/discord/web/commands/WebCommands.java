@@ -35,7 +35,7 @@ public class WebCommands {
         List<String> urls = new ArrayList<>();
         urls.add("**Frontend**: <" + Settings.INSTANCE.WEB.FRONTEND_DOMAIN + "/#login/" + uuid + ">");
         urls.add("**Backend**: <" + WebRoot.REDIRECT + "/page/login?token=" + token.getUUID() + ">");
-        urls.add("**Conflicts**: <" + Settings.INSTANCE.WEB.S3.SITE + ">");
+        urls.add("**Conflicts**: <" + Settings.INSTANCE.WEB.CONFLICTS.SITE + ">");
         return String.join("\n", urls);
     }
 

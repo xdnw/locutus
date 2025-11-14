@@ -39,7 +39,7 @@ import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.scheduler.ThrowingFunction;
-import link.locutus.discord.web.jooby.ICloudStorage;
+import link.locutus.discord.web.jooby.CloudStorage;
 import link.locutus.discord.web.jooby.JteUtil;
 import link.locutus.discord.web.jooby.S3CompatibleStorage;
 
@@ -66,7 +66,7 @@ import static link.locutus.discord.db.conflict.ConflictField.*;
 
 public class ConflictManager {
     private final WarDB db;
-    private final ICloudStorage aws;
+    private final CloudStorage aws;
     private volatile boolean conflictsLoaded = false;
 
     private final Map<Integer, Conflict> conflictById = new Int2ObjectOpenHashMap<>();
@@ -95,7 +95,7 @@ public class ConflictManager {
         return db;
     }
 
-    private ICloudStorage setupCloud() {
+    private CloudStorage setupCloud() {
         String provider = Settings.INSTANCE.WEB.CONFLICTS.PROVIDER;
         if (provider == null) return null;
         String p = provider.trim().toLowerCase(Locale.ROOT);
@@ -225,14 +225,17 @@ public class ConflictManager {
         }
     }
 
-    public String pushIndex() {
-        String key = "conflicts/index.gzip";
-        byte[] value = getIndexBytesZip();
-        aws.putObject(key, value,  60);
-        return aws.getLink(key);
+    public String pushIndex(long time) {
+        synchronized (this.loadConflictLock) {
+            String key = "conflicts/index.gzip";
+            byte[] value = getIndexBytesZip(time);
+            aws.putObject(key, value, 60);
+            return aws.getLink(key);
+        }
     }
 
     public boolean pushDirtyConflicts() {
+        long now = System.currentTimeMillis();
         boolean updateIndex = true;
         for (Conflict conflict : getActiveConflicts()) {
             long lastPushPage = conflict.getPushedPage();
@@ -243,17 +246,20 @@ public class ConflictManager {
             long lastGraphUpdate = conflict.getLatestGraphMs();
 
             boolean updatePageMeta = false;
+            boolean updateGraphMeta = false;
             boolean updatePageStats = false;
             boolean updateGraph = false;
             synchronized (cacheTimes) {
                 Map<HeaderGroup, Long> lastCacheTimes = cacheTimes.getOrDefault(conflict.getId(), Collections.emptyMap());
                 long lastPageMeta = lastCacheTimes.getOrDefault(HeaderGroup.PAGE_META, 0L);
                 long lastPageStats = lastCacheTimes.getOrDefault(HeaderGroup.PAGE_STATS, 0L);
-                long lastGraph = lastCacheTimes.getOrDefault(HeaderGroup.GRAPH, 0L);
+                long lastGraphMeta = lastCacheTimes.getOrDefault(HeaderGroup.GRAPH_META, 0L);
+                long lastGraphData = lastCacheTimes.getOrDefault(HeaderGroup.GRAPH_DATA, 0L);
 
                 if (lastPageMeta == 0L) updatePageMeta = true;
                 if (lastWarUpdate > lastPageStats) updatePageStats = true;
-                if (lastGraphUpdate > lastGraph) updateGraph = true;
+                if (lastGraphMeta == 0L) updateGraphMeta = true;
+                if (lastGraphUpdate > lastGraphData) updateGraph = true;
             }
 
             if (!updatePageMeta && !updatePageStats && !updateGraph) {
@@ -264,10 +270,10 @@ public class ConflictManager {
                 updateIndex = true;
             }
 
-            conflict.pushChanges(this, null, (updatePageMeta || updatePageStats), updateGraph, false);
+            conflict.pushChanges(this, null, updatePageMeta, updatePageStats, updateGraph, false, now);
         }
         if (updateIndex) {
-            pushIndex();
+            pushIndex(now);
             return true;
         }
         return false;
@@ -432,18 +438,19 @@ public class ConflictManager {
         if (!conflictsLoaded) return;
         long turn = event.getCurrent();
         List<Conflict> active = getActiveConflicts();
-        if (!active.isEmpty()) {
-            for (Conflict conflict : active) {
-                conflict.getCoalition(true, true, true).updateTurnChange(this, turn, true);
-                conflict.getCoalition(false, true, true).updateTurnChange(this, turn, true);
+        synchronized (loadConflictLock) {
+            long now = System.currentTimeMillis();
+            if (!active.isEmpty()) {
+                for (Conflict conflict : active) {
+                    conflict.getCoalition(true, true, true).updateTurnChange(this, turn, true);
+                    conflict.getCoalition(false, true, true).updateTurnChange(this, turn, true);
+                }
+                for (Conflict conflict : active) {
+                    conflict.push(this, null, true, false);
+                }
+                pushIndex(now);
             }
-            for (Conflict conflict : active) {
-                conflict.push(this, null, true, false);
-            }
-            pushIndex();
-        }
-        for (Conflict conflict : conflictArr) {
-            synchronized (loadConflictLock) {
+            for (Conflict conflict : conflictArr) {
                 conflict.tryUnload();
             }
         }
@@ -1114,7 +1121,7 @@ public class ConflictManager {
             if (rs.next()) {
                 int id = rs.getInt(1);
                 Conflict conflict = new Conflict(id, conflictArr.length, name, turnStart, turnEnd, true );
-                conflict.trySetData(col1, col2, creator, category, wiki, cb, status);
+                conflict.initData(col1, col2, creator, category, wiki, cb, status);
                 conflictById.put(id, conflict);
                 conflictArr = Arrays.copyOf(conflictArr, conflictArr.length + 1);
                 conflictArr[conflictArr.length - 1] = conflict;
@@ -1137,11 +1144,11 @@ public class ConflictManager {
 
     protected void updateConflict(Conflict conflict, long start, long end) {
         boolean invalidateWarStarts = start < conflict.getStartTurn() || end > conflict.getEndTurn();
-        List<HeaderGroup> toInvalidate = new ObjectArrayList<>(Arrays.asList(HeaderGroup.INDEX_META, HeaderGroup.PAGE_META))
+        List<HeaderGroup> toInvalidate = new ObjectArrayList<>(Arrays.asList(HeaderGroup.INDEX_META, HeaderGroup.PAGE_META, HeaderGroup.GRAPH_META));
         if (invalidateWarStarts) {
             toInvalidate.add(HeaderGroup.INDEX_STATS);
             toInvalidate.add(HeaderGroup.PAGE_STATS);
-            toInvalidate.add(HeaderGroup.GRAPH);
+            toInvalidate.add(HeaderGroup.GRAPH_DATA);
         }
         invalidateConflictRowCache(conflict.getId(), toInvalidate.toArray(new HeaderGroup[0]));
 
@@ -1166,7 +1173,7 @@ public class ConflictManager {
     }
 
     public void updateConflictName(int conflictId, String name) {
-        invalidateConflictRowCache(conflictId, HeaderGroup.INDEX_META, HeaderGroup.PAGE_META);
+        invalidateConflictRowCache(conflictId, HeaderGroup.INDEX_META, HeaderGroup.PAGE_META, HeaderGroup.GRAPH_META);
         db.update("UPDATE conflicts SET name = ? WHERE id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, name);
             stmt.setInt(2, conflictId);
@@ -1174,7 +1181,7 @@ public class ConflictManager {
     }
 
     public void updateConflictName(int conflictId, String name, boolean isPrimary) {
-        invalidateConflictRowCache(conflictId, HeaderGroup.INDEX_META, HeaderGroup.PAGE_META);
+        invalidateConflictRowCache(conflictId, HeaderGroup.INDEX_META, HeaderGroup.PAGE_META, HeaderGroup.GRAPH_META);
         db.update("UPDATE conflicts SET `col" + (isPrimary ? "1" : "2") + "` = ? WHERE id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, name);
             stmt.setInt(2, conflictId);
@@ -1205,8 +1212,7 @@ public class ConflictManager {
         if (aa != null) addLegacyName(allianceId, aa.getName(), System.currentTimeMillis());
         addConflictsByAlliance(conflict, true);
 
-        invalidateConflictRowCache(conflict.getId(), HeaderGroup.INDEX_META);
-        invalidateConflictRowCache(conflict.getId(), HeaderGroup.INDEX_STATS);
+        invalidateConflictRowCache(conflict.getId(), HeaderGroup.values);
     }
 
     protected void removeParticipant(Conflict conflict, int allianceId) {
@@ -1215,7 +1221,7 @@ public class ConflictManager {
             stmt.setInt(2, conflict.getId());
         });
         addConflictsByAlliance(conflict, true);
-        markConflictParticipant(conflict.getId());
+        invalidateConflictRowCache(conflict.getId(), HeaderGroup.values);
     }
 
     public Map<Integer, Conflict> getConflictMap() {
@@ -1311,6 +1317,8 @@ public class ConflictManager {
         db.update("DELETE FROM conflict_participant WHERE conflict_id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, conflict.getId());
         });
+        // delete cache
+        invalidateConflictRowCache(conflict.getId(), HeaderGroup.values);
     }
 
     public Conflict getConflictById(int id) {
@@ -1327,7 +1335,7 @@ public class ConflictManager {
         return names;
     }
 
-    public byte[] getIndexBytesZip() {
+    public byte[] getIndexBytesZip(long time) {
         synchronized (this.loadConflictLock) {
             List<HeaderGroup> groups = Arrays.asList(HeaderGroup.values);
             // build complete header list in group order
@@ -1384,9 +1392,6 @@ public class ConflictManager {
                         Map.Entry<Long, byte[]> pair = cachedByGroup.get(group);
                         if (pair != null) {
                             byte[] cachedBytes = pair.getValue();
-                            long dateMs = pair.getKey();
-
-
 
                             JteUtil.copyArrayElements(mapper.getFactory(), cachedBytes, gen);
                             continue;
@@ -1408,7 +1413,7 @@ public class ConflictManager {
                                 || (group == HeaderGroup.INDEX_STATS && statsCacheable);
                         if (groupCacheable) {
                             byte[] partMsgPack = mapper.writeValueAsBytes(part);
-                            saveConflictRowCache(conflict.getId(), expectedHashes.get(group), partMsgPack, group);
+                            saveConflictRowCache(conflict.getId(), partMsgPack, group, time);
                         }
                     }
 
@@ -1551,13 +1556,12 @@ public class ConflictManager {
         }
     }
 
-    private void saveConflictRowCache(int conflictId, long headerHash, byte[] rowData, HeaderGroup type) {
+    public void saveConflictRowCache(int conflictId, byte[] rowData, HeaderGroup type, long time) {
         if (rowData == null || type == null) return;
-        long time = System.currentTimeMillis();
         db.update("INSERT OR REPLACE INTO conflict_row_cache (conflict_id, header_hash, row_data, type, updated_ms) VALUES (?, ?, ?, ?, ?)",
         (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, conflictId);
-            stmt.setLong(2, headerHash);
+            stmt.setLong(2, type.getHash());
             stmt.setBytes(3, rowData);
             stmt.setInt(4, type.ordinal());
             stmt.setLong(5, time);
@@ -1576,8 +1580,14 @@ public class ConflictManager {
         if (types.length == 0) {
              throw new IllegalArgumentException("At least one HeaderGroup type must be specified");
         }
-        String inOrEqual = types.length == 1 ? "= ?" : "IN " + StringMan.getString(Arrays.stream(types).map(Enum::ordinal).map(String::valueOf).toList());
-        db.update("DELETE FROM conflict_row_cache WHERE conflict_id = ? AND type " + inOrEqual,
+        String typeCheck;
+        if (types == HeaderGroup.values) {
+            typeCheck = "";
+        } else {
+            String inOrEqual = types.length == 1 ? "= ?" : "IN " + StringMan.getString(Arrays.stream(types).map(Enum::ordinal).map(String::valueOf).toList());
+            typeCheck = " AND type " + inOrEqual;
+        }
+        db.update("DELETE FROM conflict_row_cache WHERE conflict_id = ?" + typeCheck,
                 (ThrowingConsumer<PreparedStatement>) stmt -> {
                     stmt.setInt(1, conflictId);
         });
@@ -1615,7 +1625,7 @@ public class ConflictManager {
         });
     }
 
-    public ICloudStorage getCloud() {
+    public CloudStorage getCloud() {
         return aws;
     }
 

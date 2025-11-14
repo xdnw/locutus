@@ -36,18 +36,10 @@ public class VirtualConflictCommands {
 
         long turnStart = TimeUtil.getTurn(start);
         long turnEnd = end == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTurn(end);
-        Conflict conflict = new Conflict(-1, -1, guild.getIdLong(), ConflictCategory.GENERATED,
-                conflictName,
-                col1Name,
-                col2Name,
-                "",
-                "",
-                "",
-                turnStart,
-                turnEnd
-        );
-        for (DBAlliance aa : col1) conflict.addParticipant(aa.getId(), true, false, null, null);
-        for (DBAlliance aa : col2) conflict.addParticipant(aa.getId(), false, false, null, null);
+        Conflict conflict = new Conflict(-1, -1, conflictName, turnStart, turnEnd, 0, 0, 0, false);
+        conflict.initData(col1Name, col2Name, guild.getIdLong(), ConflictCategory.GENERATED, "", "", "");
+        for (DBAlliance aa : col1) conflict.addParticipant(aa.getId(), true, false, true, null, null);
+        for (DBAlliance aa : col2) conflict.addParticipant(aa.getId(), false, false, true, null, null);
 
         manager.loadVirtualConflict(conflict, false);
         if (includeGraphs) {
@@ -55,8 +47,9 @@ public class VirtualConflictCommands {
         }
 
         String id = "n/" + nation.getId() + "/" + UUID.randomUUID();
-        List<String> urls = conflict.push(manager, id, true, false);
-        return Settings.INSTANCE.WEB.S3.SITE + "/conflict?id=" + id + "\n" +
+        long now = System.currentTimeMillis();
+        List<String> urls = conflict.pushChanges(manager, id, true, true, false, false, now);
+        return Settings.INSTANCE.WEB.CONFLICTS.SITE + "/conflict?id=" + id + "\n" +
                 "Note: Generated conflicts do NOT auto update.";
     }
 

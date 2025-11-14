@@ -611,11 +611,12 @@ public class PWWikiUtil {
         String status = page.getStatus();
         long startTurn = TimeUtil.getTurn(date.getKey() * TimeUnit.DAYS.toMillis(1));
         long endTurn = date.getValue() == null ? Long.MAX_VALUE : TimeUtil.getTurn((date.getValue() + 1) * TimeUnit.DAYS.toMillis(1));
-        Conflict conflict = new Conflict(0, 0, 0, category, nameNormal, "Coalition 1", "Coalition 2", urlStub, cb, status, startTurn, endTurn);
-        combatants.getKey().forEach(allianceId -> conflict.addParticipant(allianceId, true, false, null, null));
-        combatants.getValue().forEach(allianceId -> conflict.addParticipant(allianceId, false, false, null, null));
+        Conflict conflict = new Conflict(0, 0, nameNormal, startTurn, endTurn, 0, 0, 0, true);
+        conflict.initData("Coalition 1", "Coalition 2", 0, category, urlStub, cb, status);
+        combatants.getKey().forEach(allianceId -> conflict.addParticipant(allianceId, true, false, true, null, null));
+        combatants.getValue().forEach(allianceId -> conflict.addParticipant(allianceId, false, false, true, null, null));
         for (Map.Entry<String, DBTopic> topicEntry : page.getForumLinks().entrySet()) {
-            conflict.addAnnouncement(topicEntry.getKey(), topicEntry.getValue(), false);
+            conflict.addAnnouncement(topicEntry.getKey(), topicEntry.getValue(), false, true);
         }
         return conflict;
     }

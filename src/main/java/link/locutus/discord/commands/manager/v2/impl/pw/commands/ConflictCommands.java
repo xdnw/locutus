@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import com.amazonaws.services.s3.model.S3ObjectSummary;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
@@ -17,7 +16,7 @@ import link.locutus.discord.db.entities.*;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.jooby.CloudItem;
-import link.locutus.discord.web.jooby.ICloudStorage;
+import link.locutus.discord.web.jooby.CloudStorage;
 import link.locutus.discord.web.jooby.S3CompatibleStorage;
 import link.locutus.wiki.game.PWWikiUtil;
 import link.locutus.discord.Locutus;
@@ -117,7 +116,7 @@ public class ConflictCommands {
             response.append("\nUse `hideDeleted:True` to hide deleted alliances");
         }
 
-        return response.toString() + "\n\n<" + Settings.INSTANCE.WEB.S3.SITE + "/conflict?id=" + conflict.getId() + ">";
+        return response.toString() + "\n\n<" + Settings.INSTANCE.WEB.CONFLICTS.SITE + "/conflict?id=" + conflict.getId() + ">";
     }
 
     @Command(desc = "Sets the wiki page for a conflict")
@@ -165,7 +164,7 @@ public class ConflictCommands {
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String syncConflictData(@Me IMessageIO io, ConflictManager manager, @Default Set<Conflict> conflicts, @Switch("u") boolean upload_graph, @Switch("w") boolean reinitialize_wars, @Switch("g") boolean reinitialize_graphs) throws IOException, ParseException {
-        AwsS3 aws = manager.getCloud();
+        CloudStorage aws = manager.getCloud();
         if (aws == null) {
             throw new IllegalArgumentException("AWS is not configured in `config.yaml`");
         }
@@ -839,12 +838,12 @@ public class ConflictCommands {
     public String purgeFeatured(ConflictManager manager, @Me IMessageIO io, @Me JSONObject command, @Default @Timestamp Long olderThan, @Switch("f") boolean force) {
         Set<String> deleted = new ObjectLinkedOpenHashSet<>();
         Set<String> kept = new ObjectLinkedOpenHashSet<>();
-        for (S3ObjectSummary object : manager.getCloud().getObjects()) {
-            Date date = object.getLastModified();
-            if (olderThan != null && olderThan < date.getTime()) {
+        for (CloudItem object : manager.getCloud().getObjects()) {
+            long date = object.lastModified();
+            if (olderThan != null && olderThan < date) {
                 continue;
             }
-            String key = object.getKey();
+            String key = object.key();
             boolean matches = key.matches("conflicts/graphs/[0-9]+\\.gzip") || key.matches("conflicts/[0-9]+\\.gzip");
             if (!matches) continue;
             int id = Integer.parseInt(key.replaceAll("[^0-9]", ""));
@@ -908,16 +907,16 @@ public class ConflictCommands {
     public String purgeTemporaryConflicts(ConflictManager manager, @Me IMessageIO io, @Me JSONObject command, @Timestamp long olderThan, @Switch("f") boolean force) {
         List<String> deleted = new ArrayList<>();
         List<String> kept = new ArrayList<>();
-        for (S3ObjectSummary object : manager.getCloud().getObjects()) {
-            String key = object.getKey();
+        for (CloudItem object : manager.getCloud().getObjects()) {
+            String key = object.key();
             boolean matches = key.matches("conflicts/n/[0-9]+/[a-z0-9-]+\\.gzip") || key.matches("conflicts/graphs/n/[0-9]+/[a-z0-9-]+\\.gzip");
             if (!matches) continue;
 
             int nationId = Integer.parseInt(key.replaceAll("[^0-9]", ""));
             String uuidStr = key.substring(key.lastIndexOf("/") + 1, key.lastIndexOf("."));
             String nameStr = PW.getMarkdownUrl(nationId, false) + "/" + uuidStr;
-            Date date = object.getLastModified();
-            if (olderThan < date.getTime()) {
+            long date = object.lastModified();
+            if (olderThan < date) {
                 kept.add(nameStr);
                 continue;
             }
@@ -1005,8 +1004,8 @@ public class ConflictCommands {
         if (fromS3 == fromR2) {
             throw new IllegalArgumentException("Please specify either `s3` or `r2`");
         }
-        ICloudStorage s3 = S3CompatibleStorage.setupAwsS3();
-        ICloudStorage r2 = S3CompatibleStorage.setupCloudflareR2();
+        CloudStorage s3 = S3CompatibleStorage.setupAwsS3();
+        CloudStorage r2 = S3CompatibleStorage.setupCloudflareR2();
         List<String> errors = new ObjectArrayList<>();
         if (s3 == null) errors.add("S3 is not configured in `config.yml`");
         if (r2 == null) errors.add("R2 is not configured in `config.yml`");
@@ -1014,8 +1013,8 @@ public class ConflictCommands {
             throw new IllegalArgumentException(StringMan.join(errors, "\n"));
         }
 
-        ICloudStorage source = fromS3 ? s3 : r2;
-        ICloudStorage target = fromS3 ? r2 : s3;
+        CloudStorage source = fromS3 ? s3 : r2;
+        CloudStorage target = fromS3 ? r2 : s3;
 
         CompletableFuture<IMessageBuilder> msgFuture = io.send("Please wait...");
         long start = System.currentTimeMillis();

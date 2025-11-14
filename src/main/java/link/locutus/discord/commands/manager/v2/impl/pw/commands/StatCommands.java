@@ -488,7 +488,7 @@ public class StatCommands {
             }
             msg.embed("War Status", response.toString());
         }
-        msg.append("\n\nSee also: <" + Settings.INSTANCE.WEB.S3.SITE + ">");
+        msg.append("\n\nSee also: <" + Settings.INSTANCE.WEB.CONFLICTS.SITE + ">");
         msg.send();
         return null;
     }

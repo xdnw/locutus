@@ -89,53 +89,57 @@ public class WikiHostingLocutus extends BotWikiGen {
                             
                 If the Locutus bot fails to load, check the error message. You may need to configure missing values in the `config.yaml` file.
                             
-                # 4. Credentials for Google Sheets <a name="credentials-for-google-sheets"></a>
-                            
-                If you want to enable credentials for Google Sheets, follow these steps:
-                            
-                1. Create credentials for Google Sheets by following the guide on the [Google Workspace Developer's Guide: Create credentials](https://developers.google.com/workspace/guides/create-credentials).
-                   - During the credential creation process, select `desktop application` to authorize the credentials using a web browser.
-                2. Save the credentials as `credentials-sheets.json` and `credentials-drive.json` in the `config` folder (the same folder as the `config.yaml` file).
-                   - The `credentials-sheets.json` file should contain the authorization details for Google Sheets, and the `credentials-drive.json` file should contain the authorization details for Google Drive.
-                   - You can refer to this Stack Overflow answer for an example of how to save your credentials: [Example on how to save your credentials](https://stackoverflow.com/a/58468671).
-                   - Example format for `credentials-sheets.json`:
-                     ```json
-                     {
-                       "installed": {
-                         "client_id": "1053560905219-g86h1oodreg31gh1mfgv0mcdbejq7qmg.apps.googleusercontent.com",
-                         "project_id": "quickstart-1579567009568",
-                         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                         "token_uri": "https://oauth2.googleapis.com/token",
-                         "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-                         "client_secret": "XXXX",
-                         "redirect_uris": [
-                           "urn:ietf:wg:oauth:2.0:oob",
-                           "http://localhost"
-                         ]
-                       }
-                     }
+                # 4. Credentials for Google Sheets \\& Drive <a name="credentials-for-google-sheets"></a>
+
+                ## 4.1 Recommended: Google Cloud CLI (Application Default Credentials) <a name="google-cloud-cli-adc"></a>
+
+                1. Install Google Cloud CLI: https://cloud.google.com/sdk/docs/install
+                2. Initialize and select account/project:
+                   ```powershell
+                   powershell
+                   gcloud init
+                   ```
+                   
+                   Browserless option:
+                   ```bash
+                   gcloud init --console-only
+                   ```
+               3. Enable the APIs on your active project (if not already enabled):
+               ```powershell
+               powershell
+               gcloud services enable sheets.googleapis.com drive.googleapis.com --project <PROJECT_ID>
+               ```
+                4. Log in and create ADC with Sheets \\& Drive scopes:
+                   ```powershell
+                   powershell
+                   gcloud auth application-default login --scopes=https://www.googleapis.com/auth/spreadsheets,https://www.googleapis.com/auth/drive
+                   ```
+                   
+                   Browserless option:
+                   ```bash
+                   gcloud auth application-default login --no-launch-browser --scopes=https://www.googleapis.com/auth/spreadsheets,https://www.googleapis.com/auth/drive
+                   ```
+                   
+                
+                5. Token location:
+                     5.1 Windows token location:
+                   - ADC file: `%APPDATA%\\gcloud\\application_default_credentials.json`
+                   - To reset: `gcloud auth application-default revoke` (or delete the file above)
+                   - Optional env var (usually not required): 
+                     ```powershell
+                     powershell
+                     setx GOOGLE_APPLICATION_CREDENTIALS "%APPDATA%\\gcloud\\application_default_credentials.json"
                      ```
-                   - Example format for `credentials-drive.json`:
-                     ```json
-                     {
-                       "installed": {
-                         "client_id": "1053560905219-s1vbn6vdcmumih44jalu5rps01k769e9.apps.googleusercontent.com",
-                         "project_id": "quickstart-1579567009568",
-                         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                         "token_uri": "https://oauth2.googleapis.com/token",
-                         "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-                         "client_secret": "XXXX",
-                         "redirect_uris": [
-                           "urn:ietf:wg:oauth:2.0:oob",
-                           "http://localhost"
-                         ]
-                       }
-                     }
+                     5.2 Linux token location:
+                     ADC file: $HOME/.config/gcloud/application_default_credentials.json
+                     To reset: gcloud auth application-default revoke (or delete the file above)
+                     Optional env var (usually not required):
+                     ```bash
+                    export GOOGLE_APPLICATION_CREDENTIALS="$HOME/.config/gcloud/application_default_credentials.json"
                      ```
-                            
-                Use one of the sheet commands to test your credentials.
-                            
-                Congratulations! You have successfully set up the Locutus bot and configured the necessary files. The bot should now be running and ready to use with your Discord server and Google Sheets integration.
-                """;
+                6. Run Locutus. It will use ADC automatically for Google Sheets \\& Drive.
+                   - Use a sheet/drive command to trigger access and confirm it works.
+                   - Prefer narrower Drive scope if desired: `https://www.googleapis.com/auth/drive.file`.
+`               """;
     }
 }
