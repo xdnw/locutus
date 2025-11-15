@@ -1,5 +1,9 @@
 package link.locutus.discord.util.math;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.databind.util.TokenBuffer;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
@@ -38,13 +42,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.DoubleBinaryOperator;
 import java.util.function.Function;
@@ -1978,127 +1980,5 @@ public class ArrayUtil {
             }
         }
         return null;
-    }
-
-    @SuppressWarnings("unchecked")
-    public static void deepMerge(Map<String, Object> target, Map<String, Object> source) {
-        if (source == null || source.isEmpty()) return;
-        for (Map.Entry<String, Object> e : source.entrySet()) {
-            String key = e.getKey();
-            Object srcVal = e.getValue();
-            Object dstVal = target.get(key);
-
-            // If nothing existed, copy collections to avoid aliasing
-            if (dstVal == null) {
-                target.put(key, copyIfCollection(srcVal));
-                continue;
-            }
-
-            // Skip no-op updates
-            if (dstVal == srcVal || Objects.equals(dstVal, srcVal)) {
-                continue;
-            }
-
-            if (dstVal instanceof Map && srcVal instanceof Map) {
-                deepMerge((Map<String, Object>) dstVal, (Map<String, Object>) srcVal);
-            } else if (dstVal instanceof List && srcVal instanceof List) {
-                List<Object> dstList = (List<Object>) dstVal;
-                List<Object> srcList = (List<Object>) srcVal;
-
-                // Fast path
-                if (dstList == srcList) continue;
-
-                if (dstList.size() == srcList.size()) {
-                    deepMergeList(dstList, srcList);
-                } else {
-                    // replace list when lengths differ (copy to avoid aliasing)
-                    target.put(key, new ArrayList<>(srcList));
-                }
-            } else {
-                target.put(key, srcVal);
-            }
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static void deepMergeList(List<Object> target, List<Object> source) {
-        // precondition: same size
-        for (int i = 0; i < target.size(); i++) {
-            Object dst = target.get(i);
-            Object src = source.get(i);
-
-            // Skip no-op updates
-            if (dst == src || Objects.equals(dst, src)) {
-                continue;
-            }
-
-            if (dst instanceof Map && src instanceof Map) {
-                deepMerge((Map<String, Object>) dst, (Map<String, Object>) src);
-            } else if (dst instanceof List && src instanceof List) {
-                List<Object> dstList = (List<Object>) dst;
-                List<Object> srcList = (List<Object>) src;
-
-                if (dstList == srcList) continue;
-
-                if (dstList.size() == srcList.size()) {
-                    deepMergeList(dstList, srcList);
-                } else {
-                    // replace element when nested list lengths differ
-                    target.set(i, new ArrayList<>(srcList));
-                }
-            } else {
-                // replace primitives or mismatched types
-                target.set(i, src);
-            }
-        }
-    }
-
-    public static <K1, K2, V> void mergeMapOfMaps(
-            Map<K1, Map<K2, V>> target,
-            Map<K1, Map<K2, V>> source
-    ) {
-        mergeMapOfMaps(target, source, (oldV, newV) -> newV, LinkedHashMap::new);
-    }
-
-    public static <K1, K2, V> void mergeMapOfMaps(
-            Map<K1, Map<K2, V>> target,
-            Map<K1, Map<K2, V>> source,
-            BiFunction<V, V, V> valueMerge,
-            Supplier<Map<K2, V>> innerFactory
-    ) {
-        Objects.requireNonNull(target, "target");
-        Objects.requireNonNull(valueMerge, "valueMerge");
-        Objects.requireNonNull(innerFactory, "innerFactory");
-        if (source == null || source.isEmpty()) return;
-
-        for (Map.Entry<K1, Map<K2, V>> outer : source.entrySet()) {
-            K1 k1 = outer.getKey();
-            Map<K2, V> srcInner = outer.getValue();
-            if (srcInner == null || srcInner.isEmpty()) continue;
-
-            Map<K2, V> dstInner = target.get(k1);
-            if (dstInner == null) {
-                // copy to avoid aliasing
-                Map<K2, V> newInner = innerFactory.get();
-                newInner.putAll(srcInner);
-                target.put(k1, newInner);
-                continue;
-            }
-
-            // Use Map.merge for concise conflict handling
-            srcInner.forEach((k2, newVal) -> dstInner.merge(k2, newVal, valueMerge));
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Object copyIfCollection(Object value) {
-        if (value instanceof Map<?, ?> m) {
-            // Shallow copy avoids sharing mutable map instances
-            return new LinkedHashMap<>(m);
-        }
-        if (value instanceof List<?> l) {
-            return new ArrayList<>(l);
-        }
-        return value;
     }
 }

@@ -48,7 +48,7 @@ public class VirtualConflictCommands {
 
         String id = "n/" + nation.getId() + "/" + UUID.randomUUID();
         long now = System.currentTimeMillis();
-        List<String> urls = conflict.pushChanges(manager, id, true, true, false, false, now);
+        List<String> urls = conflict.pushChanges(manager, id, true, true, false, false, false, now);
         return Settings.INSTANCE.WEB.CONFLICTS.SITE + "/conflict?id=" + id + "\n" +
                 "Note: Generated conflicts do NOT auto update.";
     }

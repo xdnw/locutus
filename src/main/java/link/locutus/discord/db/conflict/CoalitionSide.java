@@ -221,13 +221,13 @@ public class CoalitionSide {
         return root;
     }
 
-    public void add(int allianceId) {
+    public boolean add(int allianceId) {
         if (allianceId == 0) throw new IllegalArgumentException("Alliance ID cannot be 0. " + this.getName());
-        coalition.add(allianceId);
+        return coalition.add(allianceId);
     }
 
-    public void remove(int allianceId) {
-        coalition.remove(allianceId);
+    public boolean remove(int allianceId) {
+        return coalition.remove(allianceId);
     }
 
     public Set<Integer> getAllianceIds() {
@@ -629,5 +629,23 @@ public class CoalitionSide {
             turnMetricCitiesTables.add(metricCitiesTableByAA);
         }
         return turnMetricCitiesTables;
+    }
+
+    public synchronized void clearGraphDataOutside(long turnStart, long turnEnd) {
+        // Remove in-memory turn data outside the range
+        graphDataByTurn.keySet().removeIf(turn -> turn < turnStart || turn > turnEnd);
+
+        // Remove in-memory day data outside the range
+        long dayStart = TimeUtil.getDayFromTurn(turnStart);
+        long dayEnd = TimeUtil.getDayFromTurn(turnEnd);
+        graphDataByDay.keySet().removeIf(day -> day < dayStart || day > dayEnd);
+
+        // Also trim the per-day per-alliance-per-city damage cache
+        damageByDayByAllianceByCity.keySet().removeIf(day -> day < dayStart || day > dayEnd);
+
+        // Update latestGraphTurn
+        latestGraphTurn = graphDataByTurn.keySet().stream()
+                .max(Long::compareTo)
+                .orElse(-1L);
     }
 }

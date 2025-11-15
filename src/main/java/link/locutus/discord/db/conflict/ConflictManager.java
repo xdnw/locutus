@@ -248,7 +248,7 @@ public class ConflictManager {
             boolean updatePageMeta = false;
             boolean updateGraphMeta = false;
             boolean updatePageStats = false;
-            boolean updateGraph = false;
+            boolean updateGraphStats = false;
             synchronized (cacheTimes) {
                 Map<HeaderGroup, Long> lastCacheTimes = cacheTimes.getOrDefault(conflict.getId(), Collections.emptyMap());
                 long lastPageMeta = lastCacheTimes.getOrDefault(HeaderGroup.PAGE_META, 0L);
@@ -259,10 +259,10 @@ public class ConflictManager {
                 if (lastPageMeta == 0L) updatePageMeta = true;
                 if (lastWarUpdate > lastPageStats) updatePageStats = true;
                 if (lastGraphMeta == 0L) updateGraphMeta = true;
-                if (lastGraphUpdate > lastGraphData) updateGraph = true;
+                if (lastGraphUpdate > lastGraphData) updateGraphStats = true;
             }
 
-            if (!updatePageMeta && !updatePageStats && !updateGraph) {
+            if (!updatePageMeta && !updatePageStats && !updateGraphMeta && !updateGraphStats) {
                 continue;
             }
 
@@ -270,7 +270,7 @@ public class ConflictManager {
                 updateIndex = true;
             }
 
-            conflict.pushChanges(this, null, updatePageMeta, updatePageStats, updateGraph, false, now);
+            conflict.pushChanges(this, null, updatePageMeta, updatePageStats, updateGraphMeta, updateGraphStats, false, now);
         }
         if (updateIndex) {
             pushIndex(now);
@@ -446,7 +446,7 @@ public class ConflictManager {
                     conflict.getCoalition(false, true, true).updateTurnChange(this, turn, true);
                 }
                 for (Conflict conflict : active) {
-                    conflict.push(this, null, true, false);
+                    conflict.pushChanges(this, null, true, false, false, true, false, now);
                 }
                 pushIndex(now);
             }
@@ -650,7 +650,7 @@ public class ConflictManager {
         Locutus.imp().getExecutor().submit(() -> {
             List<Conflict> actives = getActiveConflicts();
             if (!actives.isEmpty()) {
-                loadConflictWars(actives, false, true);
+                loadConflictWars(actives, false, true, true);
             }
             for (Conflict conflict : conflictArr) {
                 if (!conflict.isActive()) {
@@ -670,17 +670,11 @@ public class ConflictManager {
         return conflictsLoaded;
     }
 
-    public void loadVirtualConflict(Conflict conflict, boolean clearBeforeUpdate) {
+    private void loadWarsFromQueryAndProcess(Conflict conflict, boolean clearBeforeUpdate, AttackQuery query) {
         if (clearBeforeUpdate) {
             conflict.clearWarData();
         }
-        long start = TimeUtil.getTimeFromTurn(conflict.getStartTurn());
-        long end = conflict.getEndTurn() == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTimeFromTurn(conflict.getEndTurn() + 60);
 
-        Set<Integer> aaIds = conflict.getAllianceIds();
-
-        AttackQuery query = Locutus.imp().getWarDb().queryAttacks()
-                .withWarsForNationOrAlliance(null, aaIds::contains, f -> f.getDate() >= start && f.getDate() <= end);
         Set<DBWar> wars = new ObjectOpenHashSet<>();
         for (DBWar war : query.wars) {
             long date = war.getDate();
@@ -688,12 +682,37 @@ public class ConflictManager {
                 wars.add(war);
             }
         }
-        db.iterateWarAttacks(wars, Predicates.alwaysTrue(), Predicates.alwaysTrue(), (war, attack) -> {
-            long turn = TimeUtil.getTurn(attack.getDate());
-            if (TimeUtil.getTurn(war.getDate()) <= turn) {
-                conflict.updateAttack(war, attack, turn, f -> null);
-            }
-        });
+
+        if (!wars.isEmpty()) {
+            db.iterateWarAttacks(wars, Predicates.alwaysTrue(), Predicates.alwaysTrue(), (war, attack) -> {
+                long turn = TimeUtil.getTurn(attack.getDate());
+                if (TimeUtil.getTurn(war.getDate()) <= turn) {
+                    conflict.updateAttack(war, attack, turn, f -> null);
+                }
+            });
+        }
+    }
+
+    public void loadVirtualConflict(Conflict conflict, boolean clearBeforeUpdate) {
+        long start = TimeUtil.getTimeFromTurn(conflict.getStartTurn());
+        long end = conflict.getEndTurn() == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTimeFromTurn(conflict.getEndTurn() + 60);
+
+        Set<Integer> aaIds = conflict.getAllianceIds();
+
+        AttackQuery query = Locutus.imp().getWarDb().queryAttacks()
+                .withWarsForNationOrAlliance(null, aaIds::contains, f -> f.getDate() >= start && f.getDate() <= end);
+
+        loadWarsFromQueryAndProcess(conflict, clearBeforeUpdate, query);
+    }
+
+    public void loadConflictWars(Conflict conflict, int allianceId, Long startOrNull, Long endOrNull) {
+        long start = startOrNull == null ? TimeUtil.getTimeFromTurn(conflict.getStartTurn()) : startOrNull;
+        long end = endOrNull == null ? (conflict.getEndTurn() == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTimeFromTurn(conflict.getEndTurn() + 60)) : endOrNull;
+
+        AttackQuery query = Locutus.imp().getWarDb().queryAttacks()
+                .withWarSet(f -> f.getWars(Set.of(allianceId), start, end));
+
+        loadWarsFromQueryAndProcess(conflict, false, query);
     }
 
     private final Object loadConflictLock = new Object();
@@ -706,12 +725,12 @@ public class ConflictManager {
                 unloaded.add(conflict);
             }
             if (!unloaded.isEmpty()) {
-                loadConflictWars(unloaded, false, false);
+                loadConflictWars(unloaded, false, false, true);
             }
         }
     }
 
-    public void loadConflictWars(Collection<Conflict> conflicts2, boolean clearBeforeUpdate, boolean isStartup) {
+    public void loadConflictWars(Collection<Conflict> conflicts2, boolean clearBeforeUpdate, boolean isStartup, boolean loadGraphData) {
         Collection<Conflict> conflictsFinal;
         synchronized (conflictArr) {
             conflictsFinal = conflicts2 == null ? Arrays.asList(conflictArr) : conflicts2;
@@ -725,6 +744,10 @@ public class ConflictManager {
                     for (Conflict conflict : conflicts2) {
                         conflict.clearWarData();
                     }
+                }
+                for (Conflict conflict : conflictsFinal) {
+                    conflict.getCoalition(true, true, false).setLoaded(true);
+                    conflict.getCoalition(false, true, false).setLoaded(true);
                 }
                 {
                     List<Integer> ids = conflictsFinal.stream().map(Conflict::getId).collect(Collectors.toList());
@@ -815,7 +838,7 @@ public class ConflictManager {
                     }
                 }
 
-                {
+                if (loadGraphData) {
                     String whereClause;
                     if (conflictsFinal.size() == 1) {
                         whereClause = "WHERE conflict_id = " + conflictsFinal.iterator().next().getId();
@@ -840,18 +863,14 @@ public class ConflictManager {
                             Conflict conflict = conflictById.get(conflictId);
                             if (conflict != null) {
                                 ConflictMetric metric = ConflictMetric.values[metricOrd];
-                                conflict.getSide(side).addGraphData(metric, allianceId, turnOrDay, city, value);
+                                conflict.getCoalition(side, true, false).addGraphData(metric, allianceId, turnOrDay, city, value);
                             }
                         }
                     });
                 }
-                conflictsLoaded = true;
+                if (isStartup) conflictsLoaded = true;
             } catch (Throwable e) {
                 e.printStackTrace();
-            }
-            for (Conflict conflict : conflictsFinal) {
-                conflict.getSide(true).setLoaded(true);
-                conflict.getSide(false).setLoaded(true);
             }
         }
     }
@@ -886,13 +905,14 @@ public class ConflictManager {
         return result;
     }
 
-    public void addManualWar(int conflictId, List<DBWar> wars, int allianceId) {
+    public void addManualWar(Conflict conflict, List<DBWar> wars, int allianceId) {
         String query = "INSERT INTO MANUAL_WARS (war_id, conflict_id, alliance) VALUES (?, ?, ?)";
         db.executeBatch(wars, query, (ThrowingBiConsumer<DBWar, PreparedStatement>) (war, stmt) -> {
             stmt.setInt(1, war.getWarId());
-            stmt.setInt(2, conflictId);
+            stmt.setInt(2, conflict.getId());
             stmt.setInt(3, allianceId);
         });
+
     }
 
     public void saveDataCsvAllianceNames() throws IOException, ParseException {
@@ -1120,7 +1140,7 @@ public class ConflictManager {
             ResultSet rs = stmt.getGeneratedKeys();
             if (rs.next()) {
                 int id = rs.getInt(1);
-                Conflict conflict = new Conflict(id, conflictArr.length, name, turnStart, turnEnd, true );
+                Conflict conflict = new Conflict(id, conflictArr.length, name, turnStart, turnEnd, 0, 0, 0, true );
                 conflict.initData(col1, col2, creator, category, wiki, cb, status);
                 conflictById.put(id, conflict);
                 conflictArr = Arrays.copyOf(conflictArr, conflictArr.length + 1);
@@ -1143,12 +1163,18 @@ public class ConflictManager {
     }
 
     protected void updateConflict(Conflict conflict, long start, long end) {
-        boolean invalidateWarStarts = start < conflict.getStartTurn() || end > conflict.getEndTurn();
+        long oldStart = conflict.getStartTurn();
+        long oldEnd = conflict.getEndTurn();
+
+        boolean expandedRange = start < oldStart || (end > oldEnd && oldEnd < TimeUtil.getTurn());
+        boolean narrowedRange = start > oldStart || (end < oldEnd && end <= TimeUtil.getTurn());
         List<HeaderGroup> toInvalidate = new ObjectArrayList<>(Arrays.asList(HeaderGroup.INDEX_META, HeaderGroup.PAGE_META, HeaderGroup.GRAPH_META));
-        if (invalidateWarStarts) {
+        if (expandedRange) {
             toInvalidate.add(HeaderGroup.INDEX_STATS);
             toInvalidate.add(HeaderGroup.PAGE_STATS);
             toInvalidate.add(HeaderGroup.GRAPH_DATA);
+
+            flagGraphRecalc(conflict.getId());
         }
         invalidateConflictRowCache(conflict.getId(), toInvalidate.toArray(new HeaderGroup[0]));
 
@@ -1169,7 +1195,15 @@ public class ConflictManager {
             stmt.setLong(2, end);
             stmt.setInt(3, conflict.getId());
         });
-        flagGraphRecalc(conflict.getId());
+
+        if (narrowedRange && !expandedRange) {
+            db.update("DELETE FROM conflict_graphs2 WHERE conflict_id = ? AND (turn < ? OR turn > ?)",
+                    (ThrowingConsumer<PreparedStatement>) stmt -> {
+                        stmt.setInt(1, conflict.getId());
+                        stmt.setLong(2, start);
+                        stmt.setLong(3, end);
+                    });
+        }
     }
 
     public void updateConflictName(int conflictId, String name) {
@@ -1337,14 +1371,20 @@ public class ConflictManager {
 
     public byte[] getIndexBytesZip(long time) {
         synchronized (this.loadConflictLock) {
-            List<HeaderGroup> groups = Arrays.asList(HeaderGroup.values);
-            // build complete header list in group order
-            List<String> allHeaders = new ArrayList<>();
-            for (HeaderGroup g : groups) {
-                allHeaders.addAll(IndexHeaders.names(g));
-            }
+            // Only INDEX_META and INDEX_STATS are used now
+            List<HeaderGroup> groups = List.of(HeaderGroup.INDEX_META, HeaderGroup.INDEX_STATS);
 
             Map<Integer, Conflict> map = getConflictMap();
+
+            // Build header list from a sample conflict (stable key order per group)
+            List<String> allHeaders = new ArrayList<>();
+            Conflict sample = map.values().stream().findFirst().orElse(null);
+            if (sample != null) {
+                for (HeaderGroup g : groups) {
+                    Map<String, Object> groupMap = g.write(this, sample);
+                    allHeaders.addAll(groupMap.keySet());
+                }
+            }
 
             Map<Integer, String> aaNameById = new Int2ObjectOpenHashMap<>();
             synchronized (conflictAlliances) {
@@ -1372,12 +1412,11 @@ public class ConflictManager {
                 gen.writeStartArray();
 
                 for (Conflict conflict : map.values()) {
-                    boolean statsCacheable = conflict.getId() > 0 && !conflict.isActive();
-                    boolean basicCacheable = conflict.getId() > 0;
+                    boolean cacheable = conflict.getId() > 0;
 
-                    Set<HeaderGroup> groupsToCheck = new ObjectOpenHashSet<>();
-                    if (basicCacheable) groupsToCheck.add(HeaderGroup.INDEX_META);
-                    if (statsCacheable) groupsToCheck.add(HeaderGroup.INDEX_STATS);
+                    Set<HeaderGroup> groupsToCheck = cacheable
+                            ? new ObjectOpenHashSet<>(groups)
+                            : Collections.emptySet();
 
                     Map<HeaderGroup, Map.Entry<Long, byte[]>> cachedByGroup = groupsToCheck.isEmpty()
                             ? Collections.emptyMap()
@@ -1387,20 +1426,17 @@ public class ConflictManager {
                     gen.writeStartArray();
 
                     for (HeaderGroup group : groups) {
-                        List<HeaderSpec<?>> specs = IndexHeaders.headers(group);
-
                         Map.Entry<Long, byte[]> pair = cachedByGroup.get(group);
                         if (pair != null) {
                             byte[] cachedBytes = pair.getValue();
-
                             JteUtil.copyArrayElements(mapper.getFactory(), cachedBytes, gen);
                             continue;
                         }
 
-                        List<Object> part = new ArrayList<>(specs.size());
-                        for (HeaderSpec<?> spec : specs) {
-                            Function<Conflict, ?> func = spec.extractor();
-                            part.add(func.apply(conflict));
+                        Map<String, Object> groupMap = group.write(this, conflict);
+                        List<Object> part = new ArrayList<>(groupMap.size());
+                        for (Object v : groupMap.values()) {
+                            part.add(v);
                         }
 
                         // write elements into current row (flatten)
@@ -1409,9 +1445,7 @@ public class ConflictManager {
                         }
 
                         // cache as MessagePack array of the group's values
-                        boolean groupCacheable = (group == HeaderGroup.INDEX_STATS && basicCacheable)
-                                || (group == HeaderGroup.INDEX_STATS && statsCacheable);
-                        if (groupCacheable) {
+                        if (cacheable) {
                             byte[] partMsgPack = mapper.writeValueAsBytes(part);
                             saveConflictRowCache(conflict.getId(), partMsgPack, group, time);
                         }
@@ -1680,6 +1714,5 @@ public class ConflictManager {
             }
         });
         return announcements;
-
     }
 }

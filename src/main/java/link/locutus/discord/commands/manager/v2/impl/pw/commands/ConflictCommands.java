@@ -67,7 +67,7 @@ public class ConflictCommands {
         }
         response.append("\n");
 
-        List<CoalitionSide> sides = Arrays.asList(conflict.getSide(true), conflict.getSide(false));
+        List<CoalitionSide> sides = Arrays.asList(conflict.getCoalition(true, true, false), conflict.getCoalition(false, true, false));;
         boolean hasDeleted = false;
         if (showParticipants) {
             int i = 1;
@@ -129,7 +129,7 @@ public class ConflictCommands {
         }
         conflict.setWiki(url.replace(" ", "_"));
 //        String importResult = importWikiPage(db, manager, conflict.getName(), url, false, true);
-        conflict.push(manager, null, false, false);
+        conflict.pushChanges(manager, null, true, false, false, false, true, System.currentTimeMillis());
         return "Set wiki to: `" + url + "`. To pull additional wiki information, use: " + CM.conflict.sync.wiki_page.cmd.toSlashMention();
     }
 
@@ -138,7 +138,7 @@ public class ConflictCommands {
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String setStatus(ConflictManager manager, Conflict conflict, String status) throws IOException {
         conflict.setStatus(status.replace("\\n", "\n"));
-        conflict.push(manager, null, false, false);
+        conflict.pushChanges(manager, null, true, false, false, false, true, System.currentTimeMillis());
         return "Done! Set the status of `" + conflict.getName() + "` to `" + status + "`";
     }
 
@@ -147,7 +147,7 @@ public class ConflictCommands {
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String setCB(ConflictManager manager, Conflict conflict, String casus_belli) throws IOException {
         conflict.setCasusBelli(casus_belli.replace("\\n", "\n"));
-        conflict.push(manager, null, false, false);
+        conflict.pushChanges(manager, null, true, false, false, false, true, System.currentTimeMillis());
         return "Done! Set the casus belli of `" + conflict.getName() + "` to `" + casus_belli + "`";
     }
 
@@ -156,7 +156,7 @@ public class ConflictCommands {
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String setCategory(ConflictManager manager, Conflict conflict, ConflictCategory category) throws IOException {
         conflict.setCategory(category);
-        conflict.push(manager, null, false, true);
+        conflict.pushChanges(manager, null, true, false, false, false, true, System.currentTimeMillis());
         return "Done! Set the category of `" + conflict.getName() + "` to `" + category + "` and pushed to site.";
     }
 
@@ -171,31 +171,32 @@ public class ConflictCommands {
         CompletableFuture<IMessageBuilder> msgFuture;
         if (reinitialize_wars) {
             msgFuture = io.send("Initializing wars...");
-            manager.loadConflictWars(conflicts, true);
+            manager.loadConflictWars(conflicts, true, false, true);
         } else {
             msgFuture = io.send("Please wait...");
         }
         if (reinitialize_graphs) {
-            manager.ensureLoaded(conflicts);
+            manager.ensureLoadedFully(conflicts);
             for (Conflict conflict : conflicts) {
                 io.updateOptionally(msgFuture, "Initializing graphs for " + conflict.getName() + "...");
                 conflict.updateGraphsLegacy(manager);
             }
         }
+        long now = System.currentTimeMillis();
         if (conflicts != null) {
             List<String> urls = new ArrayList<>();
             for (Conflict conflict : conflicts) {
                 io.updateOptionally(msgFuture, "Pushing " + conflict.getName() + "...");
-                urls.addAll(conflict.push(manager, null, upload_graph, false));
+                urls.addAll(conflict.pushChanges(manager, null, true, true, upload_graph, upload_graph, false, now));
             }
             io.updateOptionally(msgFuture, "Pushing index...");
-            urls.add(manager.pushIndex());
+            urls.add(manager.pushIndex(now));
             return "Done! See:\n- <" + StringMan.join(urls, ">\n- <") + ">";
         } else {
             if (!manager.pushDirtyConflicts()) {
-                manager.pushIndex();
+                manager.pushIndex(now);
             }
-            return "Done! See: <" + Settings.INSTANCE.WEB.S3.SITE + ">";
+            return "Done! See: <" + Settings.INSTANCE.WEB.CONFLICTS.SITE + ">";
         }
     }
 
@@ -216,7 +217,7 @@ public class ConflictCommands {
             return null;
         }
         manager.deleteConflict(conflict);
-        manager.pushIndex();
+        manager.pushIndex(System.currentTimeMillis());
         return "Deleted conflict: #" + conflict.getId() + " - `" + conflict.getName() + "`" +
                 "\nNote: this does not push the data to the site";
     }
@@ -284,7 +285,7 @@ public class ConflictCommands {
             return "Set `" + conflict.getName() + "` end to " + TimeUtil.format(TimeUtil.DD_MM_YYYY, time) + " for " + alliance.getMarkdownUrl();
         }
         conflict.setEnd(time);
-        conflict.push(manager, null, false, true);
+        conflict.pushChanges(manager, null, true, false, true, false, true, System.currentTimeMillis());
         return "Set `" + conflict.getName() + "` end to " + TimeUtil.format(TimeUtil.DD_MM_YYYY, time) +
                 "\nNote: this does not recalculate conflict data";
     }
@@ -312,7 +313,7 @@ public class ConflictCommands {
             return "Set `" + conflict.getName() + "` start to " + TimeUtil.format(TimeUtil.DD_MM_YYYY, time) + " for " + alliance.getMarkdownUrl();
         }
         conflict.setStart(time);
-        conflict.push(manager, null, false, true);
+        conflict.pushChanges(manager, null, true, false, true, false, true, System.currentTimeMillis());
         return "Set `" + conflict.getName() + "` start to " + TimeUtil.format(TimeUtil.DD_MM_YYYY, time) +
                 "\nNote: this does not recalculate conflict data";
     }
@@ -342,7 +343,7 @@ public class ConflictCommands {
             sideName = "conflict";
             conflict.setName(name);
         }
-        conflict.push(manager, null, false, true);
+        conflict.pushChanges(manager, null, true, false, true, false, true, System.currentTimeMillis());
         return "Changed " + sideName + " name `" + previousName  + "` => `" + name + "` and pushed to the site";
     }
 
@@ -618,12 +619,16 @@ public class ConflictCommands {
                         CM.conflict.info.cmd.toSlashMention() +
                         "\n\n");
 
+                long now = System.currentTimeMillis();
+                boolean changed = false;
                 for (Conflict dbCon : conflicts) {
                     if (!skipPushToSite && dbCon.getId() != -1) {
-                        dbCon.push(manager, null, false, true);
+                        conflict.pushChanges(manager, null, true, true, false, false, false, now);
+                        changed = true;
                         footer = "\n\nNote: this does not push the data to the site";
                     }
                 }
+                if (changed) manager.pushIndex(now);
             }
         }
         if (!errors.isEmpty()) {
@@ -676,7 +681,9 @@ public class ConflictCommands {
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String recalculateTables(ConflictManager manager, Set<Conflict> conflicts) {
-        manager.loadConflictWars(conflicts, true);
+        for (Conflict conflict : conflicts) {
+            conflict.clearWarData();
+        }
         return "Done!\nNote: this does not push the data to the site";
     }
 
@@ -740,11 +747,12 @@ public class ConflictCommands {
             io.updateOptionally(msgFuture, "Recaculating graphs");
             recalculateGraphs2(io, msgFuture, manager, graphData);
             if (all && !graphData.isEmpty()) {
+                long now = System.currentTimeMillis();
                 io.updateOptionally(msgFuture, "Pushing data to the site");
                 for (Conflict conflict : graphData) {
-                    conflict.push(manager, null, true, false);
+                    conflict.pushChanges(manager, null, true, true, true, true, false, now);
                 }
-                manager.pushIndex();
+                manager.pushIndex(now);
                 return "Done!";
             }
         }
@@ -774,7 +782,7 @@ public class ConflictCommands {
             manager.addSource(db.getIdLong(), guild.getIdLong(), 1);
             messages.add("Added all conflicts from " + guild.toString() + " to the featured list");
         }
-        manager.pushIndex();
+        manager.pushIndex(System.currentTimeMillis());
         messages.add("Pushed changed to site index");
         return StringMan.join(messages, "\n");
     }
@@ -800,7 +808,7 @@ public class ConflictCommands {
             manager.removeSource(db.getIdLong(), guild.getIdLong(), 1);
             messages.add("Removed all conflicts from " + guild.toString() + " from the featured list");
         }
-        manager.pushIndex();
+        manager.pushIndex(System.currentTimeMillis());
         messages.add("Pushed changed to site index");
         messages.add("See: " + CM.conflict.featured.list_rules.cmd.toSlashMention());
         return StringMan.join(messages, "\n");
@@ -897,7 +905,7 @@ public class ConflictCommands {
         DBTopic topic = Locutus.imp().getForumDb().loadTopic(topicId, topicUrlStub);
         conflict.addAnnouncement(desc == null ? topic.topic_name : desc, topic, true, false);
         msgs.add("Added announcement for " + topic.topic_name + "/" + topic.topic_id + " at " + DiscordUtil.timestamp(topic.timestamp, null));
-        conflict.push(manager, null, false, false);
+        conflict.pushChanges(manager, null, true, false, false, false, false, System.currentTimeMillis());
         return StringMan.join(msgs, "\n");
     }
 
@@ -968,8 +976,8 @@ public class ConflictCommands {
         long end = conflict.getEndMS();
         Set<DBWar> wars = Locutus.imp().getWarDb().getWarsByNationMatching(nation.getId(), f -> f.getDate() >= start && f.getDate() <= end);
 
-        CoalitionSide side1 = conflict.getSide(true);
-        CoalitionSide side2 = conflict.getSide(false);
+        CoalitionSide side1 = conflict.getCoalition(true, true, false);
+        CoalitionSide side2 = conflict.getCoalition(false, true, false);
         CoalitionSide markSide = null;
         if (side1.hasAlliance(mark_as_alliance.getId())) {
             markSide = side1;
@@ -992,7 +1000,7 @@ public class ConflictCommands {
         if (toAdd.isEmpty()) {
             throw new IllegalArgumentException("No wars found to add");
         }
-        manager.addManualWar(conflict.getId(), toAdd, mark_as_alliance.getId());
+        manager.addManualWar(conflict, toAdd, mark_as_alliance.getId());
         return "Added " + toAdd.size() + " wars to the conflict.\n" +
                 "Note: this does not push the data to the site\n" +
                 "See: " + CM.conflict.sync.website.cmd.toSlashMention();
@@ -1032,6 +1040,7 @@ public class ConflictCommands {
         // Copy if not exists or source is newer
         int examined = 0, copied = 0, skipped = 0, failed = 0;
         long lastUpdate = System.currentTimeMillis();
+        long ttl = TimeUnit.MINUTES.toSeconds(5);
 
         for (CloudItem item : sourceObj) {
             String key = item.key();
@@ -1049,15 +1058,12 @@ public class ConflictCommands {
                 skipped++;
             } else {
                 try {
-                    // Guess content type
-                    String contentType = key.endsWith(".gzip") ? "application/gzip" : "application/octet-stream";
-
                     // Read from source and write to target
                     byte[] data = source.getObject(key);
                     if (data == null) {
                         throw new IOException("Null payload for " + key);
                     }
-                    target.putObject(key, data, contentType);
+                    target.putObject(key, data, ttl);
                     copied++;
                 } catch (Exception ex) {
                     failed++;
@@ -1077,6 +1083,6 @@ public class ConflictCommands {
 
         long tookMs = System.currentTimeMillis() - start;
         return "Done! examined: " + examined + ", copied: " + copied + ", skipped: " + skipped + ", errors: " + failed +
-                " in " + TimeUtil.secStr(tookMs / 1000);
+                " in " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, tookMs);
     }
 }
