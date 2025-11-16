@@ -183,6 +183,11 @@ public abstract class DBNation implements NationOrAlliance {
         return !isGray() && !isBeige() && getPositionEnum().id > Rank.APPLICANT.id && getVm_turns() == 0;
     }
 
+    @Command(desc = "If the nation is a member or above not in vacation mode")
+    public boolean isMember() {
+        return getPositionEnum().id >= Rank.MEMBER.id && getVm_turns() == 0;
+    }
+
 //    public double getInfraCost(double from, double to) {
 //        double cost = PW.calculateInfra(from, to);
 //    }
@@ -3758,6 +3763,11 @@ public abstract class DBNation implements NationOrAlliance {
         if (user == null || guild == null) return null;
         Member member = guild.getMember(user);
         return member == null ? null : new UserWrapper(member);
+    }
+
+    @Command(desc = "Get a city by its index")
+    public DBCity getCity(int index) {
+        return Locutus.imp().getNationDB().getCityIndex(getId(), index);
     }
 
     @Command(desc = "Get the average value of a city attribute for this nation's cities")

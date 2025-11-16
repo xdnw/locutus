@@ -5079,6 +5079,17 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
     }
 
+    public DBCity getCityIndex(int nation_id, int index) {
+        synchronized (citiesByNation) {
+            Object cities = citiesByNation.get(nation_id);
+            try {
+                return ArrayUtil.getElement(SimpleDBCity.class, cities, index);
+            } catch (IndexOutOfBoundsException e) {
+                return null;
+            }
+        }
+    }
+
     public Set<DBCity> getCities() {
         synchronized (citiesByNation) {
             Set<DBCity> result = new ObjectOpenHashSet<>();
