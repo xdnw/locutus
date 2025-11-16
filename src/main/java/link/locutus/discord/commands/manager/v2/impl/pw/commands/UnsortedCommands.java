@@ -2037,20 +2037,21 @@ public class UnsortedCommands {
             DBNation target = entry.getKey();
             Map<ResourceType, Double> amount = entry.getValue();
             CM.transfer.resources transferCmd = CM.transfer.resources.cmd.receiver(target.getQualifiedId())
-                    .bank_note(
-                    bank_note.toString()).nation_account(
-                    nation_account != null ? nation_account.getUrl() : null).ingame_bank(
-                    ingame_bank != null ? ingame_bank.getUrl() : null).offshore_account(
-                    offshore_account != null ? offshore_account.getUrl() : null).tax_account(
-                    tax_account != null ? tax_account.getQualifiedId() : null).use_receiver_tax_account(
-                    use_receiver_tax_account + "").expire(
-                    expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire)).decay(
-                    decay == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay)).deduct_as_cash(
-                    Boolean.FALSE.toString()).escrow_mode(
-                    escrow_mode == null ? null : escrow_mode.name()).bypass_checks(
-                    String.valueOf(force))
+                    .transfer(ResourceType.toString(amount))
+                    .bank_note(bank_note.toString())
+                    .nation_account(nation_account != null ? nation_account.getUrl() : null)
+                    .ingame_bank(ingame_bank != null ? ingame_bank.getUrl() : null)
+                    .offshore_account(offshore_account != null ? offshore_account.getUrl() : null)
+                    .tax_account(tax_account != null ? tax_account.getQualifiedId() : null)
+                    .use_receiver_tax_account(use_receiver_tax_account + "")
+                    .expire(expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire))
+                    .decay(decay == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay))
+                    .deduct_as_cash(Boolean.FALSE.toString())
+                    .escrow_mode(escrow_mode == null ? null : escrow_mode.name())
+                    .bypass_checks(String.valueOf(force))
                     .onlyMissingFunds("false")
-                    .ping_when_sent(ping_when_sent + "").calling_command(command.toString());
+                    .ping_when_sent(ping_when_sent + "")
+                    .calling_command(command.toString());
             return BankCommands.transfer(io, transferCmd.toJson(), author, me, db, target, amount, bank_note, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, false, expire, decay, deduct_as_cash, escrow_mode, bypass_checks, ping_when_sent, force, command);
         }
 
