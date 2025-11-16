@@ -1,19 +1,20 @@
 package link.locutus.discord.db.conflict;
 
-import it.unimi.dsi.fastutil.bytes.Byte2LongLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.bytes.Byte2LongArrayMap;
+import it.unimi.dsi.fastutil.bytes.Byte2LongMap;
 import it.unimi.dsi.fastutil.bytes.Byte2LongOpenHashMap;
 import it.unimi.dsi.fastutil.bytes.Byte2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.bytes.ByteOpenHashSet;
-import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2ObjectArrayMap;
-import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
@@ -47,8 +48,8 @@ public class CoalitionSide {
     private CoalitionSide otherSide;
     private final Set<Integer> coalition = new IntOpenHashSet();
 
+    // TODO consider shifting these to a separate WarStatistics class to separate concerns, possibly inside a CachedSupplier that can handle self loading
     private volatile long latestGraphTurn = -1L;
-
     private final Map<Integer, Integer> allianceIdByNation = new Int2ObjectOpenHashMap<>();
     private final DamageStatGroup inflictedAndOffensiveStats = new DamageStatGroup();
     private final DamageStatGroup lossesAndDefensiveStats = new DamageStatGroup();
@@ -394,119 +395,183 @@ public class CoalitionSide {
         }
     }
 
-    private void trimTimeData(Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> turnData) {
-        if (turnData.size() < 2) return;
-        Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> trimmed = new Long2ObjectArrayMap<>();
-        List<Long> turnsSorted = new LongArrayList(turnData.keySet());
-        turnsSorted.sort(Long::compareTo);
-        Map<Integer, Map<Integer, Map<Byte, Long>>> previous = new Int2ObjectOpenHashMap<>();
-        for (Long currentTurn : turnsSorted) {
-            Map<Integer, Map<Integer, Map<Byte, Long>>> currentData = turnData.get(currentTurn);
-            if (currentData == null || currentData.isEmpty()) continue;
 
-            for (Map.Entry<Integer, Map<Integer, Map<Byte, Long>>> entry : currentData.entrySet()) {
-                Map<Integer, Map<Byte, Long>> currentByMetric = entry.getValue();
-                Map<Integer, Map<Byte, Long>> previousByMetric = previous.get(entry.getKey());
+    private void trimTimeData(Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> turnData) {
+        if (turnData.size() < 2) {
+            return;
+        }
+
+        Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> trimmed =
+                new Long2ObjectArrayMap<>(turnData.size());
+        Int2ObjectMap<Int2ObjectMap<Byte2LongOpenHashMap>> previous = new Int2ObjectOpenHashMap<>();
+
+        LongArrayList turns = new LongArrayList(turnData.keySet());
+        turns.sort(null);
+
+        for (long currentTurn : turns) {
+            Map<Integer, Map<Integer, Map<Byte, Long>>> currentData = turnData.get(currentTurn);
+            if (currentData == null || currentData.isEmpty()) {
+                continue;
+            }
+
+            Map<Integer, Map<Integer, Map<Byte, Long>>> trimmedTurn = null;
+
+            for (Map.Entry<Integer, Map<Integer, Map<Byte, Long>>> metricEntry : currentData.entrySet()) {
+                int metricId = metricEntry.getKey();
+                Map<Integer, Map<Byte, Long>> currentByMetric = metricEntry.getValue();
+
+                Int2ObjectMap<Byte2LongOpenHashMap> previousByMetric = previous.get(metricId);
                 if (previousByMetric == null) {
-                    Map<Integer, Map<Byte, Long>> copy = new Int2ObjectOpenHashMap<>(currentByMetric.size());
+                    previousByMetric = new Int2ObjectOpenHashMap<>(currentByMetric.size());
+                    previous.put(metricId, previousByMetric);
+
                     for (Map.Entry<Integer, Map<Byte, Long>> allianceEntry : currentByMetric.entrySet()) {
-                        copy.put(allianceEntry.getKey(), new Byte2LongOpenHashMap(allianceEntry.getValue()));
+                        Byte2LongOpenHashMap primitiveMap = ensurePrimitiveCityMap(allianceEntry);
+                        previousByMetric.put(
+                                allianceEntry.getKey(),
+                                new Byte2LongOpenHashMap(primitiveMap));
                     }
-                    previous.put(entry.getKey(), copy);
-                    trimmed.computeIfAbsent(currentTurn, k -> new Int2ObjectOpenHashMap<>()).put(entry.getKey(), currentByMetric);
+
+                    if (trimmedTurn == null) {
+                        trimmedTurn = trimmed.computeIfAbsent(
+                                currentTurn, k -> new Int2ObjectOpenHashMap<>());
+                    }
+                    trimmedTurn.put(metricId, currentByMetric);
                     continue;
                 }
+
+                Map<Integer, Map<Byte, Long>> trimmedMetric = null;
+
                 for (Map.Entry<Integer, Map<Byte, Long>> allianceEntry : currentByMetric.entrySet()) {
-                    Map<Byte, Long> currentByAlliance = allianceEntry.getValue();
-                    Map<Byte, Long> previousByAlliance = previousByMetric.get(allianceEntry.getKey());
+                    int allianceId = allianceEntry.getKey();
+                    Byte2LongOpenHashMap currentByAlliance = ensurePrimitiveCityMap(allianceEntry);
+
+                    Byte2LongOpenHashMap previousByAlliance = previousByMetric.get(allianceId);
                     if (previousByAlliance == null) {
-                        previousByMetric.put(allianceEntry.getKey(), new Byte2LongOpenHashMap(currentByAlliance));
-                        trimmed.computeIfAbsent(currentTurn, k -> new Int2ObjectOpenHashMap<>())
-                                .computeIfAbsent(entry.getKey(), k -> new Int2ObjectOpenHashMap<>())
-                                .put(allianceEntry.getKey(), currentByAlliance);
+                        previousByAlliance = new Byte2LongOpenHashMap(currentByAlliance);
+                        previousByMetric.put(allianceId, previousByAlliance);
+
+                        if (trimmedTurn == null) {
+                            trimmedTurn = trimmed.computeIfAbsent(
+                                    currentTurn, k -> new Int2ObjectOpenHashMap<>());
+                        }
+                        if (trimmedMetric == null) {
+                            trimmedMetric = trimmedTurn.computeIfAbsent(
+                                    metricId, k -> new Int2ObjectOpenHashMap<>());
+                        }
+                        trimmedMetric.put(allianceId, currentByAlliance);
                         continue;
                     }
-                    for (Map.Entry<Byte, Long> cityEntry : currentByAlliance.entrySet()) {
-                        Long currentValue = cityEntry.getValue();
-                        Long previousValue = previousByAlliance.get(cityEntry.getKey());
-                        if (currentValue != null) {
-                            if (!currentValue.equals(previousValue)) {
-                                previousByAlliance.put(cityEntry.getKey(), currentValue);
-                                trimmed.computeIfAbsent(currentTurn, k -> new Int2ObjectOpenHashMap<>())
-                                        .computeIfAbsent(entry.getKey(), k -> new Int2ObjectOpenHashMap<>())
-                                        .computeIfAbsent(allianceEntry.getKey(), k -> new Byte2LongOpenHashMap())
-                                        .put(cityEntry.getKey(), currentValue);
+
+                    Byte2LongArrayMap delta = null;
+
+                    ObjectIterator<Byte2LongMap.Entry> cityIterator =
+                            currentByAlliance.byte2LongEntrySet().fastIterator();
+                    while (cityIterator.hasNext()) {
+                        Byte2LongMap.Entry cityEntry = cityIterator.next();
+                        byte cityId = cityEntry.getByteKey();
+                        long currentValue = cityEntry.getLongValue();
+                        boolean hadValue = previousByAlliance.containsKey(cityId);
+                        long previousValue = hadValue ? previousByAlliance.get(cityId) : 0L;
+
+                        if (!hadValue || currentValue != previousValue) {
+                            previousByAlliance.put(cityId, currentValue);
+                            if (delta == null) {
+                                delta = new Byte2LongArrayMap();
                             }
+                            delta.put(cityId, currentValue);
                         }
                     }
-                    for (Map.Entry<Byte, Long> cityEntry : previousByAlliance.entrySet()) {
-                        if (cityEntry.getValue() != 0) {
-                            Long currentValue = currentByAlliance.get(cityEntry.getKey());
-                            if (currentValue == null) {
-                                previousByAlliance.put(cityEntry.getKey(), 0L);
-                                trimmed.computeIfAbsent(currentTurn, k -> new Int2ObjectOpenHashMap<>())
-                                        .computeIfAbsent(entry.getKey(), k -> new Int2ObjectOpenHashMap<>())
-                                        .computeIfAbsent(allianceEntry.getKey(), k -> new Byte2LongOpenHashMap())
-                                        .put(cityEntry.getKey(), 0L);
+
+                    ObjectIterator<Byte2LongMap.Entry> previousIterator =
+                            previousByAlliance.byte2LongEntrySet().fastIterator();
+                    while (previousIterator.hasNext()) {
+                        Byte2LongMap.Entry prevEntry = previousIterator.next();
+                        byte cityId = prevEntry.getByteKey();
+                        if (!currentByAlliance.containsKey(cityId)
+                                && prevEntry.getLongValue() != 0L) {
+                            prevEntry.setValue(0L);
+                            if (delta == null) {
+                                delta = new Byte2LongArrayMap();
                             }
+                            delta.put(cityId, 0L);
                         }
+                    }
+
+                    if (delta != null) {
+                        if (trimmedTurn == null) {
+                            trimmedTurn = trimmed.computeIfAbsent(
+                                    currentTurn, k -> new Int2ObjectOpenHashMap<>());
+                        }
+                        if (trimmedMetric == null) {
+                            trimmedMetric = trimmedTurn.computeIfAbsent(
+                                    metricId, k -> new Int2ObjectOpenHashMap<>());
+                        }
+                        trimmedMetric.put(allianceId, delta);
                     }
                 }
-                for (Map.Entry<Integer, Map<Byte, Long>> allianceEntry : previousByMetric.entrySet()) {
-                    Map<Byte, Long> previousByAlliance = allianceEntry.getValue();
-                    Map<Byte, Long> currentByAlliance = currentByMetric.get(allianceEntry.getKey());
-                    if (currentByAlliance == null) {
-                        for (Map.Entry<Byte, Long> cityEntry : previousByAlliance.entrySet()) {
-                            if (cityEntry.getValue() != 0) {
-                                previousByAlliance.put(cityEntry.getKey(), 0L);
-                                trimmed.computeIfAbsent(currentTurn, k -> new Int2ObjectOpenHashMap<>())
-                                        .computeIfAbsent(entry.getKey(), k -> new Int2ObjectOpenHashMap<>())
-                                        .computeIfAbsent(allianceEntry.getKey(), k -> new Byte2LongOpenHashMap())
-                                        .put(cityEntry.getKey(), 0L);
+
+                ObjectIterator<Int2ObjectMap.Entry<Byte2LongOpenHashMap>> previousAllianceIterator =
+                        previousByMetric.int2ObjectEntrySet().iterator();
+                while (previousAllianceIterator.hasNext()) {
+                    Int2ObjectMap.Entry<Byte2LongOpenHashMap> previousAllianceEntry =
+                            previousAllianceIterator.next();
+                    int allianceId = previousAllianceEntry.getIntKey();
+
+                    if (currentByMetric.containsKey(allianceId)) {
+                        continue;
+                    }
+
+                    Byte2LongOpenHashMap previousByAlliance = previousAllianceEntry.getValue();
+                    Byte2LongArrayMap delta = null;
+
+                    ObjectIterator<Byte2LongMap.Entry> cityIterator =
+                            previousByAlliance.byte2LongEntrySet().fastIterator();
+                    while (cityIterator.hasNext()) {
+                        Byte2LongMap.Entry cityEntry = cityIterator.next();
+                        if (cityEntry.getLongValue() != 0L) {
+                            cityEntry.setValue(0L);
+                            if (delta == null) {
+                                delta = new Byte2LongArrayMap();
                             }
+                            delta.put(cityEntry.getByteKey(), 0L);
                         }
+                    }
+
+                    if (delta != null) {
+                        if (trimmedTurn == null) {
+                            trimmedTurn = trimmed.computeIfAbsent(
+                                    currentTurn, k -> new Int2ObjectOpenHashMap<>());
+                        }
+                        trimmedTurn.computeIfAbsent(
+                                        metricId, k -> new Int2ObjectOpenHashMap<>())
+                                .put(allianceId, delta);
                     }
                 }
             }
         }
 
-        // Replace the original map with the trimmed one
         turnData.clear();
         turnData.putAll(trimmed);
     }
 
-    private Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> sortTimeMap(Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> data) {
-        Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> copy = new Long2ObjectLinkedOpenHashMap<>();
-        List<Long> turns = new LongArrayList(data.keySet());
-        turns.sort(Long::compareTo);
-        for (long turn : turns) {
-            Map<Integer, Map<Integer, Map<Byte, Long>>> map = data.get(turn);
-            Map<Integer, Map<Integer, Map<Byte, Long>>> sorted = new Int2ObjectLinkedOpenHashMap<>();
-            IntArrayList keysSorted = new IntArrayList(map.keySet());
-            keysSorted.sort(Integer::compareTo);
-            for (int metricId : keysSorted) {
-                Map<Integer, Map<Byte, Long>> allianceMap = map.get(metricId);
-                Map<Integer, Map<Byte, Long>> allianceSorted = new Int2ObjectLinkedOpenHashMap<>();
-                IntArrayList allianceKeySorted = new IntArrayList(allianceMap.keySet());
-                allianceKeySorted.sort(Integer::compareTo);
-                for (int allianceId : allianceKeySorted) {
-                    Map<Byte, Long> cityMap = allianceMap.get(allianceId);
-                    Map<Byte, Long> citySorted = new Byte2LongLinkedOpenHashMap();
-                    ByteArrayList cityKeySorted = new ByteArrayList(cityMap.keySet());
-                    cityKeySorted.sort(Byte::compareTo);
-                    for (byte city : cityKeySorted) {
-                        Long value = cityMap.get(city);
-                        if (value != 0) {
-                            citySorted.put(city, value);
-                        }
-                    }
-                    allianceSorted.put(allianceId, citySorted);
-                }
-                sorted.put(metricId, allianceSorted);
-            }
-            copy.put(turn, sorted);
+    private static Byte2LongOpenHashMap ensurePrimitiveCityMap(
+            Map.Entry<Integer, Map<Byte, Long>> allianceEntry) {
+        Map<Byte, Long> allianceData = allianceEntry.getValue();
+        if (allianceData instanceof Byte2LongOpenHashMap) {
+            return (Byte2LongOpenHashMap) allianceData;
         }
-        return copy;
+
+        Byte2LongOpenHashMap converted = new Byte2LongOpenHashMap(allianceData.size());
+        for (Map.Entry<Byte, Long> cityEntry : allianceData.entrySet()) {
+            Byte cityId = cityEntry.getKey();
+            Long value = cityEntry.getValue();
+            if (cityId != null && value != null) {
+                converted.put(cityId, value);
+            }
+        }
+        allianceEntry.setValue(converted);
+        return converted;
     }
 
     public Map<String, Object> toGraphMap(ConflictManager manager, List<Integer> metricsTurn, List<Integer> metricsDay, List<Function<DamageStatGroup, Object>> damageHeaders, int columnMetricOffset) {
@@ -578,21 +643,40 @@ public class CoalitionSide {
 
         List<Integer> allianceIds = new ArrayList<>(coalition);
         Collections.sort(allianceIds);
-        long minTurn = turnData.keySet().stream().min(Long::compareTo).orElse(0L);
-        long maxTurn = turnData.keySet().stream().max(Long::compareTo).orElse(0L);
+        long[] turnRange = computeRange(turnData);
+        long minTurn = turnRange[0];
+        long maxTurn = turnRange[1];
         Map<String, Object> turnRoot = new LinkedHashMap<>();
         turnRoot.put("range", List.of(minTurn, maxTurn));
         turnRoot.put("data", toGraphMap(metricsTurn, turnData, minTurn, maxTurn, allianceIds, citiesSorted));
         root.put("turn", turnRoot);
 
-        long minDay = dayData.keySet().stream().min(Long::compareTo).orElse(0L);
-        long maxDay = dayData.keySet().stream().max(Long::compareTo).orElse(0L);
+        long[] dayRange = computeRange(dayData);
+        long minDay = dayRange[0];
+        long maxDay = dayRange[1];
         Map<String, Object> dayRoot = new LinkedHashMap<>();
         dayRoot.put("range", List.of(minDay, maxDay));
         dayRoot.put("data", toGraphMap(metricsDay, dayData, minDay, maxDay, allianceIds, citiesSorted));
         root.put("day", dayRoot);
 
         return root;
+    }
+
+    private static long[] computeRange(Map<Long, ?> data) {
+        if (data.isEmpty()) {
+            return new long[]{0L, 0L};
+        }
+        long min = Long.MAX_VALUE;
+        long max = Long.MIN_VALUE;
+        for (long value : data.keySet()) {
+            if (value < min) {
+                min = value;
+            }
+            if (value > max) {
+                max = value;
+            }
+        }
+        return new long[]{min, max};
     }
 
     private List<List<List<List<Long>>>> toGraphMap(List<Integer> keys,
@@ -621,7 +705,15 @@ public class CoalitionSide {
                         metricCitiesTable.add(new ObjectArrayList<>());
                         continue;
                     }
-                    List<Long> values = cities.stream().map(f -> metricData.getOrDefault(f, null)).collect(Collectors.toList());
+                    List<Long> values = new ObjectArrayList<>(cities.size());
+                    for (byte city : cities) {
+                        Long value = metricData.get(city);
+                        if (value == null && !metricData.containsKey(city)) {
+                            values.add(null);
+                        } else {
+                            values.add(value);
+                        }
+                    }
                     metricCitiesTable.add(values);
                 }
                 metricCitiesTableByAA.add(metricCitiesTable);

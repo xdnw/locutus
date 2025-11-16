@@ -556,7 +556,7 @@ public class Settings extends Config {
         @Comment({""})
         public static final class CONFLICTS {
             @Comment("Either S3 or R2")
-            public String PROVIDER = "S3";
+            public String PROVIDER = "";
 
             @Comment({
                     "The frontend url for war stats",

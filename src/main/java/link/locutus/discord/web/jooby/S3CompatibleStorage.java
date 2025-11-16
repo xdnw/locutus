@@ -6,132 +6,184 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.S3Configuration;
-import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
-import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-import software.amazon.awssdk.services.s3.model.S3Object;
+import software.amazon.awssdk.services.s3.model.*;
 
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public final class S3CompatibleStorage implements CloudStorage {
 
-    public enum Provider {
-        AWS_S3,
-        CLOUDFLARE_R2
-    }
-
     private final Provider provider;
     private final S3Client s3Client;
     private final String bucketName;
-    private final String publicBaseUrl; // optional for both providers
-    private final String awsRegion;     // only for AWS S3
-    private final String r2AccountId;   // only for R2
+    private final String publicBaseUrl;
+    private final String awsRegion;
+    private final String r2AccountId;
 
-    private S3CompatibleStorage(
-            Provider provider,
-            S3Client s3Client,
-            String bucketName,
-            String publicBaseUrl,
-            String awsRegion,
-            String r2AccountId
-    ) {
+    private S3CompatibleStorage(Provider provider,
+                                S3Client s3Client,
+                                String bucketName,
+                                String publicBaseUrl,
+                                String awsRegion,
+                                String r2AccountId) {
         this.provider = provider;
         this.s3Client = s3Client;
         this.bucketName = bucketName;
-        this.publicBaseUrl = (publicBaseUrl == null || publicBaseUrl.isBlank())
-                ? null
-                : publicBaseUrl.replaceAll("/+$", "");
+        this.publicBaseUrl = trimTrailingSlash(publicBaseUrl);
         this.awsRegion = awsRegion;
         this.r2AccountId = r2AccountId;
     }
 
-    public static CloudStorage setupAwsS3() {
-        String accessKey = Settings.INSTANCE.WEB.S3.ACCESS_KEY;
-        String secretKey = Settings.INSTANCE.WEB.S3.SECRET_ACCESS_KEY;
-        String region = Settings.INSTANCE.WEB.S3.REGION;
-        String bucket = Settings.INSTANCE.WEB.S3.BUCKET;
-        String publicBaseUrl = Settings.INSTANCE.WEB.S3.BASE_URL;
+    private static String trimTrailingSlash(String url) {
+        if (url == null || url.isBlank()) return null;
+        return url.replaceAll("/+$", "");
+    }
 
-        if (accessKey != null && secretKey != null && region != null && bucket != null
-                && !accessKey.isEmpty() && !secretKey.isEmpty() && !region.isEmpty() && !bucket.isEmpty()) {
-            return S3CompatibleStorage.forAwsS3(accessKey, secretKey, bucket, region, publicBaseUrl);
+    public enum Provider {
+        AWS_S3("s3", "aws", "amazon") {
+            @Override
+            protected boolean isConfigured(Settings settings) {
+                return hasAll(settings.WEB.S3.ACCESS_KEY,
+                        settings.WEB.S3.SECRET_ACCESS_KEY,
+                        settings.WEB.S3.REGION,
+                        settings.WEB.S3.BUCKET);
+            }
+
+            @Override
+            protected S3CompatibleStorage create(Settings settings) {
+                return forAwsS3(
+                        settings.WEB.S3.ACCESS_KEY,
+                        settings.WEB.S3.SECRET_ACCESS_KEY,
+                        settings.WEB.S3.BUCKET,
+                        settings.WEB.S3.REGION,
+                        settings.WEB.S3.BASE_URL
+                );
+            }
+        },
+        CLOUDFLARE_R2("r2", "cf", "cloudflare") {
+            @Override
+            protected boolean isConfigured(Settings settings) {
+                return hasAll(settings.WEB.R2.ACCOUNT_ID,
+                        settings.WEB.R2.ACCESS_KEY,
+                        settings.WEB.R2.SECRET_ACCESS_KEY,
+                        settings.WEB.R2.BUCKET);
+            }
+
+            @Override
+            protected S3CompatibleStorage create(Settings settings) {
+                return forCloudflareR2(
+                        settings.WEB.R2.ACCOUNT_ID,
+                        settings.WEB.R2.ACCESS_KEY,
+                        settings.WEB.R2.SECRET_ACCESS_KEY,
+                        settings.WEB.R2.BUCKET,
+                        settings.WEB.R2.BASE_URL
+                );
+            }
+        };
+
+        private final Set<String> aliases;
+
+        Provider(String... aliases) {
+            this.aliases = Arrays.stream(aliases)
+                    .map(alias -> alias.toLowerCase(Locale.ROOT))
+                    .collect(Collectors.toSet());
         }
-        return null;
-    }
 
-    public static CloudStorage setupCloudflareR2() {
-        String accountId = Settings.INSTANCE.WEB.R2.ACCOUNT_ID;
-        String accessKey = Settings.INSTANCE.WEB.R2.ACCESS_KEY;
-        String secretKey = Settings.INSTANCE.WEB.R2.SECRET_ACCESS_KEY;
-        String bucket = Settings.INSTANCE.WEB.R2.BUCKET;
-        String publicBaseUrl = Settings.INSTANCE.WEB.R2.BASE_URL;
+        protected abstract boolean isConfigured(Settings settings);
 
-        if (accountId != null && accessKey != null && secretKey != null && bucket != null
-                && !accountId.isEmpty() && !accessKey.isEmpty() && !secretKey.isEmpty() && !bucket.isEmpty()) {
-            return S3CompatibleStorage.forCloudflareR2(accountId, accessKey, secretKey, bucket, publicBaseUrl);
+        protected abstract S3CompatibleStorage create(Settings settings);
+
+        public static Optional<Provider> resolve(String name) {
+            if (name == null || name.isBlank()) return Optional.empty();
+            String normalized = name.trim().toLowerCase(Locale.ROOT);
+            return Arrays.stream(values())
+                    .filter(provider -> provider.aliases.contains(normalized))
+                    .findFirst();
         }
-        return null;
+
+        private static boolean hasAll(String... values) {
+            return Arrays.stream(values).allMatch(v -> v != null && !v.isBlank());
+        }
     }
 
-    // Factory for Cloudflare R2
-    public static S3CompatibleStorage forCloudflareR2(
-            String accountId,
-            String accessKey,
-            String secretKey,
-            String bucketName,
-            String publicBaseUrl
-    ) {
-        S3Configuration s3Config = S3Configuration.builder()
-                .pathStyleAccessEnabled(true) // R2 requires path-style
-                .build();
-
-        S3Client client = S3Client.builder()
-                .credentialsProvider(StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create(accessKey, secretKey)))
-                .region(Region.of("auto")) // Cloudflare signs with "auto"
-                .endpointOverride(URI.create(String.format("https://%s.r2.cloudflarestorage.com", accountId)))
-                .serviceConfiguration(s3Config)
-                .build();
-
-        return new S3CompatibleStorage(
-                Provider.CLOUDFLARE_R2,
-                client,
-                bucketName,
-                publicBaseUrl,
-                null,          // awsRegion
-                accountId      // r2AccountId
-        );
+    public static boolean isConfigured() {
+        return Provider.resolve(Settings.INSTANCE.WEB.CONFLICTS.PROVIDER)
+                .map(provider -> provider.isConfigured(Settings.INSTANCE))
+                .orElse(false);
     }
 
-    // Factory for AWS S3
-    public static S3CompatibleStorage forAwsS3(
-            String accessKey,
-            String secretKey,
-            String bucketName,
-            String region,
-            String publicBaseUrl
-    ) {
-        S3Client client = S3Client.builder()
-                .credentialsProvider(StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create(accessKey, secretKey)))
-                .region(Region.of(region))
-                .build();
+    public static CloudStorage setupAuto() {
+        Provider provider = Provider.resolve(Settings.INSTANCE.WEB.CONFLICTS.PROVIDER)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown or missing cloud provider"));
+        if (!provider.isConfigured(Settings.INSTANCE)) {
+            throw new IllegalArgumentException(provider.name() + " configuration is incomplete");
+        }
+        return provider.create(Settings.INSTANCE);
+    }
 
-        return new S3CompatibleStorage(
-                Provider.AWS_S3,
-                client,
-                bucketName,
-                publicBaseUrl,
-                region,     // awsRegion
-                null        // r2AccountId
+    public static S3CompatibleStorage setupAwsS3() {
+        Provider provider = Provider.AWS_S3;
+        if (!provider.isConfigured(Settings.INSTANCE)) {
+            throw new IllegalArgumentException(provider.name() + " configuration is incomplete");
+        }
+        return provider.create(Settings.INSTANCE);
+    }
+
+    public static S3CompatibleStorage setupCloudflareR2() {
+        Provider provider = Provider.CLOUDFLARE_R2;
+        if (!provider.isConfigured(Settings.INSTANCE)) {
+            throw new IllegalArgumentException(provider.name() + " configuration is incomplete");
+        }
+        return provider.create(Settings.INSTANCE);
+    }
+
+    public static S3CompatibleStorage forCloudflareR2(String accountId,
+                                                      String accessKey,
+                                                      String secretKey,
+                                                      String bucketName,
+                                                      String publicBaseUrl) {
+        S3Client client = buildClient(
+                StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey)),
+                Region.of("auto"),
+                URI.create(String.format("https://%s.r2.cloudflarestorage.com", accountId)),
+                S3Configuration.builder().pathStyleAccessEnabled(true).build()
         );
+
+        return new S3CompatibleStorage(Provider.CLOUDFLARE_R2, client, bucketName, publicBaseUrl, null, accountId);
+    }
+
+    public static S3CompatibleStorage forAwsS3(String accessKey,
+                                               String secretKey,
+                                               String bucketName,
+                                               String region,
+                                               String publicBaseUrl) {
+        S3Client client = buildClient(
+                StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey)),
+                Region.of(region),
+                null,
+                null
+        );
+
+        return new S3CompatibleStorage(Provider.AWS_S3, client, bucketName, publicBaseUrl, region, null);
+    }
+
+    private static S3Client buildClient(StaticCredentialsProvider credentialsProvider,
+                                        Region region,
+                                        URI endpoint,
+                                        S3Configuration configuration) {
+        S3ClientBuilder builder = S3Client.builder()
+                .credentialsProvider(credentialsProvider)
+                .region(region);
+
+        if (endpoint != null) builder.endpointOverride(endpoint);
+        if (configuration != null) builder.serviceConfiguration(configuration);
+
+        return builder.build();
     }
 
     @Override
@@ -142,7 +194,6 @@ public final class S3CompatibleStorage implements CloudStorage {
                 .cacheControl("max-age=" + maxAge)
                 .contentLength((long) data.length)
                 .build();
-
         s3Client.putObject(request, RequestBody.fromBytes(data));
     }
 
@@ -152,31 +203,25 @@ public final class S3CompatibleStorage implements CloudStorage {
                 .bucket(bucketName)
                 .key(key)
                 .build();
-
         return s3Client.getObjectAsBytes(request).asByteArray();
     }
 
     @Override
     public String getLink(String key) {
         String encodedKey = URLEncoder.encode(key, StandardCharsets.UTF_8);
-
-        // If a public/cdn base URL is provided, use that for both providers
         if (publicBaseUrl != null) {
-            return publicBaseUrl + "/" + encodedKey;
+            return String.format("%s/%s", publicBaseUrl, encodedKey);
         }
 
-        // Otherwise, compose a provider-specific URL
-        if (provider == Provider.CLOUDFLARE_R2) {
-            // This endpoint typically requires auth unless you expose it publicly via Workers or R2 public bucket
-            return String.format("https://%s.r2.cloudflarestorage.com/%s/%s", r2AccountId, bucketName, encodedKey);
-        } else {
-            // Default AWS S3 virtual-hosted–style URL
-            // Note: If the bucket is private, this will 403 without a presigned URL.
-            String host = ("us-east-1".equals(awsRegion))
-                    ? "s3.amazonaws.com"
-                    : "s3." + awsRegion + ".amazonaws.com";
-            return String.format("https://%s.%s/%s", bucketName, host, encodedKey);
-        }
+        return switch (provider) {
+            case CLOUDFLARE_R2 -> String.format(
+                    "https://%s.r2.cloudflarestorage.com/%s/%s",
+                    r2AccountId, bucketName, encodedKey);
+            case AWS_S3 -> {
+                String host = "us-east-1".equals(awsRegion) ? "s3.amazonaws.com" : "s3.%s.amazonaws.com".formatted(awsRegion);
+                yield String.format("https://%s.%s/%s", bucketName, host, encodedKey);
+            }
+        };
     }
 
     @Override
@@ -190,26 +235,23 @@ public final class S3CompatibleStorage implements CloudStorage {
 
     @Override
     public List<CloudItem> getObjects() {
-        ListObjectsV2Request request = ListObjectsV2Request.builder()
+        ListObjectsV2Response response = s3Client.listObjectsV2(ListObjectsV2Request.builder()
                 .bucket(bucketName)
-                .build();
+                .build());
 
-        ListObjectsV2Response response = s3Client.listObjectsV2(request);
-
-        return response.contents()
-                .stream()
+        return response.contents().stream()
                 .map(this::mapToCloudItem)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     private CloudItem mapToCloudItem(S3Object object) {
         long lastModifiedMillis = object.lastModified() != null
                 ? object.lastModified().toEpochMilli()
                 : 0L;
-
         return new CloudItem(object.key(), lastModifiedMillis);
     }
 
+    @Override
     public void close() {
         s3Client.close();
     }

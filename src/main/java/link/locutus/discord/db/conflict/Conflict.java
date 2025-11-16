@@ -126,9 +126,10 @@ public class Conflict {
 
     public ConflictMeta getData(boolean create) {
         ConflictMeta tmp = data;
-        if (tmp != null) return tmp;
-        if (create) {
-            synchronized (this) {
+        if (tmp != null || !create) return tmp;
+        synchronized (this) {
+            tmp = data;
+            if (tmp == null) {
                 tmp = data = ConflictMeta.create(this);
             }
         }
@@ -409,7 +410,7 @@ public class Conflict {
 
     public void setStatus(String status) {
         if (checkSet(tmp -> {
-            if (tmp.statusDesc.equals(status)) {
+            if (!tmp.statusDesc.equals(status)) {
                 tmp.statusDesc = status;
                 return true;
             }
@@ -421,7 +422,11 @@ public class Conflict {
 
     @Command(desc = "The conflict category")
     public ConflictCategory getCategory() {
-        return tryGet(CATEGORY, f -> f.category);
+        Object obj = tryGet(CATEGORY, f -> f.category);
+        if (obj instanceof Number n) {
+            return ConflictCategory.values[n.intValue()];
+        }
+        return (ConflictCategory) obj;
     }
 
     public void setCategory(ConflictCategory category) {
@@ -713,7 +718,7 @@ public class Conflict {
 
     private CoalitionSide getCoalition(int aaId1, int aaId2, long turn) {
         CoalitionSide coalition1 = getCoalition(true, true, true);
-        CoalitionSide coalition2 = getCoalition(true, true, true);
+        CoalitionSide coalition2 = getCoalition(false, true, true);
         if (coalition1.hasAlliance(aaId1)) {
             if (coalition2.hasAlliance(aaId2) &&
                     getStartTurn(aaId1) <= turn && getEndTurn(aaId1) > turn &&
@@ -909,7 +914,7 @@ public class Conflict {
             if (tmp.startTime2 != null) tmp.startTime2.remove(allianceId);
             if (tmp.endTime2 != null) tmp.endTime2.remove(allianceId);
             if (flag) {
-                if (tmp.coalition_1 != null) tmp.coalition_1.clearWarData();
+                if (tmp.coalition_1 != null) tmp.coalition_1.clearWarData(); // Clear war data sets the loaded state to falsee
                 if (tmp.coalition_2 != null) tmp.coalition_2.clearWarData();
             }
             return flag;
@@ -1123,6 +1128,7 @@ public class Conflict {
         }
 
         if (updateGraphMeta || updateGraphStats) {
+            checkRecalcGraph();
             String graphKey = "conflicts/graphs/" + webIdOrNull + ".gzip";
             byte[] value = HeaderGroup.getBytesZip(manager, this, Map.of(HeaderGroup.GRAPH_META, updateGraphMeta, HeaderGroup.GRAPH_DATA, updateGraphStats), now);
             aws.putObject(graphKey, value, ttl);

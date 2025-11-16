@@ -53,7 +53,18 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.ParseException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
@@ -67,7 +78,6 @@ import static link.locutus.discord.db.conflict.ConflictField.*;
 public class ConflictManager {
     private final WarDB db;
     private final CloudStorage aws;
-    private volatile boolean conflictsLoaded = false;
 
     private final Map<Integer, Conflict> conflictById = new Int2ObjectOpenHashMap<>();
     private Conflict[] conflictArr;
@@ -88,89 +98,142 @@ public class ConflictManager {
 
     public ConflictManager(WarDB db) {
         this.db = db;
-        this.aws = setupCloud();
+        this.aws = S3CompatibleStorage.setupAuto();
+
+        // Tables
+        {
+            db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_announcements2 (" +
+                    "conflict_id INTEGER NOT NULL, " +
+                    "topic_id INTEGER NOT NULL, " +
+                    "description VARCHAR NOT NULL, " +
+                    "PRIMARY KEY (conflict_id, topic_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
+
+            String createConflicts = "CREATE TABLE IF NOT EXISTS conflicts (" +
+                    String.join(", ",
+                            ID + " INTEGER PRIMARY KEY AUTOINCREMENT",
+                            NAME + " VARCHAR NOT NULL",
+                            START + " BIGINT NOT NULL",
+                            END + " BIGINT NOT NULL",
+                            COL1 + " VARCHAR NOT NULL",
+                            COL2 + " VARCHAR NOT NULL",
+                            WIKI + " VARCHAR NOT NULL",
+                            CB + " VARCHAR NOT NULL",
+                            STATUS + " VARCHAR NOT NULL",
+                            CATEGORY + " INTEGER NOT NULL",
+                            CREATOR + " BIGINT NOT NULL",
+                            PUSHED_INDEX + " BIGINT NOT NULL",
+                            PUSHED_PAGE + " BIGINT NOT NULL",
+                            PUSHED_GRAPH + " BIGINT NOT NULL",
+                            RECALC_GRAPH + " BOOLEAN NOT NULL"
+                    ) + ")";
+            db.executeStmt(createConflicts);
+            db.executeStmt("ALTER TABLE conflicts ADD COLUMN creator BIGINT DEFAULT 0", true);
+            db.executeStmt("ALTER TABLE conflicts ADD COLUMN wiki VARCHAR DEFAULT ''", true);
+            db.executeStmt("ALTER TABLE conflicts ADD COLUMN cb VARCHAR DEFAULT ''", true);
+            db.executeStmt("ALTER TABLE conflicts ADD COLUMN status VARCHAR DEFAULT ''", true);
+            db.executeStmt("ALTER TABLE conflicts ADD COLUMN category INTEGER DEFAULT 0", true);
+            db.executeStmt("ALTER TABLE conflicts ADD COLUMN " + PUSHED_INDEX + " BIGINT DEFAULT 0", true);
+            db.executeStmt("ALTER TABLE conflicts ADD COLUMN " + PUSHED_PAGE + " BIGINT DEFAULT 0", true);
+            db.executeStmt("ALTER TABLE conflicts ADD COLUMN " + PUSHED_GRAPH + " BIGINT DEFAULT 0", true);
+            db.executeStmt("ALTER TABLE conflicts ADD COLUMN " + RECALC_GRAPH + " BOOLEAN DEFAULT 0", true);
+
+            db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_participant (conflict_id INTEGER NOT NULL, " +
+                    "alliance_id INTEGER NOT NULL, " +
+                    "side BOOLEAN, start BIGINT NOT NULL, " +
+                    "end BIGINT NOT NULL, " +
+                    "PRIMARY KEY (conflict_id, alliance_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
+            db.executeStmt("CREATE TABLE IF NOT EXISTS legacy_names2 (id INTEGER NOT NULL, name VARCHAR NOT NULL, date BIGINT DEFAULT 0, PRIMARY KEY (id, name, date))");
+
+            db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_graphs2 (conflict_id INTEGER NOT NULL, side BOOLEAN NOT NULL, alliance_id INT NOT NULL, metric INTEGER NOT NULL, turn BIGINT NOT NULL, city INTEGER NOT NULL, value INTEGER NOT NULL, PRIMARY KEY (conflict_id, alliance_id, metric, turn, city), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
+
+            db.executeStmt("CREATE TABLE IF NOT EXISTS source_sets (guild BIGINT NOT NULL, source_id BIGINT NOT NULL, source_type INT NOT NULL, PRIMARY KEY (guild, source_id, source_type))");
+
+            // attack_subtypes attack id int primary key, subtype int not null
+            db.executeStmt("CREATE TABLE IF NOT EXISTS attack_subtypes (attack_id INT PRIMARY KEY, subtype INT NOT NULL)");
+
+            // create table if not exists MANUAL_WARS war_id, conflict_id, int alliance, primary key (war_id)
+            db.executeStmt("CREATE TABLE IF NOT EXISTS MANUAL_WARS (war_id INT PRIMARY KEY, conflict_id INT NOT NULL, alliance INT NOT NULL)");
+
+            db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_row_cache (" +
+                    "conflict_id INTEGER, " +
+                    "header_hash BIGINT NOT NULL, " +
+                    "row_data BLOB NOT NULL, " +
+                    "type INTEGER NOT NULL, " +
+                    "updated_ms BIGINT NOT NULL DEFAULT 0, " +
+                    "FOREIGN KEY(conflict_id) REFERENCES conflicts(id)," +
+                    "PRIMARY KEY (conflict_id, type))");
+        }
+        { // load
+            List<Conflict> conflicts = new ArrayList<>();
+            conflictById.clear();
+
+            db.query("SELECT conflict_id, type, updated_ms from conflict_row_cache", stmt -> {
+            }, (ThrowingConsumer<ResultSet>) rs -> {
+                while (rs.next()) {
+                    int conflictId = rs.getInt("conflict_id");
+                    long updatedMs = rs.getLong("updated_ms");
+                    HeaderGroup type = HeaderGroup.values[rs.getInt("type")];
+                    cacheTimes.computeIfAbsent(conflictId, k -> new EnumMap<>(HeaderGroup.class)).put(type, updatedMs);
+                }
+            });
+
+            db.query("SELECT * FROM conflicts", stmt -> {
+            }, (ThrowingConsumer<ResultSet>) rs -> {
+                int ordinal = 0;
+                while (rs.next()) {
+                    int id = rs.getInt("id");
+                    String name = rs.getString("name");
+                    long startTurn = rs.getLong("start");
+                    long endTurn = rs.getLong("end");
+                    long pushedIndex = rs.getLong(PUSHED_INDEX.name());
+                    long pushedPage = rs.getLong(PUSHED_PAGE.name());
+                    long pushedGraph = rs.getLong(PUSHED_GRAPH.name());
+                    boolean recalcGraph = rs.getBoolean(RECALC_GRAPH.name());
+                    Conflict conflict = new Conflict(id, ordinal++, name, startTurn, endTurn, pushedIndex, pushedPage, pushedGraph, recalcGraph);
+                    if (conflict.isActive()) {
+                        conflict.initData(rs);
+                    }
+                    conflicts.add(conflict);
+                    conflictById.put(id, conflict);
+                }
+            });
+            this.conflictArr = conflicts.toArray(new Conflict[0]);
+
+            db.query("SELECT * FROM legacy_names2", stmt -> {
+            }, (ThrowingConsumer<ResultSet>) rs -> {
+                while (rs.next()) {
+                    int id = rs.getInt("id");
+                    String name = rs.getString("name");
+                    long date = rs.getLong("date");
+                    legacyNames2.put(id, name);
+                    String nameLower = name.toLowerCase(Locale.ROOT);
+                    legacyIdsByDate.computeIfAbsent(nameLower, k -> new Long2IntOpenHashMap()).put(date, id);
+                }
+            });
+
+            for (Map.Entry<String, Integer> entry : LegacyAllianceNames.get().entrySet()) {
+                String name = entry.getKey();
+                int id = entry.getValue();
+                if (!legacyNames2.containsKey(id)) {
+                    legacyNames2.put(id, name);
+                }
+                String nameLower = name.toLowerCase(Locale.ROOT);
+                Map<Long, Integer> map = legacyIdsByDate.computeIfAbsent(nameLower, k -> new Long2IntOpenHashMap());
+                if (map.isEmpty()) {
+                    map.put(Long.MAX_VALUE, id);
+                }
+            }
+
+            List<Conflict> actives = getActiveConflicts();
+            if (!actives.isEmpty()) {
+                loadConflictWars(actives, false, true, true);
+            }
+            Locutus.imp().getRepeatingTasks().addTask("Conflict Website", this::pushDirtyConflicts, Settings.INSTANCE.TASKS.WAR_STATS_PUSH_INTERVAL, TimeUnit.MINUTES);
+        }
     }
 
     public WarDB getDb() {
         return db;
-    }
-
-    private CloudStorage setupCloud() {
-        String provider = Settings.INSTANCE.WEB.CONFLICTS.PROVIDER;
-        if (provider == null) return null;
-        String p = provider.trim().toLowerCase(Locale.ROOT);
-
-        if (p.equals("s3") || p.equals("aws") || p.equals("amazon")) {
-            return S3CompatibleStorage.setupAwsS3();
-        } else if (p.equals("r2") || p.equals("cf") || p.equals("cloudflare")) {
-            return S3CompatibleStorage.setupCloudflareR2();
-        } else {
-            throw new IllegalArgumentException("Unknown cloud storage provider: " + provider + ". Supported: S3, R2");
-        }
-    }
-
-    public void createTables() {
-
-        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_announcements2 (" +
-                "conflict_id INTEGER NOT NULL, " +
-                "topic_id INTEGER NOT NULL, " +
-                "description VARCHAR NOT NULL, " +
-                "PRIMARY KEY (conflict_id, topic_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
-
-        String createConflicts = "CREATE TABLE IF NOT EXISTS conflicts (" +
-                String.join(", ",
-                        ID + " INTEGER PRIMARY KEY AUTOINCREMENT",
-                        NAME + " VARCHAR NOT NULL",
-                        START + " BIGINT NOT NULL",
-                        END + " BIGINT NOT NULL",
-                        COL1 + " VARCHAR NOT NULL",
-                        COL2 + " VARCHAR NOT NULL",
-                        WIKI + " VARCHAR NOT NULL",
-                        CB + " VARCHAR NOT NULL",
-                        STATUS + " VARCHAR NOT NULL",
-                        CATEGORY + " INTEGER NOT NULL",
-                        CREATOR + " BIGINT NOT NULL",
-                        PUSHED_INDEX + " BIGINT NOT NULL",
-                        PUSHED_PAGE + " BIGINT NOT NULL",
-                        PUSHED_GRAPH + " BIGINT NOT NULL",
-                        RECALC_GRAPH + " BOOLEAN NOT NULL"
-                ) + ")";
-        db.executeStmt(createConflicts);
-        db.executeStmt("ALTER TABLE conflicts ADD COLUMN creator BIGINT DEFAULT 0", true);
-        db.executeStmt("ALTER TABLE conflicts ADD COLUMN wiki VARCHAR DEFAULT ''", true);
-        db.executeStmt("ALTER TABLE conflicts ADD COLUMN cb VARCHAR DEFAULT ''", true);
-        db.executeStmt("ALTER TABLE conflicts ADD COLUMN status VARCHAR DEFAULT ''", true);
-        db.executeStmt("ALTER TABLE conflicts ADD COLUMN category INTEGER DEFAULT 0", true);
-        db.executeStmt("ALTER TABLE conflicts ADD COLUMN " + PUSHED_INDEX + " BIGINT DEFAULT 0", true);
-        db.executeStmt("ALTER TABLE conflicts ADD COLUMN " + PUSHED_PAGE + " BIGINT DEFAULT 0", true);
-        db.executeStmt("ALTER TABLE conflicts ADD COLUMN " + PUSHED_GRAPH + " BIGINT DEFAULT 0", true);
-        db.executeStmt("ALTER TABLE conflicts ADD COLUMN " + RECALC_GRAPH + " BOOLEAN DEFAULT 0", true);
-
-        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_participant (conflict_id INTEGER NOT NULL, " +
-                "alliance_id INTEGER NOT NULL, " +
-                "side BOOLEAN, start BIGINT NOT NULL, " +
-                "end BIGINT NOT NULL, " +
-                "PRIMARY KEY (conflict_id, alliance_id), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
-        db.executeStmt("CREATE TABLE IF NOT EXISTS legacy_names2 (id INTEGER NOT NULL, name VARCHAR NOT NULL, date BIGINT DEFAULT 0, PRIMARY KEY (id, name, date))");
-
-        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_graphs2 (conflict_id INTEGER NOT NULL, side BOOLEAN NOT NULL, alliance_id INT NOT NULL, metric INTEGER NOT NULL, turn BIGINT NOT NULL, city INTEGER NOT NULL, value INTEGER NOT NULL, PRIMARY KEY (conflict_id, alliance_id, metric, turn, city), FOREIGN KEY(conflict_id) REFERENCES conflicts(id))");
-
-        db.executeStmt("CREATE TABLE IF NOT EXISTS source_sets (guild BIGINT NOT NULL, source_id BIGINT NOT NULL, source_type INT NOT NULL, PRIMARY KEY (guild, source_id, source_type))");
-
-        // attack_subtypes attack id int primary key, subtype int not null
-        db.executeStmt("CREATE TABLE IF NOT EXISTS attack_subtypes (attack_id INT PRIMARY KEY, subtype INT NOT NULL)");
-
-        // create table if not exists MANUAL_WARS war_id, conflict_id, int alliance, primary key (war_id)
-        db.executeStmt("CREATE TABLE IF NOT EXISTS MANUAL_WARS (war_id INT PRIMARY KEY, conflict_id INT NOT NULL, alliance INT NOT NULL)");
-
-        db.executeStmt("CREATE TABLE IF NOT EXISTS conflict_row_cache (" +
-                "conflict_id INTEGER, " +
-                "header_hash BIGINT NOT NULL, " +
-                "row_data BLOB NOT NULL, " +
-                "type INTEGER NOT NULL, " +
-                "updated_ms BIGINT NOT NULL DEFAULT 0, " +
-                "FOREIGN KEY(conflict_id) REFERENCES conflicts(id)," +
-                "PRIMARY KEY (conflict_id, type))");
     }
 
     private synchronized void importData(Database sourceDb, Database targetDb, String tableName) throws SQLException {
@@ -236,7 +299,7 @@ public class ConflictManager {
 
     public boolean pushDirtyConflicts() {
         long now = System.currentTimeMillis();
-        boolean updateIndex = true;
+        boolean updateIndex = false;
         for (Conflict conflict : getActiveConflicts()) {
             long lastPushPage = conflict.getPushedPage();
             long lastPushGraph = conflict.getPushedGraph();
@@ -415,7 +478,6 @@ public class ConflictManager {
 
     @Subscribe
     public void onAttack(AttackEvent event) {
-        if (!this.conflictsLoaded) return;
         AbstractCursor attack = event.getAttack();
         DBWar war = event.getWar();
         if (war != null) {
@@ -435,7 +497,6 @@ public class ConflictManager {
 
     @Subscribe
     public void onTurnChange(TurnChangeEvent event) {
-        if (!conflictsLoaded) return;
         long turn = event.getCurrent();
         List<Conflict> active = getActiveConflicts();
         synchronized (loadConflictLock) {
@@ -584,92 +645,6 @@ public class ConflictManager {
         }
     }
 
-    public void loadConflicts() {
-        List<Conflict> conflicts = new ArrayList<>();
-        List<Integer> activeConflictIds = new IntArrayList();
-        conflictById.clear();
-
-        db.query("SELECT conflict_id, type, updated_ms from conflict_row_cache", stmt -> {
-        }, (ThrowingConsumer<ResultSet>) rs -> {
-            while (rs.next()) {
-                int conflictId = rs.getInt("conflict_id");
-                long updatedMs = rs.getLong("updated_ms");
-                HeaderGroup type = HeaderGroup.values[rs.getInt("type")];
-                cacheTimes.computeIfAbsent(conflictId, k -> new EnumMap<>(HeaderGroup.class)).put(type, updatedMs);
-            }
-        });
-
-        db.query("SELECT * FROM conflicts", stmt -> {
-        }, (ThrowingConsumer<ResultSet>) rs -> {
-            int ordinal = 0;
-            while (rs.next()) {
-                int id = rs.getInt("id");
-                String name = rs.getString("name");
-                long startTurn = rs.getLong("start");
-                long endTurn = rs.getLong("end");
-                long pushedIndex = rs.getLong(PUSHED_INDEX.name());
-                long pushedPage = rs.getLong(PUSHED_PAGE.name());
-                long pushedGraph = rs.getLong(PUSHED_GRAPH.name());
-                boolean recalcGraph = rs.getBoolean(RECALC_GRAPH.name());
-                Conflict conflict = new Conflict(id, ordinal++, name, startTurn, endTurn, pushedIndex, pushedPage, pushedGraph, recalcGraph);
-                if (conflict.isActive()) {
-                    conflict.initData(rs);
-                    activeConflictIds.add(conflict.getId());
-                }
-                conflicts.add(conflict);
-                conflictById.put(id, conflict);
-            }
-        });
-        this.conflictArr = conflicts.toArray(new Conflict[0]);
-
-        db.query("SELECT * FROM legacy_names2", stmt -> {
-        }, (ThrowingConsumer<ResultSet>) rs -> {
-            while (rs.next()) {
-                int id = rs.getInt("id");
-                String name = rs.getString("name");
-                long date = rs.getLong("date");
-                legacyNames2.put(id, name);
-                String nameLower = name.toLowerCase(Locale.ROOT);
-                legacyIdsByDate.computeIfAbsent(nameLower, k -> new Long2IntOpenHashMap()).put(date, id);
-            }
-        });
-
-        for (Map.Entry<String, Integer> entry : LegacyAllianceNames.get().entrySet()) {
-            String name = entry.getKey();
-            int id = entry.getValue();
-            if (!legacyNames2.containsKey(id)) {
-                legacyNames2.put(id, name);
-            }
-            String nameLower = name.toLowerCase(Locale.ROOT);
-            Map<Long, Integer> map = legacyIdsByDate.computeIfAbsent(nameLower, k -> new Long2IntOpenHashMap());
-            if (map.isEmpty()) {
-                map.put(Long.MAX_VALUE, id);
-            }
-        }
-
-        Locutus.imp().getExecutor().submit(() -> {
-            List<Conflict> actives = getActiveConflicts();
-            if (!actives.isEmpty()) {
-                loadConflictWars(actives, false, true, true);
-            }
-            for (Conflict conflict : conflictArr) {
-                if (!conflict.isActive()) {
-                    synchronized (loadConflictLock) {
-                        conflict.tryUnload();
-                    }
-                }
-            }
-            Locutus.imp().getRepeatingTasks().addTask("Conflict Website", () -> {
-                if (!conflictsLoaded) return;
-                pushDirtyConflicts();
-            }, Settings.INSTANCE.TASKS.WAR_STATS_PUSH_INTERVAL, TimeUnit.MINUTES);
-        });
-    }
-
-    public boolean isLoaded() {
-        return conflictsLoaded;
-    }
-
     private void loadWarsFromQueryAndProcess(Conflict conflict, boolean clearBeforeUpdate, AttackQuery query) {
         if (clearBeforeUpdate) {
             conflict.clearWarData();
@@ -699,7 +674,7 @@ public class ConflictManager {
 
         Set<Integer> aaIds = conflict.getAllianceIds();
 
-        AttackQuery query = Locutus.imp().getWarDb().queryAttacks()
+        AttackQuery query = db.queryAttacks()
                 .withWarsForNationOrAlliance(null, aaIds::contains, f -> f.getDate() >= start && f.getDate() <= end);
 
         loadWarsFromQueryAndProcess(conflict, clearBeforeUpdate, query);
@@ -709,7 +684,7 @@ public class ConflictManager {
         long start = startOrNull == null ? TimeUtil.getTimeFromTurn(conflict.getStartTurn()) : startOrNull;
         long end = endOrNull == null ? (conflict.getEndTurn() == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTimeFromTurn(conflict.getEndTurn() + 60)) : endOrNull;
 
-        AttackQuery query = Locutus.imp().getWarDb().queryAttacks()
+        AttackQuery query = db.queryAttacks()
                 .withWarSet(f -> f.getWars(Set.of(allianceId), start, end));
 
         loadWarsFromQueryAndProcess(conflict, false, query);
@@ -868,7 +843,6 @@ public class ConflictManager {
                         }
                     });
                 }
-                if (isStartup) conflictsLoaded = true;
             } catch (Throwable e) {
                 e.printStackTrace();
             }
@@ -1143,8 +1117,11 @@ public class ConflictManager {
                 Conflict conflict = new Conflict(id, conflictArr.length, name, turnStart, turnEnd, 0, 0, 0, true );
                 conflict.initData(col1, col2, creator, category, wiki, cb, status);
                 conflictById.put(id, conflict);
-                conflictArr = Arrays.copyOf(conflictArr, conflictArr.length + 1);
-                conflictArr[conflictArr.length - 1] = conflict;
+                synchronized (conflictArr) {
+                    Conflict[] tmp = Arrays.copyOf(conflictArr, conflictArr.length + 1);
+                    tmp[tmp.length - 1] = conflict;
+                    conflictArr = tmp;
+                }
 
                 synchronized (activeConflictsOrd) {
                     long turn = TimeUtil.getTurn();
@@ -1265,8 +1242,7 @@ public class ConflictManager {
     }
 
     public List<Conflict> getActiveConflicts() {
-        long cutoff = TimeUtil.getTurn() - 60;
-        return conflictById.values().stream().filter(conflict -> conflict.getEndTurn() >= cutoff).toList();
+        return conflictById.values().stream().filter(Conflict::isActive).toList();
     }
 
     public Conflict getConflict(String conflictName) {
@@ -1335,12 +1311,10 @@ public class ConflictManager {
         synchronized (activeConflictsOrd) {
             synchronized (conflictById) {
                 if (conflictById.remove(conflict.getId()) != null) {
-                    ArrayList<Conflict> conflictList = new ArrayList<>(Arrays.asList(conflictArr));
+                    List<Conflict> conflictList = new ArrayList<>(Arrays.asList(conflictArr));
                     conflictList.remove(conflict);
                     conflictArr = conflictList.toArray(new Conflict[0]);
-
                     activeConflictsOrd.remove(conflict.getOrdinal());
-
                     recreateConflictsByAlliance();
                 }
             }

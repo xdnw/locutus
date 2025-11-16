@@ -1008,81 +1008,87 @@ public class ConflictCommands {
 
     @Command(desc = "Move data between S3 configuration and R2")
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String importCloudData(@Me IMessageIO io, ConflictManager manager, @Switch("s3") boolean fromS3, @Switch("r2") boolean fromR2) throws IOException {
+    public String importCloudData(@Me IMessageIO io, @Switch("s3") boolean fromS3, @Switch("r2") boolean fromR2) throws IOException {
         if (fromS3 == fromR2) {
             throw new IllegalArgumentException("Please specify either `s3` or `r2`");
         }
-        CloudStorage s3 = S3CompatibleStorage.setupAwsS3();
-        CloudStorage r2 = S3CompatibleStorage.setupCloudflareR2();
-        List<String> errors = new ObjectArrayList<>();
-        if (s3 == null) errors.add("S3 is not configured in `config.yml`");
-        if (r2 == null) errors.add("R2 is not configured in `config.yml`");
-        if (!errors.isEmpty()) {
-            throw new IllegalArgumentException(StringMan.join(errors, "\n"));
-        }
+        CloudStorage s3 = null;
+        CloudStorage r2 = null;
+        try {
+            s3 = S3CompatibleStorage.setupAwsS3();
+            r2 = S3CompatibleStorage.setupCloudflareR2();
+            if (s3 == null || r2 == null) {
+                List<String> errors = new ObjectArrayList<>();
+                if (s3 == null) errors.add("S3 is not configured in `config.yml`");
+                if (r2 == null) errors.add("R2 is not configured in `config.yml`");
+                throw new IllegalArgumentException(StringMan.join(errors, "\n"));
+            }
 
-        CloudStorage source = fromS3 ? s3 : r2;
-        CloudStorage target = fromS3 ? r2 : s3;
+            CloudStorage source = fromS3 ? s3 : r2;
+            CloudStorage target = fromS3 ? r2 : s3;
 
-        CompletableFuture<IMessageBuilder> msgFuture = io.send("Please wait...");
-        long start = System.currentTimeMillis();
+            CompletableFuture<IMessageBuilder> msgFuture = io.send("Please wait...");
+            long start = System.currentTimeMillis();
 
-        // Load listings
-        List<CloudItem> sourceObj = source.getObjects();
-        List<CloudItem> destObj = target.getObjects();
+            // Load listings
+            List<CloudItem> sourceObj = source.getObjects();
+            List<CloudItem> destObj = target.getObjects();
 
-        // Build dest index
-        Map<String, CloudItem> destIndex = new HashMap<>();
-        for (CloudItem d : destObj) {
-            destIndex.put(d.key(), d);
-        }
+            // Build dest index
+            Map<String, CloudItem> destIndex = new HashMap<>();
+            for (CloudItem d : destObj) {
+                destIndex.put(d.key(), d);
+            }
 
-        // Copy if not exists or source is newer
-        int examined = 0, copied = 0, skipped = 0, failed = 0;
-        long lastUpdate = System.currentTimeMillis();
-        long ttl = TimeUnit.MINUTES.toSeconds(5);
+            // Copy if not exists or source is newer
+            int examined = 0, copied = 0, skipped = 0, failed = 0;
+            long lastUpdate = System.currentTimeMillis();
+            long ttl = TimeUnit.MINUTES.toSeconds(5);
 
-        for (CloudItem item : sourceObj) {
-            String key = item.key();
-            boolean matches =
-                    key.matches("conflicts/[0-9]+\\.gzip") ||
-                            key.matches("conflicts/graphs/[0-9]+\\.gzip") ||
-                            key.equals("conflicts/index.gzip");
-            if (!matches) continue;
+            for (CloudItem item : sourceObj) {
+                String key = item.key();
+                boolean matches =
+                        key.matches("conflicts/[0-9]+\\.gzip") ||
+                                key.matches("conflicts/graphs/[0-9]+\\.gzip") ||
+                                key.equals("conflicts/index.gzip");
+                if (!matches) continue;
 
-            examined++;
-            CloudItem dest = destIndex.get(key);
-            boolean shouldCopy = dest == null || (item.lastModified() > dest.lastModified() + 1000);
+                examined++;
+                CloudItem dest = destIndex.get(key);
+                boolean shouldCopy = dest == null || (item.lastModified() > dest.lastModified() + 1000);
 
-            if (!shouldCopy) {
-                skipped++;
-            } else {
-                try {
-                    // Read from source and write to target
-                    byte[] data = source.getObject(key);
-                    if (data == null) {
-                        throw new IOException("Null payload for " + key);
+                if (!shouldCopy) {
+                    skipped++;
+                } else {
+                    try {
+                        // Read from source and write to target
+                        byte[] data = source.getObject(key);
+                        if (data == null) {
+                            throw new IOException("Null payload for " + key);
+                        }
+                        target.putObject(key, data, ttl);
+                        copied++;
+                    } catch (Exception ex) {
+                        failed++;
                     }
-                    target.putObject(key, data, ttl);
-                    copied++;
-                } catch (Exception ex) {
-                    failed++;
+                }
+
+                // Periodic progress update
+                long now = System.currentTimeMillis();
+                if (now - lastUpdate >= 10_000) {
+                    io.updateOptionally(
+                            msgFuture,
+                            "Copying... examined: " + examined + ", copied: " + copied + ", skipped: " + skipped + ", errors: " + failed
+                    );
+                    lastUpdate = now;
                 }
             }
-
-            // Periodic progress update
-            long now = System.currentTimeMillis();
-            if (now - lastUpdate >= 10_000) {
-                io.updateOptionally(
-                        msgFuture,
-                        "Copying... examined: " + examined + ", copied: " + copied + ", skipped: " + skipped + ", errors: " + failed
-                );
-                lastUpdate = now;
-            }
+            long tookMs = System.currentTimeMillis() - start;
+            return "Done! examined: " + examined + ", copied: " + copied + ", skipped: " + skipped + ", errors: " + failed +
+                    " in " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, tookMs);
+        } finally {
+            if (s3 != null) s3.close();
+            if (r2 != null) r2.close();
         }
-
-        long tookMs = System.currentTimeMillis() - start;
-        return "Done! examined: " + examined + ", copied: " + copied + ", skipped: " + skipped + ", errors: " + failed +
-                " in " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, tookMs);
     }
 }

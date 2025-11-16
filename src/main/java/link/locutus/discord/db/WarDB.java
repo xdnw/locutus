@@ -3,7 +3,11 @@ package link.locutus.discord.db;
 import com.google.common.base.Predicates;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Lists;
-import com.politicsandwar.graphql.model.*;
+import com.politicsandwar.graphql.model.Bounty;
+import com.politicsandwar.graphql.model.War;
+import com.politicsandwar.graphql.model.WarAttack;
+import com.politicsandwar.graphql.model.WarAttackResponseProjection;
+import com.politicsandwar.graphql.model.WarattacksQueryRequest;
 import com.ptsmods.mysqlw.Database;
 import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TablePreset;
@@ -24,16 +28,30 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AttackCursorFactory;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors.ALootCursor;
-import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.NationColor;
+import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.conflict.ConflictManager;
-import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.AttackEntry;
+import link.locutus.discord.db.entities.CounterStat;
+import link.locutus.discord.db.entities.CounterType;
+import link.locutus.discord.db.entities.CustomBounty;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBBounty;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.db.entities.LootEntry;
+import link.locutus.discord.db.entities.NationFilterString;
 import link.locutus.discord.db.entities.Treaty;
+import link.locutus.discord.db.entities.WarAttackSubcategoryEntry;
+import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.db.handlers.ActiveWarHandler;
 import link.locutus.discord.db.handlers.AttackQuery;
 import link.locutus.discord.event.Event;
@@ -42,27 +60,53 @@ import link.locutus.discord.event.bounty.BountyRemoveEvent;
 import link.locutus.discord.event.nation.NationChangeColorEvent;
 import link.locutus.discord.event.nation.NationChangeDefEvent;
 import link.locutus.discord.event.war.AttackEvent;
-import link.locutus.discord.util.*;
+import link.locutus.discord.util.AlertUtil;
+import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PW;
+import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.scheduler.CachedSupplier;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.scheduler.ThrowingFunction;
 import link.locutus.discord.util.update.WarUpdateProcessor;
+import link.locutus.discord.web.jooby.S3CompatibleStorage;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.text.ParseException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.*;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -77,7 +121,9 @@ public class WarDB extends DBMainV2 {
     private final Int2ObjectOpenHashMap<Object> warsByNationId = new Int2ObjectOpenHashMap<>();
     private final Object warsByNationLock = new Object();
     private final Int2ObjectOpenHashMap<List<byte[]>> attacksByWarId2 = new Int2ObjectOpenHashMap<>();
-    private ConflictManager conflictManager;
+
+    private Supplier<ConflictManager> conflictManagerSupplier;
+
     public WarDB() throws SQLException {
         this("war");
     }
@@ -88,6 +134,102 @@ public class WarDB extends DBMainV2 {
         executeStmt("CREATE TABLE IF NOT EXISTS war_metadata (key TEXT PRIMARY KEY, value TEXT)");
         update("INSERT OR REPLACE INTO war_metadata (key, value) VALUES (?, ?)",
                 "victory_attacks_reserialized", "true");
+
+    }
+
+    @Override
+    public void createTables() {
+        {
+            TablePreset.create("BOUNTIES_V3")
+                    .putColumn("id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("date", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("nation_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("posted_by", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("attack_type", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("amount", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .create(getDb());
+
+            String subCatQuery = TablePreset.create("ATTACK_SUBCATEGORY_CACHE")
+                    .putColumn("attack_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("subcategory_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .putColumn("war_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
+                    .buildQuery(getDb().getType());
+            subCatQuery = subCatQuery.replace(");", ", PRIMARY KEY(attack_id, subcategory_id));");
+            getDb().executeUpdate(subCatQuery);
+        }
+
+        {
+            String create = "CREATE TABLE IF NOT EXISTS `WARS` (`id` INT NOT NULL PRIMARY KEY, `attacker_id` INT NOT NULL, `defender_id` INT NOT NULL, `attacker_aa` INT NOT NULL, `defender_aa` INT NOT NULL, `war_type` INT NOT NULL, `status` INT NOT NULL, `date` BIGINT NOT NULL, `attCities` INT NOT NULL, `defCities` INT NOT NULL, `research` INT NOT NULL)";
+            executeStmt(create);
+            executeStmt("ALTER TABLE `WARS` ADD COLUMN `attCities` INT NOT NULL DEFAULT 0", true);
+            executeStmt("ALTER TABLE `WARS` ADD COLUMN `defCities` INT NOT NULL DEFAULT 0", true);
+            executeStmt("ALTER TABLE `WARS` ADD COLUMN `research` INT NOT NULL DEFAULT 0", true);
+        };
+
+        {
+            executeStmt("CREATE TABLE IF NOT EXISTS `BLOCKADED` (`blockader`, `blockaded`, PRIMARY KEY(`blockader`, `blockaded`))");
+        };
+
+        executeStmt("CREATE INDEX IF NOT EXISTS index_WARS_date ON WARS (date);");
+        executeStmt("CREATE INDEX IF NOT EXISTS index_WARS_attacker ON WARS (attacker_id);");
+        executeStmt("CREATE INDEX IF NOT EXISTS index_WARS_defender ON WARS (defender_id);");
+        executeStmt("CREATE INDEX IF NOT EXISTS index_WARS_status ON WARS (status);");
+
+        {
+            String create = "CREATE TABLE IF NOT EXISTS `COUNTER_STATS` (`id` INT NOT NULL PRIMARY KEY, `type` INT NOT NULL, `active` INT NOT NULL)";
+            try (Statement stmt = getConnection().createStatement()) {
+                stmt.addBatch(create);
+                stmt.executeBatch();
+                stmt.clearBatch();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        };
+
+        {
+            String attacksTable = "CREATE TABLE IF NOT EXISTS `ATTACKS3` (" +
+                    "`id` INTEGER PRIMARY KEY, " +
+                    "`war_id` INT NOT NULL, " +
+                    "`attacker_nation_id` INT NOT NULL, " +
+                    "`defender_nation_id` INT NOT NULL, " +
+                    "`date` BIGINT NOT NULL, " +
+                    "`data` BLOB NOT NULL)";
+            executeStmt(attacksTable);
+            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_warid ON ATTACKS3 (war_id);");
+            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_attacker_nation_id ON ATTACKS3 (attacker_nation_id);");
+            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_defender_nation_id ON ATTACKS3 (defender_nation_id);");
+            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_date ON ATTACKS3 (date);");
+        }
+
+        // create custom bounties table
+        {
+            String create = "CREATE TABLE IF NOT EXISTS `CUSTOM_BOUNTIES` (" +
+                    "`id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    "`placed_by` INT NOT NULL, " +
+                    "`date_created` BIGINT NOT NULL, " +
+                    "`claimed_by` BIGINT NOT NULL, " +
+                    "`amount` BLOB NOT NULL, " +
+                    "`nations` BLOB NOT NULL, " +
+                    "`alliances` BLOB NOT NULL, " +
+                    "`filter` VARCHAR NOT NULL, " +
+                    "`total_damage` BIGINT NOT NULL, " +
+                    "`infra_damage` BIGINT NOT NULL, " +
+                    "`unit_damage` BIGINT NOT NULL, " +
+                    "`only_offensives` INT NOT NULL, " +
+                    "`unit_kills` BLOB NOT NULL, " +
+                    "`unit_attacks` BLOB NOT NULL, " +
+                    "`allowed_war_types` BIGINT NOT NULL, " +
+                    "`allowed_war_status` BIGINT NOT NULL, " +
+                    "`allowed_attack_types` BIGINT NOT NULL, " +
+                    "`allowed_attack_rolls` BIGINT NOT NULL)";
+            try (Statement stmt = getConnection().createStatement()) {
+                stmt.addBatch(create);
+                stmt.executeBatch();
+                stmt.clearBatch();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        };
     }
 
     public void convertAttackEndian() {
@@ -838,9 +980,14 @@ public class WarDB extends DBMainV2 {
         }
 
         activeWars.syncBlockades();
-        if (conflictManager != null) {
-            conflictManager.loadConflicts();
-        }
+
+        conflictManagerSupplier = CachedSupplier.preload(() -> {
+            if (S3CompatibleStorage.isConfigured()) {
+                return new ConflictManager(this);
+            } else {
+                return null;
+            }
+        });
 
         return this;
     }
@@ -1385,115 +1532,8 @@ public class WarDB extends DBMainV2 {
         }
     }
 
-    private void reEncodeAttacks() {
-        // iterate all attacks byte[] and
-    }
-
-    @Override
-    public void createTables() {
-        {
-            TablePreset.create("BOUNTIES_V3")
-                    .putColumn("id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("date", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("nation_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("posted_by", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("attack_type", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("amount", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .create(getDb());
-
-            String subCatQuery = TablePreset.create("ATTACK_SUBCATEGORY_CACHE")
-                    .putColumn("attack_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("subcategory_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("war_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .buildQuery(getDb().getType());
-            subCatQuery = subCatQuery.replace(");", ", PRIMARY KEY(attack_id, subcategory_id));");
-            getDb().executeUpdate(subCatQuery);
-        }
-
-        {
-            String create = "CREATE TABLE IF NOT EXISTS `WARS` (`id` INT NOT NULL PRIMARY KEY, `attacker_id` INT NOT NULL, `defender_id` INT NOT NULL, `attacker_aa` INT NOT NULL, `defender_aa` INT NOT NULL, `war_type` INT NOT NULL, `status` INT NOT NULL, `date` BIGINT NOT NULL, `attCities` INT NOT NULL, `defCities` INT NOT NULL, `research` INT NOT NULL)";
-            executeStmt(create);
-            executeStmt("ALTER TABLE `WARS` ADD COLUMN `attCities` INT NOT NULL DEFAULT 0", true);
-            executeStmt("ALTER TABLE `WARS` ADD COLUMN `defCities` INT NOT NULL DEFAULT 0", true);
-            executeStmt("ALTER TABLE `WARS` ADD COLUMN `research` INT NOT NULL DEFAULT 0", true);
-        };
-
-        {
-            executeStmt("CREATE TABLE IF NOT EXISTS `BLOCKADED` (`blockader`, `blockaded`, PRIMARY KEY(`blockader`, `blockaded`))");
-        };
-
-        executeStmt("CREATE INDEX IF NOT EXISTS index_WARS_date ON WARS (date);");
-        executeStmt("CREATE INDEX IF NOT EXISTS index_WARS_attacker ON WARS (attacker_id);");
-        executeStmt("CREATE INDEX IF NOT EXISTS index_WARS_defender ON WARS (defender_id);");
-        executeStmt("CREATE INDEX IF NOT EXISTS index_WARS_status ON WARS (status);");
-
-        {
-            String create = "CREATE TABLE IF NOT EXISTS `COUNTER_STATS` (`id` INT NOT NULL PRIMARY KEY, `type` INT NOT NULL, `active` INT NOT NULL)";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(create);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        };
-
-        {
-            String attacksTable = "CREATE TABLE IF NOT EXISTS `ATTACKS3` (" +
-                    "`id` INTEGER PRIMARY KEY, " +
-                    "`war_id` INT NOT NULL, " +
-                    "`attacker_nation_id` INT NOT NULL, " +
-                    "`defender_nation_id` INT NOT NULL, " +
-                    "`date` BIGINT NOT NULL, " +
-                    "`data` BLOB NOT NULL)";
-            executeStmt(attacksTable);
-            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_warid ON ATTACKS3 (war_id);");
-            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_attacker_nation_id ON ATTACKS3 (attacker_nation_id);");
-            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_defender_nation_id ON ATTACKS3 (defender_nation_id);");
-            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_date ON ATTACKS3 (date);");
-        }
-
-        // create custom bounties table
-        {
-            String create = "CREATE TABLE IF NOT EXISTS `CUSTOM_BOUNTIES` (" +
-                    "`id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                    "`placed_by` INT NOT NULL, " +
-                    "`date_created` BIGINT NOT NULL, " +
-                    "`claimed_by` BIGINT NOT NULL, " +
-                    "`amount` BLOB NOT NULL, " +
-                    "`nations` BLOB NOT NULL, " +
-                    "`alliances` BLOB NOT NULL, " +
-                    "`filter` VARCHAR NOT NULL, " +
-                    "`total_damage` BIGINT NOT NULL, " +
-                    "`infra_damage` BIGINT NOT NULL, " +
-                    "`unit_damage` BIGINT NOT NULL, " +
-                    "`only_offensives` INT NOT NULL, " +
-                    "`unit_kills` BLOB NOT NULL, " +
-                    "`unit_attacks` BLOB NOT NULL, " +
-                    "`allowed_war_types` BIGINT NOT NULL, " +
-                    "`allowed_war_status` BIGINT NOT NULL, " +
-                    "`allowed_attack_types` BIGINT NOT NULL, " +
-                    "`allowed_attack_rolls` BIGINT NOT NULL)";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(create);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        };
-        boolean enableConflicts = !Settings.INSTANCE.WEB.S3.ACCESS_KEY.isEmpty() &&
-                !Settings.INSTANCE.WEB.S3.SECRET_ACCESS_KEY.isEmpty() &&
-                !Settings.INSTANCE.WEB.S3.REGION.isEmpty() &&
-                !Settings.INSTANCE.WEB.S3.BUCKET.isEmpty();
-        conflictManager = enableConflicts ? new ConflictManager(this) : null;
-        if (conflictManager != null) {
-            this.conflictManager.createTables();
-        }
-    }
-
     public ConflictManager getConflicts() {
-        return conflictManager;
+        return conflictManagerSupplier.get();
     }
 
     public ObjectOpenHashSet<DBWar> getActiveWars() {

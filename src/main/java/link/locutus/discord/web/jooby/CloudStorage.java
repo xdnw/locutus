@@ -21,4 +21,5 @@ public interface CloudStorage extends AutoCloseable {
     String getLink(String key);
     void deleteObject(String key);
     List<CloudItem> getObjects();
+    void close();
 }

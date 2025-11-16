@@ -135,9 +135,7 @@ public class WarUpdateProcessor {
                 for (Map.Entry<DBWar, DBWar> entry : wars) {
                     DBWar previous = entry.getKey();
                     DBWar current = entry.getValue();
-                    if (conflictManager.isLoaded()) {
-                        conflictManager.updateWar(previous, current, Predicates.alwaysTrue());
-                    }
+                    conflictManager.updateWar(previous, current, Predicates.alwaysTrue());
                 }
             } catch (Throwable e) {
                 e.printStackTrace();

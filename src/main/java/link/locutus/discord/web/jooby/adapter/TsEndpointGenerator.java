@@ -50,10 +50,6 @@ public class TsEndpointGenerator {
             // generateTsPlaceholderBuilder (unused)
         }
         if (true) {
-            CommandManager2 cmdInst = Locutus.cmd().getV2();
-            SimpleValueStore<Object> store = new SimpleValueStore<>();
-            new WebOptionBindings().register(store);
-            Map<String, Object> json = cmdInst.toJson(store, cmdInst.getPermisser());
 //            byte[] data = handler.getSerializer().writeValueAsBytes(json);
 //            File commandsFile = new File(outputDir, "assets/commands.msgpack");
 //            if (!commandsFile.exists()) {
@@ -69,6 +65,11 @@ public class TsEndpointGenerator {
 //                jsonFile.createNewFile();
 //            }
 //            Files.write(jsonFile.toPath(), jsonString.getBytes());
+
+            CommandManager2 cmdInst = Locutus.cmd().getV2();
+            SimpleValueStore<Object> store = new SimpleValueStore<>();
+            new WebOptionBindings().register(store);
+            Map<String, Object> json = cmdInst.toJson(store, cmdInst.getPermisser());
             String header = """
                     export const COMMANDS = """;
             File output = new File(outputDir, "lib/commands.ts");
