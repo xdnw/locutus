@@ -236,10 +236,6 @@ public class Grant {
         return DBNation.getById(nation.getNation_id());
     }
 
-    public static class GrantRequirementBuilder {
-
-    }
-
     public static class Requirement implements Function<DBNation, Boolean> {
         private final Function<DBNation, Boolean> function;
         private final String message;
@@ -450,10 +446,6 @@ public class Grant {
             if (!result) throw new IllegalArgumentException(requirement.getMessage());
         }
         return true;
-    }
-
-    public boolean canGrant(Member member, DBNation granter) {
-        return false;
     }
 
     public double[] cost() {

@@ -312,9 +312,10 @@ public class PageHandler implements Handler {
                     setupLocals(locals, ctx);
 
                     ParametricCallable parametric = (ParametricCallable) cmd;
+                    Logg.text("Web SSE: " + path + "/" + StringMan.join(args, " ") + " | [" + logInfo(locals) + "]");
 
-                    Object[] parsed = parametric.parseArgumentMap2(fullCmdStr, stack.getStore(), validators, permisser, false);
-                    Object result = parametric.call(null, stack.getStore(), parsed);
+                    Object[] parsed = parametric.parseArgumentMap2(fullCmdStr, locals, validators, permisser, false);
+                    Object result = parametric.call(null, locals, parsed);
                     if (result != null) {
                         String formatted = MarkupUtil.formatDiscordMarkdown((result + "").trim(), io.getGuildOrNull());
                         if (!formatted.isEmpty()) {
@@ -329,6 +330,7 @@ public class PageHandler implements Handler {
                 CommandManager2 v2 = Locutus.imp().getCommandManager().getV2();
                 LocalValueStore locals = setupLocals(null, ctx);
                 String cmdStr = cmds.get(0);
+                Logg.text("Web SSE(legacy): " + cmdStr + " | [" + logInfo(locals) + "]");
                 v2.run(locals, io, cmdStr, false, true);
             } else {
                 sse.sseMessage( "Too many commands: " + StringMan.getString(cmds), false);
@@ -344,6 +346,26 @@ public class PageHandler implements Handler {
                 e.printStackTrace();
             }
         }
+    }
+
+    private static String logInfo(LocalValueStore valueStore) {
+        Guild guild = (Guild) valueStore.getProvided(Key.of(Guild.class, Me.class));
+        DBNation nation = (DBNation) valueStore.getProvided(Key.of(DBNation.class, Me.class));
+        User user = (User) valueStore.getProvided(Key.of(User.class, Me.class));
+        List<String> parts = new ObjectArrayList<>();
+        if (guild != null) {
+            parts.add(guild.toString());
+        }
+        if (nation != null) {
+            parts.add(nation.getName() + "(" + nation.getNation_id() + ")");
+        }
+        if (user != null) {
+            parts.add(user.getName() + "(" + user.getId() + ")");
+        }
+        if (parts.isEmpty()) {
+            parts.add("unknown");
+        }
+        return String.join(", ", parts);
     }
 
 //    /**
@@ -464,7 +486,6 @@ public class PageHandler implements Handler {
 
     @Override
     public void handle(@NotNull Context ctx) throws Exception {
-        logger.info("Page method " + ctx.method());
         try {
             handleCommand(ctx);
         } catch (Throwable e) {
@@ -507,6 +528,9 @@ public class PageHandler implements Handler {
             boolean isPost = ctx.method() == HandlerType.POST;
             List<String> args = new ArrayList<>(stack.getRemainingArgs());
             CommandManager2 manager = Locutus.cmd().getV2();
+
+            String logMsg = "Web request: " + path + "/" + StringMan.join(args, " ") + " | [" + ws.getCachedAuth() + "]";
+            Logg.text(logMsg);
 
             switch (path.toLowerCase(Locale.ROOT)) {
 

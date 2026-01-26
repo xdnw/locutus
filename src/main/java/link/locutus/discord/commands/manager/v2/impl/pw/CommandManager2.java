@@ -46,6 +46,7 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import javax.annotation.Nullable;
@@ -260,6 +261,8 @@ public class CommandManager2 {
 
     public CommandManager2 registerDefaults() {
 
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "clearAllApiKeys", "clearAllApiKeys");
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "clearInvalidAccounts", "clearInvalidAccounts");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "fixCashConversion", "fixCashConversion");
         this.commands.registerMethod(new AdminCommands(), List.of("sheets_econ"), "conversionRates", "conversion_rates");
 
@@ -895,15 +898,20 @@ public class CommandManager2 {
         Runnable task = () -> {
             try {
                 if (fullCmdStr.startsWith("{")) {
-                    JSONObject json = new JSONObject(fullCmdStr);
-                    Map<String, Object> arguments = json.toMap();
-                    Map<String, String> stringArguments = new HashMap<>();
-                    for (Map.Entry<String, Object> entry : arguments.entrySet()) {
-                        stringArguments.put(entry.getKey(), entry.getValue().toString());
+                    try {
+                        JSONObject json = new JSONObject(fullCmdStr);
+                        Map<String, Object> arguments = json.toMap();
+                        Map<String, String> stringArguments = new HashMap<>();
+                        for (Map.Entry<String, Object> entry : arguments.entrySet()) {
+                            stringArguments.put(entry.getKey(), entry.getValue().toString());
+                        }
+                        String pathStr = arguments.remove("").toString();
+                        run(existingLocals, io, pathStr, stringArguments, async);
+                        return;
+                    } catch (JSONException e) {
+                        io.send("Invalid JSON command input: " + e.getMessage());
+                        return;
                     }
-                    String pathStr = arguments.remove("").toString();
-                    run(existingLocals, io, pathStr, stringArguments, async);
-                    return;
                 }
                 if (fullCmdStr.isEmpty()) {
                     if (returnNotFound) {
@@ -960,7 +968,7 @@ public class CommandManager2 {
                             Map<ParameterData, Map.Entry<String, Object>> map = parametric.parseArgumentsToMap(stack);
                             Object[] parsed = parametric.argumentMapToArray(map);
                             User user = (User) locals.getProvided(Key.of(User.class, Me.class), false);
-                            Logg.info("User `" + user + "`: " + fullCmdStr);
+                            Logg.info("User `" + user + "`: " + fullCmdStr + " in guild " + io.getGuildOrNull());
                             return parametric.call(null, locals, parsed);
                         } catch (RuntimeException e) {
                             Throwable e2 = e;
@@ -1023,8 +1031,11 @@ public class CommandManager2 {
                                     }
                                 }
                             }
+                            long startParse = System.currentTimeMillis();
                             Object[] parsed = parametric.parseArgumentMap(finalArguments, finalLocals, validators, permisser);
-                            Logg.info("User `" + user + "` execute command " + parametric.getFullPath() + " with args " + finalArguments);
+                            long parseDiff = System.currentTimeMillis() - startParse;
+                            String timeStr = (parseDiff >= 1000 ? "(took: " + (parseDiff / 1000.0) + "s)" : "");
+                            Logg.info("User `" + user + "` execute command " + parametric.getFullPath() + " with args " + finalArguments + timeStr + " in guild " + io.getGuildOrNull());
                             return parametric.call(null, finalLocals, parsed);
                         } catch (RuntimeException e) {
                             Throwable e2 = e;

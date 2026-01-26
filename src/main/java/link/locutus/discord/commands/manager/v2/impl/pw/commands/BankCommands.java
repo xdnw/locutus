@@ -834,7 +834,8 @@ public class BankCommands {
                 note = "#alliance=" + from.getAlliance_id();
             }
             note += " #tx_id=" + UUID.randomUUID().toString();
-            TransferResult response = bank.transferWithRoute(null, to, resources, note, null);
+            Auth auth = bank.getAlliance().getAuth(AlliancePermission.WITHDRAW_BANK);
+            TransferResult response = bank.transferWithRoute(auth, to, resources, note, null);
             results.add(response);
         }
         Map.Entry<String, String> embed = TransferResult.toEmbed(results);
@@ -2020,6 +2021,9 @@ public class BankCommands {
                                 @Arg(value = "Do NOT reset deposits", group = 0) @Switch("d") boolean ignoreBankDeposits,
                                 @Arg(value = "Do NOT reset escrow", group = 0) @Switch("e") boolean ignoreEscrow,
                                 @Switch("f") boolean force) throws IOException {
+        if (db.isAllianceId(13880)) {
+            throw new IllegalArgumentException("Temporarily disabled for this guild.");
+        }
         if (nations.getNations().size() > 300) {
             throw new IllegalArgumentException("Due to performance issues, you can only reset up to 300 nations at a time");
         }
@@ -2036,7 +2040,7 @@ public class BankCommands {
         boolean updateBulk = Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS > 0;
         if (force) {
             String errorMsg = handleAddbalanceAllianceScope(author, guild, (Set) nations.getNations());
-            if (errorMsg != null) return errorMsg;
+            if (errorMsg != null && !errorMsg.isEmpty()) return errorMsg;
             if (updateBulk) {
                 Locutus.imp().runEventsAsync(events -> Locutus.imp().getBankDB().updateBankRecs(false, events));
             }
@@ -2098,7 +2102,6 @@ public class BankCommands {
                         decayEpoch = n.longValue();
                     }
                     if ((decayEpoch != Long.MAX_VALUE || expireEpoch != Long.MAX_VALUE) && (expireEpoch > now && decayEpoch > now)) {
-                        System.out.println("RESETTING NOTE: " + tx.note + " | exp: " + expireEpoch + " dec: " + decayEpoch + " now: " + now);
                         String noteCopy = tx.note.toLowerCase(Locale.ROOT)
                                 .replaceAll("#expire=[a-zA-Z0-9:]+", "")
                                 .replaceAll("#decay=[a-zA-Z0-9:]+", "");
@@ -2170,12 +2173,24 @@ public class BankCommands {
             body.append("Total Net: `" + name + " " + ResourceType.toString(total) + "`\n");
             body.append("\n\nSee attached file for transaction details\n");
 
-            io.create().confirmation(title, body.toString(), command)
+            String bodyStr = body.toString();
+            if (bodyStr.length() > 2000 - 15) {
+                bodyStr = bodyStr.substring(0, 2000 - 36) + "\n\n... (truncated, see attached file)";
+            }
+
+            System.out.println("RESETDEPOSITS CONFIRMATION:" + bodyStr);
+            io.create().confirmation(title, bodyStr, command)
                     .file("transaction.txt", response.toString()).send();
-            return null;
+            return bodyStr;
         }
 
-        return response.toString();
+        String responseStr = response.toString();
+        if (responseStr.isEmpty()) {
+            return "Nothing to reset for `" + nations.getFilter() + "`";
+        }
+
+        System.out.println("RESETDEPOSITS:" + responseStr);
+        return responseStr;
     }
 
     @Command(

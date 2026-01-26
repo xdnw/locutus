@@ -2649,6 +2649,9 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         executeStmt("CREATE TABLE IF NOT EXISTS banned_nations (nation_id INT NOT NULL PRIMARY KEY, discord_id BIGINT NOT NULL, reason TEXT NOT NULL, date BIGINT NOT NULL, days_left INT NOT NULL)");
         executeStmt("CREATE INDEX IF NOT EXISTS index_banned_nations_discord_id ON banned_nations (discord_id);");
 
+        // create table RESEARCH_BY_TURN (nation_id, turn, research_points)
+        executeStmt("CREATE TABLE IF NOT EXISTS RESEARCH_BY_TURN (nation_id INT NOT NULL, turn BIGINT NOT NULL, research BIGINT NOT NULL, PRIMARY KEY(nation_id, turn))");
+
         purgeOldBeigeReminders();
 
 //        //Create table IMPORTED_LOANS
@@ -2671,6 +2674,65 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
         createDeletionsTables();
         purgeDeletedLootData();
+    }
+
+    public int getResearch(int nationId, long turn) {
+        String query = "SELECT research FROM RESEARCH_BY_TURN WHERE nation_id = ? AND turn = ?";
+        try (PreparedStatement stmt = getConnection().prepareStatement(query)) {
+            stmt.setInt(1, nationId);
+            stmt.setLong(2, turn);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("research");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    public Map<Integer, Integer> getResearch(Set<Integer> nationIds, long turn) {
+        if (nationIds.size() > 500) {
+            return getResearch(turn, nationIds::contains);
+        }
+        Map<Integer, Integer> result = new Int2IntOpenHashMap();
+        List<Integer> idsSorted = new IntArrayList(nationIds);
+        Collections.sort(idsSorted);
+        String inSql = String.join(",", Collections.nCopies(idsSorted.size(), "?"));
+        String query = "SELECT nation_id, research FROM RESEARCH_BY_TURN WHERE nation_id IN (" + inSql + ") AND turn = ?";
+        try (PreparedStatement stmt = getConnection().prepareStatement(query)) {
+            int index = 1;
+            for (Integer nationId : idsSorted) {
+                stmt.setInt(index++, nationId);
+            }
+            stmt.setLong(index, turn);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                result.put(rs.getInt("nation_id"), rs.getInt("research"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+    public Map<Integer, Integer> getResearch(long turn, Predicate<Integer> nationFilter) {
+        Map<Integer, Integer> result = new Int2IntOpenHashMap();
+        String query = "SELECT nation_id, research FROM RESEARCH_BY_TURN WHERE turn = ?";
+        try (PreparedStatement stmt = getConnection().prepareStatement(query)) {
+            stmt.setLong(1, turn);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                int nationId = rs.getInt("nation_id");
+                if (nationFilter != null && !nationFilter.test(nationId)) {
+                    continue;
+                }
+                result.put(nationId, rs.getInt("research"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return result;
     }
 
     private void purgeDeletedLootData() {

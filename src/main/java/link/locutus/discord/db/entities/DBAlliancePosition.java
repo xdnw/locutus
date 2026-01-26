@@ -139,7 +139,7 @@ public class DBAlliancePosition {
     }
 
     public boolean hasPermission(AlliancePermission permission) {
-        return permission.has(permission_bits);
+        return permission.has(permission_bits) || rank.id >= Rank.HEIR.id;
     }
 
     public boolean hasAnyAdminPermission() {
@@ -166,9 +166,10 @@ public class DBAlliancePosition {
                 MANAGE_EMBARGOES,
                 PROMOTE_SELF_TO_LEADER
         );
-    }
+    } // CHANGE_PERMISSIONS
 
     public boolean hasAnyPermission(AlliancePermission... permissions) {
+        if (rank.id >= Rank.HEIR.id) return true;
         for (AlliancePermission perm : permissions) {
             if (hasPermission(perm)) return true;
         }

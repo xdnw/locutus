@@ -6,6 +6,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.Locutus;
@@ -33,9 +34,11 @@ import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.StringMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.StringMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
@@ -911,7 +914,7 @@ public class AdminCommands {
     @Command(desc = "Generate a google spreadsheet for a guild setting value for a set of discord servers")
     @RolePermission(value = Roles.ADMIN, root = true)
     @Ephemeral
-    public String infoBulk(@Me GuildDB db, @Me IMessageIO io, GuildSetting setting, Set<GuildDB> guilds, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String infoBulk(@Me GuildDB db, @Me User user, @Me IMessageIO io, GuildSetting setting, Set<GuildDB> guilds, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.SETTINGS_SERVERS);
         }
@@ -975,8 +978,11 @@ public class AdminCommands {
         sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
-        sheet.attach(io.create(), "setting_servers").send();
-        return null;
+        StringMessageIO out = new StringMessageIO(user, db.getGuild());
+        sheet.attach(out.create(), "setting_servers").send();
+        Logg.text(out.toString());
+
+        return "Done! See console";
     }
 
     @Command(desc = "Run the escalation alerts task")
@@ -2117,6 +2123,61 @@ public class AdminCommands {
         }
         Logg.text(response.toString());
         return "Done! (see console)";
+    }
+
+    @Command(desc = "Clear all api keys")
+    @Ephemeral
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String clearAllApiKeys() {
+        for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
+            db.deleteInfo(GuildKey.API_KEY);
+        }
+        Locutus.imp().getDiscordDB().clearAllApiKeys();
+        return "Done! (see console)";
+    }
+
+    @Command(desc = "Clear invalid accounts")
+    @Ephemeral
+    @HasOffshore
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String clearInvalidAccounts(@Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, @Switch("f") boolean force) {
+        if (!db.isOffshore()) return "This command can only be run on guilds that are an offshore";
+        Set<Long> ids = db.getCoalitionRaw(Coalition.OFFSHORING);
+        List<Long> toRemove = new LongArrayList();
+        for (long id : ids) {
+            GuildDB other;
+            if (id > Integer.MAX_VALUE) {
+                other = Locutus.imp().getGuildDB(id);
+            } else {
+                other = Locutus.imp().getGuildDBByAA((int) id);
+            }
+            if (other == null) {
+                toRemove.add(id);
+            }
+        }
+        if (toRemove.isEmpty()) {
+            return "No invalid accounts found";
+        }
+        StringBuilder msg = new StringBuilder();
+        for (long id : toRemove) {
+            String name;
+            if (id > Integer.MAX_VALUE) {
+                name = "Guild ID: " + id;
+            } else {
+                name = DBAlliance.getOrCreate((int) id).getMarkdownUrl();
+            }
+            msg.append("- " + name + "\n");
+        }
+        if (!force) {
+            io.create().embed("Confirm removing invalid accounts", msg.toString())
+                    .confirmation(command)
+                    .send();
+            return null;
+        }
+        for (long id : toRemove) {
+            db.removeCoalition(id, Coalition.OFFSHORING);
+        }
+        return "Removed " + toRemove.size() + " invalid accounts:\n" + msg.toString();
     }
 
 //    @Command(desc = "Check if current api keys are valid")

@@ -13,9 +13,11 @@ import link.locutus.discord.event.Event;
 import link.locutus.discord.event.baseball.BaseballGameEvent;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.time.Instant;
 import java.util.*;
 import java.util.function.Consumer;
@@ -61,10 +63,8 @@ public class BaseballDB extends DBMainV2{
         db.updateGames(eventConsumer, false, minId, null);
     }
 
-    public void updateGames(Consumer<Event> eventConsumer, boolean wagered, Integer minId, Integer maxId) {
-        Set<Integer> gameIds = getBaseballGameIds();
-
-        if (gameIds.isEmpty()) eventConsumer = null;
+    public synchronized void updateGames(Consumer<Event> eventConsumer, boolean wagered, Integer minId, Integer maxId) {
+        if (minId == null) eventConsumer = null;
 
         PoliticsAndWarV3 v3 = Locutus.imp().getApiPool();
         List<BBGame> games = v3.fetchBaseballGames(req -> {
@@ -85,87 +85,59 @@ public class BaseballDB extends DBMainV2{
             game.open();
             game.wager();
         });
-        games.removeIf(f -> f.getId() == null || gameIds.contains(f.getId()));
 
-        for (BBGame game : games) {
-            addGame(game);
-        }
-        if (eventConsumer != null) {
-            for (BBGame game : games) {
-                eventConsumer.accept(new BaseballGameEvent(game));
+        if (games.isEmpty()) return;
+        final String sql = "INSERT OR IGNORE INTO `games` " +
+                "(`id`,`date`,`home_id`,`away_id`,`home_nation_id`,`away_nation_id`,`home_score`,`away_score`,`home_revenue`,`spoils`,`open`,`wager`) " +
+                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+        Connection con = getConnection();
+        try (PreparedStatement stmt = con.prepareStatement(sql)) {
+            con.setAutoCommit(false);
+            try {
+                for (BBGame game : games) {
+                    if (game.getDate() == null || game.getId() == null) continue;
+
+                    if (game.getHome_revenue() == null) game.setHome_revenue(0d);
+                    if (game.getSpoils() == null) game.setSpoils(0d);
+                    if (game.getWager() == null) game.setWager(0d);
+                    if (game.getHome_score() == null) game.setHome_score(0);
+                    if (game.getAway_score() == null) game.setAway_score(0);
+                    if (game.getHome_id() == null) game.setHome_id(0);
+                    if (game.getAway_id() == null) game.setAway_id(0);
+                    if (game.getHome_nation_id() == null) game.setHome_nation_id(0);
+                    if (game.getAway_nation_id() == null) game.setAway_nation_id(0);
+
+                    stmt.setInt(1, game.getId());
+                    stmt.setLong(2, game.getDate().toEpochMilli());
+                    stmt.setInt(3, game.getHome_id());
+                    stmt.setInt(4, game.getAway_id());
+                    stmt.setInt(5, game.getHome_nation_id());
+                    stmt.setInt(6, game.getAway_nation_id());
+                    stmt.setInt(7, game.getHome_score());
+                    stmt.setInt(8, game.getAway_score());
+                    stmt.setLong(9, (long) (game.getHome_revenue() * 100));
+                    stmt.setLong(10, (long) (game.getSpoils() * 100));
+                    stmt.setInt(11, game.getOpen());
+                    stmt.setLong(12, (long) (game.getWager() * 100));
+
+                    int affected = stmt.executeUpdate();
+                    boolean inserted = (affected == 1);
+
+                    if (eventConsumer != null && inserted) {
+                        eventConsumer.accept(new BaseballGameEvent(game));
+                    }
+                }
+                con.commit();
+            } catch (SQLException e) {
+                con.rollback();
+                throw e;
+            } finally {
+                con.setAutoCommit(true);
             }
-        }
-    }
 
-    public int addGame(BBGame game) {
-        if (game.getHome_revenue() == null) game.setHome_revenue(0d);
-        if (game.getSpoils() == null) game.setSpoils(0d);
-        if (game.getWager() == null) game.setWager(0d);
-        if (game.getHome_score() == null) game.setHome_score(0);
-        if (game.getAway_score() == null) game.setAway_score(0);
-
-        if (game.getDate() == null || game.getId() == null) return 0;
-        if (game.getHome_id() == null) game.setHome_id(0);
-        if (game.getAway_id() == null) game.setAway_id(0);
-        if (game.getHome_nation_id() == null) game.setHome_nation_id(0);
-        if (game.getAway_nation_id() == null) game.setAway_nation_id(0);
-//        return getDb().insertUpdate("games",
-//                new String[] {"id",
-//                        "date",
-//                        "home_id",
-//                        "away_id",
-//                        "home_nation_id",
-//                        "away_nation_id",
-//                        "home_score",
-//                        "away_score",
-//                        "home_revenue",
-//                        "spoils",
-//                        "open",
-//                        "wager",
-//                },
-//                new Object[] {
-//                        game.getId(),
-//                        game.getDate().toEpochMilli(),
-//                        game.getHome_id(),
-//                        game.getAway_id(),
-//                        game.getHome_nation_id(),
-//                        game.getAway_nation_id(),
-//                        game.getHome_score(),
-//                        game.getAway_score(),
-//                        (int) (game.getHome_revenue() * 100),
-//                        (int) (game.getSpoils() * 100),
-//                        game.getOpen(),
-//                        (int) (game.getWager() * 100)
-//                },
-//                singletonMap("id", game.getId()), "id");
-        return update("INSERT OR IGNORE INTO `games` (`id`,`date`,`home_id`,`away_id`,`home_nation_id`,`away_nation_id`,`home_score`,`away_score`,`home_revenue`,`spoils`,`open`,`wager`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setInt(1, game.getId());
-            stmt.setLong(2, game.getDate().toEpochMilli());
-            stmt.setInt(3, game.getHome_id());
-            stmt.setInt(4, game.getAway_id());
-            stmt.setInt(5, game.getHome_nation_id());
-            stmt.setInt(6, game.getAway_nation_id());
-            stmt.setInt(7, game.getHome_score());
-            stmt.setInt(8, game.getAway_score());
-            stmt.setLong(9, (long) (game.getHome_revenue() * 100));
-            stmt.setLong(10, (long) (game.getSpoils() * 100));
-            stmt.setInt(11, game.getOpen());
-            stmt.setLong(12, (long) (game.getWager() * 100));
-        });
-    }
-
-    public Set<Integer> getBaseballGameIds() {
-        Set<Integer> result = new IntLinkedOpenHashSet();
-        SelectBuilder builder = getDb().selectBuilder("games")
-                .select("id");
-        try (ResultSet rs = builder.executeRaw()) {
-            while (rs.next()) {
-                result.add(rs.getInt("id"));
-            }
-            return result;
         } catch (SQLException e) {
             e.printStackTrace();
-            return null;
         }
     }
 

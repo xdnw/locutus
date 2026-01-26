@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
@@ -1172,6 +1173,7 @@ public class WarCommands {
         double maxScore = attackerScore * PW.WAR_RANGE_MAX_MODIFIER;
 
         List<DBNation> strong = new ArrayList<>();
+        DBNation finalMe = me;
 
         ArrayList<DBNation> targetsStorted = new ArrayList<>();
         for (DBNation nation : targets) {
@@ -1189,7 +1191,6 @@ public class WarCommands {
             targetsStorted.removeIf(f -> f.getRelativeStrength() <= 1);
         }
 
-        DBNation finalMe = me;
         if (onlyWeak) {
             targetsStorted.removeIf(f -> f.getGroundStrength(true, false) > finalMe.getGroundStrength(true, false));
             targetsStorted.removeIf(f -> f.getAircraft() > finalMe.getAircraft());
@@ -1448,6 +1449,8 @@ public class WarCommands {
                              @Switch("m") boolean targetMeanInfra,
                          @Arg(value = "Sort results by maximum single-city infrastructure instead of damage estimate", group = 0)
                              @Switch("c") boolean targetCityMax,
+                         @Arg(value = "Sort results by maximum multi-city beige damage estimate", group = 0)
+                             @Switch("tb") boolean targetBeigeMax,
                          @Arg(value = "Include nations currently on beige status", group = 0)
                              @Switch("b") boolean includeBeige,
                          @Arg(value = "Exclude targets whose naval strength exceeds this multiple of yours (e.g., `1.0` = ≤ your ships)", group = 0)
@@ -1461,35 +1464,107 @@ public class WarCommands {
                          @Arg(value = "Send results via direct message instead of channel", group = 2)
                              @Switch("d") boolean resultsInDm
                          ) {
-        nations.removeIf(f -> f.getDef() >= 3);
-        nations.removeIf(f -> f.getVm_turns() != 0);
-        if (!includeApps) nations.removeIf(f -> f.getPosition() <= 1);
-        if (!includeInactives) nations.removeIf(f -> f.active_m() > (f.getCities() > 11 ? 5 : 2) * 1440);
-        if (noNavy) nations.removeIf(f -> f.getShips() > 2);
-        DBNation finalMe = me;
-        if (relativeNavalStrength != null) nations.removeIf(f -> f.getShips() > finalMe.getShips() * relativeNavalStrength);
-        if (!includeBeige) nations.removeIf(DBNation::isBeige);
+        int targetingOptions = 0;
+        if (targetMeanInfra) targetingOptions++;
+        if (targetCityMax) targetingOptions++;
+        if (targetBeigeMax) targetingOptions++;
+        if (targetingOptions > 1) {
+            throw new IllegalArgumentException("Please select only one targeting option: `targetMeanInfra`, `targetCityMax`, or `targetBeigeMax`.");
+        }
 
+        List<String> removeNotes = new ObjectArrayList<>();
+        DBNation finalMe = me;
+        int prevSize;
+        int removedCount;
+
+        // Filter: Def >= 3
+        prevSize = nations.size();
+        nations.removeIf(f -> f.getDef() >= 3);
+        if ((removedCount = prevSize - nations.size()) > 0) {
+            removeNotes.add("Removed because `Def >= 3`: " + removedCount);
+        }
+
+        // Filter: VM Turns
+        prevSize = nations.size();
+        nations.removeIf(f -> f.getVm_turns() != 0);
+        if ((removedCount = prevSize - nations.size()) > 0) {
+            removeNotes.add("Removed because `VM Turns != 0`: " + removedCount);
+        }
+
+        // Filter: Apps (!includeApps)
+        if (!includeApps) {
+            prevSize = nations.size();
+            nations.removeIf(f -> f.getPosition() <= 1);
+            if ((removedCount = prevSize - nations.size()) > 0) {
+                removeNotes.add("Removed because `includeApps:False`: " + removedCount);
+            }
+        }
+
+        // Filter: Inactives (!includeInactives)
+        if (!includeInactives) {
+            prevSize = nations.size();
+            nations.removeIf(f -> f.active_m() > (f.getCities() > 11 ? 5 : 2) * 1440);
+            if ((removedCount = prevSize - nations.size()) > 0) {
+                removeNotes.add("Removed because `includeInactives:False`: " + removedCount);
+            }
+        }
+
+        // Filter: No Navy
+        if (noNavy) {
+            prevSize = nations.size();
+            nations.removeIf(f -> f.getShips() > 2);
+            if ((removedCount = prevSize - nations.size()) > 0) {
+                removeNotes.add("Removed because `noNavy:True`: " + removedCount);
+            }
+        }
+
+        // Filter: Relative Naval Strength
+        if (relativeNavalStrength != null) {
+            prevSize = nations.size();
+            nations.removeIf(f -> f.getShips() > finalMe.getShips() * relativeNavalStrength);
+            if ((removedCount = prevSize - nations.size()) > 0) {
+                removeNotes.add("Removed because `relativeNavalStrength`: " + removedCount);
+            }
+        }
+
+// Filter: Beige
+        if (!includeBeige) {
+            prevSize = nations.size();
+            nations.removeIf(DBNation::isBeige);
+            if ((removedCount = prevSize - nations.size()) > 0) {
+                removeNotes.add("Removed because `includeBeige:False`: " + removedCount);
+            }
+        }
+
+        // Filter: Score Range
         if (warRange == null || warRange == 0) warRange = me.getScore();
         double minScore = warRange * 0.75;
         double maxScore = warRange * PW.WAR_RANGE_MAX_MODIFIER;
 
+        prevSize = nations.size();
         nations.removeIf(f -> f.getScore() <= minScore || f.getScore() >= maxScore);
+        if ((removedCount = prevSize - nations.size()) > 0) {
+            removeNotes.add("Removed because `Score Range`: " + removedCount);
+        }
 
         if (me == null) return "Please use " + CM.register.cmd.toSlashMention();
         double str = me.getGroundStrength(false, true);
         str = Math.max(str, me.getCities() * 15000);
         if (filterWeak) {
             double finalStr = str;
+            prevSize = nations.size();
             nations.removeIf(f -> f.getGroundStrength(true, false) > finalStr * 0.4);
+            if ((removedCount = prevSize - nations.size()) > 0) {
+                removeNotes.add("Removed because `filterWeak:True`: " + removedCount);
+            }
         }
 
-        Map<Integer, Double> maxInfraByNation = new HashMap<>();
-        Map<Integer, Double> damageEstByNation = new HashMap<>();
-        Map<Integer, Double> avgInfraByNation = new HashMap<>();
+        Map<Integer, Double> maxInfraByNation = new Int2DoubleOpenHashMap();
+        Map<Integer, Double> damageEstByNation = new Int2DoubleOpenHashMap();
+        Map<Integer, Double> avgInfraByNation = new Int2DoubleOpenHashMap();
+        Map<Integer, Double> avgBeigeInfraByNation = new Int2DoubleOpenHashMap();
 
-        Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
-        Map<Integer, List<Double>> cityInfraByNation = new HashMap<>();
+        Map<Integer, List<Double>> cityInfraByNation = new Int2ObjectOpenHashMap<>();
 
         {
             for (DBNation nation : nations) {
@@ -1497,9 +1572,16 @@ public class WarCommands {
                 List<Double> allInfra = cities.stream().map(JavaCity::getInfra).collect(Collectors.toList());
                 double max = Collections.max(allInfra);
                 double average = allInfra.stream().mapToDouble(f -> f).average().orElse(0);
+                double beigeDmg = 0;
+                double beigeFactor = nation.getBeigeDamageFactor();
+                double beigeAbs = 1 - (0.04 * beigeFactor);
+                for (JavaCity city : cities) {
+                    beigeDmg += PW.City.Infra.calculateInfra(city.getInfra() * beigeAbs, city.getInfra());
+                }
                 avgInfraByNation.put(nation.getNation_id(), average);
                 maxInfraByNation.put(nation.getNation_id(), max);
                 cityInfraByNation.put(nation.getNation_id(), allInfra);
+                avgBeigeInfraByNation.put(nation.getNation_id(), beigeDmg);
             }
         }
 
@@ -1515,14 +1597,16 @@ public class WarCommands {
         Map<Integer, Double> valueFunction;
         if (targetMeanInfra) valueFunction = avgInfraByNation;
         else if (targetCityMax) valueFunction = maxInfraByNation;
+        else if (targetBeigeMax) valueFunction = avgBeigeInfraByNation;
         else valueFunction = damageEstByNation;
 
         if (resultsInDm && author != null) {
             channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel()), null);
         }
 
+        String removeMsg = removeNotes.isEmpty() ? "" : "\n- " + String.join("\n- ", removeNotes);
         if (valueFunction.isEmpty()) {
-            return ("No results found");
+            return ("No results found." + removeMsg);
         }
 
         List<Map.Entry<DBNation, Double>>  maxInfraSorted = new ArrayList<>();
@@ -1554,6 +1638,7 @@ public class WarCommands {
             String moneyStr = "$" + MathMan.format(cost);
             response.append(moneyStr + " | " + nation.toMarkdown(true));
         }
+        response.append(removeMsg);
         channel.send(response.toString());
         return null;
     }
@@ -1561,8 +1646,6 @@ public class WarCommands {
     public double damageEstimate(DBNation me, int nationId, List<Double> cityInfra) {
         DBNation nation = DBNation.getById(nationId);
         if (nation == null) return 0;
-
-
         double numCities = 0;
         if (me.hasProject(Projects.MISSILE_LAUNCH_PAD)) {
             numCities += 0.5;
@@ -1587,11 +1670,15 @@ public class WarCommands {
         double cost = 0;
         Collections.sort(cityInfra);
         int i = cityInfra.size() - 1;
+        boolean moneyBags = me.getWarPolicy() == WarPolicy.MONEYBAGS;
         while (i >= 0 && numCities > 0) {
             Double infra = cityInfra.get(i);
             if (infra <= 600) break;
             double factor = Math.min(numCities, 1);
-            cost += factor * PW.City.Infra.calculateInfra(infra * 0.6-500, infra);
+            double minInfra = infra * 0.6-500;
+            double beigeFactor = nation.getBeigeDamageFactor();
+            if (beigeFactor != 1) minInfra = infra - ((infra - minInfra) * beigeFactor);
+            cost += factor * PW.City.Infra.calculateInfra(minInfra, infra);
 
             i--;
             numCities--;

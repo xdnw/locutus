@@ -12,6 +12,10 @@ import java.util.*;
 public class Settings extends Config {
     @Ignore
     @Final
+    public final boolean DISABLE_NON_ADMIN_COMMANDS = false;
+
+    @Ignore
+    @Final
     public static final Settings INSTANCE = new Settings();
 
     @Comment({"Override use V2"})
@@ -85,6 +89,8 @@ public class Settings extends Config {
     @Comment({"Number of discord shards to use, defaults to 1",
             "Only set this if your bot is in more than 2,500 servers"})
     public int SHARDS = 1;
+    @Comment("If to log console output to file")
+    public boolean LOG = true;
 
     ////////////////////////////////////////////////////////////////////////////
 

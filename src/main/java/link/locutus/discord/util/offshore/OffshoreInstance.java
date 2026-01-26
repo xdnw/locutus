@@ -1210,7 +1210,7 @@ public class OffshoreInstance {
                                 if (amt > newDeposits[type.ordinal()]) valid = true;
                             }
                         }
-                        log(senderDB, banker, receiver, "New Deposits: `" +  ResourceType.toString(newDeposits) + ("`"));
+                        log(senderDB, banker, receiver, "Amt:" + ResourceType.toString(amount) + " | New Depo: `" +  ResourceType.toString(newDeposits) + ("`"));
                     } else {
                         valid = false;
                     }
@@ -1707,7 +1707,8 @@ public class OffshoreInstance {
             return new TransferResult(TransferStatus.INVALID_DESTINATION, alliance, transfer, note).addMessage("The alliance has no members");
         }
         synchronized (BANK_LOCK) {
-            TransferResult result = transferWithRoute(null, alliance, transfer, note, transferRoute);
+            Auth auth = getAlliance().getAuth(AlliancePermission.WITHDRAW_BANK);
+            TransferResult result = transferWithRoute(auth, alliance, transfer, note, transferRoute);
             String msg = "`" + ResourceType.toString(transfer) + "` -> " + alliance.getUrl() + "\n**" + result.getStatus() + "**: " + result.getMessageJoined(true);
 
             MessageChannel logChannel = getGuildDB().getResourceChannel(0);

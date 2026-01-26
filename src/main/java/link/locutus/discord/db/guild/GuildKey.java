@@ -140,12 +140,12 @@ public class GuildKey {
                                     String idStr = db.getGuild().getId();
 
                                     if (!content.contains(idStr)) {
-                                        for (String inviteCode : inviteCodes) {
-                                            if (content.contains(inviteCode)) {
-                                                isValid = true;
-                                                break;
-                                            }
-                                        }
+//                                        for (String inviteCode : inviteCodes) {
+//                                            if (content.contains(inviteCode)) {
+//                                                isValid = true;
+//                                                break;
+//                                            }
+//                                        }
                                     } else {
                                         isValid = true;
                                     }

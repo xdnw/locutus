@@ -1135,4 +1135,10 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
             return result;
         }
     }
+
+    public void clearAllApiKeys() {
+        synchronized (this) {
+            executeStmt("DELETE FROM API_KEYS3");
+        }
+    }
 }

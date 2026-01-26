@@ -384,19 +384,20 @@ public class PoliticsAndWarV3 {
                 try {
                     if (badKey++ >= 4 || pool.size() <= 1) {
                         e.printStackTrace();
-                        AlertUtil.error(e.getMessage(), e);
+                        AlertUtil.error("Unauthorized", e);
                         rethrow(e, pair, false);
                         throw e;
                     }
                 } finally {
-                    pair.deleteApiKey();
+                    AlertUtil.error("Removing invalid API key for nation " + PW.getMarkdownUrl(pair.getNationId(), false) + " | " + graphQLRequest.getRequest(), e);
+                    if (pair.getNationId() != Settings.INSTANCE.NATION_ID) pair.deleteApiKey();
                 }
                 pool.removeKey(pair);
             } catch (HttpClientErrorException e) {
                 FileUtil.setRateLimited(uri, true);
                 rateLimitGlobal.handleRateLimit(e.getResponseHeaders());
                 e.printStackTrace();
-                AlertUtil.error(e.getMessage(), e);
+                AlertUtil.error("Client Error", e);
                 rethrow(e, pair, false);
                 throw e;
             } catch (HttpServerErrorException.InternalServerError e) {
@@ -406,7 +407,7 @@ public class PoliticsAndWarV3 {
                 String msg = "Error 500 thrown by " + endpoint + ". Is the game's API down?";
                 throw HttpClientErrorException.create(msg, e.getStatusCode(), e.getStatusText(), e.getResponseHeaders(), e.getResponseBodyAsByteArray(), /* charset utf-8 */ StandardCharsets.UTF_8);
             } catch (JsonProcessingException e) {
-                AlertUtil.error(e.getMessage(), e);
+                AlertUtil.error("Json Error", e);
                 rethrow(e, pair,true);
             } catch (Throwable e) {
                 if (e instanceof RestClientResponseException rest) {
@@ -414,7 +415,7 @@ public class PoliticsAndWarV3 {
                 }
                 boolean remove = false;
                 if (e.getMessage().contains("The bot key you provided is not valid.")) {
-                    pair.deleteApiKey();
+//                    if (pair.getNationId() != Settings.INSTANCE.NATION_ID) pair.deleteApiKey();
                     remove = true;
                 }
                 if (e.getMessage().contains("The API key you provided does not allow whitelisted access.")) {

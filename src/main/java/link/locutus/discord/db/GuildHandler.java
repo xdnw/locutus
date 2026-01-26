@@ -2893,7 +2893,7 @@ public class GuildHandler {
                 }
 
             } catch (IOException e) {
-                AlertUtil.error(e.getMessage(), e);
+                AlertUtil.error("Escrow", e);
             }
         }
     }

@@ -331,7 +331,7 @@ public class FACommands {
         User nationUser = nation.getUser();
         if (nationUser == null) return "Nation " + nation.getUrl() + " is not registered";
         Member member = guild.getMember(nationUser);
-        if (member == null) return "User " + user.getName() + " is not in this guild";
+        if (member == null) return "User " + nationUser.getName() + " is not in this guild";
         DBAlliance aa = nation.getAlliance();
         if (aa == null || aa.getAlliance_id() == 0) {
             return "Not in an alliance.";

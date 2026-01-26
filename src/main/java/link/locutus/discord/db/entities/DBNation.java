@@ -1127,7 +1127,7 @@ public abstract class DBNation implements NationOrAlliance {
         if (nation.getDiscord_id() != null && !nation.getDiscord_id().isEmpty()) {
             Long newDiscordId = Long.parseLong(nation.getDiscord_id());
             Long thisUserId = getUserId();
-            if (!newDiscordId.equals(thisUserId)) {
+            if (thisUserId == null) {
                 User user = Locutus.imp().getDiscordApi().getUserById(newDiscordId);
                 String name;
                 if (user != null) {
@@ -4694,6 +4694,7 @@ public abstract class DBNation implements NationOrAlliance {
             String url = Settings.PNW_URL() + "/api/send-message/?key=" + pair.getKey();
             String result = FileUtil.get(FileUtil.readStringFromURL(priority ? PagePriority.MAIL_SEND_SINGLE : PagePriority.MAIL_SEND_BULK, url, post, null));
             if (result.contains("Invalid API key")) {
+                AlertUtil.error(result + " | nation:" + getNation_id(), new Exception());
                 pair.deleteApiKey();
                 pool.removeKey(pair);
                 return new MailApiResponse(MailApiSuccess.INVALID_KEY, null);
@@ -6677,5 +6678,12 @@ public abstract class DBNation implements NationOrAlliance {
 
     public Predicate<Project> hasProjectPredicate() {
         return Projects.optimize(this::hasProject);
+    }
+
+    @Command(desc = "The modifier for beige nation damage taken")
+    public double getBeigeDamageFactor() {
+        double factor = 1;
+        if (getWarPolicy() == WarPolicy.MONEYBAGS) factor += 0.05;
+        return factor;
     }
 }

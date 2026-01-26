@@ -536,6 +536,9 @@ public enum AttackType {
             case "AIRSTRIKE4": return AIRSTRIKE_MONEY;
             case "AIRSTRIKE5": return AIRSTRIKE_SHIP;
             case "AIRSTRIKE6": return AIRSTRIKE_AIRCRAFT;
+            case "NAVALINFRA": return NAVAL_INFRA;
+            case "NAVALGROUND": return NAVAL_GROUND;
+            case "NAVALAIR": return NAVAL_AIR;
         }
         return valueOf(input);
     }

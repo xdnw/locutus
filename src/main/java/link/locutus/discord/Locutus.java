@@ -57,6 +57,7 @@ import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.util.update.*;
 import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.components.actionrow.ActionRowChildComponentUnion;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
@@ -980,6 +981,8 @@ public final class Locutus extends ListenerAdapter {
         try {
             String id = event.getModalId();
             User user = GuildShardManager.updateUserName(event.getUser());
+            if (Settings.INSTANCE.DISABLE_NON_ADMIN_COMMANDS && user.getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) return;
+
             InteractionHook hook = event.getHook();
             List<ModalMapping> values = event.getValues();
 
@@ -1035,6 +1038,7 @@ public final class Locutus extends ListenerAdapter {
 
     @Override
     public void onButtonInteraction(@NotNull ButtonInteractionEvent event) {
+        if (Settings.INSTANCE.DISABLE_NON_ADMIN_COMMANDS && event.getUser().getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) return;
         try {
             Message message = event.getMessage();
 
@@ -1202,6 +1206,7 @@ public final class Locutus extends ListenerAdapter {
 
     @Override
     public void onMessageReceived(@NotNull MessageReceivedEvent event) {
+        if (Settings.INSTANCE.DISABLE_NON_ADMIN_COMMANDS && event.getAuthor().getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) return;
         try {
             Guild guild = event.isFromGuild() ? event.getGuild() : null;
             if (guild != null) {
@@ -1265,6 +1270,7 @@ public final class Locutus extends ListenerAdapter {
     @Override
     public void onMessageReactionAdd(@Nonnull MessageReactionAddEvent event) {
         User author = event.getUser();
+        if (Settings.INSTANCE.DISABLE_NON_ADMIN_COMMANDS && author.getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) return;
         if (author.isSystem() || (author.isBot() && !Settings.INSTANCE.LEGACY_SETTINGS.WHITELISTED_BOT_IDS.contains(author.getIdLong()))) {
             return;
         }

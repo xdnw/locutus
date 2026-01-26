@@ -1300,7 +1300,7 @@ public final class PW {
                 auth.login(false);
                 return task.call();
             } catch (Exception e) {
-                AlertUtil.error(e.getMessage(), e);
+                AlertUtil.error("Login error", e);
                 throw new RuntimeException(e);
             }
         }

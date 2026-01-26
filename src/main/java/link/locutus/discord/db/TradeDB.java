@@ -986,7 +986,7 @@ public class TradeDB extends DBMainV2 {
     }
 
     public DBTrade getTradeById(int id) {
-        return getTrades(builder -> builder.where(QueryCondition.equals("id", id))).stream().findFirst().orElse(null);
+        return getTrades(builder -> builder.where(QueryCondition.equals("tradeId", id))).stream().findFirst().orElse(null);
     }
 
     public enum TradeAlertType {

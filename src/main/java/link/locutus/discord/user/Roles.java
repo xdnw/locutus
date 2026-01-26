@@ -599,4 +599,8 @@ public enum Roles {
         }
         return toRole2(db);
     }
+
+    public boolean isAllowAlliance() {
+        return allowAlliance;
+    }
 }

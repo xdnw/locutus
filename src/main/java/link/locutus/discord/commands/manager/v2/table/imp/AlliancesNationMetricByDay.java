@@ -78,14 +78,15 @@ public class AlliancesNationMetricByDay extends SimpleTable<Void> {
                 if (!includeApps && nation.getPositionEnum().id <= Rank.APPLICANT.id) continue;
 
                 double value = metric.apply(nation);
-                buffer[allianceIndex.get(allianceId)] = value;
+                int index = allianceIndex.get(allianceId);
+                buffer[index] += value;
 
                 switch (mode) {
                     case PER_NATION:
-                        counts[allianceIndex.get(allianceId)]++;
+                        counts[index]++;
                         break;
                     case PER_CITY:
-                        counts[allianceIndex.get(allianceId)] += nation.getCities();
+                        counts[index] += nation.getCities();
                         break;
                 }
             }
@@ -93,7 +94,11 @@ public class AlliancesNationMetricByDay extends SimpleTable<Void> {
                 case PER_CITY:
                 case PER_NATION:
                     for (int i = 0; i < buffer.length; i++) {
-                        buffer[i] = buffer[i] / counts[i];
+                        if (counts[i] > 0) {
+                            buffer[i] = buffer[i] / counts[i];
+                        } else {
+                            buffer[i] = 0;
+                        }
                     }
                     break;
             }

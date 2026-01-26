@@ -54,6 +54,27 @@ public abstract class AMessageBuilder implements IMessageBuilder {
         links.clear();
     }
 
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(contentShrink.toString().trim());
+        for (EmbedShrink embed : embeds) {
+            sb.append("\n").append(embed.toString().trim());
+        }
+        sb.append("\n");
+        for (Map.Entry<String, String> entry : buttons.entrySet()) {
+            sb.append("\n").append(entry.getValue()).append(": ").append(entry.getKey());
+        }
+        for (Map.Entry<String, String> entry : links.entrySet()) {
+            sb.append("\n").append(entry.getValue()).append(": ").append(entry.getKey());
+        }
+        sb.append("\n");
+        for (Map.Entry<String, byte[]> entry : images.entrySet()) {
+            sb.append("\n").append(entry.getKey()).append(": ").append(entry.getValue());
+        }
+        return sb.toString();
+    }
+
     public AMessageBuilder(IMessageIO parent, long id, long timeCreated, User author) {
         this.parent = parent;
         this.id = id;

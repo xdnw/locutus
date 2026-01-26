@@ -9,6 +9,7 @@ import info.debatty.java.stringsimilarity.experimental.Sift4;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.scheduler.KeyValue;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import org.apache.commons.lang3.StringUtils;
@@ -31,9 +32,11 @@ import java.util.stream.IntStream;
 public class StringMan {
 
     public static String stripApiKey(String msg) {
-        return msg
+        msg = msg
                 .replaceAll("(?i)[\\[\\]\"\\n^:\\s,\\.](?=.*[A-Za-z])(?=.*\\d)[0-9A-Fa-f]{14,}(?=[\\[\\]\"\\n$:\\s,\\.]|$)", "XXX")
                 .replaceAll("(key=)(?i)([0-9A-Fa-f]{14,})", "$1XXX");
+        msg = msg.replaceAll(Settings.INSTANCE.ACCESS_KEY, "XXX");
+        return msg;
     }
 
     public static String toCsv(List<List<String>> rows) {
