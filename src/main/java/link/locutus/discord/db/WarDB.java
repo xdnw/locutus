@@ -332,7 +332,7 @@ public class WarDB extends DBMainV2 {
 
                     byte[] newData = loader.toBytes(cursor);
                     AbstractCursor validate = loader.load(dummy, newData, true);
-                    if (Math.round(validate.getInfra_destroyed_value() * 100) != Math.round(cursor.getInfra_destroyed_value() * 100)) {
+                    if (ArrayUtil.toCents(validate.getInfra_destroyed_value()) != ArrayUtil.toCents(cursor.getInfra_destroyed_value())) {
                         Logg.info("Infra destroyed value mismatch " + validate.getInfra_destroyed_value() + " | " + cursor.getInfra_destroyed_value());
                         System.exit(0);
                     }
@@ -506,7 +506,7 @@ public class WarDB extends DBMainV2 {
             throw new IllegalArgumentException("Defcas3 mismatch");
         }
         //    private double infra_destroyed;
-//        if (Math.round(legacy.getInfra_destroyed() * 100) != Math.round(cursor.getInfra_destroyed() * 100)) {
+//        if (ArrayUtil.toCents(legacy.getInfra_destroyed()) != ArrayUtil.toCents(cursor.getInfra_destroyed())) {
 //            // print type and amounts
 //            Logg.text("Infra destroyed mismatch " + legacy.getAttack_type() + " " + legacy.getInfra_destroyed() + " | " + cursor.getInfra_destroyed());
 //            throw new IllegalArgumentException("Infra destroyed mismatch");
@@ -516,8 +516,8 @@ public class WarDB extends DBMainV2 {
             throw new IllegalArgumentException("Improvements destroyed mismatch");
         }
         //    private double money_looted;
-        if (Math.round(legacy.getMoney_looted() * 100) != Math.round(cursor.getMoney_looted() * 100)) {
-            if (legacy.getAttack_type() == AttackType.VICTORY && cursor.getLoot() != null && (Math.round(cursor.getLoot()[ResourceType.MONEY.ordinal()] * 100) == Math.round(100 * legacy.getMoney_looted()))) {
+        if (ArrayUtil.toCents(legacy.getMoney_looted()) != ArrayUtil.toCents(cursor.getMoney_looted())) {
+            if (legacy.getAttack_type() == AttackType.VICTORY && cursor.getLoot() != null && (ArrayUtil.toCents(cursor.getLoot()[ResourceType.MONEY.ordinal()]) == Math.round(100 * legacy.getMoney_looted()))) {
                 if (legacy.getMoney_looted() > 0 && legacy.loot != null && legacy.getMoney_looted() != legacy.loot[ResourceType.MONEY.ordinal()]) {
                     throw new IllegalArgumentException("Money looted mismatch 2");
                 }
@@ -545,7 +545,7 @@ public class WarDB extends DBMainV2 {
             throw new IllegalArgumentException("Looted mismatch");
         }
         //    private double lootPercent;
-        if (Math.round(legacy.getLootPercent() * 100) != Math.round(cursor.getLootPercent() * 100) && legacy.loot != null && !ResourceType.isZero(legacy.loot)) {
+        if (ArrayUtil.toCents(legacy.getLootPercent()) != ArrayUtil.toCents(cursor.getLootPercent()) && legacy.loot != null && !ResourceType.isZero(legacy.loot)) {
             // print type, percent and loot amounts
             Logg.text("Tyoe " + legacy.getAttack_type() + " | " + cursor.getAttack_type());
             Logg.text("Loot percent mismatch " + legacy.getAttack_type() + " " + legacy.getLootPercent() + " | " + cursor.getLootPercent());
@@ -561,7 +561,7 @@ public class WarDB extends DBMainV2 {
             throw new IllegalArgumentException("Loot percent mismatch");
         }
         //    private double city_infra_before;
-        if (Math.round(legacy.getCity_infra_before() * 100) != Math.round(cursor.getCity_infra_before() * 100) && legacy.getCity_infra_before() > 0 && legacy.getAttack_type() != AttackType.VICTORY) {
+        if (ArrayUtil.toCents(legacy.getCity_infra_before()) != ArrayUtil.toCents(cursor.getCity_infra_before()) && legacy.getCity_infra_before() > 0 && legacy.getAttack_type() != AttackType.VICTORY) {
             //print
             Logg.text("City infra before mismatch " + legacy.getCity_infra_before() + " | " + cursor.getCity_infra_before());
             Logg.text("Type " + legacy.getAttack_type());
@@ -582,25 +582,25 @@ public class WarDB extends DBMainV2 {
 //                        }
 //                    }
         //    private double att_gas_used;
-        if (Math.round(legacy.getAtt_gas_used() * 100) != Math.round(cursor.getAtt_gas_used() * 100)) {
+        if (ArrayUtil.toCents(legacy.getAtt_gas_used()) != ArrayUtil.toCents(cursor.getAtt_gas_used())) {
             throw new IllegalArgumentException("Att gas used mismatch");
         }
         //    private double att_mun_used;
-        if (Math.round(legacy.getAtt_mun_used() * 100) != Math.round(cursor.getAtt_mun_used() * 100)) {
+        if (ArrayUtil.toCents(legacy.getAtt_mun_used()) != ArrayUtil.toCents(cursor.getAtt_mun_used())) {
             throw new IllegalArgumentException("Att mun used mismatch");
         }
         //    private double def_gas_used;
-        if (Math.round(legacy.getDef_gas_used() * 100) != Math.round(cursor.getDef_gas_used() * 100)) {
+        if (ArrayUtil.toCents(legacy.getDef_gas_used()) != ArrayUtil.toCents(cursor.getDef_gas_used())) {
             Logg.text("Def gas used mismatch " + legacy.getDef_gas_used() + " | " + cursor.getDef_gas_used());
             Logg.text("Type " + legacy.getAttack_type());
             throw new IllegalArgumentException("Def gas used mismatch");
         }
         //    private double def_mun_used;
-        if (Math.round(legacy.getDef_mun_used() * 100) != Math.round(cursor.getDef_mun_used() * 100)) {
+        if (ArrayUtil.toCents(legacy.getDef_mun_used()) != ArrayUtil.toCents(cursor.getDef_mun_used())) {
             throw new IllegalArgumentException("Def mun used mismatch");
         }
         //    public double infraPercent_cached;
-        if (legacy.infraPercent_cached > 0 && Math.round(legacy.infraPercent_cached * 100) != Math.round(cursor.getInfra_destroyed_percent() * 100)) {
+        if (legacy.infraPercent_cached > 0 && ArrayUtil.toCents(legacy.infraPercent_cached) != ArrayUtil.toCents(cursor.getInfra_destroyed_percent())) {
             throw new IllegalArgumentException("Infra percent cached mismatch");
         }
         //    public int city_cached;

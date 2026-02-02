@@ -121,7 +121,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
     public double[] getCost(GuildDB db, DBNation sender, DBNation receiver, Integer parsed) {
         long minDate = Long.MAX_VALUE;
         long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days);
-        double[] revenue = receiver.getRevenue();
+        double[] revenue = receiver.getRevenue(null);
         if (overdrawPercent > 0) {
             PW.multiply(revenue, 1 + (overdrawPercent / 100d));
         }

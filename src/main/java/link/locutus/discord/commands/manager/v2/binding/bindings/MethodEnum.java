@@ -15,6 +15,7 @@ public enum MethodEnum {
     getTradeValue,
     getBeigeLoot,
     lootTotal,
+    getResearch,
 
     // GuildDB methods
     getTrackedBanks,

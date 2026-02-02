@@ -163,7 +163,7 @@ public class WebRoot {
             });
         }).start(port);
 
-        this.pageHandler = new PageHandler(this);
+        this.pageHandler = new PageHandler(Locutus.imp().getCommandManager().getV2().getPlaceholders());
         this.webDB = new WebDB();
 
 //        // Disabled. Client doesn't reliably send referrer info

@@ -47,8 +47,8 @@ public abstract class DamageCursor extends AbstractCursor {
         super.load(legacy);
         success = SuccessType.values[legacy.getSuccess()];
         city_id = legacy.city_cached;
-        city_infra_before_cents = (int) Math.round(legacy.getCity_infra_before() * 100);
-        infra_destroyed_cents = (int) Math.round(legacy.getInfra_destroyed() * 100);
+        city_infra_before_cents = (int) ArrayUtil.toCents(legacy.getCity_infra_before());
+        infra_destroyed_cents = (int) ArrayUtil.toCents(legacy.getInfra_destroyed());
         num_improvements = legacy.getImprovements_destroyed();
         buildingsDestroyed = null;
         if (num_improvements > 0) {

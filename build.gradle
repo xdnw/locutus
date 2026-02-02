@@ -26,7 +26,7 @@ plugins {
     id 'com.gradleup.shadow' version '8.3.0'
     id "nu.studer.jooq" version "9.0"
     id 'maven-publish'
-    id "gg.jte.gradle" version "3.1.6"
+    id "gg.jte.gradle" version "3.1.6" apply false
     id 'cz.habarta.typescript-generator' version '3.2.1263'
 //    id "nebula.lint" version "19.0.3"
 }
@@ -48,7 +48,8 @@ java {
     }
 }
 
-
+// Run this task
+// Run the
 generateTypeScript {
     jsonLibrary = 'jackson2'
     classes = [
@@ -93,12 +94,22 @@ generateTypeScript {
             'link.locutus.discord.util.task.multi.SameNetworkTrade',
             'link.locutus.discord.util.task.multi.AdvMultiReport',
             'link.locutus.discord.util.task.multi.AdvMultiRow',
+            'link.locutus.discord._main.RunHistorySnapshot',
+            'link.locutus.discord._main.TaskSummary',
+            'link.locutus.discord._main.ErrorSample',
+            'link.locutus.discord._main.TaskList',
+            'link.locutus.discord._main.TaskDetails',
     ]
     outputKind = 'module'
     nullableAnnotations = ['org.checkerframework.checker.nullness.qual.Nullable']
     nullabilityDefinition = 'undefinedInlineUnion'
     // set output file
     outputFile = file('../lc_cmd_react/src/lib/apitypes.d.ts')
+}
+tasks.named('generateTypeScript', cz.habarta.typescript.generator.gradle.GenerateTask).configure {
+    notCompatibleWithConfigurationCache("cz.habarta.typescript-generator task is not configuration-cache compatible.")
+    dependsOn(tasks.named('classes'))
+    // DO NOT set `classpath` here \u2014 property does not exist on this task type/version.
 }
 
 publishing {
@@ -428,7 +439,7 @@ jooq {
  * Generate requests and model from external service
  */
 
-compileJava.dependsOn "graphqlCodegenProductService"
+//compileJava.dependsOn "graphqlCodegenProductService"
 tasks.register('graphqlCodegenProductService', GraphQLCodegenGradleTask) {
     graphqlSchemas.includePattern = "schema\\.graphqls"
     outputDir = new File("$buildDir/generated")
@@ -486,12 +497,23 @@ sourceSets {
 
 //sourceSets.main.java.srcDirs (
 //        tasks.named('generateBankJooq').flatMap { it.outputDir },
-//        tasks.named('generateLocutusJooq').flatMap { it.outputDir },
+//        tasks.named('generateLocu10:03:23 AM: Executing ':classes :testClasses'…
+//
+//Calculating task graph as no cached configuration is available for tasks: :classes :testClasses
+//> Task :graphqlCodegenProductService FAILED
+//> Task :processTestResources NO-SOURCE
+//> Task :processResources UP-TO-DATE
+//> Task :compileKotlin NO-SOURCE
+//2 actionable tasks: 1 executed, 1 up-to-date
+//Configuration cache entry stored.
+//
+//FAILURE: Build failed with an exception.tusJooq').flatMap { it.outputDir },
 //        tasks.named('generateNationsJooq').flatMap { it.outputDir },
 //        tasks.named('generateTradeJooq').flatMap { it.outputDir },
 //        tasks.named('generateWarJooq').flatMap { it.outputDir },
 //        tasks.named('generateWebJooq').flatMap { it.outputDir }
 //)
+
 
 jar {
     from('src/main/resources/') {

@@ -728,7 +728,7 @@ public class OffshoreInstance {
                     double[] depoArr = (taxDepoValue < txValue ? taxDepositsNormalized : taxDeposits);
                     double[] missing = null;
                     for (ResourceType type : ResourceType.values) {
-                        if (amount[type.ordinal()] > 0 && Math.round(depoArr[type.ordinal()] * 100) < Math.round(amount[type.ordinal()] * 100)) {
+                        if (amount[type.ordinal()] > 0 && ArrayUtil.toCents(depoArr[type.ordinal()]) < ArrayUtil.toCents(amount[type.ordinal()])) {
                             if (missing == null) {
                                 missing = ResourceType.getBuffer();
                             }
@@ -877,7 +877,7 @@ public class OffshoreInstance {
                     diff[i] = myDeposits[i] - myNewDeposits[i];
                 }
                 for (int i = 0; i < amount.length; i++) {
-                    if (Math.round((diff[i] - amount[i]) * 100) > 1) {
+                    if (ArrayUtil.toCents((diff[i] - amount[i])) > 1) {
                         disabledNations.put(finalNationAccount.getId(), System.currentTimeMillis());
                         String[] message = {"Internal error: " + ResourceType.toString(diff) + " != " + ResourceType.toString(amount),
                                 "Nation Account: `" + finalNationAccount.getMarkdownUrl() + "` has been temporarily disabled. Have a guild admin use: " + CM.bank.unlockTransfers.cmd.toSlashMention()};
@@ -1136,12 +1136,12 @@ public class OffshoreInstance {
                     double[] totalAddBalance = ResourceType.getBuffer();
                     addBalanceResult.forEach((a, b) -> ResourceType.add(totalAddBalance, b));
                     for (int i = 0; i < amount.length; i++) {
-                        if (Math.round((totalAddBalance[i] - amount[i]) * 100) > 1)
+                        if (ArrayUtil.toCents((totalAddBalance[i] - amount[i])) > 1)
                             throw new IllegalArgumentException("Error: Addbalance does not match (1) " + MathMan.format(totalAddBalance[i]) + " != " + MathMan.format(amount[i]));
                     }
                     // ensure the difference between depositsByAA and newDeposits match the addBalanceResult
                     for (int i = 0; i < amount.length; i++) {
-                        if (Math.round(amount[i] * 100) == 0) continue; // skip if amount is 0 (no need to check)
+                        if (ArrayUtil.toCents(amount[i]) == 0) continue; // skip if amount is 0 (no need to check)
                         double diff = 0;
                         for (Map.Entry<NationOrAllianceOrGuild, double[]> entry : depositsByAA.entrySet()) {
                             diff += entry.getValue()[i];
@@ -1149,7 +1149,7 @@ public class OffshoreInstance {
                         for (Map.Entry<NationOrAllianceOrGuild, double[]> entry : newDeposits.entrySet()) {
                             diff -= entry.getValue()[i];
                         }
-                        if (Math.round((diff - totalAddBalance[i]) * 100) > 1)
+                        if (ArrayUtil.toCents((diff - totalAddBalance[i])) > 1)
                             throw new IllegalArgumentException("Error: Addbalance does not match (2) " + MathMan.format(diff) + " != " + MathMan.format(totalAddBalance[i]));
                     }
                 }
@@ -1202,7 +1202,7 @@ public class OffshoreInstance {
                         double[] newDeposits = getDeposits(senderDB, false);
                         for (ResourceType type : ResourceType.values) {
                             double amt = deposits[type.ordinal()];
-                            if (Math.round(amt * 100) > Math.round(newDeposits[type.ordinal()]) * 100) valid = true;
+                            if (ArrayUtil.toCents(amt) > ArrayUtil.toCents(newDeposits[type.ordinal()])) valid = true;
                         }
                         if (!valid) {
                             for (ResourceType type : ResourceType.values) {
@@ -1362,7 +1362,7 @@ public class OffshoreInstance {
         double[] depoArr = (myDepoValue < txValue ? myDepositsNormalized : myDeposits);
         double[] missing = null;
         for (ResourceType type : ResourceType.values) {
-            if (amount[type.ordinal()] > 0 && Math.round(depoArr[type.ordinal()] * 100) < Math.round(amount[type.ordinal()] * 100)) {
+            if (amount[type.ordinal()] > 0 && ArrayUtil.toCents(depoArr[type.ordinal()]) < ArrayUtil.toCents(amount[type.ordinal()])) {
                 if (!update && allowUpdate) {
                     return checkNationDeposits(senderDB, nationAccount, allowedIds, receiver, amount, txValue, depositType, ignoreGrants, allowNegative, reqMsg, true, false);
                 }
@@ -1405,14 +1405,14 @@ public class OffshoreInstance {
         if (senderDB != getGuildDB()) {
             deposits = PW.normalize(deposits); // normalize
             for (int i = 0; i < amount.length; i++) {
-                if (Math.round(amount[i] * 100) != 0 && Math.round(deposits[i] * 100) < Math.round(amount[i] * 100)) {
+                if (ArrayUtil.toCents(amount[i]) != 0 && ArrayUtil.toCents(deposits[i]) < ArrayUtil.toCents(amount[i])) {
                     if (!update) {
                         return checkDeposits(senderDB, allowedAlliances, amount, true);
                     }
                     throw new IllegalArgumentException("You do not have " + MathMan.format(amount[i]) + "x" + ResourceType.values[i] + ", only " + MathMan.format(deposits[i]) + " (normalized)\n" +
                             "Note: Account balance is managed on the offshore server (" + getGuildDB().getGuild() + ") and can be adjusted via " + CM.deposits.add.cmd.toSlashMention());
                 }
-                if (!Double.isFinite(amount[i]) || Math.round(amount[i] * 100) < 0) {
+                if (!Double.isFinite(amount[i]) || ArrayUtil.toCents(amount[i]) < 0) {
                     if (!update) {
                         return checkDeposits(senderDB, allowedAlliances, amount, true);
                     }

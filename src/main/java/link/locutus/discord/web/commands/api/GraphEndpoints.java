@@ -2,10 +2,13 @@ package link.locutus.discord.web.commands.api;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
@@ -264,7 +267,11 @@ public class GraphEndpoints {
                                       @Switch("s") @Timestamp Long snapshotDate) throws IOException {
         Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db);
         Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db);
-        return new StrengthTierGraph(
+        Set<DBNation> allNations = new ObjectOpenHashSet<>();
+        allNations.addAll(coalition1Nations);
+        allNations.addAll(coalition2Nations);
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(allNations, DBNation.class);
+        return new StrengthTierGraph(cacheStore,
                 coalition1.getFilter(),
                 coalition2.getFilter(),
                 coalition1Nations,

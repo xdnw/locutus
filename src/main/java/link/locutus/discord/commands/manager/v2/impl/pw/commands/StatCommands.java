@@ -24,6 +24,7 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.builder.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -956,7 +957,11 @@ public class StatCommands {
                                     @Switch("v") boolean attachCsv, @Switch("ss") boolean attach_sheet) throws IOException {
         Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db == null ? null : db.getGuild());
         Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db == null ? null : db.getGuild());
-        IMessageBuilder msg = new StrengthTierGraph(
+        Set<DBNation> allNations = new ObjectOpenHashSet<>();
+        allNations.addAll(coalition1Nations);
+        allNations.addAll(coalition2Nations);
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(allNations, DBNation.class);
+        IMessageBuilder msg = new StrengthTierGraph(cacheStore,
                 coalition1.getFilter(),
                 coalition2.getFilter(),
                 coalition1Nations,

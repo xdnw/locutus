@@ -2117,9 +2117,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             for (int i = 0; i < amountLeft.length; i++) {
                 double subDepositsI = subDeposits[i];
                 double amountI = amountLeft[i];
-                if (Math.round(subDepositsI * 100) > 0 && Math.round(amountI * 100) > 0) {
+                if (ArrayUtil.toCents(subDepositsI) > 0 && ArrayUtil.toCents(amountI) > 0) {
                     double subtract = Math.min(subDepositsI, amountI);
-                    if (Math.round(subtract * 100) == 0) continue;
+                    if (ArrayUtil.toCents(subtract) == 0) continue;
                     if (toSubtract == null) toSubtract = ResourceType.getBuffer();
                     toSubtract[i] = subtract;
                     amountLeft[i] -= subtract;
@@ -2194,7 +2194,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
 //    public void setDepositOffset(long nationId, ResourceType resource, double amount, String note) {
-//        long amtLong = (long) Math.round(amount * 100);
+//        long amtLong = (long) ArrayUtil.toCents(amount);
 //        long id = MathMan.pairInt((int) nationId, resource.ordinal());
 //        update("INSERT OR REPLACE INTO `BANK_DEPOSIT`(`nationId`, `resource`, `amount`, `note`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
 //            stmt.setLong(1, nationId);
@@ -2293,7 +2293,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                     while (rs.next()) {
                         int nationId = rs.getInt("nationId");
                         ResourceType type = ResourceType.values[rs.getInt("resource")];
-                        double amount = rs.getLong("amount") / 100d;
+                        double amount = ArrayUtil.fromCents(rs.getLong("amount"));
                         String note = rs.getString("note");
                         legacyOffset.computeIfAbsent(nationId, f -> new Object2ObjectOpenHashMap<>())
                                 .computeIfAbsent(note, f -> ResourceType.getBuffer())[type.ordinal()] += amount;

@@ -363,7 +363,7 @@ public class SendInternalTask {
             diff[i] = nationBalance[i] - newBalance[i];
         }
         for (int i = 0; i < amount.length; i++) {
-            if (Math.round((diff[i] - amount[i]) * 100) > 1) {
+            if (ArrayUtil.toCents((diff[i] - amount[i])) > 1) {
                 String name = account.isGuild() ? account.asGuild().getGuild().toString() : account.isAlliance() ? account.asAlliance().getMarkdownUrl() : account.asNation().getMarkdownUrl();
                 String[] message = {"Internal error: " + ResourceType.toString(diff) + " != " + ResourceType.toString(amount),
                         "Account: " + name + " failed to adjust balance. Have a guild admin use: " + CM.bank.unlockTransfers.cmd.nationOrAllianceOrGuild(account.getQualifiedId()) + " in " + senderOffshore.getGuildDB()};
@@ -554,9 +554,9 @@ public class SendInternalTask {
         if (ResourceType.convertedTotal(deposits) <= 0) throw new IllegalArgumentException("Sender " + senderTypeStr + " (" + senderName + ") does not have any deposits");
 
         for (int i = 0; i < deposits.length; i++) {
-            if (Math.round(amount[i] * 100) > Math.round(normalized[i] * 100)) {
+            if (ArrayUtil.toCents(amount[i]) > ArrayUtil.toCents(normalized[i])) {
                 String msg = "Sender " + senderTypeStr + " (" + senderName + ") can only send " + MathMan.format(normalized[i]) + "x" + ResourceType.values[i] + "(not " + MathMan.format(amount[i]) + ")";
-                if (Math.round(amount[i] * 100) > Math.round(deposits[i] * 100)) {
+                if (ArrayUtil.toCents(amount[i]) > ArrayUtil.toCents(deposits[i])) {
                     throw new IllegalArgumentException(msg);
                 } else {
                     throw new IllegalArgumentException(msg + "\nNote: Transfer limit is reduced by negative resources in deposits");

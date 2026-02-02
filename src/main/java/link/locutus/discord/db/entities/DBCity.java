@@ -141,8 +141,8 @@ public abstract class DBCity implements IMutableCity {
         if (getCreated() == 0) {
             setCreated(this.getFetched());
         }
-        this.setInfra_cents((int) Math.round(Double.parseDouble(container.getInfrastructure()) * 100));
-        this.setLand_cents((int) Math.round(Double.parseDouble(container.getLand()) * 100));
+        this.setInfra_cents((int) ArrayUtil.toCents(Double.parseDouble(container.getInfrastructure())));
+        this.setLand_cents((int) ArrayUtil.toCents(Double.parseDouble(container.getLand())));
     }
 
     public void update(boolean events) {
@@ -180,8 +180,8 @@ public abstract class DBCity implements IMutableCity {
         this.setNation_id(cityV3.getNation_id());
         this.setId(cityV3.getId());
         this.setCreated(cityV3.getDate().getTime());
-        this.setLand_cents((int) Math.round(cityV3.getLand() * 100));
-        this.setInfra_cents((int) Math.round(cityV3.getInfrastructure() * 100));
+        this.setLand_cents((int) ArrayUtil.toCents(cityV3.getLand()));
+        this.setInfra_cents((int) ArrayUtil.toCents(cityV3.getInfrastructure()));
         if (cityV3.getPowered() != null) this.setPowered(cityV3.getPowered());
 
         if (cityV3.getNuke_date() != null) {
@@ -442,11 +442,11 @@ public abstract class DBCity implements IMutableCity {
     }
 
     public void setInfra(double v) {
-        setInfra_cents((int) Math.round(v * 100));
+        setInfra_cents((int) ArrayUtil.toCents(v));
     }
 
     public void setLand(double v) {
-        setLand_cents((int) Math.round(v * 100));
+        setLand_cents((int) ArrayUtil.toCents(v));
     }
 
     @Command(desc = "Get nation id of this city")

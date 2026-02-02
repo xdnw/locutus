@@ -2,6 +2,8 @@ package link.locutus.discord.pnw;
 
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.db.entities.DBNation;
 
 import java.util.Collection;
@@ -45,8 +47,9 @@ public class SimpleNationList implements NationList {
 
     public double[] getRevenue() {
         double[] total = ResourceType.getBuffer();
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations, DBNation.class);
         for (DBNation nation : nations) {
-            total = ResourceType.add(total, nation.getRevenue());
+            total = ResourceType.add(total, nation.getRevenue(cacheStore));
         }
         return total;
     }

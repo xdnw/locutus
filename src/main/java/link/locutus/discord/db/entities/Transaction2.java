@@ -15,6 +15,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.util.math.ArrayUtil;
 import org.example.jooq.bank.tables.records.Transactions_2Record;
 import org.jsoup.nodes.Element;
 import org.jsoup.parser.Parser;
@@ -295,19 +296,18 @@ public class Transaction2 {
                 ResourceType.getBuffer()
         );
         tx.original_id = record.getTxId();
-
-        tx.resources[MONEY.ordinal()] = record.getMoney() / 100d;
-        tx.resources[FOOD.ordinal()] = record.getFood() / 100d;
-        tx.resources[COAL.ordinal()] = record.getCoal() / 100d;
-        tx.resources[OIL.ordinal()] = record.getOil() / 100d;
-        tx.resources[URANIUM.ordinal()] = record.getUranium() / 100d;
-        tx.resources[LEAD.ordinal()] = record.getLead() / 100d;
-        tx.resources[IRON.ordinal()] = record.getIron() / 100d;
-        tx.resources[BAUXITE.ordinal()] = record.getBauxite() / 100d;
-        tx.resources[GASOLINE.ordinal()] = record.getGasoline() / 100d;
-        tx.resources[MUNITIONS.ordinal()] = record.getMunitions() / 100d;
-        tx.resources[STEEL.ordinal()] = record.getSteel() / 100d;
-        tx.resources[ALUMINUM.ordinal()] = record.getAluminum() / 100d;
+        tx.resources[ResourceType.MONEY.ordinal()] = ArrayUtil.fromCents(record.getMoney());
+        tx.resources[ResourceType.FOOD.ordinal()] = ArrayUtil.fromCents(record.getFood());
+        tx.resources[ResourceType.COAL.ordinal()] = ArrayUtil.fromCents(record.getCoal());
+        tx.resources[ResourceType.OIL.ordinal()] = ArrayUtil.fromCents(record.getOil());
+        tx.resources[ResourceType.URANIUM.ordinal()] = ArrayUtil.fromCents(record.getUranium());
+        tx.resources[ResourceType.LEAD.ordinal()] = ArrayUtil.fromCents(record.getLead());
+        tx.resources[ResourceType.IRON.ordinal()] = ArrayUtil.fromCents(record.getIron());
+        tx.resources[ResourceType.BAUXITE.ordinal()] = ArrayUtil.fromCents(record.getBauxite());
+        tx.resources[ResourceType.GASOLINE.ordinal()] = ArrayUtil.fromCents(record.getGasoline());
+        tx.resources[ResourceType.MUNITIONS.ordinal()] = ArrayUtil.fromCents(record.getMunitions());
+        tx.resources[ResourceType.STEEL.ordinal()] = ArrayUtil.fromCents(record.getSteel());
+        tx.resources[ResourceType.ALUMINUM.ordinal()] = ArrayUtil.fromCents(record.getAluminum());
         return tx;
     }
 
@@ -490,7 +490,7 @@ public class Transaction2 {
         int i = 9;
         for (ResourceType type : ResourceType.values) {
             if (type == ResourceType.CREDITS) continue;
-            stmt.setLong(i, Math.round(resources[type.ordinal()] * 100d));
+            stmt.setLong(i, ArrayUtil.toCents(resources[type.ordinal()]));
             i++;
         }
     }
@@ -510,7 +510,7 @@ public class Transaction2 {
         int i = 8;
         for (ResourceType type : ResourceType.values) {
             if (type == ResourceType.CREDITS) continue;
-            stmt.setLong(i, (long) (resources[type.ordinal()] * 100d));
+            stmt.setLong(i, ArrayUtil.toCents(resources[type.ordinal()]));
             i++;
         }
     }
@@ -586,18 +586,19 @@ public class Transaction2 {
         record.setReceiverType(receiver_type);
         record.setBankerNationId(banker_nation);
         record.setNote(note);
-        record.setMoney((long) (resources[ResourceType.MONEY.ordinal()] * 100d));
-        record.setFood((long) (resources[ResourceType.FOOD.ordinal()] * 100d));
-        record.setCoal((long) (resources[ResourceType.COAL.ordinal()] * 100d));
-        record.setOil((long) (resources[ResourceType.OIL.ordinal()] * 100d));
-        record.setUranium((long) (resources[ResourceType.URANIUM.ordinal()] * 100d));
-        record.setLead((long) (resources[ResourceType.LEAD.ordinal()] * 100d));
-        record.setIron((long) (resources[ResourceType.IRON.ordinal()] * 100d));
-        record.setBauxite((long) (resources[ResourceType.BAUXITE.ordinal()] * 100d));
-        record.setGasoline((long) (resources[ResourceType.GASOLINE.ordinal()] * 100d));
-        record.setMunitions((long) (resources[ResourceType.MUNITIONS.ordinal()] * 100d));
-        record.setSteel((long) (resources[ResourceType.STEEL.ordinal()] * 100d));
-        record.setAluminum((long) (resources[ResourceType.ALUMINUM.ordinal()] * 100d));
+        record.setMoney(ArrayUtil.toCents(resources[ResourceType.MONEY.ordinal()]));
+        record.setFood(ArrayUtil.toCents(resources[ResourceType.FOOD.ordinal()]));
+        record.setCoal(ArrayUtil.toCents(resources[ResourceType.COAL.ordinal()]));
+        record.setOil(ArrayUtil.toCents(resources[ResourceType.OIL.ordinal()]));
+        record.setUranium(ArrayUtil.toCents(resources[ResourceType.URANIUM.ordinal()]));
+        record.setLead(ArrayUtil.toCents(resources[ResourceType.LEAD.ordinal()]));
+        record.setIron(ArrayUtil.toCents(resources[ResourceType.IRON.ordinal()]));
+        record.setBauxite(ArrayUtil.toCents(resources[ResourceType.BAUXITE.ordinal()]));
+        record.setGasoline(ArrayUtil.toCents(resources[ResourceType.GASOLINE.ordinal()]));
+        record.setMunitions(ArrayUtil.toCents(resources[ResourceType.MUNITIONS.ordinal()]));
+        record.setSteel(ArrayUtil.toCents(resources[ResourceType.STEEL.ordinal()]));
+        record.setAluminum(ArrayUtil.toCents(resources[ResourceType.ALUMINUM.ordinal()]));
+
     }
 
     public boolean isInternal() {

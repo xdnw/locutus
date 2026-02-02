@@ -942,7 +942,8 @@ public class GuildKey {
                     "Members and `" + Roles.MILCOM.name() + "` are pinged for defensive wars\n" +
                     "To set the `" + Roles.MILCOM.name() + "` role, see: " + CM.role.setAlias.cmd.locutusRole(Roles.MILCOM.name()).discordRole("");
         }
-    }.setupRequirements(f -> f.requiresAllies().requireActiveGuild().requireValidAlliance());
+    }.setupRequirements(f -> f.requiresAllies().requireActiveGuild().requireAny("", GuildSetting.Requirements.WHITELISTED, GuildSetting.Requirements.VALID_ALLIANCE));
+
     public static GuildSetting<Boolean> SHOW_ALLY_DEFENSIVE_WARS = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
@@ -2088,6 +2089,19 @@ public class GuildKey {
         @RolePermission(Roles.ADMIN)
         public String MAIL_NEW_APPLICANTS_TEXT(@Me GuildDB db, @Me User user, String message) {
             return MAIL_NEW_APPLICANTS_TEXT.setAndValidate(db, user, message);
+        }
+    }.setupRequirements(f -> f.requireValidAlliance().requires(MAIL_NEW_APPLICANTS));
+    public static GuildSetting<String> MAIL_NEW_APPLICANTS_SUBJECT = new GuildStringSetting(GuildSettingCategory.RECRUIT) {
+        @Override
+        public String help() {
+            return "The message subject to send to new applicants via in-game mail.\n" +
+                    "Supports nation placeholders, see: <https://github.com/xdnw/locutus/wiki/nation_placeholders>";
+        }
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String MAIL_NEW_APPLICANTS_SUBJECT(@Me GuildDB db, @Me User user, String message) {
+            return MAIL_NEW_APPLICANTS_SUBJECT.setAndValidate(db, user, message);
         }
     }.setupRequirements(f -> f.requireValidAlliance().requires(MAIL_NEW_APPLICANTS));
 

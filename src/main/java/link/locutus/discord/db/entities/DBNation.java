@@ -193,18 +193,18 @@ public abstract class DBNation implements NationOrAlliance {
 //    }
 
     @Command(desc = "Daily revenue value of nation")
-    public double getRevenueConverted() {
-        return ResourceType.convertedTotal(getRevenue());
+    public double getRevenueConverted(ValueStore store) {
+        return ResourceType.convertedTotal(getRevenue(store));
     }
 
     @Command(desc = "Daily revenue value of nation per city")
-    public double getRevenuePerCityConverted() {
-        return getRevenueConverted() / data()._cities();
+    public double getRevenuePerCityConverted(ValueStore store) {
+        return getRevenueConverted(store) / data()._cities();
     }
 
     @Command(desc = "Estimated daily Gross National Income (GNI)")
-    public double estimateGNI() {
-        double[] revenue = getRevenue();
+    public double estimateGNI(ValueStore store) {
+        double[] revenue = getRevenue(store);
         double total = 0;
         for (ResourceType type : ResourceType.values()) {
             double amt = revenue[type.ordinal()];
@@ -1098,7 +1098,7 @@ public abstract class DBNation implements NationOrAlliance {
     public boolean updateNationInfo(DBNation copyOriginal, com.politicsandwar.graphql.model.Nation nation, Consumer<Event> eventConsumer) {
         boolean dirty = false;
         Double discount = nation.getCities_discount();
-        if (discount != null && Math.round(this.getCityRefund() * 100) != Math.round(discount * 100)) {
+        if (discount != null && ArrayUtil.toCents(this.getCityRefund()) != ArrayUtil.toCents(discount)) {
             this.edit().setCostReduction(discount);
             dirty = true;
         }
@@ -1106,7 +1106,7 @@ public abstract class DBNation implements NationOrAlliance {
         MilitaryResearch apiResearch = nation.getMilitary_research();
         if (apiResearch != null) {
             int researchBits = Research.toBits(apiResearch);
-            if (this.getResearchBits() != researchBits) {
+            if (this.getResearchBits(null) != researchBits) {
                 this.edit().setResearchBits(researchBits);
                 dirty = true;
             }
@@ -1383,7 +1383,7 @@ public abstract class DBNation implements NationOrAlliance {
             dirty = true;
             this.markCitiesDirty();
         }
-//        if (nation.getGross_domestic_product() != null && Math.round((this.gdp - nation.getGross_domestic_product()) * 100) != 0) {
+//        if (nation.getGross_domestic_product() != null && ArrayUtil.toCents((this.gdp - nation.getGross_domestic_product())) != 0) {
 //            this.setGDP(nation.getGross_domestic_product());
 ////            if (eventConsumer != null) eventConsumer.accept(new NationChangeGDPEvent(copyOriginal, this));
 //            dirty = true;
@@ -2247,9 +2247,9 @@ public abstract class DBNation implements NationOrAlliance {
             citiesNoRaws.put(cityEntry.getKey(), city);
         }
 
-        double[] daily = PW.getRevenue(null, 12, this, cityMap.values(), true, true, true, false, false, 0d);
-        double[] turn = PW.getRevenue(null,  1, this, citiesNoRaws.values(), true, true, true, false, false, 0d);
-        double[] turn2 = PW.getRevenue(null,  1, this, citiesNoRaws.values(), true, true, true, true, false, 0d);
+        double[] daily = PW.getRevenue(null, null, 12, this, cityMap.values(), true, true, true, false, false, 0d);
+        double[] turn = PW.getRevenue(null, null,  1, this, citiesNoRaws.values(), true, true, true, false, false, 0d);
+        double[] turn2 = PW.getRevenue(null, null,  1, this, citiesNoRaws.values(), true, true, true, true, false, 0d);
         turn[ResourceType.MONEY.ordinal()] = Math.min(turn[ResourceType.MONEY.ordinal()], turn2[ResourceType.MONEY.ordinal()]);
         turn[ResourceType.FOOD.ordinal()] = Math.min(turn[ResourceType.FOOD.ordinal()], turn2[ResourceType.FOOD.ordinal()]);
 
@@ -2568,8 +2568,8 @@ public abstract class DBNation implements NationOrAlliance {
         return data()._score();
     }
 
-    public double estimateScore(MMRDouble mmr, Double infra, Integer projects, Integer cities, Integer researchBits) {
-        return PW.estimateScore(Locutus.imp().getNationDB(), this, mmr, infra, projects, cities, researchBits);
+    public double estimateScore(ValueStore store, MMRDouble mmr, Double infra, Integer projects, Integer cities, Integer researchBits) {
+        return PW.estimateScore(store, this, mmr, infra, projects, cities, researchBits);
     }
 
     public void setScore(double score) {
@@ -3268,12 +3268,12 @@ public abstract class DBNation implements NationOrAlliance {
 
     @Command(desc = "The alliance tax rate necessary to break even when distributing raw resources")
     @RolePermission(value = Roles.ECON)
-    public double equilibriumTaxRate() {
-        return equilibriumTaxRate(false, false);
+    public double equilibriumTaxRate(ValueStore store) {
+        return equilibriumTaxRate(store, false, false);
     }
 
-    public double equilibriumTaxRate(boolean updateNewCities, boolean force) {
-        double[] revenue = getRevenue(12, true, false, true, updateNewCities, false, false, 0d, force);
+    public double equilibriumTaxRate(ValueStore store, boolean updateNewCities, boolean force) {
+        double[] revenue = getRevenue(store, 12, true, false, true, updateNewCities, false, false, 0d, force);
         double consumeCost = 0;
         double taxable = 0;
         for (ResourceType type : ResourceType.values) {
@@ -3290,12 +3290,12 @@ public abstract class DBNation implements NationOrAlliance {
         return Double.NaN;
     }
 
-    public double[] getRevenue() {
-        return getRevenue(12);
+    public double[] getRevenue(ValueStore store) {
+        return getRevenue(store,12);
     }
 
-    public double[] getRevenue(int turns) {
-        return getRevenue(turns, true, true, true, true, false, false, getTreasureBonusPct(), false);
+    public double[] getRevenue(ValueStore store, int turns) {
+        return getRevenue(store, turns, true, true, true, true, false, false, getTreasureBonusPct(), false);
     }
 
     @Command(desc = "Treasure bonus decimal percent")
@@ -3307,15 +3307,15 @@ public abstract class DBNation implements NationOrAlliance {
         return ((treasures == 0 ? 0 : Math.sqrt(treasures * 4)) + natTreasures.stream().mapToDouble(DBTreasure::getBonus).sum()) * 0.01;
     }
 
-    public double[] getRevenue(int turns, boolean cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower, double treasureBonus, boolean force) {
-        return getRevenue(turns, cities, militaryUpkeep, tradeBonus, bonus, noFood, noPower, treasureBonus, null, null, force);
+    public double[] getRevenue(ValueStore store, int turns, boolean cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower, double treasureBonus, boolean force) {
+        return getRevenue(store, turns, cities, militaryUpkeep, tradeBonus, bonus, noFood, noPower, treasureBonus, null, null, force);
     }
 
-    public double[] getRevenue(int turns, boolean cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower, double treasureBonus, Double forceRads, Boolean forceAtWar, boolean force) {
+    public double[] getRevenue(ValueStore store, int turns, boolean cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower, double treasureBonus, Double forceRads, Boolean forceAtWar, boolean force) {
         Map<Integer, JavaCity> cityMap = cities ? getCityMap(force, force, false) : new HashMap<>();
         double rads = forceRads != null ? forceRads : getRads();
         boolean atWar = forceAtWar != null ? forceAtWar : getNumWars() > 0;
-        double[] revenue = PW.getRevenue(null, turns, -1L, this, cityMap.values(), militaryUpkeep, tradeBonus, bonus, noFood, noPower, rads, atWar, treasureBonus);
+        double[] revenue = PW.getRevenue(store, null, turns, -1L, this, cityMap.values(), militaryUpkeep, tradeBonus, bonus, noFood, noPower, rads, atWar, treasureBonus);
         return revenue;
     }
 
@@ -3437,7 +3437,7 @@ public abstract class DBNation implements NationOrAlliance {
                 if (food <= 0) {
                     turnsFed = 0;
                 } else {
-                    double[] revenue = getRevenue(1, true, true, false, true, false, false, 0d, false);
+                    double[] revenue = getRevenue(store, 1, true, true, false, true, false, false, 0d, false);
                     if (revenue[ResourceType.FOOD.ordinal()] < 0) {
                         turnsFed = Math.max(0, (int) (food / Math.abs(revenue[ResourceType.FOOD.ordinal()])));
                     } else {
@@ -3452,10 +3452,10 @@ public abstract class DBNation implements NationOrAlliance {
                 int turnsFedUnpowered = Math.max(0, Math.min(turnsFed - turnsPowered, turnsUnpowered));
                 int turnsUnfedUnpowered = turnsPowered - turnsFedUnpowered;
                 if (turnsFedUnpowered > 0) {
-                    revenue = getRevenue(turnsFedUnpowered, true, true, false, true, false, true, 0d, false);
+                    revenue = getRevenue(store, turnsFedUnpowered, true, true, false, true, false, true, 0d, false);
                 }
                 if (turnsUnfedUnpowered > 0) {
-                    revenue = getRevenue(turnsUnfedUnpowered, true, true, false, true, true, true, 0d, false);
+                    revenue = getRevenue(store, turnsUnfedUnpowered, true, true, false, true, true, true, 0d, false);
                 }
                 revenue = PW.capManuFromRaws(revenue, ResourceType.getBuffer());
             }
@@ -3463,10 +3463,10 @@ public abstract class DBNation implements NationOrAlliance {
                 int turnsFedPowered = Math.min(turnsFed, turnsPowered);
                 int turnsUnfedPowered = turnsPowered - turnsFedPowered;
                 if (turnsFedPowered > 0) {
-                    revenue = ResourceType.add(revenue, getRevenue(turnsFedPowered, true, true, false, true, false, false, 0d, false));
+                    revenue = ResourceType.add(revenue, getRevenue(store, turnsFedPowered, true, true, false, true, false, false, 0d, false));
                 }
                 if (turnsUnfedPowered > 0) {
-                    revenue = ResourceType.add(revenue, getRevenue(turnsUnfedPowered, true, true, false, true, true, false, 0d, false));
+                    revenue = ResourceType.add(revenue, getRevenue(store, turnsUnfedPowered, true, true, false, true, true, false, 0d, false));
                 }
             }
             if (loot != null) {
@@ -3995,7 +3995,7 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     @Command
-    public int getRemainingUnitBuy(MilitaryUnit unit, @Default Long timeSince) {
+    public int getRemainingUnitBuy(ValueStore cacheStore, MilitaryUnit unit, @Default Long timeSince) {
         if (timeSince == null) {
             long dcTurn = this.getTurnsFromDC();
             timeSince = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - dcTurn);
@@ -4020,7 +4020,7 @@ public abstract class DBNation implements NationOrAlliance {
         }
 
         int numPurchased = Math.max(0, currentAmt - previousAmt + lostInAttacks[0]);
-        int maxPerDay = unit.getMaxPerDay(data()._cities(), this::hasProject, this::getResearch);
+        int maxPerDay = unit.getMaxPerDay(data()._cities(), this::hasProject, f -> this.getResearch(cacheStore, f));
         return Math.max(0, maxPerDay - numPurchased);
     }
 
@@ -4367,7 +4367,7 @@ public abstract class DBNation implements NationOrAlliance {
 
     @Command
     public int getUnitCap(MilitaryUnit unit, @Switch("c") boolean checkBuildingsAndPop) {
-        int result = checkBuildingsAndPop ? unit.getCap(this, false) : unit.getMaxMMRCap(data()._cities(), getResearchBits(), this::hasProject);
+        int result = checkBuildingsAndPop ? unit.getCap(this, false) : unit.getMaxMMRCap(data()._cities(), getResearchBits(null), this::hasProject);
         return result;
     }
 
@@ -4472,7 +4472,7 @@ public abstract class DBNation implements NationOrAlliance {
             if (cap == Integer.MAX_VALUE) cap = -1;
             // 6 chars
             String unitsStr = String.format("%6s", getUnits(unit));
-            String remainingStr = String.format("%6s", getRemainingUnitBuy(unit, dcTimestamp));
+            String remainingStr = String.format("%6s", getRemainingUnitBuy(null, unit, dcTimestamp));
             String capStr = String.format("%6s", cap);
             body.append(String.format("%2s", unit.getEmoji())).append(" ").append(unitsStr).append("|").append(remainingStr).append("|").append(capStr).append("").append("\n");
         }
@@ -4520,7 +4520,7 @@ public abstract class DBNation implements NationOrAlliance {
         //
         //Revenue: {}
         // - Worth: $10
-        double[] revenue = getRevenue();
+        double[] revenue = getRevenue(null);
         body.append("**Revenue:**");
         body.append(" worth: `$").append(MathMan.format(ResourceType.convertedTotal(revenue))).append("`");
         body.append("\n```json\n").append(ResourceType.toString(revenue)).append("\n``` ");
@@ -5067,17 +5067,17 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Total monetary value of military units")
-    public double militaryValue() {
-        return militaryValue(true);
+    public double militaryValue(ValueStore store) {
+        return militaryValue(store, true);
     }
 
-    public long militaryValue(boolean ships) {
+    public long militaryValue(ValueStore store, boolean ships) {
         long total = 0;
-        total += data()._soldiers() * MilitaryUnit.SOLDIER.getConvertedCost(this::getResearch);
-        total += data()._tanks() * MilitaryUnit.TANK.getConvertedCost(this::getResearch);
-        total += data()._aircraft() * MilitaryUnit.AIRCRAFT.getConvertedCost(this::getResearch);
+        total += data()._soldiers() * MilitaryUnit.SOLDIER.getConvertedCost(f -> this.getResearch(store, f));
+        total += data()._tanks() * MilitaryUnit.TANK.getConvertedCost(f -> this.getResearch(store, f));
+        total += data()._aircraft() * MilitaryUnit.AIRCRAFT.getConvertedCost(f -> this.getResearch(store, f));
         if (ships) {
-            total += this.data()._ships() * MilitaryUnit.SHIP.getConvertedCost(this::getResearch);
+            total += this.data()._ships() * MilitaryUnit.SHIP.getConvertedCost(f -> this.getResearch(store, f));
         }
         return total;
     }
@@ -5123,8 +5123,8 @@ public abstract class DBNation implements NationOrAlliance {
         return data()._projects();
     }
 
-    public double estimateScore() {
-        return estimateScore(getInfra());
+    private double estimateScore() {
+        return estimateScore(null, null, null, null, null, null);
     }
 
     @Command(desc = "Get resource quantity for this nation")
@@ -5261,10 +5261,6 @@ public abstract class DBNation implements NationOrAlliance {
             if (hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS)) factor -= 0.0125;
         }
         return PW.City.Land.calculateLand(from, to) * (to > from ? factor : 1);
-    }
-
-    public double estimateScore(double infra) {
-        return estimateScore(null, infra, null, null, null);
     }
 
     public Map<ResourceType, Double> checkExcessResources(GuildDB db, Map<ResourceType, Double> stockpile) {
@@ -5823,7 +5819,7 @@ public abstract class DBNation implements NationOrAlliance {
         caps[1] = Buildings.FACTORY.getUnitDailyBuy() * Buildings.FACTORY.cap(this::hasProject) * getCities();
         caps[2] = Buildings.HANGAR.getUnitDailyBuy() * Buildings.HANGAR.cap(this::hasProject) * getCities();
         caps[3] = Buildings.DRYDOCK.getUnitDailyBuy() * Buildings.DRYDOCK.cap(this::hasProject) * getCities();
-        caps[4] = MilitaryUnit.MISSILE.getMaxPerDay(getCities(), this::hasProject, this::getResearch);
+        caps[4] = MilitaryUnit.MISSILE.getMaxPerDay(getCities(), this::hasProject, f -> this.getResearch(null, f));
         caps[5] = 1;
 
         Map<Integer, Long> result = new HashMap<>();
@@ -6516,7 +6512,10 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Their gross income (GNI)")
-    public double getGNI() {
+    public double getGNI(ValueStore store) {
+        if (getSnapshot() != null) {
+            return estimateGNI(store);
+        }
         return data()._gni();
     }
 
@@ -6590,7 +6589,7 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Daily revenue of a nation")
-    public Map<ResourceType, Double> revenue(@Default Integer turns,
+    public Map<ResourceType, Double> revenue(ValueStore store, @Default Integer turns,
                                              @Switch("c") boolean no_cities,
                                              @Switch("m") boolean no_military,
                                             @Switch("t") boolean no_trade_bonus,
@@ -6600,7 +6599,7 @@ public abstract class DBNation implements NationOrAlliance {
                                             @Switch("r") Double treasure_bonus) {
         if (turns == null) turns = 12;
         if (treasure_bonus == null) treasure_bonus = getTreasureBonusPct();
-        double[] rss = getRevenue(turns, !no_cities, !no_military, !no_trade_bonus, !no_new_bonus, no_food, no_power, treasure_bonus, false);
+        double[] rss = getRevenue(store, turns, !no_cities, !no_military, !no_trade_bonus, !no_new_bonus, no_food, no_power, treasure_bonus, false);
         return ResourceType.resourcesToMap(rss);
     }
 
@@ -6610,13 +6609,31 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "The level this nation has for a specified research")
-    public int getResearch(Research research) {
-        return research.getLevel(getResearchBits());
+    public int getResearch(ValueStore store, Research research) {
+        return research.getLevel(getResearchBits(store));
     }
 
     // research bits
     @Command(desc = "The raw data of all the research levels this nation has")
-    public int getResearchBits() {
+    public int getResearchBits(ValueStore store) {
+        if (getSnapshot() != null) {
+            long turn = TimeUtil.getTurn(getSnapshot());
+            ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, getResearch.get());
+            Integer resultOrNull = scoped.getMap(this,
+                (ThrowingFunction<List<DBNation>, Map<DBNation, Integer>>)
+                        f -> {
+                            Set<Integer> ids = new IntArraySet();
+                            for (DBNation n : f) ids.add(n.getId());
+                            Map<Integer, Integer> bitsMap = Locutus.imp().getNationDB().getResearch(ids, turn, true);
+                            Map<DBNation, Integer> objMap = new Object2IntOpenHashMap<>();
+                            for (DBNation n : f) {
+                                objMap.put(n, bitsMap.getOrDefault(n.getId(), 0));
+                            }
+                            return objMap;
+                        },
+                f -> f.data()._researchBits());
+            return resultOrNull != null ? resultOrNull : data()._researchBits();
+        }
         return data()._researchBits();
     }
 
@@ -6630,10 +6647,14 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "The research levels this nation has")
-    public Map<Research, Integer> getResearchLevels() {
+    public Map<Research, Integer> getResearchLevels(ValueStore store) {
         Map<Research, Integer> levels = new EnumMap<>(Research.class);
+        int bits = getResearchBits(store);
+        if (bits == 0) {
+             return levels;
+        }
         for (Research research : Research.values) {
-            int lvl = getResearch(research);
+            int lvl = research.getLevel(bits);
             if (lvl > 0) {
                 levels.put(research, lvl);
             }
@@ -6647,24 +6668,24 @@ public abstract class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "The number of research this nation has")
-    public int getNumResearch() {
-        return getResearchLevels().values().stream().mapToInt(Integer::intValue).sum();
+    public int getNumResearch(ValueStore store) {
+        return getResearchLevels(store).values().stream().mapToInt(Integer::intValue).sum();
     }
 
     @Command(desc = "Resource cost of all research this nation has")
-    public Map<ResourceType, Double> getResearchCost() {
-        return Research.cost(Collections.emptyMap(), getResearchLevels(), getResearchCostFactor());
+    public Map<ResourceType, Double> getResearchCost(ValueStore store) {
+        return Research.cost(Collections.emptyMap(), getResearchLevels(store), getResearchCostFactor());
     }
 
     @Command(desc = "Market value of all the research this nation has")
-    public double  getResearchValue() {
-        return ResourceType.convertedTotal(getResearchCost());
+    public double  getResearchValue(ValueStore store) {
+        return ResourceType.convertedTotal(getResearchCost(store));
     }
     @Command(desc = """
             The total value of all the assets this nation has
             Includes projects, infra, land, cities, buildings, units, and research
             Does not factor in cost reduction policies or projects""")
-    public double costConverted() {
+    public double costConverted(ValueStore store) {
         double total = 0;
         total += projectValue();
         total += infraValue();
@@ -6672,7 +6693,7 @@ public abstract class DBNation implements NationOrAlliance {
         total += cityValue();
         total += buildingValue();
         total += unitValue();
-        total += getResearchValue();
+        total += getResearchValue(store);
         return total;
     }
 

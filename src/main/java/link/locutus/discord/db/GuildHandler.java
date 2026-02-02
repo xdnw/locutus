@@ -556,15 +556,34 @@ public class GuildHandler {
         if (alliance == null) return;
         ApiKeyPool mailKey = db.getMailKey();
         if (mailKey == null) return;
-
+        NationPlaceholders formatter = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
         String invite = alliance.getDiscord_link();
 
         String title = "Joining " + alliance.getName();
+        String altTitle = db.getOrNull(GuildKey.MAIL_NEW_APPLICANTS_SUBJECT);
+        if (altTitle != null && !altTitle.isEmpty()) {
+            title = altTitle;
+            if (title.contains("%") || title.contains("{")) {
+                try {
+                    title = formatter.format2(guild, null, null, title, nation, false);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        String suffix = "";
         MessageChannel channel = db.getOrNull(GuildKey.RECRUIT_MESSAGE_OUTPUT);
         if (channel == null) channel = db.getOrNull(GuildKey.MEMBER_LEAVE_ALERT_CHANNEL);
         if (channel != null) {
-            title += "/" + channel.getIdLong();
+            suffix = "/" + channel.getIdLong();
         }
+        // Your subject line cannot be longer than 50 characters. substring it
+        if (title.length() > 50 - suffix.length()) {
+            title = title.substring(0, 50 - suffix.length());
+        }
+        title += suffix;
+
         String message = """
                 Hey {leader}, we use DISCORD to coordinate with our members. So please join our discord server.<br>
                 Discord is a texting application that you can install from playstore or open in your browser!<br>
@@ -585,7 +604,6 @@ public class GuildHandler {
             message = message.replace("{invite}", invite);
         }
 
-        NationPlaceholders formatter = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
         if (message.contains("%") || message.contains("{")) {
             try {
                 message = formatter.format2(guild, null, null, message, nation, false);

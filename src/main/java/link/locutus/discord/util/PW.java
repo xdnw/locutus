@@ -262,8 +262,8 @@ public final class PW {
                 if (to <= from) return (from - to) * -150;
                 if (to > 20000) throw new IllegalArgumentException("Infra cannot exceed 10,000 (" + to + ")");
                 long total_cents = 0;
-                int to_cents = (int) Math.round(to * 100);
-                int from_cents = (int) Math.round(from * 100);
+                int to_cents = (int) ArrayUtil.toCents(to);
+                int from_cents = (int) ArrayUtil.toCents(from);
                 for (int i = to_cents; i >= from_cents; i -= 10000) {
                     int amt = Math.min(10000, i - from_cents);
                     int cost_cents = getInfraCostCents(i - amt);
@@ -1023,7 +1023,7 @@ public final class PW {
      * @return
      */
     public static double getAttackRange(boolean offensive, boolean isWar, boolean isMin, double score) {
-        long scoreInt = Math.round(score * 100);
+        long scoreInt = ArrayUtil.toCents(score);
         long range;
         if (offensive) {
             if (isWar) {
@@ -1332,14 +1332,14 @@ public final class PW {
         return null;
     }
 
-    public static double[] getRevenue(double[] profitBuffer, int turns, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower, double treasureBonus) {
+    public static double[] getRevenue(ValueStore store, double[] profitBuffer, int turns, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower, double treasureBonus) {
         double rads = nation.getRads();
         boolean atWar = nation.getNumWars() > 0;
         long date = -1L;
-        return getRevenue(profitBuffer, turns, date, nation, cities, militaryUpkeep, tradeBonus, bonus, noFood, noPower, rads, atWar, treasureBonus);
+        return getRevenue(store, profitBuffer, turns, date, nation, cities, militaryUpkeep, tradeBonus, bonus, noFood, noPower, rads, atWar, treasureBonus);
     }
 
-    public static double[] getRevenue(double[] profitBuffer, int turns, long date, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower, double rads, boolean atWar, double treasureBonus) {
+    public static double[] getRevenue(ValueStore store, double[] profitBuffer, int turns, long date, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower, double rads, boolean atWar, double treasureBonus) {
         if (profitBuffer == null) profitBuffer = new double[ResourceType.values.length];
 
         Continent continent = nation.getContinent();
@@ -1368,7 +1368,7 @@ public final class PW {
         // Add military upkeep
         if (militaryUpkeep && !nation.hasUnsetMil()) {
             double factor = nation.getMilitaryUpkeepFactor() * turns / 12;
-            int research = nation.getResearchBits();
+            int research = nation.getResearchBits(store);
 
             for (MilitaryUnit unit : MilitaryUnit.values) {
                 int amt = nation.getUnits(unit);
@@ -1444,8 +1444,8 @@ public final class PW {
         };
     }
 
-    public static double estimateScore(NationDB db, DBNation nation) {
-        return estimateScore(db, nation, null, null, null, null, null);
+    public static double estimateScore(DBNation nation) {
+        return estimateScore(null, nation, null, null, null, null, null);
     }
 
     public enum ScoreType {
@@ -1474,14 +1474,14 @@ public final class PW {
         }
     }
 
-    public static Map<ScoreType, Double> scoreBreakdown(NationDB db, DBNation nation, MMRDouble mmr, Double infra, Integer projects, Integer cities, Integer researchBits) {
+    public static Map<ScoreType, Double> scoreBreakdown(DBNation nation, MMRDouble mmr, Double infra, Integer projects, Integer cities, Integer researchBits) {
         Map<ScoreType, Double> result = new EnumMap<>(ScoreType.class);
 
         if (projects == null) projects = nation.getNumProjects();
-        if (researchBits == null) researchBits = nation.getResearchBits();
+        if (researchBits == null) researchBits = nation.getResearchBits(null);
         if (infra == null) {
             infra = 0d;
-            for (DBCity city : db.getCitiesV3(nation.getNation_id()).values()) {
+            for (DBCity city : nation._getCitiesV3().values()) {
                 infra += city.getInfra();
             }
         }
@@ -1552,12 +1552,15 @@ public final class PW {
         return result;
     }
 
-    public static double estimateScore(NationDB db, DBNation nation, MMRDouble mmr, Double infra, Integer projects, Integer cities, Integer researchBits) {
+    public static double estimateScore(ValueStore store, DBNation nation, MMRDouble mmr, Double infra, Integer projects, Integer cities, Integer researchBits) {
+        if (infra == null && projects == null && cities == null && researchBits == null && mmr == null) {
+            return nation.getScore();
+        }
         if (projects == null) projects = nation.getNumProjects();
-        if (researchBits == null) researchBits = nation.getResearchBits();
+        if (researchBits == null) researchBits = nation.getResearchBits(store);
         if (infra == null) {
             infra = 0d;
-            for (DBCity city : db.getCitiesV3(nation.getNation_id()).values()) {
+            for (DBCity city : nation._getCitiesV3().values()) {
                 infra += city.getInfra();
             }
         }

@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.table.imp;
 
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.table.TableNumberFormat;
 import link.locutus.discord.commands.manager.v2.table.TimeFormat;
 import link.locutus.discord.db.entities.DBNation;
@@ -16,7 +17,7 @@ public class StrengthTierGraph extends SimpleTable<Void> {
     private final int minScore;
     private final int maxScore;
 
-    public StrengthTierGraph(String col1Str, String col2Str, Set<DBNation> coalition1Nations, Set<DBNation> coalition2Nations, boolean includeInactives,
+    public StrengthTierGraph(ValueStore store, String col1Str, String col2Str, Set<DBNation> coalition1Nations, Set<DBNation> coalition2Nations, boolean includeInactives,
                              boolean includeApplicants, MMRDouble col1MMR, MMRDouble col2MMR, Double col1Infra, Double col2Infra) {
         Set<DBNation> allNations = new HashSet<>();
         coalition1Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.active_m() > 4880));
@@ -28,8 +29,8 @@ public class StrengthTierGraph extends SimpleTable<Void> {
         int maxScore = 0;
         int minScore = Integer.MAX_VALUE;
         for (DBNation nation : allNations) {
-            maxScore = (int) Math.max(maxScore, nation.estimateScore(col1MMR, col1Infra, null, null, null));
-            minScore = (int) Math.min(minScore, nation.estimateScore(col2MMR, col2Infra, null, null, null));
+            maxScore = (int) Math.max(maxScore, nation.estimateScore(store, col1MMR, col1Infra, null, null, null));
+            minScore = (int) Math.min(minScore, nation.estimateScore(store, col2MMR, col2Infra, null, null, null));
         }
         this.maxScore = maxScore;
         this.minScore = minScore;
@@ -41,10 +42,10 @@ public class StrengthTierGraph extends SimpleTable<Void> {
         this.coal2StrSpread = new double[coal2Str.length];
 
         for (DBNation nation : coalition1Nations) {
-            coal1Str[(int) (nation.estimateScore(col1MMR, col1Infra, null, null, null) * PW.WAR_RANGE_MIN_MODIFIER)] += nation.getStrengthMMR(col1MMR);
+            coal1Str[(int) (nation.estimateScore(store, col1MMR, col1Infra, null, null, null) * PW.WAR_RANGE_MIN_MODIFIER)] += nation.getStrengthMMR(col1MMR);
         }
         for (DBNation nation : coalition2Nations) {
-            coal2Str[(int) (nation.estimateScore(col2MMR, col2Infra, null, null, null) * PW.WAR_RANGE_MIN_MODIFIER)] += nation.getStrengthMMR(col2MMR);
+            coal2Str[(int) (nation.estimateScore(store, col2MMR, col2Infra, null, null, null) * PW.WAR_RANGE_MIN_MODIFIER)] += nation.getStrengthMMR(col2MMR);
         }
         for (int min = 10; min < coal1Str.length; min++) {
             double val = coal1Str[min];

@@ -228,8 +228,10 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     @Command
     public double getCostConverted() {
         double total = 0;
-        for (DBNation nation : getMemberDBNations()) {
-            total += nation.costConverted();
+        Set<DBNation> memberNations = getMemberDBNations();
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(memberNations, DBNation.class);
+        for (DBNation nation : memberNations) {
+            total += nation.costConverted(cacheStore);
         }
         return total;
     }
@@ -757,8 +759,9 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 
     private Map<ResourceType, Double> getRevenue(Set<DBNation> nations) {
         double[] total = ResourceType.getBuffer();
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations, DBNation.class);
         for (DBNation nation : nations) {
-            total = ResourceType.add(total, nation.getRevenue());
+            total = ResourceType.add(total, nation.getRevenue(cacheStore));
         }
         return ResourceType.resourcesToMap(total);
     }

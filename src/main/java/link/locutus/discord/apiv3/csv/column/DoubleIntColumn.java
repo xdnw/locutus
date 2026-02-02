@@ -28,7 +28,7 @@ public class DoubleIntColumn<P> extends NumberColumn<P, Double> {
 
     @Override
     public void write(DataOutputStream dos, Double value) throws IOException {
-        dos.writeInt((int) Math.round(value * 100));
+        dos.writeInt((int) ArrayUtil.toCents(value));
     }
 
     @Override

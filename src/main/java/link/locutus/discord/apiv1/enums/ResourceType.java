@@ -757,7 +757,7 @@ public enum ResourceType {
         for (int i = 0; i < values.length; i++) {
             double amt = values[i];
             double curr = resources[i];
-            resources[i] = (Math.round(curr * 100) - Math.round(amt * 100)) * 0.01;
+            resources[i] = (ArrayUtil.toCents(curr) - ArrayUtil.toCents(amt)) * 0.01;
         }
         return resources;
     }
@@ -765,7 +765,7 @@ public enum ResourceType {
         for (int i = 0; i < values.length; i++) {
             double amt = values[i];
             double curr = resources[i];
-            resources[i] = Math.round(amt * 100) * 0.01 + Math.round(curr * 100) * 0.01;
+            resources[i] = ArrayUtil.toCents(amt) * 0.01 + ArrayUtil.toCents(curr) * 0.01;
         }
         return resources;
     }
@@ -782,7 +782,7 @@ public enum ResourceType {
         for (int i = 0; i < resources.length; i++) {
             double amt = resources[i];
             if (amt != 0) {
-                resources[i] = Math.round(amt * 100) * 0.01;
+                resources[i] = ArrayUtil.toCents(amt) * 0.01;
             }
         }
         return resources;
@@ -797,7 +797,7 @@ public enum ResourceType {
 
     public static boolean equals(Map<ResourceType, Double> amtA, Map<ResourceType, Double> amtB) {
         for (ResourceType type : ResourceType.values) {
-            if (Math.round(100 * (amtA.getOrDefault(type, 0d) - amtB.getOrDefault(type, 0d))) != 0) {
+            if (ArrayUtil.toCents(amtA.getOrDefault(type, 0d)) != ArrayUtil.toCents(amtB.getOrDefault(type, 0d))) {
                 return false;
             }
         }
@@ -806,7 +806,7 @@ public enum ResourceType {
 
     public static boolean equals(double[] rss1, double[] rss2) {
         for (ResourceType type : ResourceType.values) {
-            if (Math.round(100 * (rss1[type.ordinal()] - rss2[type.ordinal()])) != 0) {
+            if (ArrayUtil.toCents(rss1[type.ordinal()]) != ArrayUtil.toCents(rss2[type.ordinal()])) {
                 return false;
             }
         }
@@ -1209,7 +1209,7 @@ public enum ResourceType {
     public Map<ResourceType, Double> getProduction(@NoFormat Set<DBNation> nations, boolean includeNegatives) {
         double[] total = ResourceType.getBuffer();
         for (DBNation nation : nations) {
-            double[] revenue = nation.getRevenue();
+            double[] revenue = nation.getRevenue(null);
             if (includeNegatives) {
                 ResourceType.add(total, revenue);
             } else {
@@ -1288,7 +1288,7 @@ public enum ResourceType {
             for (ResourceType type : link.locutus.discord.apiv1.enums.ResourceType.values) {
                 if (type == link.locutus.discord.apiv1.enums.ResourceType.CREDITS) continue;
                 try {
-                    data[type.ordinal()] = IOUtil.readVarLong(in) / 100d;
+                    data[type.ordinal()] = ArrayUtil.fromCents(IOUtil.readVarLong(in));
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -1337,7 +1337,7 @@ public enum ResourceType {
         private final long data;
 
         public ResourceAmtCents(ResourceType type, double amount) {
-            this.data = type.ordinal() + ((int)(amount * 100d) << 4);
+            this.data = type.ordinal() + (ArrayUtil.toCents(amount) << 4);
         }
 
         public ResourceType getType() {
@@ -1349,7 +1349,7 @@ public enum ResourceType {
 
         @Override
         public double[] get() {
-            return getType().toArray(getAmountCents() / 100d);
+            return getType().toArray(ArrayUtil.fromCents(getAmountCents()));
         }
     }
 }

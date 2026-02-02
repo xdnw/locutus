@@ -182,7 +182,7 @@ public class ResearchTemplate extends AGrantTemplate<Void>{
     @Override
     public double[] getCost(GuildDB db, DBNation sender, DBNation receiver, Void parsed) {
         Map<Research, Integer> start = new HashMap<>();
-        for (Map.Entry<Research, Integer> entry : receiver.getResearchLevels().entrySet()) {
+        for (Map.Entry<Research, Integer> entry : receiver.getResearchLevels(null).entrySet()) {
             int level = from_zero ? Math.min(entry.getValue(), research.get(entry.getKey())) : entry.getValue();
             if (level > 0) {
                 start.put(entry.getKey(), level);

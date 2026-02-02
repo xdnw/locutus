@@ -194,6 +194,9 @@ public class AuthBindings extends WebBindingHelper {
         String json = new String(response.getEntity().getContent().readAllBytes());
         JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
         JsonElement accessToken = obj.get("access_token");
+        if (accessToken == null) {
+            System.out.println("Failed to get access token: " + json);
+        }
         return accessToken == null ? null : accessToken.getAsString();
     }
 

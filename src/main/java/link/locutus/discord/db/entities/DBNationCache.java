@@ -98,7 +98,7 @@ public class DBNationCache {
 
                     if (now - lastCheckProjectsMS < TimeUnit.MINUTES.toMillis(3)) {
                         hasProjects = parent::hasProject;
-                        getResearch = parent::getResearch;
+                        getResearch = f -> parent.getResearch(null, f);
                     } else if (current > previous) {
                         hasProjects = Predicates.alwaysTrue();
                         getResearch = f -> 20;

@@ -156,32 +156,10 @@ public class CommandManager2 {
     }
 
     public CommandManager2() {
-        this.store = new SimpleValueStore<>();
-        new PrimitiveBindings().register(store);
-        new DiscordBindings().register(store);
-        PWBindings pwBindings = new PWBindings();
-        pwBindings.register(store);
-        new GPTBindings().register(store);
-        new SheetBindings().register(store);
-//        new StockBinding().register(store);
-        new NewsletterBindings().register(store);
-
-        this.validators = new ValidatorStore();
-        new PrimitiveValidators().register(validators);
-
-        this.permisser = new PermissionHandler();
-        new PermissionBinding().register(permisser);
-
-        this.placeholders = new PlaceholdersMap(store, validators, permisser);
-        // Register bindings
-        for (Class<?> type : placeholders.getTypes()) {
-            Placeholders<?, ?> ph = placeholders.get(type);
-            ph.register(store);
-        }
-        // Initialize commands (staged after bindings as there might be cross dependency)
-        for (Class<?> type : placeholders.getTypes()) {
-            placeholders.get(type).init();
-        }
+        this.store = PWBindings.createDefaultStore();
+        this.validators = PWBindings.createDefaultValidators();
+        this.permisser = PWBindings.createDefaultPermisser();
+        this.placeholders = new PlaceholdersMap(store, validators, permisser).init();
 
         this.commands = CommandGroup.createRoot(store, validators);
 

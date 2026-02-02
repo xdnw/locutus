@@ -399,7 +399,7 @@ public class GrantCommands {
                 }
                 ResourceType.ResourcesBuilder cost = ResourceType.builder();
                 unitsToGrant.forEach((unit, amount) -> {
-                    cost.add(unit.getCost(amount.intValue(), receiver::getResearch));
+                    cost.add(unit.getCost(amount.intValue(), f -> receiver.getResearch(null, f)));
                 });
                 double[] costArr = cost.build();
                 if (no_cash) {
@@ -475,7 +475,7 @@ public class GrantCommands {
                     return new TransferResult(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, receiver, new Object2DoubleOpenHashMap<>(), DepositType.WARCHEST.withValue().toString()).addMessage("Nation already has the units");
                 }
                 ResourceType.ResourcesBuilder cost = ResourceType.builder();
-                unitsToGrant.forEach((unit, amount) -> cost.add(unit.getCost(amount, receiver::getResearch)));
+                unitsToGrant.forEach((unit, amount) -> cost.add(unit.getCost(amount, f -> receiver.getResearch(null, f))));
                 grant.setInstructions("Go to <" + Settings.PNW_URL() + "/nation/military/> and purchase `" + unitsToGrant + "`");
                 grant.setCost(f -> cost.build()).setType(DepositType.WARCHEST.withValue());
                 return null;
@@ -542,10 +542,10 @@ public class GrantCommands {
                     numAttacks.forEach((unit, amount) -> {
                         if (amount <= 0) return;
                         if (unit == MilitaryUnit.MISSILE || unit == MilitaryUnit.NUKE) {
-                            cost.add(unit.getCost(amount, receiver::getResearch));
+                            cost.add(unit.getCost(amount, f -> receiver.getResearch(null, f)));
                             return;
                         }
-                        int maxUnits = unit.getMaxMMRCap(cities, receiver.getResearchBits(), receiver::hasProject);
+                        int maxUnits = unit.getMaxMMRCap(cities, receiver.getResearchBits(null), receiver::hasProject);
                         cost.add(PW.multiply(unit.getConsumption(), amount * maxUnits));
                     });
                     if (cost.isEmpty()) {
@@ -768,7 +768,7 @@ public class GrantCommands {
         int researchBits = Research.toBits(research);
         return Grant.generateCommandLogic(io, command, db, me, author, receivers, onlySendMissingFunds, nation_account, ingame_bank, offshore_account, tax_account, use_receiver_tax_account, expire, decay, bank_note, deduct_as_cash, escrow_mode, bypass_checks, ping_role, ping_when_sent, force,
                 (receiver, grant) -> {
-                    Map<Research, Integer> base = research_from_zero ? new Object2IntOpenHashMap<>() : receiver.getResearchLevels();
+                    Map<Research, Integer> base = research_from_zero ? new Object2IntOpenHashMap<>() : receiver.getResearchLevels(null);
                     Map<ResourceType, Double> cost = Research.cost(base, research, receiver.getResearchCostFactor());
                     grant.setCost(f -> ResourceType.resourcesToArray(cost)).setType(DepositType.RESEARCH.withAmount(researchBits));
                     return null;
@@ -3079,7 +3079,7 @@ public class GrantCommands {
             }
             long escrowDate = escrowedPair.getValue();
             for (ResourceType type : ResourceType.values) {
-                if (Math.round(amtArr[type.ordinal()] * 100) > Math.round(escrowedPair.getKey()[type.ordinal()] * 100)) {
+                if (ArrayUtil.toCents(amtArr[type.ordinal()]) > ArrayUtil.toCents(escrowedPair.getKey()[type.ordinal()])) {
                     String msg = "Cannot withdraw more than what the account (" + receiver.getMarkdownUrl() + ") has in escrow\n" +
                             "**Amount Specified:** `" + type.getName() + "=" + MathMan.format(amtArr[type.ordinal()]) + "`\n" +
                             "**Amount escrowed:** `" + MathMan.format(escrowedPair.getKey()[type.ordinal()]) + "`\n" +
@@ -3092,7 +3092,7 @@ public class GrantCommands {
             double[] newEscrowed = new double[ResourceType.values.length];
             boolean hasEscrowed = false;
             for (ResourceType type : ResourceType.values) {
-                long newAmtCents = Math.round((escrowedPair.getKey()[type.ordinal()] - amtArr[type.ordinal()]) * 100);
+                long newAmtCents = ArrayUtil.toCents((escrowedPair.getKey()[type.ordinal()] - amtArr[type.ordinal()]));
                 hasEscrowed |= newAmtCents > 0;
                 newEscrowed[type.ordinal()] = newAmtCents * 0.01;
             }
@@ -3107,7 +3107,7 @@ public class GrantCommands {
                 Map.Entry<double[], Long> checkEscrowedPair = db.getEscrowed(receiver);
                 double[] checkEscrowed = checkEscrowedPair == null ? ResourceType.getBuffer() : checkEscrowedPair.getKey();
                 for (ResourceType type : ResourceType.values) {
-                    if (Math.round(checkEscrowed[type.ordinal()] * 100) != Math.round(newEscrowed[type.ordinal()] * 100)) {
+                    if (ArrayUtil.toCents(checkEscrowed[type.ordinal()]) != ArrayUtil.toCents(newEscrowed[type.ordinal()])) {
                         OffshoreInstance.FROZEN_ESCROW.put(receiver.getId(), true);
                         message.append("Failed to deduct escrowed resources for " + type.getName() + "=" + MathMan.format(checkEscrowed[type.ordinal()]) + " != " + MathMan.format(newEscrowed[type.ordinal()]));
                         message.append("\n");
@@ -3424,7 +3424,7 @@ public class GrantCommands {
             if (research != null) {
                 boolean md = nation.hasProject(Projects.MILITARY_DOCTRINE) || force_projects.contains(Projects.MILITARY_DOCTRINE);
                 double researchReduction = Research.costFactor(md);
-                Map<Research, Integer> start = research_from_zero ? new Object2IntOpenHashMap<>() : nation.getResearchLevels();
+                Map<Research, Integer> start = research_from_zero ? new Object2IntOpenHashMap<>() : nation.getResearchLevels(null);
                 researchCost = Research.cost(start, research, researchReduction);
             }
 

@@ -923,7 +923,7 @@ public class IACheckup {
     }
 
     private Map.Entry<Object, String> checkRevenue(DBNation nation) {
-        double[] revenue = nation.getRevenue(12, true, true, false, false, false, false, 0d, false);
+        double[] revenue = nation.getRevenue(null, 12, true, true, false, false, false, false, 0d, false);
 
         double total = ResourceType.convertedTotal(revenue, false);
         if (total < 0) {
@@ -1497,7 +1497,7 @@ public class IACheckup {
             response.append("The following cities are unpowered (insufficient power buildings) " + StringMan.getString(unpoweredInfra));
         }
         if (!unpoweredRss.isEmpty()) {
-            double[] revenue = PW.getRevenue(null, 12, nation, cities.values(), true, false, false, true, false, 0d);
+            double[] revenue = PW.getRevenue(null, null, 12, nation, cities.values(), true, false, false, true, false, 0d);
             for (int i = 0; i < revenue.length; i++) {
                 if (revenue[i] >= 0) revenue[i] = 0;
                 else revenue[i] = -revenue[i];

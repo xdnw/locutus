@@ -207,6 +207,20 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 Logg.text("Done fetching all treasures");
             }
         }
+
+        // if RESEARCH_BY_TURN is empty run saveAllResearch()
+        try (Statement stmt = getConnection().createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) AS count FROM RESEARCH_BY_TURN")) {
+            if (rs.next()) {
+                int count = rs.getInt("count");
+                if (count == 0) {
+                    saveAllResearch();
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
         return this;
     }
 
@@ -302,11 +316,11 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
     public boolean setCityInfraFromAttack(int nationId, int cityId, double infra, long timestamp, Consumer<Event> eventConsumer) {
         DBCity city = getDBCity(nationId, cityId);
-        if (city != null && city.getFetched() < timestamp && Math.round(infra * 100) != Math.round(city.getInfra() * 100)) {
+        if (city != null && city.getFetched() < timestamp && ArrayUtil.toCents(infra) != ArrayUtil.toCents(city.getInfra())) {
             DBCity previous = new SimpleDBCity(city);
             city.setInfra(infra);
             if (eventConsumer != null) {
-                if (Math.round(infra * 100) != Math.round(previous.getInfra() * 100)) {
+                if (ArrayUtil.toCents(infra) != ArrayUtil.toCents(previous.getInfra())) {
                     eventConsumer.accept(new CityInfraDamageEvent(nationId, previous, city));
                 }
             }
@@ -1817,7 +1831,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 rs.getString("leader"),
                 rs.getInt("alliance_id"),
                 rs.getLong("last_active"),
-                rs.getLong("score") / 100d,
+                ArrayUtil.fromCents(rs.getLong("score")),
                 rs.getInt("cities"),
                 DomesticPolicy.values[rs.getInt("domestic_policy")],
                 WarPolicy.values[rs.getInt("war_policy")],
@@ -1847,10 +1861,10 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                 rs.getInt("wars_won"),
                 rs.getInt("wars_lost"),
                 rs.getInt("tax_id"),
-                rs.getLong("gdp") / 100d,
+                ArrayUtil.fromCents(rs.getLong("gdp")),
                 0d,
                 rs.getString("discord"),
-                rs.getLong("city_refund") / 100d,
+                ArrayUtil.fromCents(rs.getLong("city_refund")),
                 rs.getInt("research")
         ));
     }
@@ -1974,7 +1988,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                         }
 //                        dirtyNations.add(existing.getNation_id());
                         toSave.add(existing);
-                    } else if (Math.round(100 * nation.getInfrastructure()) != Math.round(100 * existing.getInfra())) {
+                    } else if (ArrayUtil.toCents(nation.getInfrastructure()) != ArrayUtil.toCents(existing.getInfra())) {
                         dirtyNationCities.add(existing.getNation_id());
                     }
                 }
@@ -2174,7 +2188,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             int cityCount = cityMap.size();
             int natCityCount = nation.getCities();
             if (cityCount == natCityCount) {
-                if (score && Math.round(100 * (PW.estimateScore(this, nation) - nation.getScore())) != 0) {
+                if (score && ArrayUtil.toCents(PW.estimateScore(nation)) != ArrayUtil.toCents(nation.getScore())) {
                     markedForScore += cityMap.size();
                     synchronized (dirtyCities) {
                         cityMap.forEach((key, value) -> dirtyCities.add(key));
@@ -2201,7 +2215,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         long turnNow = TimeUtil.getTurn();
         outer:
         for (DBNation nation : getNationsMatching(f -> f.getVm_turns() == 0)) {
-            if (Math.round(100 * (PW.estimateScore(this, nation) - nation.getScore())) != 0) {
+            if (ArrayUtil.toCents(PW.estimateScore(nation)) != ArrayUtil.toCents(nation.getScore())) {
                 dirtyNations.add(nation.getNation_id());
                 continue;
             }
@@ -2651,6 +2665,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
         // create table RESEARCH_BY_TURN (nation_id, turn, research_points)
         executeStmt("CREATE TABLE IF NOT EXISTS RESEARCH_BY_TURN (nation_id INT NOT NULL, turn BIGINT NOT NULL, research BIGINT NOT NULL, PRIMARY KEY(nation_id, turn))");
+        executeStmt("DELETE FROM RESEARCH_BY_TURN WHERE research = 0"); // TODO remove this
 
         purgeOldBeigeReminders();
 
@@ -2676,14 +2691,82 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         purgeDeletedLootData();
     }
 
-    public int getResearch(int nationId, long turn) {
-        String query = "SELECT research FROM RESEARCH_BY_TURN WHERE nation_id = ? AND turn = ?";
+    private void saveAllResearch() {
+        long turn = TimeUtil.getTurn();
+        Map<Integer, Integer> nationIdToResearch = new Int2IntOpenHashMap();
+        synchronized (nationsById) {
+            for (DBNation nation : nationsById.values()) {
+                int bits = nation.data()._researchBits();
+                if (bits == 0) continue;
+                nationIdToResearch.put(nation.getNation_id(), bits);
+            }
+        }
+        saveResearchBulk(nationIdToResearch, turn);
+    }
+
+    public void saveResearch() {
+        long turn = TimeUtil.getTurn();
+        Map<Integer, Integer> nationIdToResearch = new Int2IntOpenHashMap();
+        synchronized (nationsById) {
+            for (DBNation nation : nationsById.values()) {
+                if (nation.getVm_turns() == 0) {
+                    nationIdToResearch.put(nation.getNation_id(), nation.data()._researchBits());
+                }
+            }
+        }
+        saveResearchBulk(nationIdToResearch, turn);
+    }
+
+    private synchronized void saveResearchBulk(Map<Integer, Integer> nationIdToResearch, long turn) {
+        String sql = """
+        INSERT OR IGNORE INTO RESEARCH_BY_TURN (nation_id, turn, research)
+        SELECT ?, ?, ?
+        WHERE COALESCE((
+            SELECT research
+            FROM RESEARCH_BY_TURN
+            WHERE nation_id = ? AND turn < ?
+            ORDER BY turn DESC
+            LIMIT 1
+        ), 0) <> ?;
+        """;
+
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
+            for (var entry : nationIdToResearch.entrySet()) {
+                int nationId = entry.getKey();
+                int research = entry.getValue();
+
+                stmt.setInt(1, nationId);
+                stmt.setLong(2, turn);
+                stmt.setInt(3, research);
+
+                stmt.setInt(4, nationId);
+                stmt.setLong(5, turn);
+                stmt.setInt(6, research);
+
+                stmt.addBatch();
+            }
+            stmt.executeBatch();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public int getResearch(int nationId, long turn, boolean mostRecentPast) {
+        String query = mostRecentPast
+                ? "SELECT research FROM RESEARCH_BY_TURN " +
+                "WHERE nation_id = ? AND turn <= ? " +
+                "ORDER BY turn DESC LIMIT 1"
+                : "SELECT research FROM RESEARCH_BY_TURN " +
+                "WHERE nation_id = ? AND turn = ?";
+
         try (PreparedStatement stmt = getConnection().prepareStatement(query)) {
             stmt.setInt(1, nationId);
             stmt.setLong(2, turn);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                return rs.getInt("research");
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("research");
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -2691,47 +2774,93 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         return 0;
     }
 
-    public Map<Integer, Integer> getResearch(Set<Integer> nationIds, long turn) {
-        if (nationIds.size() > 500) {
-            return getResearch(turn, nationIds::contains);
-        }
+    public Map<Integer, Integer> getResearch(Collection<Integer> nationIds, long turn, boolean mostRecentPast) {
         Map<Integer, Integer> result = new Int2IntOpenHashMap();
+        if (nationIds == null || nationIds.isEmpty()) {
+            return result;
+        }
+
+        // Keep the existing large-set behavior, but pass the flag through.
+        if (nationIds.size() > 500) {
+            Set<Integer> nationIdsSet = nationIds instanceof Set ? (Set<Integer>) nationIds : new IntOpenHashSet(nationIds);
+            return getResearch(turn, nationIdsSet::contains, mostRecentPast);
+        }
+
         List<Integer> idsSorted = new IntArrayList(nationIds);
         Collections.sort(idsSorted);
+
         String inSql = String.join(",", Collections.nCopies(idsSorted.size(), "?"));
-        String query = "SELECT nation_id, research FROM RESEARCH_BY_TURN WHERE nation_id IN (" + inSql + ") AND turn = ?";
+
+        final String query;
+        if (!mostRecentPast) {
+            query = "SELECT nation_id, research " +
+                    "FROM RESEARCH_BY_TURN " +
+                    "WHERE nation_id IN (" + inSql + ") AND turn = ?";
+        } else {
+            // Latest research per nation where turn <= ?
+            query = "SELECT r.nation_id, r.research " +
+                    "FROM RESEARCH_BY_TURN r " +
+                    "JOIN ( " +
+                    "   SELECT nation_id, MAX(turn) AS max_turn " +
+                    "   FROM RESEARCH_BY_TURN " +
+                    "   WHERE nation_id IN (" + inSql + ") AND turn <= ? " +
+                    "   GROUP BY nation_id " +
+                    ") m ON r.nation_id = m.nation_id AND r.turn = m.max_turn";
+        }
+
         try (PreparedStatement stmt = getConnection().prepareStatement(query)) {
             int index = 1;
             for (Integer nationId : idsSorted) {
                 stmt.setInt(index++, nationId);
             }
             stmt.setLong(index, turn);
-            ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                result.put(rs.getInt("nation_id"), rs.getInt("research"));
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    result.put(rs.getInt("nation_id"), rs.getInt("research"));
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
+
         return result;
     }
 
-    public Map<Integer, Integer> getResearch(long turn, Predicate<Integer> nationFilter) {
+    public Map<Integer, Integer> getResearch(long turn, Predicate<Integer> nationFilter, boolean mostRecentPast) {
         Map<Integer, Integer> result = new Int2IntOpenHashMap();
-        String query = "SELECT nation_id, research FROM RESEARCH_BY_TURN WHERE turn = ?";
+
+        final String query;
+        if (!mostRecentPast) {
+            query = "SELECT nation_id, research FROM RESEARCH_BY_TURN WHERE turn = ?";
+        } else {
+            // Latest research per nation where turn <= ?
+            query = "SELECT r.nation_id, r.research " +
+                    "FROM RESEARCH_BY_TURN r " +
+                    "JOIN ( " +
+                    "   SELECT nation_id, MAX(turn) AS max_turn " +
+                    "   FROM RESEARCH_BY_TURN " +
+                    "   WHERE turn <= ? " +
+                    "   GROUP BY nation_id " +
+                    ") m ON r.nation_id = m.nation_id AND r.turn = m.max_turn";
+        }
+
         try (PreparedStatement stmt = getConnection().prepareStatement(query)) {
             stmt.setLong(1, turn);
-            ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                int nationId = rs.getInt("nation_id");
-                if (nationFilter != null && !nationFilter.test(nationId)) {
-                    continue;
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    int nationId = rs.getInt("nation_id");
+                    if (nationFilter != null && !nationFilter.test(nationId)) {
+                        continue;
+                    }
+                    result.put(nationId, rs.getInt("research"));
                 }
-                result.put(nationId, rs.getInt("research"));
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
+
         return result;
     }
 
@@ -5257,7 +5386,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             stmt1.setString(3, nation.getLeader());
             stmt1.setInt(4, nation.getAlliance_id());
             stmt1.setLong(5, nation.lastActiveMs());
-            stmt1.setLong(6, Math.round(nation.getScore() * 100d));
+            stmt1.setLong(6, ArrayUtil.toCents(nation.getScore()));
             stmt1.setInt(7, nation.getCities());
             stmt1.setInt(8, nation.getDomesticPolicy().ordinal());
             stmt1.setInt(9, nation.getWarPolicy().ordinal());
@@ -5287,14 +5416,14 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             stmt1.setInt(33, nation.getWars_won());
             stmt1.setInt(34, nation.getWars_lost());
             stmt1.setInt(35, nation.getTax_id());
-            stmt1.setLong(36, Math.round(100 * nation.getGNI()));
+            stmt1.setLong(36, ArrayUtil.toCents(nation.data()._gni()));
             if (nation.data()._discordStr() == null) {
                 stmt1.setNull(37, Types.INTEGER);
             } else {
                 stmt1.setString(37, nation.data()._discordStr());
             }
-            stmt1.setLong(38, Math.round(nation.getCityRefund() * 100d));
-            stmt1.setLong(39, nation.getResearchBits());
+            stmt1.setLong(38, ArrayUtil.toCents(nation.getCityRefund()));
+            stmt1.setLong(39, nation.data()._researchBits());
         };
     }
 

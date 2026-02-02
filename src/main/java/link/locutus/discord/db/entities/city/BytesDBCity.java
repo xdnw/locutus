@@ -118,11 +118,11 @@ public class BytesDBCity extends DBCity {
     }
 
     public int getLand_cents() {
-        return (int) Math.round(get(wrapper.header.land) * 100);
+        return (int) ArrayUtil.toCents(get(wrapper.header.land));
     }
 
     public int getInfra_cents() {
-        return (int) Math.round(get(wrapper.header.infrastructure) * 100);
+        return (int) ArrayUtil.toCents(get(wrapper.header.infrastructure));
     }
 
     public boolean isPowered() {

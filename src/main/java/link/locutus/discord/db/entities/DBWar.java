@@ -60,17 +60,17 @@ public class DBWar {
             DBNation att = getNation(true);
             DBNation def = getNation(false);
             if (att != null) {
-                int r1 = att.getResearch(Research.GROUND_EFFICIENCY); // 5 bits of info
-                int r2 = att.getResearch(Research.AIR_EFFICIENCY); // 5 bits of info
-                int r3 = att.getResearch(Research.NAVAL_EFFICIENCY); // 5 bits of info
+                int r1 = att.getResearch(null, Research.GROUND_EFFICIENCY); // 5 bits of info
+                int r2 = att.getResearch(null, Research.AIR_EFFICIENCY); // 5 bits of info
+                int r3 = att.getResearch(null, Research.NAVAL_EFFICIENCY); // 5 bits of info
                 costBits = r1 | (r2 << 5) | (r3 << 10);
             } else {
                 costBits = 0;
             }
             if (def != null) {
-                int r1 = def.getResearch(Research.GROUND_EFFICIENCY); // 5 bits of info
-                int r2 = def.getResearch(Research.AIR_EFFICIENCY); // 5 bits of info
-                int r3 = def.getResearch(Research.NAVAL_EFFICIENCY); // 5 bits of info
+                int r1 = def.getResearch(null, Research.GROUND_EFFICIENCY); // 5 bits of info
+                int r2 = def.getResearch(null, Research.AIR_EFFICIENCY); // 5 bits of info
+                int r3 = def.getResearch(null, Research.NAVAL_EFFICIENCY); // 5 bits of info
                 costBits |= (r1 << 15) | (r2 << 20) | (r3 << 25);
             }
         }

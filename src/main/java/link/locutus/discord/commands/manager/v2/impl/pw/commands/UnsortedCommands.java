@@ -177,13 +177,13 @@ public class UnsortedCommands {
             header.set(9, nation.getMissiles() + "");
             header.set(10, nation.getNukes() + "");
 
-            header.set(11, nation.getRemainingUnitBuy(MilitaryUnit.SPIES, natDcTime) + "");
-            header.set(12, nation.getRemainingUnitBuy(MilitaryUnit.SOLDIER, natDcTime) + "");
-            header.set(13, nation.getRemainingUnitBuy(MilitaryUnit.TANK, natDcTime) + "");
-            header.set(14, nation.getRemainingUnitBuy(MilitaryUnit.AIRCRAFT, natDcTime) + "");
-            header.set(15, nation.getRemainingUnitBuy(MilitaryUnit.SHIP, natDcTime) + "");
-            header.set(16, nation.getRemainingUnitBuy(MilitaryUnit.MISSILE, natDcTime) + "");
-            header.set(17, nation.getRemainingUnitBuy(MilitaryUnit.NUKE, natDcTime) + "");
+            header.set(11, nation.getRemainingUnitBuy(null, MilitaryUnit.SPIES, natDcTime) + "");
+            header.set(12, nation.getRemainingUnitBuy(null, MilitaryUnit.SOLDIER, natDcTime) + "");
+            header.set(13, nation.getRemainingUnitBuy(null, MilitaryUnit.TANK, natDcTime) + "");
+            header.set(14, nation.getRemainingUnitBuy(null, MilitaryUnit.AIRCRAFT, natDcTime) + "");
+            header.set(15, nation.getRemainingUnitBuy(null, MilitaryUnit.SHIP, natDcTime) + "");
+            header.set(16, nation.getRemainingUnitBuy(null, MilitaryUnit.MISSILE, natDcTime) + "");
+            header.set(17, nation.getRemainingUnitBuy(null, MilitaryUnit.NUKE, natDcTime) + "");
 
             sheet.addRow(new ArrayList<>(header));
         }
@@ -423,7 +423,7 @@ public class UnsortedCommands {
             for (DBNation nation : taxable) {
                 double mRate = (bracket.moneyRate < 0 ? 100 : bracket.moneyRate) / 100d;
                 double rRate = (bracket.rssRate < 0 ? 100 : bracket.rssRate) / 100d;
-                double[] natRevenue = nation.getRevenue();
+                double[] natRevenue = nation.getRevenue(null);
                 revenue[0] += Math.max(0, natRevenue[0]) * mRate;
                 for (int i = 1 ; i < natRevenue.length ; i++) {
                     revenue[i] += Math.max(0, natRevenue[i]) * rRate;
@@ -1151,13 +1151,14 @@ public class UnsortedCommands {
             }
         }
         Double rads = rad_index == null ? null : rad_index / 1000d;
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(filtered, DBNation.class);
         for (DBNation nation : filtered) {
             int treasures = treasureByAA.getOrDefault(nation.getAlliance_id(), 0);
             Set<DBTreasure> natTreasures = nation.getTreasures();
             double treasureBonus = ((treasures == 0 ? 0 : Math.sqrt(treasures * 4)) + natTreasures.stream().mapToDouble(DBTreasure::getBonus).sum()) * 0.01;
 
-            ResourceType.add(cityProfit, nation.getRevenue(12, true, false, false, !excludeNationBonus, false, false, treasureBonus, rads, forceWarFlag, false));
-            ResourceType.add(milUp, nation.getRevenue(12, false, true, false, false, false, false, treasureBonus, rads, forceAtWar, false));
+            ResourceType.add(cityProfit, nation.getRevenue(cacheStore, 12, true, false, false, !excludeNationBonus, false, false, treasureBonus, rads, forceWarFlag, false));
+            ResourceType.add(milUp, nation.getRevenue(cacheStore, 12, false, true, false, false, false, false, treasureBonus, rads, forceAtWar, false));
             long nationColorBonus = Math.round(nation.getColor().getTurnBonus() * 12 * nation.getGrossModifier());
             tradeBonusTotal += nationColorBonus;
         }
@@ -1242,7 +1243,7 @@ public class UnsortedCommands {
         }
         JavaCity jCity = new JavaCity(city);
 
-        double[] revenue = PW.getRevenue(null, 12, nation, Collections.singleton(jCity), false, false, !excludeNationBonus, false, false, nation.getTreasureBonusPct());
+        double[] revenue = PW.getRevenue(null, null, 12, nation, Collections.singleton(jCity), false, false, !excludeNationBonus, false, false, nation.getTreasureBonusPct());
 
         JavaCity.Metrics metrics = jCity.getMetrics(nation::hasProject);
         IMessageBuilder msg = channel.create()
@@ -1426,7 +1427,7 @@ public class UnsortedCommands {
             double treasureBonus = ((treasures == 0 ? 0 : Math.sqrt(treasures * 4)) + natTreasures.stream().mapToDouble(DBTreasure::getBonus).sum()) * 0.01;
 
             Arrays.fill(profitBuffer, 0);
-            double[] profit = nation.getRevenue(12, true, !ignoreMilitaryUpkeep, !ignoreTradeBonus, !ignoreNationBonus, false, false, treasureBonus, false);
+            double[] profit = nation.getRevenue(null, 12, true, !ignoreMilitaryUpkeep, !ignoreTradeBonus, !ignoreNationBonus, false, false, treasureBonus, false);
             double value;
             if (resources.size() == 1) {
                 value = profit[resources.iterator().next().ordinal()];

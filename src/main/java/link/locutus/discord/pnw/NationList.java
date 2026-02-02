@@ -8,8 +8,10 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -321,8 +323,9 @@ public interface NationList extends NationFilter {
 
     private Map<ResourceType, Double> getRevenue(Set<DBNation> nations) {
         double[] total = ResourceType.getBuffer();
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations, DBNation.class);
         for (DBNation nation : nations) {
-            total = ResourceType.add(total, nation.getRevenue());
+            total = ResourceType.add(total, nation.getRevenue(cacheStore));
         }
         return ResourceType.resourcesToMap(total);
     }

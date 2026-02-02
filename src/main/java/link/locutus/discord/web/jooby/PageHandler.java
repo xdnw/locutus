@@ -63,29 +63,18 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class PageHandler implements Handler {
-    private final Map<String, WebOption> queryOptions;
-
     private final Logger logger = Logger.getLogger(PageHandler.class.getSimpleName());
-    private final WebRoot root;
 
     private final CommandGroup commands;
     private final ValueStore<Object> store;
     private final ValidatorStore validators;
     private final PermissionHandler permisser;
     private final ObjectMapper serializer;
+    private final PlaceholdersMap placeholders;
 
-    public PageHandler(WebRoot root) {
-        this.root = root;
-
-        this.store = new SimpleValueStore<>();
-
-        new PrimitiveBindings().register(store);
-        new DiscordBindings().register(store);
-        new PWBindings().register(store);
-        new GPTBindings().register(store);
-        new SheetBindings().register(store);
-//        new StockBinding().register(store);
-        PlaceholdersMap placeholders = Locutus.imp().getCommandManager().getV2().getPlaceholders();
+    public PageHandler(PlaceholdersMap placeholders) {
+        this.placeholders = placeholders;
+        this.store = PWBindings.createDefaultStore();
         for (Class<?> type : placeholders.getTypes()) {
             Placeholders<?, ?> ph = placeholders.get(type);
             ph.register(store);
@@ -93,16 +82,12 @@ public class PageHandler implements Handler {
 
         new JavalinBindings().register(store);
         new AuthBindings().register(store);
-        //
         new DiscordWebBindings().register(store);
         new WebPWBindings().register(store);
         new PrimitiveWebBindings().register(store);
 
-        this.validators = new ValidatorStore();
-        new PrimitiveValidators().register(validators);
-
-        this.permisser = new PermissionHandler();
-        new PermissionBinding().register(permisser);
+        this.validators = PWBindings.createDefaultValidators();
+        this.permisser = PWBindings.createDefaultPermisser();
 
         this.commands = CommandGroup.createRoot(store, validators);
 
@@ -120,6 +105,7 @@ public class PageHandler implements Handler {
         this.commands.registerSubCommands(new EndpointPages(), "api");
         this.commands.registerSubCommands(new TradeEndpoints(), "api");
         this.commands.registerSubCommands(new IAEndpoints(), "api");
+        this.commands.registerSubCommands(new AdminEndpoints(), "api");
         this.commands.registerSubCommands(new StatEndpoints(), "api");
         this.commands.registerSubCommands(new CoalitionGraphEndpoints(), "api");
         this.commands.registerSubCommands(new GraphEndpoints(), "api");
@@ -129,40 +115,39 @@ public class PageHandler implements Handler {
         this.commands.registerCommands(new TestPages());
         this.commands.registerCommands(this);
 
-        Map<String, ParametricCallable> legacy = new HashMap<>();
-        for (ParametricCallable f : Locutus.cmd().getV2().getCommands().getParametricCallables(Predicates.alwaysTrue())) {
-            String name = f.getMethod().getName().toLowerCase();
-            legacy.put(name, f);
-        }
-
-        Set<Parser> parsers = new HashSet<>();
-        for (ParametricCallable cmd : Locutus.cmd().getV2().getCommands().getParametricCallables(f -> {
-            RolePermission rolePerm = f.getMethod().getAnnotation(RolePermission.class);
-            if (rolePerm != null && (rolePerm.root() || rolePerm.alliance() || rolePerm.guild() > 0)) {
-                return false;
-            }
-            GuildCoalition guildPerm = f.getMethod().getAnnotation(GuildCoalition.class);
-            if (guildPerm != null) {
-                return false;
-            }
-            DenyPermission deny = f.getMethod().getAnnotation(DenyPermission.class);
-            if (deny != null) {
-                return false;
-            }
-            WhitelistPermission whitelist = f.getMethod().getAnnotation(WhitelistPermission.class);
-            if (whitelist != null) {
-                return false;
-            }
-            return true;
-        })) {
-            for (ParameterData param : cmd.getUserParameters()) {
-                parsers.add(param.getBinding());
-            }
-        }
+        ValueStore<?> phStore = placeholders.getStore();
+        Set<Parser> parsers = new HashSet<>(phStore.getParsers().values());
+//        for (ParametricCallable cmd : Locutus.cmd().getV2().getCommands().getParametricCallables(f -> {
+//            RolePermission rolePerm = f.getMethod().getAnnotation(RolePermission.class);
+//            if (rolePerm != null && (rolePerm.root() || rolePerm.alliance() || rolePerm.guild() > 0)) {
+//                return false;
+//            }
+//            GuildCoalition guildPerm = f.getMethod().getAnnotation(GuildCoalition.class);
+//            if (guildPerm != null) {
+//                return false;
+//            }
+//            DenyPermission deny = f.getMethod().getAnnotation(DenyPermission.class);
+//            if (deny != null) {
+//                return false;
+//            }
+//            WhitelistPermission whitelist = f.getMethod().getAnnotation(WhitelistPermission.class);
+//            if (whitelist != null) {
+//                return false;
+//            }
+//            return true;
+//        })) {
+//            for (ParameterData param : cmd.getUserParameters()) {
+//                parsers.add(param.getBinding());
+//            }
+//        }
+        parsers.removeIf(f -> {
+            if (!f.isConsumer(phStore)) return true;
+            return false;
+        });
 
         List<Key> missingKeys = new ArrayList<>();
         for (Parser parser : parsers) {
-            if (!parser.isConsumer(Locutus.cmd().getV2().getStore())) continue;
+            if (!parser.isConsumer(phStore)) continue;
 
             Key htmlKey = parser.getKey().append(HtmlInput.class);
             try {
@@ -180,15 +165,7 @@ public class PageHandler implements Handler {
                 Logg.info("Missing: " + missingKey);
             }
         }
-
-        this.queryOptions = getQueryOptions();
-        boolean isDebug = Settings.INSTANCE.WEB.FRONTEND_DOMAIN.startsWith("http://localhost");
-
         this.serializer = new ObjectMapper(new MessagePackFactory());
-
-        if (isDebug || Settings.INSTANCE.TEST ) {
-            writeTsFiles();
-        }
     }
 
     public ObjectMapper getSerializer() {
@@ -206,42 +183,49 @@ public class PageHandler implements Handler {
 //        }
 //        return TsEndpointGenerator.generateSchema(schemaClasses);
 //    }
+    private Map<String, WebOption> queryOptions;
+    private final Object queryOptionsLock = new Object();
 
-    private void writeTsFiles() {
-        try {
-            TsEndpointGenerator.writeFiles(this, null);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+    private Map<String, WebOption> getQueryOptions() {
+        Map<String, WebOption> tmp = queryOptions;
+        if (tmp == null) {
+            synchronized (queryOptionsLock) {
+                tmp = queryOptions;
+                if (tmp == null) {
+                    SimpleValueStore<Object> store = new SimpleValueStore<>();
+                    new WebOptionBindings().register(store);
+                    store.addProvider(Key.of(PlaceholdersMap.class), placeholders);
+                    tmp = new ConcurrentHashMap<>();
+
+                    for (Parser optionParser : store.getParsers().values()) {
+                        try {
+                            Object option = optionParser.apply(store, null);
+                            if (!(option instanceof WebOption)) {
+                                continue;
+                            }
+                            WebOption optionCasted = (WebOption) option;
+                            if (optionCasted.isAllowQuery()) {
+                                tmp.put(optionCasted.getName(), optionCasted);
+                            }
+                        } catch (Throwable e) {
+                            Logg.error("Error: " + optionParser);
+                            e.printStackTrace();
+                        }
+                    }
+
+                    queryOptions = tmp;
+                }
+            }
         }
+        return tmp;
     }
 
-
     public WebOption getQueryOption(String name) {
-        return queryOptions.get(name);
+        return getQueryOptions().get(name);
     }
 
     public Set<String> getQueryOptionNames() {
-        return queryOptions.keySet();
-    }
-
-    private Map<String, WebOption> getQueryOptions() {
-        SimpleValueStore<Object> store = new SimpleValueStore<>();
-        new WebOptionBindings().register(store);
-        Map<String, WebOption> result = new ConcurrentHashMap<>();
-
-        for (Parser optionParser : store.getParsers().values()) {
-            try {
-                WebOption option = (WebOption) optionParser.apply(store, null);
-                if (option.isAllowQuery()) {
-                    result.put(option.getName(), option);
-                }
-            } catch (Throwable e) {
-                Logg.error("Error: " + optionParser);
-                e.printStackTrace();
-            }
-        }
-
-        return result;
+        return getQueryOptions().keySet();
     }
 
     public CommandGroup getCommands() {
@@ -599,7 +583,8 @@ public class PageHandler implements Handler {
                     if (result != null) {
                         if (result instanceof byte[] bytes) {
                             ctx.result(bytes);
-                            ctx.header("Content-Type", "application/msgpack");
+                            ctx.header("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8");
+                            ctx.header("Accept", "application/msgpack");
                         } else if (!(result instanceof String) || !result.toString().isEmpty()) {
                             ctx.result(WebUtil.minify(result.toString()));
                         } else {
@@ -640,7 +625,8 @@ public class PageHandler implements Handler {
             try {
                 byte[] data = serializer.writeValueAsBytes(raw);
                 ctx.result(data);
-                ctx.header("Content-Type", "application/msgpack");
+                ctx.header("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8");
+                ctx.header("Accept", "application/msgpack");
             } catch (JsonProcessingException ex) {
                 ex.printStackTrace();
                 ctx.result("Internal server error");

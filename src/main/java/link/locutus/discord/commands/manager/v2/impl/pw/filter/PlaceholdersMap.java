@@ -113,7 +113,7 @@ public class PlaceholdersMap {
 
 
     private final Map<Class<?>, Placeholders<?, ?>> placeholders = new ConcurrentHashMap<>();
-    private final ValueStore store;
+    private final ValueStore<Object> store;
     private final ValidatorStore validators;
     private final PermissionHandler permisser;
 
@@ -121,7 +121,7 @@ public class PlaceholdersMap {
         return placeholders.keySet();
     }
 
-    public PlaceholdersMap(ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
+    public PlaceholdersMap(ValueStore<Object> store, ValidatorStore validators, PermissionHandler permisser) {
         if (INSTANCE != null) {
             throw new IllegalStateException("Already initialized");
         }
@@ -192,6 +192,24 @@ public class PlaceholdersMap {
 //        //- Tax records
 //        // - * (within aa)
 //        this.placeholders.put(AGrantTemplate.class, createGrantTemplates());
+    }
+
+    public PlaceholdersMap init() {
+        // Register bindings
+        for (Class<?> type : getTypes()) {
+            Placeholders<?, ?> ph = placeholders.get(type);
+            ph.register(store);
+        }
+        // Initialize commands (staged after bindings as there might be cross dependency)
+        for (Class<?> type : getTypes()) {
+            placeholders.get(type).init();
+        }
+        store.addProvider(Key.of(PlaceholdersMap.class), this);
+        return this;
+    }
+
+    public ValueStore<Object> getStore() {
+        return store;
     }
 
     public <T, M> Placeholders<T, M> get(Class<T> type) {

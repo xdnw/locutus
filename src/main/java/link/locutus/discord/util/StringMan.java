@@ -32,6 +32,7 @@ import java.util.stream.IntStream;
 public class StringMan {
 
     public static String stripApiKey(String msg) {
+        if (msg == null) return null;
         msg = msg
                 .replaceAll("(?i)[\\[\\]\"\\n^:\\s,\\.](?=.*[A-Za-z])(?=.*\\d)[0-9A-Fa-f]{14,}(?=[\\[\\]\"\\n$:\\s,\\.]|$)", "XXX")
                 .replaceAll("(key=)(?i)([0-9A-Fa-f]{14,})", "$1XXX");

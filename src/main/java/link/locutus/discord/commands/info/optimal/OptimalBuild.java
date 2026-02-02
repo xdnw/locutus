@@ -566,7 +566,7 @@ public class OptimalBuild extends Command {
                 int numBuilt = origin.getBuilding(building);
                 if (numBuilt == 0) continue;
                 int amt = building.getUnitCap() * numBuilt;
-                double[] upkeep = unit.addUpkeep(ResourceType.getBuffer(), amt, true, finalMe::getResearch, finalMe.getMilitaryUpkeepFactor());
+                double[] upkeep = unit.addUpkeep(ResourceType.getBuffer(), amt, true, f -> finalMe.getResearch(null, f), finalMe.getMilitaryUpkeepFactor());
                 upkeepCash += upkeep[0] * amt;
             }
             double finalUpkeepCash = upkeepCash;

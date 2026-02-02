@@ -322,15 +322,28 @@ public class ArrayUtil {
         return result;
     }
 
+    private static final double CENTS = 100.0;
+    private static final double EPS_CENTS = 1e-9; // 1e-11 in dollars, only to defeat binary-repr edge cases
+
+    public static long toCents(double v) {
+        double x = v * CENTS;
+        if (x >= 0) return (long) (x + 0.5 + EPS_CENTS);
+        return -(long) (-x + 0.5 + EPS_CENTS);
+    }
+
+    public  static double fromCents(long cents) {
+        return cents / CENTS;
+    }
+
     public static long[] dollarToCents(double[] deposit) {
         long[] depositCents = new long[deposit.length];
-        for (int i = 0; i < deposit.length; i++) depositCents[i] = (long) (deposit[i] * 100);
+        for (int i = 0; i < deposit.length; i++) depositCents[i] = toCents(deposit[i]);
         return depositCents;
     }
 
     public static double[] centsToDollars(long[] cents) {
         double[] dollars = new double[cents.length];
-        for (int i = 0; i < cents.length; i++) dollars[i] = cents[i] / 100d;
+        for (int i = 0; i < cents.length; i++) dollars[i] = fromCents(cents[i]);
         return dollars;
     }
 
@@ -426,7 +439,7 @@ public class ArrayUtil {
                     | ((long)(array[base+5] & 0xFF) << 16)
                     | ((long)(array[base+6] & 0xFF) <<  8)
                     |  (long)(array[base+7] & 0xFF);
-            result[i] = value / 100d;
+            result[i] = ArrayUtil.fromCents(value);
         }
         return result;
     }

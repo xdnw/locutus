@@ -38,6 +38,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static link.locutus.discord.web.WebUtil.resolveOAuthRedirect;
 import static link.locutus.discord.web.jooby.PageHandler.CookieType.*;
 
 public class EndpointPages extends PageHelper {
@@ -143,11 +144,16 @@ public class EndpointPages extends PageHelper {
 
     @Command
     @ReturnType(WebSuccess.class)
-    public WebSuccess set_token(Context context, UUID token) {
+    public WebSuccess set_token(Context context, UUID token, @Default Long guild_id) {
         DBAuthRecord record = WebRoot.db().get(token);
         if (record == null) return error("Invalid token");
         int keepAlive = (int) TimeUnit.DAYS.toSeconds(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS);
         WebUtil.setCookieViaHeader(context, URL_AUTH.getCookieId(), token.toString(), keepAlive, true, null);
+
+        if (guild_id != null && guild_id > Integer.MAX_VALUE) {
+            WebUtil.setCookieViaHeader(context, GUILD_ID.getCookieId(), Long.toString(guild_id), -1, true, null);
+        }
+
         return success();
     }
 
@@ -207,7 +213,9 @@ public class EndpointPages extends PageHelper {
     @Command
     @ReturnType(WebSuccess.class)
     public WebSuccess set_oauth_code(Context context, @Me @Default DBNation me, String code) throws IOException {
-        String access_token = AuthBindings.getAccessToken(code, Settings.INSTANCE.WEB.FRONTEND_DOMAIN + "/#/oauth2");
+        String redirect = resolveOAuthRedirect(context);
+        System.out.println("OAuth Redirect: " + redirect);
+        String access_token = AuthBindings.getAccessToken(code, redirect);
         if (access_token == null) {
             return error("Cannot fetch access_token from OAuth2 code");
         }

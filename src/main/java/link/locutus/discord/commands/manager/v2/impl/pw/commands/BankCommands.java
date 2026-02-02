@@ -288,7 +288,7 @@ public class BankCommands {
                 for (int i = 0; i < rss1d.length; i++) {
                     double days = daysByResource[i];
                     if (days == 0) continue;
-                    if (Math.round(rss1d[i] * 100) == Math.round(rss2d[i] * 100)) {
+                    if (ArrayUtil.toCents(rss1d[i]) == ArrayUtil.toCents(rss2d[i])) {
                         rss[i] = rss1d[i];
                     } else {
                         rss[i] = rss1d[i] * days;
@@ -349,7 +349,7 @@ public class BankCommands {
             if (unitResources != null) {
                 double[] rss = ResourceType.getBuffer();
                 for (Map.Entry<MilitaryUnit, Long> entry : unitResources.entrySet()) {
-                    entry.getKey().addCost(rss, entry.getValue().intValue(), nation::getResearch);
+                    entry.getKey().addCost(rss, entry.getValue().intValue(), f -> nation.getResearch(null, f));
                 }
                 if (units_no_cash) {
                     rss[ResourceType.MONEY.ordinal()] = 0;
@@ -1306,7 +1306,7 @@ public class BankCommands {
             if (subtractNationsUnits != null && !subtractNationsUnits.isEmpty()) {
                 for (MilitaryUnit unit : subtractNationsUnits) {
                     int numUnits = nation.getUnits(unit);
-                    double[] cost = ResourceType.resourcesToArray(unit.getCost(numUnits, nation::getResearch));
+                    double[] cost = ResourceType.resourcesToArray(unit.getCost(numUnits, f -> nation.getResearch(null, f)));
                     for (int i = 0; i < cost.length; i++) {
                         amount[i] = Math.max(Math.min(0, amount[i]), amount[i] - cost[i]);
                     }
@@ -1600,13 +1600,14 @@ public class BankCommands {
         CompletableFuture<IMessageBuilder> msgFuture = (io.sendMessage("Please wait... "));
         long[] start = {System.currentTimeMillis()};
 
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nationSet, DBNation.class);
         Function<DBNation, List<String>> addRowTask = nation -> {
             if (start[0] + 10000 < System.currentTimeMillis()) {
                 start[0] = System.currentTimeMillis();
                 io.updateOptionally(msgFuture, "Updating build for " + nation.getMarkdownUrl());
             }
 
-            double[] revenue = nation.getRevenue();
+            double[] revenue = nation.getRevenue(cacheStore);
 
             double disease = 0;
             double crime = 0;
@@ -1743,7 +1744,7 @@ public class BankCommands {
                     if (depo[i] > 0) total[i] += depo[i];
                 }
             }
-            double[] revenue = nation.getRevenue();
+            double[] revenue = nation.getRevenue(null);
             revenueByNation.put(nation, revenue);
             if (includeRevenueDays != null) {
                 for (int i = 0; i < revenue.length; i++) {
@@ -2021,9 +2022,6 @@ public class BankCommands {
                                 @Arg(value = "Do NOT reset deposits", group = 0) @Switch("d") boolean ignoreBankDeposits,
                                 @Arg(value = "Do NOT reset escrow", group = 0) @Switch("e") boolean ignoreEscrow,
                                 @Switch("f") boolean force) throws IOException {
-        if (db.isAllianceId(13880)) {
-            throw new IllegalArgumentException("Temporarily disabled for this guild.");
-        }
         if (nations.getNations().size() > 300) {
             throw new IllegalArgumentException("Due to performance issues, you can only reset up to 300 nations at a time");
         }

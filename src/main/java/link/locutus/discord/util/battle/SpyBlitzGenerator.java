@@ -65,7 +65,7 @@ public class SpyBlitzGenerator {
             for (DBNation nation : attackers) {
                 int spies = nation.getSpies();
                 if (spies == 0 && !nation.hasBoughtSpiesToday()) {
-                    int dailyBuy = MilitaryUnit.SPIES.getMaxPerDay(nation.getCities(), nation::hasProject, nation::getResearch);
+                    int dailyBuy = MilitaryUnit.SPIES.getMaxPerDay(nation.getCities(), nation::hasProject, f -> nation.getResearch(null, f));
                     attSpyCountOverride.put(nation.getId(), dailyBuy);
                 }
             }
@@ -153,7 +153,7 @@ public class SpyBlitzGenerator {
                             case AIRCRAFT:
                             case SHIP:
                             case MONEY:
-                                if (units * operation.unit.getConvertedCost(defender.getResearchBits()) * 0.05 < 300000) continue;
+                                if (units * operation.unit.getConvertedCost(defender.getResearchBits(null)) * 0.05 < 300000) continue;
                                 break;
                         }
                     }
@@ -174,7 +174,7 @@ public class SpyBlitzGenerator {
                         opNetDamage = opNetDamage * (1 - spyRatioFactor) + opNetDamage * spyRatio * spyRatioFactor;
                     }
                     if (operation == SpyCount.Operation.NUKE) {
-                        int perDay = MilitaryUnit.NUKE.getMaxPerDay(defender.getCities(), defender::hasProject, defender::getResearch);
+                        int perDay = MilitaryUnit.NUKE.getMaxPerDay(defender.getCities(), defender::hasProject, f -> defender.getResearch(null, f));
                         if (defender.getNukes() <= perDay) {
                             ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
                             int minute = now.getHour() * 60 + now.getMinute();
@@ -188,7 +188,7 @@ public class SpyBlitzGenerator {
                         }
                     }
                     if (operation == SpyCount.Operation.MISSILE) {
-                        Integer missileCap = MilitaryUnit.MISSILE.getMaxPerDay(defender.getCities(), defender::hasProject, defender::getResearch);
+                        Integer missileCap = MilitaryUnit.MISSILE.getMaxPerDay(defender.getCities(), defender::hasProject, f -> defender.getResearch(null, f));
                         if (defender.getMissiles() == missileCap) {
                             ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
                             int minute = now.getHour() * 60 + now.getMinute();

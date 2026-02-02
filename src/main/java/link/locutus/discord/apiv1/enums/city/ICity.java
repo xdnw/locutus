@@ -39,7 +39,7 @@ public interface ICity {
     }
 
     default int getSlots() {
-        return (int) (Math.round(getInfra() * 100) / 50_00);
+        return (int) (ArrayUtil.toCents(getInfra()) / 50_00);
     }
 
     default int getFreeSlots() {
@@ -150,7 +150,7 @@ public interface ICity {
 
         Predicate<Building> militaryOrPower = f -> f.getType() == BuildingType.MILITARY || f.getType() == BuildingType.POWER;
         int milAndPowerImps = origin.getNumBuildingsMatching(militaryOrPower);
-        int slotsNonMilOrPower = ((int) Math.round(origin.getInfra() * 100) / 50_00) - milAndPowerImps;
+        int slotsNonMilOrPower = ((int) ArrayUtil.toCents(origin.getInfra()) / 50_00) - milAndPowerImps;
         if (slotsNonMilOrPower <= 0) {
             return null;
         }

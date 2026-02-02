@@ -132,8 +132,6 @@ public class Revenue extends Command {
             return "No cities found" + (force ? "" : " (add -f to inclue gray nations)");
         }
 
-        boolean useCache = cities.size() > 1;
-
         double[] cityProfit = new double[ResourceType.values.length];
         double[] milUp = new double[ResourceType.values.length];
         long tradeBonus = 0;
@@ -172,7 +170,7 @@ public class Revenue extends Command {
             if (!nation.hasUnsetMil()) {
                 double factor = nation.getMilitaryUpkeepFactor();
                 boolean atWar = nation.getNumWars() > 0;
-                int researchBits = nation.getResearchBits();
+                int researchBits = nation.getResearchBits(null);
 
                 for (MilitaryUnit unit : MilitaryUnit.values) {
                     int amt = nation.getUnits(unit);

@@ -839,8 +839,14 @@ public final class Locutus extends ListenerAdapter {
                     }
                 }
                 runEventsAsync(getNationDB()::deleteExpiredTreaties);
-
             }
+
+            getExecutor().submit(new CaughtRunnable() {
+                @Override
+                public void runUnsafe() {
+                    getNationDB().saveResearch();
+                }
+            });
 
             if (Settings.INSTANCE.TASKS.TURN_TASKS.ALLIANCE_METRICS) {
                 AllianceMetric.update(80);

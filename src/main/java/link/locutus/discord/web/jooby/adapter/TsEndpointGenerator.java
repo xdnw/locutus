@@ -5,13 +5,18 @@ import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
+import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.CommandGroup;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.command.WebOption;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
+import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ReflectionUtil;
 import link.locutus.discord.util.scheduler.TriFunction;
@@ -32,12 +37,27 @@ import java.util.*;
 import java.util.function.Function;
 
 public class TsEndpointGenerator {
-    public static void writeFiles(PageHandler handler, File outputDir) throws IOException {
+    public static void main(String[] args) {
+        try {
+            ValueStore<Object> store = PWBindings.createDefaultStore();
+            ValidatorStore validators = PWBindings.createDefaultValidators();
+            PermissionHandler permisser = PWBindings.createDefaultPermisser();
+            PlaceholdersMap placeholders = new PlaceholdersMap(store, validators, permisser).init();
+            PageHandler handler = new PageHandler(placeholders);
+            writeFiles(handler, null, true, false);
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+        System.out.println("Done");
+        System.exit(0);
+    }
+
+    public static void writeFiles(PageHandler handler, File outputDir, boolean endpoints, boolean commands) throws IOException {
         if (outputDir == null) {
             outputDir = new File("../lc_cmd_react/src/");
         }
         CommandGroup api = (CommandGroup) handler.getCommands().get("api");
-        {
+        if (endpoints){
             File endpointFile = new File(outputDir, "lib/endpoints.ts");
             String header = """
                     import { ApiEndpoint, CommonEndpoint } from "./BulkQuery";
@@ -49,7 +69,7 @@ public class TsEndpointGenerator {
         {
             // generateTsPlaceholderBuilder (unused)
         }
-        if (true) {
+        if (commands) {
             CommandManager2 cmdInst = Locutus.cmd().getV2();
             SimpleValueStore<Object> store = new SimpleValueStore<>();
             new WebOptionBindings().register(store);

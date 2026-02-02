@@ -170,7 +170,7 @@ public class DamageStatGroup {
             attack.addDefLosses(totalCost, war);
             attack.addDefConsumption(consumption);
             attack.addDefLoot(loot);
-            infraCents += Math.round(attack.getInfra_destroyed_value() * 100);
+            infraCents += ArrayUtil.toCents(attack.getInfra_destroyed_value());
             attack.addBuildingsDestroyed(buildings);
         }
     }
