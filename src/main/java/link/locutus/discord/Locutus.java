@@ -555,7 +555,7 @@ public final class Locutus extends ListenerAdapter {
 
     public void initRepeatingTasks() {
         if (Settings.INSTANCE.ENABLED_COMPONENTS.PROXY) {
-            taskTrack.addTask("Proxy", () -> {
+            taskTrack.addTask("Multi-Updater", () -> {
                 if (this.multiUpdater == null) {
                     try {
                         this.multiUpdater = new MultiUpdater();

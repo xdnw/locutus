@@ -168,7 +168,8 @@ public class WebUtil {
         if (domain != null) {
             newCookie += " Domain=" + domain.replaceFirst("^https?://", "") + ";";
         }
-        context.header("Set-Cookie", newCookie);
+        // Use addHeader to append a Set-Cookie header instead of replacing existing ones
+        context.res().addHeader("Set-Cookie", newCookie);
     }
 
     public static <T> String generateSearchableDropdown(ParameterData param, Collection<T> objects, QuadConsumer<T, JsonArray, JsonArray, JsonArray> consumeObjectNamesValueSubtext, Boolean multiple) {
