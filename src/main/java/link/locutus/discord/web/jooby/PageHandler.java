@@ -183,7 +183,7 @@ public class PageHandler implements Handler {
 //        }
 //        return TsEndpointGenerator.generateSchema(schemaClasses);
 //    }
-    private Map<String, WebOption> queryOptions;
+    private volatile Map<String, WebOption> queryOptions;
     private final Object queryOptionsLock = new Object();
 
     private Map<String, WebOption> getQueryOptions() {

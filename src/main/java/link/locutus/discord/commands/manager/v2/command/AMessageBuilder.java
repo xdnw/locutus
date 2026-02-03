@@ -70,7 +70,7 @@ public abstract class AMessageBuilder implements IMessageBuilder {
         }
         sb.append("\n");
         for (Map.Entry<String, byte[]> entry : images.entrySet()) {
-            sb.append("\n").append(entry.getKey()).append(": ").append(entry.getValue());
+            sb.append("\n").append(entry.getKey()).append(": ").append("<image data>");
         }
         return sb.toString();
     }

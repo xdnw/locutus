@@ -1675,7 +1675,7 @@ public class WarCommands {
             Double infra = cityInfra.get(i);
             if (infra <= 600) break;
             double factor = Math.min(numCities, 1);
-            double minInfra = infra * 0.6-500;
+            double minInfra = infra * 0.6 - 500;
             double beigeFactor = nation.getBeigeDamageFactor();
             if (beigeFactor != 1) minInfra = infra - ((infra - minInfra) * beigeFactor);
             cost += factor * PW.City.Infra.calculateInfra(minInfra, infra);

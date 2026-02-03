@@ -229,7 +229,7 @@ public class SpySheet extends Command {
                             }
                         }
                         if (operation == SpyCount.Operation.MISSILE) {
-                            Integer missileCap = MilitaryUnit.MISSILE.getMaxPerDay(defender.getCities(), defender::hasProject, f -> defender.getResearch(null, f));
+                            int missileCap = MilitaryUnit.MISSILE.getMaxPerDay(defender.getCities(), defender::hasProject, f -> defender.getResearch(null, f));
                             if (defender.getMissiles() == (missileCap)) {
                                 ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
                                 int minute = now.getHour() * 60 + now.getMinute();
