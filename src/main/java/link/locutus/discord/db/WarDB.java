@@ -138,7 +138,7 @@ public class WarDB extends DBMainV2 {
     }
 
     @Override
-    public void createTables() {
+    public synchronized void createTables() {
         {
             TablePreset.create("BOUNTIES_V3")
                     .putColumn("id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
@@ -1534,109 +1534,6 @@ public class WarDB extends DBMainV2 {
 
     private void reEncodeAttacks() {
         // iterate all attacks byte[] and
-    }
-
-    @Override
-    public synchronized void createTables() {
-        {
-            TablePreset.create("BOUNTIES_V3")
-                    .putColumn("id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("date", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("nation_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("posted_by", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("attack_type", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("amount", ColumnType.BIGINT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .create(getDb());
-
-            String subCatQuery = TablePreset.create("ATTACK_SUBCATEGORY_CACHE")
-                    .putColumn("attack_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("subcategory_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("war_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .buildQuery(getDb().getType());
-            subCatQuery = subCatQuery.replace(");", ", PRIMARY KEY(attack_id, subcategory_id));");
-            getDb().executeUpdate(subCatQuery);
-        }
-
-        {
-            String create = "CREATE TABLE IF NOT EXISTS `WARS` (`id` INT NOT NULL PRIMARY KEY, `attacker_id` INT NOT NULL, `defender_id` INT NOT NULL, `attacker_aa` INT NOT NULL, `defender_aa` INT NOT NULL, `war_type` INT NOT NULL, `status` INT NOT NULL, `date` BIGINT NOT NULL, `attCities` INT NOT NULL, `defCities` INT NOT NULL, `research` INT NOT NULL)";
-            executeStmt(create);
-            executeStmt("ALTER TABLE `WARS` ADD COLUMN `attCities` INT NOT NULL DEFAULT 0", true);
-            executeStmt("ALTER TABLE `WARS` ADD COLUMN `defCities` INT NOT NULL DEFAULT 0", true);
-            executeStmt("ALTER TABLE `WARS` ADD COLUMN `research` INT NOT NULL DEFAULT 0", true);
-        };
-
-        {
-            executeStmt("CREATE TABLE IF NOT EXISTS `BLOCKADED` (`blockader`, `blockaded`, PRIMARY KEY(`blockader`, `blockaded`))");
-        };
-
-        executeStmt("CREATE INDEX IF NOT EXISTS index_WARS_date ON WARS (date);");
-        executeStmt("CREATE INDEX IF NOT EXISTS index_WARS_attacker ON WARS (attacker_id);");
-        executeStmt("CREATE INDEX IF NOT EXISTS index_WARS_defender ON WARS (defender_id);");
-        executeStmt("CREATE INDEX IF NOT EXISTS index_WARS_status ON WARS (status);");
-
-        {
-            String create = "CREATE TABLE IF NOT EXISTS `COUNTER_STATS` (`id` INT NOT NULL PRIMARY KEY, `type` INT NOT NULL, `active` INT NOT NULL)";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(create);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        };
-
-        {
-            String attacksTable = "CREATE TABLE IF NOT EXISTS `ATTACKS3` (" +
-                    "`id` INTEGER PRIMARY KEY, " +
-                    "`war_id` INT NOT NULL, " +
-                    "`attacker_nation_id` INT NOT NULL, " +
-                    "`defender_nation_id` INT NOT NULL, " +
-                    "`date` BIGINT NOT NULL, " +
-                    "`data` BLOB NOT NULL)";
-            executeStmt(attacksTable);
-            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_warid ON ATTACKS3 (war_id);");
-            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_attacker_nation_id ON ATTACKS3 (attacker_nation_id);");
-            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_defender_nation_id ON ATTACKS3 (defender_nation_id);");
-            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_date ON ATTACKS3 (date);");
-        }
-
-        // create custom bounties table
-        {
-            String create = "CREATE TABLE IF NOT EXISTS `CUSTOM_BOUNTIES` (" +
-                    "`id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                    "`placed_by` INT NOT NULL, " +
-                    "`date_created` BIGINT NOT NULL, " +
-                    "`claimed_by` BIGINT NOT NULL, " +
-                    "`amount` BLOB NOT NULL, " +
-                    "`nations` BLOB NOT NULL, " +
-                    "`alliances` BLOB NOT NULL, " +
-                    "`filter` VARCHAR NOT NULL, " +
-                    "`total_damage` BIGINT NOT NULL, " +
-                    "`infra_damage` BIGINT NOT NULL, " +
-                    "`unit_damage` BIGINT NOT NULL, " +
-                    "`only_offensives` INT NOT NULL, " +
-                    "`unit_kills` BLOB NOT NULL, " +
-                    "`unit_attacks` BLOB NOT NULL, " +
-                    "`allowed_war_types` BIGINT NOT NULL, " +
-                    "`allowed_war_status` BIGINT NOT NULL, " +
-                    "`allowed_attack_types` BIGINT NOT NULL, " +
-                    "`allowed_attack_rolls` BIGINT NOT NULL)";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(create);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        };
-        boolean enableConflicts = !Settings.INSTANCE.WEB.S3.ACCESS_KEY.isEmpty() &&
-                !Settings.INSTANCE.WEB.S3.SECRET_ACCESS_KEY.isEmpty() &&
-                !Settings.INSTANCE.WEB.S3.REGION.isEmpty() &&
-                !Settings.INSTANCE.WEB.S3.BUCKET.isEmpty();
-        conflictManager = enableConflicts ? new ConflictManager(this) : null;
-        if (conflictManager != null) {
-            this.conflictManager.createTables();
-        }
     }
 
     public ConflictManager getConflicts() {

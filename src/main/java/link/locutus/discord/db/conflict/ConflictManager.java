@@ -6,16 +6,19 @@ import com.google.common.base.Predicates;
 import com.google.common.eventbus.Subscribe;
 import com.ptsmods.mysqlw.Database;
 import it.unimi.dsi.fastutil.ints.Int2ByteOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntArraySet;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntSet;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -65,16 +68,19 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.function.IntPredicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.db.conflict.ConflictField.*;
+import static link.locutus.discord.util.math.ArrayUtil.ALWAYS_TRUE_INT;
 
 public class ConflictManager {
     public static ConflictManager get() {
@@ -88,8 +94,8 @@ public class ConflictManager {
     private Conflict[] conflictArr;
     private final Set<Integer> activeConflictsOrd = new IntOpenHashSet();
     private long lastTurn = 0;
-    private final Map<Integer, Set<Integer>> activeConflictOrdByAllianceId = new Int2ObjectOpenHashMap<>();
-    private final Map<Long, Map<Integer, int[]>> mapTurnAllianceConflictOrd = new Long2ObjectOpenHashMap<>();
+    private final Object conflictArrLock = new Object();
+    private final Int2ObjectMap<IntSet> activeConflictOrdByAllianceId = new Int2ObjectOpenHashMap<>();
 
     private final Map<Integer, String> legacyNames2 = new Int2ObjectOpenHashMap<>();
     private final Map<String, Map<Long, Integer>> legacyIdsByDate = new ConcurrentHashMap<>();
@@ -100,6 +106,13 @@ public class ConflictManager {
     private volatile long conflictHeaderHash = 0L;
 
     private final Map<Integer, Map<HeaderGroup, Long>> cacheTimes = new Int2ObjectOpenHashMap<>();
+
+    private final TurnSnapshotHolder GLOBAL_TURN_SNAPSHOT = new TurnSnapshotHolder(() -> {
+        synchronized (conflictArrLock) {
+            return Arrays.copyOf(conflictArr, conflictArr.length);
+        }
+    });
+
 
     public ConflictManager(WarDB db) {
         this.db = db;
@@ -169,7 +182,7 @@ public class ConflictManager {
                     "PRIMARY KEY (conflict_id, type))");
         }
         { // load
-            List<Conflict> conflicts = new ArrayList<>();
+            List<Conflict> conflicts = new ObjectArrayList<>();
             conflictById.clear();
 
             db.query("SELECT conflict_id, type, updated_ms from conflict_row_cache", stmt -> {
@@ -203,6 +216,10 @@ public class ConflictManager {
                 }
             });
             this.conflictArr = conflicts.toArray(new Conflict[0]);
+            GLOBAL_TURN_SNAPSHOT.invalidateConflictSnapshot();
+            for (Conflict c : conflictArr) {
+                if (c != null && c.isActive()) activeConflictsOrd.add(c.getOrdinal());
+            }
 
             db.query("SELECT * FROM legacy_names2", stmt -> {
             }, (ThrowingConsumer<ResultSet>) rs -> {
@@ -347,161 +364,266 @@ public class ConflictManager {
         return false;
     }
 
-    private synchronized void initTurn() {
+    public synchronized void initTurn() {
         long currTurn = TimeUtil.getTurn();
         if (lastTurn != currTurn) {
-            Iterator<Integer> iter = activeConflictsOrd.iterator();
             activeConflictsOrd.removeIf(f -> {
                 Conflict conflict = conflictArr[f];
                 return (conflict == null || conflict.getEndTurn() <= currTurn);
             });
             recreateConflictsByAlliance();
-            for (Conflict conflict : conflictArr) {
-                long startTurn = Math.max(lastTurn + 1, conflict.getStartTurn());
-                long endTurn = Math.min(currTurn + 1, conflict.getEndTurn());
-                addAllianceTurn(conflict, startTurn, endTurn);
-            }
             lastTurn = currTurn;
         }
     }
 
-    private void addAllianceTurn(Conflict conflict, long startTurn, long endTurn) {
-        if (startTurn >= endTurn) return;
-        synchronized (mapTurnAllianceConflictOrd) {
-            Set<Integer> aaIds = conflict.getAllianceIds();
-            for (long turn = startTurn; turn < endTurn; turn++) {
-                Map<Integer, int[]> conflictIdsByAA = mapTurnAllianceConflictOrd.computeIfAbsent(turn, k -> new Int2ObjectOpenHashMap<>());
-                for (int aaId : aaIds) {
-                    addAllianceTurn(conflict, aaId, turn, conflictIdsByAA);
+    private static final Conflict[] EMPTY_CONFLICTS = new Conflict[0];
+
+    private static final class TurnSnapshot {
+        private static final int BASE_ALLIANCE_CAP_EXCL = 15_000 + 1; // index by allianceId
+        private static final int MIN_ACTIVE_IDS_CAP = 64;
+
+        long turn = Long.MIN_VALUE;
+        int version = Integer.MIN_VALUE;
+
+        Conflict[] conflicts = EMPTY_CONFLICTS;
+
+        // allianceId -> sorted ords (active on `turn`)
+        int[][] ordsByAlliance = new int[BASE_ALLIANCE_CAP_EXCL][];
+
+        // compact list of allianceIds with ordsByAlliance[allianceId] != null (for fast clearing)
+        int[] activeAllianceIds = new int[MIN_ACTIVE_IDS_CAP];
+        int activeAllianceCount;
+
+        // scratch reused for building; also cleared via activeAllianceIds
+        int[] countsByAlliance = new int[BASE_ALLIANCE_CAP_EXCL];
+
+        void invalidate() {
+            clearIndex();
+            turn = Long.MIN_VALUE;
+            version = Integer.MIN_VALUE;
+            conflicts = EMPTY_CONFLICTS;
+        }
+
+        void rebuild(long turn, int version, Conflict[] conflicts) {
+            clearIndex();
+            this.turn = turn;
+            this.version = version;
+            this.conflicts = conflicts;
+            buildOrdsByAlliance(turn, conflicts);
+        }
+
+        private void ensureCapacityExclusive(int neededExclusive) {
+            if (neededExclusive <= ordsByAlliance.length) return;
+
+            int newLen = ordsByAlliance.length;
+            while (newLen < neededExclusive) {
+                final int grown = newLen + (newLen >> 1); // ~1.5x
+                if (grown <= newLen) {                   // overflow guard
+                    newLen = neededExclusive;
+                    break;
                 }
+                newLen = grown;
+            }
+
+            ordsByAlliance = Arrays.copyOf(ordsByAlliance, newLen);
+            countsByAlliance = Arrays.copyOf(countsByAlliance, newLen);
+        }
+
+        private void recordActiveAlliance(int aaId) {
+            if (activeAllianceCount == activeAllianceIds.length) {
+                activeAllianceIds = Arrays.copyOf(activeAllianceIds, activeAllianceCount * 2);
+            }
+            activeAllianceIds[activeAllianceCount++] = aaId;
+        }
+
+        private void clearIndex() {
+            for (int i = 0; i < activeAllianceCount; i++) {
+                final int aaId = activeAllianceIds[i];
+                if (aaId >= 0 && aaId < ordsByAlliance.length) {
+                    ordsByAlliance[aaId] = null;
+                    countsByAlliance[aaId] = 0;
+                }
+            }
+            activeAllianceCount = 0;
+        }
+
+        private void buildOrdsByAlliance(long turn, Conflict[] conflicts) {
+            int[][] ords = ordsByAlliance;
+            int[] counts = countsByAlliance;
+
+            // pass 1: count + remember active alliance ids
+            for (int ord = 0; ord < conflicts.length; ord++) {
+                final Conflict c = conflicts[ord];
+                if (c == null) continue;
+
+                if (c.getStartTurn() > turn || c.getEndTurn() <= turn) continue;
+
+                for (int aaId : c.getAllianceIds()) {
+                    if (aaId <= 0) continue;
+                    if (c.getStartTurn(aaId) > turn || c.getEndTurn(aaId) <= turn) continue;
+
+                    if (aaId >= ords.length) {
+                        ensureCapacityExclusive(aaId + 1);
+                        ords = ordsByAlliance;
+                        counts = countsByAlliance;
+                    }
+
+                    if (counts[aaId]++ == 0) recordActiveAlliance(aaId);
+                }
+            }
+
+            // allocate exact-sized arrays; reuse counts[] as write cursor
+            for (int i = 0; i < activeAllianceCount; i++) {
+                final int aaId = activeAllianceIds[i];
+                ords[aaId] = new int[counts[aaId]];
+                counts[aaId] = 0;
+            }
+
+            // pass 2: fill
+            for (int ord = 0; ord < conflicts.length; ord++) {
+                final Conflict c = conflicts[ord];
+                if (c == null) continue;
+
+                if (c.getStartTurn() > turn || c.getEndTurn() <= turn) continue;
+
+                for (int aaId : c.getAllianceIds()) {
+                    if (aaId <= 0) continue;
+                    if (c.getStartTurn(aaId) > turn || c.getEndTurn(aaId) <= turn) continue;
+
+                    // Should be in-range thanks to pass 1, but keep it safe:
+                    if (aaId >= ords.length) {
+                        ensureCapacityExclusive(aaId + 1);
+                        ords = ordsByAlliance;
+                        counts = countsByAlliance;
+                        if (ords[aaId] == null) {
+                            // extremely rare: aaId appeared only in pass2 due to changing Conflict impl;
+                            // treat as "new active alliance"
+                            ords[aaId] = new int[4];
+                            recordActiveAlliance(aaId);
+                        }
+                    }
+
+                    ords[aaId][counts[aaId]++] = ord;
+                }
+            }
+
+            // sort per alliance (needed for merge-intersection)
+            for (int i = 0; i < activeAllianceCount; i++) {
+                final int aaId = activeAllianceIds[i];
+                final int[] arr = ords[aaId];
+                if (arr != null && arr.length > 1) it.unimi.dsi.fastutil.ints.IntArrays.quickSort(arr);
             }
         }
     }
 
-    private void addAllianceTurn(Conflict conflict, int aaId, long turn,  Map<Integer, int[]> conflictIdsByAA) {
-        if (conflict.getStartTurn(aaId) > turn) return;
-        if (conflict.getEndTurn(aaId) <= turn) return;
-        int[] currIds = conflictIdsByAA.get(aaId);
-        if (currIds == null) {
-            currIds = new int[]{conflict.getOrdinal()};
-        } else {
-            if (Arrays.binarySearch(currIds, conflict.getOrdinal()) >= 0) return;
-            int[] newIds = new int[currIds.length + 1];
-            System.arraycopy(currIds, 0, newIds, 0, currIds.length);
-            newIds[currIds.length] = conflict.getOrdinal();
-            Arrays.sort(newIds);
-            currIds = newIds;
+    private static final class TurnSnapshotHolder {
+        private final Supplier<Conflict[]> conflictArrSup;
+
+        private final TurnSnapshot snapshot = new TurnSnapshot();
+        private int conflictVersion;
+
+        TurnSnapshotHolder(Supplier<Conflict[]> conflictArrSupplier) {
+            this.conflictArrSup = Objects.requireNonNull(conflictArrSupplier);
         }
-        conflictIdsByAA.put(aaId, currIds);
-    }
 
-    private void addAllianceTurn(Conflict conflict, int aaId, long turn) {
-        Map<Integer, int[]> conflictIdsByAA = mapTurnAllianceConflictOrd.computeIfAbsent(turn, k -> new Int2ObjectOpenHashMap<>());
-        addAllianceTurn(conflict, aaId, turn, conflictIdsByAA);
-    }
+        synchronized void invalidateConflictSnapshot() {
+            // Do under your “conflicts update” lock if multiple writers exist
+            conflictVersion++;
+            snapshot.invalidate();
+        }
 
-    public void clearAllianceCache() {
-        synchronized (mapTurnAllianceConflictOrd) {
-            mapTurnAllianceConflictOrd.clear();
-            lastTurn = 0;
-            recreateConflictsByAlliance();
+        TurnSnapshot snapshotForTurn(long turn) {
+            final int v = conflictVersion;
+            if (snapshot.turn == turn && snapshot.version == v) return snapshot;
+
+            snapshot.rebuild(turn, v, conflictArrSup.get());
+            return snapshot;
         }
     }
 
-
-    private boolean applyConflicts(Predicate<Integer> allowed, long turn, int allianceId1, int allianceId2, Consumer<Conflict> conflictConsumer) {
+    private boolean applyConflicts(
+            TurnSnapshotHolder holder,
+            IntPredicate allowed, long turn,
+            int allianceId1, int allianceId2,
+            Consumer<Conflict> consumer
+    ) {
         if (allianceId1 == 0 || allianceId2 == 0) return false;
-        synchronized (mapTurnAllianceConflictOrd)
-        {
-            Map<Integer, int[]> conflictOrdsByAA = mapTurnAllianceConflictOrd.get(turn);
-            if (conflictOrdsByAA == null) return false;
-            int[] conflictIds1 = conflictOrdsByAA.get(allianceId1);
-            int[] conflictIds2 = conflictOrdsByAA.get(allianceId2);
-            if (conflictIds1 != null && conflictIds2 != null) {
-                if (conflictIds1.length == 1) {
-                    int conflictId1 = conflictIds1[0];
-                    if (conflictIds2.length == 1) {
-                        if (conflictId1 == conflictIds2[0]) {
-                            applyConflictConsumer(allowed, conflictIds1[0], conflictConsumer);
-                            return true;
-                        }
-                    } else {
-                        boolean result = false;
-                        for (int conflictId : conflictIds2) {
-                            if (conflictId == conflictId1) {
-                                applyConflictConsumer(allowed, conflictId, conflictConsumer);
-                                result = true;
-                            }
-                        }
-                        return result;
-                    }
-                    return false;
-                } else if (conflictIds2.length == 1) {
-                    int conflictId2 = conflictIds2[0];
-                    boolean result = false;
-                    for (int conflictId : conflictIds1) {
-                        if (conflictId == conflictId2) {
-                            applyConflictConsumer(allowed, conflictId, conflictConsumer);
-                            result = true;
-                        }
-                    }
-                    return result;
-                } else {
-                    int i = 0, j = 0;
-                    while (i < conflictIds1.length && j < conflictIds2.length) {
-                        int id1 = conflictIds1[i];
-                        int id2 = conflictIds2[j];
-                        if (id1 < id2) {
-                            i++;
-                        } else if (id1 > id2) {
-                            j++;
-                        } else {
-                            applyConflictConsumer(allowed, id1, conflictConsumer);
-                            i++;
-                            j++;
-                        }
-                    }
-                }
+
+        final TurnSnapshot snap = holder.snapshotForTurn(turn);
+        final int[][] ordsByAlliance = snap.ordsByAlliance;
+
+        if (allianceId1 >= ordsByAlliance.length || allianceId2 >= ordsByAlliance.length) return false;
+
+        final int[] a = ordsByAlliance[allianceId1];
+        if (a == null) return false;
+
+        final int[] b = ordsByAlliance[allianceId2];
+        if (b == null) return false;
+
+        final Conflict[] conflicts = snap.conflicts;
+
+        int i = 0, j = 0;
+        boolean applied = false;
+
+        while (i < a.length && j < b.length) {
+            final int oa = a[i];
+            final int ob = b[j];
+
+            if (oa < ob) { i++; continue; }
+            if (oa > ob) { j++; continue; }
+
+            i++; j++;
+
+            if (!allowed.test(oa)) continue;
+
+            final Conflict c = conflicts[oa];
+            if (c != null) {
+                consumer.accept(c);
+                applied = true;
             }
-            return true;
+        }
+
+        return applied;
+    }
+
+    public boolean updateWar(DBWar previous, DBWar current, IntPredicate allowedConflictords) {
+        synchronized (GLOBAL_TURN_SNAPSHOT) {
+            return updateWar(GLOBAL_TURN_SNAPSHOT, previous, current, allowedConflictords);
         }
     }
 
-    private void applyConflictConsumer(Predicate<Integer> allowedOrd, int conflictOrd, Consumer<Conflict> conflictConsumer) {
-        if (allowedOrd.test(conflictOrd)) {
-            Conflict conflict = conflictArr[conflictOrd];
-            conflictConsumer.accept(conflict);
-        }
-    }
-
-    public boolean updateWar(DBWar previous, DBWar current, Predicate<Integer> allowedConflictords) {
+    private boolean updateWar(TurnSnapshotHolder holder, DBWar previous, DBWar current, IntPredicate allowedConflictords) {
         long date = current.getDate();
         long turn = TimeUtil.getTurn(date);
-        if (turn > lastTurn) initTurn();
-        return applyConflicts(allowedConflictords, turn, current.getAttacker_aa(), current.getDefender_aa(), f -> f.updateWar(previous, current, turn, date));
+        return applyConflicts(holder, allowedConflictords, turn, current.getAttacker_aa(), current.getDefender_aa(), f -> f.updateWar(previous, current, turn, date));
     }
+
+    private final Function<IAttack, AttackTypeSubCategory> onAttackFunction = f -> {
+        AttackTypeSubCategory cat = f.getSubCategory(DBNation::getActive_m);
+        saveSubTypes(Map.of(f.getWar_attack_id(), cat == null ? -1 : (byte) cat.ordinal()));
+        return cat;
+    };
 
     @Subscribe
     public void onAttack(AttackEvent event) {
         AbstractCursor attack = event.getAttack();
         DBWar war = event.getWar();
         if (war != null) {
-            updateAttack(war, attack, Predicates.alwaysTrue(), f -> {
-                AttackTypeSubCategory cat = f.getSubCategory(DBNation::getActive_m);
-                saveSubTypes(Map.of(attack.getWar_attack_id(), cat == null ? -1 : (byte) cat.ordinal()));
-                return cat;
-            });
+            synchronized (GLOBAL_TURN_SNAPSHOT) {
+                updateAttack(GLOBAL_TURN_SNAPSHOT, war, attack, ALWAYS_TRUE_INT, onAttackFunction);
+            }
         }
     }
 
-    public void updateAttack(DBWar war, AbstractCursor attack, Predicate<Integer> allowed, Function<IAttack, AttackTypeSubCategory> getCached) {
+    public void updateAttack(TurnSnapshotHolder holder, DBWar war, AbstractCursor attack, IntPredicate allowed, Function<IAttack, AttackTypeSubCategory> getCached) {
         long turn = TimeUtil.getTurn(war.getDate());
-        if (turn > lastTurn) initTurn();
-        applyConflicts(allowed, turn, war.getAttacker_aa(), war.getDefender_aa(), f -> f.updateAttack(war, attack, turn, getCached));
+        initTurn();
+        applyConflicts(holder, allowed, turn, war.getAttacker_aa(), war.getDefender_aa(), f -> f.updateAttack(war, attack, turn, getCached));
     }
 
     @Subscribe
     public void onTurnChange(TurnChangeEvent event) {
+        initTurn();
         long turn = event.getCurrent();
         List<Conflict> active = getActiveConflicts();
         synchronized (loadConflictLock) {
@@ -535,39 +657,12 @@ public class ConflictManager {
         if (conflict == null) return;
         synchronized (activeConflictOrdByAllianceId) {
             if (removeOld) {
-                Iterator<Map.Entry<Integer, Set<Integer>>> iter = activeConflictOrdByAllianceId.entrySet().iterator();
+                ObjectIterator<Int2ObjectMap.Entry<IntSet>> iter = activeConflictOrdByAllianceId.int2ObjectEntrySet().iterator();
                 while (iter.hasNext()) {
-                    Map.Entry<Integer, Set<Integer>> entry = iter.next();
+                    Int2ObjectMap.Entry<IntSet> entry = iter.next();
                     entry.getValue().remove(conflict.getOrdinal());
                     if (entry.getValue().isEmpty()) {
                         iter.remove();
-                    }
-                }
-                synchronized (mapTurnAllianceConflictOrd) {
-                    Iterator<Map.Entry<Long, Map<Integer, int[]>>> iter2 = mapTurnAllianceConflictOrd.entrySet().iterator();
-                    while (iter2.hasNext()) {
-                        Map.Entry<Long, Map<Integer, int[]>> entry = iter2.next();
-                        Iterator<Map.Entry<Integer, int[]>> iter3 = entry.getValue().entrySet().iterator();
-                        while (iter3.hasNext()) {
-                            Map.Entry<Integer, int[]> entry2 = iter3.next();
-                            int[] value = entry2.getValue();
-                            if (Arrays.binarySearch(value, conflict.getOrdinal()) >= 0) {
-                                int[] newIds = new int[value.length - 1];
-                                if (newIds.length == 0) {
-                                    iter3.remove();
-                                } else {
-                                    for (int i = 0, j = 0; i < value.length; i++) {
-                                        if (value[i] != conflict.getOrdinal()) {
-                                            newIds[j++] = value[i];
-                                        }
-                                    }
-                                    entry2.setValue(newIds);
-                                }
-                            }
-                        }
-                        if (entry.getValue().isEmpty()) {
-                            iter2.remove();
-                        }
                     }
                 }
             }
@@ -576,7 +671,6 @@ public class ConflictManager {
                     activeConflictOrdByAllianceId.computeIfAbsent(aaId, k -> new IntArraySet()).add(conflict.getOrdinal());
                 }
             }
-            addAllianceTurn(conflict, conflict.getStartTurn(), Math.min(TimeUtil.getTurn(), conflict.getEndTurn()));
         }
     }
 
@@ -669,65 +763,13 @@ public class ConflictManager {
                 }
             }
         }
-        // load legacyNames
-        db.query("SELECT * FROM legacy_names2", stmt -> {
-        }, (ThrowingConsumer<ResultSet>) rs -> {
-            while (rs.next()) {
-                int id = rs.getInt("id");
-                String name = rs.getString("name");
-                long date = rs.getLong("date");
-                legacyNames2.put(id, name);
-                String nameLower = name.toLowerCase(Locale.ROOT);
-                legacyIdsByDate.computeIfAbsent(nameLower, k -> new Long2IntOpenHashMap()).put(date, id);
-            }
-        });
-
-        for (Map.Entry<String, Integer> entry : getDefaultNames().entrySet()) {
-            String name = entry.getKey();
-            int id = entry.getValue();
-            if (!legacyNames2.containsKey(id)) {
-                legacyNames2.put(id, name);
-            }
-            String nameLower = name.toLowerCase(Locale.ROOT);
-            Map<Long, Integer> map = legacyIdsByDate.computeIfAbsent(nameLower, k -> new Long2IntOpenHashMap());
-            if (map.isEmpty()) {
-                map.put(Long.MAX_VALUE, id);
-            }
-        }
-
-//        Set<Integer> empty = new HashSet<>();
-//        for (Map.Entry<Integer, Conflict> conflictEntry : conflictMap.entrySet()) {
-//            if (conflictEntry.getValue().getAllianceIds().isEmpty()) {
-//                empty.add(conflictEntry.getKey());
-//            }
-//        }
-        // delete empty conflicts
-//        db.executeStmt("DELETE FROM conflicts WHERE `id` in (" + StringMan.join(empty, ",") + ")");
-//        db.executeStmt("DELETE FROM conflict_announcements2 WHERE `conflict_id` in (" + StringMan.join(empty, ",") + ")");
-//        db.executeStmt("DELETE FROM conflict_participant WHERE `conflict_id` not in (" + StringMan.join(conflictMap.keySet(), ",") + ")");
-//        db.executeStmt("DELETE FROM conflict_announcements2");
-//        db.update("DELETE FROM conflict_graphs WHERE conflict_id = 0");
-//        db.executeStmt("DELETE FROM conflict_participant");
-
-
-//        System.out.println("Loaded " + conflictMap.size() + " conflicts in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
-//        if (legacyNames.isEmpty()) {
-//            saveDefaultNames();
-//        }
-        Locutus.imp().getExecutor().submit(() -> {
-            loadConflictWars(null, false);
-            Locutus.imp().getRepeatingTasks().addTask("Conflict Website", () -> {
-                if (!conflictsLoaded) return;
-                pushDirtyConflicts();
-            }, Settings.INSTANCE.TASKS.WAR_STATS_PUSH_INTERVAL, TimeUnit.SECONDS);
-        });
     }
 
     private void loadWarsFromQueryAndProcess(Conflict conflict, boolean clearBeforeUpdate, AttackQuery query) {
         if (clearBeforeUpdate) {
             conflict.clearWarData();
         }
-
+        initTurn();
         Set<DBWar> wars = new ObjectOpenHashSet<>();
         for (DBWar war : query.wars) {
             long date = war.getDate();
@@ -735,7 +777,6 @@ public class ConflictManager {
                 wars.add(war);
             }
         }
-
         if (!wars.isEmpty()) {
             db.iterateWarAttacks(wars, Predicates.alwaysTrue(), Predicates.alwaysTrue(), (war, attack) -> {
                 long turn = TimeUtil.getTurn(attack.getDate());
@@ -785,14 +826,17 @@ public class ConflictManager {
 
     public void loadConflictWars(Collection<Conflict> conflicts2, boolean clearBeforeUpdate, boolean isStartup, boolean loadGraphData) {
         Collection<Conflict> conflictsFinal;
-        synchronized (conflictArr) {
+        TurnSnapshotHolder holder;
+        Conflict[] conflictsFinalArr;
+        synchronized (conflictArrLock) {
             conflictsFinal = conflicts2 == null ? Arrays.asList(conflictArr) : conflicts2;
+            if (conflictsFinal.isEmpty()) return;
+            conflictsFinalArr = conflicts2.toArray(new Conflict[0]);
         }
-        if (conflictsFinal.isEmpty()) return;
-
         synchronized (loadConflictLock) {
             try {
                 initTurn();
+                holder = new TurnSnapshotHolder(() -> conflictsFinalArr);
                 if (clearBeforeUpdate) {
                     for (Conflict conflict : conflicts2) {
                         conflict.clearWarData();
@@ -801,33 +845,27 @@ public class ConflictManager {
                 loadConflictMeta(conflictsFinal, isStartup, true);
 
                 long startMs, endMs;
-                Predicate<Integer> allowedConflicts;
-                if (conflicts2 != null) {
-                    long startTurn = Long.MAX_VALUE;
-                    long endTurn = 0;
-                    for (Conflict conflict : conflictsFinal) {
-                        startTurn = Math.min(startTurn, conflict.getStartTurn());
-                        endTurn = Math.max(endTurn, conflict.getEndTurn());
-                    }
-                    if (endTurn == 0) return;
-                    startMs = TimeUtil.getTimeFromTurn(startTurn);
-                    endMs = endTurn == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTimeFromTurn(endTurn);
-
-                    boolean[] allowedConflictOrdsArr = new boolean[conflictArr.length];
-                    for (Conflict conflict : conflictsFinal) {
-                        allowedConflictOrdsArr[conflict.getOrdinal()] = true;
-                    }
-                    allowedConflicts = f -> allowedConflictOrdsArr[f];
-                } else {
-                    startMs = 0;
-                    endMs = Long.MAX_VALUE;
-                    allowedConflicts = Predicates.alwaysTrue();
+                IntPredicate allowedConflicts;
+                long startTurn = Long.MAX_VALUE;
+                long endTurn = 0;
+                for (Conflict conflict : conflictsFinal) {
+                    startTurn = Math.min(startTurn, conflict.getStartTurn());
+                    endTurn = Math.max(endTurn, conflict.getEndTurn());
                 }
+                if (endTurn == 0) return;
+                startMs = TimeUtil.getTimeFromTurn(startTurn);
+                endMs = endTurn == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTimeFromTurn(endTurn);
+
+                boolean[] allowedConflictOrdsArr = new boolean[conflictArr.length];
+                for (Conflict conflict : conflictsFinal) {
+                    allowedConflictOrdsArr[conflict.getOrdinal()] = true;
+                }
+                allowedConflicts = f -> allowedConflictOrdsArr[f];
 
                 Set<DBWar> wars = new ObjectOpenHashSet<>();
                 for (DBWar war : this.db.getWars()) {
                     if (war.getDate() >= startMs && war.getDate() <= endMs) {
-                        if (updateWar(null, war, allowedConflicts)) {
+                        if (updateWar(holder, null, war, allowedConflicts)) {
 //                        if (war.isActive() && TimeUtil.getTurn(war.getDate()) + 61 < currentTurn) {
 //                            System.out.println("INVALID WAR EXPIRED " + war.getWarId() + " | " + war.getDate() + " | " + war.getStatus());
 //                        }
@@ -838,7 +876,7 @@ public class ConflictManager {
 
                 Set<DBWar> manualWars = loadManualWars(conflictsFinal);
                 for (DBWar war : manualWars) {
-                    if (updateWar(null, war, allowedConflicts)) {
+                    if (updateWar(holder, null, war, allowedConflicts)) {
                         wars.add(war);
                     }
                 }
@@ -865,18 +903,19 @@ public class ConflictManager {
                             return 20000;
                         }
                     };
+                    Function<IAttack, AttackTypeSubCategory> onAttack = a -> {
+                        int id = a.getWar_attack_id();
+                        Byte cached = subTypes.get(id);
+                        if (cached != null) {
+                            return cached == -1 ? null : AttackTypeSubCategory.values[cached];
+                        }
+                        AttackTypeSubCategory sub = a.getSubCategory(activityCache);
+                        newSubTypes.put(id, sub == null ? -1 : (byte) sub.ordinal());
+                        return sub;
+                    };
                     db.iterateWarAttacks(wars, Predicates.alwaysTrue(), Predicates.alwaysTrue(), (war, attack) -> {
                         if (TimeUtil.getTurn(war.getDate()) <= TimeUtil.getTurn(attack.getDate())) {
-                            updateAttack(war, attack, allowedConflicts, a -> {
-                                int id = a.getWar_attack_id();
-                                Byte cached = subTypes.get(id);
-                                if (cached != null) {
-                                    return cached == -1 ? null : AttackTypeSubCategory.values[cached];
-                                }
-                                AttackTypeSubCategory sub = a.getSubCategory(activityCache);
-                                newSubTypes.put(id, sub == null ? -1 : (byte) sub.ordinal());
-                                return sub;
-                            });
+                            updateAttack(holder, war, attack, allowedConflicts, onAttack);
                         }
                     });
                     if (!newSubTypes.isEmpty()) {
@@ -1188,10 +1227,11 @@ public class ConflictManager {
                 Conflict conflict = new Conflict(id, conflictArr.length, name, turnStart, turnEnd, 0, 0, 0, true );
                 conflict.setLoaded(col1, col2, creator, category, wiki, cb, status);
                 conflictById.put(id, conflict);
-                synchronized (conflictArr) {
+                synchronized (conflictArrLock) {
                     Conflict[] tmp = Arrays.copyOf(conflictArr, conflictArr.length + 1);
                     tmp[tmp.length - 1] = conflict;
                     conflictArr = tmp;
+                    GLOBAL_TURN_SNAPSHOT.invalidateConflictSnapshot();
                 }
 
                 synchronized (activeConflictsOrd) {
@@ -1387,6 +1427,7 @@ public class ConflictManager {
                     conflictArr = conflictList.toArray(new Conflict[0]);
                     activeConflictsOrd.remove(conflict.getOrdinal());
                     recreateConflictsByAlliance();
+                    GLOBAL_TURN_SNAPSHOT.invalidateConflictSnapshot();
                 }
             }
         }

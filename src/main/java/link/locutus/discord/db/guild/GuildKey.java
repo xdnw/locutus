@@ -2042,7 +2042,7 @@ public class GuildKey {
             return MAIL_NEW_APPLICANTS_TEXT.setAndValidate(db, user, message);
         }
     }.setupRequirements(f -> f.requireValidAlliance().requires(MAIL_NEW_APPLICANTS));
-    public static GuildSetting<String> MAIL_NEW_APPLICANTS_SUBJECT = new GuildStringSetting(GuildSettingCategory.RECRUIT) {
+    public static GuildSetting<String> MAIL_NEW_APPLICANTS_SUBJECT = new GuildStringSetting(GuildSettingCategory.RECRUIT, ALLIANCE_APPLICATION) {
         @Override
         public String help() {
             return "The message subject to send to new applicants via in-game mail.\n" +

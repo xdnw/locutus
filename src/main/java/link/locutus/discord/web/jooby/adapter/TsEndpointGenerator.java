@@ -90,10 +90,6 @@ public class TsEndpointGenerator {
 //            }
 //            Files.write(jsonFile.toPath(), jsonString.getBytes());
 
-            CommandManager2 cmdInst = Locutus.cmd().getV2();
-            SimpleValueStore<Object> store = new SimpleValueStore<>();
-            new WebOptionBindings().register(store);
-            Map<String, Object> json = cmdInst.toJson(store, cmdInst.getPermisser());
             String header = """
                     export const COMMANDS = """;
             File output = new File(outputDir, "lib/commands.ts");

@@ -45,7 +45,7 @@ public class VectorDB extends DBMainV3 implements IVectorDB, Closeable {
     private final Map<String, Integer> usageCache = new ConcurrentHashMap<>();
 
     public VectorDB(IEmbedding embedding) throws Exception {
-        super(Settings.INSTANCE.DATABASE, "gpt", false);
+        super(Settings.INSTANCE.DATABASE, "gpt", false, Settings.INSTANCE.DATABASE.SQLITE.GPT_MMAP_SIZE_MB, 20);
         this.embeddingSources = new ConcurrentHashMap<>();
         this.unconvertedDocuments = new ConcurrentHashMap<>();
 

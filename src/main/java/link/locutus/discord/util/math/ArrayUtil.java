@@ -1,9 +1,5 @@
 package link.locutus.discord.util.math;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.databind.util.TokenBuffer;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
@@ -51,6 +47,7 @@ import java.util.function.Consumer;
 import java.util.function.DoubleBinaryOperator;
 import java.util.function.Function;
 import java.util.function.IntBinaryOperator;
+import java.util.function.IntPredicate;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.function.ToIntFunction;
@@ -59,6 +56,8 @@ import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
 public class ArrayUtil {
+    public static final IntPredicate ALWAYS_TRUE_INT = i -> true;
+
     public static byte[] compressLZ4(byte[] data, int len) {
         LZ4Factory factory = LZ4Factory.fastestInstance();
         LZ4Compressor compressor = factory.highCompressor(5);

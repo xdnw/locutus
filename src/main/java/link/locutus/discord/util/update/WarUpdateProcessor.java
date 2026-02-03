@@ -1,6 +1,5 @@
 package link.locutus.discord.util.update;
 
-import com.google.common.base.Predicates;
 import com.google.common.eventbus.Subscribe;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
@@ -10,7 +9,13 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
-import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.SuccessType;
+import link.locutus.discord.apiv1.enums.WarPolicy;
+import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -21,7 +26,15 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.GuildHandler;
 import link.locutus.discord.db.conflict.ConflictManager;
-import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.AllianceMeta;
+import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.CounterStat;
+import link.locutus.discord.db.entities.CounterType;
+import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBBounty;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.bounty.BountyCreateEvent;
@@ -31,8 +44,15 @@ import link.locutus.discord.event.war.WarPeaceStatusEvent;
 import link.locutus.discord.event.war.WarStatusChangeEvent;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.*;
+import link.locutus.discord.util.AlertUtil;
+import link.locutus.discord.util.AutoAuditType;
+import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PW;
+import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.task.war.WarCard;
 import net.dv8tion.jda.api.entities.Guild;
@@ -46,8 +66,13 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -132,10 +157,11 @@ public class WarUpdateProcessor {
         ConflictManager conflictManager = Locutus.imp().getWarDb().getConflicts();
         if (conflictManager != null) {
             try {
+                conflictManager.initTurn();
                 for (Map.Entry<DBWar, DBWar> entry : wars) {
                     DBWar previous = entry.getKey();
                     DBWar current = entry.getValue();
-                    conflictManager.updateWar(previous, current, Predicates.alwaysTrue());
+                    conflictManager.updateWar(previous, current, ArrayUtil.ALWAYS_TRUE_INT);
                 }
             } catch (Throwable e) {
                 e.printStackTrace();

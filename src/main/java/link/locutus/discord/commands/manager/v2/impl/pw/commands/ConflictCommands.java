@@ -419,7 +419,7 @@ public class ConflictCommands {
                 reinitializeGraphsArg = "true";
             }
         }
-        manager.clearAllianceCache();
+        manager.invalidateConflictSnapshot();
         return response.toString() +
                 "\nThen to initialize the stats and push to the site:\n" +
                 CM.conflict.sync.website.cmd.conflicts(conflict.getId() + "").upload_graph("true").reinitialize_graphs(reinitializeGraphsArg);
@@ -600,7 +600,7 @@ public class ConflictCommands {
         }
         if (conflict.getId() > 0) {
             manager.flagGraphRecalc(conflict.getId());
-            manager.clearAllianceCache();
+            manager.invalidateConflictSnapshot();
         }
         return "Added " + addCol1.size() + " alliances to coalition 1 and " + addCol2.size() + " alliances to coalition 2\n" +
                 "Note: this does NOT update conflict stats";
@@ -1165,7 +1165,7 @@ public class ConflictCommands {
             added++;
             addedIds.add(aaId);
         }
-        manager.clearAllianceCache();
+        manager.invalidateConflictSnapshot();
 
         String sideStr = nationIsCol1 ? "coalition 1" : "coalition 2";
         return "Detected nation side: " + sideStr + " (col1=" + onCol1 + ", col2=" + onCol2 + ").\n" +

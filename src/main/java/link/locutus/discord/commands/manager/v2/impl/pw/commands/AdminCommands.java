@@ -3345,7 +3345,7 @@ public class AdminCommands {
         if (delegate == null) delegate = db;
         boolean allowConversionDefault = db.getOrNull(GuildKey.RESOURCE_CONVERSION) == Boolean.TRUE;
         if (!allowConversionDefault) {
-            throw new IllegalArgumentException("Resource conversion is not enabled on this server. See: " + CM.settings_bank_access.RESOURCE_CONVERSION.cmd.toSlashMention());
+            throw new IllegalArgumentException("Resource conversion is not enabled on this server. See: " + CM.settings_bank_conversion.RESOURCE_CONVERSION.cmd.toSlashMention());
         }
         Role role = Roles.RESOURCE_CONVERSION.toRole2(delegate);
 

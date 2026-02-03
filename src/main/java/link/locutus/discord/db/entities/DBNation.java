@@ -5211,7 +5211,7 @@ public abstract class DBNation implements NationOrAlliance {
         return data()._projects();
     }
 
-    private double estimateScore() {
+    public double estimateScore() {
         return estimateScore(null, null, null, null, null, null);
     }
 
