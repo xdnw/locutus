@@ -52,7 +52,7 @@ public class FinalizedLoader implements ILoader {
             synchronized (this) {
                 if (this.baseBallDB == null) {
                     try {
-                        baseBallDB = new BaseballDB(Settings.INSTANCE.DATABASE);
+                        baseBallDB = new BaseballDB();
                     } catch (SQLException e) {
                         throw new RuntimeException(e);
                     }

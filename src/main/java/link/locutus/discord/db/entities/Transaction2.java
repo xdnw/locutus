@@ -49,6 +49,7 @@ import static link.locutus.discord.apiv1.enums.ResourceType.MUNITIONS;
 import static link.locutus.discord.apiv1.enums.ResourceType.OIL;
 import static link.locutus.discord.apiv1.enums.ResourceType.STEEL;
 import static link.locutus.discord.apiv1.enums.ResourceType.URANIUM;
+import static link.locutus.discord.util.math.ArrayUtil.DOUBLE_ADD;
 
 public class Transaction2 {
     public int original_id;
@@ -325,7 +326,7 @@ public class Transaction2 {
         resources = new double[ResourceType.values.length];
         for (ResourceType type : ResourceType.values) {
             if (type == ResourceType.CREDITS) continue;
-            resources[type.ordinal()] = rs.getLong(type.name()) * 0.01d;
+            resources[type.ordinal()] = ArrayUtil.fromCents(rs.getLong(type.name()));
         }
     }
 
@@ -375,7 +376,7 @@ public class Transaction2 {
             ResourceType resource = resources[j];
             double amt = MathMan.parseDouble(columns.get(resourceOffset + j).text());
             if (amt != 0) {
-                amounts[resource.ordinal()] += amt;
+                amounts[resource.ordinal()] = DOUBLE_ADD.applyAsDouble(amounts[resource.ordinal()], amt);
             }
         }
         return new Transaction2(-1, date, sender.getKey(), sender.getValue(), receiver.getKey(), receiver.getValue(), banker.getKey().intValue(), note, amounts);
@@ -416,7 +417,8 @@ public class Transaction2 {
         sender_type = 1;
         banker_nation = 0;
         resources = new double[ResourceType.values.length];
-        resources[offer.getResource().ordinal()] += offer.getQuantity();
+        int ordinal = offer.getResource().ordinal();
+        resources[ordinal] += offer.getQuantity();
         resources[0] -= offer.getTotal();
     }
 
@@ -444,7 +446,8 @@ public class Transaction2 {
         if (tx.banker_nation != banker_nation) return false;
         if (!Objects.equals(tx.note,note)) return false;
         if (resources[other.getRss().ordinal()] != 0) return false;
-        resources[other.getRss().ordinal()] += other.getAmount();
+        int ordinal = other.getRss().ordinal();
+        resources[ordinal] = DOUBLE_ADD.applyAsDouble(resources[ordinal], other.getAmount());
         return true;
     }
 

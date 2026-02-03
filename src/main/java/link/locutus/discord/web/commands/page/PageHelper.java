@@ -4,6 +4,7 @@ import io.javalin.http.Context;
 import link.locutus.discord.commands.manager.v2.binding.WebStore;
 import gg.jte.generated.precompiled.auth.JteredirectGenerated;
 import gg.jte.generated.precompiled.auth.JteredirectjsGenerated;
+import link.locutus.discord.web.commands.binding.value_types.WebError;
 import link.locutus.discord.web.commands.binding.value_types.WebSuccess;
 
 import java.net.MalformedURLException;
@@ -28,8 +29,8 @@ public class PageHelper {
         }
     }
 
-    public static WebSuccess error(String message) {
-        return new WebSuccess(false, message);
+    public static WebError error(String message) {
+        return new WebError(message);
     }
 
     public static WebSuccess success() {

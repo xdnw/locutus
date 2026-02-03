@@ -46,8 +46,12 @@ public class ArrayUtil {
         return restored;
     }
 
-    public static final DoubleBinaryOperator DOUBLE_ADD = Double::sum;
-    public static final DoubleBinaryOperator DOUBLE_SUBTRACT = (x, y) -> x - y;
+    public static final DoubleBinaryOperator DOUBLE_ADD = (x, y) -> {
+        return ArrayUtil.fromCents(ArrayUtil.toCents(x) + ArrayUtil.toCents(y));
+    };
+    public static final DoubleBinaryOperator DOUBLE_SUBTRACT = (x, y) -> {
+        return ArrayUtil.fromCents(ArrayUtil.toCents(x) - ArrayUtil.toCents(y));
+    };
     public static final IntBinaryOperator INT_ADD = Integer::sum;
 
     public static double cosineSimilarity(double[] vectorA, double[] vectorB) {
@@ -324,6 +328,7 @@ public class ArrayUtil {
 
     private static final double CENTS = 100.0;
     private static final double EPS_CENTS = 1e-9; // 1e-11 in dollars, only to defeat binary-repr edge cases
+    private static final double INV_CENTS = 1.0 / CENTS;
 
     public static long toCents(double v) {
         double x = v * CENTS;
@@ -332,7 +337,7 @@ public class ArrayUtil {
     }
 
     public  static double fromCents(long cents) {
-        return cents / CENTS;
+        return cents * INV_CENTS;
     }
 
     public static long[] dollarToCents(double[] deposit) {

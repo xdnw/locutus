@@ -43,7 +43,7 @@ public class ForumDB extends DBMain {
     private final long guildId;
 
     public ForumDB(long guildId) throws SQLException, ClassNotFoundException {
-        super("forum");
+        super("forum", false, 0, 0);
         this.guildId = guildId;
     }
 

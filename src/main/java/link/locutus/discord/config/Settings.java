@@ -663,6 +663,12 @@ public class Settings extends Config {
             public boolean USE = true;
             @Comment("The directory to store the database in")
             public String DIRECTORY = "database";
+            @Comment("The in memory cache for banking in MB")
+            public int BANK_MMAP_SIZE_MB = 0;
+            @Comment("The in memory cache for banking in MB")
+            public int GPT_MMAP_SIZE_MB = 0;
+            @Comment("The in memory cache for root guild in MB")
+            public int GUILD_MMAP_SIZE_MB = 0;
         }
 
         public static class SYNC {

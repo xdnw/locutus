@@ -64,6 +64,8 @@ import java.util.function.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static link.locutus.discord.util.math.ArrayUtil.DOUBLE_ADD;
+
 
 public final class PW {
     public static class API {
@@ -874,7 +876,7 @@ public final class PW {
         } else {
             double factor = decayFactor * sign;
             for (int i = 0; i < rss.length; i++) {
-                rss[i] += amount[i] * factor;
+                rss[i] = DOUBLE_ADD.applyAsDouble(rss[i], amount[i] * factor);
             }
         }
     }

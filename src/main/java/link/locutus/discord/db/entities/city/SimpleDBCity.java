@@ -9,6 +9,7 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.math.ArrayUtil;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;

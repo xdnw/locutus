@@ -621,7 +621,7 @@ public class PageHandler implements Handler {
         if (isApi) {
             Map.Entry<String, String> errorMsg = StringMan.stacktraceToString(e, 10, f -> f.startsWith("link.locutus."));
             Map<String, Serializable> raw = Map.of("success", false,
-                    "message", errorMsg.getKey() + "\n" + errorMsg.getValue());
+                    "error", errorMsg.getKey() + "\n" + errorMsg.getValue());
             try {
                 byte[] data = serializer.writeValueAsBytes(raw);
                 ctx.result(data);

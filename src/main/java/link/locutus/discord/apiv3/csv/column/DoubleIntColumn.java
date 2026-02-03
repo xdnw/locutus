@@ -1,6 +1,7 @@
 package link.locutus.discord.apiv3.csv.column;
 
 import link.locutus.discord.apiv3.csv.header.DataHeader;
+import link.locutus.discord.util.math.ArrayUtil;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

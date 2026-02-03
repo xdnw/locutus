@@ -7,7 +7,7 @@ import java.sql.SQLException;
 
 public class GptDatabase extends DBMainV3 {
     public GptDatabase() throws SQLException, ClassNotFoundException {
-        super(Settings.INSTANCE.DATABASE, "gpt", false);
+        super(Settings.INSTANCE.DATABASE, "gpt", false, Settings.INSTANCE.DATABASE.SQLITE.GPT_MMAP_SIZE_MB, 20);
     }
 
     @Override

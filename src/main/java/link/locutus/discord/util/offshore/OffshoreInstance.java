@@ -348,21 +348,16 @@ public class OffshoreInstance {
         }
         double[] resources = ResourceType.getBuffer();
         for (Transaction2 transfer : transactions) {
-            int sign;
-
             // transfer.sender_id == 0 && transfer.sender_type == 0 &&
             if ((ids.contains(transfer.sender_id) && transfer.sender_type == type) &&
                     ((transfer.tx_id == -1) || (transfer.receiver_type == 2 && offshoreAAs.contains((int) transfer.receiver_id)))) {
-                sign = 1;
+                ResourceType.add(resources, transfer.resources);
                 // transfer.receiver_id == 0 && transfer.receiver_type == 0 &&
             } else if ((ids.contains(transfer.receiver_id) && transfer.receiver_type == type) &&
                     ((transfer.tx_id == -1) || (transfer.sender_type == 2 && offshoreAAs.contains((int) transfer.sender_id)))) {
-                sign = -1;
+                ResourceType.subtract(resources, transfer.resources);
             } else {
-                continue;
-            }
-            for (int i = 0; i < transfer.resources.length; i++) {
-                resources[i] += sign * transfer.resources[i];
+                // invalid
             }
         }
 
@@ -371,21 +366,16 @@ public class OffshoreInstance {
     public static double[] getTotal(Set<Integer> offshoreAAs, List<Transaction2> transactions, long id, int type) {
         double[] resources = ResourceType.getBuffer();
         for (Transaction2 transfer : transactions) {
-            int sign;
-
             // transfer.sender_id == 0 && transfer.sender_type == 0 &&
             if ((transfer.sender_id == id && transfer.sender_type == type) &&
                     ((transfer.tx_id == -1) || (transfer.receiver_type == 2 && offshoreAAs.contains((int) transfer.receiver_id)))) {
-                sign = 1;
+                ResourceType.add(resources, transfer.resources);
                 // transfer.receiver_id == 0 && transfer.receiver_type == 0 &&
             } else if ((transfer.receiver_id == id && transfer.receiver_type == type) &&
                     ((transfer.tx_id == -1) || (transfer.sender_type == 2 && offshoreAAs.contains((int) transfer.sender_id)))) {
-                sign = -1;
+                ResourceType.subtract(resources, transfer.resources);
             } else {
                 continue;
-            }
-            for (int i = 0; i < transfer.resources.length; i++) {
-                resources[i] += sign * transfer.resources[i];
             }
         }
 
@@ -914,9 +904,7 @@ public class OffshoreInstance {
                     Map.Entry<double[], Long> balanceOrNull = senderDB.getEscrowed(receiver.asNation());
                     double[] balance = balanceOrNull == null ? ResourceType.getBuffer() : balanceOrNull.getKey();
                     long escrowDate = balanceOrNull == null ? 0 : balanceOrNull.getValue();
-                    for (int i = 0; i < amount.length; i++) {
-                        balance[i] += amount[i];
-                    }
+                    ResourceType.add(balance, amount);
                     if (!isInternalTransfer && !depositType.isIgnored()) {
                         if (nationAccount == null) nationAccount = receiver.asNation();
                         senderDB.subtractBalance(timestamp, nationAccount, bankerNation.getNation_id(), note, amount);

@@ -83,6 +83,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static link.locutus.discord.db.entities.Coalition.*;
+import static link.locutus.discord.util.math.ArrayUtil.DOUBLE_SUBTRACT;
 
 /**
  * The GuildDB class represents a Discord guild database for the Locutus Discord bot written in Java.
@@ -145,7 +146,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
     public GuildDB(Guild guild, long id) throws SQLException, ClassNotFoundException {
-        super("guilds/" + id);
+        super("guilds/" + id, false, id == Settings.INSTANCE.ROOT_SERVER ? Settings.INSTANCE.DATABASE.SQLITE.GUILD_MMAP_SIZE_MB : 0, id == Settings.INSTANCE.ROOT_SERVER ? 20 : 0);
         this.roleToAccountToDiscord  = new ConcurrentHashMap<>();
         this.guild = guild;
         Logg.text(guild + " | AA:" + StringMan.getString(getInfoRaw(GuildKey.ALLIANCE_ID, false)));
@@ -154,6 +155,15 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         if (gpt != null) {
             gpt.getConverter().initDocumentConversion(this);
         }
+        if (getIdLong() == 1364255765753499719L) {
+            try (var st = getConnection().createStatement()) {
+                // If you are in WAL mode, this helps reclaim -wal space too.
+                st.execute("PRAGMA wal_checkpoint(TRUNCATE);");
+                // Shrinks the main database file (rewrites it).
+                st.execute("VACUUM;");
+            }
+        }
+
     }
 
     @Override
@@ -795,6 +805,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         if (delegate != null) {
             delegate.addTransaction(tx);
             return;
+        }
+        if (tx.note != null) {
+            tx.note = tx.note.replaceAll(" +", " ");
         }
         String sql = tx.createInsert("INTERNAL_TRANSACTIONS2", false, false);
         update(sql, (ThrowingConsumer<PreparedStatement>) tx::setNoID);
@@ -2122,7 +2135,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                     if (ArrayUtil.toCents(subtract) == 0) continue;
                     if (toSubtract == null) toSubtract = ResourceType.getBuffer();
                     toSubtract[i] = subtract;
-                    amountLeft[i] -= subtract;
+                    amountLeft[i] = DOUBLE_SUBTRACT.applyAsDouble(amountLeft[i], subtract);
                 }
             }
             if (toSubtract != null) {
@@ -2476,6 +2489,18 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             return Locutus.imp().getGuildDB(delegate.getValue());
         }
         return null;
+    }
+
+    // get all guilds delegating to this server
+    public Set<GuildDB> getDelegatedServers() {
+        Set<GuildDB> result = new ObjectLinkedOpenHashSet<>();
+        for (GuildDB guildDb : Locutus.imp().getGuildDatabases().values()) {
+            Map.Entry<Integer, Long> delegate = guildDb.getOrNull(GuildKey.DELEGATE_SERVER, false);
+            if (delegate != null && delegate.getValue() == this.getIdLong()) {
+                result.add(guildDb);
+            }
+        }
+        return result;
     }
 
     public boolean isDelegateServer() {

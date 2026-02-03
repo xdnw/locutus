@@ -73,4 +73,28 @@ public final class TaskSummary {
         this.lastErrorClass = lastErrorClass;
         this.lastErrorMessage = StringMan.stripApiKey(lastErrorMessage);
     }
+
+    public TaskSummary stripError() {
+        return new TaskSummary(
+                this.id,
+                this.name,
+                this.createdAtMs,
+                this.intervalMs,
+                this.running,
+                this.currentRunStartMs,
+                this.lastRunStartMs,
+                this.lastRunEndMs,
+                this.lastRunDurationMs,
+                this.lastOutcome,
+                this.totalRuns,
+                this.totalSuccess,
+                this.totalErrors,
+                this.totalInterrupts,
+                this.consecutiveFailures,
+                this.lastSuccessAtMs,
+                this.lastFailureAtMs,
+                lastErrorClass == null ? null : "<redacted>",
+                lastErrorMessage == null ? null : "<redacted>"
+        );
+    }
 }

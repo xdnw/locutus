@@ -8,6 +8,7 @@ import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.io.BitBuffer;
+import link.locutus.discord.util.math.ArrayUtil;
 
 public abstract class UnitCursor extends DamageCursor {
     private int att_mun_used_cents;

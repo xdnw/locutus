@@ -60,6 +60,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class DiscordUtil {
+    public static String getInvite() {
+        return "<https://discord.com/api/oauth2/authorize?client_id=" + Settings.INSTANCE.APPLICATION_ID + "&permissions=395606879321&scope=bot>\n" +
+                "<https://github.com/xdnw/locutus/wiki>";
+    }
+
     public static String getSupportServer() {
         return "https://discord.gg/" + Settings.INSTANCE.SUPPORT_INVITE;
     }

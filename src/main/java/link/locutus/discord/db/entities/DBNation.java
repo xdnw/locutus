@@ -100,6 +100,7 @@ import java.util.function.*;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.commands.manager.v2.binding.bindings.MethodEnum.*;
+import static link.locutus.discord.util.math.ArrayUtil.DOUBLE_ADD;
 
 public abstract class DBNation implements NationOrAlliance {
     public static DBNation getByUser(User user) {
@@ -1631,7 +1632,7 @@ public abstract class DBNation implements NationOrAlliance {
         for (Map.Entry<DepositType, double[]> entry : result.entrySet()) {
             if (includeGrants || entry.getKey() != DepositType.GRANT) {
                 double[] value = entry.getValue();
-                for (int i = 0; i < value.length; i++) total[i] += value[i];
+                for (int i = 0; i < value.length; i++) total[i] = DOUBLE_ADD.applyAsDouble(total[i], value[i]);
             }
         }
         return total;

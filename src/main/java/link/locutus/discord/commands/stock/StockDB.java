@@ -22,7 +22,7 @@ public class StockDB extends DBMain {
     public static final String INVITE = "https://discord.gg/TAF5zkh6WJ";
 
     public StockDB() throws SQLException, ClassNotFoundException {
-        super("stock");
+        super("stock", false, 0, 0);
     }
 
     @Override

@@ -7,6 +7,7 @@ import link.locutus.discord.apiv3.csv.column.BuildingColumn;
 import link.locutus.discord.apiv3.csv.header.CityHeader;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.nation.GlobalDataWrapper;
+import link.locutus.discord.util.math.ArrayUtil;
 
 import java.io.IOException;
 import java.util.Arrays;

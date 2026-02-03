@@ -117,7 +117,7 @@ public class DBAuthRecord {
                 }
             }
         }
-        data.expires = timestamp;
+        data.expires = timestamp + TimeUnit.DAYS.toMillis(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS);
         return data;
     }
 

@@ -83,7 +83,7 @@ public class WarDB extends DBMainV2 {
     }
 
     public WarDB(String name) throws SQLException {
-        super(Settings.INSTANCE.DATABASE, name);
+        super(name);
 //        reserializeVictoryOnce();
         executeStmt("CREATE TABLE IF NOT EXISTS war_metadata (key TEXT PRIMARY KEY, value TEXT)");
         update("INSERT OR REPLACE INTO war_metadata (key, value) VALUES (?, ?)",

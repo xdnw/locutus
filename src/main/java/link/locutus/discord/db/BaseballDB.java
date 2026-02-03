@@ -23,8 +23,8 @@ import java.util.*;
 import java.util.function.Consumer;
 
 public class BaseballDB extends DBMainV2{
-    public BaseballDB(Settings.DATABASE config) throws SQLException {
-        super(config, "baseball");
+    public BaseballDB() throws SQLException {
+        super("baseball");
     }
 
     @Override

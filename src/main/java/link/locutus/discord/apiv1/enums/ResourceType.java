@@ -43,6 +43,8 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static link.locutus.discord.util.math.ArrayUtil.*;
+
 public enum ResourceType {
     MONEY("money", "withmoney", 16),
     CREDITS("credits", "withcredits", -1),
@@ -716,15 +718,16 @@ public enum ResourceType {
     public static final List<ResourceType> valuesList = Arrays.asList(values);
 
     public static boolean isZero(double[] resources) {
-        for (double i : resources) {
-            if (i != 0 && (Math.abs(i) >= 0.005)) return false;
+        for (double v : resources) {
+            if (toCents(v) != 0L) return false;
         }
         return true;
     }
 
     public static boolean isZero(Map<ResourceType, Double> amount) {
         for (Map.Entry<ResourceType, Double> entry : amount.entrySet()) {
-            if (entry.getValue() != null && (Math.abs(entry.getValue()) >= 0.005)) {
+            Double val = entry.getValue();
+            if (val != null && toCents(val) != 0L) {
                 return false;
             }
         }
@@ -755,17 +758,14 @@ public enum ResourceType {
 
     public static double[] subtract(double[] resources, double[] values) {
         for (int i = 0; i < values.length; i++) {
-            double amt = values[i];
-            double curr = resources[i];
-            resources[i] = (ArrayUtil.toCents(curr) - ArrayUtil.toCents(amt)) * 0.01;
+            resources[i] = DOUBLE_SUBTRACT.applyAsDouble(resources[i], values[i]);
         }
         return resources;
     }
+
     public static double[] add(double[] resources, double[] values) {
         for (int i = 0; i < values.length; i++) {
-            double amt = values[i];
-            double curr = resources[i];
-            resources[i] = ArrayUtil.toCents(amt) * 0.01 + ArrayUtil.toCents(curr) * 0.01;
+            resources[i] = DOUBLE_ADD.applyAsDouble(resources[i], values[i]);
         }
         return resources;
     }
@@ -782,7 +782,7 @@ public enum ResourceType {
         for (int i = 0; i < resources.length; i++) {
             double amt = resources[i];
             if (amt != 0) {
-                resources[i] = ArrayUtil.toCents(amt) * 0.01;
+                resources[i] = fromCents(toCents(amt));
             }
         }
         return resources;
@@ -797,7 +797,7 @@ public enum ResourceType {
 
     public static boolean equals(Map<ResourceType, Double> amtA, Map<ResourceType, Double> amtB) {
         for (ResourceType type : ResourceType.values) {
-            if (ArrayUtil.toCents(amtA.getOrDefault(type, 0d)) != ArrayUtil.toCents(amtB.getOrDefault(type, 0d))) {
+            if (toCents(amtA.getOrDefault(type, 0d)) != toCents(amtB.getOrDefault(type, 0d))) {
                 return false;
             }
         }
@@ -806,7 +806,7 @@ public enum ResourceType {
 
     public static boolean equals(double[] rss1, double[] rss2) {
         for (ResourceType type : ResourceType.values) {
-            if (ArrayUtil.toCents(rss1[type.ordinal()]) != ArrayUtil.toCents(rss2[type.ordinal()])) {
+            if (toCents(rss1[type.ordinal()]) != toCents(rss2[type.ordinal()])) {
                 return false;
             }
         }
@@ -1288,7 +1288,7 @@ public enum ResourceType {
             for (ResourceType type : link.locutus.discord.apiv1.enums.ResourceType.values) {
                 if (type == link.locutus.discord.apiv1.enums.ResourceType.CREDITS) continue;
                 try {
-                    data[type.ordinal()] = ArrayUtil.fromCents(IOUtil.readVarLong(in));
+                    data[type.ordinal()] = fromCents(IOUtil.readVarLong(in));
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -1337,7 +1337,7 @@ public enum ResourceType {
         private final long data;
 
         public ResourceAmtCents(ResourceType type, double amount) {
-            this.data = type.ordinal() + (ArrayUtil.toCents(amount) << 4);
+            this.data = type.ordinal() + (toCents(amount) << 4);
         }
 
         public ResourceType getType() {
@@ -1349,7 +1349,7 @@ public enum ResourceType {
 
         @Override
         public double[] get() {
-            return getType().toArray(ArrayUtil.fromCents(getAmountCents()));
+            return getType().toArray(fromCents(getAmountCents()));
         }
     }
 }

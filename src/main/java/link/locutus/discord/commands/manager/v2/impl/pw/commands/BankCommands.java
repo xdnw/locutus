@@ -7,7 +7,6 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.*;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.*;
@@ -2013,182 +2012,59 @@ public class BankCommands {
             "Reset Options"
     })
     @RolePermission(Roles.ECON)
-    public String resetDeposits(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me User author, @Me Guild guild,
-                                @Me JSONObject command,
-                                NationList nations,
-                                @Arg(value = "Do NOT reset grants", group = 0) @Switch("g") boolean ignoreGrants,
-                                @Arg(value = "Do NOT reset loans", group = 0) @Switch("l") boolean ignoreLoans,
-                                @Arg(value = "Do NOT reset taxes", group = 0) @Switch("t") boolean ignoreTaxes,
-                                @Arg(value = "Do NOT reset deposits", group = 0) @Switch("d") boolean ignoreBankDeposits,
-                                @Arg(value = "Do NOT reset escrow", group = 0) @Switch("e") boolean ignoreEscrow,
-                                @Switch("f") boolean force) throws IOException {
+    public String resetDeposits(
+            @Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me User author, @Me Guild guild,
+            @Me JSONObject command,
+            NationList nations,
+            @Arg(value = "Do NOT reset grants", group = 0) @Switch("g") boolean ignoreGrants,
+            @Arg(value = "Do NOT reset loans", group = 0) @Switch("l") boolean ignoreLoans,
+            @Arg(value = "Do NOT reset taxes", group = 0) @Switch("t") boolean ignoreTaxes,
+            @Arg(value = "Do NOT reset deposits", group = 0) @Switch("d") boolean ignoreBankDeposits,
+            @Arg(value = "Do NOT reset escrow", group = 0) @Switch("e") boolean ignoreEscrow,
+            @Switch("f") boolean force
+    ) throws IOException {
         if (nations.getNations().size() > 300) {
             throw new IllegalArgumentException("Due to performance issues, you can only reset up to 300 nations at a time");
         }
 
-        long now = System.currentTimeMillis();
-        StringBuilder response = new StringBuilder("Resetting deposits for `" + nations.getFilter() + "`\n");
-
-        double[] totalDeposits = ResourceType.getBuffer();
-        double[] totalTax = ResourceType.getBuffer();
-        double[] totalLoan = ResourceType.getBuffer();
-        double[] totalExpire = ResourceType.getBuffer();
-        double[] totalEscrow = ResourceType.getBuffer();
-
-        boolean updateBulk = Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS > 0;
+        // You moved this here (good):
         if (force) {
             String errorMsg = handleAddbalanceAllianceScope(author, guild, (Set) nations.getNations());
             if (errorMsg != null && !errorMsg.isEmpty()) return errorMsg;
-            if (updateBulk) {
-                Locutus.imp().runEventsAsync(events -> Locutus.imp().getBankDB().updateBankRecs(false, events));
-            }
         }
 
+        // Progress message (same idea as before)
         CompletableFuture<IMessageBuilder> msgFuture = io.send("Please wait...");
-        long start = System.currentTimeMillis();
-        Set<DBNation> nationSet = nations.getNations();
-        ValueStore<DBNation> cache = PlaceholderCache.createCache(nationSet, DBNation.class);
-        for (DBNation nation : nationSet) {
-            if (start + 5000 < System.currentTimeMillis()) {
-                start = System.currentTimeMillis();
-                io.updateOptionally(msgFuture, "Resetting deposits for " + nation.getMarkdownUrl());
-            }
-            Map<DepositType, double[]> depoByType = nation.getDeposits(cache, db, null, true, true, force && !updateBulk ? 0L : -1L, 0, Long.MAX_VALUE, true);
 
-            double[] deposits = depoByType.get(DepositType.DEPOSIT);
-            if (deposits != null && !ignoreBankDeposits && !ResourceType.isZero(deposits)) {
-                ResourceType.round(deposits);
-                response.append("Subtracting `" + nation.getQualifiedId() + " " + ResourceType.toString(deposits) + " #deposit`\n");
-                ResourceType.subtract(totalDeposits, deposits);
-                if (force) db.subBalance(now, nation, me.getNation_id(), "#deposit", deposits);
-            }
+        ResetDepositsBuilder.Result result = new ResetDepositsBuilder(db, me, nations)
+                .ignoreGrants(ignoreGrants)
+                .ignoreLoans(ignoreLoans)
+                .ignoreTaxes(ignoreTaxes)
+                .ignoreBankDeposits(ignoreBankDeposits)
+                .ignoreEscrow(ignoreEscrow)
+                .force(force)
+                .progressIntervalMs(5000L)
+                .onProgress(msg -> io.updateOptionally(msgFuture, msg))
+                .execute();
 
-            double[] tax = depoByType.get(DepositType.TAX);
-            if (tax != null && !ignoreTaxes && !ResourceType.isZero(tax)) {
-                ResourceType.round(tax);
-                response.append("Subtracting `" + nation.getQualifiedId() + " " + ResourceType.toString(tax) + " #tax`\n");
-                ResourceType.subtract(totalTax, tax);
-                if (force) db.subBalance(now, nation, me.getNation_id(), "#tax", tax);
-            }
-
-            double[] loan = depoByType.get(DepositType.LOAN);
-            if (loan != null && !ignoreLoans && !ResourceType.isZero(loan)) {
-                ResourceType.round(loan);
-                response.append("Subtracting `" + nation.getQualifiedId() + " " + ResourceType.toString(loan) + " #loan`\n");
-                ResourceType.subtract(totalLoan, loan);
-                if (force) db.subBalance(now, nation, me.getNation_id(), "#loan", loan);
-            }
-
-            double[] grant = depoByType.get(DepositType.GRANT);
-            if (grant != null && !ignoreGrants && !ResourceType.isZero(grant)) {
-                List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, true, true, true, -1, 0, Long.MAX_VALUE, true);
-                for (Map.Entry<Integer, Transaction2> entry : transactions) {
-                    Transaction2 tx = entry.getValue();
-                    if (tx.note == null || (tx.receiver_id != nation.getNation_id() && tx.sender_id != nation.getNation_id()) || (!tx.note.contains("#expire") && !tx.note.contains("#decay")))
-                        continue;
-                    if (tx.sender_id == tx.receiver_id) continue;
-                    Map<DepositType, Object> noteMap = tx.getNoteMap();
-                    Object expire3 = noteMap.get(DepositType.EXPIRE);
-                    Object decay3 = noteMap.get(DepositType.DECAY);
-                    if (expire3 == null && decay3 == null) continue;
-                    long expireEpoch = Long.MAX_VALUE;
-                    long decayEpoch = Long.MAX_VALUE;
-                    if (expire3 instanceof Number n) {
-                        expireEpoch = n.longValue();
-                    }
-                    if (decay3 instanceof Number n) {
-                        decayEpoch = n.longValue();
-                    }
-                    if ((decayEpoch != Long.MAX_VALUE || expireEpoch != Long.MAX_VALUE) && (expireEpoch > now && decayEpoch > now)) {
-                        String noteCopy = tx.note.toLowerCase(Locale.ROOT)
-                                .replaceAll("#expire=[a-zA-Z0-9:]+", "")
-                                .replaceAll("#decay=[a-zA-Z0-9:]+", "");
-                        if (expireEpoch != Long.MAX_VALUE && expire3 instanceof Number) {
-                            noteCopy += " #expire=" + "timestamp:" + expireEpoch;
-                        }
-                        if (decayEpoch != Long.MAX_VALUE && decay3 instanceof Number) {
-                            noteCopy += " #decay=" + "timestamp:" + decayEpoch;
-                        }
-                        noteCopy = noteCopy.trim();
-
-                        int sign = entry.getKey();
-                        if (sign == 1) {
-                            response.append("Subtracting `" + nation.getQualifiedId() + " " + ResourceType.toString(tx.resources) + " " + noteCopy + "`\n");
-                            ResourceType.subtract(totalExpire, tx.resources);
-                            if (force) db.subBalance(decayEpoch == Long.MAX_VALUE ? now : tx.tx_datetime, nation, me.getNation_id(), noteCopy, tx.resources);
-                        } else if (sign == -1) {
-                            response.append("Adding `" + nation.getQualifiedId() + " " + ResourceType.toString(tx.resources) + " " + noteCopy + "`\n");
-                            ResourceType.add(totalExpire, tx.resources);
-                            if (force) db.addBalance(decayEpoch == Long.MAX_VALUE ? now : tx.tx_datetime, nation, me.getNation_id(), noteCopy, tx.resources);
-                        } else {
-                            Logg.error("Invalid sign for deposits reset " + sign);
-                        }
-                    }
-                }
-            }
-
-            if (!ignoreEscrow) {
-                try {
-                    Map.Entry<double[], Long> escrowedPair = db.getEscrowed(nation);
-                    if (escrowedPair != null && !ResourceType.isZero(escrowedPair.getKey())) {
-                        response.append("Subtracting escrow: `" + nation.getQualifiedId() + " " + ResourceType.toString(escrowedPair.getKey()) + "`\n");
-                        ResourceType.subtract(totalEscrow, escrowedPair.getKey());
-                        if (force) db.setEscrowed(nation, null, 0);
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    response.append("Failed to reset escrow balance: " + e.getMessage() + "\n");
-                }
-            }
+        if (!result.hasChanges()) {
+            return "Nothing to reset for `" + result.getFilter() + "`";
         }
 
         if (!force) {
-            String name = nations.getFilter();
-            String title = "Reset deposits for " + (name.length() > 100 ? nations.getNations().size() + " nations" : name);
-            StringBuilder body = new StringBuilder();
-            if (!ResourceType.isZero(totalDeposits)) {
-                body.append("Net Adding `" + name + " " + ResourceType.toString(totalDeposits) + " #deposit`\n");
-            }
-            if (!ResourceType.isZero(totalTax)) {
-                body.append("Net Adding `" + name + " " + ResourceType.toString(totalTax) + " #tax`\n");
-            }
-            if (!ResourceType.isZero(totalLoan)) {
-                body.append("Net Adding `" + name + " " + ResourceType.toString(totalLoan) + " #loan`\n");
-            }
-            if (!ResourceType.isZero(totalExpire)) {
-                body.append("Net Adding `" + name + " " + ResourceType.toString(totalExpire) + " #expire`\n");
-            }
-            if (!ResourceType.isZero(totalEscrow)) {
-                body.append("Deleting Escrow: `" + name + " " + ResourceType.toString(totalEscrow) + "`\n");
-            }
+            String title = result.buildConfirmationTitle();
+            String body  = result.buildConfirmationBodyForDiscord(2000 - 36);
 
-            double[] total = ResourceType.getBuffer();
-            total = ResourceType.add(total, totalDeposits);
-            total = ResourceType.add(total, totalTax);
-            total = ResourceType.add(total, totalLoan);
-            total = ResourceType.add(total, totalExpire);
-            total = ResourceType.subtract(total, totalEscrow);
-            body.append("Total Net: `" + name + " " + ResourceType.toString(total) + "`\n");
-            body.append("\n\nSee attached file for transaction details\n");
+            io.create()
+                    .confirmation(title, body, command)
+                    .file("transaction.txt", result.getDetails())
+                    .send();
 
-            String bodyStr = body.toString();
-            if (bodyStr.length() > 2000 - 15) {
-                bodyStr = bodyStr.substring(0, 2000 - 36) + "\n\n... (truncated, see attached file)";
-            }
-
-            System.out.println("RESETDEPOSITS CONFIRMATION:" + bodyStr);
-            io.create().confirmation(title, bodyStr, command)
-                    .file("transaction.txt", response.toString()).send();
-            return bodyStr;
+            return body;
         }
 
-        String responseStr = response.toString();
-        if (responseStr.isEmpty()) {
-            return "Nothing to reset for `" + nations.getFilter() + "`";
-        }
-
-        System.out.println("RESETDEPOSITS:" + responseStr);
-        return responseStr;
+        // Force mode: DB changes already applied inside builder
+        return result.getDetails();
     }
 
     @Command(
