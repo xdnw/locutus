@@ -8,6 +8,7 @@ import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.io.BitBuffer;
+import link.locutus.discord.util.math.ArrayUtil;
 
 public abstract class UnitCursor extends DamageCursor {
     private int att_mun_used_cents;
@@ -21,10 +22,10 @@ public abstract class UnitCursor extends DamageCursor {
     @Override
     public void load(DBAttack legacy) {
         super.load(legacy);
-        att_mun_used_cents = (int) Math.round(legacy.getAtt_mun_used() * 100);
-        def_mun_used_cents = (int) Math.round(legacy.getDef_mun_used() * 100);
-        att_gas_used_cents = (int) Math.round(legacy.getAtt_gas_used() * 100);
-        def_gas_used_cents = (int) Math.round(legacy.getDef_gas_used() * 100);
+        att_mun_used_cents = (int) ArrayUtil.toCents(legacy.getAtt_mun_used());
+        def_mun_used_cents = (int) ArrayUtil.toCents(legacy.getDef_mun_used());
+        att_gas_used_cents = (int) ArrayUtil.toCents(legacy.getAtt_gas_used());
+        def_gas_used_cents = (int) ArrayUtil.toCents(legacy.getDef_gas_used());
         has_salvage = false;
     }
 

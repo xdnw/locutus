@@ -10,6 +10,7 @@ import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.io.BitBuffer;
+import link.locutus.discord.util.math.ArrayUtil;
 
 public class GroundCursor extends UnitCursor {
     private int attcas1;
@@ -81,7 +82,7 @@ public class GroundCursor extends UnitCursor {
         this.defcas1 = legacy.getDefcas1();
         this.defcas2 = legacy.getDefcas2();
         this.defcas3 = legacy.getDefcas3();
-        this.money_looted_cents = Math.round(legacy.getMoney_looted() * 100);
+        this.money_looted_cents = ArrayUtil.toCents(legacy.getMoney_looted());
     }
 
     @Override

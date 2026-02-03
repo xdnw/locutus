@@ -14,12 +14,15 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
+import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.MathOperation;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveValidators;
+import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
@@ -31,6 +34,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlacehold
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationModifier;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.commands.stock.StockDB;
 import link.locutus.discord.commands.war.WarCatReason;
 import link.locutus.discord.commands.war.WarCategory;
@@ -77,6 +81,30 @@ import java.util.stream.Collectors;
 
 public class PWBindings extends BindingHelper {
 
+    public static ValueStore<Object> createDefaultStore() {
+        ValueStore<Object> store = new SimpleValueStore<>();
+        new PrimitiveBindings().register(store);
+        new DiscordBindings().register(store);
+        new PWBindings().register(store);
+        new GPTBindings().register(store);
+        new SheetBindings().register(store);
+//        new StockBinding().register(store);
+        new NewsletterBindings().register(store);
+        return store;
+    }
+
+    public static ValidatorStore createDefaultValidators() {
+        ValidatorStore validators = new ValidatorStore();
+        new PrimitiveValidators().register(validators);
+        return validators;
+    }
+
+    public static PermissionHandler createDefaultPermisser() {
+        PermissionHandler permisser = new PermissionHandler();
+        new PermissionBinding().register(permisser);
+        return permisser;
+    }
+
     @Binding(value = "The name of a stored conflict between two coalitions")
     public static Conflict conflict(ConflictManager manager, String nameOrId) {
         Conflict conflict = manager.getConflict(nameOrId);
@@ -87,6 +115,12 @@ public class PWBindings extends BindingHelper {
             int id = PrimitiveBindings.Integer(nameOrId);
             conflict = manager.getConflictById(id);
             if (conflict != null) return conflict;
+        }
+        // find by name
+        for (Conflict c : manager.getConflictMap().values()) {
+            if (c.getName().equalsIgnoreCase(nameOrId)) {
+                return c;
+            }
         }
         throw new IllegalArgumentException("Unknown conflict: `" + nameOrId + "`. Options: " + StringMan.getString(manager.getConflictNames()));
     }

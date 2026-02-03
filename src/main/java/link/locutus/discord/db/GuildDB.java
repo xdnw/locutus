@@ -86,6 +86,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static link.locutus.discord.db.entities.Coalition.*;
+import static link.locutus.discord.util.math.ArrayUtil.DOUBLE_SUBTRACT;
 
 /**
  * The GuildDB class represents a Discord guild database for the Locutus Discord bot written in Java.
@@ -148,7 +149,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
     public GuildDB(Guild guild, long id) throws SQLException, ClassNotFoundException {
-        super("guilds/" + id);
+        super("guilds/" + id, false, id == Settings.INSTANCE.ROOT_SERVER ? Settings.INSTANCE.DATABASE.SQLITE.GUILD_MMAP_SIZE_MB : 0, id == Settings.INSTANCE.ROOT_SERVER ? 20 : 0);
         this.roleToAccountToDiscord  = new ConcurrentHashMap<>();
         this.guild = guild;
         Logg.text(guild + " | AA:" + StringMan.getString(getInfoRaw(GuildKey.ALLIANCE_ID, false)));
@@ -157,6 +158,15 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         if (gpt != null) {
             gpt.getConverter().initDocumentConversion(this);
         }
+        if (getIdLong() == 1364255765753499719L) {
+            try (var st = getConnection().createStatement()) {
+                // If you are in WAL mode, this helps reclaim -wal space too.
+                st.execute("PRAGMA wal_checkpoint(TRUNCATE);");
+                // Shrinks the main database file (rewrites it).
+                st.execute("VACUUM;");
+            }
+        }
+
     }
 
     @Override
@@ -804,6 +814,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         if (delegate != null) {
             delegate.addTransaction(tx);
             return;
+        }
+        if (tx.note != null) {
+            tx.note = tx.note.replaceAll(" +", " ");
         }
         String sql = tx.createInsert("INTERNAL_TRANSACTIONS2", false, false);
         update(sql, (ThrowingConsumer<PreparedStatement>) tx::setNoID);
@@ -2126,12 +2139,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             for (int i = 0; i < amountLeft.length; i++) {
                 double subDepositsI = subDeposits[i];
                 double amountI = amountLeft[i];
-                if (Math.round(subDepositsI * 100) > 0 && Math.round(amountI * 100) > 0) {
+                if (ArrayUtil.toCents(subDepositsI) > 0 && ArrayUtil.toCents(amountI) > 0) {
                     double subtract = Math.min(subDepositsI, amountI);
-                    if (Math.round(subtract * 100) == 0) continue;
+                    if (ArrayUtil.toCents(subtract) == 0) continue;
                     if (toSubtract == null) toSubtract = ResourceType.getBuffer();
                     toSubtract[i] = subtract;
-                    amountLeft[i] -= subtract;
+                    amountLeft[i] = DOUBLE_SUBTRACT.applyAsDouble(amountLeft[i], subtract);
                 }
             }
             if (toSubtract != null) {
@@ -2203,7 +2216,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     }
 
 //    public void setDepositOffset(long nationId, ResourceType resource, double amount, String note) {
-//        long amtLong = (long) Math.round(amount * 100);
+//        long amtLong = (long) ArrayUtil.toCents(amount);
 //        long id = MathMan.pairInt((int) nationId, resource.ordinal());
 //        update("INSERT OR REPLACE INTO `BANK_DEPOSIT`(`nationId`, `resource`, `amount`, `note`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
 //            stmt.setLong(1, nationId);
@@ -2302,7 +2315,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                     while (rs.next()) {
                         int nationId = rs.getInt("nationId");
                         ResourceType type = ResourceType.values[rs.getInt("resource")];
-                        double amount = rs.getLong("amount") / 100d;
+                        double amount = ArrayUtil.fromCents(rs.getLong("amount"));
                         String note = rs.getString("note");
                         legacyOffset.computeIfAbsent(nationId, f -> new Object2ObjectOpenHashMap<>())
                                 .computeIfAbsent(note, f -> ResourceType.getBuffer())[type.ordinal()] += amount;
@@ -2328,6 +2341,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
 
     private WarCategory warChannel;
     public boolean warChannelInit = false;
+    private long isInvalidWarServer;
 
     public boolean isAllyOfRoot() {
         return isAllyOfRoot(true);
@@ -2361,6 +2375,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
     public void disableWarChannel() {
         this.warChannelInit = true;
         this.warChannel = null;
+        this.isInvalidWarServer = 0;
     }
 
     public WarCategory getWarChannel() {
@@ -2375,6 +2390,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
 
     public WarCategory getWarChannel(boolean throwException, boolean isWarServer, boolean create) {
         if (!create) {
+            if (isInvalidWarServer != 0 && isInvalidWarServer != getIdLong()) {
+                GuildDB otherDb = Locutus.imp().getGuildDB(isInvalidWarServer);
+                WarCategory result = warChannel = otherDb.getWarChannel(throwException, true, create);
+                if (result != null) isInvalidWarServer = 0;
+                return result;
+            }
             return warChannel;
         }
         Boolean enabled = getOrNull(GuildKey.ENABLE_WAR_ROOMS, false);
@@ -2410,7 +2431,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                 if (throwException) throw new IllegalArgumentException("There is a war server set " + GuildKey.WAR_SERVER.getCommandMention() + " in guild " + getGuild() + ". Please disable it via " + CM.settings.delete.cmd.key(GuildKey.WAR_SERVER.name()));
                 return null;
             }
-            return db.getWarChannel(throwException, true, create);
+            return warChannel = db.getWarChannel(throwException, true, create);
         }
 
         if (hasAlliance() || isWarServer) {
@@ -2424,6 +2445,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
                             warChannel = new WarCategory(this, "warcat");
                             warCatError = null;
                             warCatErrorMsg = null;
+                            if (warServer == null) {
+                                String warServerStr = GuildKey.WAR_SERVER.getRaw(this, false);
+                                if (warServerStr != null && MathMan.isInteger(warServerStr)) {
+                                    isInvalidWarServer = Long.parseLong(warServerStr);
+                                }
+                            }
                         } catch (Throwable e) {
                             warCatError = e;
                             warCatErrorMsg = StringMan.stripApiKey(e.getMessage());
@@ -2473,6 +2500,17 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             return Locutus.imp().getGuildDB(delegate.getValue());
         }
         return null;
+    }
+
+    public Set<GuildDB> getDelegatedServers() {
+        Set<GuildDB> result = new ObjectLinkedOpenHashSet<>();
+        for (GuildDB guildDb : Locutus.imp().getGuildDatabases().values()) {
+            Map.Entry<Integer, Long> delegate = guildDb.getOrNull(GuildKey.DELEGATE_SERVER, false);
+            if (delegate != null && delegate.getValue() == this.getIdLong()) {
+                result.add(guildDb);
+            }
+        }
+        return result;
     }
 
     @Command
@@ -3152,6 +3190,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
 
         Set<Integer> allowedAAs = new IntOpenHashSet(getAllianceIds());
         allowedAAs.addAll(getCoalition(OFFSHORE));
+        allowedAAs.addAll(getCoalition(EXTENSION));
 
         for (Roles lcRole : lcRoles) {
             Set<Member> members = lcRole.getAll(this);
@@ -3266,7 +3305,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             return;
         }
         loadCoalitions();
-        if (coalitionParsed == null) coalitionParsed = getCoalitionEnumOrNull(coalition);
+        if (coalitionParsed == null) coalitionParsed = Coalition.parse(coalition);
         Object lock = getLock(coalitionParsed);
         synchronized (lock) {
             long hash = coalitionName2Id.computeIfAbsent(coalition, StringMan::hash);
@@ -3296,7 +3335,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             return;
         }
         loadCoalitions();
-        if (coalitionParsed == null) coalitionParsed = getCoalitionEnumOrNull(coalition);
+        if (coalitionParsed == null) coalitionParsed = Coalition.parse(coalition);
         Object lock = getLock(coalitionParsed);
         synchronized (lock) {
             Long hash = coalitionName2Id.get(coalition);
@@ -3320,7 +3359,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
         }
         String coalitionLower = coalition.toLowerCase(Locale.ROOT);
         loadCoalitions();
-        Coalition coalitionParsed = getCoalitionEnumOrNull(coalitionLower);
+        Coalition coalitionParsed = Coalition.parse(coalitionLower);
         Object lock = getLock(coalitionParsed);
 
         synchronized (lock) {
@@ -3335,13 +3374,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             }
             return Collections.emptySet();
         }
-    }
-
-    private Coalition getCoalitionEnumOrNull(String coalition) {
-        try {
-            return Coalition.valueOf(coalition.toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {}
-        return null;
     }
 
     private Object getLock(Coalition coalitionParsed) {
@@ -3665,7 +3697,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, GuildOrA
             Map<ResourceType, Double> rate = null;
             if (nation != null) {
                 for (Map.Entry<NationFilter, Map<ResourceType, Double>> entry : rates.entrySet()) {
-                    if (entry.getKey().test(nation)) {
+                    if (entry.getKey().getFilter().equals("*") || entry.getKey().test(nation)) {
                         rate = entry.getValue();
                         break;
                     }

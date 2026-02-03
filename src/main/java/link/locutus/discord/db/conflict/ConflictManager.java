@@ -669,6 +669,58 @@ public class ConflictManager {
                 }
             }
         }
+        // load legacyNames
+        db.query("SELECT * FROM legacy_names2", stmt -> {
+        }, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                String name = rs.getString("name");
+                long date = rs.getLong("date");
+                legacyNames2.put(id, name);
+                String nameLower = name.toLowerCase(Locale.ROOT);
+                legacyIdsByDate.computeIfAbsent(nameLower, k -> new Long2IntOpenHashMap()).put(date, id);
+            }
+        });
+
+        for (Map.Entry<String, Integer> entry : getDefaultNames().entrySet()) {
+            String name = entry.getKey();
+            int id = entry.getValue();
+            if (!legacyNames2.containsKey(id)) {
+                legacyNames2.put(id, name);
+            }
+            String nameLower = name.toLowerCase(Locale.ROOT);
+            Map<Long, Integer> map = legacyIdsByDate.computeIfAbsent(nameLower, k -> new Long2IntOpenHashMap());
+            if (map.isEmpty()) {
+                map.put(Long.MAX_VALUE, id);
+            }
+        }
+
+//        Set<Integer> empty = new HashSet<>();
+//        for (Map.Entry<Integer, Conflict> conflictEntry : conflictMap.entrySet()) {
+//            if (conflictEntry.getValue().getAllianceIds().isEmpty()) {
+//                empty.add(conflictEntry.getKey());
+//            }
+//        }
+        // delete empty conflicts
+//        db.executeStmt("DELETE FROM conflicts WHERE `id` in (" + StringMan.join(empty, ",") + ")");
+//        db.executeStmt("DELETE FROM conflict_announcements2 WHERE `conflict_id` in (" + StringMan.join(empty, ",") + ")");
+//        db.executeStmt("DELETE FROM conflict_participant WHERE `conflict_id` not in (" + StringMan.join(conflictMap.keySet(), ",") + ")");
+//        db.executeStmt("DELETE FROM conflict_announcements2");
+//        db.update("DELETE FROM conflict_graphs WHERE conflict_id = 0");
+//        db.executeStmt("DELETE FROM conflict_participant");
+
+
+//        System.out.println("Loaded " + conflictMap.size() + " conflicts in " + ((-start) + (start = System.currentTimeMillis()) + "ms"));
+//        if (legacyNames.isEmpty()) {
+//            saveDefaultNames();
+//        }
+        Locutus.imp().getExecutor().submit(() -> {
+            loadConflictWars(null, false);
+            Locutus.imp().getRepeatingTasks().addTask("Conflict Website", () -> {
+                if (!conflictsLoaded) return;
+                pushDirtyConflicts();
+            }, Settings.INSTANCE.TASKS.WAR_STATS_PUSH_INTERVAL, TimeUnit.SECONDS);
+        });
     }
 
     private void loadWarsFromQueryAndProcess(Conflict conflict, boolean clearBeforeUpdate, AttackQuery query) {

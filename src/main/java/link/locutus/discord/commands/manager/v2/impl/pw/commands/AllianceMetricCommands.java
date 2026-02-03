@@ -375,50 +375,54 @@ public class AllianceMetricCommands {
             throw new IllegalArgumentException("Another instance of this command is running either by you or another user. Please wait and try again.");
         }
         try {
-        CompletableFuture<IMessageBuilder> msg = io.send("Please wait...");
-        Map<Long, double[]> valuesByDay = AlliancesNationMetricByDay.generateData(new Consumer<Long>() {
-            @Override
-            public void accept(Long day) {
-                io.updateOptionally(msg, "Processing day " + day + "...");
+            CompletableFuture<IMessageBuilder> msg = io.send("Please wait...");
+            Map<Long, double[]> valuesByDay = AlliancesNationMetricByDay.generateData(new Consumer<Long>() {
+                @Override
+                public void accept(Long day) {
+                    io.updateOptionally(msg, "Processing day " + day + "...");
+                }
+            }, metric, start, end, mode, alliances, filter, includeApps);
+
+            List<String> header = new ArrayList<>(List.of("date"));
+            // The Map logic was unnecessary and caused the crash; simplified to just build the header list.
+            for (DBAlliance alliance : alliances) {
+                header.add(alliance.getName());
             }
-        }, metric, start, end, mode, alliances, filter, includeApps);
 
-        List<String> header = new ArrayList<>(List.of("date"));
-        Map<Integer, Integer> headerIndexByAAId = new Int2IntOpenHashMap();
-        for (DBAlliance alliance : alliances) {
-            headerIndexByAAId.put(alliance.getAlliance_id(), header.size());
-            header.add(alliance.getName());
-        }
+            // new csv writer
+            StringWriter stringWriter = new StringWriter();
+            CSVWriter csvWriter = new CSVWriter(stringWriter);
+            // write header
+            csvWriter.writeNext(header.toArray(new String[0]));
 
-        // new csv writer
-        StringWriter stringWriter = new StringWriter();
-        CSVWriter csvWriter = new CSVWriter(stringWriter);
-        // write header
-        csvWriter.writeNext(header.toArray(new String[0]));
+            for (Map.Entry<Long, double[]> entry : valuesByDay.entrySet()) {
+                long day = entry.getKey();
+                double[] values = entry.getValue();
+                String dateStr = TimeUtil.format(TimeUtil.DD_MM_YYYY, TimeUtil.getTimeFromDay(day));
+                String[] row = new String[header.size()];
+                row[0] = dateStr;
 
-        for (Map.Entry<Long, double[]> entry : valuesByDay.entrySet()) {
-            long day = entry.getKey();
-            double[] values = entry.getValue();
-            String dateStr = TimeUtil.format(TimeUtil.DD_MM_YYYY, TimeUtil.getTimeFromDay(day));
-            String[] row = new String[header.size()];
-            row[0] = dateStr;
-            for (int i = 0; i < values.length; i++) {
-                int headerIndex = headerIndexByAAId.get(i);
-                row[headerIndex] = Double.toString(values[i]);
+                // FIX: Iterate values and map directly to columns based on order
+                for (int i = 0; i < values.length; i++) {
+                    // Determine column index: i + 1 (because index 0 is "date")
+                    int colIndex = i + 1;
+                    if (colIndex < row.length) {
+                        row[colIndex] = Double.toString(values[i]);
+                    }
+                }
+                csvWriter.writeNext(row);
             }
-            csvWriter.writeNext(row);
-        }
 
-        IMessageBuilder msg2 = io.create().file("alliance_data.csv", stringWriter.toString().getBytes());
-        if (graph) {
-            Set<DBAlliance> finalAlliances = AlliancesNationMetricByDay.resolveAlliances(alliances);
-            AlliancesNationMetricByDay graphObj = new AlliancesNationMetricByDay(valuesByDay, metric, start, end, finalAlliances);
-            graphObj.writeMsg(msg2, false, false, attach_sheet ? db : null, SheetKey.ALLIANCE_METRIC_DAY);
-        }
-        if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
-            msg2.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.AlliancesDataByDay.cmd.getName(), command));
-        }
-        msg2.send();
+            IMessageBuilder msg2 = io.create().file("alliance_data.csv", stringWriter.toString().getBytes());
+            if (graph) {
+                Set<DBAlliance> finalAlliances = AlliancesNationMetricByDay.resolveAlliances(alliances);
+                AlliancesNationMetricByDay graphObj = new AlliancesNationMetricByDay(valuesByDay, metric, start, end, finalAlliances);
+                graphObj.writeMsg(msg2, false, false, attach_sheet ? db : null, SheetKey.ALLIANCE_METRIC_DAY);
+            }
+            if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB) {
+                msg2.append("\n**See also:** " + WebUtil.frontendUrl("view_graph/" + WM.api.AlliancesDataByDay.cmd.getName(), command));
+            }
+            msg2.send();
         } finally {
             ALLIANCE_DATA_LOCK.unlock();
         }

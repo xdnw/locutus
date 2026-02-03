@@ -58,7 +58,7 @@ public class BankDB extends DBMainV3 {
     private final boolean legacyExists;
 
     public BankDB() throws SQLException, ClassNotFoundException {
-        super(Settings.INSTANCE.DATABASE, "bank", false);
+        super(Settings.INSTANCE.DATABASE, "bank", false, Settings.INSTANCE.DATABASE.SQLITE.BANK_MMAP_SIZE_MB, 20);
         try {
             this.legacyExists = tableExists("TRANSACTIONS_ALLIANCE_2");
         } catch (SQLException e) {

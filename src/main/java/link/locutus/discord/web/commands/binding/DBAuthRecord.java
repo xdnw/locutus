@@ -1,5 +1,6 @@
 package link.locutus.discord.web.commands.binding;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -10,6 +11,7 @@ import link.locutus.discord.web.commands.binding.value_types.WebSession;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -35,6 +37,30 @@ public class DBAuthRecord {
             }
         }
         return user;
+    }
+
+    @Override
+    public String toString() {
+        List<String> parts = new ObjectArrayList<>();
+        if (userId != 0) {
+            User user = DiscordUtil.getUser(userId);
+            if (user != null) {
+                parts.add("User: " + DiscordUtil.getFullUsername(user) + " (" + userId + ")");
+            } else {
+                parts.add("User ID: " + userId);
+            }
+        }
+        if (nationId != 0) {
+            DBNation nation = DBNation.getById(nationId);
+            if (nation != null) {
+                parts.add("Nation: " + nation.getName() + " (" + nationId + ")");
+            } else {
+                parts.add("Nation ID: " + nationId);
+            }
+        }
+        parts.add("Token: " + token);
+        parts.add("Timestamp: " + timestamp);
+        return String.join(", ", parts);
     }
 
     public DBNation getNation(boolean fetch) {
@@ -91,7 +117,7 @@ public class DBAuthRecord {
                 }
             }
         }
-        data.expires = timestamp;
+        data.expires = timestamp + TimeUnit.DAYS.toMillis(Settings.INSTANCE.WEB.SESSION_TIMEOUT_DAYS);
         return data;
     }
 

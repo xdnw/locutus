@@ -310,7 +310,7 @@ public class AttackCursorFactory {
 
     public synchronized int getId(byte[] data) {
         buffer.setBytes(data);
-        buffer.readBits(4);
+        buffer.readBits(5);
         return buffer.readInt();
     }
 

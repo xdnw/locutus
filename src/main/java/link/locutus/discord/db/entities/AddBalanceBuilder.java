@@ -22,6 +22,8 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
+import static link.locutus.discord.util.math.ArrayUtil.DOUBLE_ADD;
+
 public class AddBalanceBuilder {
     private final GuildDB db;
     Map<DBNation, Map<String, double[]>> fundsToSendNations = new LinkedHashMap<>();
@@ -106,7 +108,8 @@ public class AddBalanceBuilder {
         double[] rss = existing.computeIfAbsent(note, _ -> ResourceType.getBuffer());
 
         for (Map.Entry<ResourceType, Double> entry : amount.entrySet()) {
-            rss[entry.getKey().ordinal()] += entry.getValue();
+            int ordinal = entry.getKey().ordinal();
+            rss[ordinal] = DOUBLE_ADD.applyAsDouble(rss[ordinal], entry.getValue());
         }
         return this;
     }

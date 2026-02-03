@@ -115,7 +115,7 @@ public class Deposits extends Command {
                 flags.contains('d'),
                 includeExpired,
                 includeIgnored,
-                false,
+                null,
                 flags.contains('h'),
                 flags.contains('r')
         );

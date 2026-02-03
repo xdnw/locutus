@@ -430,7 +430,7 @@ public class LazyMathEntity<T> implements ArrayUtil.MathToken<LazyMathEntity<T>>
         a = resolveNumber(a, b);
         b = resolveNumber(b, a);
         if (a instanceof Number && b instanceof Number) {
-            if (Math.round(((Number) a).doubleValue() * 100) == Math.round(((Number) b).doubleValue() * 100)) {
+            if (ArrayUtil.toCents(((Number) a).doubleValue()) == ArrayUtil.toCents(((Number) b).doubleValue())) {
                 return 0;
             }
             return 1;
@@ -466,7 +466,7 @@ public class LazyMathEntity<T> implements ArrayUtil.MathToken<LazyMathEntity<T>>
         for (int i = 0; i < a.length; i++) {
             double aVal = a[i];
             double bVal = b[i];
-            if (Math.round(aVal * 100) != Math.round(bVal * 100)) {
+            if (ArrayUtil.toCents(aVal) != ArrayUtil.toCents(bVal)) {
                 return false;
             }
         }
@@ -478,7 +478,7 @@ public class LazyMathEntity<T> implements ArrayUtil.MathToken<LazyMathEntity<T>>
         b = resolveNumber(b, a);
         // Number
         if (a instanceof Number && b instanceof Number) {
-            if (Math.round(((Number) a).doubleValue() * 100) == Math.round(((Number) b).doubleValue() * 100)) {
+            if (ArrayUtil.toCents(((Number) a).doubleValue()) == ArrayUtil.toCents(((Number) b).doubleValue())) {
                 return 1;
             }
             return 0;

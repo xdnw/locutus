@@ -409,6 +409,10 @@ public class CM {
                     return set("fixAttacks", value);
                 }
 
+                public attacks fixWars(String value) {
+                    return set("fixWars", value);
+                }
+
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="syncBans")
                 public static class bans extends CommandRef {
@@ -637,6 +641,14 @@ public class CM {
                     public static final export_wiki cmd = new export_wiki();
                 public export_wiki pathRelative(String value) {
                     return set("pathRelative", value);
+                }
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="fixCashConversion")
+                public static class fixCashConversion extends CommandRef {
+                    public static final fixCashConversion cmd = new fixCashConversion();
+                public fixCashConversion nations(String value) {
+                    return set("nations", value);
                 }
 
                 }
@@ -2374,6 +2386,30 @@ public class CM {
 
             }
         }
+        @AutoRegister(clazz=link.locutus.discord._test.command.CustomCommands.class,method="buyInfra")
+        public static class buyInfra extends CommandRef {
+            public static final buyInfra cmd = new buyInfra();
+        public buyInfra upTo(String value) {
+            return set("upTo", value);
+        }
+
+        public buyInfra force(String value) {
+            return set("force", value);
+        }
+
+        }
+        @AutoRegister(clazz=link.locutus.discord._test.command.CustomCommands.class,method="buyLand")
+        public static class buyLand extends CommandRef {
+            public static final buyLand cmd = new buyLand();
+        public buyLand upTo(String value) {
+            return set("upTo", value);
+        }
+
+        public buyLand force(String value) {
+            return set("force", value);
+        }
+
+        }
         public static class channel{
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="channelMembers")
             public static class channelMembers extends CommandRef {
@@ -3132,6 +3168,18 @@ public class CM {
 
                 public add isCoalition2(String value) {
                     return set("isCoalition2", value);
+                }
+
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ConflictCommands.class,method="addAllForNation")
+                public static class add_all_for_nation extends CommandRef {
+                    public static final add_all_for_nation cmd = new add_all_for_nation();
+                public add_all_for_nation conflict(String value) {
+                    return set("conflict", value);
+                }
+
+                public add_all_for_nation nation(String value) {
+                    return set("nation", value);
                 }
 
                 }
@@ -6680,6 +6728,34 @@ public class CM {
 
             }
         }
+        @AutoRegister(clazz=link.locutus.discord._test.command.CustomCommands.class,method="loadAttacks")
+        public static class loadAttacks extends CommandRef {
+            public static final loadAttacks cmd = new loadAttacks();
+        public loadAttacks naval(String value) {
+            return set("naval", value);
+        }
+
+        public loadAttacks nations(String value) {
+            return set("nations", value);
+        }
+
+        public loadAttacks allowMunitions(String value) {
+            return set("allowMunitions", value);
+        }
+
+        public loadAttacks allowGas(String value) {
+            return set("allowGas", value);
+        }
+
+        public loadAttacks attackAtPeace(String value) {
+            return set("attackAtPeace", value);
+        }
+
+        public loadAttacks rebuy(String value) {
+            return set("rebuy", value);
+        }
+
+        }
         public static class mail{
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="mailCommandOutput")
             public static class command extends CommandRef {
@@ -8524,6 +8600,14 @@ public class CM {
             }
 
             }
+        }
+        @AutoRegister(clazz=link.locutus.discord._test.command.CustomCommands.class,method="safekeep")
+        public static class safekeep extends CommandRef {
+            public static final safekeep cmd = new safekeep();
+        public safekeep warchest(String value) {
+            return set("warchest", value);
+        }
+
         }
         public static class selection_alias{
             public static class add{
@@ -12916,6 +13000,22 @@ public class CM {
             }
 
             }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="conversionRates")
+            public static class conversion_rates extends CommandRef {
+                public static final conversion_rates cmd = new conversion_rates();
+            public conversion_rates date(String value) {
+                return set("date", value);
+            }
+
+            public conversion_rates nations(String value) {
+                return set("nations", value);
+            }
+
+            public conversion_rates sheet(String value) {
+                return set("sheet", value);
+            }
+
+            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="getIngameNationTransfers")
             public static class getIngameNationTransfers extends CommandRef {
                 public static final getIngameNationTransfers cmd = new getIngameNationTransfers();
@@ -15631,6 +15731,10 @@ public class CM {
                 return set("onlyDefensives", value);
             }
 
+            public warRanking only_rank_attackers(String value) {
+                return set("only_rank_attackers", value);
+            }
+
             public warRanking normalizePerMember(String value) {
                 return set("normalizePerMember", value);
             }
@@ -16335,6 +16439,11 @@ public class CM {
             }
 
             }
+        }
+        @AutoRegister(clazz=link.locutus.discord._test.command.CustomCommands.class,method="tradeAverageCodes")
+        public static class tradeAverageCodes extends CommandRef {
+            public static final tradeAverageCodes cmd = new tradeAverageCodes();
+
         }
         public static class transfer{
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="transferBulk")

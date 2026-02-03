@@ -24,15 +24,15 @@ public abstract class DBMain implements Closeable {
     private static final Logger log = Logger.getLogger("DBMain");
 
     private final File dbLocation;
+    private final int memCache;
+    private final int mmapSize;
     private Connection connection;
     private boolean inMemory;
 
-    public DBMain(String name) throws SQLException, ClassNotFoundException {
-       this(name, false);
-    }
-
-    public DBMain(String name, boolean inMemory) throws SQLException, ClassNotFoundException {
+    public DBMain(String name, boolean inMemory, int mmapSize, int memCache) throws SQLException, ClassNotFoundException {
         this.inMemory = inMemory;
+        this.mmapSize = mmapSize;
+        this.memCache = memCache;
         File file = new File(Settings.INSTANCE.DATABASE.SQLITE.DIRECTORY, name + ".db");
         if (!file.getParentFile().exists()) {
             file.getParentFile().mkdirs();
@@ -149,18 +149,7 @@ public abstract class DBMain implements Closeable {
     }
 
     private Connection forceConnection() throws SQLException, ClassNotFoundException {
-        Class.forName("org.sqlite.JDBC");
-        String connectStr = "jdbc:sqlite:";
-        connectStr += dbLocation;
-        connection = DriverManager.getConnection(connectStr);
-        if (inMemory) {
-            connection.createStatement().execute("""
-                    pragma journal_mode = WAL;
-                    pragma synchronous = normal;
-                    pragma temp_store = memory;
-                    pragma mmap_size = 30000000000;""");
-        }
-        return connection;
+        return DBMainV3.forceConnection(dbLocation, 0, memCache, inMemory);
     }
 
     protected synchronized PreparedStatement prepareStatement(String sql) throws SQLException {

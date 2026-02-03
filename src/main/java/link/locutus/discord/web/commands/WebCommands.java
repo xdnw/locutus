@@ -29,13 +29,17 @@ public class WebCommands {
 
     @Command(desc = "Get the login code for the web interface")
     @Ephemeral
-    public String web(@Me DBNation nation, @Me User user) {
+    public String web(@Me DBNation nation, @Me User user, @Me @Default GuildDB db) {
         UUID uuid = WebUtil.generateSecureUUID();
         DBAuthRecord token = WebRoot.db().updateToken(uuid, nation.getId(), user.getIdLong());
         List<String> urls = new ArrayList<>();
-        urls.add("**Frontend**: <" + Settings.INSTANCE.WEB.FRONTEND_DOMAIN + "/#login/" + uuid + ">");
-        urls.add("**Backend**: <" + WebRoot.REDIRECT + "/page/login?token=" + token.getUUID() + ">");
-        urls.add("**Conflicts**: <" + Settings.INSTANCE.WEB.CONFLICTS.SITE + ">");
+        String frontEndUrl = Settings.INSTANCE.WEB.FRONTEND_DOMAIN + "/#login/" + uuid;
+        if (db != null) {
+            frontEndUrl += "?guild=" + db.getIdLong();
+        }
+        urls.add("**Frontend**: <" + frontEndUrl + ">");
+        urls.add("-# Conflicts: <" + Settings.INSTANCE.WEB.CONFLICTS.SITE + ">");
+        urls.add("||-# Backend: <" + WebRoot.REDIRECT + "/page/login?token=" + token.getUUID() + ">||");
         return String.join("\n", urls);
     }
 

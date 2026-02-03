@@ -505,7 +505,7 @@ public class LootEstimateTracker {
             int turnDiff = (int) (turn - estimate.lastTurnRevenue);
             boolean noFood = estimate.max[ResourceType.FOOD.ordinal()] <= 0;
 
-            double[] revenue = nation.getRevenue(turnDiff, true, true, true, true, noFood, false, treasureBonus, false);
+            double[] revenue = nation.getRevenue(null, turnDiff, true, true, true, true, noFood, false, treasureBonus, false);
             for (ResourceType type : ResourceType.values) {
                 if (type.isManufactured()) {
                     double min = 0;
@@ -700,7 +700,7 @@ public class LootEstimateTracker {
 
         int amt = current.getUnits(unit) - previous.getUnits(unit);
         if (amt != 0) {
-            double[] cost = ResourceType.resourcesToArray(unit.getCost(amt, current::getResearch));
+            double[] cost = ResourceType.resourcesToArray(unit.getCost(amt, f -> current.getResearch(null, f)));
             add(current.getId(), event.getTimeCreated(), cost);
         }
     }

@@ -107,7 +107,7 @@ public enum  NationColor implements NationList {
 
             for (DBNation nation : nationsOnColor) {
                 if (nation.getAlliance_id() == 0 || nation.getVm_turns() > 0) continue;
-                double[] revenue = nation.getRevenue();
+                double[] revenue = nation.getRevenue(null);
                 double dnr = Locutus.imp().getTradeManager().getGamePrice(revenue);
                 revenueTotal += dnr;
                 totalNations++;
@@ -152,7 +152,7 @@ public enum  NationColor implements NationList {
         double totalDNROfColor = 0;
         for (DBNation nation : nationsOnColor) {
             if (nation.getAlliance_id() == 0 || nation.getVm_turns() > 0) continue;
-            double[] revenue = nation.getRevenue();
+            double[] revenue = nation.getRevenue(null);
             double dnr = Locutus.imp().getTradeManager().getGamePrice(revenue);
             totalDNROfColor += dnr;
             nationsOnColorCount++;

@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.command;
 import gg.jte.generated.precompiled.command.JteparametriccallableGenerated;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
@@ -232,9 +233,9 @@ public class ParametricCallable<T> implements ICommand<T> {
     }
 
     public static List<ParametricCallable> generateFromClass(CommandCallable parent, Class clazz, Object object, ValueStore store) {
-        List<ParametricCallable> cmds = new ArrayList<>();
+        List<ParametricCallable> cmds = new ObjectArrayList<>();
         for (Method method : clazz.getMethods()) {
-            if (method.getDeclaringClass() != clazz) continue;
+            if (method.isSynthetic() || method.isBridge()) continue;
             ParametricCallable parametric = generateFromMethod(parent, object, method, store);
             if (parametric != null) cmds.add(parametric);
         }

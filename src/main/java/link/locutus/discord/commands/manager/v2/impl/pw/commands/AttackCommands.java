@@ -199,7 +199,7 @@ public class AttackCommands {
                 double end = Math.max(start - amount, 0);
                 return PW.City.Infra.calculateInfra(end, start);
             }
-            return unit.getConvertedCost(finalDefender::getResearch) * amount;
+            return unit.getConvertedCost(f -> finalDefender.getResearch(null, f)) * amount;
         };
         Function<Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>>, String> getAvgStr = (entry) -> {
             long avg = Math.round((entry.getValue().getKey() + entry.getValue().getValue()) / 2d);

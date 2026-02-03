@@ -1,8 +1,10 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -43,6 +45,7 @@ import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 
 public class ConflictCommands {
@@ -458,10 +461,19 @@ public class ConflictCommands {
         return msg + "\nThis does NOT update conflict stats.";
     }
 
+    private static int[] countSides(Conflict conflict, Iterable<DBWar> wars, ToIntFunction<DBWar> otherAaFn) {
+        int col1 = 0, col2 = 0;
+        for (DBWar war : wars) {
+            int otherAA = otherAaFn.applyAsInt(war);
+            Boolean side = conflict.isSide(otherAA);
+            if (side == null) continue;
+            if (side) col1++; else col2++;
+        }
+        return new int[]{col1, col2};
+    }
+
     @Command(desc = "Add a set of alliances to a conflict\n" +
             "This does NOT update conflict stats")
-    @RolePermission(Roles.MILCOM)
-    @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
     public String addCoalition(ConflictManager manager, @Me User user, Conflict conflict, Set<DBAlliance> alliances, @Switch("col1") boolean isCoalition1, @Switch("col2") boolean isCoalition2) {
         boolean hasAdmin = Roles.ADMIN.hasOnRoot(user);
         if (isCoalition1 && isCoalition2) {
@@ -472,9 +484,11 @@ public class ConflictCommands {
 
         for (DBAlliance alliance : alliances) {
             if (conflict.getCoalition1().contains(alliance.getId())) {
+                if (!isCoalition2) continue; // already in col1
                 throw new IllegalArgumentException("Alliance " + alliance.getMarkdownUrl() + " is already in coalition 1");
             }
             if (conflict.getCoalition2().contains(alliance.getId())) {
+                if (!isCoalition1) continue; // already in col2
                 throw new IllegalArgumentException("Alliance " + alliance.getMarkdownUrl() + " is already in coalition 2");
             }
             if (hasAdmin) {
@@ -499,6 +513,27 @@ public class ConflictCommands {
             }
             int fightingCol1 = getFighting(alliance, conflict.getCoalition1Obj());
             int fightingCol2 = getFighting(alliance, conflict.getCoalition2Obj());
+            if (fightingCol1 == 0 && fightingCol2 == 0) {
+                Set<DBNation> nations = alliance.getNations();
+                if (!nations.isEmpty()) {
+                    IntOpenHashSet nationIds = new IntOpenHashSet(nations.stream().mapToInt(DBNation::getId).toArray());
+                    ObjectOpenHashSet<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(nationIds::contains, f -> true);
+                    int[] c = countSides(conflict, wars,
+                            w -> nationIds.contains(w.getAttacker_id()) ? w.getDefender_aa() : w.getAttacker_aa());
+                    fightingCol1 += c[0];
+                    fightingCol2 += c[1];
+                }
+                if (fightingCol1 == 0 && fightingCol2 == 0) {
+                    long start = conflict.getStartMS();
+                    long end = conflict.getEndMS();
+                    if (end == -1L) end = Long.MAX_VALUE;
+                    Set<DBWar> wars = Locutus.imp().getWarDb().getWars(Set.of(alliance.getId()), start, end);
+                    int[] c = countSides(conflict, wars,
+                            w -> w.getAttacker_aa() == alliance.getId() ? w.getDefender_aa() : w.getAttacker_aa());
+                    fightingCol1 += c[0];
+                    fightingCol2 += c[1];
+                }
+            }
 
             if (hasTreatyCol1 && !hasTreatyCol2 && fightingCol1 == 0) {
                 if (isCoalition2) throw new IllegalArgumentException("Alliance " + alliance.getMarkdownUrl() + " has a treaty with a member of coalition 1");
@@ -522,7 +557,34 @@ public class ConflictCommands {
                 }
                 addCol1.add(alliance);
             } else if (hasAdmin) {
-                throw new IllegalArgumentException("Please specify either `isCoalition1` or `isCoalition2`");
+                StringBuilder msg = new StringBuilder();
+                msg.append("Please specify either `isCoalition1` or `isCoalition2` for ")
+                        .append(alliance.getMarkdownUrl()).append(". ");
+
+                List<String> reasons = new ArrayList<>();
+                // No auto-assignment by treaty because it's ambiguous or absent
+                if (hasTreatyCol1 && hasTreatyCol2) {
+                    reasons.add("it has treaties with members of both coalitions");
+                } else if (!hasTreatyCol1 && !hasTreatyCol2) {
+                    reasons.add("it has no treaties with members of either coalition");
+                }
+                // No auto-assignment by activity because it's inactive vs both sides
+                if (fightingCol1 == 0 && fightingCol2 == 0) {
+                    reasons.add("it has no active wars with members of either coalition");
+                }
+                if (reasons.isEmpty()) {
+                    reasons.add("signals were ambiguous");
+                }
+
+                msg.append("Auto-assignment was not possible because ")
+                        .append(StringMan.join(reasons, "; ")).append(". ")
+                        .append("Summary: treaties[col1=").append(hasTreatyCol1)
+                        .append(", col2=").append(hasTreatyCol2).append("], ")
+                        .append("wars[col1=").append(fightingCol1)
+                        .append(", col2=").append(fightingCol2).append("]");
+
+                // TODO if both fightingCol1 and fightingCol2 are 0, check both past wars (within the conflict timespan)
+                throw new IllegalArgumentException(msg.toString());
             } else {
                 throw new IllegalArgumentException("Alliance " + alliance.getMarkdownUrl() + " does not have active wars with the conflict participants. Please contact an administrator");
             }
@@ -974,7 +1036,9 @@ public class ConflictCommands {
     public String addManualWars(ConflictManager manager, Conflict conflict, DBNation nation, DBAlliance mark_as_alliance) {
         long start = conflict.getStartMS();
         long end = conflict.getEndMS();
-        Set<DBWar> wars = Locutus.imp().getWarDb().getWarsByNationMatching(nation.getId(), f -> f.getDate() >= start && f.getDate() <= end);
+        if (end == -1) end = Long.MAX_VALUE;
+        long finalEnd = end;
+        Set<DBWar> wars = Locutus.imp().getWarDb().getWarsByNationMatching(nation.getId(), f -> f.getDate() >= start && f.getDate() <= finalEnd);
 
         CoalitionSide side1 = conflict.getSide1();
         CoalitionSide side2 = conflict.getSide2();
@@ -1003,7 +1067,111 @@ public class ConflictCommands {
         manager.addManualWar(conflict, toAdd, mark_as_alliance.getId());
         return "Added " + toAdd.size() + " wars to the conflict.\n" +
                 "Note: this does not push the data to the site\n" +
-                "See: " + CM.conflict.sync.website.cmd.toSlashMention();
+                "See: " + CM.conflict.sync.website.cmd.toSlashMention() + "\n" +
+                CM.conflict.edit.add_none_war.cmd.toSlashMention() + " and " +
+                CM.conflict.alliance.add_all_for_nation.cmd.toSlashMention();
+    }
+
+    @Command(desc = "Add all alliances this nation fought from during the conflict window.\n" +
+            "Determines the nation side by counting wars on coalition\\1 and coalition\\2.\n" +
+            "Skips wars not involving either coalition.\n" +
+            "Errors if the nation fought BOTH sides (shows counts) or NONE.\n" +
+            "This does NOT update conflict stats")
+    public String addAllForNation(ConflictManager manager, Conflict conflict, DBNation nation) {
+        long start = conflict.getStartMS();
+        long end = conflict.getEndMS();
+        if (end == -1L) end = Long.MAX_VALUE;
+
+        long finalEnd = end;
+        Set<DBWar> wars = Locutus.imp().getWarDb().getWarsByNationMatching(
+                nation.getId(),
+                w -> w.getDate() >= start && w.getDate() <= finalEnd
+        );
+
+        int onCol1 = 0;
+        int onCol2 = 0;
+
+        // Alliances to add to each coalition (nation side, not inverse)
+        Set<Integer> col1Alliances = new IntOpenHashSet();
+        Set<Integer> col2Alliances = new IntOpenHashSet();
+
+        for (DBWar w : wars) {
+            boolean isAttacker = w.getAttacker_id() == nation.getId();
+            boolean isDefender = w.getDefender_id() == nation.getId();
+            if (!isAttacker && !isDefender) continue;
+
+            int enemyAA = isAttacker ? w.getDefender_aa() : w.getAttacker_aa();
+            int nationAA = isAttacker ? w.getAttacker_aa() : w.getDefender_aa();
+
+            if (enemyAA == 0 || nationAA == 0) continue; // skip NONE or invalid
+            Boolean enemyIsCol1 = conflict.isSide(enemyAA);
+            if (enemyIsCol1 == null) continue; // skip wars not involving either coalition
+
+            if (enemyIsCol1) {
+                onCol2++;
+                col2Alliances.add(nationAA);
+            } else {
+                onCol1++;
+                col1Alliances.add(nationAA);
+            }
+        }
+
+        if (onCol1 > 0 && onCol2 > 0) {
+            List<String> col1AllianceLinks = new ArrayList<>();
+            for (int id : col1Alliances) {
+                col1AllianceLinks.add(MarkupUtil.markdownUrl(manager.getAllianceName(id), PW.getAllianceUrl(id)));
+            }
+            List<String> col2AllianceLinks = new ArrayList<>();
+            for (int id : col2Alliances) {
+                col2AllianceLinks.add(MarkupUtil.markdownUrl(manager.getAllianceName(id), PW.getAllianceUrl(id)));
+            }
+            String msg = "Nation fought from both coalitions during the conflict window:\n" +
+                    "- From coalition 1: " + onCol1 + " war(s)\n" +
+                    "  Alliances: " + (col1AllianceLinks.isEmpty() ? "none" : StringMan.join(col1AllianceLinks, ", ")) + "\n" +
+                    "- From coalition 2: " + onCol2 + " war(s)\n" +
+                    "  Alliances: " + (col2AllianceLinks.isEmpty() ? "none" : StringMan.join(col2AllianceLinks, ", "));
+            throw new IllegalArgumentException(msg);
+        }
+        if (onCol1 == 0 && onCol2 == 0) {
+            throw new IllegalArgumentException("No wars found against either coalition during the conflict window");
+        }
+
+        // Single side only
+        boolean nationIsCol1 = onCol1 > 0;
+        Set<Integer> toAdd = nationIsCol1 ? col1Alliances : col2Alliances;
+
+        // Validate already-present and side conflicts relative to the chosen side
+        Set<Integer> alreadyPresent = new LinkedHashSet<>();
+        Set<Integer> sideConflict = new LinkedHashSet<>();
+        for (int aaId : toAdd) {
+            Boolean currSide = conflict.isSide(aaId);
+            if (currSide == null) continue; // not in conflict yet
+            if (currSide != nationIsCol1) {
+                sideConflict.add(aaId);
+            } else {
+                alreadyPresent.add(aaId);
+            }
+        }
+        if (!sideConflict.isEmpty()) {
+            throw new IllegalArgumentException("Alliances already on the opposite coalition: `" + StringMan.join(sideConflict, ",") + "`");
+        }
+
+        // Add missing alliances to the determined nation side
+        int added = 0;
+        List<Integer> addedIds = new ArrayList<>();
+        for (int aaId : toAdd) {
+            if (alreadyPresent.contains(aaId)) continue;
+            conflict.addParticipant(aaId, nationIsCol1, null, null);
+            added++;
+            addedIds.add(aaId);
+        }
+        manager.clearAllianceCache();
+
+        String sideStr = nationIsCol1 ? "coalition 1" : "coalition 2";
+        return "Detected nation side: " + sideStr + " (col1=" + onCol1 + ", col2=" + onCol2 + ").\n" +
+                "Added " + added + " alliance(s) to " + sideStr + ": `" + StringMan.join(addedIds, ",") + "`.\n" +
+                "Already present: " + alreadyPresent.size() + ".\n" +
+                "Note: this does NOT update conflict stats.";
     }
 
     @Command(desc = "Move data between S3 configuration and R2")

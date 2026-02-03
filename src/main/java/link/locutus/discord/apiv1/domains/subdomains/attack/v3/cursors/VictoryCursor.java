@@ -13,6 +13,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.io.BitBuffer;
+import link.locutus.discord.util.math.ArrayUtil;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -122,7 +123,7 @@ public class VictoryCursor extends FailedCursor {
     public void load(DBAttack legacy) {
         super.load(legacy);
         this.hasLoot = legacy.loot != null && !ResourceType.isZero(legacy.loot);
-        this.loot_percent_cents = (int) Math.round(legacy.getLootPercent() * 100);
+        this.loot_percent_cents = (int) ArrayUtil.toCents(legacy.getLootPercent());
         if (hasLoot) {
             this.looted = legacy.loot;
             if (this.looted == null) this.hasLoot = false;
@@ -135,9 +136,9 @@ public class VictoryCursor extends FailedCursor {
             Arrays.fill(looted, 0);
         }
         city_infra_before_cents.clear();
-        this.infra_destroyed_cents = (int) Math.round(legacy.getInfra_destroyed() * 100);
+        this.infra_destroyed_cents = (int) ArrayUtil.toCents(legacy.getInfra_destroyed());
         infra_percent_decimal = (int) Math.round(legacy.infraPercent_cached * 1000);
-        infra_destroyed_value_cents = (long) Math.round(legacy.getInfra_destroyed_value() * 100);
+        infra_destroyed_value_cents = (long) ArrayUtil.toCents(legacy.getInfra_destroyed_value());
     }
 
     @Override

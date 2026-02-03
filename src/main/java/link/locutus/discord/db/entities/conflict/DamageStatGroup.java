@@ -11,6 +11,7 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
+import link.locutus.discord.util.math.ArrayUtil;
 
 import java.util.Arrays;
 import java.util.Locale;
@@ -170,7 +171,7 @@ public class DamageStatGroup {
             attack.addDefLosses(totalCost, war);
             attack.addDefConsumption(consumption);
             attack.addDefLoot(loot);
-            infraCents += Math.round(attack.getInfra_destroyed_value() * 100);
+            infraCents += ArrayUtil.toCents(attack.getInfra_destroyed_value());
             attack.addBuildingsDestroyed(buildings);
         }
     }

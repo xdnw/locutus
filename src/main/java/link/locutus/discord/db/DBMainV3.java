@@ -7,10 +7,12 @@ import org.jetbrains.annotations.NotNull;
 import org.jooq.*;
 import org.jooq.Record;
 import org.jooq.impl.DSL;
+import org.sqlite.SQLiteConfig;
 
 import java.io.Closeable;
 import java.io.File;
 import java.sql.*;
+import java.sql.Statement;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -19,12 +21,16 @@ public abstract class DBMainV3 implements Closeable {
     private static final Logger log = Logger.getLogger("DBMain");
 
     private final File dbLocation;
+    private final int mmapSize;
+    private final int memCache;
     private DSLContext ctx;
     private Connection connection;
     private boolean inMemory;
 
-    public DBMainV3(Settings.DATABASE config, String name, boolean inMemory) throws SQLException, ClassNotFoundException {
+    public DBMainV3(Settings.DATABASE config, String name, boolean inMemory, int mmapSize, int memCache) throws SQLException, ClassNotFoundException {
         this.inMemory = inMemory;
+        this.mmapSize = mmapSize;
+        this.memCache = memCache;
         if (config.SQLITE.USE) {
             dbLocation = new File(config.SQLITE.DIRECTORY + File.separator + name + ".db");
             // create file directory if not exist
@@ -139,25 +145,6 @@ public abstract class DBMainV3 implements Closeable {
         return limitStep.fetch();
     }
 
-    private Connection forceConnection() throws SQLException, ClassNotFoundException {
-        Class.forName("org.sqlite.JDBC");
-        String connectStr = "jdbc:sqlite:";
-//        if (inMemory) connectStr += ":memory:";
-        connectStr += dbLocation;
-        connection = DriverManager.getConnection(connectStr);
-        if (inMemory) {
-            connection.createStatement().execute("""
-                    pragma journal_mode = WAL;
-                    pragma synchronous = normal;
-                    pragma temp_store = memory;
-                    pragma mmap_size = 30000000000;""");
-        }
-        this.ctx = DSL.using(connection, SQLDialect.SQLITE, new org.jooq.conf.Settings()
-                .withExecuteLogging(false)
-        );
-        return connection;
-    }
-
     /**
      * Gets the connection with the database
      *
@@ -228,4 +215,59 @@ public abstract class DBMainV3 implements Closeable {
     }
 
     public abstract void createTables();
+
+    private Connection forceConnection() throws SQLException, ClassNotFoundException {
+        return forceConnection(dbLocation, 0, memCache, inMemory);
+    }
+
+    public static Connection forceConnection(File dbLocation, int mmapSizeMB, int memCache, boolean inMemory) throws SQLException {
+        SQLiteConfig cfg = new SQLiteConfig();
+        cfg.enforceForeignKeys(true);
+        cfg.setBusyTimeout(5000);
+
+        final String url;
+
+        if (inMemory) {
+            // Per-connection in-memory DB (non-persistent)
+            url = "jdbc:sqlite:file:memdb1?mode=memory&cache=shared";
+
+            // Durability is irrelevant for in-memory; favor low overhead.
+            cfg.setJournalMode(SQLiteConfig.JournalMode.MEMORY);      // or OFF
+            cfg.setSynchronous(SQLiteConfig.SynchronousMode.OFF);     // FULL provides no benefit here
+            cfg.setTempStore(SQLiteConfig.TempStore.MEMORY);
+
+            // cache_size still applies (optional)
+            if (memCache > 0) {
+                cfg.setPragma(SQLiteConfig.Pragma.CACHE_SIZE, "-" + (memCache * 1000));
+            }
+
+        } else {
+            url = "jdbc:sqlite:" + dbLocation.getAbsolutePath();
+
+            // Durable on-disk settings
+            cfg.setJournalMode(SQLiteConfig.JournalMode.WAL);
+            cfg.setSynchronous(SQLiteConfig.SynchronousMode.FULL);
+            cfg.setTempStore(SQLiteConfig.TempStore.FILE);
+            if (memCache > 0) {
+                cfg.setPragma(SQLiteConfig.Pragma.CACHE_SIZE, "-" + (memCache * 1000));
+            }
+            cfg.setPragma(SQLiteConfig.Pragma.JOURNAL_SIZE_LIMIT, Long.toString(64L * 1024 * 1024)); // 64MB
+
+            if (mmapSizeMB > 0) {
+                cfg.setPragma(SQLiteConfig.Pragma.MMAP_SIZE,
+                        Long.toString(mmapSizeMB * 1024L * 1024L));
+            }
+        }
+
+        Connection conn = DriverManager.getConnection(url, cfg.toProperties());
+
+        if (!inMemory) {
+            // not in your enum -> execute manually
+            try (Statement st = conn.createStatement()) {
+                st.execute("PRAGMA wal_autocheckpoint = 1000");
+            }
+        }
+
+        return conn;
+    }
 }

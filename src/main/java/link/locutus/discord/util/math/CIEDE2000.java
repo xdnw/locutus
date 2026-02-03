@@ -2,11 +2,83 @@ package link.locutus.discord.util.math;
 
 import java.awt.Color;
 import java.awt.color.ColorSpace;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Random;
 
 public class CIEDE2000 extends ColorSpace {
     public static final CIEDE2000 INSTANCE = new CIEDE2000();
+
+    public static Color findContrast(Color... colors) {
+        if (colors == null || colors.length == 0) return Color.BLACK;
+
+        double[] L = new double[colors.length];
+        for (int i = 0; i < colors.length; i++) {
+            L[i] = relativeLuminance(colors[i]);
+        }
+
+        // Candidate target luminances: 0 (black), 1 (white), and pairwise equal-contrast points
+        List<Double> candidates = new ArrayList<>();
+        candidates.add(0.0);
+        candidates.add(1.0);
+        for (int i = 0; i < L.length; i++) {
+            for (int j = i + 1; j < L.length; j++) {
+                double a = Math.min(L[i], L[j]);
+                double b = Math.max(L[i], L[j]);
+                double y = Math.sqrt((a + 0.05) * (b + 0.05)) - 0.05; // equalizes contrast vs a and b
+                if (y >= 0.0 && y <= 1.0) {
+                    candidates.add(y);
+                }
+            }
+        }
+
+        double bestY = 0.0;
+        double bestMinCR = -1.0;
+
+        for (double y : candidates) {
+            double minCR = Double.POSITIVE_INFINITY;
+            for (double Li : L) {
+                double hi = Math.max(y, Li);
+                double lo = Math.min(y, Li);
+                double cr = (hi + 0.05) / (lo + 0.05);
+                if (cr < minCR) minCR = cr;
+            }
+            if (minCR > bestMinCR) {
+                bestMinCR = minCR;
+                bestY = y;
+            }
+        }
+
+        return grayForLuminance(bestY);
+    }
+
+    // WCAG relative luminance (sRGB)
+    private static double relativeLuminance(Color c) {
+        double r = srgb8ToLinear(c.getRed());
+        double g = srgb8ToLinear(c.getGreen());
+        double b = srgb8ToLinear(c.getBlue());
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    }
+
+    private static double srgb8ToLinear(int v8) {
+        double v = v8 / 255.0;
+        if (v <= 0.04045) return v / 12.92;
+        return Math.pow((v + 0.055) / 1.055, 2.4);
+    }
+
+    private static int linearToSrgb8(double lin) {
+        lin = Math.max(0.0, Math.min(1.0, lin));
+        double v = (lin <= 0.0031308) ? (12.92 * lin) : (1.055 * Math.pow(lin, 1.0 / 2.4) - 0.055);
+        int i = (int)Math.round(v * 255.0);
+        return Math.max(0, Math.min(255, i));
+    }
+
+    // Returns a neutral gray whose luminance equals the target (optimal for contrast)
+    private static Color grayForLuminance(double Y) {
+        int c = linearToSrgb8(Y);
+        return new Color(c, c, c);
+    }
 
     public static Color randomColor(long seed, Color BG, Collection<Color> existingColors) {
         Random random = new Random(seed);
@@ -63,27 +135,7 @@ public class CIEDE2000 extends ColorSpace {
      * @param lab2 second colour
      * @return the CIE 2000 colour difference
      */
-    public static double calculateDeltaE(double [] lab1, double[] lab2) {
-        return calculateDeltaE(lab1[0],lab1[1],lab1[2],lab2[0],lab2[1],lab2[2]);
-    }
-
-    /**
-     * Calculate the colour difference value between two colours in lab space.
-     * @param lab1 first colour
-     * @param lab2 second colour
-     * @return the CIE 2000 colour difference
-     */
     public static float calculateDeltaE(float [] lab1, float[] lab2) {
-        return (float) calculateDeltaE(lab1[0],lab1[1],lab1[2],lab2[0],lab2[1],lab2[2]);
-    }
-
-    /**
-     * Calculate the colour difference value between two colours in lab space.
-     * @param lab1 first colour
-     * @param lab2 second colour
-     * @return the CIE 2000 colour difference
-     */
-    public static float calculateDeltaE(Float [] lab1, Float[] lab2) {
         return (float) calculateDeltaE(lab1[0],lab1[1],lab1[2],lab2[0],lab2[1],lab2[2]);
     }
 

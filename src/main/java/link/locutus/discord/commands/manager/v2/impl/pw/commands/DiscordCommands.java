@@ -131,7 +131,7 @@ public class DiscordCommands {
         msg = msg.replace("@", "@\u200B");
         msg = msg.replace("&", "&\u200B");
 
-        GPTUtil.checkThrowModeration(msg);
+        if (!Roles.MAIL.hasOnRoot(author)) GPTUtil.checkThrowModeration(msg);
 
         msg = msg + "\n\n- " + author.getAsMention();
 
@@ -403,8 +403,7 @@ public class DiscordCommands {
 
     @Command(desc = "Return the discord invite link for the bot", viewable = true)
     public String invite() {
-        return "<https://discord.com/api/oauth2/authorize?client_id=" + Settings.INSTANCE.APPLICATION_ID + "&permissions=395606879321&scope=bot>\n" +
-                "<https://github.com/xdnw/locutus/wiki>";
+        return DiscordUtil.getInvite();
     }
 
     @Command(desc = "Unregister a nation to a discord user")
@@ -430,7 +429,7 @@ public class DiscordCommands {
     }
 
     @Command(desc = "Register your discord user with your Politics And War nation.")
-    public String register(@Me GuildDB db, @Me User user, /* @Default("%user%")  */ @AllowDeleted DBNation nation) throws IOException {
+    public String register(@Me @Default GuildDB db, @Me User user, /* @Default("%user%")  */ @AllowDeleted DBNation nation) throws IOException {
         boolean notRegistered = DiscordUtil.getUserByNationId(nation.getNation_id()) == null;
         String fullDiscriminator = DiscordUtil.getFullUsername(user);
 

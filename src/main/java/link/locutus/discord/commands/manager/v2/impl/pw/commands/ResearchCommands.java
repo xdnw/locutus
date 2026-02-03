@@ -2,13 +2,17 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Research;
 import link.locutus.discord.apiv1.enums.ResearchGroup;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
@@ -16,10 +20,12 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.SheetKey;
+import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 
 import java.io.IOException;
@@ -74,10 +80,14 @@ public class ResearchCommands {
     }
 
     @Command(desc = "Show the research a nation has")
-    public String getResearch(DBNation nation) {
-        return nation.getMarkdownUrl() +"\n- Research: `" + nation.getResearchLevels() + "`\n" +
-                "- cost: `" + ResourceType.toString(nation.getResearchCost()) + "`\n" +
-                "- worth: ~$" + ResourceType.convertedTotal(nation.getResearchCost());
+    public String getResearch(DBNation nation, @Switch("t") @Timestamp Long snapshotTime) {
+        if (snapshotTime != null) {
+            Set<DBNation> nations = PW.getNationsSnapshot(Set.of(nation), nation.getQualifiedId(), snapshotTime, null, true);
+            if (nations.size() == 1) nation = nations.iterator().next();
+        }
+        return nation.getMarkdownUrl() +"\n- Research: `" + nation.getResearchLevels(null) + "`\n" +
+                "- cost: `" + ResourceType.toString(nation.getResearchCost(null)) + "`\n" +
+                "- worth: ~$" + ResourceType.convertedTotal(nation.getResearchCost(null));
     }
 
     // research sheet
@@ -85,7 +95,9 @@ public class ResearchCommands {
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
     public String researchSheet(
             @Me IMessageIO io, @Me @Default GuildDB db,
-            Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+            NationList nations, @Switch("s") SpreadSheet sheet,
+            @Switch("t") @Timestamp Long snapshotDate) throws GeneralSecurityException, IOException {
+        Set<DBNation> nationsFinal = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db);
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.RESEARCH_SHEET);
 
         List<String> header = new ArrayList<>(Arrays.asList(
@@ -104,7 +116,8 @@ public class ResearchCommands {
 
         CompletableFuture<IMessageBuilder> msgFuture = (io.sendMessage("Please wait..."));
         long start = System.currentTimeMillis();
-        for (DBNation nation : nations) {
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nationsFinal, DBNation.class);
+        for (DBNation nation : nationsFinal) {
             if (start + 10000 < System.currentTimeMillis()) {
                 start = System.currentTimeMillis();
                 io.updateOptionally(msgFuture, "Updating research for " + nation.getMarkdownUrl());
@@ -114,7 +127,7 @@ public class ResearchCommands {
             DBAlliance alliance = nation.getAlliance();
             row.add(alliance == null ? "" : alliance.getSheetUrl());
             row.add(nation.getCities());
-            Map<Research, Integer> levels = nation.getResearchLevels();
+            Map<Research, Integer> levels = nation.getResearchLevels(cacheStore);
             row.add(levels.values().stream().mapToInt(Integer::intValue).sum());
             Map<ResourceType, Double> cost = Research.cost(Collections.emptyMap(), levels, nation.getResearchCostFactor());
             row.add(ResourceType.toString(cost));
@@ -153,7 +166,7 @@ public class ResearchCommands {
 
         double costFactor = military_doctrine ? 0.95 : 1;
         for (int cities = 1; cities < 70; cities++) {
-            double cityCost = PW.City.cityCost(cities - 1, cities, true, false, false, false, gov_support_agency, domestic_affairs);
+            double cityCost = PW.City.cityCost(cities - 1, cities, true, gov_support_agency, domestic_affairs);
             double maxCost = cityCost * percent_of_city_cost;
             Map<Research, Integer> levels = Research.findLevels(researchList, maxCost, costFactor);
             Map<ResourceType, Double> cost = Research.cost(Collections.emptyMap(), levels, costFactor);//.get(0, 0, 0, level, costFactor);

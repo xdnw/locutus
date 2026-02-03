@@ -637,7 +637,7 @@ public class WarUpdateProcessor {
                     if (attSoldiers * 0.4 > enemyStrength * 0.75) message += " (unarmed)";
 
                     double usageCostPerTank = (ResourceType.convertedTotal(ResourceType.MUNITIONS, 1) + ResourceType.convertedTotal(ResourceType.GASOLINE, 1)) / 100d;
-                    double cost = MilitaryUnit.TANK.getConvertedCost(attacker::getResearch) * root.getAttcas2() + usageCostPerTank * attTanks;
+                    double cost = MilitaryUnit.TANK.getConvertedCost(f -> attacker.getResearch(null, f)) * root.getAttcas2() + usageCostPerTank * attTanks;
 
                     double extraInfraDestroyed = ((attTanks - (defTanks * 0.5)) * 0.01) * 0.95 * (root.getSuccess().ordinal() / 3d);
                     if (war.getWarType() == WarType.RAID) {
@@ -1089,7 +1089,7 @@ public class WarUpdateProcessor {
 
                 planes += attacker.getAircraft();
                 cities += attacker.getCities();
-                maxPlanes += MilitaryUnit.AIRCRAFT.getMaxMMRCap(attacker.getCities(), attacker.getResearchBits(), attacker::hasProject);
+                maxPlanes += MilitaryUnit.AIRCRAFT.getMaxMMRCap(attacker.getCities(), attacker.getResearchBits(null), attacker::hasProject);
                 numAttacking.add(attacker.getNation_id());
             }
             if (max >= 6 && numAttacking.size() > 1) {

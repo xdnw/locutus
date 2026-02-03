@@ -13,11 +13,14 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.grant.AGrantTemplate;
 import link.locutus.discord.db.guild.SheetKey;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.util.scheduler.CachedSupplier;
+import link.locutus.discord.util.scheduler.ThrowingSupplier;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
 import net.dv8tion.jda.api.entities.Role;
@@ -32,6 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class Grant {
     public static final Map<Long, Map<UUID, Grant>> APPROVED_GRANTS_BY_GUILD = new ConcurrentHashMap<>();
@@ -171,26 +175,6 @@ public class Grant {
     }
 
     public static boolean hasGrantedCity(DBNation nation, Collection<Transaction2> transactions, int city) {
-        Set<Long> costs = new LongOpenHashSet();
-        for (boolean md : new boolean[]{true, false}) {
-            for (boolean cp : new boolean[]{true, false}) {
-                if (cp && !nation.hasProject(Projects.URBAN_PLANNING)) continue;
-                for (boolean aup : new boolean[]{true, false}) {
-                    if (aup && !nation.hasProject(Projects.ADVANCED_URBAN_PLANNING)) continue;
-                    for (boolean mp : new boolean[]{true, false}) {
-                        for (boolean gsa : new boolean[]{true, false}) {
-                            if (gsa && !nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY)) continue;
-                            for (boolean bda : new boolean[]{true, false}) {
-                                if (bda && !nation.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS)) continue;
-                                double cost = PW.City.nextCityCost(city - 1, md, cp, aup, mp, gsa, bda);
-                                costs.add(Math.round(cost));
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         for (Transaction2 transaction : transactions) {
             if (transaction.note == null) continue;
             if (!transaction.note.toLowerCase().contains("#city")) continue;
@@ -201,10 +185,6 @@ public class Grant {
                 int num = cities.iterator().next();
                 if (amount == null || amount <= 0) amount = 1d;
                 if (num + amount >= city) return false;
-            } else {
-                if (costs.contains(Math.round(transaction.resources[0]))) {
-                    return true;
-                }
             }
         }
         return false;
@@ -255,10 +235,6 @@ public class Grant {
 
     public DBNation getNation() {
         return DBNation.getById(nation.getNation_id());
-    }
-
-    public static class GrantRequirementBuilder {
-
     }
 
     public static class Requirement implements Function<DBNation, Boolean> {
@@ -473,10 +449,6 @@ public class Grant {
         return true;
     }
 
-    public boolean canGrant(Member member, DBNation granter) {
-        return false;
-    }
-
     public double[] cost() {
         return cost.apply(nation);
     }
@@ -512,13 +484,24 @@ public class Grant {
             throw new IllegalArgumentException("The argument `ping_when_sent` can only be used with a single receiver");
         }
 
+        Supplier<Map<DBNation, Map<ResourceType, Double>>> aaStockpileCached;
+        if (receivers.size() > 1) {
+            aaStockpileCached = new CachedSupplier<>((ThrowingSupplier<Map<DBNation, Map<ResourceType, Double>>>) () -> db.getAllianceList().getMemberStockpile(receivers::contains));
+        } else {
+            aaStockpileCached = null;
+        }
         BiFunction<DBNation, double[] , TransferResult> onlyMissingFunc = (nation, resourcesArr) -> {
             double[] costApplyMissing = resourcesArr.clone();
             if (onlySendMissingFunds) {
                 if (!db.isAllianceId(nation.getAlliance_id())) {
                     throw new IllegalArgumentException("Nation " + nation.getMarkdownUrl() + " is not in an alliance registered to this guild (currently: " + db.getAllianceIds() + ")");
                 }
-                Map<ResourceType, Double> stockpile = nation.getStockpile();
+                Map<ResourceType, Double> stockpile;
+                if (aaStockpileCached == null) {
+                    stockpile = nation.getStockpile();
+                } else {
+                    stockpile = aaStockpileCached.get().get(nation);
+                }
                 if (stockpile == null) {
                     return new TransferResult(OffshoreInstance.TransferStatus.ALLIANCE_ACCESS, nation, resourcesArr, baseNote.withValue().toString())
                             .addMessage( "Alliance information access is disabled from their **account** page");

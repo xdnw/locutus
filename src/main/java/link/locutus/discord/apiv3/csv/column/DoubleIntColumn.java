@@ -1,6 +1,7 @@
 package link.locutus.discord.apiv3.csv.column;
 
 import link.locutus.discord.apiv3.csv.header.DataHeader;
+import link.locutus.discord.util.math.ArrayUtil;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -28,7 +29,7 @@ public class DoubleIntColumn<P> extends NumberColumn<P, Double> {
 
     @Override
     public void write(DataOutputStream dos, Double value) throws IOException {
-        dos.writeInt((int) Math.round(value * 100));
+        dos.writeInt((int) ArrayUtil.toCents(value));
     }
 
     @Override

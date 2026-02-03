@@ -967,9 +967,6 @@ public class UtilityCommands {
 
         for (int i = Math.max(1, currentCity); i < maxCity; i++) {
             total += PW.City.nextCityCost(i, manifestDestiny,
-                    false,
-                    false,
-                    false,
                     governmentSupportAgency,
                     domestic_affairs);
         }
@@ -1105,7 +1102,7 @@ public class UtilityCommands {
         }
 
         double infraFinal = infra == -1 ? nation.getInfra() : infra;
-        Map<PW.ScoreType, Double> breakdown = PW.scoreBreakdown(Locutus.imp().getNationDB(), nation, null, infraFinal, null, null, null);
+        Map<PW.ScoreType, Double> breakdown = PW.scoreBreakdown(nation, null, infraFinal, null, null, null);
 
         double score = breakdown.getOrDefault(PW.ScoreType.TOTAL, 0d);
         if (score == 0) {
@@ -1117,7 +1114,7 @@ public class UtilityCommands {
         for (int i = types.length - 1; i >= 0; i--) {
             PW.ScoreType type = types[i];
             Double value = breakdown.get(type);
-            if (value == null || Math.round(value * 100) == 0) continue;
+            if (value == null || ArrayUtil.toCents(value) == 0) continue;
             boolean boldUnderline = type.getTier() == 0;
             boolean indent = type.getTier() == 2;
             String title = type.name();
@@ -1248,7 +1245,7 @@ public class UtilityCommands {
 
             revenueTurns = nation.getTurnsInactiveForLoot(lootInfo);
             if (revenueTurns > 0) {
-                revenue = nation.getRevenue(revenueTurns + 24, true, true, false, true, false, false, 0d, false);
+                revenue = nation.getRevenue(null, revenueTurns + 24, true, true, false, true, false, false, 0d, false);
                 if (lootInfo != null) {
                     revenue = PW.capManuFromRaws(revenue, lootInfo.getTotal_rss());
                 }
@@ -2459,7 +2456,7 @@ public class UtilityCommands {
         double[] cost = ResourceType.getBuffer();
         double[] upkeep = ResourceType.getBuffer();
 
-        Function<Research, Integer> research = (nation == null ? me == null ? f -> 0 : me::getResearch : nation::getResearch);
+        Function<Research, Integer> research = (nation == null ? me == null ? f -> 0 : f -> me.getResearch(null, f) : f -> nation.getResearch(null, f));
         double upkeepFactor = nation == null ? me == null ? 1 : me.getMilitaryUpkeepFactor() : nation.getMilitaryUpkeepFactor();
         for (Map.Entry<MilitaryUnit, Long> entry : units.entrySet()) {
             MilitaryUnit unit = entry.getKey();
@@ -2782,6 +2779,7 @@ public class UtilityCommands {
                                @Switch("p") @Arg("Only include the cost of specific projects") Set<Project> includeProjects,
                                @Switch("s") @Timestamp Long snapshotDate) {
         Set<DBNation> nationSet = PW.getNationsSnapshot(nations.getNations(), nations.getFilter(), snapshotDate, db == null ? null : db.getGuild());
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nationSet, DBNation.class);
         double infraCost = 0;
         double landCost = 0;
         double cityCost = 0;
@@ -2790,6 +2788,7 @@ public class UtilityCommands {
         Map<ResourceType, Double> militaryCost = new HashMap<>();
         Map<ResourceType, Double> buildingCost = new HashMap<>();
         Map<ResourceType, Double> researchCost = new HashMap<>();
+
         for (DBNation nation : nationSet) {
             cityProjectRefund += PW.City.getCostReduction(nation::hasProject);
             Set<Project> projects = nation.getProjects();
@@ -2803,18 +2802,18 @@ public class UtilityCommands {
             }
             for (MilitaryUnit unit : MilitaryUnit.values) {
                 int units = nation.getUnits(unit);
-                militaryCost = ResourceType.addResourcesToA(militaryCost, unit.getCost(units, nation::getResearch));
+                militaryCost = ResourceType.addResourcesToA(militaryCost, unit.getCost(units, f -> nation.getResearch(cacheStore, f)));
             }
             int cities = nation.getCities();
             double nationCityCost = 0;
             for (int i = 1; i <= cities; i++) {
                 boolean manifest = true;
-                boolean cp = i > Projects.URBAN_PLANNING.requiredCities() && projects.contains(Projects.URBAN_PLANNING);
-                boolean acp = i > Projects.ADVANCED_URBAN_PLANNING.requiredCities() && projects.contains(Projects.ADVANCED_URBAN_PLANNING);
-                boolean mp = i > Projects.METROPOLITAN_PLANNING.requiredCities() && projects.contains(Projects.METROPOLITAN_PLANNING);
+//                boolean cp = i > Projects.URBAN_PLANNING.requiredCities() && projects.contains(Projects.URBAN_PLANNING);
+//                boolean acp = i > Projects.ADVANCED_URBAN_PLANNING.requiredCities() && projects.contains(Projects.ADVANCED_URBAN_PLANNING);
+//                boolean mp = i > Projects.METROPOLITAN_PLANNING.requiredCities() && projects.contains(Projects.METROPOLITAN_PLANNING);
                 boolean gsa = projects.contains(Projects.GOVERNMENT_SUPPORT_AGENCY);
                 boolean bda = projects.contains(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
-                nationCityCost += PW.City.nextCityCost(i, manifest, cp, acp, mp, gsa, bda);
+                nationCityCost += PW.City.nextCityCost(i, manifest, gsa, bda);
             }
 
             cityCost += nationCityCost;
@@ -2838,7 +2837,7 @@ public class UtilityCommands {
                 buildingCost = ResourceType.addResourcesToA(buildingCost, ResourceType.resourcesToMap(myBuildingCost));
             }
 
-            Map<Research, Integer> level = nation.getResearchLevels();
+            Map<Research, Integer> level = nation.getResearchLevels(cacheStore);
             researchCost = ResourceType.add(researchCost, Research.cost(Collections.emptyMap(), level, 1));
         }
 
@@ -3113,7 +3112,7 @@ public class UtilityCommands {
 //    }
 
     @Command(desc = "Calculate how many days it takes to ROI on the last improvement slot for a specified infra level", viewable = true)
-    public String infraROI(DBCity city, @Range(min=600,max=3000) int infraLevel,
+    public String infraROI(DBCity city, @Range(min=600,max=3500) int infraLevel,
                            @Switch("c") Continent continent,
                            @Switch("r") Double rad_index,
                            @Switch("p") Set<Project> forceProjects,

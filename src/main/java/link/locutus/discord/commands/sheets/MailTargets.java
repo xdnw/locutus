@@ -105,7 +105,7 @@ public class MailTargets extends Command {
             if (!Roles.MAIL.has(author, guild)) return "You need the MAIL role on discord (see " + CM.role.setAlias.cmd.toSlashMention() + ") to add the custom message: `" + header + "`";
         }
         if(header != null && !header.isEmpty()) {
-            GPTUtil.checkThrowModeration(header);
+            if (!Roles.MAIL.hasOnRoot(author)) GPTUtil.checkThrowModeration(header);
         }
 
         Map<DBNation, Set<DBNation>> warAttDefMap = BlitzGenerator.reverse(warDefAttMap);

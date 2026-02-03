@@ -1309,7 +1309,7 @@ public class IACommands {
     public String reply(@Me DBNation me, @Me User author, @Arg("The nation you are replying to") DBNation receiver, @Arg("The url of the mail") String url, String message, @Arg("The account to reply with\nMust be the same account that received the mail") @Switch("s") DBNation sender) throws IOException {
         if (!url.contains("message/id=") && !MathMan.isInteger(url)) return "URL must be a message url";
         int messageId = MathMan.isInteger(url) ? Integer.parseInt(url) : Integer.parseInt(url.split("=")[1]);
-        GPTUtil.checkThrowModeration(message);
+        if (!Roles.MAIL.hasOnRoot(author)) GPTUtil.checkThrowModeration(message);
 
         Auth auth;
         if (sender == null) {
@@ -1537,7 +1537,7 @@ public class IACommands {
     public static String mail(@Me DBNation me, @Me JSONObject command, @Me GuildDB db, @Me IMessageIO channel, @Me User author, Set<DBNation> nations, String subject, @TextArea String message, @Switch("f") boolean force, @Arg("Send from the api key registered to the guild") @Switch("l") boolean sendFromGuildAccount, @Arg("The api key to use to send the mail") @Switch("a") String apiKey) throws IOException {
         subject = MarkupUtil.transformURLIntoLinks(subject);
         message = MarkupUtil.transformURLIntoLinks(message);
-        GPTUtil.checkThrowModeration(subject + " " + message);
+        if (!Roles.MAIL.hasOnRoot(author)) GPTUtil.checkThrowModeration(subject + " " + message);
 
         ApiKeyPool.ApiKey myKey = me.getApiKey(false);
 
@@ -1739,6 +1739,9 @@ public class IACommands {
                     break;
                 }
             }
+            if (position != DBAlliancePosition.REMOVE && position != DBAlliancePosition.APPLICANT && nation.getAlliance_id() != position.getAlliance_id()) {
+                return "That position does not exist in the alliance: " + PW.getName(nation.getAlliance_id(), true);
+            }
         }
 
         if (!db.isAllianceId(nation.getAlliance_id())) return "This guild is not in the same alliance as " + nation.getAllianceName();
@@ -1756,13 +1759,15 @@ public class IACommands {
                 throw new IllegalArgumentException("You can only set rank for nations in your alliance (" + PW.getMarkdownUrl(allowedAllianceId.intValue(), true));
             }
         }
+        boolean isAdminOnRoot = Roles.ADMIN.hasOnRoot(author);
+        boolean canBypass = isAdminOnRoot && force;
 
         // Cannot promote above your own permissions
         DBAlliancePosition myPosition = me.getAlliancePosition();
         DBAlliancePosition nationPosition = nation.getAlliancePosition();
-        if (!Roles.ADMIN.hasOnRoot(author) || !force) {
+        if (!canBypass) {
             if (me.getAlliance_id() != allianceId || myPosition == null || !db.isAllianceId(myPosition.getAlliance_id())) {
-                if (position.hasAnyOfficerPermissions()) {
+                if (position.hasAnyOfficerPermissions() || position.getRank().id >= Rank.HEIR.id) {
                     return "You do not have permission to grant permissions you currently do not posses in the alliance";
                 }
             } else {
@@ -1799,7 +1804,7 @@ public class IACommands {
             }
         }
         // Cannot promote to leader, or any leader perms -> done
-        if ((position.hasAnyAdminPermission() || position.getRank().id >= Rank.HEIR.id) && (!Roles.ADMIN.hasOnRoot(author) ||!force)) {
+        if ((position.hasAnyAdminPermission() || position.getRank().id >= Rank.HEIR.id) && (!canBypass)) {
             return "You cannot promote to leadership positions (do this ingame)";
         }
         if ((nationPosition != null && nationPosition.hasAnyAdminPermission()) || nation.getPositionEnum().id >= Rank.HEIR.id) {
@@ -1807,10 +1812,20 @@ public class IACommands {
         }
 
         List<AlliancePermission> requiredPermissions = new ArrayList<>();
-        if (position.hasAnyOfficerPermissions() || nationPosition != null) requiredPermissions.add(AlliancePermission.CHANGE_PERMISSIONS);
-        if (nationPosition == null && nation.getPositionEnum() == Rank.APPLICANT) requiredPermissions.add(AlliancePermission.ACCEPT_APPLICANTS);
-        if (position == DBAlliancePosition.REMOVE || position == DBAlliancePosition.APPLICANT) requiredPermissions.add(AlliancePermission.REMOVE_MEMBERS);
+        if (position.hasPermission(AlliancePermission.CHANGE_PERMISSIONS)) requiredPermissions.add(AlliancePermission.CHANGE_PERMISSIONS);
+        if (position.hasPermission(AlliancePermission.WITHDRAW_BANK)) requiredPermissions.add(AlliancePermission.WITHDRAW_BANK);
+        if (position.hasPermission(AlliancePermission.REMOVE_MEMBERS)) requiredPermissions.add(AlliancePermission.REMOVE_MEMBERS);
+        if (position.hasPermission(AlliancePermission.EDIT_ALLIANCE_INFO)) requiredPermissions.add(AlliancePermission.EDIT_ALLIANCE_INFO);
+//        if (nationPosition == null && nation.getPositionEnum() == Rank.APPLICANT) requiredPermissions.add(AlliancePermission.ACCEPT_APPLICANTS);
+//        if (position == DBAlliancePosition.REMOVE || position == DBAlliancePosition.APPLICANT) requiredPermissions.add(AlliancePermission.REMOVE_MEMBERS);
+        for (AlliancePermission perm : requiredPermissions) {
+            if (myPosition == null || !myPosition.hasPermission(perm)) {
+                return "You do not have permission to change that rank (lacking " + perm + " ingame)";
+            }
+        }
         if (nation.getPositionEnum().id >= Rank.HEIR.id) return "You cannot change position of the nation heir or above";
+        if (position.hasPermission(AlliancePermission.PROMOTE_SELF_TO_LEADER))return "You cannot promote to a position that can promote self to leader";
+        if (position.getRank().id >= Rank.HEIR.id) return "You cannot promote to the nation heir or above";
 
         User discordUser = nation.getUser();
 
@@ -1972,7 +1987,7 @@ public class IACommands {
         String checkModMsg = command;
         if (subject != null) checkModMsg += subject;
         if (body != null) checkModMsg += body;
-        GPTUtil.checkThrowModeration(checkModMsg);
+        if (!Roles.MAIL.hasOnRoot(author)) GPTUtil.checkThrowModeration(checkModMsg);
 
         List<String> header = new ArrayList<>(Arrays.asList(
                 "nation",
@@ -2108,7 +2123,7 @@ public class IACommands {
         Map<DBNation, Map.Entry<String, String>> messageMap = new LinkedHashMap<>();
         if (force) {
             String messagesJoined = messageMap.values().stream().map(e -> e.getKey() + " " + e.getValue()).collect(Collectors.joining("\n"));
-            GPTUtil.checkThrowModeration(messagesJoined);
+            if (!Roles.MAIL.hasOnRoot(author)) GPTUtil.checkThrowModeration(messagesJoined);
         }
 
         for (int i = 0; i < nationNames.size(); i++) {
@@ -2628,7 +2643,7 @@ public class IACommands {
 
     @Command(desc = "Set the interview message")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public String setInterview(@Me GuildDB db, IACategory category, String message) {
+    public String setInterview(@Me GuildDB db, IACategory category, @AllowAttachment String message) {
         db.setCopyPasta("interview", message.replace("\\n", "\n"));
         return "Set `interview` to:\n```md\n" + message + "```\n\nUse " + CM.interview.questions.view.cmd.toSlashMention() + " to view";
     }

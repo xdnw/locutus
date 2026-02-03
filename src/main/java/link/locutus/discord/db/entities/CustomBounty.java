@@ -69,7 +69,7 @@ public class CustomBounty {
             }
             for (MilitaryUnit unit : MilitaryUnit.values) {
                 if (unit.getBuilding() == null) continue;
-                nationUnits += nation.getUnits(unit) * unit.getConvertedCost(nation.getResearchBits());
+                nationUnits += nation.getUnits(unit) * unit.getConvertedCost(nation.getResearchBits(null));
             }
         }
 

@@ -459,10 +459,10 @@ public class JavaCity implements IMutableCity {
                 return false;
             }
         }
-        if (checkInfra && Math.round(getInfra() * 100) != Math.round(other.getInfra() * 100)) {
+        if (checkInfra && ArrayUtil.toCents(getInfra()) != ArrayUtil.toCents(other.getInfra())) {
             return false;
         }
-        if (checkLand && Math.round(getLand() * 100) != Math.round(other.getLand() * 100)) {
+        if (checkLand && ArrayUtil.toCents(getLand()) != ArrayUtil.toCents(other.getLand())) {
             return false;
         }
         if (checkAge && getAgeDays() != other.getAgeDays()) {

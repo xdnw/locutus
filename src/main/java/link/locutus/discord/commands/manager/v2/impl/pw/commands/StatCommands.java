@@ -24,6 +24,7 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.builder.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -954,7 +955,11 @@ public class StatCommands {
                                     @Switch("v") boolean attachCsv, @Switch("ss") boolean attach_sheet) throws IOException {
         Set<DBNation> coalition1Nations = PW.getNationsSnapshot(coalition1.getNations(), coalition1.getFilter(), snapshotDate, db == null ? null : db.getGuild());
         Set<DBNation> coalition2Nations = PW.getNationsSnapshot(coalition2.getNations(), coalition2.getFilter(), snapshotDate, db == null ? null : db.getGuild());
-        IMessageBuilder msg = new StrengthTierGraph(
+        Set<DBNation> allNations = new ObjectOpenHashSet<>();
+        allNations.addAll(coalition1Nations);
+        allNations.addAll(coalition2Nations);
+        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(allNations, DBNation.class);
+        IMessageBuilder msg = new StrengthTierGraph(cacheStore,
                 coalition1.getFilter(),
                 coalition2.getFilter(),
                 coalition1Nations,
@@ -1192,7 +1197,9 @@ public class StatCommands {
         WarParser parser = WarParser.ofAANatobj(null, attackers, null, defenders, time, Long.MAX_VALUE);
 
         Map<Integer, Integer> victoryByEntity = new Int2IntOpenHashMap();
+        Map<Integer, Integer> lossesByEntity = new Int2IntOpenHashMap();
         Map<Integer, Integer> expireByEntity = new Int2IntOpenHashMap();
+        Map<Integer, Integer> peaceByEntity = new Int2IntOpenHashMap();
 
         for (Map.Entry<Integer, DBWar> entry : parser.getWars().entrySet()) {
             DBWar war = entry.getValue();
@@ -1203,17 +1210,27 @@ public class StatCommands {
 
             if (war.getStatus() == WarStatus.ATTACKER_VICTORY || war.getStatus() == WarStatus.DEFENDER_VICTORY) {
                 victoryByEntity.put(id, victoryByEntity.getOrDefault(id, 0) + 1);
+                int otherId = getId.apply(!primary, war);
+                lossesByEntity.put(otherId, lossesByEntity.getOrDefault(otherId, 0) + 1);
             } else if (war.getStatus() == WarStatus.EXPIRED) {
                 expireByEntity.put(id, expireByEntity.getOrDefault(id, 0) + 1);
+            } else if (war.getStatus() == WarStatus.PEACE) {
+                peaceByEntity.put(id, peaceByEntity.getOrDefault(id, 0) + 1);
             }
         }
 
         if (!victoryByEntity.isEmpty())
             new SummedMapRankBuilder<>(victoryByEntity).sort().nameKeys(f -> (isAA ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink())
                     .build(channel, command, "Victories");
+        if (!lossesByEntity.isEmpty())
+            new SummedMapRankBuilder<>(lossesByEntity).sort().nameKeys(f -> (isAA ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink())
+                    .build(channel, command, "Losses");
         if (!expireByEntity.isEmpty())
             new SummedMapRankBuilder<>(expireByEntity).sort().nameKeys(f -> (isAA ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink())
-                    .build(channel, command, "Expiries");
+                    .build(channel, command, "Expired");
+        if (!peaceByEntity.isEmpty())
+            new SummedMapRankBuilder<>(peaceByEntity).sort().nameKeys(f -> (isAA ? DBAlliance.getOrCreate(f) : DBNation.getOrCreate(f)).toShrink())
+                    .build(channel, command, "Peace");
     }
 
     @Command(desc = "Generate a graph of nation military levels by city count between two coalitions", viewable = true)
@@ -2082,7 +2099,7 @@ public class StatCommands {
     }
 
     @Command(desc = """
-                Get the militirization levels of top 80 alliances.
+                Get the militarization levels of top 80 alliances.
                 Each bar is segmented into four sections, from bottom to top: (soldiers, tanks, planes, ships)
                 Each alliance is grouped by sphere and color coded.""", viewable = true)
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
@@ -2272,7 +2289,6 @@ public class StatCommands {
             plot.setBarWidth(0.9);
             plot.setBackground(Color.WHITE);
 
-            Color COLOR1 = Color.DARK_GRAY;
             // Format bars
             BarPlot.BarRenderer pointRenderer = (BarPlot.BarRenderer) plot.getPointRenderers(data).get(0);
             pointRenderer.setColor(new ColorMapper() {
@@ -2295,7 +2311,7 @@ public class StatCommands {
             pointRenderer.setValueColor(new ColorMapper() {
                 @Override
                 public Paint get(Number number) {
-                    return CIEDE2000.findComplement(colorFunction.apply(number));
+                    return CIEDE2000.findContrast(colorFunction.apply(number), Color.WHITE);
                 }
 
                 @Override

@@ -221,34 +221,60 @@ public class PermissionBinding extends BindingHelper {
         throw new IllegalCallerException("You are not a member of " + db.getGuild() + " or its in-game alliance");
     }
 
+
     public static boolean checkRole(@Me Guild guild, RolePermission perm, @Me User user, Integer allianceId) {
         if (perm.root()) {
             guild = Locutus.imp().getServer();
         } else if (perm.guild() > 0) {
             guild = Locutus.imp().getDiscordApi().getGuildById(perm.guild());
-            if (guild == null) throw new IllegalCallerException("Guild " + perm.guild() + " does not exist" + " " + (user == null ? "<no user>" : user.getAsMention()) + " (are you sure Locutus is invited?)");
+            if (guild == null) {
+                throw new IllegalCallerException("Guild " + perm.guild() + " does not exist " +
+                        (user == null ? "<no user>" : user.getAsMention()));
+            }
         } else if (perm.onlyInGuildAlliance() && guild == null) {
             return true;
         }
+
         if (perm.onlyInGuildAlliance() && guild != null && !Locutus.imp().getGuildDB(guild).hasAlliance()) {
             return true;
         }
+
         if (user == null) return false;
-        boolean hasAny = false;
+
         for (Roles requiredRole : perm.value()) {
-            if (allianceId != null && !requiredRole.has(user, guild, allianceId) ||
-                    (!requiredRole.has(user, guild) && (!perm.alliance() || requiredRole.getAllowedAccounts(user, guild).isEmpty()))) {
-                if (perm.any()) continue;
-                throw new IllegalCallerException("You do not have " + requiredRole.name() + " on " + guild + " " + user.getAsMention() + " see: " + CM.role.setAlias.cmd.toSlashMention());
+            boolean hasDiscordRole = requiredRole.has(user, guild);
+            boolean hasExternalPerms = false;
+
+            if (!hasDiscordRole && requiredRole.isAllowAlliance()) {
+                if (allianceId != null) {
+                    hasExternalPerms = requiredRole.has(user, guild, allianceId);
+                }
+                else if (perm.alliance()) {
+                    hasExternalPerms = !requiredRole.getAllowedAccounts(user, guild).isEmpty();
+                }
+            }
+
+            if (hasDiscordRole || hasExternalPerms) {
+                if (perm.any()) {
+                    return true;
+                }
             } else {
-                hasAny = true;
+                if (!perm.any()) {
+                    throw new IllegalCallerException("You do not have " + requiredRole.name() + " on " + guild +
+                            " " + user.getAsMention() + " see: " + CM.role.setAlias.cmd.toSlashMention());
+                }
             }
         }
-        if (!hasAny) {
-            // join .name()
-            String rolesName = Arrays.asList(perm.value()).stream().map(Roles::name).collect(Collectors.joining(", "));
-            throw new IllegalCallerException("You do not have any of `" + rolesName + "` on `" + guild + "` `" + (user == null ? "<no user>" : user.getAsMention()) + "` see: " + CM.role.setAlias.cmd.toSlashMention());
+
+        if (perm.any()) {
+            String rolesName = Arrays.stream(perm.value())
+                    .map(Roles::name)
+                    .collect(Collectors.joining(", "));
+
+            throw new IllegalCallerException("You do not have any of `" + rolesName + "` on `" + guild +
+                    "` `" + user.getAsMention() + "` see: " + CM.role.setAlias.cmd.toSlashMention());
         }
-        return hasAny;
+
+        return true;
     }
 }

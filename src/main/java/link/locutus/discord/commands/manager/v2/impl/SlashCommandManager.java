@@ -836,8 +836,10 @@ public class SlashCommandManager extends ListenerAdapter {
                     } else {
                         Object result = parser.apply(stack);
                         if (!(result instanceof List) || ((List<?>) result).isEmpty()) {
-                            long diff = System.currentTimeMillis() - (startNanos / 1_000_000);
-                            Logg.text("[Autocomplete]" + user + " | No results for `" + option.getValue() + "` at `" + path + "` took " + diff + "ms");
+                            double diff = (System.nanoTime() - startNanos) / 1_000_000d;
+                            if (diff > 15) {
+                                Logg.text("[Autocomplete]" + user + " | No results for `" + option.getValue() + "` at `" + path + "` took " + diff + "ms");
+                            }
                             return;
                         }
                         List<Object> resultList = (List<Object>) result;
@@ -857,13 +859,16 @@ public class SlashCommandManager extends ListenerAdapter {
                             if (name.length() > MAX_STRING_VALUE_LENGTH) {
                                 name = name.substring(0, MAX_STRING_VALUE_LENGTH);
                             }
+                            if (value.length() > MAX_STRING_VALUE_LENGTH) {
+                                value = value.substring(0, MAX_STRING_VALUE_LENGTH);
+                            }
                             choices.add(new Choice(name, value));
                         }
                     }
                     if (!choices.isEmpty()) {
                         double diff = (System.nanoTime() - startNanos) / 1_000_000d;
                         if (diff > 15) {
-                            Logg.text("[Autocomplete]" + user + " | Results for `" + option.getValue() + "` at `" + path + "` took " + diff + "ms");
+                            Logg.text("[Autocomplete]" + user + " | Results for `" + option.getName() + " with `" + option.getValue() + "` at `" + path + "` took " + diff + "ms");
                         }
                         long newCompleteTime = userIdToAutoCompleteTimeNs.get(user.getIdLong());
                         if (newCompleteTime != startNanos) {

@@ -9,6 +9,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholder
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.gpt.GPTUtil;
+import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -39,7 +40,7 @@ public class Say extends Command {
         msg = msg.replace("@", "@\u200B");
         msg = msg.replace("&", "&\u200B");
 
-        GPTUtil.checkThrowModeration(msg);
+        if (!Roles.MAIL.hasOnRoot(author)) GPTUtil.checkThrowModeration(msg);
         NationPlaceholders formatter = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
         return formatter.format2(guild, me, author, msg.substring(5) + "\n\n- " + author.getAsMention(), me, false);
     }

@@ -26,7 +26,11 @@ public class PrimitiveCompleter extends BindingHelper {
         Filter filter = param.getAnnotation(Filter.class);
         if (filter != null) {
             if (!input.matches(filter.value())) {
-                throw new IllegalArgumentException("Invalid match for " + filter.value());
+                String errMsg = filter.desc();
+                if (errMsg.isEmpty()) {
+                    errMsg = "Invalid match for " + filter.value();
+                }
+                throw new IllegalArgumentException(errMsg);
             }
         }
         return null;

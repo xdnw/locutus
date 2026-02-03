@@ -21,6 +21,7 @@ import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.INationSnapshot;
 import link.locutus.discord.db.entities.Activity;
+import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.InterviewMessage;
 import link.locutus.discord.db.guild.GuildKey;
@@ -59,6 +60,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class DiscordUtil {
+    public static String getInvite() {
+        return "<https://discord.com/api/oauth2/authorize?client_id=" + Settings.INSTANCE.APPLICATION_ID + "&permissions=395606879321&scope=bot>\n" +
+                "<https://github.com/xdnw/locutus/wiki>";
+    }
+
     public static String getSupportServer() {
         return "https://discord.gg/" + Settings.INSTANCE.SUPPORT_INVITE;
     }
@@ -1304,7 +1310,10 @@ public class DiscordUtil {
                     if (coa.isEmpty()) {
                         GuildDB locutusStats = Locutus.imp().getGuildDB(Settings.INSTANCE.ROOT_COALITION_SERVER);
                         if (locutusStats != null) {
-                            coa = locutusStats.getCoalition(aaName);
+                            Coalition checkIfReserved = Coalition.parse(aaName);
+                            if (checkIfReserved == null) {
+                                coa = locutusStats.getCoalition(aaName);
+                            }
                         }
                         if (coa.isEmpty()) {
                             return null;

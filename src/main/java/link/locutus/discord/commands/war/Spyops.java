@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.war;
 
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -162,7 +163,7 @@ public class Spyops extends Command {
         Set<Integer> aaIds = db.getAllianceIds();
         if (!aaIds.isEmpty()) allies.addAll(aaIds);
 
-        Set<Integer> myEnemies = Locutus.imp().getWarDb().getWarsByNation(attacker.getNation_id()).stream()
+        Set<Integer> myEnemies = attacker.getActiveWars().stream()
                 .map(dbWar -> dbWar.getAttacker_id() == attacker.getNation_id() ? dbWar.getDefender_id() : dbWar.getAttacker_id())
                 .collect(Collectors.toSet());
 
@@ -234,14 +235,14 @@ public class Spyops extends Command {
             if (operation != Operation.INTEL) {
                 opTypes = new Operation[]{operation};
             }
-            ArrayList<Operation> opTypesList = new ArrayList<>(Arrays.asList(opTypes));
-            int maxMissile = MilitaryUnit.MISSILE.getMaxPerDay(nation.getCities(), nation::hasProject, nation::getResearch);
+            List<Operation> opTypesList = new ObjectArrayList<>(Arrays.asList(opTypes));
+            int maxMissile = MilitaryUnit.MISSILE.getMaxPerDay(nation.getCities(), nation::hasProject, f -> nation.getResearch(null, f));
             if (opTypesList.contains(Operation.MISSILE) && nation.getMissiles() > 0 && nation.getMissiles() <= maxMissile) {
                 Map<Long, Integer> purchases = nation.getUnitPurchaseHistory(MilitaryUnit.MISSILE, dcTime);
                 if (!purchases.isEmpty()) opTypesList.remove(Operation.MISSILE);
             }
 
-            int maxNuke = MilitaryUnit.NUKE.getMaxPerDay(nation.getCities(), nation::hasProject, nation::getResearch);
+            int maxNuke = MilitaryUnit.NUKE.getMaxPerDay(nation.getCities(), nation::hasProject, f -> nation.getResearch(null, f));
             if (opTypesList.contains(Operation.NUKE) && nation.getNukes() > 0 && nation.getNukes() <= maxNuke) {
                 Map<Long, Integer> purchases = nation.getUnitPurchaseHistory(MilitaryUnit.NUKE, dcTime);
                 if (!purchases.isEmpty()) opTypesList.remove(Operation.NUKE);

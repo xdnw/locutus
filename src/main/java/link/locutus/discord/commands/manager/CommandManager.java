@@ -130,8 +130,8 @@ public class CommandManager {
             return false;
         }
 
-        String content = DiscordUtil.trimContent(command.trim());
-        if (content.length() == 0) {
+        String content = command == null ? null : DiscordUtil.trimContent(command.trim());
+        if (content == null || content.isEmpty()) {
             return false;
         }
 
@@ -276,6 +276,7 @@ public class CommandManager {
                         }
                     }
                 }
+                Logg.text("Running command `" + content1 + "` for user `" + DiscordUtil.getFullUsername(msgUser) + "` in `" + (guild != null ? guild.toString() : "DM") + "`");
                 if (!(cmd instanceof Noformat) && nation != null && content1.indexOf('{') != -1 && content1.indexOf('}') != -1) {
                     try {
                         NationPlaceholders formatter = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();

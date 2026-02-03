@@ -377,4 +377,29 @@ public class WebUtil {
         }
         return url;
     }
+
+    public static String resolveOAuthRedirect(Context ctx) {
+        // Prefer Origin for SPA dev; fall back to Referer; else production.
+        String origin = ctx.header("Origin");
+        if (origin == null || origin.isBlank()) {
+            origin = baseOriginFromReferer(ctx.header("Referer"));
+        }
+        if (origin == null || origin.isBlank()) {
+            origin = Settings.INSTANCE.WEB.FRONTEND_DOMAIN;
+        }
+        // Must match the authorize redirect\\_uri exactly (including path and fragment you registered).
+        return origin + "/#/oauth2";
+    }
+
+    public static String baseOriginFromReferer(String referer) {
+        try {
+            if (referer == null || referer.isBlank()) return null;
+            URI u = URI.create(referer);
+            if (u.getScheme() == null || u.getHost() == null) return null;
+            int port = u.getPort();
+            return port == -1 ? (u.getScheme() + "://" + u.getHost()) : (u.getScheme() + "://" + u.getHost() + ":" + port);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
 }

@@ -166,7 +166,7 @@ public class SpySheet extends Command {
             Integer mySpies = attacker.getSpies();
             if (mySpies == null || mySpies == 0) continue;
             for (DBNation defender : defenders) {
-                int research = defender.getResearchBits();
+                int research = defender.getResearchBits(null);
                 if (attacker.isInSpyRange(defender) && defender.getSpies() * 0.66 <= attacker.getSpies()) {
                     double loginRatio = loginProb.get(defender);
 
@@ -207,7 +207,7 @@ public class SpySheet extends Command {
                             }
                         }
                         if (operation == Operation.NUKE) {
-                            int perDay = MilitaryUnit.NUKE.getMaxPerDay(defender.getCities(), defender::hasProject, defender::getResearch);
+                            int perDay = MilitaryUnit.NUKE.getMaxPerDay(defender.getCities(), defender::hasProject, f -> defender.getResearch(null, f));
                             if (defender.getNukes() <= perDay) {
                                 ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
                                 int minute = now.getHour() * 60 + now.getMinute();
@@ -226,7 +226,7 @@ public class SpySheet extends Command {
                             }
                         }
                         if (operation == Operation.MISSILE) {
-                            Integer missileCap = MilitaryUnit.MISSILE.getMaxPerDay(defender.getCities(), defender::hasProject, defender::getResearch);
+                            int missileCap = MilitaryUnit.MISSILE.getMaxPerDay(defender.getCities(), defender::hasProject, f -> defender.getResearch(null, f));
                             if (defender.getMissiles() == (missileCap)) {
                                 ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
                                 int minute = now.getHour() * 60 + now.getMinute();

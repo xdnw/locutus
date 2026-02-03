@@ -81,10 +81,10 @@ public class BlitzGenerator {
 
         String response;
         if (defender.getScore() < minScore) {
-            double diff = Math.round((minScore - defender.getScore()) * 100) / 100d;
+            double diff = ArrayUtil.toCents((minScore - defender.getScore())) / 100d;
             response = ("`" + defender.getNation() + "` is " + MathMan.format(diff) + "ns below " + "`" + attacker.getNation() + "`");
         } else if (defender.getScore() > maxScore) {
-            double diff = Math.round((defender.getScore() - maxScore) * 100) / 100d;
+            double diff = ArrayUtil.toCents((defender.getScore() - maxScore)) / 100d;
             response = ("`" + defender.getNation() + "` is " + MathMan.format(diff) + "ns above " + "`" + attacker.getNation() + "`");
         } else if (checkUpdeclare && getAirStrength(defender, false) > getAirStrength(attacker, true) * 1.33) {
             double ratio = getAirStrength(defender, false) / getAirStrength(attacker, true);

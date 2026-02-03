@@ -42,6 +42,10 @@ public class WebStore {
         this.context = context;
     }
 
+    public DBAuthRecord getCachedAuth() {
+        return auth;
+    }
+
     public static String render(Consumer<OwaspHtmlTemplateOutput> task) {
         TemplateOutput output = new StringOutput();
         OwaspHtmlTemplateOutput htmlOutput = new OwaspHtmlTemplateOutput(output);

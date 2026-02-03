@@ -7,6 +7,7 @@ import link.locutus.discord.apiv3.csv.column.BuildingColumn;
 import link.locutus.discord.apiv3.csv.header.CityHeader;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.nation.GlobalDataWrapper;
+import link.locutus.discord.util.math.ArrayUtil;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -118,11 +119,11 @@ public class BytesDBCity extends DBCity {
     }
 
     public int getLand_cents() {
-        return (int) Math.round(get(wrapper.header.land) * 100);
+        return (int) ArrayUtil.toCents(get(wrapper.header.land));
     }
 
     public int getInfra_cents() {
-        return (int) Math.round(get(wrapper.header.infrastructure) * 100);
+        return (int) ArrayUtil.toCents(get(wrapper.header.infrastructure));
     }
 
     public boolean isPowered() {

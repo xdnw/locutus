@@ -92,6 +92,7 @@ public class ALootCursor extends FailedCursor {
             if (this.looted == null) this.hasLoot = false;
         } else if (legacy.getMoney_looted() > 0) {
             hasLoot = true;
+            if (looted == null) looted = ResourceType.getBuffer();
             Arrays.fill(looted, 0);
             looted[ResourceType.MONEY.ordinal()] = legacy.getMoney_looted();
         }

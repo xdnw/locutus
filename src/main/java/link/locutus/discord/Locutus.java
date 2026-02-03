@@ -58,6 +58,7 @@ import link.locutus.discord.util.update.*;
 import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.components.actionrow.ActionRowChildComponentUnion;
 import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.entities.*;
@@ -592,7 +593,7 @@ public final class Locutus extends ListenerAdapter {
                 }
             }, 60, TimeUnit.SECONDS);
         }
-        if (Settings.USE_V2) {
+        if (Settings.USE_FALLBACK) {
             taskTrack.addTask("Update Nations V2", () -> {
                 runEventsAsync(events -> getNationDB().updateNationsV2(true, events));
             }, Settings.INSTANCE.TASKS.NATION_CITY_UPDATE_INTERVAL * 8, TimeUnit.SECONDS);
@@ -643,7 +644,7 @@ public final class Locutus extends ListenerAdapter {
             AtomicInteger lastTask = new AtomicInteger();
             taskTrack.addTask("Update Dirty Nations/Cities", () -> {
                 try {
-                    if (Settings.USE_V2) return;
+                    if (PW.API.hasRecent500Error()) return;
                     int taskIndex = lastTask.get() % updateTasks.size();
                     Runnable task = updateTasks.get(taskIndex);
                     if (fiveMinSkipper.shouldSkip()) {
@@ -660,13 +661,13 @@ public final class Locutus extends ListenerAdapter {
             }, Settings.INSTANCE.TASKS.NATION_CITY_UPDATE_INTERVAL, TimeUnit.SECONDS);
 
             taskTrack.addTask("Treaty", () -> {
-                if (Settings.USE_V2) return;
+                if (PW.API.hasRecent500Error()) return;
                 if (twoHourMinSkipper.shouldSkip()) return;
                 runEventsAsync(getNationDB()::updateTreaties);
             }, Settings.INSTANCE.TASKS.TREATY_UPDATE_SECONDS, TimeUnit.SECONDS);
 
             taskTrack.addTask("Bank", () -> {
-                if (Settings.USE_V2) return;
+                if (PW.API.hasRecent500Error()) return;
                 if (fiveMinSkipper.shouldSkip()) return;
                 runEventsAsync(f -> getBankDB().updateBankRecs(false, f));
             }, Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS, TimeUnit.SECONDS);
@@ -712,7 +713,7 @@ public final class Locutus extends ListenerAdapter {
             taskTrack.addTask("All War/Attack", () -> {
                 if (fifteenMinSkipper.shouldSkip()) return;
                 synchronized (warUpdateLock) {
-                    if (Settings.USE_V2) {
+                    if (PW.API.hasRecent500Error()) {
                         runEventsAsync(e -> getWarDb().updateAllWarsV2(e));
                     } else {
                         runEventsAsync(e -> getWarDb().updateAllWars(e));
@@ -724,20 +725,28 @@ public final class Locutus extends ListenerAdapter {
             taskTrack.addTask("Active War/Attack", () -> {
                 if (fiveMinSkipper.shouldSkip()) return;
                 synchronized (warUpdateLock) {
-                    runEventsAsync(f -> getWarDb().updateAttacksAndWarsV3(true, f, Settings.USE_V2));
+                    runEventsAsync(f -> getWarDb().updateAttacksAndWarsV3(true, f));
                 }
             }, Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS, TimeUnit.SECONDS);
 
             taskTrack.addTask("All Alliances", () -> {
-                if (Settings.USE_V2) {
-                    runEventsAsync(getNationDB()::updateAlliancesV2);
-                } else {
-                    if (hourMinSkipper.shouldSkip()) {
-                        if (fiveMinSkipper.shouldSkip()) return;
-                        runEventsAsync(events -> getNationDB().updateOutdatedAlliances(true, events));
-                        return;
+                boolean v2 = PW.API.hasRecent500Error();
+                if (!v2) {
+                    try {
+                        if (hourMinSkipper.shouldSkip()) {
+                            if (fiveMinSkipper.shouldSkip()) return;
+                            runEventsAsync(events -> getNationDB().updateOutdatedAlliances(true, events));
+                            return;
+                        }
+                        runEventsAsync(f -> getNationDB().updateAlliances(null, f));
+                    } catch (Throwable e) {
+                        if (!v2 && PW.API.is500Error(e)) {
+                            v2 = true;
+                        } else throw new RuntimeException(StringMan.stripApiKey(e.getMessage()));
                     }
-                    runEventsAsync(f -> getNationDB().updateAlliances(null, f));
+                }
+                if (v2) {
+                    runEventsAsync(getNationDB()::updateAlliancesV2);
                 }
             }, Settings.INSTANCE.TASKS.ALL_ALLIANCES_SECONDS, TimeUnit.SECONDS);
 
@@ -745,7 +754,7 @@ public final class Locutus extends ListenerAdapter {
 
             if (Settings.INSTANCE.TASKS.BOUNTY_UPDATE_SECONDS > 0) {
                 taskTrack.addTask("Bounties", () -> {
-                    if (Settings.USE_V2) return;
+                    if (PW.API.hasRecent500Error()) return;
                     if (twoHourMinSkipper.shouldSkip()) return;
                     Locutus.imp().getWarDb().updateBountiesV3();
                 },
@@ -753,7 +762,7 @@ public final class Locutus extends ListenerAdapter {
             }
             if (Settings.INSTANCE.TASKS.TREASURE_UPDATE_SECONDS > 0) {
                 taskTrack.addTask("Treasure", () -> {
-                    if (Settings.USE_V2) return;
+                    if (PW.API.hasRecent500Error()) return;
                     if (thirtyMinSkipper.shouldSkip()) return;
                     runEventsAsync(Locutus.imp().getNationDB()::updateTreasures);
                 }, Settings.INSTANCE.TASKS.TREASURE_UPDATE_SECONDS, TimeUnit.SECONDS);
@@ -761,7 +770,7 @@ public final class Locutus extends ListenerAdapter {
 
             if (Settings.INSTANCE.TASKS.BASEBALL_SECONDS > 0) {
                 taskTrack.addTask("Baseball", () -> {
-                    if (Settings.USE_V2) return;
+                    if (PW.API.hasRecent500Error()) return;
                     if (twoHourMinSkipper.shouldSkip()) return;
                     runEventsAsync(getBaseballDB()::updateGames);
                 }, Settings.INSTANCE.TASKS.BASEBALL_SECONDS, TimeUnit.SECONDS);
@@ -769,7 +778,7 @@ public final class Locutus extends ListenerAdapter {
 
             if (Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS > 0) {
                 taskTrack.addTask("Trade", () -> {
-                            if (Settings.USE_V2) return;
+                            if (PW.API.hasRecent500Error()) return;
                             if (fifteenMinSkipper.shouldSkip()) return;
                             runEventsAsync(getTradeManager()::updateTradeList);
                         },
@@ -778,7 +787,7 @@ public final class Locutus extends ListenerAdapter {
 
             if (Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS > 0) {
                 taskTrack.addTask("Discord User Id", () -> {
-                            if (Settings.USE_V2) return;
+                            if (PW.API.hasRecent500Error()) return;
                             if (twoHourMinSkipper.shouldSkip()) return;
                             Locutus.imp().getDiscordDB().updateUserIdsSince(Settings.INSTANCE.TASKS.NATION_DISCORD_SECONDS, false);
                         },
@@ -810,9 +819,12 @@ public final class Locutus extends ListenerAdapter {
 //            }
 
             {
-                if (!Settings.USE_V2) {
-                    runEventsAsync(events -> getNationDB().updateNationsV2(true, events));
-                    runEventsAsync(events -> getNationDB().updateCitiesV2(events));
+                runEventsAsync(events -> getNationDB().updateNationsV2(true, events));
+                runEventsAsync(events -> getNationDB().updateCitiesV2(events));
+                synchronized (warUpdateLock) {
+                    runEventsAsync(e -> getWarDb().updateAttacksAndWarsV3(true, e));
+                }
+                if (!PW.API.hasRecent500Error()) {
 //                    {
 //                        runEventsAsync(events -> getNationDB().updateAllNations(events, true));
 //                    }
@@ -822,22 +834,22 @@ public final class Locutus extends ListenerAdapter {
 //                    runEventsAsync(getNationDB()::updateTreaties);
 //                    getNationDB().saveAllCities(); // TODO save all cities
 
-                    getTradeManager().updateColorBlocs(); // TODO move to configurable task
+                    getTradeManager().updateColorBlocs();
                     try {
                         runEventsAsync(getNationDB()::updateBans);
                     } catch (Throwable e) {
                         e.printStackTrace();
                     }
-                } else {
-                    runEventsAsync(events -> getNationDB().updateNationsV2(true, events));
-                    runEventsAsync(events -> getNationDB().updateCitiesV2(events));
-                    synchronized (warUpdateLock) {
-                        runEventsAsync(e -> getWarDb().updateAttacksAndWarsV3(true, e, true));
-                    }
                 }
                 runEventsAsync(getNationDB()::deleteExpiredTreaties);
-
             }
+
+            getExecutor().submit(new CaughtRunnable() {
+                @Override
+                public void runUnsafe() {
+                    getNationDB().saveResearch();
+                }
+            });
 
             if (Settings.INSTANCE.TASKS.TURN_TASKS.ALLIANCE_METRICS) {
                 AllianceMetric.update(80);
@@ -978,6 +990,8 @@ public final class Locutus extends ListenerAdapter {
         try {
             String id = event.getModalId();
             User user = GuildShardManager.updateUserName(event.getUser());
+            if (Settings.INSTANCE.DISABLE_NON_ADMIN_COMMANDS && user.getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) return;
+
             InteractionHook hook = event.getHook();
             List<ModalMapping> values = event.getValues();
 
@@ -1033,6 +1047,7 @@ public final class Locutus extends ListenerAdapter {
 
     @Override
     public void onButtonInteraction(@NotNull ButtonInteractionEvent event) {
+        if (Settings.INSTANCE.DISABLE_NON_ADMIN_COMMANDS && event.getUser().getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) return;
         try {
             Message message = event.getMessage();
 
@@ -1200,6 +1215,7 @@ public final class Locutus extends ListenerAdapter {
 
     @Override
     public void onMessageReceived(@NotNull MessageReceivedEvent event) {
+        if (Settings.INSTANCE.DISABLE_NON_ADMIN_COMMANDS && event.getAuthor().getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) return;
         try {
             Guild guild = event.isFromGuild() ? event.getGuild() : null;
             if (guild != null) {
@@ -1263,6 +1279,7 @@ public final class Locutus extends ListenerAdapter {
     @Override
     public void onMessageReactionAdd(@Nonnull MessageReactionAddEvent event) {
         User author = event.getUser();
+        if (Settings.INSTANCE.DISABLE_NON_ADMIN_COMMANDS && author.getIdLong() != Settings.INSTANCE.ADMIN_USER_ID) return;
         if (author.isSystem() || (author.isBot() && !Settings.INSTANCE.LEGACY_SETTINGS.WHITELISTED_BOT_IDS.contains(author.getIdLong()))) {
             return;
         }
@@ -1300,7 +1317,10 @@ public final class Locutus extends ListenerAdapter {
         if (!(cmdObject instanceof Noformat)) {
             DBNation nation = DiscordUtil.getNation(user);
             NationPlaceholders formatter = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
-            cmd = formatter.format2(message.getGuild(), nation, user, cmd, nation, false);
+            String result = formatter.format2(message.getGuild(), nation, user, cmd, nation, false);
+            if (result != null) {
+                cmd = result;
+            }
         }
         Guild guild = message.isFromGuild() ? message.getGuild() : null;
 

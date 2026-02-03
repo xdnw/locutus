@@ -164,7 +164,7 @@ public enum AllianceMetric implements IAllianceMetric {
 
             double[] totalRss = ResourceType.getBuffer();
             for (DBNation nation : nations) {
-                double[] revenue = nation.getRevenue();
+                double[] revenue = nation.getRevenue(null);
                 ResourceType.add(totalRss, revenue);
             }
 
@@ -225,7 +225,7 @@ public enum AllianceMetric implements IAllianceMetric {
                 double[] buffer = result.computeIfAbsent(allianceId, f -> ResourceType.getBuffer());
                 double rads = radsMap.getOrDefault(nation.getContinent(), 0d);
                 boolean atWar = nationsAtWar.contains(nation.getNation_id());
-                PW.getRevenue(buffer, 12, date, nation, javaCities, true, false, true, false, false, rads, atWar, 0);
+                PW.getRevenue(null, buffer, 12, date, nation, javaCities, true, false, true, false, false, rads, atWar, 0);
             }
             importer.setRevenue(result);
             cityMap.clear();
@@ -692,12 +692,12 @@ public enum AllianceMetric implements IAllianceMetric {
                 if (totalCities == null) continue;
                 int previousCities = totalCities - entry.getValue();
                 boolean md = manifestDestiny.get(nationId);
-                boolean up = urbanPlanningByNation.getOrDefault(nationId, false);
-                boolean aup = advancedUrbanPlanningByNation.getOrDefault(nationId, false);
-                boolean mp = metropolitanPlanningByNation.getOrDefault(nationId, false);
+//                boolean up = urbanPlanningByNation.getOrDefault(nationId, false);
+//                boolean aup = advancedUrbanPlanningByNation.getOrDefault(nationId, false);
+//                boolean mp = metropolitanPlanningByNation.getOrDefault(nationId, false);
                 boolean gsa = governmentSupportAgencyByNation.getOrDefault(nationId, false);
                 boolean bda = bdaByNation.getOrDefault(nationId, false);
-                double cost = PW.City.cityCost(previousCities, totalCities, md, up, aup, mp, gsa, bda);
+                double cost = PW.City.cityCost(previousCities, totalCities, md, gsa, bda);
                 int allianceId = allianceByNationId.get(nationId);
                 cities10D.merge(allianceId, cost, Double::sum);
             }
@@ -975,7 +975,7 @@ public enum AllianceMetric implements IAllianceMetric {
         public Double apply(DBAlliance alliance) {
             double total = 0;
             for (DBNation nation : alliance.getMemberDBNations()) {
-                total += ResourceType.convertedTotal(Research.cost(nation.getResearchLevels()));
+                total += ResourceType.convertedTotal(Research.cost(nation.getResearchLevels(null)));
             }
             return total;
         }
@@ -987,7 +987,7 @@ public enum AllianceMetric implements IAllianceMetric {
             double total = 0;
             Set<DBNation> nations = alliance.getMemberDBNations();
             for (DBNation nation : nations) {
-                total += ResourceType.convertedTotal(Research.cost(nation.getResearchLevels()));
+                total += ResourceType.convertedTotal(Research.cost(nation.getResearchLevels(null)));
             }
             return total / nations.size();
         }
@@ -998,7 +998,7 @@ public enum AllianceMetric implements IAllianceMetric {
         public Double apply(DBAlliance alliance) {
             double total = 0;
             for (DBNation nation : alliance.getMemberDBNations()) {
-                total += nation.getResearchLevels().values().stream().mapToDouble(f -> f).sum();
+                total += nation.getResearchLevels(null).values().stream().mapToDouble(f -> f).sum();
             }
             return total;
         }
@@ -1010,7 +1010,7 @@ public enum AllianceMetric implements IAllianceMetric {
             double total = 0;
             Set<DBNation> nations = alliance.getMemberDBNations();
             for (DBNation nation : nations) {
-                total += nation.getResearchLevels().values().stream().mapToDouble(f -> f).sum();
+                total += nation.getResearchLevels(null).values().stream().mapToDouble(f -> f).sum();
             }
             return total / nations.size();
         }
@@ -1022,7 +1022,7 @@ public enum AllianceMetric implements IAllianceMetric {
             double total = 0;
             Set<DBNation> nations = alliance.getMemberDBNations();
             for (DBNation nation : nations) {
-                total += nation.getResearch(Research.GROUND_EFFICIENCY);
+                total += nation.getResearch(null, Research.GROUND_EFFICIENCY);
             }
             return total / nations.size();
         }
@@ -1033,7 +1033,7 @@ public enum AllianceMetric implements IAllianceMetric {
             double total = 0;
             Set<DBNation> nations = alliance.getMemberDBNations();
             for (DBNation nation : nations) {
-                total += nation.getResearch(Research.AIR_EFFICIENCY);
+                total += nation.getResearch(null, Research.AIR_EFFICIENCY);
             }
             return total / nations.size();
         }
@@ -1044,7 +1044,7 @@ public enum AllianceMetric implements IAllianceMetric {
             double total = 0;
             Set<DBNation> nations = alliance.getMemberDBNations();
             for (DBNation nation : nations) {
-                total += nation.getResearch(Research.NAVAL_EFFICIENCY);
+                total += nation.getResearch(null, Research.NAVAL_EFFICIENCY);
             }
             return total / nations.size();
         }
@@ -1055,7 +1055,7 @@ public enum AllianceMetric implements IAllianceMetric {
             double total = 0;
             Set<DBNation> nations = alliance.getMemberDBNations();
             for (DBNation nation : nations) {
-                total += nation.getResearch(Research.GROUND_CAPACITY);
+                total += nation.getResearch(null, Research.GROUND_CAPACITY);
             }
             return total / nations.size();
         }
@@ -1066,7 +1066,7 @@ public enum AllianceMetric implements IAllianceMetric {
             double total = 0;
             Set<DBNation> nations = alliance.getMemberDBNations();
             for (DBNation nation : nations) {
-                total += nation.getResearch(Research.AIR_CAPACITY);
+                total += nation.getResearch(null, Research.AIR_CAPACITY);
             }
             return total / nations.size();
         }
@@ -1077,7 +1077,7 @@ public enum AllianceMetric implements IAllianceMetric {
             double total = 0;
             Set<DBNation> nations = alliance.getMemberDBNations();
             for (DBNation nation : nations) {
-                total += nation.getResearch(Research.NAVAL_CAPACITY);
+                total += nation.getResearch(null, Research.NAVAL_CAPACITY);
             }
             return total / nations.size();
         }

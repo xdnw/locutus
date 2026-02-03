@@ -47,9 +47,9 @@ public class SyncAttacks extends Command {
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         WarUpdateProcessor.checkActiveConflicts();
         if (args.size() == 0) {
-            Locutus.imp().getWarDb().updateAttacksAndWarsV3(true, Event::post, Settings.USE_V2);
+            Locutus.imp().getWarDb().updateAttacksAndWarsV3(true, Event::post);
         } else if (args.size() == 1) {
-            Locutus.imp().getWarDb().updateAttacksAndWarsV3(false, Event::post, Settings.USE_V2);
+            Locutus.imp().getWarDb().updateAttacksAndWarsV3(false, Event::post);
         } else {
             return usage();
         }

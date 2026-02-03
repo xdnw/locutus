@@ -12,12 +12,16 @@ import java.util.*;
 public class Settings extends Config {
     @Ignore
     @Final
+    public final boolean DISABLE_NON_ADMIN_COMMANDS = false;
+
+    @Ignore
+    @Final
     public static final Settings INSTANCE = new Settings();
 
     @Comment({"Override use V2"})
     @Ignore
     @Final
-    public static boolean USE_V2 = false;
+    public static boolean USE_FALLBACK = false;
 
     @Comment({"Override use V2"})
     @Ignore
@@ -85,6 +89,8 @@ public class Settings extends Config {
     @Comment({"Number of discord shards to use, defaults to 1",
             "Only set this if your bot is in more than 2,500 servers"})
     public int SHARDS = 1;
+    @Comment("If to log console output to file")
+    public boolean LOG = true;
 
     ////////////////////////////////////////////////////////////////////////////
 
@@ -389,7 +395,7 @@ public class Settings extends Config {
         @Final
         @Comment({"Print the espionage debug information",
                 "Disabled by default, as it is verbose"})
-        public boolean PRINT_ESPIONAGE_DEBUG = true;
+        public boolean PRINT_ESPIONAGE_DEBUG = false;
 
         @Comment({"Whitelist a list of bot ids allowed to send messages to the bot",
         "Intended for testing purposes, DO NOT USE IN PRODUCTION"})
@@ -765,6 +771,12 @@ public class Settings extends Config {
             public boolean USE = true;
             @Comment("The directory to store the database in")
             public String DIRECTORY = "database";
+            @Comment("The in memory cache for banking in MB")
+            public int BANK_MMAP_SIZE_MB = 0;
+            @Comment("The in memory cache for banking in MB")
+            public int GPT_MMAP_SIZE_MB = 0;
+            @Comment("The in memory cache for root guild in MB")
+            public int GUILD_MMAP_SIZE_MB = 0;
         }
 
         public static class SYNC {

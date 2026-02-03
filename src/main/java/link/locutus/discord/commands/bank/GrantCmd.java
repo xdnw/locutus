@@ -698,7 +698,8 @@ public class GrantCmd extends Command {
                     throw new IllegalArgumentException(me.getNation() + " can only have up to " + max + " " + unit.getName());
                 }
 
-                resources = unit.getCost((int) amt, me::getResearch);
+                DBNation finalMe = me;
+                resources = unit.getCost((int) amt, f -> finalMe.getResearch(null, f));
                 grant = new Grant(me, DepositType.WARCHEST.withValue().ignore(ignore));
                 grant.setInstructions("Go to <" + Settings.PNW_URL() + "/military/" + unit.getName() + "/> and purchase " + (int) amt + " " + unit.getName());
             } else {
@@ -777,7 +778,7 @@ public class GrantCmd extends Command {
             double numBuildings = mmr.get(unit) * cities;
             int numUnitsPerRebuy = (int) (Math.floor(building.getUnitCap() * numBuildings));
             int numUnits = numUnitsPerRebuy * numBuys;
-            resources = ResourceType.addResourcesToA(resources, unit.getCost(numUnits, me::getResearch));
+            resources = ResourceType.addResourcesToA(resources, unit.getCost(numUnits, f -> me.getResearch(null, f)));
             response.append("- " + numUnits + " x " + unit);
             if (numBuys != 1) {
                 response.append(" (" + numUnitsPerRebuy + " per full buy)");
@@ -807,7 +808,7 @@ public class GrantCmd extends Command {
             double numBuildings = mmr.get(unit) * cities;
             int numUnitsPerDay = (int) (Math.floor(building.getUnitDailyBuy() * numBuildings));
             int numUnits = numUnitsPerDay * numBuys;
-            resources = ResourceType.addResourcesToA(resources, unit.getCost(numUnits, me::getResearch));
+            resources = ResourceType.addResourcesToA(resources, unit.getCost(numUnits, f -> me.getResearch(null, f)));
             response.append("- " + numUnits + " x " + unit);
             if (numBuys != 1) {
                 response.append(" (" + numUnitsPerDay + " per day)");
@@ -965,31 +966,31 @@ public class GrantCmd extends Command {
     public String grantCity(DBNation me, int numBuy, Map<ResourceType, Double> resources, boolean force) throws IOException {
         int currentCity = me.getCities();
 
-        boolean cp = me.hasProject(Projects.URBAN_PLANNING);
-        boolean acp = me.hasProject(Projects.ADVANCED_URBAN_PLANNING);
-        boolean mp = me.hasProject(Projects.METROPOLITAN_PLANNING);
+//        boolean cp = me.hasProject(Projects.URBAN_PLANNING);
+//        boolean acp = me.hasProject(Projects.ADVANCED_URBAN_PLANNING);
+//        boolean mp = me.hasProject(Projects.METROPOLITAN_PLANNING);
         boolean manifest = me.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY;
         boolean gsa = me.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY);
         boolean bda = me.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS);
 
         double cost = 0;
         for (int i = currentCity; i < currentCity + numBuy; i++) {
-            cost += PW.City.nextCityCost(i, manifest, cp, acp, mp, gsa, bda);
+            cost += PW.City.nextCityCost(i, manifest, gsa, bda);
         }
 
         StringBuilder result = new StringBuilder();
 
-        if (currentCity >= Projects.URBAN_PLANNING.requiredCities() && !cp && !force) {
-            result.append(Projects.URBAN_PLANNING + " has not been built\n");
-        }
-
-        if (currentCity >= Projects.ADVANCED_URBAN_PLANNING.requiredCities() && !acp && !force) {
-            result.append(Projects.ADVANCED_URBAN_PLANNING + " has not been built\n");
-        }
-
-        if (currentCity >= Projects.METROPOLITAN_PLANNING.requiredCities() && !mp && !force) {
-            result.append(Projects.METROPOLITAN_PLANNING.requiredCities() + " has not been built\n");
-        }
+//        if (currentCity >= Projects.URBAN_PLANNING.requiredCities() && !cp && !force) {
+//            result.append(Projects.URBAN_PLANNING + " has not been built\n");
+//        }
+//
+//        if (currentCity >= Projects.ADVANCED_URBAN_PLANNING.requiredCities() && !acp && !force) {
+//            result.append(Projects.ADVANCED_URBAN_PLANNING + " has not been built\n");
+//        }
+//
+//        if (currentCity >= Projects.METROPOLITAN_PLANNING.requiredCities() && !mp && !force) {
+//            result.append(Projects.METROPOLITAN_PLANNING.requiredCities() + " has not been built\n");
+//        }
 
 
         if (currentCity > 10 && !manifest && !force) {

@@ -56,9 +56,9 @@ import java.util.concurrent.TimeUnit;
 public class WebOptionBindings extends BindingHelper {
 //Parser
     @Binding(types = Parser.class)
-    public WebOption getParser() {
+    public WebOption getParser(PlaceholdersMap map) {
         List<String> options = new ArrayList<>();
-        ValueStore<Object> store = Locutus.cmd().getV2().getStore();
+        ValueStore<Object> store = map.getStore();
         for (Parser parser : store.getParsers().values()) {
             if (!parser.isConsumer(store)) continue;
             options.add(parser.getKey().toSimpleString());

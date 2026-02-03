@@ -127,7 +127,7 @@ public class SpyCommand extends Command {
         if (nation.getMissiles() > 0 || nation.getNukes() > 0) {
             long dcTime = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - (TimeUtil.getTurn() % 12));
 
-            int maxMissile = MilitaryUnit.MISSILE.getMaxPerDay(nation.getCities(), nation::hasProject, nation::getResearch);
+            int maxMissile = MilitaryUnit.MISSILE.getMaxPerDay(nation.getCities(), nation::hasProject, f -> nation.getResearch(null, f));
             if (nation.getMissiles() == maxMissile) {
                 Map<Long, Integer> purchases = nation.getUnitPurchaseHistory(MilitaryUnit.MISSILE, dcTime);
                 if (!purchases.isEmpty()) {
@@ -135,7 +135,7 @@ public class SpyCommand extends Command {
                 }
             }
 
-            int nukePerDay = MilitaryUnit.NUKE.getMaxPerDay(nation.getCities(), nation::hasProject, nation::getResearch);
+            int nukePerDay = MilitaryUnit.NUKE.getMaxPerDay(nation.getCities(), nation::hasProject, f -> nation.getResearch(null, f));
             if (nation.getNukes() <= nukePerDay) {
                 Map<Long, Integer> purchases = nation.getUnitPurchaseHistory(MilitaryUnit.NUKE, dcTime);
                 if (!purchases.isEmpty()) {

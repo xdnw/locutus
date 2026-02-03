@@ -21,7 +21,7 @@ buildscript {
     dependencies {
 //        classpath "io.jooby:jooby-gradle-plugin:2.8.5"
         classpath 'org.jooq:jooq-codegen:3.19.13'
-        classpath 'org.xerial:sqlite-jdbc:3.50.3.0'
+        classpath 'org.xerial:sqlite-jdbc:3.51.1.0'
         classpath 'com.gradleup.shadow:shadow-gradle-plugin:8.3.0'
     }
 }
@@ -128,12 +128,21 @@ if (useTs) {
                 'link.locutus.discord.util.task.multi.SameNetworkTrade',
                 'link.locutus.discord.util.task.multi.AdvMultiReport',
                 'link.locutus.discord.util.task.multi.AdvMultiRow',
+                'link.locutus.discord._main.RunHistorySnapshot',
+                'link.locutus.discord._main.TaskSummary',
+                'link.locutus.discord._main.ErrorSample',
+                'link.locutus.discord._main.TaskList',
+                'link.locutus.discord._main.TaskDetails',
         ]
         outputKind = 'module'
         nullableAnnotations = ['org.checkerframework.checker.nullness.qual.Nullable']
         nullabilityDefinition = 'undefinedInlineUnion'
         // set output file
         outputFile = file('../lc_cmd_react/src/lib/apitypes.d.ts')
+    }
+    tasks.named('generateTypeScript', cz.habarta.typescript.generator.gradle.GenerateTask).configure {
+        notCompatibleWithConfigurationCache("cz.habarta.typescript-generator task is not configuration-cache compatible.")
+        dependsOn(tasks.named('classes'))
     }
 }
 
@@ -180,7 +189,7 @@ dependencies {
 
     implementation 'com.google.http-client:google-http-client-jackson2:1.47.1'
 
-    implementation 'org.xerial:sqlite-jdbc:3.50.3.0'
+    implementation('org.xerial:sqlite-jdbc:3.51.1.0')
 
     implementation 'com.google.code.gson:gson:2.13.1'
     implementation 'org.jsoup:jsoup:1.21.1'
@@ -572,6 +581,7 @@ if (useShadow) {
         }
         manifest {
             attributes(
+                    'Class-Path': configurations.runtimeClasspath.files.collect { it.getName() }.join(' '),
                     'Main-Class': 'link.locutus.discord.Locutus'
             )
         }

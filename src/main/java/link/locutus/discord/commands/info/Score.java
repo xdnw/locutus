@@ -137,7 +137,7 @@ public class Score extends Command {
             nation.setMMR((mmrStr.charAt(0) - '0'), (mmrStr.charAt(1) - '0'), (mmrStr.charAt(2) - '0'), (mmrStr.charAt(3) - '0'));
         }
 
-        double score = nation.estimateScore(infra);
+        double score = nation.estimateScore(null, null, infra, null, null, null);
 
         if (score == 0) return usage("No score provided", channel);
 

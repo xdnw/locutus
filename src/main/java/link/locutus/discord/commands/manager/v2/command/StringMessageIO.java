@@ -26,6 +26,15 @@ public class StringMessageIO implements IMessageIO {
     }
 
     @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        for (StringMessageBuilder message : messages.values()) {
+            sb.append(message.toString()).append("\n");
+        }
+        return sb.toString().trim();
+    }
+
+    @Override
     public Guild getGuildOrNull() {
         return guild;
     }

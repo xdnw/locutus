@@ -412,7 +412,7 @@ public class RaidCommand extends Command {
                     int turnsInactive = (int) (turn - turnInactive);
 
                     if (turnsInactive > 0) {
-                        double[] revenue = enemy.getRevenue(turnsInactive + 24, true, true, false, true, false, false, 0d, false);
+                        double[] revenue = enemy.getRevenue(null, turnsInactive + 24, true, true, false, true, false, false, 0d, false);
                         if (loot != null) {
                             if (revenue[ResourceType.FOOD.ordinal()] > 0) {
                                 revenue[ResourceType.FOOD.ordinal()] *= foodFactor;
@@ -505,7 +505,7 @@ public class RaidCommand extends Command {
             if (value <= minLoot) continue;
 
             double counterChance = -1;
-            long myMilValue = me.militaryValue(false);
+            long myMilValue = me.militaryValue(null, false);
 
             if (enemy.active_m() < 10000 && enemy.getAlliance_id() != 0 && !enemyAAs.contains(enemy.getAlliance_id())) {
                 int turns = 2 * 12;
@@ -518,7 +518,7 @@ public class RaidCommand extends Command {
                     value -= Math.max(0, value - bankLootEst) * 0.25 * activeChance;
                 }
 
-                long enemyMilValue = enemy.militaryValue(false);
+                long enemyMilValue = enemy.militaryValue(null, false);
                 long minMilValue = (long) (Math.min(myMilValue, enemyMilValue) * 0.5);
 
                 if (enemy.getGroundStrength(true, false) > me.getGroundStrength(false, true)) {

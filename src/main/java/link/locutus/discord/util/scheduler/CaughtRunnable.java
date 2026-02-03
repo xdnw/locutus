@@ -11,7 +11,7 @@ public abstract class CaughtRunnable implements Runnable, CaughtTask {
             runUnsafe();
         } catch (Throwable e) {
             e.printStackTrace();
-            AlertUtil.error(e.getMessage(), e);
+            AlertUtil.error("Caught runnable", e);
         }
     }
 

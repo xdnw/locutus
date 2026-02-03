@@ -134,7 +134,7 @@ public class MailListener {
                 try {
                     event.reply(html);
                 } catch (Throwable e) {
-                    AlertUtil.error(e.getMessage(), e);
+                    AlertUtil.error("Mail error", e);
                     e.printStackTrace();
                 }
             }

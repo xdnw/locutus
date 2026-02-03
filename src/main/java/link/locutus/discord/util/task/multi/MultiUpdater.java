@@ -65,8 +65,6 @@ public class MultiUpdater {
         printMultiInfo();
     }
 
-
-
     private void init() {
         loadUidStatistics();      // no more Map<PwUid, Set<Integer>>
         loadAllianceTimeShares(); // the second block is unchanged
@@ -130,9 +128,9 @@ public class MultiUpdater {
                 DBNation n2 = nations.get(j);
                 final boolean sameAA = n1AA != 0 && n1AA == n2.getAlliance_id();
 
-                if (sameAA) {
-                    sharesUidInAa.addTo(n1Id, 1);
-                }
+//                if (sameAA) {
+//                    sharesUidInAa.addTo(n1Id, 1);
+//                }
 
                 if (Math.abs(n1Active - n2.active_m()) < 15) {
                     nationSharesTimeUid.addTo(n1Id, 1);

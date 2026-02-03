@@ -2,6 +2,8 @@ package link.locutus.discord.web.commands.binding;
 
 import cn.easyproject.easyocr.ImageType;
 import com.google.common.base.Predicates;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
@@ -14,7 +16,9 @@ import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
@@ -125,8 +129,39 @@ public class DiscordWebBindings extends WebBindingHelper {
 
     @HtmlInput
     @Binding(types=Guild.class)
-    public String guild(@Me User user, @Default ParameterData param) {
-        List<Guild> options = user.getMutualGuilds();
+    public String guild(@Default @Me User user, @Default ParameterData param, @Default @Me DBNation nation) {
+        Set<Guild> options = new ObjectLinkedOpenHashSet<>();
+        if (user != null) {
+            options.addAll(user.getMutualGuilds());
+        }
+        if (nation != null) {
+            DBAlliance aa = nation.getAlliance();
+            if (aa != null) {
+                GuildDB db = aa.getGuildDB();
+                if (db != null) {
+                    options.add(db.getGuild());
+                    for (GuildDB other : db.getDelegatedServers()) {
+                        options.add(other.getGuild());
+                    }
+                    GuildDB fa = GuildKey.FA_SERVER.getOrNull(db);
+                    if (fa != null) options.add(fa.getGuild());
+                    Guild milcom = GuildKey.WAR_SERVER.getOrNull(db);
+                    if (milcom != null) options.add(milcom);
+                }
+            }
+        }
+        if (options.isEmpty()) {
+            String invite = DiscordUtil.getInvite();
+            StringBuilder msg = new StringBuilder("No guilds available.");
+            if (user == null) {
+                msg.append(" Please register your user to select mutual guilds.");
+            }
+            if (nation == null) {
+                msg.append(" Please register your nation to select alliance servers.");
+            }
+            msg.append(" Invite locutus: ").append(invite);
+            throw new IllegalArgumentException(msg.toString());
+        }
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             names.add(formatGuildName(obj) + "/" + obj.getIdLong());
             values.add(obj.getIdLong());
@@ -140,8 +175,8 @@ public class DiscordWebBindings extends WebBindingHelper {
 
     @HtmlInput
     @Binding(types= GuildDB.class)
-    public String guildDB(@Me User user, @Default ParameterData param) {
-        return guild(user, param);
+    public String guildDB(@Default @Me User user, @Default ParameterData param, @Default @Me DBNation nation) {
+        return guild(user, param, nation);
     }
 
     @HtmlInput

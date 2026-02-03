@@ -132,7 +132,7 @@ public enum Coalition {
     EXTENSION("Counts as a member for the autorole tasks") {
         @Override
         public boolean hasPermission(Guild guild, User user) {
-            return Roles.ADMIN.hasOnRoot(user);
+            return Roles.hasAny(user, guild, Roles.ADMIN, Roles.FOREIGN_AFFAIRS);
         }
     }
 
@@ -159,7 +159,7 @@ public enum Coalition {
     }
 
     public boolean hasPermission(Guild guild, User user) {
-        return Roles.ADMIN.has(user, guild) ;
+        return Roles.ADMIN.has(user, guild);
     }
 
     @Override
@@ -167,7 +167,7 @@ public enum Coalition {
         return name() + ": `" + desc + "`";
     }
 
-    public static Coalition getOrNull(String input) {
+    public static Coalition parse(String input) {
         try {
             return Coalition.valueOf(input.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ignored) {
@@ -176,7 +176,7 @@ public enum Coalition {
     }
 
     public static void checkPermission(String input, Guild guild, User user) {
-        Coalition type = getOrNull(input);
+        Coalition type = parse(input);
         if (type != null && !type.hasPermission(guild, user)) {
             throw new IllegalArgumentException("You do not have permission to modify `" + type.name() + "`");
         }

@@ -64,8 +64,98 @@ import java.util.function.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static link.locutus.discord.util.math.ArrayUtil.DOUBLE_ADD;
+
 
 public final class PW {
+    public static class API {
+        // Settings.USE_FALLBACK is honored as a hard override
+// public final class Settings { public static boolean USE_FALLBACK = false; }
+
+        private static final Object LOCK = new Object();
+
+        private static final long MIN_BACKOFF_MS = TimeUnit.MINUTES.toMillis(1);    // initial
+        private static final long MAX_BACKOFF_MS = TimeUnit.MINUTES.toMillis(15);   // cap
+        private static final long ERROR_STALE_RESET_MS = TimeUnit.MINUTES.toMillis(5); // if no 500s for this long, reset counters
+
+        // State
+        private static volatile long last500Error = 0L;
+        private static volatile int consecutive500Errors = 0;
+        private static volatile long currentBackoffMs = 0L;
+        private static volatile long backoffUntil = 0L;
+
+        // Call this when catching exceptions from the primary. Returns true if it looks like a 500.
+        public static boolean is500Error(Throwable e) {
+            if (!looksLike500(e)) return false;
+
+            final long now = System.currentTimeMillis();
+            synchronized (LOCK) {
+                // If the last 500 was a while ago, treat this as a fresh incident
+                if (now - last500Error > ERROR_STALE_RESET_MS) {
+                    consecutive500Errors = 0;
+                    currentBackoffMs = 0;
+                }
+
+                last500Error = now;
+                consecutive500Errors++;
+
+                // Only start backoff after the second 500
+                if (consecutive500Errors >= 2) {
+                    currentBackoffMs = (currentBackoffMs == 0)
+                            ? MIN_BACKOFF_MS
+                            : Math.min(MAX_BACKOFF_MS, currentBackoffMs << 1); // double, capped
+                    backoffUntil = now + currentBackoffMs;
+                }
+            }
+            return true;
+        }
+
+        // Check this before using the primary. If true, prefer the fallback.
+        public static boolean hasRecent500Error() {
+            if (Settings.USE_FALLBACK) return true;
+
+            final long now = System.currentTimeMillis();
+            final long until = backoffUntil; // volatile read
+            return until > now;
+        }
+
+        // Optional helper: call this after a successful primary call to reset state.
+        public static void recordPrimarySuccess() {
+            synchronized (LOCK) {
+                consecutive500Errors = 0;
+                currentBackoffMs = 0;
+                backoffUntil = 0;
+                // Keep last500Error as historical
+            }
+        }
+
+        // Optional helper: how long until we try primary again.
+        public static long millisUntilPrimaryAllowed() {
+            final long now = System.currentTimeMillis();
+            final long until = backoffUntil;
+            return Math.max(0L, until - now);
+        }
+
+        public static boolean is500Message(String t) {
+            if (t == null) return false;
+            t = t.toLowerCase(Locale.ROOT);
+            return t.contains("500 internal server error")
+                    || t.contains("http 500")
+                    || t.contains(" status 500")
+                    || t.contains("is the game's api down?");
+        }
+
+        private static boolean looksLike500(Throwable t) {
+            while (t != null) {
+                final String msg = t.getMessage();
+                if (is500Message(msg)) {
+                    return true;
+                }
+                t = t.getCause();
+            }
+            return false;
+        }
+    }
 
     public static final class City {
         public static double getCostReduction(Predicate<Project> projects) {
@@ -93,7 +183,6 @@ public final class PW {
             int pollution = 0;
             long turns = TimeUtil.getTurn() - nukeTurn;
             if (turns < NUKE_TURN_MAX) {
-                double pollutionMax = 400d;
                 double nukePollution = (NUKE_TURN_MAX - turns) * NUKE_POLLUTION_MAX / (NUKE_TURN_MAX);
                 if (nukePollution > 0) {
                     pollution += (int) nukePollution;
@@ -175,8 +264,8 @@ public final class PW {
                 if (to <= from) return (from - to) * -150;
                 if (to > 20000) throw new IllegalArgumentException("Infra cannot exceed 10,000 (" + to + ")");
                 long total_cents = 0;
-                int to_cents = (int) Math.round(to * 100);
-                int from_cents = (int) Math.round(from * 100);
+                int to_cents = (int) ArrayUtil.toCents(to);
+                int from_cents = (int) ArrayUtil.toCents(from);
                 for (int i = to_cents; i >= from_cents; i -= 10000) {
                     int amt = Math.min(10000, i - from_cents);
                     int cost_cents = getInfraCostCents(i - amt);
@@ -391,9 +480,9 @@ public final class PW {
         public static double cityCost(DBNation nation, int from, int to) {
             return cityCost(from, to,
                     nation != null && nation.getDomesticPolicy() == DomesticPolicy.MANIFEST_DESTINY,
-                    nation != null && nation.hasProject(Projects.URBAN_PLANNING),
-                    nation != null && nation.hasProject(Projects.ADVANCED_URBAN_PLANNING),
-                    nation != null && nation.hasProject(Projects.METROPOLITAN_PLANNING),
+//                    nation != null && nation.hasProject(Projects.URBAN_PLANNING),
+//                    nation != null && nation.hasProject(Projects.ADVANCED_URBAN_PLANNING),
+//                    nation != null && nation.hasProject(Projects.METROPOLITAN_PLANNING),
                     nation != null && nation.hasProject(Projects.GOVERNMENT_SUPPORT_AGENCY),
                     nation != null && nation.hasProject(Projects.BUREAU_OF_DOMESTIC_AFFAIRS));
         }
@@ -406,14 +495,12 @@ public final class PW {
             return (int) Math.round(Math.max(10, ((infra_cents - diseaseDeaths - crimeDeaths) * ageBonus)));
         }
 
-        public static double cityCost(int from, int to, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency, boolean bureauOfDomesticAffairs) {
+        public static double cityCost(int from, int to, boolean manifestDestiny, boolean govSupportAgency, boolean bureauOfDomesticAffairs) {
             double total = 0;
             for (int city = Math.max(1, from); city < to; city++) {
                 total += nextCityCost(city,
                         manifestDestiny,
-                        cityPlanning,
-                        advCityPlanning,
-                        metPlanning, govSupportAgency, bureauOfDomesticAffairs);
+                        govSupportAgency, bureauOfDomesticAffairs);
             }
             return total;
         }
@@ -448,7 +535,8 @@ public final class PW {
 //            return Math.max(0, cost);
 //        }
 
-        public static double nextCityCost(int currentCity, boolean manifestDestiny, boolean cityPlanning, boolean advCityPlanning, boolean metPlanning, boolean govSupportAgency, boolean bureauOfDomesticAffairs) {
+        // removed: , boolean cityPlanning, boolean advCityPlanning, boolean metPlanning
+        public static double nextCityCost(int currentCity, boolean manifestDestiny, boolean govSupportAgency, boolean bureauOfDomesticAffairs) {
             if (CITY_AVERAGE == -1) {
                 CITY_AVERAGE = Locutus.imp().getDiscordDB().getCityAverage(40.8216);
                 Logg.info("Loaded City Average: " + CITY_AVERAGE);
@@ -528,7 +616,7 @@ public final class PW {
         GuildDB db = Locutus.imp().getRootCoalitionServer();
         if (db != null) {
             for (String coalition : db.getCoalitionNames()) {
-                Coalition namedCoal = Coalition.getOrNull(coalition);
+                Coalition namedCoal = Coalition.parse(coalition);
                 if (namedCoal != null) continue;
                 Set<Long> ids = db.getCoalitionRaw(coalition);
                 if (ids.contains((long) sphereId)) {
@@ -602,9 +690,7 @@ public final class PW {
         boolean allowConversionDefault = guildDB.getOrNull(GuildKey.RESOURCE_CONVERSION) == Boolean.TRUE;
         if (allowConversionDefault && nation != null) {
             GuildDB delegate = guildDB.getDelegateServer();
-            if (delegate == null) {
-                delegate = guildDB;
-            }
+            if (delegate == null) delegate = guildDB;
             Role role = Roles.RESOURCE_CONVERSION.toRole2(delegate);
             if (role != null) {
                 allowConversionDefault = false;
@@ -790,7 +876,7 @@ public final class PW {
         } else {
             double factor = decayFactor * sign;
             for (int i = 0; i < rss.length; i++) {
-                rss[i] += amount[i] * factor;
+                rss[i] = DOUBLE_ADD.applyAsDouble(rss[i], amount[i] * factor);
             }
         }
     }
@@ -838,20 +924,16 @@ public final class PW {
             Supplier<String> getHash = ArrayUtil.memorize(() -> Hashing.md5()
                     .hashString(Settings.INSTANCE.CONVERSION_SECRET + record.tx_id, StandardCharsets.UTF_8)
                     .toString());
-            boolean hasHash = false;
             String hash = null;
             if (value instanceof Number n) {
-                if (hash == null) hash = getHash.get();
+                hash = getHash.get();
                 if (record.note.contains(hash)) {
                     cashValue = n.doubleValue();
-                    hasHash = true;
                 }
             }
 
             if (cashValue == null) {
-
                 long oneWeek = TimeUnit.DAYS.toMillis(7);
-                long start = date - oneWeek;
                 TradeDB tradeDb = Locutus.imp().getTradeManager().getTradeDb();
 
                 Set<Byte> convertCached = null;
@@ -875,15 +957,23 @@ public final class PW {
                         convertCached = new ByteOpenHashSet();
                     }
                     convertCached.add((byte) resource.ordinal());
-                    Double avg = tradeDb.getWeeklyAverage(resource, date, null);
+                    Double avg = tradeDb.getWeeklyAverage(resource, date, resource.getMarketValue());
                     if (avg != null) {
                         cashValue += amt * avg * rate;
                     }
                 }
+                if (convertCached == null) {
+                    // No resources
+                    return;
+                }
+
                 if (setConvert) {
                     convert = convertCached;
+                    if (convert.isEmpty()) {
+                        convert = new ByteOpenHashSet(1);
+                        convert.add((byte) ResourceType.MONEY.ordinal());
+                    }
                 }
-                if (!hasHash)
                 {
                     if (hash == null) hash = getHash.get();
 
@@ -901,7 +991,6 @@ public final class PW {
                         note += " #rss=" + convertBits;
                     }
 
-
                     record.note = note.trim();
 
                     if (record.isInternal()) {
@@ -912,17 +1001,15 @@ public final class PW {
                 }
             }
         }
-        if (cashValue != null) {
-            if (convert == null) {
-                Arrays.fill(amount, 0);
-            } else {
-                for (byte b : convert) {
-                    ResourceType rss = ResourceType.values[b];
-                    amount[rss.ordinal()] = 0;
-                }
+        if (convert == null) {
+            Arrays.fill(amount, 0);
+        } else {
+            for (byte b : convert) {
+                ResourceType rss = ResourceType.values[b];
+                amount[rss.ordinal()] = 0;
             }
-            amount[0] = cashValue;
         }
+        amount[0] = cashValue;
     }
 
     public static double WAR_RANGE_MAX_MODIFIER = 2.50;
@@ -938,7 +1025,7 @@ public final class PW {
      * @return
      */
     public static double getAttackRange(boolean offensive, boolean isWar, boolean isMin, double score) {
-        long scoreInt = Math.round(score * 100);
+        long scoreInt = ArrayUtil.toCents(score);
         long range;
         if (offensive) {
             if (isWar) {
@@ -1035,7 +1122,7 @@ public final class PW {
             if (categorized.size() > 1) {
                 response.append("**Balance:** (`" + StringMan.join(balanceNotes, "`|`") + "`) worth: $" + MathMan.format(ResourceType.convertedTotal(balance)) + ")");
                 response.append("\n```").append(ResourceType.toString(balance)).append("``` ");
-            } else {
+            } else if (categorized.isEmpty()){
                 response.append("**No balance found**\n");
             }
         } else {
@@ -1098,6 +1185,7 @@ public final class PW {
     }
 
     public static Integer parseAllianceId(String arg) {
+        if (arg.length() == 1) return null;
         String lower = arg.toLowerCase();
         if (lower.startsWith("aa:")) arg = arg.substring(3);
         else if (lower.startsWith("alliance:")) arg = arg.substring(9);
@@ -1214,7 +1302,7 @@ public final class PW {
                 auth.login(false);
                 return task.call();
             } catch (Exception e) {
-                AlertUtil.error(e.getMessage(), e);
+                AlertUtil.error("Login error", e);
                 throw new RuntimeException(e);
             }
         }
@@ -1246,14 +1334,14 @@ public final class PW {
         return null;
     }
 
-    public static double[] getRevenue(double[] profitBuffer, int turns, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower, double treasureBonus) {
+    public static double[] getRevenue(ValueStore store, double[] profitBuffer, int turns, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower, double treasureBonus) {
         double rads = nation.getRads();
         boolean atWar = nation.getNumWars() > 0;
         long date = -1L;
-        return getRevenue(profitBuffer, turns, date, nation, cities, militaryUpkeep, tradeBonus, bonus, noFood, noPower, rads, atWar, treasureBonus);
+        return getRevenue(store, profitBuffer, turns, date, nation, cities, militaryUpkeep, tradeBonus, bonus, noFood, noPower, rads, atWar, treasureBonus);
     }
 
-    public static double[] getRevenue(double[] profitBuffer, int turns, long date, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower, double rads, boolean atWar, double treasureBonus) {
+    public static double[] getRevenue(ValueStore store, double[] profitBuffer, int turns, long date, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower, double rads, boolean atWar, double treasureBonus) {
         if (profitBuffer == null) profitBuffer = new double[ResourceType.values.length];
 
         Continent continent = nation.getContinent();
@@ -1282,7 +1370,7 @@ public final class PW {
         // Add military upkeep
         if (militaryUpkeep && !nation.hasUnsetMil()) {
             double factor = nation.getMilitaryUpkeepFactor() * turns / 12;
-            int research = nation.getResearchBits();
+            int research = nation.getResearchBits(store);
 
             for (MilitaryUnit unit : MilitaryUnit.values) {
                 int amt = nation.getUnits(unit);
@@ -1329,8 +1417,8 @@ public final class PW {
         return Settings.PNW_URL() + "/nation/id=" + nationId;
     }
 
-    public static String getAllianceUrl(int cityId) {
-        return Settings.PNW_URL() + "/alliance/id=" + cityId;
+    public static String getAllianceUrl(int allianceId) {
+        return Settings.PNW_URL() + "/alliance/id=" + allianceId;
     }
 
     public static String getTradeUrl(ResourceType type, boolean isBuy) {
@@ -1358,8 +1446,8 @@ public final class PW {
         };
     }
 
-    public static double estimateScore(NationDB db, DBNation nation) {
-        return estimateScore(db, nation, null, null, null, null, null);
+    public static double estimateScore(DBNation nation) {
+        return estimateScore(null, nation, null, null, null, null, null);
     }
 
     public enum ScoreType {
@@ -1388,14 +1476,14 @@ public final class PW {
         }
     }
 
-    public static Map<ScoreType, Double> scoreBreakdown(NationDB db, DBNation nation, MMRDouble mmr, Double infra, Integer projects, Integer cities, Integer researchBits) {
+    public static Map<ScoreType, Double> scoreBreakdown(DBNation nation, MMRDouble mmr, Double infra, Integer projects, Integer cities, Integer researchBits) {
         Map<ScoreType, Double> result = new EnumMap<>(ScoreType.class);
 
         if (projects == null) projects = nation.getNumProjects();
-        if (researchBits == null) researchBits = nation.getResearchBits();
+        if (researchBits == null) researchBits = nation.getResearchBits(null);
         if (infra == null) {
             infra = 0d;
-            for (DBCity city : db.getCitiesV3(nation.getNation_id()).values()) {
+            for (DBCity city : nation._getCitiesV3().values()) {
                 infra += city.getInfra();
             }
         }
@@ -1466,12 +1554,15 @@ public final class PW {
         return result;
     }
 
-    public static double estimateScore(NationDB db, DBNation nation, MMRDouble mmr, Double infra, Integer projects, Integer cities, Integer researchBits) {
+    public static double estimateScore(ValueStore store, DBNation nation, MMRDouble mmr, Double infra, Integer projects, Integer cities, Integer researchBits) {
+        if (infra == null && projects == null && cities == null && researchBits == null && mmr == null) {
+            return nation.getScore();
+        }
         if (projects == null) projects = nation.getNumProjects();
-        if (researchBits == null) researchBits = nation.getResearchBits();
+        if (researchBits == null) researchBits = nation.getResearchBits(store);
         if (infra == null) {
             infra = 0d;
-            for (DBCity city : db.getCitiesV3(nation.getNation_id()).values()) {
+            for (DBCity city : nation._getCitiesV3().values()) {
                 infra += city.getInfra();
             }
         }

@@ -19,7 +19,7 @@ public class WebDB extends DBMainV3 {
     private final Map<Integer, DBAuthRecord> authByNationId = new ConcurrentHashMap<>();
 
     public WebDB() throws SQLException, ClassNotFoundException {
-        super(Settings.INSTANCE.DATABASE, "web", false);
+        super(Settings.INSTANCE.DATABASE, "web", false, 0, 0);
         load();
     }
 

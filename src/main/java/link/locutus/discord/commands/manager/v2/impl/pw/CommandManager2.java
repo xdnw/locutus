@@ -43,6 +43,7 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import javax.annotation.Nullable;
@@ -150,32 +151,10 @@ public class CommandManager2 {
     }
 
     public CommandManager2() {
-        this.store = new SimpleValueStore<>();
-        new PrimitiveBindings().register(store);
-        new DiscordBindings().register(store);
-        PWBindings pwBindings = new PWBindings();
-        pwBindings.register(store);
-        new GPTBindings().register(store);
-        new SheetBindings().register(store);
-//        new StockBinding().register(store);
-        new NewsletterBindings().register(store);
-
-        this.validators = new ValidatorStore();
-        new PrimitiveValidators().register(validators);
-
-        this.permisser = new PermissionHandler();
-        new PermissionBinding().register(permisser);
-
-        this.placeholders = new PlaceholdersMap(store, validators, permisser);
-        // Register bindings
-        for (Class<?> type : placeholders.getTypes()) {
-            Placeholders<?, ?> ph = placeholders.get(type);
-            ph.register(store);
-        }
-        // Initialize commands (staged after bindings as there might be cross dependency)
-        for (Class<?> type : placeholders.getTypes()) {
-            placeholders.get(type).init();
-        }
+        this.store = PWBindings.createDefaultStore();
+        this.validators = PWBindings.createDefaultValidators();
+        this.permisser = PWBindings.createDefaultPermisser();
+        this.placeholders = new PlaceholdersMap(store, validators, permisser).init();
 
         this.commands = CommandGroup.createRoot(store, validators);
 
@@ -254,6 +233,12 @@ public class CommandManager2 {
 
     public CommandManager2 registerDefaults() {
         this.commands.registerMethod(new TradeCommands(), List.of("conflict", "sync"), "importCloudData", "cloud_providers");
+
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "clearAllApiKeys", "clearAllApiKeys");
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "clearInvalidAccounts", "clearInvalidAccounts");
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "fixCashConversion", "fixCashConversion");
+        this.commands.registerMethod(new AdminCommands(), List.of("sheets_econ"), "conversionRates", "conversion_rates");
+
         this.commands.registerMethod(new TradeCommands(), List.of("trade", "create"), "createSell", "sell");
         this.commands.registerMethod(new TradeCommands(), List.of("trade", "create"), "createBuy", "buy");
         this.commands.registerMethod(new TradeCommands(), List.of("trade", "create"), "undercutSell", "undercut_sell");
@@ -274,6 +259,7 @@ public class CommandManager2 {
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "reloadConfig", "config");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "cullInactiveGuilds", "cull_inactive_guilds");
 
+        getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "alliance"), "addAllForNation", "add_all_for_nation");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "edit"), "addManualWars", "add_none_war");
         getCommands().registerMethod(new SettingCommands(), List.of("bank"), "importTransactions", "import_transfers");
         getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "info", "info");
@@ -883,15 +869,20 @@ public class CommandManager2 {
         Runnable task = () -> {
             try {
                 if (fullCmdStr.startsWith("{")) {
-                    JSONObject json = new JSONObject(fullCmdStr);
-                    Map<String, Object> arguments = json.toMap();
-                    Map<String, String> stringArguments = new HashMap<>();
-                    for (Map.Entry<String, Object> entry : arguments.entrySet()) {
-                        stringArguments.put(entry.getKey(), entry.getValue().toString());
+                    try {
+                        JSONObject json = new JSONObject(fullCmdStr);
+                        Map<String, Object> arguments = json.toMap();
+                        Map<String, String> stringArguments = new HashMap<>();
+                        for (Map.Entry<String, Object> entry : arguments.entrySet()) {
+                            stringArguments.put(entry.getKey(), entry.getValue().toString());
+                        }
+                        String pathStr = arguments.remove("").toString();
+                        run(existingLocals, io, pathStr, stringArguments, async);
+                        return;
+                    } catch (JSONException e) {
+                        io.send("Invalid JSON command input: " + e.getMessage());
+                        return;
                     }
-                    String pathStr = arguments.remove("").toString();
-                    run(existingLocals, io, pathStr, stringArguments, async);
-                    return;
                 }
                 if (fullCmdStr.isEmpty()) {
                     if (returnNotFound) {
@@ -948,7 +939,7 @@ public class CommandManager2 {
                             Map<ParameterData, Map.Entry<String, Object>> map = parametric.parseArgumentsToMap(stack);
                             Object[] parsed = parametric.argumentMapToArray(map);
                             User user = (User) locals.getProvided(Key.of(User.class, Me.class), false);
-                            Logg.info("User `" + user + "`: " + fullCmdStr);
+                            Logg.info("User `" + user + "`: " + fullCmdStr + " in guild " + io.getGuildOrNull());
                             return parametric.call(null, locals, parsed);
                         } catch (RuntimeException e) {
                             Throwable e2 = e;
@@ -1011,8 +1002,11 @@ public class CommandManager2 {
                                     }
                                 }
                             }
+                            long startParse = System.currentTimeMillis();
                             Object[] parsed = parametric.parseArgumentMap(finalArguments, finalLocals, validators, permisser);
-                            Logg.info("User `" + user + "` execute command " + parametric.getFullPath() + " with args " + finalArguments);
+                            long parseDiff = System.currentTimeMillis() - startParse;
+                            String timeStr = (parseDiff >= 1000 ? "(took: " + (parseDiff / 1000.0) + "s)" : "");
+                            Logg.info("User `" + user + "` execute command " + parametric.getFullPath() + " with args " + finalArguments + timeStr + " in guild " + io.getGuildOrNull());
                             return parametric.call(null, finalLocals, parsed);
                         } catch (RuntimeException e) {
                             Throwable e2 = e;

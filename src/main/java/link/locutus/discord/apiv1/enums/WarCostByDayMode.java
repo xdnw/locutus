@@ -47,6 +47,18 @@ public enum WarCostByDayMode {
             return (cost, f) -> cost.getConsumption(f).getOrDefault(ResourceType.GASOLINE, 0d);
         }
     },
+    STEEL {
+        @Override
+        public BiFunction<AttackCost, Boolean, Double> apply() {
+            return (cost, f) -> cost.getConsumption(f).getOrDefault(ResourceType.STEEL, 0d);
+        }
+    },
+    ALUMINUM {
+        @Override
+        public BiFunction<AttackCost, Boolean, Double> apply() {
+            return (cost, f) -> cost.getConsumption(f).getOrDefault(ResourceType.ALUMINUM, 0d);
+        }
+    },
     UNIT {
         @Override
         public BiFunction<AttackCost, Boolean, Double> apply() {

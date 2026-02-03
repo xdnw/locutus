@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.table;
 
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.math.ArrayUtil;
 
 public enum TableNumberFormat {
     SI_UNIT {
@@ -15,7 +16,7 @@ public enum TableNumberFormat {
     PERCENTAGE_ONE {
         @Override
         public String toString(Number number) {
-            return MathMan.format(Math.round(number.doubleValue() * 100 * 100) / 100d) + "%";
+            return MathMan.format(ArrayUtil.toCents(number.doubleValue() * 100) / 100d) + "%";
         }
     },
     PERCENTAGE_100 {

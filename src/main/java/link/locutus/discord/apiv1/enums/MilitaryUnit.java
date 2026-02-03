@@ -237,7 +237,7 @@ public enum MilitaryUnit {
     }
 
     public int getCap(DBNation nation, boolean update) {
-        int researchBits = nation.getResearchBits();
+        int researchBits = nation.getResearchBits(null);
         return getCap(() -> nation.getCityMap(update).values(), nation::hasProject, researchBits);
     }
 
