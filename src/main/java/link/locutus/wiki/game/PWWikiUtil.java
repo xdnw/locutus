@@ -612,7 +612,7 @@ public class PWWikiUtil {
         long startTurn = TimeUtil.getTurn(date.getKey() * TimeUnit.DAYS.toMillis(1));
         long endTurn = date.getValue() == null ? Long.MAX_VALUE : TimeUtil.getTurn((date.getValue() + 1) * TimeUnit.DAYS.toMillis(1));
         Conflict conflict = new Conflict(0, 0, nameNormal, startTurn, endTurn, 0, 0, 0, true);
-        conflict.initData("Coalition 1", "Coalition 2", 0, category, urlStub, cb, status);
+        conflict.setLoaded("Coalition 1", "Coalition 2", 0, category, urlStub, cb, status);
         combatants.getKey().forEach(allianceId -> conflict.addParticipant(allianceId, true, false, true, null, null));
         combatants.getValue().forEach(allianceId -> conflict.addParticipant(allianceId, false, false, true, null, null));
         for (Map.Entry<String, DBTopic> topicEntry : page.getForumLinks().entrySet()) {

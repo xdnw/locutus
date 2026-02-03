@@ -9,6 +9,7 @@ import it.unimi.dsi.fastutil.ints.Int2ByteOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntArraySet;
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -76,6 +77,10 @@ import java.util.stream.Collectors;
 import static link.locutus.discord.db.conflict.ConflictField.*;
 
 public class ConflictManager {
+    public static ConflictManager get() {
+        return Locutus.imp().getWarDb().getConflicts();
+    }
+
     private final WarDB db;
     private final CloudStorage aws;
 
@@ -191,7 +196,7 @@ public class ConflictManager {
                     boolean recalcGraph = rs.getBoolean(RECALC_GRAPH.name());
                     Conflict conflict = new Conflict(id, ordinal++, name, startTurn, endTurn, pushedIndex, pushedPage, pushedGraph, recalcGraph);
                     if (conflict.isActive()) {
-                        conflict.initData(rs);
+                        conflict.setLoaded(rs);
                     }
                     conflicts.add(conflict);
                     conflictById.put(id, conflict);
@@ -503,8 +508,8 @@ public class ConflictManager {
             long now = System.currentTimeMillis();
             if (!active.isEmpty()) {
                 for (Conflict conflict : active) {
-                    conflict.getCoalition(true, true, true).updateTurnChange(this, turn, true);
-                    conflict.getCoalition(false, true, true).updateTurnChange(this, turn, true);
+                    conflict.getSide1().get().updateTurnChange(this, turn, true);
+                    conflict.getSide2().get().updateTurnChange(this, turn, true);
                 }
                 for (Conflict conflict : active) {
                     conflict.pushChanges(this, null, true, false, false, true, false, now);
@@ -575,11 +580,28 @@ public class ConflictManager {
         }
     }
 
-    private void loadConflictParticipantsAndAnnouncements(List<Integer> conflictIds, boolean loadAllParticipants, boolean initInactive) {
-        Collections.sort(conflictIds);
-        String inClause = conflictIds.size() == 1 ? " = " + conflictIds.get(0) : " IN " + StringMan.getString(conflictIds);
+    private void loadConflictMeta(Collection<Conflict> conflicts, boolean isStartup, boolean initWars) {
+        Set<Integer> missingMeta = new IntLinkedOpenHashSet();
+        Set<Integer> missingParticipants = new IntLinkedOpenHashSet();
+        Set<Integer> missingAnnouncements = new IntLinkedOpenHashSet();
 
-        if (initInactive) {
+        List<Integer> conflictIds = new IntArrayList();
+        for (Conflict conflict : conflicts) {
+            conflictIds.add(conflict.getId());
+        }
+        Collections.sort(conflictIds);
+
+        for (Conflict conflict : conflicts) {
+            if (!conflict.hasMetaLoaded()) missingMeta.add(conflict.getId());
+            if (!conflict.hasParticipantsLoaded()) missingParticipants.add(conflict.getId());
+            if (!conflict.hasAnnouncementsLoaded()) missingAnnouncements.add(conflict.getId());
+            conflict.setLoaded(true, initWars);
+        }
+
+        Function<Collection<Integer>, String> toInClause = ids -> ids.size() == 1 ? " = " + ids.iterator().next() : " IN " + StringMan.getString(ids);
+
+        if (!missingMeta.isEmpty()) {
+            String inClause = toInClause.apply(missingMeta);
             db.query("SELECT * FROM conflicts WHERE id " + inClause, stmt -> {
             }, (ThrowingConsumer<ResultSet>) rs -> {
                 while (rs.next()) {
@@ -587,25 +609,28 @@ public class ConflictManager {
                     if (!conflictIds.contains(id)) continue;
                     Conflict conflict = conflictById.get(id);
                     if (conflict != null) {
-                        conflict.initData(rs);
+                        conflict.setLoaded(rs);
                     }
                 }
             });
         }
 
-        if (loadAllParticipants || !conflictIds.isEmpty()) {
-            String whereClause = loadAllParticipants ? "" : " WHERE conflict_id " + inClause;
-            db.query("SELECT * FROM conflict_participant" + whereClause, stmt -> {
+        if (!missingParticipants.isEmpty() || isStartup) {
+            String inClause = toInClause.apply(isStartup ? conflictIds : missingParticipants);
+            db.query("SELECT * FROM conflict_participant WHERE conflict_id " + inClause, stmt -> {
             }, (ThrowingConsumer<ResultSet>) rs -> {
                 while (rs.next()) {
                     int conflictId = rs.getInt("conflict_id");
                     Conflict conflict = conflictById.get(conflictId);
                     if (conflict == null) continue;
                     int allianceId = rs.getInt("alliance_id");
-                    if (loadAllParticipants) conflictAlliances.add(allianceId);
+                    if (isStartup) conflictAlliances.add(allianceId);
 
-                    Conflict.ConflictMeta data = conflict.getData(false);
-                    if (data == null) continue;
+                    if (isStartup && !missingParticipants.contains(conflictId)) {
+                        // Dont initialize non active during startup, just add it to the global alliance set for caching
+                        continue;
+                    }
+
                     boolean side = rs.getBoolean("side");
                     long startTurn = rs.getLong("start");
                     long endTurn = rs.getLong("end");
@@ -614,9 +639,10 @@ public class ConflictManager {
             });
         }
 
-        if (!conflictIds.isEmpty()) {
+        if (!missingAnnouncements.isEmpty()) {
             if (Locutus.imp().getForumDb() != null) {
                 Map<Integer, Map<Integer, String>> conflictsByTopic = new Int2ObjectOpenHashMap<>();
+                String inClause = toInClause.apply(missingAnnouncements);
                 db.query("SELECT * FROM conflict_announcements2 WHERE conflict_id in " + inClause, stmt -> {
                 }, (ThrowingConsumer<ResultSet>) rs -> {
                     while (rs.next()) {
@@ -696,7 +722,7 @@ public class ConflictManager {
         synchronized (loadConflictLock) {
             List<Conflict> unloaded = new ObjectArrayList<>();
             for (Conflict conflict : conflicts) {
-                if (conflict.isLoaded()) continue;
+                if (conflict.isWarsLoaded()) continue;
                 unloaded.add(conflict);
             }
             if (!unloaded.isEmpty()) {
@@ -720,14 +746,7 @@ public class ConflictManager {
                         conflict.clearWarData();
                     }
                 }
-                for (Conflict conflict : conflictsFinal) {
-                    conflict.getCoalition(true, true, false).setLoaded(true);
-                    conflict.getCoalition(false, true, false).setLoaded(true);
-                }
-                {
-                    List<Integer> ids = conflictsFinal.stream().map(Conflict::getId).collect(Collectors.toList());
-                    loadConflictParticipantsAndAnnouncements(ids, isStartup, !isStartup);
-                }
+                loadConflictMeta(conflictsFinal, isStartup, true);
 
                 long startMs, endMs;
                 Predicate<Integer> allowedConflicts;
@@ -838,7 +857,7 @@ public class ConflictManager {
                             Conflict conflict = conflictById.get(conflictId);
                             if (conflict != null) {
                                 ConflictMetric metric = ConflictMetric.values[metricOrd];
-                                conflict.getCoalition(side, true, false).addGraphData(metric, allianceId, turnOrDay, city, value);
+                                conflict.getSide(side).get().addGraphData(metric, allianceId, turnOrDay, city, value);
                             }
                         }
                     });
@@ -1115,7 +1134,7 @@ public class ConflictManager {
             if (rs.next()) {
                 int id = rs.getInt(1);
                 Conflict conflict = new Conflict(id, conflictArr.length, name, turnStart, turnEnd, 0, 0, 0, true );
-                conflict.initData(col1, col2, creator, category, wiki, cb, status);
+                conflict.setLoaded(col1, col2, creator, category, wiki, cb, status);
                 conflictById.put(id, conflict);
                 synchronized (conflictArr) {
                     Conflict[] tmp = Arrays.copyOf(conflictArr, conflictArr.length + 1);

@@ -37,7 +37,7 @@ public class VirtualConflictCommands {
         long turnStart = TimeUtil.getTurn(start);
         long turnEnd = end == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTurn(end);
         Conflict conflict = new Conflict(-1, -1, conflictName, turnStart, turnEnd, 0, 0, 0, false);
-        conflict.initData(col1Name, col2Name, guild.getIdLong(), ConflictCategory.GENERATED, "", "", "");
+        conflict.setLoaded(col1Name, col2Name, guild.getIdLong(), ConflictCategory.GENERATED, "", "", "");
         for (DBAlliance aa : col1) conflict.addParticipant(aa.getId(), true, false, true, null, null);
         for (DBAlliance aa : col2) conflict.addParticipant(aa.getId(), false, false, true, null, null);
 

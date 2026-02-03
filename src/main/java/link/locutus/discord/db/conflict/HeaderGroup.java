@@ -119,8 +119,8 @@ public enum HeaderGroup {
 
         @Override
         public Map<String, Object> write(ConflictManager manager, Conflict conflict) {
-            CoalitionSide coalition1 = conflict.getCoalition(true, true, true);
-            CoalitionSide coalition2 = conflict.getCoalition(false, true, true);
+            CoalitionSide coalition1 = conflict.getSide1();
+            CoalitionSide coalition2 = conflict.getSide2();
 
             Map<String, Object> meta = new Object2ObjectLinkedOpenHashMap<>();
             meta.put("name", conflict.getName());
@@ -134,8 +134,8 @@ public enum HeaderGroup {
             meta.put("posts", conflict.getAnnouncementsList());
 
             List<Object> coalitions = new ObjectArrayList<>();
-            coalitions.add(coalition1.toMap(manager, true, false));
-            coalitions.add(coalition2.toMap(manager, true, false));
+            coalitions.add(coalition1.toMetaMap(manager));
+            coalitions.add(coalition2.toMetaMap(manager));
             meta.put("coalitions", coalitions);
 
             return meta;
@@ -159,8 +159,8 @@ public enum HeaderGroup {
 
         @Override
         public Map<String, Object> write(ConflictManager manager, Conflict conflict) {
-            CoalitionSide coalition1 = conflict.getCoalition(true, true, true);
-            CoalitionSide coalition2 = conflict.getCoalition(false, true, true);
+            CoalitionSide coalition1 = conflict.getSide1();
+            CoalitionSide coalition2 = conflict.getSide2();
 
             Map<String, Object> stats = new Object2ObjectLinkedOpenHashMap<>();
 
@@ -212,7 +212,7 @@ public enum HeaderGroup {
             );
 
             Map<Integer, Map<Integer, DamageStatGroup>> warsVsAlliance =
-                    conflict.getDataWithWars().warsVsAlliance2;
+                    conflict.getData().getSides().getDataWithWars();
             if (warsVsAlliance == null) {
                 warsVsAlliance = new Int2ObjectOpenHashMap<>();
             }
@@ -223,8 +223,8 @@ public enum HeaderGroup {
             );
 
             List<Object> coalitions = new ObjectArrayList<>();
-            coalitions.add(coalition1.toMap(manager, false, true));
-            coalitions.add(coalition2.toMap(manager, false, true));
+            coalitions.add(coalition1.get().toDataMap());
+            coalitions.add(coalition2.get().toDataMap());
             stats.put("coalitions", coalitions);
 
             return stats;
@@ -246,8 +246,8 @@ public enum HeaderGroup {
 
         @Override
         public Map<String, Object> write(ConflictManager manager, Conflict conflict) {
-            CoalitionSide coalition1 = conflict.getCoalition(true, true, false);
-            CoalitionSide coalition2 = conflict.getCoalition(false, true, false);
+            CoalitionSide coalition1 = conflict.getSide1();
+            CoalitionSide coalition2 = conflict.getSide2();
 
             Map<String, Object> graphMeta = new Object2ObjectLinkedOpenHashMap<>();
             graphMeta.put("name", conflict.getName());
@@ -257,8 +257,8 @@ public enum HeaderGroup {
                     : TimeUtil.getTimeFromTurn(conflict.getEndTurn()));
 
             List<Map<String, Object>> coalitions = new ObjectArrayList<>();
-            coalitions.add(coalition1.toMap(manager, true, false));
-            coalitions.add(coalition2.toMap(manager, true, false));
+            coalitions.add(coalition1.toMetaMap(manager));
+            coalitions.add(coalition2.toMetaMap(manager));
             graphMeta.put("coalitions", coalitions);
 
             return graphMeta;
@@ -317,12 +317,12 @@ public enum HeaderGroup {
             graphData.put("metrics_day", metricsDay);
 
             // Build coalition graph maps
-            CoalitionSide coalition1 = conflict.getCoalition(true, true, true);
-            CoalitionSide coalition2 = conflict.getCoalition(false, true, true);
+            CoalitionSide coalition1 = conflict.getSide1();
+            CoalitionSide coalition2 = conflict.getSide2();
 
             List<Map<String, Object>> coalitions = new ObjectArrayList<>();
-            coalitions.add(coalition1.toGraphMap(manager, metricsTurn, metricsDay, valueFuncs, columnMetricOffset));
-            coalitions.add(coalition2.toGraphMap(manager, metricsTurn, metricsDay, valueFuncs, columnMetricOffset));
+            coalitions.add(coalition1.get().toGraphMap(metricsTurn, metricsDay, valueFuncs, columnMetricOffset));
+            coalitions.add(coalition2.get().toGraphMap(metricsTurn, metricsDay, valueFuncs, columnMetricOffset));
             graphData.put("coalitions", coalitions);
 
             return graphData;

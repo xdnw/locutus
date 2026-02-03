@@ -1,178 +1,78 @@
 package link.locutus.discord.db.conflict;
 
-import it.unimi.dsi.fastutil.bytes.Byte2LongArrayMap;
-import it.unimi.dsi.fastutil.bytes.Byte2LongMap;
-import it.unimi.dsi.fastutil.bytes.Byte2LongOpenHashMap;
 import it.unimi.dsi.fastutil.bytes.Byte2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.bytes.ByteArrayList;
-import it.unimi.dsi.fastutil.bytes.ByteOpenHashSet;
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.longs.Long2ObjectArrayMap;
-import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.conflict.ConflictColumn;
-import link.locutus.discord.db.entities.conflict.ConflictMetric;
 import link.locutus.discord.db.entities.conflict.DamageStatGroup;
-import link.locutus.discord.db.entities.conflict.DayTierGraphData;
-import link.locutus.discord.db.entities.conflict.TurnTierGraphData;
-import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.scheduler.CachedSupplier;
 import link.locutus.discord.util.scheduler.KeyValue;
-import link.locutus.discord.web.jooby.JteUtil;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 public class CoalitionSide {
     private final Conflict parent;
-    private volatile boolean loaded;
     private String name;
     private final boolean isPrimary;
     private CoalitionSide otherSide;
     private final Set<Integer> coalition = new IntOpenHashSet();
 
-    // TODO consider shifting these to a separate WarStatistics class to separate concerns, possibly inside a CachedSupplier that can handle self loading
-    private volatile long latestGraphTurn = -1L;
-    private final Map<Integer, Integer> allianceIdByNation = new Int2ObjectOpenHashMap<>();
-    private final DamageStatGroup inflictedAndOffensiveStats = new DamageStatGroup();
-    private final DamageStatGroup lossesAndDefensiveStats = new DamageStatGroup();
-    private final Map<Integer, Map.Entry<DamageStatGroup, DamageStatGroup>> damageByAlliance = new Int2ObjectOpenHashMap<>();
-    private final Map<Integer, Map.Entry<DamageStatGroup, DamageStatGroup>> damageByNation = new Int2ObjectOpenHashMap<>();
-    private final Map<Long, TurnTierGraphData> graphDataByTurn = new Long2ObjectArrayMap<>();
-    private final Map<Long, DayTierGraphData> graphDataByDay = new Long2ObjectArrayMap<>();
-    private final Map<Long, Map<Integer, Map<Byte, Map.Entry<DamageStatGroup, DamageStatGroup>>>> damageByDayByAllianceByCity = new Long2ObjectArrayMap<>();
+    private volatile WarStatistics tmp;
+    private final CachedSupplier<WarStatistics> warStatistics;
 
-    public synchronized void clearWarData() {
-        inflictedAndOffensiveStats.clear();
-        lossesAndDefensiveStats.clear();
-        damageByAlliance.clear();
-        damageByNation.clear();
-        damageByDayByAllianceByCity.clear();
-        graphDataByTurn.clear();
-        graphDataByDay.clear();
-        allianceIdByNation.clear();
-        this.loaded = false;
-        latestGraphTurn = -1L;
-    }
-
-    public long getLatestGraphTurn() {
-        return latestGraphTurn;
-    }
-
-    private void markLatestGraphTurn(long turn) {
-        if (turn > latestGraphTurn) latestGraphTurn = turn;
-    }
-
-    public void setLoaded(boolean loaded) {
-        this.loaded = loaded;
-    }
-
-    public boolean isLoaded() {
-        return loaded;
-    }
-
-    public Set<Integer> getNationIds() {
-        return damageByNation.keySet();
-    }
-
-    public void updateTurnChange(ConflictManager manager, long turn, boolean save) {
-        Set<DBNation> nations = new AllianceList(coalition).getNations(true, 0, true);
-
-        long day = TimeUtil.getDayFromTurn(turn);
-        if (day != TimeUtil.getDayFromTurn(turn - 1)) {
-            updateDayTierGraph(manager, day, nations, true, save);
-        }
-        updateTurnTierGraph(manager, turn, nations, true, save);
-    }
-
-    public void addGraphData(ConflictMetric metric, int allianceId, long turnOrDay, int city, int value) {
-        if (metric.isDay()) {
-            graphDataByDay.computeIfAbsent(turnOrDay, k -> new DayTierGraphData()).getOrCreate(metric, allianceId).put((byte) city, value);
-        } else {
-            graphDataByTurn.computeIfAbsent(turnOrDay, k -> new TurnTierGraphData()).getOrCreate(metric, allianceId).put((byte) city, value);
-            markLatestGraphTurn(turnOrDay);
-        }
-    }
-
-    public void updateTurnTierGraph(ConflictManager manager, long turn, Map<Integer, Map<Byte, Map<MilitaryUnit, Integer>>> data, boolean force, boolean save) {
-        if (!force) {
-            if (graphDataByTurn.containsKey(turn)) return;
-        } else {
-            if (save && graphDataByTurn.containsKey(turn)) {
-                manager.clearGraphData(List.of(
-                                ConflictMetric.SOLDIER, ConflictMetric.TANK, ConflictMetric.AIRCRAFT, ConflictMetric.SHIP),
-                        getParent().getId(), isPrimary, turn);
+    public CoalitionSide(Conflict parent, String name, boolean isPrimary) {
+        this.parent = parent;
+        this.name = name;
+        this.isPrimary = isPrimary;
+        this.warStatistics = CachedSupplier.of(() -> {
+            if (tmp != null) return tmp;
+            WarStatistics stats = tmp = new WarStatistics(this);
+            if (parent.getId() > 0) {
+                ConflictManager.get().ensureLoadedFully(Set.of(parent));
             }
-        }
-        TurnTierGraphData graphData = new TurnTierGraphData();
-        for (Map.Entry<Integer, Map<Byte, Map<MilitaryUnit, Integer>>> allianceEntry : data.entrySet()) {
-            int allianceId = allianceEntry.getKey();
-            for (Map.Entry<Byte, Map<MilitaryUnit, Integer>> entry : allianceEntry.getValue().entrySet()) {
-                for (Map.Entry<MilitaryUnit, Integer> unitEntry : entry.getValue().entrySet()) {
-                    graphData.getOrCreate(ConflictMetric.BY_UNIT.get(unitEntry.getKey()), allianceId).put(entry.getKey(), unitEntry.getValue());
-                }
-            }
-        }
-        graphDataByTurn.put(turn, graphData);
-        markLatestGraphTurn(turn);
-        if (save) {
-            graphData.save(manager, getParent().getId(), isPrimary, turn);
+            tmp = null;
+            return stats;
+        });
+        if (parent.getId() <= 0) {
+            setLoaded();
         }
     }
 
-    public List<ConflictMetric.Entry> getGraphEntries() {
-        List<ConflictMetric.Entry> entries = new ObjectArrayList<>();
-        graphDataByTurn.forEach((k, v) -> entries.addAll(v.getEntries(parent.getId(), isPrimary, k)));
-        graphDataByDay.forEach((k, v) -> entries.addAll(v.getEntries(parent.getId(), isPrimary, k)));
-        return entries;
+    public boolean isPrimary() {
+        return isPrimary;
     }
 
-    public void updateDayTierGraph(ConflictManager manager, long day, Set<DBNation> nations, boolean force, boolean save) {
-        if (!force) {
-            if (graphDataByDay.containsKey(day)) return;
-        } else {
-            if (save && graphDataByDay.containsKey(day)) {
-                manager.clearGraphData(List.of(ConflictMetric.INFRA, ConflictMetric.BEIGE, ConflictMetric.NATION), getParent().getId(), isPrimary, day);
-            }
-        }
-        DayTierGraphData dayGraph = graphDataByDay.computeIfAbsent(day, k -> new DayTierGraphData());
-        dayGraph.update(nations);
-        if (save) {
-            dayGraph.save(manager, getParent().getId(), isPrimary, day);
-        }
+    public int getId() {
+        return parent.getId();
     }
 
-    public void updateTurnTierGraph(ConflictManager manager, long turn, Set<DBNation> nations, boolean force, boolean save) {
-        if (!force) {
-            if (graphDataByTurn.containsKey(turn)) return;
-        } else {
-            if (save && graphDataByTurn.containsKey(turn)) {
-                manager.clearGraphData(List.of(ConflictMetric.SOLDIER, ConflictMetric.TANK, ConflictMetric.AIRCRAFT, ConflictMetric.SHIP, ConflictMetric.SPIES), getParent().getId(), isPrimary, turn);
-            }
-        }
-        TurnTierGraphData turnGraph = graphDataByTurn.computeIfAbsent(turn, k -> new TurnTierGraphData());
-        markLatestGraphTurn(turn);
-        turnGraph.update(nations);
-        if (save) {
-            turnGraph.save(manager, getParent().getId(), isPrimary, turn);
-        }
+    public void setLoaded() {
+        this.warStatistics.setValueIfAbsent(() -> {
+            WarStatistics tmp2 = tmp;
+            return tmp2 != null ? tmp2 : new WarStatistics(this);
+        });
+    }
+
+    public boolean isWarsLoaded() {
+        return warStatistics.hasValue();
+    }
+
+    public void clearWarData() {
+        warStatistics.unload();
+    }
+
+    public WarStatistics get() {
+        return warStatistics.get();
     }
 
     public List<Integer> getAllianceIdsSorted() {
@@ -181,44 +81,20 @@ public class CoalitionSide {
         return allianceIds;
     }
 
-    public Map<String, Object> toMap(ConflictManager manager, boolean meta, boolean data) {
+    public Map<String, Object> toMetaMap(ConflictManager manager) {
         Map<String, Object> root = new Object2ObjectLinkedOpenHashMap<>();
         List<Integer> allianceIds = new ArrayList<>(coalition);
 
         Collections.sort(allianceIds);
-        if (meta) {
-            root.put("name", getName());
-            List<String> allianceNames = new ObjectArrayList<>();
-            for (int id : allianceIds) {
-                String aaName = manager.getAllianceNameOrNull(id);
-                if (aaName == null) aaName = "";
-                allianceNames.add(aaName);
-            }
-            root.put("alliance_ids", allianceIds);
-            root.put("alliance_names", allianceNames);
+        root.put("name", getName());
+        List<String> allianceNames = new ObjectArrayList<>();
+        for (int id : allianceIds) {
+            String aaName = manager.getAllianceNameOrNull(id);
+            if (aaName == null) aaName = "";
+            allianceNames.add(aaName);
         }
-
-        if (data) {
-            List<Integer> nationIds = new IntArrayList(damageByNation.keySet());
-            Collections.sort(nationIds);
-            List<String> nationNames = new ObjectArrayList<>();
-            for (int id : nationIds) {
-                DBNation nation = DBNation.getById(id);
-                String name = nation == null ? "" : nation.getName();
-                nationNames.add(name);
-            }
-            List<Integer> nationAAs = nationIds.stream().map(allianceIdByNation::get).collect(Collectors.toList());
-            root.put("nation_aa", nationAAs);
-            root.put("nation_ids", nationIds);
-            root.put("nation_names", nationNames);
-
-            Map<ConflictColumn, Function<DamageStatGroup, Object>> damageHeader = DamageStatGroup.createHeader();
-            List<List<Object>> damageData = new ObjectArrayList<>();
-            JteUtil.writeArray(damageData, damageHeader.values(), List.of(lossesAndDefensiveStats, inflictedAndOffensiveStats));
-            JteUtil.writeArray(damageData, damageHeader.values(), allianceIds, damageByAlliance);
-            JteUtil.writeArray(damageData, damageHeader.values(), nationIds, damageByNation);
-            root.put("damage", damageData);
-        }
+        root.put("alliance_ids", allianceIds);
+        root.put("alliance_names", allianceNames);
         return root;
     }
 
@@ -240,13 +116,15 @@ public class CoalitionSide {
     }
 
     public DamageStatGroup getOffensiveStats(Integer id, boolean isAlliance) {
-        if (id == null) return inflictedAndOffensiveStats;
-        Map.Entry<DamageStatGroup, DamageStatGroup> pair = isAlliance ? damageByAlliance.get(id) : damageByNation.get(id);
+        WarStatistics stats = get();
+        if (id == null) return stats.inflictedAndOffensiveStats;
+        Map.Entry<DamageStatGroup, DamageStatGroup> pair = isAlliance ? stats.damageByAlliance.get(id) : stats.damageByNation.get(id);
         return pair == null ? null : pair.getValue();
     }
     public DamageStatGroup getDefensiveStats(Integer id, boolean isAlliance) {
-        if (id == null) return lossesAndDefensiveStats;
-        Map.Entry<DamageStatGroup, DamageStatGroup> pair = isAlliance ? damageByAlliance.get(id) : damageByNation.get(id);
+        WarStatistics stats = get();
+        if (id == null) return stats.lossesAndDefensiveStats;
+        Map.Entry<DamageStatGroup, DamageStatGroup> pair = isAlliance ? stats.damageByAlliance.get(id) : stats.damageByNation.get(id);
         return pair == null ? null : pair.getKey();
     }
 
@@ -259,14 +137,15 @@ public class CoalitionSide {
     }
 
     public DamageStatGroup getDamageStats(boolean isLosses, Integer id, boolean isAlliance) {
-        if (id == null) return isLosses ? lossesAndDefensiveStats : inflictedAndOffensiveStats;
-        Map<Integer, Map.Entry<DamageStatGroup, DamageStatGroup>> map = isAlliance ? damageByAlliance : damageByNation;
+        WarStatistics stats = get();
+        if (id == null) return isLosses ? stats.lossesAndDefensiveStats : stats.inflictedAndOffensiveStats;
+        Map<Integer, Map.Entry<DamageStatGroup, DamageStatGroup>> map = isAlliance ? stats.damageByAlliance : stats.damageByNation;
         Map.Entry<DamageStatGroup, DamageStatGroup> pair = map.computeIfAbsent(id, k -> KeyValue.of(new DamageStatGroup(), new DamageStatGroup()));
         return isLosses ? pair.getKey() : pair.getValue();
     }
 
     private Map.Entry<DamageStatGroup, DamageStatGroup> getAllianceDamageStatsByDayPair(int id, int cities, long day) {
-        return damageByDayByAllianceByCity.computeIfAbsent(day, k -> new Int2ObjectOpenHashMap<>())
+        return get().damageByDayByAllianceByCity.computeIfAbsent(day, k -> new Int2ObjectOpenHashMap<>())
                 .computeIfAbsent(id, k -> new Byte2ObjectOpenHashMap<>())
                 .computeIfAbsent((byte) cities, k -> KeyValue.of(new DamageStatGroup(), new DamageStatGroup()));
     }
@@ -274,13 +153,6 @@ public class CoalitionSide {
     private DamageStatGroup getAllianceDamageStatsByDay(boolean isLosses, int id, int cities, long day) {
         Map.Entry<DamageStatGroup, DamageStatGroup> entry = getAllianceDamageStatsByDayPair(id, cities, day);
         return isLosses ? entry.getKey() : entry.getValue();
-    }
-
-    public CoalitionSide(Conflict parent, String name, boolean isPrimary, boolean loaded) {
-        this.parent = parent;
-        this.name = name;
-        this.isPrimary = isPrimary;
-        this.loaded = loaded;
     }
 
     public void setNameRaw(String name) {
@@ -304,9 +176,10 @@ public class CoalitionSide {
     }
 
     private void applyAttackerStats(int allianceId, int nationId, int cities, long day, Consumer<DamageStatGroup> onEach) {
-        Integer existing = allianceIdByNation.get(nationId);
+        WarStatistics stats = get();
+        Integer existing = stats.allianceIdByNation.get(nationId);
         if (existing == null || existing > allianceId) {
-            allianceIdByNation.put(nationId, allianceId);
+            stats.allianceIdByNation.put(nationId, allianceId);
         }
         onEach.accept(getDamageStats(false, allianceId, true));
         onEach.accept(getDamageStats(false, nationId, false));
@@ -314,9 +187,10 @@ public class CoalitionSide {
     }
 
     private void applyDefenderStats(int allianceId, int nationId, int cities, long day, Consumer<DamageStatGroup> onEach) {
-        Integer existing = allianceIdByNation.get(nationId);
+        WarStatistics stats = get();
+        Integer existing = stats.allianceIdByNation.get(nationId);
         if (existing == null || existing > allianceId) {
-            allianceIdByNation.put(nationId, allianceId);
+            stats.allianceIdByNation.put(nationId, allianceId);
         }
         onEach.accept(getDamageStats(true, allianceId, true));
         onEach.accept(getDamageStats(true, nationId, false));
@@ -324,6 +198,7 @@ public class CoalitionSide {
     }
 
     public void updateWar(DBWar previous, DBWar current, boolean isAttacker) {
+        WarStatistics wars = get();
         int cities;
         long day = TimeUtil.getDay(current.getDate());
         int attackerAA, attackerId;
@@ -332,10 +207,10 @@ public class CoalitionSide {
             attackerAA = current.getAttacker_aa();
             attackerId = current.getAttacker_id();
             if (previous == null) {
-                inflictedAndOffensiveStats.newWar(current, true);
+                wars.inflictedAndOffensiveStats.newWar(current, true);
                 applyAttackerStats(attackerAA, attackerId, cities, day, p -> p.newWar(current, true));
             } else {
-                inflictedAndOffensiveStats.updateWar(previous, current, true);
+                wars.inflictedAndOffensiveStats.updateWar(previous, current, true);
                 applyAttackerStats(attackerAA, attackerId, cities, day, p -> p.updateWar(previous, current, true));
             }
         } else {
@@ -343,28 +218,29 @@ public class CoalitionSide {
             attackerId = current.getDefender_id();
             cities = current.getDefCities();
             if (previous == null) {
-                lossesAndDefensiveStats.newWar(current, false);
+                wars.lossesAndDefensiveStats.newWar(current, false);
                 applyDefenderStats(attackerAA, attackerId, cities, day, p -> p.newWar(current, false));
             } else {
-                lossesAndDefensiveStats.updateWar(previous, current, false);
+                wars.lossesAndDefensiveStats.updateWar(previous, current, false);
                 applyDefenderStats(attackerAA, attackerId, cities, day, p -> p.updateWar(previous, current, false));
             }
         }
     }
 
     public void updateAttack(DBWar war, AbstractCursor attack, int attackerAA, int nationId, int cities, long day, boolean isAttacker, AttackTypeSubCategory subCategory) {
-        Map.Entry<DamageStatGroup, DamageStatGroup> aaDamage = damageByAlliance.computeIfAbsent(attackerAA,
+        WarStatistics wars = get();
+        Map.Entry<DamageStatGroup, DamageStatGroup> aaDamage = wars.damageByAlliance.computeIfAbsent(attackerAA,
                 k -> KeyValue.of(new DamageStatGroup(), new DamageStatGroup()));
-        Map.Entry<DamageStatGroup, DamageStatGroup> nationDamage = damageByNation.computeIfAbsent(nationId,
+        Map.Entry<DamageStatGroup, DamageStatGroup> nationDamage = wars.damageByNation.computeIfAbsent(nationId,
                 k -> KeyValue.of(new DamageStatGroup(), new DamageStatGroup()));
 
         Map.Entry<DamageStatGroup, DamageStatGroup> tierDamage = getAllianceDamageStatsByDayPair(attackerAA, cities, day);
 
         if (isAttacker) {
-            inflictedAndOffensiveStats.newAttack(war, attack, subCategory);
+            wars.inflictedAndOffensiveStats.newAttack(war, attack, subCategory);
 
-            lossesAndDefensiveStats.apply(attack, war, true);
-            inflictedAndOffensiveStats.apply(attack, war, false);
+            wars.lossesAndDefensiveStats.apply(attack, war, true);
+            wars.inflictedAndOffensiveStats.apply(attack, war, false);
 
             aaDamage.getKey().apply(attack, war, true);
             aaDamage.getValue().apply(attack, war, false);
@@ -377,10 +253,10 @@ public class CoalitionSide {
 
             applyAttackerStats(attackerAA, nationId, cities, day, p -> p.newAttack(war, attack, subCategory));
         } else {
-            lossesAndDefensiveStats.newAttack(war, attack, subCategory);
+            wars.lossesAndDefensiveStats.newAttack(war, attack, subCategory);
 
-            lossesAndDefensiveStats.apply(attack, war, false);
-            inflictedAndOffensiveStats.apply(attack, war, true);
+            wars.lossesAndDefensiveStats.apply(attack, war, false);
+            wars.inflictedAndOffensiveStats.apply(attack, war, true);
 
             aaDamage.getKey().apply(attack, war, false);
             aaDamage.getValue().apply(attack, war, true);
@@ -395,349 +271,7 @@ public class CoalitionSide {
         }
     }
 
-
-    private void trimTimeData(Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> turnData) {
-        if (turnData.size() < 2) {
-            return;
-        }
-
-        Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> trimmed =
-                new Long2ObjectArrayMap<>(turnData.size());
-        Int2ObjectMap<Int2ObjectMap<Byte2LongOpenHashMap>> previous = new Int2ObjectOpenHashMap<>();
-
-        LongArrayList turns = new LongArrayList(turnData.keySet());
-        turns.sort(null);
-
-        for (long currentTurn : turns) {
-            Map<Integer, Map<Integer, Map<Byte, Long>>> currentData = turnData.get(currentTurn);
-            if (currentData == null || currentData.isEmpty()) {
-                continue;
-            }
-
-            Map<Integer, Map<Integer, Map<Byte, Long>>> trimmedTurn = null;
-
-            for (Map.Entry<Integer, Map<Integer, Map<Byte, Long>>> metricEntry : currentData.entrySet()) {
-                int metricId = metricEntry.getKey();
-                Map<Integer, Map<Byte, Long>> currentByMetric = metricEntry.getValue();
-
-                Int2ObjectMap<Byte2LongOpenHashMap> previousByMetric = previous.get(metricId);
-                if (previousByMetric == null) {
-                    previousByMetric = new Int2ObjectOpenHashMap<>(currentByMetric.size());
-                    previous.put(metricId, previousByMetric);
-
-                    for (Map.Entry<Integer, Map<Byte, Long>> allianceEntry : currentByMetric.entrySet()) {
-                        Byte2LongOpenHashMap primitiveMap = ensurePrimitiveCityMap(allianceEntry);
-                        previousByMetric.put(
-                                allianceEntry.getKey(),
-                                new Byte2LongOpenHashMap(primitiveMap));
-                    }
-
-                    if (trimmedTurn == null) {
-                        trimmedTurn = trimmed.computeIfAbsent(
-                                currentTurn, k -> new Int2ObjectOpenHashMap<>());
-                    }
-                    trimmedTurn.put(metricId, currentByMetric);
-                    continue;
-                }
-
-                Map<Integer, Map<Byte, Long>> trimmedMetric = null;
-
-                for (Map.Entry<Integer, Map<Byte, Long>> allianceEntry : currentByMetric.entrySet()) {
-                    int allianceId = allianceEntry.getKey();
-                    Byte2LongOpenHashMap currentByAlliance = ensurePrimitiveCityMap(allianceEntry);
-
-                    Byte2LongOpenHashMap previousByAlliance = previousByMetric.get(allianceId);
-                    if (previousByAlliance == null) {
-                        previousByAlliance = new Byte2LongOpenHashMap(currentByAlliance);
-                        previousByMetric.put(allianceId, previousByAlliance);
-
-                        if (trimmedTurn == null) {
-                            trimmedTurn = trimmed.computeIfAbsent(
-                                    currentTurn, k -> new Int2ObjectOpenHashMap<>());
-                        }
-                        if (trimmedMetric == null) {
-                            trimmedMetric = trimmedTurn.computeIfAbsent(
-                                    metricId, k -> new Int2ObjectOpenHashMap<>());
-                        }
-                        trimmedMetric.put(allianceId, currentByAlliance);
-                        continue;
-                    }
-
-                    Byte2LongArrayMap delta = null;
-
-                    ObjectIterator<Byte2LongMap.Entry> cityIterator =
-                            currentByAlliance.byte2LongEntrySet().fastIterator();
-                    while (cityIterator.hasNext()) {
-                        Byte2LongMap.Entry cityEntry = cityIterator.next();
-                        byte cityId = cityEntry.getByteKey();
-                        long currentValue = cityEntry.getLongValue();
-                        boolean hadValue = previousByAlliance.containsKey(cityId);
-                        long previousValue = hadValue ? previousByAlliance.get(cityId) : 0L;
-
-                        if (!hadValue || currentValue != previousValue) {
-                            previousByAlliance.put(cityId, currentValue);
-                            if (delta == null) {
-                                delta = new Byte2LongArrayMap();
-                            }
-                            delta.put(cityId, currentValue);
-                        }
-                    }
-
-                    ObjectIterator<Byte2LongMap.Entry> previousIterator =
-                            previousByAlliance.byte2LongEntrySet().fastIterator();
-                    while (previousIterator.hasNext()) {
-                        Byte2LongMap.Entry prevEntry = previousIterator.next();
-                        byte cityId = prevEntry.getByteKey();
-                        if (!currentByAlliance.containsKey(cityId)
-                                && prevEntry.getLongValue() != 0L) {
-                            prevEntry.setValue(0L);
-                            if (delta == null) {
-                                delta = new Byte2LongArrayMap();
-                            }
-                            delta.put(cityId, 0L);
-                        }
-                    }
-
-                    if (delta != null) {
-                        if (trimmedTurn == null) {
-                            trimmedTurn = trimmed.computeIfAbsent(
-                                    currentTurn, k -> new Int2ObjectOpenHashMap<>());
-                        }
-                        if (trimmedMetric == null) {
-                            trimmedMetric = trimmedTurn.computeIfAbsent(
-                                    metricId, k -> new Int2ObjectOpenHashMap<>());
-                        }
-                        trimmedMetric.put(allianceId, delta);
-                    }
-                }
-
-                ObjectIterator<Int2ObjectMap.Entry<Byte2LongOpenHashMap>> previousAllianceIterator =
-                        previousByMetric.int2ObjectEntrySet().iterator();
-                while (previousAllianceIterator.hasNext()) {
-                    Int2ObjectMap.Entry<Byte2LongOpenHashMap> previousAllianceEntry =
-                            previousAllianceIterator.next();
-                    int allianceId = previousAllianceEntry.getIntKey();
-
-                    if (currentByMetric.containsKey(allianceId)) {
-                        continue;
-                    }
-
-                    Byte2LongOpenHashMap previousByAlliance = previousAllianceEntry.getValue();
-                    Byte2LongArrayMap delta = null;
-
-                    ObjectIterator<Byte2LongMap.Entry> cityIterator =
-                            previousByAlliance.byte2LongEntrySet().fastIterator();
-                    while (cityIterator.hasNext()) {
-                        Byte2LongMap.Entry cityEntry = cityIterator.next();
-                        if (cityEntry.getLongValue() != 0L) {
-                            cityEntry.setValue(0L);
-                            if (delta == null) {
-                                delta = new Byte2LongArrayMap();
-                            }
-                            delta.put(cityEntry.getByteKey(), 0L);
-                        }
-                    }
-
-                    if (delta != null) {
-                        if (trimmedTurn == null) {
-                            trimmedTurn = trimmed.computeIfAbsent(
-                                    currentTurn, k -> new Int2ObjectOpenHashMap<>());
-                        }
-                        trimmedTurn.computeIfAbsent(
-                                        metricId, k -> new Int2ObjectOpenHashMap<>())
-                                .put(allianceId, delta);
-                    }
-                }
-            }
-        }
-
-        turnData.clear();
-        turnData.putAll(trimmed);
-    }
-
-    private static Byte2LongOpenHashMap ensurePrimitiveCityMap(
-            Map.Entry<Integer, Map<Byte, Long>> allianceEntry) {
-        Map<Byte, Long> allianceData = allianceEntry.getValue();
-        if (allianceData instanceof Byte2LongOpenHashMap) {
-            return (Byte2LongOpenHashMap) allianceData;
-        }
-
-        Byte2LongOpenHashMap converted = new Byte2LongOpenHashMap(allianceData.size());
-        for (Map.Entry<Byte, Long> cityEntry : allianceData.entrySet()) {
-            Byte cityId = cityEntry.getKey();
-            Long value = cityEntry.getValue();
-            if (cityId != null && value != null) {
-                converted.put(cityId, value);
-            }
-        }
-        allianceEntry.setValue(converted);
-        return converted;
-    }
-
-    public Map<String, Object> toGraphMap(ConflictManager manager, List<Integer> metricsTurn, List<Integer> metricsDay, List<Function<DamageStatGroup, Object>> damageHeaders, int columnMetricOffset) {
-        List<ConflictMetric.Entry> entries = getGraphEntries();
-        // day -> metric -> alliance -> city -> value
-        Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> turnData = new Long2ObjectArrayMap<>();
-        Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> dayData = new Long2ObjectArrayMap<>();
-
-        Set<Byte> cities = new ByteOpenHashSet();
-
-        for (ConflictMetric.Entry entry : entries) {
-            Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> map = entry.metric().isDay() ? dayData : turnData;
-            map.computeIfAbsent(entry.turnOrDay(), k -> new Int2ObjectOpenHashMap<>())
-                    .computeIfAbsent(entry.metric().ordinal(), k -> new Int2ObjectOpenHashMap<>())
-                    .computeIfAbsent(entry.allianceId(), k -> new Byte2LongOpenHashMap())
-                    .put((byte) entry.city(), (long) entry.value());
-            cities.add((byte) entry.city());
-        }
-
-        trimTimeData(turnData);
-        trimTimeData(dayData);
-
-        List<Long> days = new LongArrayList(damageByDayByAllianceByCity.keySet());
-        days.sort(Long::compareTo);
-        for (long day : days) {
-            Map<Integer, Map<Byte, Map.Entry<DamageStatGroup, DamageStatGroup>>> allianceMap = damageByDayByAllianceByCity.get(day);
-            for (Map.Entry<Integer, Map<Byte, Map.Entry<DamageStatGroup, DamageStatGroup>>> allianceEntry : allianceMap.entrySet()) {
-                int allianceId = allianceEntry.getKey();
-                Map<Byte, Map.Entry<DamageStatGroup, DamageStatGroup>> cityMap = allianceEntry.getValue();
-
-                for (Map.Entry<Byte, Map.Entry<DamageStatGroup, DamageStatGroup>> cityEntry : cityMap.entrySet()) {
-                    int city = cityEntry.getKey() & 0xFF;
-                    Map.Entry<DamageStatGroup, DamageStatGroup> damage = cityEntry.getValue();
-                    DamageStatGroup defDamage = damage.getKey();
-                    DamageStatGroup offDamage = damage.getValue();
-
-                    for (int j = 0; j < damageHeaders.size(); j++) {
-                        Function<DamageStatGroup, Object> dmgHeader = damageHeaders.get(j);
-                        int defI = columnMetricOffset + j * 2;
-                        int offI = defI + 1;
-
-                        long defValue = ((Number) dmgHeader.apply(defDamage)).longValue();
-                        long offValue = ((Number) dmgHeader.apply(offDamage)).longValue();
-                        if (defValue != 0) {
-                            dayData.computeIfAbsent(day, k -> new Int2ObjectOpenHashMap<>())
-                                    .computeIfAbsent(defI, k -> new Int2ObjectOpenHashMap<>())
-                                    .computeIfAbsent(allianceId, k -> new Byte2LongOpenHashMap())
-                                    .put((byte) city, defValue);
-                            cities.add((byte) city);
-                        }
-                        if (offValue != 0) {
-                            dayData.computeIfAbsent(day, k -> new Int2ObjectOpenHashMap<>())
-                                    .computeIfAbsent(offI, k -> new Int2ObjectOpenHashMap<>())
-                                    .computeIfAbsent(allianceId, k -> new Byte2LongOpenHashMap())
-                                    .put((byte) city, offValue);
-                            cities.add((byte) city);
-                        }
-                    }
-                }
-            }
-        }
-
-
-        Map<String, Object> root = new Object2ObjectLinkedOpenHashMap<>();
-
-        List<Byte> citiesSorted = new ByteArrayList(cities);
-        citiesSorted.sort(Byte::compareTo);
-        root.put("cities", citiesSorted);
-
-        List<Integer> allianceIds = new ArrayList<>(coalition);
-        Collections.sort(allianceIds);
-        long[] turnRange = computeRange(turnData);
-        long minTurn = turnRange[0];
-        long maxTurn = turnRange[1];
-        Map<String, Object> turnRoot = new LinkedHashMap<>();
-        turnRoot.put("range", List.of(minTurn, maxTurn));
-        turnRoot.put("data", toGraphMap(metricsTurn, turnData, minTurn, maxTurn, allianceIds, citiesSorted));
-        root.put("turn", turnRoot);
-
-        long[] dayRange = computeRange(dayData);
-        long minDay = dayRange[0];
-        long maxDay = dayRange[1];
-        Map<String, Object> dayRoot = new LinkedHashMap<>();
-        dayRoot.put("range", List.of(minDay, maxDay));
-        dayRoot.put("data", toGraphMap(metricsDay, dayData, minDay, maxDay, allianceIds, citiesSorted));
-        root.put("day", dayRoot);
-
-        return root;
-    }
-
-    private static long[] computeRange(Map<Long, ?> data) {
-        if (data.isEmpty()) {
-            return new long[]{0L, 0L};
-        }
-        long min = Long.MAX_VALUE;
-        long max = Long.MIN_VALUE;
-        for (long value : data.keySet()) {
-            if (value < min) {
-                min = value;
-            }
-            if (value > max) {
-                max = value;
-            }
-        }
-        return new long[]{min, max};
-    }
-
-    private List<List<List<List<Long>>>> toGraphMap(List<Integer> keys,
-            Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> data,
-                                            long start, long end,
-                                             List<Integer> aaIds,
-                                             List<Byte> cities) {
-        List<List<List<List<Long>>>> turnMetricCitiesTables = new ObjectArrayList<>();
-        for (int metricOrdinal : keys) {
-            List<List<List<Long>>> metricCitiesTableByAA = new ObjectArrayList<>();
-            for (int aaId : aaIds) {
-                List<List<Long>> metricCitiesTable = new ObjectArrayList<>();
-                for (long turnOrDay = start; turnOrDay <= end; turnOrDay++) {
-                    Map<Integer, Map<Integer, Map<Byte, Long>>> dataAtTime = data.get(turnOrDay);
-                    if (dataAtTime == null) {
-                        metricCitiesTable.add(new ObjectArrayList<>());
-                        continue;
-                    }
-                    Map<Integer, Map<Byte, Long>> metricDataByAA = dataAtTime.get(metricOrdinal);
-                    if (metricDataByAA == null) {
-                        metricCitiesTable.add(new ObjectArrayList<>());
-                        continue;
-                    }
-                    Map<Byte, Long> metricData = metricDataByAA.get(aaId);
-                    if (metricData == null) {
-                        metricCitiesTable.add(new ObjectArrayList<>());
-                        continue;
-                    }
-                    List<Long> values = new ObjectArrayList<>(cities.size());
-                    for (byte city : cities) {
-                        Long value = metricData.get(city);
-                        if (value == null && !metricData.containsKey(city)) {
-                            values.add(null);
-                        } else {
-                            values.add(value);
-                        }
-                    }
-                    metricCitiesTable.add(values);
-                }
-                metricCitiesTableByAA.add(metricCitiesTable);
-            }
-            turnMetricCitiesTables.add(metricCitiesTableByAA);
-        }
-        return turnMetricCitiesTables;
-    }
-
-    public synchronized void clearGraphDataOutside(long turnStart, long turnEnd) {
-        // Remove in-memory turn data outside the range
-        graphDataByTurn.keySet().removeIf(turn -> turn < turnStart || turn > turnEnd);
-
-        // Remove in-memory day data outside the range
-        long dayStart = TimeUtil.getDayFromTurn(turnStart);
-        long dayEnd = TimeUtil.getDayFromTurn(turnEnd);
-        graphDataByDay.keySet().removeIf(day -> day < dayStart || day > dayEnd);
-
-        // Also trim the per-day per-alliance-per-city damage cache
-        damageByDayByAllianceByCity.keySet().removeIf(day -> day < dayStart || day > dayEnd);
-
-        // Update latestGraphTurn
-        latestGraphTurn = graphDataByTurn.keySet().stream()
-                .max(Long::compareTo)
-                .orElse(-1L);
+    public WarStatistics getWarDataOrNull() {
+        return warStatistics.getOrNull();
     }
 }

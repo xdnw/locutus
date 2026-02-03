@@ -1,6 +1,7 @@
 package link.locutus.discord.util.scheduler;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public class CachedSupplier<T> implements Supplier<T> {
@@ -12,6 +13,10 @@ public class CachedSupplier<T> implements Supplier<T> {
         return new CachedSupplier<>(resolver);
     }
 
+    public static <T> CachedSupplier<T> ofValue(T value) {
+        return new CachedSupplier<>(value);
+    }
+
     public static <T> CachedSupplier<T> preload(Supplier<T> resolver) {
         CachedSupplier<T> cached = new CachedSupplier<>(resolver);
         CompletableFuture.runAsync(cached::get);
@@ -21,6 +26,55 @@ public class CachedSupplier<T> implements Supplier<T> {
     public CachedSupplier(Supplier<T> resolver) {
         this.resolver = resolver;
         this.delegate = this::resolve;
+    }
+
+    public CachedSupplier(T value) {
+        this.resolver = null;
+        this.value = value;
+        this.delegate = () -> value;
+    }
+
+    public void setValue(T value) {
+        synchronized (this) {
+            this.value = value;
+            this.delegate = () -> value;
+        }
+    }
+
+    public T setValueIfAbsent(T value) {
+        synchronized (this) {
+            if (this.value == null) {
+                this.value = value;
+                this.delegate = () -> value;
+            }
+            return value;
+        }
+    }
+
+    public T setValueIfAbsent(Supplier<T> supplier) {
+        synchronized (this) {
+            if (this.value == null) {
+                T value = supplier.get();
+                this.value = value;
+                this.delegate = () -> value;
+            }
+            return this.value;
+        }
+    }
+
+    public T setValueIfAbsentElseApply(Supplier<T> create, Consumer<T> apply) {
+        synchronized (this) {
+            if (this.value == null) {
+                T value = create.get();
+                this.value = value;
+                this.delegate = () -> value;
+                return value;
+            } else {
+                T v = this.value;
+                apply.accept(v);
+                return v;
+            }
+        }
     }
 
     @Override

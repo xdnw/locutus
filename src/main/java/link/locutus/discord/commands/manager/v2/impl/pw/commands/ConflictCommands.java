@@ -67,7 +67,7 @@ public class ConflictCommands {
         }
         response.append("\n");
 
-        List<CoalitionSide> sides = Arrays.asList(conflict.getCoalition(true, true, false), conflict.getCoalition(false, true, false));;
+        List<CoalitionSide> sides = Arrays.asList(conflict.getSide1(), conflict.getSide2());
         boolean hasDeleted = false;
         if (showParticipants) {
             int i = 1;
@@ -976,8 +976,8 @@ public class ConflictCommands {
         long end = conflict.getEndMS();
         Set<DBWar> wars = Locutus.imp().getWarDb().getWarsByNationMatching(nation.getId(), f -> f.getDate() >= start && f.getDate() <= end);
 
-        CoalitionSide side1 = conflict.getCoalition(true, true, false);
-        CoalitionSide side2 = conflict.getCoalition(false, true, false);
+        CoalitionSide side1 = conflict.getSide1();
+        CoalitionSide side2 = conflict.getSide2();
         CoalitionSide markSide = null;
         if (side1.hasAlliance(mark_as_alliance.getId())) {
             markSide = side1;

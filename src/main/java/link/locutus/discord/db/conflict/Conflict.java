@@ -1,13 +1,11 @@
 package link.locutus.discord.db.conflict;
 
 import it.unimi.dsi.fastutil.bytes.Byte2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -31,12 +29,10 @@ import link.locutus.discord.db.entities.conflict.DamageStatGroup;
 import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.scheduler.ThrowingConsumer;
-import link.locutus.discord.util.scheduler.ThrowingFunction;
+import link.locutus.discord.util.scheduler.CachedSupplier;
 import link.locutus.discord.web.jooby.CloudStorage;
 
 import java.io.IOException;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.ParseException;
@@ -64,7 +60,7 @@ public class Conflict {
     private long turnStart;
     private long turnEnd;
 
-    private volatile ConflictMeta data;
+    private final CachedSupplier<ConflictMeta> metaSupplier;
 
     private long pushedIndex;
     private long pushedPage;
@@ -83,6 +79,8 @@ public class Conflict {
         this.pushedPage = pushedPage;
         this.pushedGraph = pushedGraph;
         this.recalcGraph = recalcGraph;
+
+        this.metaSupplier = CachedSupplier.of(() -> ConflictMeta.create(this));
     }
 
     public long getPushedIndex() {
@@ -114,267 +112,104 @@ public class Conflict {
     }
 
     public long getLatestGraphMs() {
-        ConflictMeta tmp = data;
+        ConflictMeta tmp = metaSupplier.getOrNull();
         if (tmp != null) {
-            CoalitionSide coal1 = tmp.coalition_1;
-            if (coal1 != null) {
-                return TimeUtil.getTimeFromTurn(Math.max(coal1.getLatestGraphTurn(), tmp.coalition_2.getLatestGraphTurn()));
+            CoalitionSides sides = tmp.getSidesOrNull();
+            if (sides != null) {
+                return TimeUtil.getTimeFromTurn(sides.getLatestGraphTurn());
             }
         }
         return 0L;
     }
 
-    public ConflictMeta getData(boolean create) {
-        ConflictMeta tmp = data;
-        if (tmp != null || !create) return tmp;
-        synchronized (this) {
-            tmp = data;
-            if (tmp == null) {
-                tmp = data = ConflictMeta.create(this);
-            }
-        }
-        return tmp;
+    public ConflictMeta getData() {
+        return metaSupplier.get();
     }
 
-    public ConflictMeta getDataWithWars() {
-        ConflictMeta tmp = getData(true);
-        CoalitionSide coal1 = tmp.coalition_1;
-        if (id > 0 && !coal1.isLoaded()) {
-            getManager().ensureLoadedFully(Set.of(this));
-            tmp = getData(false);
+    public ConflictMeta setLoaded(boolean initSides, boolean initWars) {
+        if (initWars && !initSides) throw new IllegalArgumentException("Cannot init wars without sides");
+        ConflictMeta meta = this.metaSupplier.setValueIfAbsent(() -> new ConflictMeta(this));
+        if (initSides) {
+            meta.setLoaded(this, initWars);
         }
-        return tmp;
+        return meta;
     }
 
-    public ConflictMeta initData(ResultSet rs) throws SQLException {
-        ConflictMeta tmp = data;
-        if (tmp == null) {
-            synchronized (this) {
-                if (data == null) {
-                    tmp = data = ConflictMeta.create(id, rs);
-                } else {
-                    tmp = data;
-                    tmp.init(rs);
-                }
+    public ConflictMeta setLoaded(ResultSet rs) {
+        return this.metaSupplier.setValueIfAbsentElseApply(() -> {
+            try {
+                return ConflictMeta.create(this, rs);
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
             }
-        } else {
-            tmp.init(rs);
-        }
-        return tmp;
+        }, f -> {
+            try {
+                f.init( rs);
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
-    public synchronized void initData(String col1, String col2, long creator, ConflictCategory category, String wiki, String cb, String status) {
-        ConflictMeta tmp = data;
-        if (tmp == null) {
-            synchronized (this) {
-                if (data == null) {
-                    tmp = data = ConflictMeta.create(this);
-                } else {
-                    tmp = data;
-                }
-            }
-        }
+    public synchronized void setLoaded(String col1, String col2, long creator, ConflictCategory category, String wiki, String cb, String status) {
+        ConflictMeta tmp = metaSupplier.setValueIfAbsent(() -> new ConflictMeta(this));
         if (creator != 0) tmp.createdByServer = creator;
         if (category != null) tmp.category = category;
         if (wiki != null) tmp.wiki = wiki;
         if (cb != null) tmp.casusBelli = cb;
         if (status != null) tmp.statusDesc = status;
-        if (col1 != null && !col1.isEmpty()) tmp.col1 = col1;
-        if (col2 != null && !col2.isEmpty()) tmp.col2 = col2;
+        if (col1 != null && !col1.isEmpty()) tmp.setNameRaw(col1, true);
+        if (col2 != null && !col2.isEmpty()) tmp.setNameRaw(col2, false);
     }
 
-    public CoalitionSide getCoalition(boolean side, boolean create, boolean loadWars) {
-        if (!create && loadWars) throw new IllegalArgumentException("Cannot load wars if not creating data");
-        ConflictMeta tmp = getData(create);
-        if (tmp != null) {
-            CoalitionSide coal = tmp.getCoalition(this, side);
-            if (id > 0 && !coal.isLoaded() && loadWars) {
-                getManager().ensureLoadedFully(Set.of(this));
-                tmp = getData(false);
-                if (tmp != null) {
-                    coal = tmp.getCoalition(this, side);
-                }
-            }
-            return coal;
-        }
-        return null;
+    public CoalitionSide getSide(boolean isPrimary) {
+        return isPrimary ? getSide1() : getSide2();
     }
 
-    public boolean isLoaded() {
-        ConflictMeta tmp = data;
-        if (tmp == null) return false;
-        CoalitionSide coal1 = tmp.coalition_1;
-        if (coal1 == null) return false;
-        return coal1.isLoaded();
+    public CoalitionSide getSide1() {
+        return this.metaSupplier.get().getCoalition1();
     }
 
-    public static final class ConflictMeta {
-        public final int id;
+    public CoalitionSide getSide2() {
+        return this.metaSupplier.get().getCoalition2();
+    }
 
-        private ConflictCategory category;
-        private String wiki = "";
+    public CoalitionSide getSide1OrNull() {
+        ConflictMeta tmp = metaSupplier.getOrNull();
+        return tmp != null ? tmp.getCoalition1() : null;
+    }
 
-        private String col1, col2;
+    public CoalitionSide getSide2OrNull() {
+        ConflictMeta tmp = metaSupplier.getOrNull();
+        return tmp != null ? tmp.getCoalition2() : null;
+    }
 
-        private volatile CoalitionSide coalition_1;
-        private volatile CoalitionSide coalition_2;
-
-        private volatile Map<Integer, Long> startTime2 = null;
-        private volatile Map<Integer, Long> endTime2 = null;
-
-        Map<Integer, Map<Integer, DamageStatGroup>> warsVsAlliance2 = null;
-        private volatile Map<String, DBTopic> announcements2 = null;
-
-        private String casusBelli = "";
-        private String statusDesc = "";
-        private long createdByServer;
-
-        private ConflictMeta(int id) {
-            this.id = id;
-        }
-
-        public static ConflictMeta create(int id, ResultSet rs) throws SQLException {
-            ConflictMeta cd = new ConflictMeta(id);
-            cd.init(rs);
-            return cd;
-        }
-
-        public Map<Integer, Long> getStartTime() {
-            if (id <= 0) return new Int2LongOpenHashMap();
-            initStartEndTimes();
-            synchronized (startTime2) {
-                return new Int2LongOpenHashMap(startTime2);
-            }
-        }
-
-        public Map<Integer, Long> getEndTime() {
-            if (id <= 0) return new Int2LongOpenHashMap();
-            initStartEndTimes();
-            synchronized (endTime2) {
-                return new Int2LongOpenHashMap(endTime2);
-            }
-        }
-
-        private void initStartEndTimes() {
-            if (startTime2 == null) {
-                synchronized (this) {
-                    if (startTime2 == null) {
-                        startTime2 = new Int2LongOpenHashMap();
-                        endTime2 = new Int2LongOpenHashMap();
-                        Locutus.imp().getWarDb().getConflicts().loadParticipantStartEndTimes(id, startTime2, endTime2, coalition_1, coalition_2);
-                    }
-                }
-            }
-        }
-
-        public void init(ResultSet rs) throws SQLException {
-            createdByServer = rs.getLong(CREATOR.toString());
-            int categoryIdx = rs.getInt(CATEGORY.toString());
-            category = ConflictCategory.values()[categoryIdx];
-
-            String wikiTmp = rs.getString(WIKI.toString());
-            wiki = wikiTmp == null ? "" : wikiTmp;
-
-            String cbTmp = rs.getString(CB.toString());
-            casusBelli = cbTmp == null ? "" : cbTmp;
-
-            String statusTmp = rs.getString(STATUS.toString());
-            statusDesc = statusTmp == null ? "" : statusTmp;
-
-            String col1Tmp = rs.getString(COL1.toString());
-            String col2Tmp = rs.getString(COL2.toString());
-            col1 = col1Tmp == null ? "" : col1Tmp;
-            col2 = col2Tmp == null ? "" : col2Tmp;
-
-            if (col1.isEmpty()) col1 = "Coalition 1";
-            if (col2.isEmpty()) col2 = "Coalition 2";
-        }
-
-        public static ConflictMeta create(Conflict conflict) {
-            if (conflict.getId() <= 0) {
-                return new ConflictMeta(conflict.getId());
-            }
-            return conflict.getManager().getDb().select(
-                    "SELECT " + String.join(", ",
-                            COL1.toString(),
-                            COL2.toString(),
-                            WIKI.toString(),
-                            CB.toString(),
-                            STATUS.toString(),
-                            CATEGORY.toString(),
-                            CREATOR.toString()
-                    ) + " FROM conflicts WHERE id = ?",
-                    (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setInt(1, conflict.getId()),
-                    (ThrowingFunction<ResultSet, ConflictMeta>) rs -> create(conflict.getId(), rs)
-            );
-        }
-
-        public Map<String, DBTopic> getAnnouncement() {
-            if (id <= 0) return new Object2ObjectOpenHashMap<>();
-            if (announcements2 == null) {
-                synchronized (this) {
-                    if (announcements2 == null) {
-                        announcements2 = Locutus.imp().getWarDb().getConflicts().loadAnnouncements(id);
-                    }
-                }
-            }
-            synchronized (announcements2) {
-                return new Object2ObjectOpenHashMap<>(announcements2);
-            }
-        }
-
-        public Map<Integer, String> getAnnouncementsById() {
-            Map<Integer, String> map = new Int2ObjectOpenHashMap<>();
-            for (Map.Entry<String, DBTopic> entry : getAnnouncement().entrySet()) {
-                map.put(entry.getValue().topic_id, entry.getKey());
-            }
-            return map;
-        }
-
-        private void initCoalitions(Conflict conflict) {
-            if (coalition_1 == null) {
-                synchronized (this) {
-                    if (coalition_1 == null) {
-                        coalition_1 = new CoalitionSide(conflict, col1, true, false);
-                        coalition_2 = new CoalitionSide(conflict, col2, false, false);
-                        coalition_1.setOther(coalition_2);
-                        coalition_2.setOther(coalition_1);
-                        warsVsAlliance2 = new Int2ObjectOpenHashMap<>();
-                    }
-                }
-            }
-
-        }
-
-        public CoalitionSide getCoalition(Conflict conflict, boolean side) {
-            initCoalitions(conflict);
-            return side ? coalition_1 : coalition_2;
-        }
+    public boolean isWarsLoaded() {
+        ConflictMeta tmp = this.metaSupplier.getOrNull();
+        return tmp != null && tmp.isWarsLoaded();
     }
 
     public void clearWarData() {
-        ConflictMeta tmp = data;
+        ConflictMeta tmp = metaSupplier.getOrNull();
         if (tmp != null) {
             synchronized (tmp) {
-                if (tmp.coalition_1 != null) tmp.coalition_1.clearWarData();
-                if (tmp.coalition_2 != null) tmp.coalition_2.clearWarData();
-                if (tmp.warsVsAlliance2 != null) tmp.warsVsAlliance2 = null;
+                tmp.clearWarData();
             }
         }
     }
 
     public synchronized void tryUnload() {
         if (isActive()) return;
-        data = null;
+        metaSupplier.unload();
     }
 
     private <T> T tryGet(ConflictField field, Function<ConflictMeta, T> onData) {
-        ConflictMeta tmp = data;
+        ConflictMeta tmp = metaSupplier.getOrNull();
         if (tmp != null) {
             return onData.apply(tmp);
         }
         if (id > 0 && field != null) {
-            return (T) getManager().getConflictField(id, field);
+            return (T) ConflictManager.get().getConflictField(id, field);
         }
         return null;
     }
@@ -384,12 +219,9 @@ public class Conflict {
     }
 
     public void setCasusBelli(String casusBelli) {
-        ConflictMeta tmp = data;
-        if (tmp != null) {
-            tmp.casusBelli = casusBelli;
-        }
+        trySet(f -> f.casusBelli = casusBelli);
         if (id > 0) {
-            getManager().setCb(id, casusBelli);
+            ConflictManager.get().setCb(id, casusBelli);
         }
     }
 
@@ -401,7 +233,7 @@ public class Conflict {
     }
 
     private Boolean checkSet(Predicate<ConflictMeta> onData) {
-        ConflictMeta tmp = data;
+        ConflictMeta tmp = metaSupplier.getOrNull();
         if (tmp != null) {
             return onData.test(tmp);
         }
@@ -416,7 +248,7 @@ public class Conflict {
             }
             return false;
         }) != Boolean.FALSE){
-            if (id > 0) getManager().setStatus(id, status);
+            if (id > 0) ConflictManager.get().setStatus(id, status);
         }
     }
 
@@ -437,38 +269,35 @@ public class Conflict {
             }
             return false;
         }) != Boolean.FALSE) {
-            if (id > 0) getManager().updateConflictCategory(id, category);
+            if (id > 0) ConflictManager.get().updateConflictCategory(id, category);
         }
     }
 
     public void setWiki(String wiki) {
         trySet(tmp -> tmp.wiki = wiki);
-        if (id > 0) getManager().updateConflictWiki(id, wiki);
+        if (id > 0) ConflictManager.get().updateConflictWiki(id, wiki);
     }
 
     public void setName(String name, boolean isPrimary) {
         trySet(tmp -> {
             if (isPrimary) {
-                tmp.col1 = name;
-                if (tmp.coalition_1 != null)
-                    tmp.coalition_1.setNameRaw(name);
+                tmp.setNameRaw(name, true);
             } else {
-                tmp.col2 = name;
-                if (tmp.coalition_2 != null)
-                    tmp.coalition_2.setNameRaw(name);
+                tmp.setNameRaw(name, false);
             }
         });
-        if (id > 0) getManager().updateConflictName(id, name, isPrimary);
+        if (id > 0) ConflictManager.get().updateConflictName(id, name, isPrimary);
     }
 
     public void updateGraphsLegacy(ConflictManager manager) throws IOException, ParseException {
-        ConflictMeta tmp = getData(true);
-        CoalitionSide coalition1 = tmp.getCoalition(this, true);
-        CoalitionSide coalition2 = tmp.getCoalition(this, false);
+        CoalitionSide coalition1 = getSide1();
+        CoalitionSide coalition2 = getSide2();
+        WarStatistics col1Wars = coalition1.get();
+        WarStatistics col2Wars = coalition2.get();
 
         Set<Integer> nationIds = new IntOpenHashSet();
-        nationIds.addAll(coalition1.getNationIds());
-        nationIds.addAll(coalition2.getNationIds());
+        nationIds.addAll(col1Wars.getNationIds());
+        nationIds.addAll(col2Wars.getNationIds());
 
         long startMs = TimeUtil.getTimeFromTurn(turnStart);
         long endMs = turnEnd == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTimeFromTurn(turnEnd);
@@ -537,8 +366,8 @@ public class Conflict {
                         col2Nations.add(nation);
                     }
                 }
-                coalition1.updateDayTierGraph(manager, day, col1Nations, true, false);
-                coalition2.updateDayTierGraph(manager, day, col2Nations, true, false);
+                col1Wars.updateDayTierGraph(manager, day, col1Nations, true, false);
+                col2Wars.updateDayTierGraph(manager, day, col2Nations, true, false);
             }
         }
 
@@ -630,15 +459,15 @@ public class Conflict {
                     }
                 }
 
-                coalition1.updateTurnTierGraph(manager, turn, unitsByCityCol1, true, false);
-                coalition2.updateTurnTierGraph(manager, turn, unitsByCityCol2, true, false);
+                col1Wars.updateTurnTierGraph(manager, turn, unitsByCityCol1, true, false);
+                col2Wars.updateTurnTierGraph(manager, turn, unitsByCityCol2, true, false);
             }
         }
 
         manager.deleteGraphData(getId());
         List<ConflictMetric.Entry> entries = new ObjectArrayList<>();
-        entries.addAll(coalition1.getGraphEntries());
-        entries.addAll(coalition2.getGraphEntries());
+        entries.addAll(col1Wars.getGraphEntries());
+        entries.addAll(col2Wars.getGraphEntries());
         manager.addGraphData(entries);
     }
 
@@ -648,7 +477,7 @@ public class Conflict {
                 if (recalcGraph) {
                     recalcGraph = false;
                     try {
-                        updateGraphsLegacy(getManager());
+                        updateGraphsLegacy(ConflictManager.get());
                     } catch (IOException | ParseException e) {
                         throw new RuntimeException(e);
                     }
@@ -710,15 +539,15 @@ public class Conflict {
     }
 
     public long getStartTurn(int allianceId) {
-        return getData(true).getStartTime().getOrDefault(allianceId, turnStart);
+        return metaSupplier.get().getStartTime().getOrDefault(allianceId, turnStart);
     }
     public long getEndTurn(int allianceId) {
-        return getData(true).getEndTime().getOrDefault(allianceId, turnEnd);
+        return metaSupplier.get().getEndTime().getOrDefault(allianceId, turnEnd);
     }
 
     private CoalitionSide getCoalition(int aaId1, int aaId2, long turn) {
-        CoalitionSide coalition1 = getCoalition(true, true, true);
-        CoalitionSide coalition2 = getCoalition(false, true, true);
+        CoalitionSide coalition1 = getSide1();
+        CoalitionSide coalition2 = getSide2();
         if (coalition1.hasAlliance(aaId1)) {
             if (coalition2.hasAlliance(aaId2) &&
                     getStartTurn(aaId1) <= turn && getEndTurn(aaId1) > turn &&
@@ -736,7 +565,7 @@ public class Conflict {
     }
 
     private DamageStatGroup getWarWebEntry(int aaId1, int aaId2) {
-        return getDataWithWars().warsVsAlliance2.computeIfAbsent(aaId1, k -> new Int2ObjectOpenHashMap<>()).computeIfAbsent(aaId2, k -> new DamageStatGroup());
+        return getData().getSides().getDataWithWars().computeIfAbsent(aaId1, k -> new Int2ObjectOpenHashMap<>()).computeIfAbsent(aaId2, k -> new DamageStatGroup());
     }
 
     public boolean updateWar(DBWar previous, DBWar current, long turn, long date) {
@@ -788,14 +617,10 @@ public class Conflict {
 
     }
 
-    private ConflictManager getManager() {
-        return Locutus.imp().getWarDb().getConflicts();
-    }
-
     public Conflict setName(String name) {
         if (!name.equals(this.name)) {
             this.name = name;
-            if (id > 0) getManager().updateConflictName(id, name);
+            if (id > 0) ConflictManager.get().updateConflictName(id, name);
         }
         return this;
     }
@@ -803,7 +628,7 @@ public class Conflict {
     public Conflict setStart(long time) {
         long newTurn = TimeUtil.getTurn(time);
         if (newTurn == turnStart) return this;
-        if (id > 0) { getManager().updateConflict(this, turnStart, turnEnd);
+        if (id > 0) { ConflictManager.get().updateConflict(this, turnStart, turnEnd);
             if (newTurn < turnStart) {
                 markGraphsInvalid();
             } else {
@@ -818,7 +643,7 @@ public class Conflict {
         long newTurn = time == Long.MAX_VALUE ? time : TimeUtil.getTurn(time) + 1;
         if (newTurn == turnEnd) return this;
         if (id > 0) {
-            getManager().updateConflict(this, turnStart, turnEnd);
+            ConflictManager.get().updateConflict(this, turnStart, turnEnd);
             if (newTurn > this.turnEnd) {
                 markGraphsInvalid();
             } else if (newTurn < TimeUtil.getTurn()) {
@@ -838,17 +663,8 @@ public class Conflict {
         AtomicBoolean didNotExistBefore = new AtomicBoolean(false);
 
         trySet(f -> {
-            boolean needInit = init || id <= 0;
-
-            Map<Integer, Long> startMap = f.startTime2;
-            Map<Integer, Long> endMap   = f.endTime2;
-
-            if (needInit) {
-                if (startMap == null) f.startTime2 = startMap = new Int2LongOpenHashMap();
-                if (endMap == null)   f.endTime2   = endMap   = new Int2LongOpenHashMap();
-                f.getCoalition(this, true);
-                f.getCoalition(this, false);
-            }
+            Map<Integer, Long> startMap = f.getStartTime();
+            Map<Integer, Long> endMap = f.getEndTime();
 
             Function<Map<Integer, Long>, Long> prevValue = map ->
                     map != null && map.containsKey(allianceId) ? map.get(allianceId) : null;
@@ -868,13 +684,9 @@ public class Conflict {
             store.accept(startMap, start);
             store.accept(endMap, end);
 
-            CoalitionSide coal = side ? f.coalition_1 : f.coalition_2;
+            CoalitionSide coal = side ? f.getCoalition1() : f.getCoalition2();
             boolean coalInitializedBefore = coal != null;
             boolean hadAllianceBefore = coalInitializedBefore && coal.hasAlliance(allianceId);
-
-            if (coal == null && needInit) {
-                coal = f.getCoalition(this, side);
-            }
             if (coal != null) {
                 coal.add(allianceId);
             }
@@ -891,13 +703,13 @@ public class Conflict {
 
         if (save) {
             long startFinal = start == null ? 0L : start;
-            long endFinal = end == null ? Long.MAX_VALUE : end;
+            long endFinal = end == null ? java.lang.Long.MAX_VALUE : end;
             if (id > 0) {
-                getManager().addParticipant(this, allianceId, side, startFinal, endFinal);
+                ConflictManager.get().addParticipant(this, allianceId, side, startFinal, endFinal);
                 if (changedTime.get()) {
                     clearWarData();
                 } else if (didNotExistBefore.get()) {
-                    getManager().loadConflictWars(this, allianceId, start, end);
+                    ConflictManager.get().loadConflictWars(this, allianceId, start, end);
                 }
                 markGraphsInvalid();
             }
@@ -908,19 +720,20 @@ public class Conflict {
 
     public Conflict removeParticipant(int allianceId) {
         Boolean changed = checkSet(tmp -> {
+            tmp.removeTimeForAlliance(allianceId);
+
+            CoalitionSides sides = tmp.getSidesOrNull();
+            if (sides == null) return false;
             boolean flag = false;
-            if (tmp.coalition_1 != null) flag |= tmp.coalition_1.remove(allianceId);
-            if (tmp.coalition_2 != null) flag |= tmp.coalition_2.remove(allianceId);
-            if (tmp.startTime2 != null) tmp.startTime2.remove(allianceId);
-            if (tmp.endTime2 != null) tmp.endTime2.remove(allianceId);
+            flag |= sides.col1.remove(allianceId);
+            flag |= sides.col2.remove(allianceId);
             if (flag) {
-                if (tmp.coalition_1 != null) tmp.coalition_1.clearWarData(); // Clear war data sets the loaded state to falsee
-                if (tmp.coalition_2 != null) tmp.coalition_2.clearWarData();
+                tmp.clearWarData();
             }
             return flag;
         });
         if (id > 0) {
-            if (changed != Boolean.FALSE) getManager().removeParticipant(this, allianceId);
+            if (changed != Boolean.FALSE) ConflictManager.get().removeParticipant(this, allianceId);
             markGraphsInvalid();
         }
         return this;
@@ -961,23 +774,23 @@ public class Conflict {
     }
 
     public Set<Integer> getCoalition1() {
-        return getCoalition(true, true, false).getAllianceIds();
+        return getSide1().getAllianceIds();
     }
 
     public Set<Integer> getCoalition2() {
-        return getCoalition(false, true, false).getAllianceIds();
+        return getSide2().getAllianceIds();
     }
 
     @Command(desc = "If an alliance is a participant in the conflict")
     public boolean isParticipant(DBAlliance alliance) {
-        return getCoalition(true, true, false).hasAlliance(alliance.getId()) || getCoalition(false, true, false).hasAlliance(alliance.getId());
+        return getSide1().hasAlliance(alliance.getId()) || getSide2().hasAlliance(alliance.getId());
     }
 
     @Command(desc = "A number representing the side an alliance is on in the conflict\n" +
             "0 = No side, 1 = Primary/Coalition 1, 2 = Secondary/Coalition 2")
     public int getSide(DBAlliance alliance) {
-        if (getCoalition(true, true, false).hasAlliance(alliance.getId())) return 1;
-        if (getCoalition(false, true, false).hasAlliance(alliance.getId())) return 2;
+        if (getSide1().hasAlliance(alliance.getId())) return 1;
+        if (getSide2().hasAlliance(alliance.getId())) return 2;
         return 0;
     }
 
@@ -988,7 +801,7 @@ public class Conflict {
 
     @Command(desc = "The end turn of the conflict in milliseconds since unix epoch")
     public long getEndMS() {
-        return turnEnd == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTimeFromTurn(turnEnd);
+        return turnEnd == Long.MAX_VALUE ? java.lang.Long.MAX_VALUE : TimeUtil.getTimeFromTurn(turnEnd);
     }
 
     @Command(desc = "The alliance list of for the first coalition")
@@ -1007,22 +820,22 @@ public class Conflict {
     }
 
     public Set<DBAlliance> getCoalition1Obj() {
-        return getCoalition(true, true, false).getAllianceIds().stream().map(DBAlliance::getOrCreate).collect(Collectors.toSet());
+        return getSide1().getAllianceIds().stream().map(DBAlliance::getOrCreate).collect(Collectors.toSet());
     }
 
     public Set<DBAlliance> getCoalition2Obj() {
-        return getCoalition(false, true, false).getAllianceIds().stream().map(DBAlliance::getOrCreate).collect(Collectors.toSet());
+        return getSide2().getAllianceIds().stream().map(DBAlliance::getOrCreate).collect(Collectors.toSet());
     }
 
     public Boolean isSide(int allianceId) {
-        if (getCoalition(true, true, false).hasAlliance(allianceId)) return true;
-        if (getCoalition(false, true, false).hasAlliance(allianceId)) return false;
+        if (getSide1().hasAlliance(allianceId)) return true;
+        if (getSide2().hasAlliance(allianceId)) return false;
         return null;
     }
 
     public Set<Integer> getAllianceIds() {
-        CoalitionSide coalition1 = getCoalition(true, true, false);
-        CoalitionSide coalition2 = getCoalition(false, true, false);
+        CoalitionSide coalition1 = getSide1();
+        CoalitionSide coalition2 = getSide2();
         Set<Integer> ids = new IntOpenHashSet(coalition1.getAllianceIds().size() + coalition2.getAllianceIds().size());
         ids.addAll(coalition1.getAllianceIds());
         ids.addAll(coalition2.getAllianceIds());
@@ -1032,39 +845,34 @@ public class Conflict {
     @Command(desc = "The number of active wars in the conflict")
     public int getActiveWars() {
         if (!isActive()) return 0;
-        CoalitionSide coalition1 = getCoalition(true, true, true);
-        CoalitionSide coalition2 = getCoalition(false, true, true);
+        CoalitionSide coalition1 = getSide1();
+        CoalitionSide coalition2 = getSide2();
         return coalition1.getOffensiveStats(null, false).activeWars + coalition2.getOffensiveStats(null, false).activeWars;
     }
 
     @Command(desc = "The number of total wars in the conflict")
     public int getTotalWars() {
-        CoalitionSide coalition1 = getCoalition(true, true, true);
-        CoalitionSide coalition2 = getCoalition(false, true, true);
+        CoalitionSide coalition1 = getSide1();
+        CoalitionSide coalition2 = getSide2();
         return coalition1.getOffensiveStats(null, false).totalWars + coalition2.getOffensiveStats(null, false).totalWars;
     }
 
     @Command(desc = "The current damage dealt between the conflict's participants, using market prices")
     public double getDamageConverted(boolean isPrimary) {
-        return getCoalition(isPrimary, true, true).getInflicted().getTotalConverted();
+        return getSide(isPrimary).getInflicted().getTotalConverted();
     }
 
     public void addAnnouncement(String desc, DBTopic topic, boolean saveToDB, boolean init) {
         trySet(tmp -> {
-            if (tmp.announcements2 == null) {
-                if (!init && id > 0) return;
-                tmp.announcements2 = new Object2ObjectOpenHashMap<>();
-            }
-            tmp.announcements2.entrySet().removeIf(f -> f.getValue().topic_id == topic.topic_id);
-            tmp.announcements2.put(desc, topic);
+            tmp.addAnnouncement(desc, topic, init);
         });
         if (saveToDB) {
-            if (id > 0) getManager().addAnnouncement(id, topic.topic_id, desc);
+            if (id > 0) ConflictManager.get().addAnnouncement(id, topic.topic_id, desc);
         }
     }
 
     public Map<String, List> getAnnouncementsList() {
-        ConflictMeta tmp = getData(false);
+        ConflictMeta tmp = metaSupplier.getOrNull();
         Map<String, DBTopic> announcements;
         if (tmp == null) {
             announcements = Locutus.imp().getWarDb().getConflicts().loadAnnouncements(id);
@@ -1150,7 +958,7 @@ public class Conflict {
         if (setName && !wikiConflict.getName().equalsIgnoreCase(getName())) {
             setName(wikiConflict.getName());
         }
-        ConflictMeta tmp = wikiConflict.getData(false);
+        ConflictMeta tmp = wikiConflict.metaSupplier.getOrNull();
         if (tmp != null) {
             Map<Integer, String> annByIds = tmp.getAnnouncementsById();
             for (Map.Entry<String, DBTopic> entry : tmp.getAnnouncement().entrySet()) {
@@ -1168,12 +976,9 @@ public class Conflict {
     }
 
     public void deleteAnnouncement(int topicId) {
-        if (id > 0) getManager().removeAnnouncement(id, topicId);
+        if (id > 0) ConflictManager.get().removeAnnouncement(id, topicId);
         trySet(tmp -> {
-            Map<String, DBTopic> annMap = tmp.announcements2;
-            if (annMap != null) {
-                annMap.entrySet().removeIf(f -> f.getValue().topic_id == topicId);
-            }
+            tmp.removeAnnouncementRaw(topicId);
         });
     }
 
@@ -1183,8 +988,31 @@ public class Conflict {
 
     private void deleteGraphDataOutside(long turnStart, long turnEnd) {
         if (turnEnd == -1) turnEnd = Long.MAX_VALUE;
-        CoalitionSide col1 = getCoalition(true, false, false);
-        if (col1 != null) col1.clearGraphDataOutside(turnStart, turnEnd);
-
+        long finalTurnEnd = turnEnd;
+        trySet(f -> {
+            CoalitionSides tmp = f.getSidesOrNull();
+            if (tmp != null) {
+                WarStatistics ws1 = tmp.col1.getWarDataOrNull();
+                if (ws1 != null) ws1.clearGraphDataOutside(turnStart, finalTurnEnd);
+                WarStatistics ws2 = tmp.col2.getWarDataOrNull();
+                if (ws2 != null) ws2.clearGraphDataOutside(turnStart, finalTurnEnd);
+            }
+        });
     }
+
+    public boolean hasMetaLoaded() {
+        return metaSupplier.hasValue();
+    }
+
+    public boolean hasParticipantsLoaded() {
+        ConflictMeta tmp = metaSupplier.getOrNull();
+        return tmp != null && tmp.hasParticipantsLoaded();
+    }
+
+    public boolean hasAnnouncementsLoaded() {
+        ConflictMeta tmp = metaSupplier.getOrNull();
+        return tmp != null && tmp.hasAnnouncementsLoaded();
+    }
+
+
 }
