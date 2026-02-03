@@ -217,7 +217,11 @@ public abstract class DBMainV3 implements Closeable {
     public abstract void createTables();
 
     private Connection forceConnection() throws SQLException, ClassNotFoundException {
-        return forceConnection(dbLocation, 0, memCache, inMemory);
+        Connection conn = connection = forceConnection(dbLocation, 0, memCache, inMemory);
+        ctx = DSL.using(conn, SQLDialect.SQLITE, new org.jooq.conf.Settings()
+                .withExecuteLogging(false)
+        );
+        return conn;
     }
 
     public static Connection forceConnection(File dbLocation, int mmapSizeMB, int memCache, boolean inMemory) throws SQLException {
@@ -267,7 +271,6 @@ public abstract class DBMainV3 implements Closeable {
                 st.execute("PRAGMA wal_autocheckpoint = 1000");
             }
         }
-
         return conn;
     }
 }

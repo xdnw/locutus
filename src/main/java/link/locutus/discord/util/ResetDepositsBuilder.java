@@ -149,6 +149,41 @@ public class ResetDepositsBuilder {
         return h;
     }
 
+    private static int resourcesVectorSign(double[] res) {
+        int s = 0;
+        for (double v2 : res) {
+            long cents = ArrayUtil.toCents(v2);
+            if (cents == 0) continue;
+
+            int vs = cents > 0 ? 1 : -1;
+            if (s == 0) s = vs;
+            else if (s != vs) return 0; // mixed +/- vector, can't treat as simple negation
+        }
+        return (s == 0) ? 1 : s; // all zero -> treat as positive
+    }
+
+    private static long resourcesHashAbs64(double[] res) {
+        long h = 0xcbf29ce484222325L;
+        for (double v2 : res) {
+            long v = ArrayUtil.toCents(v2);
+            if (v < 0) v = -v;
+            h = fnv1a64(h, v);
+            h = fnv1a64(h, v >>> 32);
+        }
+        return h;
+    }
+
+    private static double[] absCopyIfNeeded(double[] res) {
+        for (double v : res) {
+            if (v < 0) {
+                double[] copy = Arrays.copyOf(res, res.length);
+                for (int i = 0; i < copy.length; i++) copy[i] = Math.abs(copy[i]);
+                return copy;
+            }
+        }
+        return res;
+    }
+
     /** Key used for pairing (+1 with -1) without allocating strings. */
     public static long resetKey(Transaction2 tx, long expireEpoch, long decayEpoch) {
         int a = (int) Math.min(tx.sender_id, tx.receiver_id);
@@ -159,7 +194,7 @@ public class ResetDepositsBuilder {
         h = fnv1a64(h, b);
         h = fnv1a64(h, expireEpoch);
         h = fnv1a64(h, decayEpoch);
-        h = fnv1a64(h, resourcesHash64(tx.resources));
+        h = fnv1a64(h, resourcesHashAbs64(tx.resources));
         h = fnv1a64(h, baseNoteHash(tx.note));
         return mix64(h);
     }
@@ -530,7 +565,6 @@ public class ResetDepositsBuilder {
             Transaction2 tx = entry.getValue();
 
             if (tx.note == null) continue;
-            if (tx.sender_id == tx.receiver_id) continue;
             if (tx.receiver_id != nationId && tx.sender_id != nationId) continue;
 
             // cheap prefilter (avoid parsing notes for most tx)
@@ -551,22 +585,25 @@ public class ResetDepositsBuilder {
             if (expireEpoch == Long.MAX_VALUE && decayEpoch == Long.MAX_VALUE) continue;
             if (expireEpoch <= now || decayEpoch <= now) continue;
 
+            int rSign = resourcesVectorSign(tx.resources);
+            if (rSign == 0) continue; // mixed +/-, skip pairing (or handle separately)
+
+            int effectiveSign = sign * rSign;  // <- THIS is the important bit
+
             long key = resetKey(tx, expireEpoch, decayEpoch);
 
             Pending p = pending.get(key);
             if (p == null) {
-                p = new Pending(sign);
+                p = new Pending(effectiveSign);
                 p.idx.add(i);
                 pending.put(key, p);
                 continue;
             }
 
-            if (p.sign == -sign) {
-                // pair off with an opposite
+            if (p.sign == -effectiveSign) {
                 p.idx.removeInt(p.idx.size() - 1);
                 if (p.idx.isEmpty()) pending.remove(key);
             } else {
-                // same sign -> still unpaired
                 p.idx.add(i);
             }
         }
@@ -579,6 +616,7 @@ public class ResetDepositsBuilder {
             for (int k = 0; k < p.idx.size(); k++) {
                 int idx = p.idx.getInt(k);
                 Transaction2 tx = transactions.get(idx).getValue();
+                double[] amt = absCopyIfNeeded(tx.resources);
 
                 Map<DepositType, Object> noteMap = tx.getNoteMap();
                 Object expireObj = noteMap.get(DepositType.EXPIRE);
@@ -596,29 +634,28 @@ public class ResetDepositsBuilder {
                 if (sign == 1) {
                     details.append("Subtracting `")
                             .append(nation.getQualifiedId()).append(' ')
-                            .append(ResourceType.toString(tx.resources)).append(' ')
+                            .append(ResourceType.toString(amt)).append(' ')
                             .append(noteCopy).append("`\n");
 
-                    ResourceType.subtract(totalExpire, tx.resources);
+                    ResourceType.subtract(totalExpire, amt);
                     if (force) {
                         db.subBalance(decayEpoch == Long.MAX_VALUE ? now : tx.tx_datetime,
-                                nation, me.getNation_id(), noteCopy, tx.resources);
+                                nation, me.getNation_id(), noteCopy, amt);
                     }
                     changed = true;
 
                 } else if (sign == -1) {
                     details.append("Adding `")
                             .append(nation.getQualifiedId()).append(' ')
-                            .append(ResourceType.toString(tx.resources)).append(' ')
+                            .append(ResourceType.toString(amt)).append(' ')
                             .append(noteCopy).append("`\n");
 
-                    ResourceType.add(totalExpire, tx.resources);
+                    ResourceType.add(totalExpire, amt);
                     if (force) {
                         db.addBalance(decayEpoch == Long.MAX_VALUE ? now : tx.tx_datetime,
-                                nation, me.getNation_id(), noteCopy, tx.resources);
+                                nation, me.getNation_id(), noteCopy, amt);
                     }
                     changed = true;
-
                 } else {
                     Logg.error("Invalid sign for deposits reset " + sign);
                 }

@@ -549,7 +549,7 @@ public class BankCommands {
             result.append("- **deposit url**: <" + url + ">\n");
 
             StringBuilder body = new StringBuilder("Excess resources can be deposited in the alliance bank.\n");
-            body.append("Deposit url: " + url + "\n");
+            body.append("Deposit url: <" + url + ">\n");
 
             if (customMessage != null) {
                 body.append(customMessage);
@@ -561,7 +561,7 @@ public class BankCommands {
             if (mailResults) {
                 String subject = "Deposit Resources/" + channelId;
                 try {
-                    MailApiResponse mailResult = nation.sendMail(key, subject, body.toString(), true);
+                    MailApiResponse mailResult = nation.sendMail(key, subject, MarkupUtil.markdownToHTML(body.toString()), true);
                     result.append("\n- **mail**: ").append("`" + mailResult.status() + " " + mailResult.error() + "`");
                     sentMail = true;
                 } catch (Throwable e) {

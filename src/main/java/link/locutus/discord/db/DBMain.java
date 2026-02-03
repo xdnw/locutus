@@ -149,7 +149,7 @@ public abstract class DBMain implements Closeable {
     }
 
     private Connection forceConnection() throws SQLException, ClassNotFoundException {
-        return DBMainV3.forceConnection(dbLocation, 0, memCache, inMemory);
+        return connection = DBMainV3.forceConnection(dbLocation, 0, memCache, inMemory);
     }
 
     protected synchronized PreparedStatement prepareStatement(String sql) throws SQLException {
