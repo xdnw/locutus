@@ -837,7 +837,7 @@ public class ConflictManager {
     }
 
     public void loadConflictWars(Collection<Conflict> conflicts2, boolean clearBeforeUpdate, boolean isStartup, boolean loadGraphData) {
-        System.err.println("Loading conflict wars: " + conflicts2.stream().map(f -> f.getName() + " | " + f.getId()) + "\n" +
+        System.err.println("Loading " + conflicts2.size() + "  conflict wars: " + conflicts2.stream().map(f -> f.getName() + " | " + f.getId()).toList() + "\n" +
                 StringMan.stacktraceToString(new Exception().getStackTrace()));
         Collection<Conflict> conflictsFinal;
         TurnSnapshotHolder holder;

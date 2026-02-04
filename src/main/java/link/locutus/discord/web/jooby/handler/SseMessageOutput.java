@@ -12,25 +12,20 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import link.locutus.discord.Logg;
 
 public final class SseMessageOutput implements IMessageOutput {
-    private final AsyncContext async;
     private final ServletOutputStream out;
-
-    private final ConcurrentLinkedQueue<byte[]> queue = new ConcurrentLinkedQueue<>();
-    private final AtomicBoolean draining = new AtomicBoolean(false);
-    private final AtomicBoolean closeRequested = new AtomicBoolean(false);
-    private final Context ctx;
     private volatile boolean closed = false;
+    private final Context ctx;
 
-    public SseMessageOutput(Context ctx) throws IOException {
+    public SseMessageOutput(Context ctx) {
         this.ctx = ctx;
-        this.async = ctx.req().getAsyncContext();
-        this.out = async.getResponse().getOutputStream();
-        Logg.info("SseMessageOutput constructed for request=" + ctx.req().getRequestURI());
+        try {
+            this.out = ctx.res().getOutputStream();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    public Context ctx() {
-        return ctx;
-    }
+    public Context ctx() { return ctx; }
 
     public void sseMessage(String message, boolean success) {
         Map<String, Object> data = Map.of("content", message, "success", success);
@@ -39,82 +34,29 @@ public final class SseMessageOutput implements IMessageOutput {
     }
 
     @Override
-    public void sendEvent(byte[] data) {
-        System.out.println("sse sendEvent called with bytes=" + (data == null ? "[null]" : new String(data)));
-        if (closed || closeRequested.get()) {
-            Logg.info("sendEvent called but already closed or closing (closed=" + closed + ", closeRequested=" + closeRequested.get() + ")");
-            return;
-        }
+    public synchronized void sendEvent(byte[] payload) {
+        if (closed) return;
+
         try {
-            queue.add(data);
-            Logg.info("sendEvent queued bytes=" + (data == null ? 0 : data.length) + " queueSizeMaybeApprox=");
-        } catch (Exception e) {
-            Logg.error("Failed to queue event: " + e.getMessage());
+            int len = payload.length;
+            // 4-byte big-endian length prefix
+            out.write((len >>> 24) & 0xFF);
+            out.write((len >>> 16) & 0xFF);
+            out.write((len >>>  8) & 0xFF);
+            out.write((len       ) & 0xFF);
+
+            out.write(payload);
+            out.flush();
+        } catch (IOException | IllegalStateException e) {
+            // client disconnected or stream no longer writable
+            closed = true;
         }
-        drain();
     }
 
-    public void close() {
-        Logg.info("close requested");
-        closeRequested.set(true);
-        drain(); // will complete once queue is empty
-    }
-
-    private void drain() {
-        if (closed) {
-            Logg.info("drain() called but already closed");
-            return;
-        }
-        if (!draining.compareAndSet(false, true)) {
-            Logg.info("drain() already in progress by another thread");
-            return;
-        }
-
-        Logg.info("drain() starting async writer");
-        async.start(() -> {
-            try {
-                byte[] msg;
-                while ((msg = queue.poll()) != null) {
-                    int len = msg.length;
-                    out.write((len >>> 24) & 0xFF);
-                    out.write((len >>> 16) & 0xFF);
-                    out.write((len >>>  8) & 0xFF);
-                    out.write((len       ) & 0xFF);
-                    out.write(msg);
-                    Logg.info("drain wrote message bytes=" + len);
-                }
-                out.flush();
-                out.flush();
-                Logg.info("drain flushed output stream");
-            } catch (IOException | IllegalStateException e) {
-                closed = true;
-                Logg.error("Exception while draining SSE output: " + e.getMessage());
-            } finally {
-                draining.set(false);
-
-                if (!closed && !queue.isEmpty()) {
-                    Logg.info("drain finished but queue not empty, scheduling another drain");
-                    drain();
-                    return;
-                }
-
-                if (!closed && closeRequested.get()) {
-                    closed = true;
-                    try {
-                        Logg.info("drain completing async context");
-                        async.complete();
-                    } catch (IllegalStateException ignore) {
-                        Logg.error("IllegalStateException when completing async context");
-                    }
-                }
-            }
-        });
-    }
-
-    public void markClosed() {
-        Logg.info("markClosed called");
+    public synchronized void close() {
         closed = true;
-        closeRequested.set(true);
-        queue.clear();
+        try { out.flush(); } catch (IOException ignore) {}
     }
+
+    public void markClosed() { closed = true; } // optional
 }

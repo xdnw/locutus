@@ -944,6 +944,9 @@ public class ParametricCallable<T> implements ICommand<T> {
         Map<String, Object> command = new LinkedHashMap<>();
         command.put("help", simpleHelp());
         command.put("desc", simpleDesc());
+        if (isViewable) {
+            command.put("viewable", true);
+        }
         if (includeReturnType) {
             command.put("return_type", StringMan.classNameToSimple(returnType.getTypeName()));
         }
