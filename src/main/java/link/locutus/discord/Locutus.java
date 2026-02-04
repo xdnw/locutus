@@ -226,17 +226,6 @@ public final class Locutus extends ListenerAdapter {
         Logg.text("Registered event listener (" + (((-start)) + (start = System.currentTimeMillis())) + "ms)");
         if (Settings.INSTANCE.ENABLED_COMPONENTS.DISCORD_BOT) {
             this.manager.init(loader.getShardManager());
-            try {
-                SlashCommandManager slashCommands = loader.getSlashCommandManager();
-                if (slashCommands != null) {
-                    executor.submit(() -> slashCommands.registerCommandData(manager));
-                }
-            } catch (Throwable e) {
-                // sometimes happen when discord api is spotty / timeout
-                e.printStackTrace();
-                Logg.text("Failed to update slash commands: " + e.getMessage());
-            }
-
             if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB && Settings.INSTANCE.WEB.PORT > 0) {
                 try {
                     new WebRoot(Settings.INSTANCE.WEB.PORT, Settings.INSTANCE.WEB.ENABLE_SSL);
@@ -357,6 +346,17 @@ public final class Locutus extends ListenerAdapter {
         JDA jda = event.getJDA();
         for (Guild guild : jda.getGuilds()) {
             onGuildLoad(guild, jda);
+        }
+
+        try {
+            SlashCommandManager slashCommands = loader.getSlashCommandManager();
+            if (slashCommands != null) {
+                executor.submit(() -> slashCommands.registerCommandData(manager));
+            }
+        } catch (Throwable e) {
+            // sometimes happen when discord api is spotty / timeout
+            e.printStackTrace();
+            Logg.text("Failed to update slash commands: " + e.getMessage());
         }
     }
 

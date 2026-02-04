@@ -92,6 +92,7 @@ import link.locutus.discord.util.update.WarUpdateProcessor;
 import link.locutus.discord.web.commands.WM;
 import link.locutus.discord.web.jooby.PageHandler;
 import link.locutus.discord.web.jooby.WebRoot;
+import link.locutus.discord.web.jooby.adapter.TsEndpointGenerator;
 import link.locutus.discord.web.jooby.handler.CommandResult;
 import link.locutus.wiki.WikiGenHandler;
 import net.dv8tion.jda.api.Permission;
@@ -110,6 +111,7 @@ import org.jsoup.nodes.Document;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Type;
@@ -1198,6 +1200,14 @@ public class AdminCommands {
         WikiGenHandler generator = new WikiGenHandler(pathRelative, manager);
         generator.writeDefaults();
 
+        return "Done!";
+    }
+
+    @Command(desc = "Generate and save the wiki pages for the bot")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String saveWebPojos(@Default String pathRelative, @Switch("e") boolean skipEndpoints, @Switch("c") boolean skipCommands) throws IOException, InvocationTargetException, IllegalAccessException {
+        File pathRelativeFile = pathRelative == null ? null : new File(pathRelative);
+        TsEndpointGenerator.writeFiles(WebRoot.getInstance().getPageHandler(), pathRelativeFile, !skipEndpoints, !skipCommands);
         return "Done!";
     }
 

@@ -280,6 +280,9 @@ public class CommandManager2 {
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "runMilitarizationAlerts", "militarization_alerts");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "checkActiveConflicts", "active_conflicts");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "dumpWiki", "export_wiki");
+
+        getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "saveWebPojos", "web_pojos");
+
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "debug"), "apiUsageStats", "api_usage");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "bot"), "removeInvalidOffshoring", "remove_deleted_offshores");
         getCommands().registerMethod(new DiscordCommands(), List.of("admin", "bot"), "importEmojis", "import_emojis");

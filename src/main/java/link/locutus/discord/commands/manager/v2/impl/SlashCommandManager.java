@@ -51,11 +51,25 @@ import net.dv8tion.jda.api.utils.data.SerializableData;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.lang.reflect.Type;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 import static net.dv8tion.jda.api.interactions.commands.Command.Choice.MAX_STRING_VALUE_LENGTH;
 
@@ -135,6 +149,7 @@ public class SlashCommandManager extends ListenerAdapter {
     public SlashCommandManager(boolean registerAdminCmds, Supplier<CommandManager2> provider) {
         this.registerAdminCmds = registerAdminCmds;
         this.provider = provider;
+        loadCommandIds();
     }
 
     public Set<String> getUserCommandsOrNull() {
@@ -351,31 +366,152 @@ public class SlashCommandManager extends ListenerAdapter {
         return toRegister;
     }
 
-    public void registerCommandData(GuildShardManager manager) {
-        List<CommandData> generate = generateCommandData();
-        for (JDA jda : manager.getApis()) {
-            registerCommandData(jda, generate);
-        }
-    }
-
     public void register(Guild guild) {
         List<CommandData> toRegister = generateCommandData();
         if (!toRegister.isEmpty()) {
             List<net.dv8tion.jda.api.interactions.commands.Command> commands = RateLimitUtil.complete(guild.updateCommands().addCommands(toRegister));
             for (net.dv8tion.jda.api.interactions.commands.Command command : commands) {
                 String path = command.getName();
-                commandIds.put(path, command.getIdLong());
+//                commandIds.put(path, command.getIdLong());
             }
         }
     }
 
-    public void registerCommandData(JDA jda, List<CommandData> toRegister) {
-        if (!toRegister.isEmpty()) {
-            List<net.dv8tion.jda.api.interactions.commands.Command> commands = RateLimitUtil.complete(jda.updateCommands().addCommands(toRegister));
+    public void registerCommandData(GuildShardManager manager) {
+        // Select shard id = 0 else first
+        List<CommandData> generate = generateCommandData();
+        JDA selected = null;
+        JDA first = null;
+        for (JDA jda : manager.getApis()) {
+            if (first == null) first = jda;
+            var shardInfo = jda.getShardInfo();
+            if (shardInfo == null || shardInfo.getShardId() == 0) {
+                selected = jda;
+                break;
+            }
+        }
+        if (selected == null) selected = first;
+        if (selected != null) {
+            registerCommandData(selected, generate);
+        }
+    }
+
+    private static final Path HASH_FILE_PATH = Paths.get("database", "filehash.txt");
+
+    private static final Path ID_FILE_PATH = Path.of("database", "commandids.gzip");
+
+    private void saveCommandIds() {
+        try {
+            Files.createDirectories(ID_FILE_PATH.getParent()); // parent is "database"
+
+            try (var out = new DataOutputStream(new GZIPOutputStream(Files.newOutputStream(
+                    ID_FILE_PATH, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)))) {
+
+                synchronized (commandIds) {
+                    out.writeInt(commandIds.size());
+                    for (var e : commandIds.entrySet()) {
+                        out.writeUTF(e.getKey());
+                        out.writeLong(e.getValue());
+                    }
+                }
+            }
+        } catch (IOException e) {
+            Logg.error("Failed to save command IDs: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void loadCommandIds() {
+        if (Files.notExists(ID_FILE_PATH)) return;
+
+        try (var in = new DataInputStream(new GZIPInputStream(Files.newInputStream(ID_FILE_PATH)))) {
+            int size = in.readInt();
+
+            synchronized (commandIds) {
+                commandIds.clear();
+                for (int i = 0; i < size; i++) {
+                    commandIds.put(in.readUTF(), in.readLong());
+                }
+            }
+        } catch (IOException e) {
+            Logg.error("Failed to load command IDs from cache: " + e.getMessage());
+            synchronized (commandIds) {
+                commandIds.clear();
+            }
+        }
+    }
+
+    private long loadLastHashFromFile() {
+        try {
+            if (Files.exists(HASH_FILE_PATH)) {
+                byte[] bytes = Files.readAllBytes(HASH_FILE_PATH);
+                if (bytes.length == Long.BYTES) {
+                    return ByteBuffer.wrap(bytes).getLong(); // big-endian
+                }
+            }
+        } catch (Exception e) {
+            Logg.error("Failed to load slash command hash from database/filehash.txt");
+            e.printStackTrace();
+        }
+        return 0; // Return 0 to force an update if reading fails
+    }
+
+    private void saveHashToFile(long hash) {
+        try {
+            if (HASH_FILE_PATH.getParent() != null) {
+                Files.createDirectories(HASH_FILE_PATH.getParent());
+            }
+
+            byte[] bytes = ByteBuffer.allocate(Long.BYTES).putLong(hash).array(); // big-endian
+            Files.write(HASH_FILE_PATH, bytes,
+                    StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        } catch (Exception e) {
+            Logg.error("Failed to save slash command hash to database/filehash.txt");
+            e.printStackTrace();
+        }
+    }
+
+    private void registerCommandData(JDA jda, List<CommandData> toRegister) {
+        if (toRegister.isEmpty()) return;
+
+        // 1. Calculate Hash of current code-generated commands
+        // We convert to DataObject -> String to ensure consistency
+        long currentHash = StringMan.hash(toRegister.stream()
+                .map(cmd -> cmd.toData().toString())
+                .collect(Collectors.joining()));
+
+        // 2. Load previous hash
+        long savedHash = loadLastHashFromFile();
+
+        // 3. Compare
+        if (currentHash == savedHash) {
+            Logg.info("Slash commands have not changed (Hash: " + currentHash + "). Retrieving existing IDs...");
+
+            jda.retrieveCommands().queue(commands -> {
+                for (net.dv8tion.jda.api.interactions.commands.Command command : commands) {
+                    String path = command.getName();
+                    commandIds.put(path, command.getIdLong());
+                }
+                Logg.info("Successfully retrieved " + commands.size() + " commands.");
+            }, error -> {
+                Logg.error("Failed to retrieve commands: " + error.getMessage());
+            });
+
+        } else {
+            Logg.info("Slash commands changed (Old: " + savedHash + ", New: " + currentHash + "). Updating Discord...");
+
+            // 4. Update commands and Save new hash
+            List<net.dv8tion.jda.api.interactions.commands.Command> commands =
+                    RateLimitUtil.complete(jda.updateCommands().addCommands(toRegister));
+
             for (net.dv8tion.jda.api.interactions.commands.Command command : commands) {
                 String path = command.getName();
                 commandIds.put(path, command.getIdLong());
             }
+
+            saveHashToFile(currentHash);
+            saveCommandIds();
+            Logg.info("Registered " + commands.size() + " commands and saved new hash.");
         }
     }
 
@@ -991,3 +1127,4 @@ public class SlashCommandManager extends ListenerAdapter {
         }, false);
     }
 }
+
