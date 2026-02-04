@@ -83,10 +83,6 @@ import static link.locutus.discord.db.conflict.ConflictField.*;
 import static link.locutus.discord.util.math.ArrayUtil.ALWAYS_TRUE_INT;
 
 public class ConflictManager {
-    public static ConflictManager get() {
-        return Locutus.imp().getWarDb().getConflicts();
-    }
-
     private final WarDB db;
     private final CloudStorage aws;
 
@@ -113,8 +109,17 @@ public class ConflictManager {
         }
     });
 
+    private static ConflictManager INSTANCE;
+    public static ConflictManager get() {
+        if (INSTANCE != null) return INSTANCE;
+        return Locutus.imp().getWarDb().getConflicts();
+    }
 
     public ConflictManager(WarDB db) {
+        if (INSTANCE != null) {
+            throw new IllegalStateException("ConflictManager already initialized!");
+        }
+        INSTANCE = this;
         this.db = db;
         this.aws = S3CompatibleStorage.setupAuto();
 
@@ -541,6 +546,12 @@ public class ConflictManager {
         }
     }
 
+    public void invalidateConflictSnapshot() {
+        synchronized (GLOBAL_TURN_SNAPSHOT) {
+            GLOBAL_TURN_SNAPSHOT.invalidateConflictSnapshot();
+        }
+    }
+
     private boolean applyConflicts(
             TurnSnapshotHolder holder,
             IntPredicate allowed, long turn,
@@ -696,7 +707,8 @@ public class ConflictManager {
 
         if (!missingMeta.isEmpty()) {
             String inClause = toInClause.apply(missingMeta);
-            db.query("SELECT * FROM conflicts WHERE id " + inClause, stmt -> {
+            String query = "SELECT * FROM conflicts WHERE id " + inClause;
+            db.query(query, stmt -> {
             }, (ThrowingConsumer<ResultSet>) rs -> {
                 while (rs.next()) {
                     int id = rs.getInt("id");
@@ -737,7 +749,7 @@ public class ConflictManager {
             if (Locutus.imp().getForumDb() != null) {
                 Map<Integer, Map<Integer, String>> conflictsByTopic = new Int2ObjectOpenHashMap<>();
                 String inClause = toInClause.apply(missingAnnouncements);
-                db.query("SELECT * FROM conflict_announcements2 WHERE conflict_id in " + inClause, stmt -> {
+                db.query("SELECT * FROM conflict_announcements2 WHERE conflict_id " + inClause, stmt -> {
                 }, (ThrowingConsumer<ResultSet>) rs -> {
                     while (rs.next()) {
                         int conflictId = rs.getInt("conflict_id");
@@ -825,13 +837,15 @@ public class ConflictManager {
     }
 
     public void loadConflictWars(Collection<Conflict> conflicts2, boolean clearBeforeUpdate, boolean isStartup, boolean loadGraphData) {
+        System.err.println("Loading conflict wars: " + conflicts2.stream().map(f -> f.getName() + " | " + f.getId()) + "\n" +
+                StringMan.stacktraceToString(new Exception().getStackTrace()));
         Collection<Conflict> conflictsFinal;
         TurnSnapshotHolder holder;
         Conflict[] conflictsFinalArr;
         synchronized (conflictArrLock) {
             conflictsFinal = conflicts2 == null ? Arrays.asList(conflictArr) : conflicts2;
             if (conflictsFinal.isEmpty()) return;
-            conflictsFinalArr = conflicts2.toArray(new Conflict[0]);
+            conflictsFinalArr = conflictsFinal.toArray(new Conflict[0]);
         }
         synchronized (loadConflictLock) {
             try {
@@ -845,7 +859,7 @@ public class ConflictManager {
                 loadConflictMeta(conflictsFinal, isStartup, true);
 
                 long startMs, endMs;
-                IntPredicate allowedConflicts;
+                IntPredicate allowedConflicts = f -> true;
                 long startTurn = Long.MAX_VALUE;
                 long endTurn = 0;
                 for (Conflict conflict : conflictsFinal) {
@@ -855,12 +869,6 @@ public class ConflictManager {
                 if (endTurn == 0) return;
                 startMs = TimeUtil.getTimeFromTurn(startTurn);
                 endMs = endTurn == Long.MAX_VALUE ? Long.MAX_VALUE : TimeUtil.getTimeFromTurn(endTurn);
-
-                boolean[] allowedConflictOrdsArr = new boolean[conflictArr.length];
-                for (Conflict conflict : conflictsFinal) {
-                    allowedConflictOrdsArr[conflict.getOrdinal()] = true;
-                }
-                allowedConflicts = f -> allowedConflictOrdsArr[f];
 
                 Set<DBWar> wars = new ObjectOpenHashSet<>();
                 for (DBWar war : this.db.getWars()) {

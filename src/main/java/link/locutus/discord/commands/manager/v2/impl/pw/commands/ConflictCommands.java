@@ -260,7 +260,7 @@ public class ConflictCommands {
                 response.append(TimeUtil.format(TimeUtil.DD_MM_YYYY, TimeUtil.getTimeFromTurn(conflict.getEndTurn())));
             }
             response.append("\n");
-            response.append("- " + conflict.getTotalWars() + " wars\n");
+            response.append("- " + conflict.getActiveWars() + " active wars\n");
             response.append("- Coalition 1: ").append(conflict.getCoalition1().stream().map(f -> PW.getName(f, true)).collect(Collectors.joining(","))).append("\n");
             response.append("- Coalition 2: ").append(conflict.getCoalition2().stream().map(f -> PW.getName(f, true)).collect(Collectors.joining(","))).append("\n");
             response.append("---\n");

@@ -174,7 +174,7 @@ public abstract class AMessageBuilder implements IMessageBuilder {
         }
         root.put("id", id);
         root.put("timestamp", timeCreated);
-        root.put("author", author.getId());
+        if (author != null) root.put("author", author.getId());
     }
 
     public void appendJson(JsonObject json) {

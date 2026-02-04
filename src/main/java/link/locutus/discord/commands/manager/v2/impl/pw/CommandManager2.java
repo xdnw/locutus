@@ -232,7 +232,7 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
-        this.commands.registerMethod(new TradeCommands(), List.of("conflict", "sync"), "importCloudData", "cloud_providers");
+        this.commands.registerMethod(new ConflictCommands(), List.of("conflict", "sync"), "importCloudData", "cloud_providers");
 
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "clearAllApiKeys", "clearAllApiKeys");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync2"), "clearInvalidAccounts", "clearInvalidAccounts");

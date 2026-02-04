@@ -1013,6 +1013,4 @@ public class Conflict {
         ConflictMeta tmp = metaSupplier.getOrNull();
         return tmp != null && tmp.hasAnnouncementsLoaded();
     }
-
-
 }

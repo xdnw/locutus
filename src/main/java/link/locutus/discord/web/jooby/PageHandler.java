@@ -257,20 +257,22 @@ public class PageHandler implements Handler {
      */
     public void sse(SseMessageOutput sse) {
         try {
-            Context ctx = sse.ctx;
-            Map<String, List<String>> queryMap = new Object2ObjectOpenHashMap<>(sse.ctx.queryParamMap());
-            for (Map.Entry<String, List<String>> entry : sse.ctx.formParamMap().entrySet()) {
+            Context ctx = sse.ctx();
+            Map<String, List<String>> queryMap = new Object2ObjectOpenHashMap<>(sse.ctx().queryParamMap());
+            for (Map.Entry<String, List<String>> entry : sse.ctx().formParamMap().entrySet()) {
                 queryMap.put(entry.getKey(), entry.getValue());
             }
 
             List<String> cmds = queryMap.getOrDefault("cmd", Collections.emptyList());
             WebIO io = new WebIO(sse, AuthBindings.guild(ctx, null, null, false));
 
+            Logg.text("SSE Command: cmds=" + StringMan.getString(cmds) + " | queryParams=" + queryMap.entrySet().stream().map(f -> f.getKey() + "=" + StringMan.getString(f.getValue())).collect(Collectors.joining(", ")));
             if (cmds.isEmpty()) {
                 List<String> inputArgs = StringMan.split(URLDecoder.decode(ctx.path().substring(1).replace("/", " ")), " ");
                 ArgumentStack stack = createStack(ctx, inputArgs);
                 String path = stack.consumeNext();
                 if (!path.equalsIgnoreCase("sse")) {
+                    Logg.text("Invalid path (not sse): " + path);
                     sse.sseMessage("Invalid path (not command): " + path, false);
                     return;
                 }
@@ -284,6 +286,7 @@ public class PageHandler implements Handler {
                     cmd.validatePermissions(stack.getStore(), stack.getPermissionHandler());
                 } catch (Throwable e) {
                     e.printStackTrace();
+                    Logg.text("No permission: " + e.getMessage());
                     sse.sseMessage("No permission: " + e.getMessage(), false);
                     return;
                 }
@@ -296,17 +299,23 @@ public class PageHandler implements Handler {
                     setupLocals(locals, ctx);
 
                     ParametricCallable parametric = (ParametricCallable) cmd;
-                    Logg.text("Web SSE: " + path + "/" + StringMan.join(args, " ") + " | [" + logInfo(locals) + "]");
+                    Logg.text("Web SSE: " + path + "/" + StringMan.join(args, " ") + " | [" + logInfo(locals) + "] " + fullCmdStr);
 
                     Object[] parsed = parametric.parseArgumentMap2(fullCmdStr, locals, validators, permisser, false);
                     Object result = parametric.call(null, locals, parsed);
                     if (result != null) {
                         String formatted = MarkupUtil.formatDiscordMarkdown((result + "").trim(), io.getGuildOrNull());
                         if (!formatted.isEmpty()) {
+                            Logg.text("SSE Result: " + formatted + " | " + result);
                             sse.sseMessage(formatted, true);
+                        } else {
+                            Logg.text("SSE Result: empty | `" + result + "`");
                         }
+                    } else {
+                        Logg.text("SSE Result is null");
                     }
                 } else {
+                    Logg.text("Invalid command: " + StringMan.getString(args));
                     sse.sseMessage("Invalid command: " + StringMan.getString(args), true);
                 }
 
@@ -320,15 +329,13 @@ public class PageHandler implements Handler {
                 sse.sseMessage( "Too many commands: " + StringMan.getString(cmds), false);
             }
         } catch (Throwable e) {
+            Logg.error("Throwable in SSE: " + e.getMessage());
+            e.printStackTrace();
             sse.sseMessage( "Error: " + e.getMessage(), false);
             logger.log(Level.SEVERE, e.getMessage(), e);
         } finally {
-            try {
-                Thread.sleep(2000);
-                sse.ctx.res().getOutputStream().close();
-            } catch (IOException | InterruptedException e) {
-                e.printStackTrace();
-            }
+            Logg.text("SSE connection closing.");
+            sse.close();
         }
     }
 
@@ -725,7 +732,7 @@ public class PageHandler implements Handler {
     public void sseCmdPage(SseMessageOutput sse) throws IOException {
         WebStore ws = null;
         try {
-            Context ctx = sse.ctx;
+            Context ctx = sse.ctx();
             String pathStr = ctx.path();
             if (pathStr.startsWith("/")) pathStr = pathStr.substring(1);
             List<String> path = new ArrayList<>(Arrays.asList(pathStr.split("/")));
@@ -760,7 +767,7 @@ public class PageHandler implements Handler {
             Map<String, Object> data = Map.of("action", "redirect", "value", redirect);
             sse.sendEvent(data);
         } catch (Throwable e) {
-            handleErrors(e, ws, sse.ctx, false);
+            handleErrors(e, ws, sse.ctx(), false);
         }
     }
 
