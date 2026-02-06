@@ -72,17 +72,7 @@ public class WebOptionBindings extends BindingHelper {
         String[] fonts = GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
         return new WebOption(Font.class).setOptions(fonts);
     }
-//Guild
-    @Binding(types = Guild.class)
-    public WebOption getGuild() {
-        return new WebOption(Guild.class).setQueryMap((guild, user, nation) -> {
-            WebOptions data = new WebOptions(false).withIcon().withText().withSubtext();
-            for (Guild g : Locutus.imp().getDiscordApi().getCachedGuilds()) {
-                data.addWithIcon(g.getId(), g.getName(), g.getDescription(), g.getIconUrl());
-            }
-            return data;
-        }, false);
-    }
+
 
     @Binding(types = {AppMenu.class})
     public WebOption appMenu(String input) {
@@ -459,7 +449,7 @@ public class WebOptionBindings extends BindingHelper {
     private WebOptions mutualGuildOptions(User user) {
         WebOptions data = new WebOptions(false).withText();
         if (user != null) {
-            for (Guild guild : user.getMutualGuilds()) {
+            for (Guild guild : Locutus.imp().getDiscordApi().getMutualGuilds(user)) {
                 data.add(guild.getId(), guild.getName());
             }
         }
@@ -472,12 +462,22 @@ public class WebOptionBindings extends BindingHelper {
 
     @Binding(types = GuildDB.class)
     public WebOption getGuildDB() {
-        return withMutualGuildQuery(new WebOption(GuildDB.class));
+        return guildOption(GuildDB.class);
+    }
+    //Guild
+    @Binding(types = Guild.class)
+    public WebOption getGuild() {
+        return guildOption(Guild.class);
     }
 
-    @Binding(types = Guild.class)
-    public WebOption getGuildB() {
-        return withMutualGuildQuery(new WebOption(Guild.class));
+    private WebOption guildOption(Class clazz) {
+        return new WebOption(clazz).setQueryMap((guild, user, nation) -> {
+            WebOptions data = new WebOptions(false).withIcon().withText().withSubtext();
+            for (Guild g : Locutus.imp().getDiscordApi().getCachedGuilds()) {
+                data.addWithIcon(g.getId(), g.getName(), g.getDescription(), g.getIconUrl());
+            }
+            return data;
+        }, false);
     }
 //    AllianceDepositLimit
 //    NationDepositLimit

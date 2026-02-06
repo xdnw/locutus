@@ -330,7 +330,7 @@ public class IndexPages extends PageHelper {
             }
         }
         if (user != null) {
-            for (Guild guild : user.getMutualGuilds()) {
+            for (Guild guild : Locutus.imp().getDiscordApi().getMutualGuilds(user)) {
                 GuildDB db = Locutus.imp().getGuildDB(guild);
                 dbs.add(db);
             }

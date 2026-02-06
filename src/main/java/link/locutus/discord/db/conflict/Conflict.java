@@ -28,6 +28,7 @@ import link.locutus.discord.db.entities.conflict.ConflictMetric;
 import link.locutus.discord.db.entities.conflict.DamageStatGroup;
 import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 import link.locutus.discord.pnw.AllianceList;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.CachedSupplier;
 import link.locutus.discord.web.jooby.CloudStorage;
@@ -200,7 +201,10 @@ public class Conflict {
 
     public synchronized void tryUnload() {
         if (isActive()) return;
-        metaSupplier.unload();
+        if (metaSupplier.unload()) {
+            System.err.println("[conflict] Unloading(1) confict: " + getName() + "/" + getId() + "\n" +
+                    StringMan.stacktraceToString(new Exception().getStackTrace()));
+        }
     }
 
     private <T> T tryGet(ConflictField field, Function<ConflictMeta, T> onData) {

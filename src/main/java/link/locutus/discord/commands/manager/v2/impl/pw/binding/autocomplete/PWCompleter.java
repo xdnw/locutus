@@ -162,7 +162,7 @@ public class PWCompleter extends BindingHelper {
     @Autocomplete
     @Binding(types={Set.class, GuildDB.class}, multiple = true)
     public List<Map.Entry<String, String>> GuildDB(@Me User user, String input) {
-        List<GuildDB> options = user.getMutualGuilds().stream().map(Locutus.imp()::getGuildDB).toList();
+        List<GuildDB> options = Locutus.imp().getDiscordApi().getMutualGuilds(user).stream().map(Locutus.imp()::getGuildDB).toList();
         Map<String, GuildDB> byMap = new HashMap<>();
         for (GuildDB db : options) {
             byMap.put(db.getGuild().getName().toLowerCase(), db);
@@ -405,7 +405,7 @@ public class PWCompleter extends BindingHelper {
         List<GuildOrAlliance> options = new ArrayList<>();
         options.addAll(Locutus.imp().getNationDB().getAlliances());
         if (user != null) {
-            for (Guild other : user.getMutualGuilds()) {
+            for (Guild other : Locutus.imp().getDiscordApi().getMutualGuilds(user)) {
                 GuildDB db = Locutus.imp().getGuildDB(other);
                 if (db != null) {
                     options.add(db);
@@ -426,7 +426,7 @@ public class PWCompleter extends BindingHelper {
         List<NationOrAllianceOrGuild> options = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
         options.addAll(Locutus.imp().getNationDB().getAlliances());
         if (user != null) {
-            for (Guild other : user.getMutualGuilds()) {
+            for (Guild other : Locutus.imp().getDiscordApi().getMutualGuilds(user)) {
                 GuildDB db = Locutus.imp().getGuildDB(other);
                 if (db != null) {
                     options.add(db);
@@ -473,7 +473,7 @@ public class PWCompleter extends BindingHelper {
         List<NationOrAllianceOrGuildOrTaxid> options = new ArrayList<>(Locutus.imp().getNationDB().getAllNations());
         options.addAll(Locutus.imp().getNationDB().getAlliances());
         if (user != null) {
-            for (Guild guild : user.getMutualGuilds()) {
+            for (Guild guild : Locutus.imp().getDiscordApi().getMutualGuilds(user)) {
                 GuildDB mutual = Locutus.imp().getGuildDB(guild);
                 if (mutual != null) {
                     options.add(mutual);
@@ -651,7 +651,7 @@ public class PWCompleter extends BindingHelper {
     @Binding(types = {GuildDB.class})
     public List<Map.Entry<String, String>> GuildDBOne(@Me User user, String input) {
         if (user == null) return null;
-        List<GuildDB> options = user.getMutualGuilds().stream()
+        List<GuildDB> options = Locutus.imp().getDiscordApi().getMutualGuilds(user).stream()
                 .map(Locutus.imp()::getGuildDB)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
@@ -666,7 +666,7 @@ public class PWCompleter extends BindingHelper {
     @Binding(types = {Guild.class})
     public List<Map.Entry<String, String>> Guild(@Me User user, String input) {
         if (user == null) return null;
-        List<Guild> options = new ObjectArrayList<>(user.getMutualGuilds());
+        List<Guild> options = new ObjectArrayList<>(Locutus.imp().getDiscordApi().getMutualGuilds(user));
         options = StringMan.getClosest(input, options, Guild::getName, OptionData.MAX_CHOICES, true, false);
         return options.stream()
                 .map(g -> KeyValue.of(g.getName(), g.getId()))

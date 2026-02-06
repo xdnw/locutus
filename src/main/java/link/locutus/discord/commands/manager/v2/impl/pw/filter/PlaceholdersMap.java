@@ -584,8 +584,8 @@ public class PlaceholdersMap {
                         if (admin) {
                             return new HashSet<>(Locutus.imp().getGuildDatabases().values());
                         }
-                        List<Guild> guilds = user.getMutualGuilds();
-                        Set<GuildDB> dbs = new HashSet<>();
+                        Set<Guild> guilds = Locutus.imp().getDiscordApi().getMutualGuilds(user);
+                        Set<GuildDB> dbs = new ObjectOpenHashSet<>();
                         for (Guild guild : guilds) {
                             GuildDB db = Locutus.imp().getGuildDB(guild);
                             if (db != null) {

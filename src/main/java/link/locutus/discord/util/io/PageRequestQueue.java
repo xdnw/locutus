@@ -214,18 +214,18 @@ public class PageRequestQueue {
         }
     }
 
-    public <T> PageRequestTask<T> submit(Supplier<T> task, long priority, int allowBuffering, int allowDelay, String urlStr) {
+    public <T> PageRequestTask<T> submit(Supplier<T> task, PagePriority taskEnum, long priority, int allowBuffering, int allowDelay, String urlStr) {
         URI url;
         try {
             url = new URI(urlStr);
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }
-        return submit(task, priority, allowBuffering, allowDelay, url);
+        return submit(task, taskEnum, priority, allowBuffering, allowDelay, url);
     }
 
-    public <T> PageRequestTask<T> submit(Supplier<T> task, long priority, int allowBuffering, int allowDelay, URI url) {
-        return submit(new PageRequestTask<T>(task, priority, allowBuffering, allowDelay, url));
+    public <T> PageRequestTask<T> submit(Supplier<T> task, PagePriority taskEnum, long priority, int allowBuffering, int allowDelay, URI url) {
+        return submit(new PageRequestTask<T>(task, taskEnum, priority, allowBuffering, allowDelay, url));
     }
 
     public <T> PageRequestTask<T> submit(PageRequestTask<T> request) {
@@ -251,12 +251,14 @@ public class PageRequestQueue {
         private final int allowBuffering;
         private final int allowDelay;
         private final long creationDate;
+        private final PagePriority taskEnum;
 
-        public PageRequestTask(Supplier<T> task, long priority, int allowBuffering, int allowDelay, URI uri) {
+        public PageRequestTask(Supplier<T> task, PagePriority taskEnum, long priority, int allowBuffering, int allowDelay, URI uri) {
             this.creationDate = System.currentTimeMillis();
             this.allowBuffering = allowBuffering;
             this.allowDelay = allowDelay;
             this.task = task;
+            this.taskEnum = taskEnum;
             this.priority = priority;
             this.url = uri;
             checkNotNull(this.url.getHost(), "Invalid URL Host: " + uri);

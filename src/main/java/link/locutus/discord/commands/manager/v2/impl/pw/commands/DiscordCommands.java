@@ -504,7 +504,7 @@ public class DiscordCommands {
     @RolePermission(value = Roles.INTERNAL_AFFAIRS)
     public String hasRole(User user, Roles role) {
         StringBuilder response = new StringBuilder();
-        for (Guild other : user.getMutualGuilds()) {
+        for (Guild other : Locutus.imp().getDiscordApi().getMutualGuilds(user)) {
             if (role.has(user, other)) {
                 response.append(user.getName()).append(" has ").append(role.name()).append(" on ").append(other).append("\n");
             }

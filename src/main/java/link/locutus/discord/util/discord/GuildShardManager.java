@@ -3,11 +3,14 @@ package link.locutus.discord.util.discord;
 import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.SelfUser;
@@ -19,7 +22,12 @@ import net.dv8tion.jda.api.sharding.ShardManager;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
+import java.util.function.BinaryOperator;
 import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 public class GuildShardManager {
     private ShardManager defaultShardManager;
@@ -276,6 +284,54 @@ public class GuildShardManager {
         for (JDA jda : instances) {
             SelfUser selfUser = jda.getSelfUser();
             if (selfUser != null) return selfUser;
+        }
+        return null;
+    }
+
+    private static final int NUM_THREADS = Runtime.getRuntime().availableProcessors();
+
+    public Set<Guild> getMutualGuilds(User user) {
+        Collection<GuildDB> dbs = Locutus.imp().getGuildDatabases().values();
+        int total = dbs.size();
+        if (total < 2000) {
+            Set<Guild> mutualGuilds = new ObjectLinkedOpenHashSet<>();
+            for (GuildDB db : dbs) {
+                Guild guild = db.getGuild();
+                if (guild.isDetached()) continue;
+                if (guild.isMember(user)) {
+                    mutualGuilds.add(guild);
+                }
+            }
+            return mutualGuilds;
+        }
+        final int estSize = Math.max(16, total / NUM_THREADS);
+        return dbs.parallelStream()
+                .unordered()
+                .map(GuildDB::getGuild)
+                .filter(Objects::nonNull)
+                .filter(g -> !g.isDetached() && g.isMember(user))
+                .collect(Collectors.toCollection(() -> new ObjectOpenHashSet<>(estSize)));
+    }
+
+
+    public Member getFirstMember(User user) {
+        Guild guild = getFirstMutualGuild(user);
+        return guild == null ? null : guild.getMember(user);
+    }
+
+    public OnlineStatus getOnlineStatus(User user) {
+        if (user == null) return null;
+        Member member = getFirstMember(user);
+        return member == null ? null : member.getOnlineStatus();
+    }
+
+    public Guild getFirstMutualGuild(User user) {
+        for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
+            Guild guild = db.getGuild();
+            if (guild.isDetached()) continue;
+            if (guild.isMember(user)) {
+                return guild;
+            }
         }
         return null;
     }

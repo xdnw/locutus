@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.core.util.ByteArrayBuilder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
@@ -382,14 +383,20 @@ public enum HeaderGroup {
     }
 
     private static void copyJsonPayload(JsonFactory factory, byte[] payload, JsonGenerator gen) throws IOException {
-        try (JsonParser parser = factory.createParser(payload)) {
-            JsonToken firstToken = parser.nextToken();
-            if (firstToken == null) {
-                gen.writeStartObject();
-                gen.writeEndObject();
+        try (JsonParser p = factory.createParser(payload)) {
+            JsonToken t = p.nextToken();
+            if (t == null) return;
+
+            if (t != JsonToken.START_OBJECT) {
+                // fallback: copy whole value
+                gen.copyCurrentStructure(p);
                 return;
             }
-            gen.copyCurrentStructure(parser);
+
+            // Flatten: copy entries of the object into the current object
+            while (p.nextToken() != JsonToken.END_OBJECT) { // now at FIELD_NAME
+                gen.copyCurrentStructure(p);               // copies field name + value
+            }
         }
     }
 
@@ -401,23 +408,28 @@ public enum HeaderGroup {
     ) {
         try {
             ObjectMapper mapper = JteUtil.getSerializer();
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            JsonGenerator gen = mapper.getFactory().createGenerator(out);
 
-            gen.writeStartObject();
+            ByteArrayBuilder out = new ByteArrayBuilder();
+            try (JsonGenerator gen = mapper.getFactory().createGenerator(out)) {
+                gen.writeStartObject();
 
-            for (Map.Entry<HeaderGroup, Boolean> entry : forceUpdate.entrySet()) {
-                HeaderGroup group = entry.getKey();
-                boolean force = entry.getValue();
-                group.writeGroupWithCacheFlat(manager, gen, conflict.getId(), now, force, conflict);
+                for (Map.Entry<HeaderGroup, Boolean> entry : forceUpdate.entrySet()) {
+                    HeaderGroup group = entry.getKey();
+                    boolean force = entry.getValue();
+                    group.writeGroupWithCacheFlat(manager, gen, conflict.getId(), now, force, conflict);
+                }
+
+                gen.writeNumberField("update_ms", now);
+                gen.writeEndObject();
+
+                // optional, but harmless:
+                gen.flush();
             }
 
-            gen.writeNumberField("update_ms", now);
+            byte[] msgpack = out.toByteArray();
+            out.release(); // return buffers to recycler
+            return JteUtil.compress(msgpack);
 
-            gen.writeEndObject();
-            gen.close();
-
-            return JteUtil.compress(out.toByteArray());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

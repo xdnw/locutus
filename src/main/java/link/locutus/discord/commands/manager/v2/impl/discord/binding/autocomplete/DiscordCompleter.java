@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.discord.binding.autocomple
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
@@ -114,7 +115,7 @@ public class DiscordCompleter extends BindingHelper {
     @Autocomplete
     @Binding(types = {Guild.class})
     public List<Map.Entry<String, String>> Guild(@Me User user, String input) {
-        List<Guild> options = user.getMutualGuilds();
+        List<Guild> options = new ObjectArrayList<>(Locutus.imp().getDiscordApi().getMutualGuilds(user));
         options = StringMan.getClosest(input, options, Guild::getName, OptionData.MAX_CHOICES, true, true);
         return options.stream().map(f -> new KeyValue<>(f.getName(), f.getIdLong() + "")).collect(Collectors.toList());
     }

@@ -2,6 +2,7 @@ package link.locutus.discord.web.commands.binding;
 
 import com.google.gson.reflect.TypeToken;
 import com.knuddels.jtokkit.api.ModelType;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -390,8 +391,8 @@ public class WebPWBindings extends WebBindingHelper {
     @Binding(types= GuildOrAlliance.class)
     public String guildOrAlliance(@Me User user, @Me GuildDB db, ParameterData param) {
         Set<DBAlliance> alliances = Locutus.imp().getNationDB().getAlliances();
-        List<Guild> guilds = user.getMutualGuilds();
-        List<GuildOrAlliance> options = new ArrayList<>(alliances.size() + guilds.size());
+        Set<Guild> guilds = Locutus.imp().getDiscordApi().getMutualGuilds(user);
+        List<GuildOrAlliance> options = new ObjectArrayList<>(alliances.size() + guilds.size());
         for (Guild guild : guilds) {
             options.add(Locutus.imp().getGuildDB(guild));
         }
@@ -422,7 +423,7 @@ public class WebPWBindings extends WebBindingHelper {
 
         Set<DBAlliance> alliances = Locutus.imp().getNationDB().getAlliances();
 
-        List<Guild> guilds = user.getMutualGuilds();
+        Set<Guild> guilds = Locutus.imp().getDiscordApi().getMutualGuilds(user);
 
         AllianceList aaList = includeBrackets && db == null ? null : db.getAllianceList();
         List<NationOrAllianceOrGuildOrTaxid> options = new ArrayList<>(alliances.size() + nations.size() + guilds.size());
@@ -1320,7 +1321,7 @@ public class WebPWBindings extends WebBindingHelper {
     @HtmlInput
     @Binding(types = {Set.class, GuildDB.class}, multiple = true)
     public String guildDB(ParameterData param, @Me User user) {
-        List<Guild> options = user.getMutualGuilds();
+        Set<Guild> options = Locutus.imp().getDiscordApi().getMutualGuilds(user);
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             names.add(obj.getName());
             subtext.add(obj.getId());

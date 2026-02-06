@@ -9,6 +9,7 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.conflict.DamageStatGroup;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.scheduler.CachedSupplier;
 import link.locutus.discord.util.scheduler.KeyValue;
@@ -68,7 +69,10 @@ public class CoalitionSide {
     }
 
     public void clearWarData() {
-        warStatistics.unload();
+        if (warStatistics.unload()) {
+                System.err.println("[conflict] Unloading(1) confict: " + parent.getName() + "/" + parent.getId() + "\n" +
+                        StringMan.stacktraceToString(new Exception().getStackTrace()));
+        }
     }
 
     public WarStatistics get() {

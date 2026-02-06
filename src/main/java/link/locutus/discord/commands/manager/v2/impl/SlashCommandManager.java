@@ -485,25 +485,29 @@ public class SlashCommandManager extends ListenerAdapter {
 
         // 3. Compare
         if (currentHash == savedHash) {
-            Logg.info("Slash commands have not changed (Hash: " + currentHash + "). Retrieving existing IDs...");
-
+            if (!commandIds.isEmpty()) {
+                Logg.info("Slash commands unchanged (Hash: " + currentHash + ") and IDs loaded from cache. Skipping Discord API.");
+                return; // EXIT EARLY - Most efficient path
+            }
+            // Fallback: Hash matches, but cache was empty/missing. Fetch from Discord.
+            Logg.info("Slash commands unchanged, but ID cache was empty. Retrieving from Discord...");
             jda.retrieveCommands().queue(commands -> {
                 for (net.dv8tion.jda.api.interactions.commands.Command command : commands) {
                     String path = command.getName();
                     commandIds.put(path, command.getIdLong());
                 }
-                Logg.info("Successfully retrieved " + commands.size() + " commands.");
+                Logg.info("Retrieved " + commands.size() + " commands.");
+                saveCommandIds(); // Save them so we don't need to retrieve next time
             }, error -> {
                 Logg.error("Failed to retrieve commands: " + error.getMessage());
             });
-
         } else {
             Logg.info("Slash commands changed (Old: " + savedHash + ", New: " + currentHash + "). Updating Discord...");
 
             // 4. Update commands and Save new hash
             List<net.dv8tion.jda.api.interactions.commands.Command> commands =
                     RateLimitUtil.complete(jda.updateCommands().addCommands(toRegister));
-
+            commandIds.clear();
             for (net.dv8tion.jda.api.interactions.commands.Command command : commands) {
                 String path = command.getName();
                 commandIds.put(path, command.getIdLong());

@@ -2491,7 +2491,7 @@ public class UnsortedCommands {
                 errors.add("Cannot find member in guild for `" + nation.getNation() + "` | `" + user.getName() + "`");
                 continue;
             }
-            if (user.getMutualGuilds().contains(inviteTo)) {
+            if (Locutus.imp().getDiscordApi().getMutualGuilds(user).contains(inviteTo)) {
                 errors.add("Already in the guild: `" + nation.getNation() + "`");
                 continue;
             }

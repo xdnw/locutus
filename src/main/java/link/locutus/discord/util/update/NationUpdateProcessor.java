@@ -379,7 +379,7 @@ public class NationUpdateProcessor {
         if (ban.discord_id != 0) {
             User user = DiscordUtil.getUser(ban.discord_id);
             if (user != null) {
-                for (Guild guild : user.getMutualGuilds()) {
+                for (Guild guild : Locutus.imp().getDiscordApi().getMutualGuilds(user)) {
                     Member member = guild.getMember(user);
                     if (member != null && member.hasPermission(Permission.ADMINISTRATOR)) {
                         GuildDB db = Locutus.imp().getGuildDB(guild);
@@ -747,7 +747,7 @@ public class NationUpdateProcessor {
     public void onNationChangeName(NationChangeNameEvent event) {
         User user = event.getCurrent().getUser();
         if (user != null) {
-            for (Guild guild : user.getMutualGuilds()) {
+            for (Guild guild : Locutus.imp().getDiscordApi().getMutualGuilds(user)) {
                 GuildDB db = Locutus.imp().getGuildDB(guild);
                 if (db == null) continue;
                 Member member = guild.getMember(user);
@@ -769,7 +769,7 @@ public class NationUpdateProcessor {
     public void onNationChangeLeader(NationChangeLeaderEvent event) {
         User user = event.getCurrent().getUser();
         if (user != null) {
-            for (Guild guild : user.getMutualGuilds()) {
+            for (Guild guild : Locutus.imp().getDiscordApi().getMutualGuilds(user)) {
                 GuildDB db = Locutus.imp().getGuildDB(guild);
                 if (db == null) continue;
                 Member member = guild.getMember(user);

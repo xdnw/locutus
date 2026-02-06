@@ -499,7 +499,7 @@ public final class Locutus extends ListenerAdapter {
         if (user != null) {
             User discordUser = manager.getUserById(user.getDiscordId());
             if (discordUser != null) {
-                List<Guild> guilds = discordUser.getMutualGuilds();
+                Collection<Guild> guilds = Locutus.imp().getDiscordApi().getMutualGuilds(discordUser);
                 for (Guild guild : guilds) {
                     GuildDB db = getGuildDB(guild);
                     Member member = guild.getMember(discordUser);

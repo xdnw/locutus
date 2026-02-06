@@ -132,7 +132,7 @@ public class DiscordWebBindings extends WebBindingHelper {
     public String guild(@Default @Me User user, @Default ParameterData param, @Default @Me DBNation nation) {
         Set<Guild> options = new ObjectLinkedOpenHashSet<>();
         if (user != null) {
-            options.addAll(user.getMutualGuilds());
+            options.addAll(Locutus.imp().getDiscordApi().getMutualGuilds(user));
         }
         if (nation != null) {
             DBAlliance aa = nation.getAlliance();

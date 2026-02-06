@@ -28,7 +28,7 @@ public class GetUid implements Callable<PwUid> {
     public PwUid call() throws IOException {
         String url = nation.getUrl();
         PagePriority pp = (priority ? PagePriority.NATION_UID_MANUAL : PagePriority.NATION_UID_AUTO);
-        String html = FileUtil.readStringFromURL(pp.ordinal(), pp.getAllowedBufferingMs(), pp.getAllowableDelayMs(), url);
+        String html = FileUtil.readStringFromURL(pp, pp.ordinal(), pp.getAllowedBufferingMs(), pp.getAllowableDelayMs(), url);
         Document dom = Jsoup.parse(html);
         try {
             NationUpdateProcessor.NationUpdate update = NationUpdateProcessor.updateNation(nation, dom);

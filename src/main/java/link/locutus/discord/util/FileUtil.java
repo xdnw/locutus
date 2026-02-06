@@ -84,12 +84,12 @@ public final class FileUtil {
         return Thread.currentThread().getContextClassLoader();
     }
 
-    public static <T> T submit(int priority, int maxBuffer, int maxDelay, Supplier<T> task, String url) {
-        return get(pageRequestQueue.submit(task, getPriority(priority), maxBuffer, maxDelay, url));
+    public static <T> T submit(PagePriority taskEnum, int priority, int maxBuffer, int maxDelay, Supplier<T> task, String url) {
+        return get(pageRequestQueue.submit(task, taskEnum, getPriority(priority), maxBuffer, maxDelay, url));
     }
 
-    public static <T> T submit(int priority, int maxBuffer, int maxDelay, Supplier<T> task, URI url) {
-        return get(pageRequestQueue.submit(task, getPriority(priority), maxBuffer, maxDelay, url));
+    public static <T> T submit(PagePriority taskEnum, int priority, int maxBuffer, int maxDelay, Supplier<T> task, URI url) {
+        return get(pageRequestQueue.submit(task, taskEnum, getPriority(priority), maxBuffer, maxDelay, url));
     }
 
     public static PageRequestQueue getPageRequestQueue() {
@@ -97,7 +97,7 @@ public final class FileUtil {
     }
 
     public static byte[] readBytesFromUrl(PagePriority priority, String urlStr) {
-        return submit(priority.ordinal(), priority.getAllowedBufferingMs(), priority.getAllowableDelayMs(), () -> {
+        return submit(priority, priority.ordinal(), priority.getAllowedBufferingMs(), priority.getAllowableDelayMs(), () -> {
             try (InputStream is = new URL(urlStr).openStream()) {
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 byte[] byteChunk = new byte[4096]; // Or whatever size you want to read in at a time.
@@ -157,11 +157,11 @@ public final class FileUtil {
     }
 
     public static String readStringFromURL(PagePriority priority, String requestURL) throws IOException {
-        return readStringFromURL(priority.ordinal(), priority.getAllowedBufferingMs(), priority.getAllowableDelayMs(), requestURL);
+        return readStringFromURL(priority, priority.ordinal(), priority.getAllowedBufferingMs(), priority.getAllowableDelayMs(), requestURL);
     }
 
-    public static String readStringFromURL(int priority, int maxBuffer, int maxDelay, String requestURL) throws IOException {
-        return submit(priority, maxBuffer, maxDelay, () -> {
+    public static String readStringFromURL(PagePriority taskEnum, int priority, int maxBuffer, int maxDelay, String requestURL) throws IOException {
+        return submit(taskEnum, priority, maxBuffer, maxDelay, () -> {
                 try {
                     URL website = new URL(requestURL);
                     URLConnection connection = website.openConnection();
@@ -275,7 +275,7 @@ public final class FileUtil {
         };
 
         PageRequestQueue.PageRequestTask<String> task = pageRequestQueue.submit(jsoupTask,
-                getPriority(priority.ordinal()), priority.getAllowedBufferingMs(), priority.getAllowableDelayMs(), urlStr);
+                priority, getPriority(priority.ordinal()), priority.getAllowedBufferingMs(), priority.getAllowableDelayMs(), urlStr);
         return task;
     }
 

@@ -21,6 +21,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.Logg;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
@@ -327,7 +328,12 @@ public class ConflictManager {
     public boolean pushDirtyConflicts() {
         long now = System.currentTimeMillis();
         boolean updateIndex = false;
-        for (Conflict conflict : getActiveConflicts()) {
+        List<Conflict> activeConflicts = getActiveConflicts();
+        if (activeConflicts.isEmpty()) {
+            Logg.text("[Conflict] No active conflicts to push.");
+            return false;
+        }
+        for (Conflict conflict : activeConflicts) {
             long lastPushPage = conflict.getPushedPage();
             long lastPushGraph = conflict.getPushedGraph();
             long lastPushIndex = conflict.getPushedIndex();
@@ -353,8 +359,16 @@ public class ConflictManager {
             }
 
             if (!updatePageMeta && !updatePageStats && !updateGraphMeta && !updateGraphStats) {
+                Logg.text("[Conflict] No updates needed for conflict " + conflict.getName() + " (ID " + conflict.getId() + ").");
                 continue;
             }
+
+            Logg.text("[Conflict] Pushing updates for conflict " + conflict.getName() + " (ID " + conflict.getId() + "): " +
+                    (updatePageMeta ? "page meta " : "") +
+                    (updatePageStats ? "page stats " : "") +
+                    (updateGraphMeta ? "graph meta " : "") +
+                    (updateGraphStats ? "graph stats " : "")
+            );
 
             if (updatePageMeta || updatePageStats) {
                 updateIndex = true;
@@ -363,6 +377,7 @@ public class ConflictManager {
             conflict.pushChanges(this, null, updatePageMeta, updatePageStats, updateGraphMeta, updateGraphStats, false, now);
         }
         if (updateIndex) {
+            Logg.text("[Conflict] Pushing updated index.");
             pushIndex(now);
             return true;
         }

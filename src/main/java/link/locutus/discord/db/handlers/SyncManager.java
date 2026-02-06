@@ -143,7 +143,7 @@ public class SyncManager {
 
     private void sendData(User user, DataOutputStream out, long bufferTime) throws IOException {
         PrivateChannel channel = RateLimitUtil.complete(user.openPrivateChannel());
-        Set<Long> guildIds = user.getMutualGuilds().stream().map(ISnowflake::getIdLong).collect(Collectors.toSet());
+        Set<Long> guildIds = Locutus.imp().getDiscordApi().getMutualGuilds(user).stream().map(ISnowflake::getIdLong).collect(Collectors.toSet());
         sendData(guildIds, out, new Consumer<Runnable>() {
             @Override
             public void accept(Runnable runnable) {

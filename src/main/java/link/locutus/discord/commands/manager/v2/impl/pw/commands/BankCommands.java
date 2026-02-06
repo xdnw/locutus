@@ -2556,6 +2556,7 @@ public class BankCommands {
                 .setStart(0L)
                 .setEnd(Long.MAX_VALUE)
                 .setOffset(useOffset)
+                .setTracked(tracked)
                 .setIncludeTaxes(!noTaxes)
                 .setUseTaxBase(useTaxBase)
                 .execute();

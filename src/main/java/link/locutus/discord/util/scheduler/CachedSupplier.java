@@ -1,5 +1,7 @@
 package link.locutus.discord.util.scheduler;
 
+import link.locutus.discord.util.StringMan;
+
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -111,10 +113,14 @@ public class CachedSupplier<T> implements Supplier<T> {
      * Clears the cached value and reinstates the lazy-loading delegate so
      * the next call to {@link #get()} recomputes the value.
      */
-    public void unload() {
+    public boolean unload() {
         synchronized (this) {
+            if (value == null) {
+                return false; // already unloaded
+            }
             value = null;
             delegate = this::resolve;
+            return true;
         }
     }
 }

@@ -178,7 +178,8 @@ public class TransferSheet {
 
     public TransferSheet write() {
         List<String> header = new ArrayList<>(Arrays.asList("nation", "alliance", "cities", "worth"));
-        if (!notes.isEmpty()) {
+        boolean hasNote = !notes.isEmpty();
+        if (hasNote) {
             header.add("note");
         }
         for (ResourceType value : ResourceType.values) {
@@ -201,12 +202,12 @@ public class TransferSheet {
                 row.add(MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
                 row.add(nation.getCities());
             }
-            String note = notes.get(nationOrAA);
-            if (note != null) {
-                row.add(note);
-            }
             Map<ResourceType, Double> transfer = entry.getValue();
             row.add(ResourceType.convertedTotal(transfer));
+            String note = notes.get(nationOrAA);
+            if (hasNote) {
+                row.add(note == null ? "" : note);
+            }
             for (ResourceType type : ResourceType.values) {
                 if (type != ResourceType.CREDITS) {
                     double amt = transfer.getOrDefault(type, 0d);

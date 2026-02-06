@@ -120,7 +120,7 @@ public class WarCommands {
         }
         StringBuilder response = new StringBuilder("Set beige alert mode to " + mode + " via " + CM.alerts.beige.beigeAlertMode.cmd.toSlashMention());
         if (mode != NationMeta.BeigeAlertMode.NO_ALERTS) {
-            for (Guild guild : user.getMutualGuilds()) {
+            for (Guild guild : Locutus.imp().getDiscordApi().getMutualGuilds(user)) {
                 Role role = Roles.BEIGE_ALERT_OPT_OUT.toRole2(guild);
                 Member member = guild.getMember(user);
                 if (role != null && member != null && member.getUnsortedRoles().contains(role)) {
@@ -765,10 +765,8 @@ public class WarCommands {
                 if (ally.active_m() < 15) {
                     status = OnlineStatus.ONLINE;
                 } else {
-                    Member member = allyUser.getMutualGuilds().get(0).getMember(allyUser);
-                    if (member != null) {
-                        status = member.getOnlineStatus();
-                    }
+                    status = Locutus.imp().getDiscordApi().getOnlineStatus(allyUser);
+                    if (status == null) status = OnlineStatus.OFFLINE;
                 }
                 if (status != OnlineStatus.OFFLINE) {
                     response.append(status + " ");
@@ -4749,10 +4747,9 @@ public class WarCommands {
 
             User user = nation.getUser();
             if (user != null) {
-                List<Guild> mutual = user.getMutualGuilds();
-                if (!mutual.isEmpty()) {
-                    Guild guild = mutual.get(0);
-                    Member member = guild.getMember(user);
+                Guild mutual = Locutus.imp().getDiscordApi().getFirstMutualGuild(user);
+                if (mutual != null) {
+                    Member member = mutual.getMember(user);
                     if (member != null) {
                         OnlineStatus status = member.getOnlineStatus();
                         if (status != OnlineStatus.OFFLINE && status != OnlineStatus.UNKNOWN) {

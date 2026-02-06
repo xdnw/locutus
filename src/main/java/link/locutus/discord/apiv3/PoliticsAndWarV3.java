@@ -332,7 +332,7 @@ public class PoliticsAndWarV3 {
 
             try {
                 exchange =
-                        FileUtil.submit(priorityId, priority.getAllowedBufferingMs(), priority.getAllowableDelayMs(), () -> restTemplate.exchange(uri,
+                        FileUtil.submit(priority, priorityId, priority.getAllowedBufferingMs(), priority.getAllowableDelayMs(), () -> restTemplate.exchange(uri,
                         HttpMethod.POST,
                         entity,
                         String.class), uri);

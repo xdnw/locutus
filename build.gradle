@@ -87,6 +87,7 @@ if (useTs) {
     tasks.named('generateTypeScript') {
         jsonLibrary = 'jackson2'
         classes = [
+                'link.locutus.discord.web.commands.binding.value_types.WebError',
                 'link.locutus.discord.web.commands.binding.value_types.CacheType',
                 'link.locutus.discord.web.commands.binding.value_types.CoalitionGraph',
                 'link.locutus.discord.web.commands.binding.value_types.CoalitionGraphs',

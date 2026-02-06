@@ -5415,15 +5415,9 @@ public abstract class DBNation implements NationOrAlliance {
     @Command(desc = "Discord online status")
     public OnlineStatus getOnlineStatus() {
         User user = getUser();
-        if (user != null) {
-            for (Guild guild : user.getMutualGuilds()) {
-                Member member = guild.getMember(user);
-                if (member != null) {
-                    return member.getOnlineStatus();
-                }
-            }
-        }
-        return OnlineStatus.OFFLINE;
+        OnlineStatus status = Locutus.imp().getDiscordApi().getOnlineStatus(user);
+        if (status == null) status = OnlineStatus.OFFLINE;
+        return status;
     }
 
     @Command(desc = "If online ingame within 60m or currently online discord\n" +

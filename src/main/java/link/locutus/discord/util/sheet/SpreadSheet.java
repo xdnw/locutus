@@ -247,7 +247,7 @@ public class SpreadSheet {
                 );
 
         Sheets api = null;
-        String sheetId = null;
+        String sheetId = dbOrNull == null ? null : dbOrNull.getInfo(key, true);
         try {
             api = SheetUtil.getSheetService();
             if (sheetId == null) {
@@ -683,7 +683,7 @@ public class SpreadSheet {
 
         for (int i = 0; i < row.size(); i++) {
             Object val = row.get(i);
-            if (!(val instanceof String)) { out.add(null); continue; }
+            if (!(val instanceof String)) { out.add(val); continue; }
 
             String s = val.toString();
             boolean hasRow = s.contains("$row");
@@ -828,26 +828,30 @@ public class SpreadSheet {
         if (values == null || values.isEmpty()) {
             return;
         }
-        int width = values.get(0).size();
         int size = values.size();
+        final int BATCH_ROWS = 10000;
 
-        for (int i = 0; i < size; i += 10000) {
-            int height = Math.min(i + 9999, size);
-            List<List<Object>> batch = new ObjectArrayList<>(values.subList(i, height));
+        for (int i = 0; i < size; i += BATCH_ROWS) {
+            int endExclusive = Math.min(i + BATCH_ROWS, size);
+            List<List<Object>> batch = new ObjectArrayList<>(values.subList(i, endExclusive));
+
             int batchWidth = 0;
             for (List<Object> row : batch) {
                 batchWidth = Math.max(batchWidth, row.size());
             }
+            if (batchWidth == 0) {
+                batchWidth = 1; // ensure a valid column range
+            }
 
             String pos1 = SheetUtil.getRange(0, i);
-            String pos2 = SheetUtil.getRange(batchWidth - 1, height - 1);
+            String pos2 = SheetUtil.getRange(batchWidth - 1, endExclusive - 1);
             String range = pos1 + ":" + pos2;
 
-            ValueRange body = new ValueRange()
-                    .setValues(batch);
+            ValueRange body = new ValueRange().setValues(batch);
 
             UpdateValuesResponse result = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
-                    () -> service.spreadsheets().values().update(spreadsheetId, (tabName.isEmpty() ? "" : tabName + "!") + range, body)
+                    () -> service.spreadsheets().values()
+                            .update(spreadsheetId, (tabName.isEmpty() ? "" : tabName + "!") + range, body)
                             .setValueInputOption("USER_ENTERED")
                             .execute());
         }
