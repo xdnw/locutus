@@ -426,12 +426,24 @@ public class SpreadSheet {
     }
 
     public void setDefaultTab(String defaultTab, Integer id) {
+        setDefaultTab(defaultTab, id, false);
+    }
+    public void setDefaultTab(String defaultTab, Integer id, boolean createIfAbsent) {
         if (defaultTab != null && !defaultTab.isEmpty() && !defaultTab.equals(this.defaultTab)) {
             if (id == null && service != null) {
                 Map<String, Integer> tabs = getTabsByNameLower();
-                id = tabs.get(defaultTab.toLowerCase());
+                id = tabs.get(defaultTab.toLowerCase(Locale.ROOT));
                 if (id == null) {
-                    throw new IllegalArgumentException("No tab found with name: `" + defaultTab + "`. Options: " + StringMan.getString(tabs));
+                    if (createIfAbsent) {
+                        try {
+                            id = updateCreateTabIfAbsent(defaultTab);
+                        } catch (IOException e) {
+                            throw new RuntimeException("Failed to create tab: " + defaultTab, e);
+                        }
+                    }
+                    if (id == null) {
+                        throw new IllegalArgumentException("No tab found with name: `" + defaultTab + "`. Options: " + StringMan.getString(tabs));
+                    }
                 }
             }
             this.defaultTabId = id;
@@ -745,18 +757,6 @@ public class SpreadSheet {
                 () -> service.spreadsheets().batchUpdate(spreadsheetId, batchRequests).execute());
     }
 
-    public void updateCreateTabIfAbsent(String tabName) throws IOException {
-        Spreadsheet sheet = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
-                () -> service.spreadsheets().get(spreadsheetId).execute());
-        List<Sheet> sheets = sheet.getSheets();
-        for (Sheet sheet1 : sheets) {
-            if (sheet1.getProperties().getTitle().equals(tabName)) {
-                return;
-            }
-        }
-        updateAddTab(tabName);
-    }
-
     /**
      * Checks if the provided tabs exist in the Google Spreadsheet. If a tab does not exist, it is created.
      *  The method returns a map where the keys are the tab names in lower case and the values are Booleans indicating whether the tab was created during the method execution.
@@ -781,23 +781,43 @@ public class SpreadSheet {
         return result;
     }
 
-    private void updateAddTab(String tabName) {
-        if (service == null) {
-            return;
+    public Integer updateCreateTabIfAbsent(String tabName) throws IOException {
+        Spreadsheet sheet = SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
+                () -> service.spreadsheets().get(spreadsheetId).execute());
+        List<Sheet> sheets = sheet.getSheets();
+        if (sheets != null) {
+            for (Sheet sheet1 : sheets) {
+                SheetProperties props = sheet1.getProperties();
+                if (props != null && tabName.equals(props.getTitle())) {
+                    return props.getSheetId();
+                }
+            }
         }
-        AddSheetRequest addSheetRequest = new AddSheetRequest();
-        SheetProperties sheetProperties = new SheetProperties();
-        sheetProperties.setTitle(tabName);
-        addSheetRequest.setProperties(sheetProperties);
-        List<Request> requests = new ObjectArrayList<>();
-        requests.add(new Request().setAddSheet(addSheetRequest));
-        BatchUpdateSpreadsheetRequest batchUpdateSpreadsheetRequest = new BatchUpdateSpreadsheetRequest();
-        batchUpdateSpreadsheetRequest.setRequests(requests);
+        return updateAddTab(tabName);
+    }
+
+    private Integer updateAddTab(String tabName) {
+        if (service == null) return null;
+
+        AddSheetRequest addSheetRequest = new AddSheetRequest()
+                .setProperties(new SheetProperties().setTitle(tabName));
+
+        BatchUpdateSpreadsheetRequest batchReq = new BatchUpdateSpreadsheetRequest()
+                .setRequests(List.of(new Request().setAddSheet(addSheetRequest)));
+
         try {
-            SheetUtil.executeRequest(SheetUtil.RequestType.SHEETS,
-                    () -> service.spreadsheets().batchUpdate(spreadsheetId, batchUpdateSpreadsheetRequest).execute());
-        } catch (RuntimeException e) {
+            BatchUpdateSpreadsheetResponse resp =
+                    service.spreadsheets().batchUpdate(spreadsheetId, batchReq).execute();
+
+            if (resp == null || resp.getReplies() == null || resp.getReplies().isEmpty()) return null;
+
+            AddSheetResponse addResp = resp.getReplies().get(0).getAddSheet();
+            if (addResp == null || addResp.getProperties() == null) return null;
+
+            return addResp.getProperties().getSheetId(); // <-- sheetId
+        } catch (Exception e) {
             e.printStackTrace();
+            return null;
         }
     }
 

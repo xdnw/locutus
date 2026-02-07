@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import de.siegmar.fastcsv.reader.*;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
@@ -564,20 +565,26 @@ public class CustomSheetCommands {
             }
             The keys will be the tab names, and the values will be the column names""")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String importSheetJsonColumns(SpreadSheet sheet, String json) throws IOException {
+    public String importSheetJsonColumns(ValueStore store, @Me IMessageIO io, @Me GuildDB db, SpreadSheet sheet, @AllowAttachment String json) throws IOException, GeneralSecurityException {
         Map<String, List<String>> columns = new Gson().fromJson(json, Map.class);
         if (columns == null || columns.isEmpty()) {
             throw new IllegalArgumentException("No columns found in the JSON");
         }
 
         sheet.reset();
+        Set<String> allowedTabNames = new ObjectOpenHashSet<>();
         columns.forEach((tabName, header) -> {
-            sheet.setDefaultTab(tabName, null);
+            sheet.setDefaultTab(tabName, null, true);
             sheet.setHeader(header);
+            allowedTabNames.add(tabName.toLowerCase(Locale.ROOT));
         });
-        sheet.updateWrite();
-
-        return "Imported columns to <" + sheet.getURL() + ">";
+//        sheet.updateWrite();
+        return autoPredicate(store, io, db, sheet, false, new BiPredicate<Integer, String>() {
+            @Override
+            public boolean test(Integer integer, String s) {
+                return allowedTabNames.contains(s.toLowerCase(Locale.ROOT));
+            }
+        });
     }
 
     @Command(desc = """
