@@ -329,9 +329,9 @@ public class AllianceMetricCommands {
 
     @Command(desc = "Graph a set of nation metrics for the specified nations over a period of time based on daily nation and city snapshots")
     public void metricByGroup(@Me IMessageIO io, @Me @Default GuildDB db, @Me JSONObject command,
-                                Set<TypedFunction<DBNation, Double>> metrics,
+                                @NoFormat Set<TypedFunction<DBNation, Double>> metrics,
                                 NationList nations,
-                                @Default("getCities") TypedFunction<DBNation, Double> groupBy,
+                              @NoFormat @Default("getCities") TypedFunction<DBNation, Double> groupBy,
                                 @Switch("i") boolean includeInactives,
                                 @Switch("a") boolean includeApplicants,
                                 @Switch("t") boolean total,

@@ -609,6 +609,7 @@ public class StatCommands {
     }
 
     @Command(desc = "Rank nations by an attribute", viewable = true)
+    @NoFormat
     public void nationRanking(@Me IMessageIO channel, @Me @Default GuildDB db,
                               @Me JSONObject command,
                               NationList nations,
@@ -715,6 +716,7 @@ public class StatCommands {
         return null;
     }
 
+    @NoFormat
     @Command(desc = "Graph the attributes of the nations of two coalitions by city count\n" +
             "e.g. How many nations, soldiers etc. are at each city", viewable = true)
     public String attributeTierGraph(@Me IMessageIO channel, @Me @Default GuildDB db,
