@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.core.util.ByteArrayBuilder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
@@ -20,12 +19,16 @@ import link.locutus.discord.web.jooby.JteUtil;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+
+import static link.locutus.discord.util.IOUtil.closeShield;
+import static link.locutus.discord.util.IOUtil.writeMsgpackBytes;
 
 public enum HeaderGroup {
     INDEX_META {
@@ -336,81 +339,83 @@ public enum HeaderGroup {
 
     public abstract Map<String, Object> write(ConflictManager manager, Conflict conflict);
 
-public void writeGroupWithCacheFlat(
-        ConflictManager manager,
-        JsonGenerator gen,
-        int conflictId,
-        long now,
-        boolean forceUpdate,
-        Conflict conflict
-) throws IOException {
-    ObjectMapper mapper = JteUtil.getSerializer();
-    JsonFactory factory = mapper.getFactory();
-    Map<String, Object> freshData = this.write(manager, conflict);
-    byte[] freshBytes = mapper.writeValueAsBytes(freshData);
+    public void writeGroupWithCacheFlat(
+            ConflictManager manager,
+            JsonGenerator gen,
+            int conflictId,
+            long now,
+            boolean forceUpdate,
+            Conflict conflict
+    ) throws IOException {
+        ObjectMapper mapper = JteUtil.getSerializer();
+        JsonFactory factory = mapper.getFactory();
 
-    if (conflictId <= 0) {
-        copyJsonPayload(factory, freshBytes, gen);
-        return;
-    }
+        Map<String, Object> freshData = this.write(manager, conflict);
 
-    Map.Entry<Long, byte[]> cachedEntry = null;
-    if (!forceUpdate) {
-        Map<HeaderGroup, Map.Entry<Long, byte[]>> cachedMap =
-                manager.loadConflictRowCache(conflictId, Set.of(this));
-        cachedEntry = cachedMap.get(this);
-    }
+        byte[] freshBytes = writeMsgpackBytes(mapper, freshData);
 
-    if (cachedEntry == null) {
-        copyJsonPayload(factory, freshBytes, gen);
-        manager.saveConflictRowCache(conflictId, freshBytes, this, now);
-        return;
-    }
-
-    byte[] cachedBytes = cachedEntry.getValue();
-
-    if (Arrays.equals(cachedBytes, freshBytes)) {
-        copyJsonPayload(factory, freshBytes, gen);
-        return;
-    }
-
-    try (JsonParser cachedParser = factory.createParser(cachedBytes);
-         JsonParser freshParser = factory.createParser(freshBytes)) {
-        StreamMerge.merge(cachedParser, freshParser, gen);
-    }
-
-    manager.saveConflictRowCache(conflictId, freshBytes, this, now);
-}
-
-private static void copyJsonPayload(JsonFactory factory, byte[] payload, JsonGenerator gen) throws IOException {
-    try (JsonParser p = factory.createParser(payload)) {
-        JsonToken t = p.nextToken();
-        if (t == null) return;
-
-        if (t != JsonToken.START_OBJECT) {
-            // fallback: copy whole value
-            gen.copyCurrentStructure(p);
+        if (conflictId <= 0) {
+            copyJsonPayload(factory, freshBytes, gen);
             return;
         }
 
-        // Flatten: copy entries of the object into the current object
-        while (p.nextToken() != JsonToken.END_OBJECT) { // now at FIELD_NAME
-            gen.copyCurrentStructure(p);               // copies field name + value
+        Map.Entry<Long, byte[]> cachedEntry = null;
+        if (!forceUpdate) {
+            Map<HeaderGroup, Map.Entry<Long, byte[]>> cachedMap =
+                    manager.loadConflictRowCache(conflictId, Set.of(this));
+            cachedEntry = cachedMap.get(this);
+        }
+
+        if (cachedEntry == null) {
+            copyJsonPayload(factory, freshBytes, gen);
+            manager.saveConflictRowCache(conflictId, freshBytes, this, now);
+            return;
+        }
+
+        byte[] cachedBytes = cachedEntry.getValue();
+
+        if (Arrays.equals(cachedBytes, freshBytes)) {
+            copyJsonPayload(factory, freshBytes, gen);
+            return;
+        }
+
+        try (JsonParser cachedParser = factory.createParser(cachedBytes);
+             JsonParser freshParser = factory.createParser(freshBytes)) {
+            StreamMerge.merge(cachedParser, freshParser, gen);
+        }
+
+        manager.saveConflictRowCache(conflictId, freshBytes, this, now);
+    }
+
+    private static void copyJsonPayload(JsonFactory factory, byte[] payload, JsonGenerator gen) throws IOException {
+        try (JsonParser p = factory.createParser(payload)) {
+            JsonToken t = p.nextToken();
+            if (t == null) return;
+
+            if (t != JsonToken.START_OBJECT) {
+                throw new IllegalStateException("Expected START_OBJECT in cached group payload but got " + t);
+            }
+
+            // Flatten: copy entries of the object into the current object
+            while (p.nextToken() != JsonToken.END_OBJECT) { // now at FIELD_NAME
+                gen.copyCurrentStructure(p);               // copies field name + value
+            }
         }
     }
-}
 
-public static byte[] getBytesZip(
-        ConflictManager manager,
-        Conflict conflict,
-        Map<HeaderGroup, Boolean> forceUpdate,
-        long now
-) {
-    try {
+    public static byte[] getBytesZip(
+            ConflictManager manager,
+            Conflict conflict,
+            Map<HeaderGroup, Boolean> forceUpdate,
+            long now
+    ) {
         ObjectMapper mapper = JteUtil.getSerializer();
-        byte[] msgpack;
-        ByteArrayBuilder out = new ByteArrayBuilder();
-        try (JsonGenerator gen = mapper.getFactory().createGenerator(out)) {
+        JsonFactory factory = mapper.getFactory();
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream(16 * 1024);
+
+        try (JsonGenerator gen = factory.createGenerator(out)) {
+            // optional, harmless for BAOS
             gen.disable(JsonGenerator.Feature.AUTO_CLOSE_TARGET);
 
             gen.writeStartObject();
@@ -425,15 +430,10 @@ public static byte[] getBytesZip(
             gen.writeEndObject();
 
             gen.flush();
-            msgpack = out.toByteArray();
-        } finally {
-            out.release();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
 
-        return JteUtil.compress(msgpack);
-
-    } catch (IOException e) {
-        throw new RuntimeException(e);
+        return JteUtil.compress(out.toByteArray());
     }
-}
 }

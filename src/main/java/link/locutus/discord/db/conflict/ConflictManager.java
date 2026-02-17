@@ -1,5 +1,6 @@
 package link.locutus.discord.db.conflict;
 
+import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Predicates;
@@ -81,6 +82,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.db.conflict.ConflictField.*;
+import static link.locutus.discord.util.IOUtil.writeMsgpackBytes;
 import static link.locutus.discord.util.math.ArrayUtil.ALWAYS_TRUE_INT;
 
 public class ConflictManager {
@@ -1480,12 +1482,11 @@ public class ConflictManager {
 
     public byte[] getIndexBytesZip(long time) {
         synchronized (this.loadConflictLock) {
-            // Only INDEX_META and INDEX_STATS are used now
             List<HeaderGroup> groups = List.of(HeaderGroup.INDEX_META, HeaderGroup.INDEX_STATS);
+            Set<HeaderGroup> groupsSet = Set.copyOf(groups);
 
             Map<Integer, Conflict> map = getConflictMap();
 
-            // Build header list from a sample conflict (stable key order per group)
             List<String> allHeaders = new ArrayList<>();
             Conflict sample = map.values().stream().findFirst().orElse(null);
             if (sample != null) {
@@ -1502,6 +1503,7 @@ public class ConflictManager {
                     if (name != null) aaNameById.put(allianceId, name);
                 }
             }
+
             List<Integer> allianceIds = new ArrayList<>(aaNameById.keySet());
             Collections.sort(allianceIds);
             List<String> aaNames = allianceIds.stream().map(aaNameById::get).toList();
@@ -1509,9 +1511,11 @@ public class ConflictManager {
             Map<Long, List<Long>> sourceSets = getSourceSets();
 
             ObjectMapper mapper = JteUtil.getSerializer(); // MessagePack-backed
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            ByteArrayOutputStream out = new ByteArrayOutputStream(64 * 1024);
 
             try (JsonGenerator gen = mapper.getFactory().createGenerator(out)) {
+                gen.disable(JsonGenerator.Feature.AUTO_CLOSE_TARGET);
+
                 gen.writeStartObject();
 
                 gen.writeFieldName("headers");
@@ -1523,15 +1527,10 @@ public class ConflictManager {
                 for (Conflict conflict : map.values()) {
                     boolean cacheable = conflict.getId() > 0;
 
-                    Set<HeaderGroup> groupsToCheck = cacheable
-                            ? new ObjectOpenHashSet<>(groups)
-                            : Collections.emptySet();
+                    Map<HeaderGroup, Map.Entry<Long, byte[]>> cachedByGroup = cacheable
+                            ? loadConflictRowCache(conflict.getId(), groupsSet)
+                            : Collections.emptyMap();
 
-                    Map<HeaderGroup, Map.Entry<Long, byte[]>> cachedByGroup = groupsToCheck.isEmpty()
-                            ? Collections.emptyMap()
-                            : loadConflictRowCache(conflict.getId(), groupsToCheck);
-
-                    // Start one row (flattened concatenation of all groups' elements)
                     gen.writeStartArray();
 
                     for (HeaderGroup group : groups) {
@@ -1543,19 +1542,15 @@ public class ConflictManager {
                         }
 
                         Map<String, Object> groupMap = group.write(this, conflict);
+
                         List<Object> part = new ArrayList<>(groupMap.size());
                         for (Object v : groupMap.values()) {
                             part.add(v);
+                            mapper.writeValue(gen, v); // flatten into row
                         }
 
-                        // write elements into current row (flatten)
-                        for (Object v : part) {
-                            mapper.writeValue(gen, v);
-                        }
-
-                        // cache as MessagePack array of the group's values
                         if (cacheable) {
-                            byte[] partMsgPack = mapper.writeValueAsBytes(part);
+                            byte[] partMsgPack = writeMsgpackBytes(mapper, part);
                             saveConflictRowCache(conflict.getId(), partMsgPack, group, time);
                         }
                     }
@@ -1581,6 +1576,7 @@ public class ConflictManager {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
+
             return JteUtil.compress(out.toByteArray());
         }
     }

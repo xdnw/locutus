@@ -1,10 +1,28 @@
 package link.locutus.discord.util;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.ByteArrayOutputStream;
+import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
 public class IOUtil {
+    public static OutputStream closeShield(OutputStream delegate) {
+        return new FilterOutputStream(delegate) {
+            @Override
+            public void close() throws IOException {
+                // NO-OP on purpose
+            }
+        };
+    }
+
+    public static byte[] writeMsgpackBytes(ObjectMapper mapper, Object value) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream(512);
+        mapper.writeValue(baos, value);
+        return baos.toByteArray();
+    }
 
     public static void writeVarInt(OutputStream out, int i) throws IOException {
         while ((i & -128) != 0) {

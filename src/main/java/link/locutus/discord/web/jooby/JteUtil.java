@@ -33,14 +33,16 @@ public class JteUtil {
     private static volatile ObjectMapper serializer;
 
     public static ObjectMapper getSerializer() {
-        if (serializer == null) {
+        ObjectMapper m = serializer;
+        if (m == null) {
             synchronized (JteUtil.class) {
-                if (serializer == null) {
-                    serializer = new ObjectMapper(new MessagePackFactory());
+                m = serializer;
+                if (m == null) {
+                    serializer = m = new ObjectMapper(new MessagePackFactory());
                 }
             }
         }
-        return serializer;
+        return m;
     }
 
     // Helper: copy inner elements of a MessagePack array into the current generator
