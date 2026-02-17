@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.core.util.ByteArrayBuilder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
@@ -20,12 +19,16 @@ import link.locutus.discord.web.jooby.JteUtil;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+
+import static link.locutus.discord.util.IOUtil.closeShield;
+import static link.locutus.discord.util.IOUtil.writeMsgpackBytes;
 
 public enum HeaderGroup {
     INDEX_META {
@@ -346,8 +349,10 @@ public enum HeaderGroup {
     ) throws IOException {
         ObjectMapper mapper = JteUtil.getSerializer();
         JsonFactory factory = mapper.getFactory();
+
         Map<String, Object> freshData = this.write(manager, conflict);
-        byte[] freshBytes = mapper.writeValueAsBytes(freshData);
+
+        byte[] freshBytes = writeMsgpackBytes(mapper, freshData);
 
         if (conflictId <= 0) {
             copyJsonPayload(factory, freshBytes, gen);
@@ -388,9 +393,7 @@ public enum HeaderGroup {
             if (t == null) return;
 
             if (t != JsonToken.START_OBJECT) {
-                // fallback: copy whole value
-                gen.copyCurrentStructure(p);
-                return;
+                throw new IllegalStateException("Expected START_OBJECT in cached group payload but got " + t);
             }
 
             // Flatten: copy entries of the object into the current object
@@ -406,32 +409,31 @@ public enum HeaderGroup {
             Map<HeaderGroup, Boolean> forceUpdate,
             long now
     ) {
-        try {
-            ObjectMapper mapper = JteUtil.getSerializer();
+        ObjectMapper mapper = JteUtil.getSerializer();
+        JsonFactory factory = mapper.getFactory();
 
-            ByteArrayBuilder out = new ByteArrayBuilder();
-            try (JsonGenerator gen = mapper.getFactory().createGenerator(out)) {
-                gen.writeStartObject();
+        ByteArrayOutputStream out = new ByteArrayOutputStream(16 * 1024);
 
-                for (Map.Entry<HeaderGroup, Boolean> entry : forceUpdate.entrySet()) {
-                    HeaderGroup group = entry.getKey();
-                    boolean force = entry.getValue();
-                    group.writeGroupWithCacheFlat(manager, gen, conflict.getId(), now, force, conflict);
-                }
+        try (JsonGenerator gen = factory.createGenerator(out)) {
+            // optional, harmless for BAOS
+            gen.disable(JsonGenerator.Feature.AUTO_CLOSE_TARGET);
 
-                gen.writeNumberField("update_ms", now);
-                gen.writeEndObject();
+            gen.writeStartObject();
 
-                // optional, but harmless:
-                gen.flush();
+            for (Map.Entry<HeaderGroup, Boolean> entry : forceUpdate.entrySet()) {
+                HeaderGroup group = entry.getKey();
+                boolean force = entry.getValue();
+                group.writeGroupWithCacheFlat(manager, gen, conflict.getId(), now, force, conflict);
             }
 
-            byte[] msgpack = out.toByteArray();
-            out.release(); // return buffers to recycler
-            return JteUtil.compress(msgpack);
+            gen.writeNumberField("update_ms", now);
+            gen.writeEndObject();
 
+            gen.flush();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+
+        return JteUtil.compress(out.toByteArray());
     }
 }

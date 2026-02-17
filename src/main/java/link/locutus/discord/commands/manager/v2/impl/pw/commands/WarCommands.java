@@ -2452,9 +2452,9 @@ public class WarCommands {
                                @Switch("p") Set<DBAlliance> prioritizeAlliances,
                            @Arg(value = "Fine grained control over attacker priority\n" +
                                    "e.g. `(#warpolicy=ARCANE?1.2:1)*(#active_m<1440?1.2:1)*(#hasProject(SS)?1.2:1)`", group = 2)
-                               @Switch("aw") TypedFunction<DBNation, Double> attackerWeighting,
+                               @NoFormat @Switch("aw") TypedFunction<DBNation, Double> attackerWeighting,
                            @Arg(value = "Fine grained control over defender priority", group = 2)
-                               @Switch("dw") TypedFunction<DBNation, Double> defenderWeighting,
+                               @NoFormat @Switch("dw") TypedFunction<DBNation, Double> defenderWeighting,
 
                            // No group
                            @Arg("Force an update of all participant spy count")

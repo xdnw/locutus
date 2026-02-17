@@ -1925,7 +1925,7 @@ public class UtilityCommands {
                       @Arg("The nations to get info about")
                       Set<NationOrAlliance> nationOrAlliances,
                       @Arg("Sort any listed nations by this attribute")
-                      @Default() TypedFunction<DBNation, Double> sortBy,
+                     @NoFormat @Default() TypedFunction<DBNation, Double> sortBy,
                       @Arg("List the nations instead of just providing a summary")
                       @Switch("l") boolean list,
                       @Arg("List the alliances of the provided nation")

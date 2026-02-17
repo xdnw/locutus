@@ -1315,7 +1315,7 @@ public abstract class Placeholders<T, M> extends BindingHelper {
                 return value == null ? 0 : ((Number) value).doubleValue();
             }, result.getName(), result);
         } else {
-            throw new IllegalArgumentException("Only the following filter types are supported: Number, Boolean, not: `" + ((Class<?>) type).getSimpleName() + "` | input: `" + result.getName() + "`");
+            throw new IllegalArgumentException("Only the following filter types are supported: Number, Boolean, not: `" + ((Class<?>) type).getSimpleName() + "` | input: `" + result.getName() + "` (" + arg + ")");
         }
     }
 
