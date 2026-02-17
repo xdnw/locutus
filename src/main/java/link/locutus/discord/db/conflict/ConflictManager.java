@@ -232,12 +232,21 @@ public class ConflictManager {
             db.query("SELECT * FROM legacy_names2", stmt -> {
             }, (ThrowingConsumer<ResultSet>) rs -> {
                 while (rs.next()) {
+                    System.out.println("Loading legacy name: " + rs.getInt("id") + " -> " + rs.getString("name") + " at " + rs.getLong("date"));
                     int id = rs.getInt("id");
                     String name = rs.getString("name");
                     long date = rs.getLong("date");
                     legacyNames2.put(id, name);
                     String nameLower = name.toLowerCase(Locale.ROOT);
                     legacyIdsByDate.computeIfAbsent(nameLower, k -> new Long2IntOpenHashMap()).put(date, id);
+                }
+            });
+
+            db.query("SELECT * FROM conflict_participant", stmt -> {
+            }, (ThrowingConsumer<ResultSet>) rs -> {
+                while (rs.next()) {
+                    int allianceId = rs.getInt("alliance_id");
+                    conflictAlliances.add(allianceId);
                 }
             });
 
@@ -740,6 +749,7 @@ public class ConflictManager {
 
         if (!missingParticipants.isEmpty() || isStartup) {
             String inClause = toInClause.apply(isStartup ? conflictIds : missingParticipants);
+            if (isStartup) System.out.println("Loading conflict participants for conflicts: " + conflictIds);
             db.query("SELECT * FROM conflict_participant WHERE conflict_id " + inClause, stmt -> {
             }, (ThrowingConsumer<ResultSet>) rs -> {
                 while (rs.next()) {
@@ -747,8 +757,6 @@ public class ConflictManager {
                     Conflict conflict = conflictById.get(conflictId);
                     if (conflict == null) continue;
                     int allianceId = rs.getInt("alliance_id");
-                    if (isStartup) conflictAlliances.add(allianceId);
-
                     if (isStartup && !missingParticipants.contains(conflictId)) {
                         // Dont initialize non active during startup, just add it to the global alliance set for caching
                         continue;
@@ -1500,7 +1508,12 @@ public class ConflictManager {
             synchronized (conflictAlliances) {
                 for (int allianceId : conflictAlliances) {
                     String name = getAllianceNameOrNull(allianceId);
-                    if (name != null) aaNameById.put(allianceId, name);
+                    if (name != null) {
+                        System.out.println("Adding alliance id " + allianceId + " with name " + name);
+                        aaNameById.put(allianceId, name);
+                    } else {
+                        System.out.println("Could not find name for alliance id " + allianceId);
+                    }
                 }
             }
 
@@ -1514,8 +1527,6 @@ public class ConflictManager {
             ByteArrayOutputStream out = new ByteArrayOutputStream(64 * 1024);
 
             try (JsonGenerator gen = mapper.getFactory().createGenerator(out)) {
-                gen.disable(JsonGenerator.Feature.AUTO_CLOSE_TARGET);
-
                 gen.writeStartObject();
 
                 gen.writeFieldName("headers");

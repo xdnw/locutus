@@ -4,13 +4,50 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.util.TokenBuffer;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class StreamMerge {
+    public static void mergeFlat(JsonParser cached, JsonParser fresh, JsonGenerator out) throws IOException {
+        if (cached.currentToken() == null) cached.nextToken();
+        if (fresh.currentToken() == null) fresh.nextToken();
+        if (cached.currentToken() != JsonToken.START_OBJECT || fresh.currentToken() != JsonToken.START_OBJECT) {
+            throw new IllegalStateException("Both roots must be JSON objects.");
+        }
+        mergeObjectFlat(cached, fresh, out);
+    }
 
+    private static void mergeObjectFlat(JsonParser cached, JsonParser fresh, JsonGenerator out) throws IOException {
+        Map<String, TokenBuffer> freshFields = materialiseFields(fresh);
+
+        while (cached.nextToken() != JsonToken.END_OBJECT) {
+            String fieldName = cached.getCurrentName();
+            cached.nextToken(); // to value
+
+            out.writeFieldName(fieldName);
+            TokenBuffer freshBuffer = freshFields.remove(fieldName);
+
+            if (freshBuffer != null) {
+                try (JsonParser freshValue = freshBuffer.asParser(fresh.getCodec())) {
+                    freshValue.nextToken();
+                    mergeValue(cached, freshValue, out);
+                }
+            } else {
+                out.copyCurrentStructure(cached);
+            }
+        }
+
+        for (var entry : freshFields.entrySet()) {
+            out.writeFieldName(entry.getKey());
+            try (JsonParser freshValue = entry.getValue().asParser(fresh.getCodec())) {
+                freshValue.nextToken();
+                out.copyCurrentStructure(freshValue);
+            }
+        }
+    }
     public static void merge(JsonParser cached, JsonParser fresh, JsonGenerator out) throws IOException {
         if (cached.currentToken() == null) {
             cached.nextToken();
@@ -131,10 +168,10 @@ public class StreamMerge {
      * The parser must currently be positioned on START_OBJECT.
      */
     private static Map<String, TokenBuffer> materialiseFields(JsonParser parser) throws IOException {
-        Map<String, TokenBuffer> buffers = new LinkedHashMap<>();
+        Map<String, TokenBuffer> buffers = new Object2ObjectLinkedOpenHashMap<>();
 
         while (parser.nextToken() != JsonToken.END_OBJECT) {
-            String fieldName = parser.getCurrentName();
+            String fieldName = parser.currentName();
             parser.nextToken(); // move to value
             TokenBuffer buffer = new TokenBuffer(parser.getCodec(), false);
             buffer.copyCurrentStructure(parser);
