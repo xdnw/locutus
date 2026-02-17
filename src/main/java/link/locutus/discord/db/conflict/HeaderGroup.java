@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
-import static link.locutus.discord.util.IOUtil.closeShield;
 import static link.locutus.discord.util.IOUtil.writeMsgpackBytes;
 
 public enum HeaderGroup {
@@ -347,6 +346,7 @@ public enum HeaderGroup {
             boolean forceUpdate,
             Conflict conflict
     ) throws IOException {
+        System.out.println("Writing group " + this.name() + " for conflict " + conflictId + " with forceUpdate " + forceUpdate);
         ObjectMapper mapper = JteUtil.getSerializer();
         JsonFactory factory = mapper.getFactory();
 
@@ -355,6 +355,7 @@ public enum HeaderGroup {
         byte[] freshBytes = writeMsgpackBytes(mapper, freshData);
 
         if (conflictId <= 0) {
+            System.out.println("Conflict ID is non-positive, skipping cache and writing fresh data for group " + this.name());
             copyJsonPayload(factory, freshBytes, gen);
             return;
         }
@@ -367,6 +368,7 @@ public enum HeaderGroup {
         }
 
         if (cachedEntry == null) {
+            System.out.println("No cache entry found for group " + this.name() + " and conflict " + conflictId + ", writing fresh data");
             copyJsonPayload(factory, freshBytes, gen);
             manager.saveConflictRowCache(conflictId, freshBytes, this, now);
             return;
@@ -375,13 +377,15 @@ public enum HeaderGroup {
         byte[] cachedBytes = cachedEntry.getValue();
 
         if (Arrays.equals(cachedBytes, freshBytes)) {
-            copyJsonPayload(factory, freshBytes, gen);
+            System.out.println("Cache hit for group " + this.name() + " and conflict " + conflictId + ", writing cached data");
+            copyJsonPayload(factory, cachedBytes, gen);
             return;
         }
 
         try (JsonParser cachedParser = factory.createParser(cachedBytes);
-             JsonParser freshParser = factory.createParser(freshBytes)) {
-            StreamMerge.merge(cachedParser, freshParser, gen);
+            JsonParser freshParser = factory.createParser(freshBytes)) {
+            System.out.println("Cache mismatch for group " + this.name() + " and conflict " + conflictId + ", merging cached and fresh data");
+            StreamMerge.mergeFlat(cachedParser, freshParser, gen);
         }
 
         manager.saveConflictRowCache(conflictId, freshBytes, this, now);
@@ -390,7 +394,10 @@ public enum HeaderGroup {
     private static void copyJsonPayload(JsonFactory factory, byte[] payload, JsonGenerator gen) throws IOException {
         try (JsonParser p = factory.createParser(payload)) {
             JsonToken t = p.nextToken();
-            if (t == null) return;
+            if (t == null) {
+                System.out.println("Empty payload, writing null. Payload length: " + payload.length);
+                return;
+            }
 
             if (t != JsonToken.START_OBJECT) {
                 throw new IllegalStateException("Expected START_OBJECT in cached group payload but got " + t);
@@ -398,7 +405,8 @@ public enum HeaderGroup {
 
             // Flatten: copy entries of the object into the current object
             while (p.nextToken() != JsonToken.END_OBJECT) { // now at FIELD_NAME
-                gen.copyCurrentStructure(p);               // copies field name + value
+                System.out.println("Copying field " + p.getCurrentName() + " from payload. Payload length: " + payload.length);
+                gen.copyCurrentStructure(p);
             }
         }
     }
@@ -409,15 +417,13 @@ public enum HeaderGroup {
             Map<HeaderGroup, Boolean> forceUpdate,
             long now
     ) {
+        System.out.println("Generating conflict " + conflict.getId() + " with forceUpdate " + forceUpdate);
         ObjectMapper mapper = JteUtil.getSerializer();
         JsonFactory factory = mapper.getFactory();
 
         ByteArrayOutputStream out = new ByteArrayOutputStream(16 * 1024);
 
         try (JsonGenerator gen = factory.createGenerator(out)) {
-            // optional, harmless for BAOS
-            gen.disable(JsonGenerator.Feature.AUTO_CLOSE_TARGET);
-
             gen.writeStartObject();
 
             for (Map.Entry<HeaderGroup, Boolean> entry : forceUpdate.entrySet()) {
@@ -434,6 +440,9 @@ public enum HeaderGroup {
             throw new RuntimeException(e);
         }
 
-        return JteUtil.compress(out.toByteArray());
+        byte[] arr = out.toByteArray();
+        byte[] compressed = JteUtil.compress(arr);
+        System.out.println("Generated conflict " + conflict.getId() + " with compressed size " + compressed.length + " bytes (uncompressed size: " + arr.length + " bytes)");
+        return compressed;
     }
 }

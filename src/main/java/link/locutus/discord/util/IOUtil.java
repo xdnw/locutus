@@ -9,15 +9,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 public class IOUtil {
-    public static OutputStream closeShield(OutputStream delegate) {
-        return new FilterOutputStream(delegate) {
-            @Override
-            public void close() throws IOException {
-                // NO-OP on purpose
-            }
-        };
-    }
-
     public static byte[] writeMsgpackBytes(ObjectMapper mapper, Object value) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream(512);
         mapper.writeValue(baos, value);
