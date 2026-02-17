@@ -1498,90 +1498,68 @@ public class ConflictManager {
 
     public byte[] getIndexBytesZip(long time) {
         try {
-        synchronized (this.loadConflictLock) {
-            Map<Integer, String> aaNameById = new Int2ObjectOpenHashMap<>();
-            synchronized (conflictAlliances) {
-                for (int allianceId : conflictAlliances) {
-                    String name = getAllianceNameOrNull(allianceId);
-                    if (name != null) {
-                        System.out.println("Adding alliance id " + allianceId + " with name " + name);
-                        aaNameById.put(allianceId, name);
-                    } else {
-                        System.out.println("Could not find name for alliance id " + allianceId);
+            synchronized (this.loadConflictLock) {
+                Map<Integer, String> aaNameById = new Int2ObjectOpenHashMap<>();
+                synchronized (conflictAlliances) {
+                    for (int allianceId : conflictAlliances) {
+                        String name = getAllianceNameOrNull(allianceId);
+                        if (name != null) aaNameById.put(allianceId, name);
                     }
                 }
-            }
 
-            List<Integer> allianceIds = new ArrayList<>(aaNameById.keySet());
-            Collections.sort(allianceIds);
-            List<String> aaNames = allianceIds.stream().map(aaNameById::get).toList();
+                List<Integer> allianceIds = new ArrayList<>(aaNameById.keySet());
+                Collections.sort(allianceIds);
+                List<String> aaNames = allianceIds.stream().map(aaNameById::get).toList();
 
-            Map<Long, List<Long>> sourceSets = getSourceSets();
+                Map<Long, List<Long>> sourceSets = getSourceSets();
+                ObjectMapper mapper = JteUtil.getSerializer();
+                Map<Integer, Conflict> conflicts = getConflictMap();
 
-            ObjectMapper mapper = JteUtil.getSerializer();
-            Map<Integer, Conflict> conflicts = getConflictMap();
-            ByteArrayOutputStream baos = new ByteArrayOutputStream(64 * 1024);
-
-            try (JsonGenerator gen = mapper.getFactory().createGenerator(baos)) {
-                gen.setCodec(mapper);
-
-                gen.writeStartObject();
-
-                gen.writeFieldName("headers");
-                mapper.writeValue(gen, ALL_HEADERS);
-
-                gen.writeFieldName("conflicts");
-                gen.writeStartArray();
+                List<List<Object>> conflictRows = new ArrayList<>(conflicts.size());
 
                 for (Conflict c : conflicts.values()) {
                     int id = c.getId();
                     boolean cacheable = id > 0;
-
                     Map<HeaderGroup, Map.Entry<Long, byte[]>> cachedByGroup =
                             cacheable ? loadConflictRowCache(id, INDEX_GROUP_SET) : Map.of();
 
-                    gen.writeStartArray();
+                    List<Object> row = new ObjectArrayList<>(ALL_HEADERS.size());
 
                     for (HeaderGroup group : INDEX_GROUPS) {
                         Map.Entry<Long, byte[]> cached = cachedByGroup.get(group);
                         if (cached != null) {
-                            copyArrayElements(mapper, gen, cached.getValue());
+                            List<Object> cachedValues = mapper.readValue(
+                                    cached.getValue(),
+                                    mapper.getTypeFactory().constructCollectionType(List.class, Object.class)
+                            );
+                            row.addAll(cachedValues);
                             continue;
                         }
 
                         Map<String, Object> groupMap = group.write(this, c);
-
-                        for (Object v : groupMap.values()) {
-                            gen.writeObject(v);
-                        }
+                        List<Object> values = new ArrayList<>(groupMap.values());
+                        row.addAll(values);
 
                         if (cacheable) {
-                            byte[] part = writeMsgpackBytes(mapper, groupMap.values());
+                            byte[] part = writeMsgpackBytes(mapper, values);
                             saveConflictRowCache(id, part, group, time);
                         }
                     }
 
-                    gen.writeEndArray();
+                    conflictRows.add(row);
                 }
 
-                gen.writeEndArray();
+                Map<String, Object> result = new Object2ObjectLinkedOpenHashMap<>();
+                result.put("headers",       ALL_HEADERS);
+                result.put("conflicts",     conflictRows);
+                result.put("alliance_ids",  allianceIds);
+                result.put("alliance_names", aaNames);
+                result.put("source_sets",   getSourceSetStrings(sourceSets));
+                result.put("source_names",  getSourceNames(sourceSets.keySet()));
 
-                gen.writeFieldName("alliance_ids");
-                mapper.writeValue(gen, allianceIds);
-
-                gen.writeFieldName("alliance_names");
-                mapper.writeValue(gen, aaNames);
-
-                gen.writeFieldName("source_sets");
-                mapper.writeValue(gen, getSourceSetStrings(sourceSets));
-
-                gen.writeFieldName("source_names");
-                mapper.writeValue(gen, getSourceNames(sourceSets.keySet()));
-
-                gen.writeEndObject();
-            }
-
-            return JteUtil.compress(baos.toByteArray());
+                ByteArrayOutputStream baos = new ByteArrayOutputStream(64 * 1024);
+                mapper.writeValue(baos, result);
+                return JteUtil.compress(baos.toByteArray());
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -1800,8 +1778,10 @@ public class ConflictManager {
         }, (ThrowingConsumer<ResultSet>) rs -> {
             while (rs.next()) {
                 int allianceId = rs.getInt("alliance_id");
-                startTimes.put(allianceId, rs.getLong("start"));
-                endTimes.put(allianceId, rs.getLong("end"));
+                long start = rs.getLong("start");
+                long end = rs.getLong("end");
+                if (start != 0L) startTimes.put(allianceId, start);
+                if (end != Long.MAX_VALUE) endTimes.put(allianceId, end);
                 if (!sideStr.isEmpty()) {
                     boolean side = rs.getBoolean("side");
                     CoalitionSide col = side ? coalition_1 : coalition_2;

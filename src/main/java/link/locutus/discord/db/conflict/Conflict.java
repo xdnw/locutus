@@ -543,10 +543,10 @@ public class Conflict {
     }
 
     public long getStartTurn(int allianceId) {
-        return metaSupplier.get().getStartTime().getOrDefault(allianceId, turnStart);
+        return metaSupplier.get().getStartTimeForAlliance(allianceId, turnStart);
     }
     public long getEndTurn(int allianceId) {
-        return metaSupplier.get().getEndTime().getOrDefault(allianceId, turnEnd);
+        return metaSupplier.get().getEndTimeForAlliance(allianceId, turnEnd);
     }
 
     private CoalitionSide getCoalition(int aaId1, int aaId2, long turn) {
@@ -667,21 +667,27 @@ public class Conflict {
         AtomicBoolean didNotExistBefore = new AtomicBoolean(false);
 
         trySet(f -> {
-            Map<Integer, Long> startMap = f.getStartTime();
-            Map<Integer, Long> endMap = f.getEndTime();
+            Map<Integer, Long> startMap = f.getStartTimeRaw();
+            Map<Integer, Long> endMap = f.getEndTimeRaw();
 
-            Function<Map<Integer, Long>, Long> prevValue = map ->
-                    map != null && map.containsKey(allianceId) ? map.get(allianceId) : null;
+            Function<Map<Integer, Long>, Long> prevValue = map -> {
+                if (map == null) return null;
+                synchronized (map) {
+                    return map.get(allianceId);
+                }
+            };
 
             Long prevStart = prevValue.apply(startMap);
             Long prevEnd   = prevValue.apply(endMap);
 
             BiConsumer<Map<Integer, Long>, Long> store = (map, value) -> {
                 if (map == null) return;
-                if (value == null || value <= 0 || value == Long.MAX_VALUE) {
-                    map.remove(allianceId);
-                } else {
-                    map.put(allianceId, value);
+                synchronized (map) {
+                    if (value == null || value <= 0 || value == Long.MAX_VALUE) {
+                        map.remove(allianceId);
+                    } else {
+                        map.put(allianceId, value);
+                    }
                 }
             };
 

@@ -3145,14 +3145,33 @@ public class WarDB extends DBMainV2 {
             attacksByWarId2.computeIfAbsent(warId, f -> new ObjectArrayList<>(size)).add(data);
         }
         Logg.text("Loaded " + attacks.size() + " attacks " + attacksByWarId2.containsKey(2114621));
+        fixAttacks();
     }
 
     private void fixAttack(int attackId, Consumer<AbstractCursor> onEach) {
         Set<AbstractCursor> attacks = getAttacksById(Set.of(attackId));
-        if (attacks.isEmpty()) return;
+        if (attacks.isEmpty()) {
+            System.out.println("Attack " + attackId + " not found for fixing");
+            return;
+        }
         AbstractCursor attack = attacks.iterator().next();
         onEach.accept(attack);
         saveAttacksDb(List.of(AttackEntry.of(attack, attackCursorFactory)));
+        System.out.println("Fixed attack " + attackId);
+        // push to in memory as well
+        synchronized (attacksByWarId2) {
+            List<byte[]> attackData = attacksByWarId2.get(attack.getWar_id());
+            if (attackData != null) {
+                for (int i = 0; i < attackData.size(); i++) {
+                    byte[] data = attackData.get(i);
+                    int id = attackCursorFactory.getId(data);
+                    if (id == attackId) {
+                        attackData.set(i, attackCursorFactory.toBytes(attack));
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     private void fixAttacks() {
@@ -3170,7 +3189,7 @@ public class WarDB extends DBMainV2 {
             addLoot[ResourceType.MUNITIONS.ordinal()] = 221_376.84;
             addLoot[ResourceType.STEEL.ordinal()] = 231_940.75;
             addLoot[ResourceType.ALUMINUM.ordinal()] = 359_765.25;
-            addLoot(f, addLoot);
+            setLoot(f, addLoot);
         });
         fixAttack(24413762, f -> {
             double[] addLoot = ResourceType.getBuffer();
@@ -3186,7 +3205,7 @@ public class WarDB extends DBMainV2 {
             addLoot[ResourceType.MUNITIONS.ordinal()] = 11_068.84;
             addLoot[ResourceType.STEEL.ordinal()] = 11_597.04;
             addLoot[ResourceType.ALUMINUM.ordinal()] = 17_988.26;
-            addLoot(f, addLoot);
+            setLoot(f, addLoot);
         });
         fixAttack(24412909, f -> {
             double[] addLoot = ResourceType.getBuffer();
@@ -3202,13 +3221,16 @@ public class WarDB extends DBMainV2 {
             addLoot[ResourceType.MUNITIONS.ordinal()] = 10_515.40;
             addLoot[ResourceType.STEEL.ordinal()] = 11_017.19;
             addLoot[ResourceType.ALUMINUM.ordinal()] = 17_088.85;
-            addLoot(f, addLoot);
+            setLoot(f, addLoot);
         });
     }
 
-    private void addLoot(AbstractCursor attack, double[] loot) {
+    private void setLoot(AbstractCursor attack, double[] loot) {
         if (attack instanceof ALootCursor aLoot && aLoot.looted != null) {
-            aLoot.looted = ResourceType.add(aLoot.looted, loot);
+            aLoot.looted = loot;
+            System.out.println("Added loot to A_LOOT attack " + attack.getWar_attack_id() + ": " + ResourceType.toString(loot));
+        } else {
+            System.out.println("Unable to add loot to attack " + attack.getWar_attack_id() + " - " + attack.getClass().getSimpleName() + ": " + ResourceType.toString(loot));
         }
     }
 

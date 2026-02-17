@@ -58,10 +58,8 @@ public class CoalitionSide {
     }
 
     public void setLoaded() {
-        this.warStatistics.setValueIfAbsent(() -> {
-            WarStatistics tmp2 = tmp;
-            return tmp2 != null ? tmp2 : new WarStatistics(this);
-        });
+        WarStatistics eager = (tmp != null) ? tmp : (tmp = new WarStatistics(this));
+        this.warStatistics.setValue(eager);
     }
 
     public boolean isWarsLoaded() {
@@ -69,6 +67,7 @@ public class CoalitionSide {
     }
 
     public void clearWarData() {
+        tmp = null;
         if (warStatistics.unload()) {
                 System.err.println("[conflict] Unloading(1) confict: " + parent.getName() + "/" + parent.getId() + "\n" +
                         StringMan.stacktraceToString(new Exception().getStackTrace()));

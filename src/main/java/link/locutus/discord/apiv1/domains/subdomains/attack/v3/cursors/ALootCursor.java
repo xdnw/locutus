@@ -173,6 +173,9 @@ public class ALootCursor extends FailedCursor {
                 if (type == ResourceType.CREDITS) continue;
                 looted[type.ordinal()] = input.readVarLong() * 0.01d;
             }
+            if (war_attack_id == 24412522) {
+                System.out.println("Loaded loot for attack " + war_attack_id + ": " + ResourceType.toString(looted) + " with percent " + getLootPercent());
+            }
         } else {
             if (hasLoot) {
                 Arrays.fill(looted, 0);

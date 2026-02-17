@@ -2,6 +2,7 @@ package link.locutus.discord.util.scheduler;
 
 import link.locutus.discord.util.StringMan;
 
+import javax.validation.constraints.NotNull;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -25,15 +26,16 @@ public class CachedSupplier<T> implements Supplier<T> {
         return cached;
     }
 
-    public CachedSupplier(Supplier<T> resolver) {
+    public CachedSupplier(@NotNull
+                          Supplier<T> resolver) {
         this.resolver = resolver;
         this.delegate = this::resolve;
     }
 
     public CachedSupplier(T value) {
-        this.resolver = null;
         this.value = value;
         this.delegate = () -> value;
+        this.resolver = delegate;
     }
 
     public void setValue(T value) {
@@ -49,7 +51,7 @@ public class CachedSupplier<T> implements Supplier<T> {
                 this.value = value;
                 this.delegate = () -> value;
             }
-            return value;
+            return this.value;
         }
     }
 
@@ -91,7 +93,7 @@ public class CachedSupplier<T> implements Supplier<T> {
                 v = value;
                 if (v == null) {
                     v = resolver.get();
-                    value = v; // safely published via volatile
+                    value = v;
                 }
             }
         }

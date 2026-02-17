@@ -3442,6 +3442,9 @@ public class AdminCommands {
             AttackCursorFactory factory = new AttackCursorFactory(Locutus.imp().getWarDb());
             List<Integer> ids = fixWars.stream().map(DBWar::getWarId).collect(Collectors.toList());
             List<WarAttack> attacks = Locutus.imp().getV3().fetchAttacks(f -> f.setWar_id(ids), PoliticsAndWarV3.ErrorResponse.THROW);
+            if (attacks.isEmpty()) {
+                return "No attacks found for the specified wars";
+            }
             List<AbstractCursor> attacksAdapted = attacks.stream().map(f -> factory.load(f, true)).collect(Collectors.toList());
             Locutus.imp().getWarDb().saveAttacks(attacksAdapted, null, false, true);
             numAttacks = attacksAdapted.size();

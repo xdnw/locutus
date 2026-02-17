@@ -104,19 +104,29 @@ public final class ConflictMeta {
         return cd;
     }
 
-    public Map<Integer, Long> getStartTime() {
-        if (id <= 0) return new Int2LongOpenHashMap();
-        initStartEndTimes();
+    public Map<Integer, Long> getStartTimeRaw() {
+        if (id <= 0) return null;
+        return startTime2;
+    }
+
+    public Map<Integer, Long> getEndTimeRaw() {
+        if (id <= 0) return null;
+        return endTime2;
+    }
+
+    public long getStartTimeForAlliance(int allianceId, long defValue) {
+        if (id >= 0) initStartEndTimes();
+        else return startTime2 == null ? defValue : startTime2.getOrDefault(allianceId, defValue);
         synchronized (startTime2) {
-            return new Int2LongOpenHashMap(startTime2);
+            return startTime2.getOrDefault(allianceId, defValue);
         }
     }
 
-    public Map<Integer, Long> getEndTime() {
-        if (id <= 0) return new Int2LongOpenHashMap();
-        initStartEndTimes();
+    public long getEndTimeForAlliance(int allianceId, long defValue) {
+        if (id >= 0) initStartEndTimes();
+        else return endTime2 == null ? defValue : endTime2.getOrDefault(allianceId, defValue);
         synchronized (endTime2) {
-            return new Int2LongOpenHashMap(endTime2);
+            return endTime2.getOrDefault(allianceId, defValue);
         }
     }
 
