@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
@@ -14,13 +15,13 @@ import link.locutus.discord.db.entities.conflict.ConflictMetric;
 import link.locutus.discord.db.entities.conflict.DamageStatGroup;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.math.StreamMerge;
 import link.locutus.discord.web.jooby.JteUtil;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -30,28 +31,22 @@ import java.util.function.Function;
 import static link.locutus.discord.util.IOUtil.writeMsgpackBytes;
 
 public enum HeaderGroup {
-    INDEX_META {
-        @Override
-        public long getHash() {
-            List<String> headers = List.of(
-                    "id",
-                    "name",
-                    "c1_name",
-                    "c2_name",
-                    "start",
-                    "end",
-                    "c1",
-                    "c2",
-                    "wiki",
-                    "status",
-                    "cb",
-                    "posts",
-                    "source",
-                    "category"
-            );
-            return StringMan.hash(headers);
-        }
-
+    INDEX_META(List.of(
+            "id",
+            "name",
+            "c1_name",
+            "c2_name",
+            "start",
+            "end",
+            "c1",
+            "c2",
+            "wiki",
+            "status",
+            "cb",
+            "posts",
+            "source",
+            "category"
+    )) {
         @Override
         public Map<String, Object> write(ConflictManager manager, Conflict conflict) {
             Map<String, Object> meta = new Object2ObjectLinkedOpenHashMap<>();
@@ -77,19 +72,12 @@ public enum HeaderGroup {
         }
     },
 
-    INDEX_STATS {
-        @Override
-        public long getHash() {
-            // wars, active_wars, c1_dealt, c2_dealt
-            List<String> headers = List.of(
-                    "wars",
-                    "active_wars",
-                    "c1_dealt",
-                    "c2_dealt"
-            );
-            return StringMan.hash(headers);
-        }
-
+    INDEX_STATS(List.of(
+            "wars",
+            "active_wars",
+            "c1_dealt",
+            "c2_dealt"
+    )) {
         @Override
         public Map<String, Object> write(ConflictManager manager, Conflict conflict) {
             Map<String, Object> stats = new Object2ObjectLinkedOpenHashMap<>();
@@ -103,23 +91,16 @@ public enum HeaderGroup {
         }
     },
 
-    PAGE_META {
-        @Override
-        public long getHash() {
-            // name, start, end, wiki, status, cb, posts, coalitions
-            List<String> headers = List.of(
-                    "name",
-                    "start",
-                    "end",
-                    "wiki",
-                    "status",
-                    "cb",
-                    "posts",
-                    "coalitions"
-            );
-            return StringMan.hash(headers);
-        }
-
+    PAGE_META(List.of(
+            "name",
+            "start",
+            "end",
+            "wiki",
+            "status",
+            "cb",
+            "posts",
+            "coalitions"
+    )) {
         @Override
         public Map<String, Object> write(ConflictManager manager, Conflict conflict) {
             CoalitionSide coalition1 = conflict.getSide1();
@@ -145,21 +126,14 @@ public enum HeaderGroup {
         }
     },
 
-    PAGE_STATS {
-        @Override
-        public long getHash() {
-            // damage_header, header_desc, header_group, header_type, war_web, coalitions
-            List<String> headers = List.of(
-                    "damage_header",
-                    "header_desc",
-                    "header_group",
-                    "header_type",
-                    "war_web",
-                    "coalitions"
-            );
-            return StringMan.hash(headers);
-        }
-
+    PAGE_STATS(List.of(
+            "damage_header",
+            "header_desc",
+            "header_group",
+            "header_type",
+            "war_web",
+            "coalitions"
+    )) {
         @Override
         public Map<String, Object> write(ConflictManager manager, Conflict conflict) {
             CoalitionSide coalition1 = conflict.getSide1();
@@ -234,19 +208,12 @@ public enum HeaderGroup {
         }
     },
 
-    GRAPH_META {
-        @Override
-        public long getHash() {
-            // name, start, end, coalitions
-            List<String> headers = List.of(
-                    "name",
-                    "start",
-                    "end",
-                    "coalitions"
-            );
-            return StringMan.hash(headers);
-        }
-
+    GRAPH_META(List.of(
+            "name",
+            "start",
+            "end",
+            "coalitions"
+    )) {
         @Override
         public Map<String, Object> write(ConflictManager manager, Conflict conflict) {
             CoalitionSide coalition1 = conflict.getSide1();
@@ -268,19 +235,12 @@ public enum HeaderGroup {
         }
     },
 
-    GRAPH_DATA {
-        @Override
-        public long getHash() {
-            // metric_names, metrics_turn, metrics_day, coalitions
-            List<String> headers = List.of(
-                    "metric_names",
-                    "metrics_turn",
-                    "metrics_day",
-                    "coalitions"
-            );
-            return StringMan.hash(headers);
-        }
-
+    GRAPH_DATA(List.of(
+            "metric_names",
+            "metrics_turn",
+            "metrics_day",
+            "coalitions"
+    )) {
         @Override
         public Map<String, Object> write(ConflictManager manager, Conflict conflict) {
             Map<String, Object> graphData = new Object2ObjectLinkedOpenHashMap<>();
@@ -332,33 +292,75 @@ public enum HeaderGroup {
         }
     };
 
-    public static final HeaderGroup[] values = values();
+    private final List<String> headers;
+    private final long hash;
 
-    public abstract long getHash(); // StringMan.hash(List<String>) - of the header names
+    HeaderGroup(List<String> headers) {
+        this.headers = headers;                 // created once per enum constant
+        this.hash = StringMan.hash(headers);    // computed once per enum constant
+    }
+
+    /** Constant headers for this group (in stable order). */
+    public final List<String> getHeaders() {
+        return headers;
+    }
+
+    /** Cached hash based on {@link #getHeaders()}. */
+    public final long getHash() {
+        return hash;
+    }
+
+    public static final HeaderGroup[] values = values();
 
     public abstract Map<String, Object> write(ConflictManager manager, Conflict conflict);
 
-    public void writeGroupWithCacheFlat(
+    public static byte[] getBytesZip(
             ConflictManager manager,
-            JsonGenerator gen,
+            Conflict conflict,
+            Map<HeaderGroup, Boolean> forceUpdate,
+            long now
+    ) {
+        ObjectMapper mapper = JteUtil.getSerializer();
+
+        Map<String, Object> combined = new Object2ObjectLinkedOpenHashMap<>();
+
+        try {
+            for (Map.Entry<HeaderGroup, Boolean> entry : forceUpdate.entrySet()) {
+                HeaderGroup group = entry.getKey();
+                boolean force = entry.getValue();
+                Map<String, Object> groupData = group.getGroupData(manager, conflict.getId(), now, force, conflict);
+                JteUtil.merge(combined, groupData);
+            }
+            combined.put("update_ms", now);
+
+            ByteArrayOutputStream out = new ByteArrayOutputStream(16 * 1024);
+            mapper.writeValue(out, combined);
+
+            byte[] arr = out.toByteArray();
+            byte[] compressed = JteUtil.compress(arr);
+            System.out.println("Generated conflict " + conflict.getId() +
+                    " compressed=" + compressed.length + " uncompressed=" + arr.length);
+            return compressed;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Map<String, Object> getGroupData(
+            ConflictManager manager,
             int conflictId,
             long now,
             boolean forceUpdate,
             Conflict conflict
     ) throws IOException {
-        System.out.println("Writing group " + this.name() + " for conflict " + conflictId + " with forceUpdate " + forceUpdate);
         ObjectMapper mapper = JteUtil.getSerializer();
-        JsonFactory factory = mapper.getFactory();
-
         Map<String, Object> freshData = this.write(manager, conflict);
 
-        byte[] freshBytes = writeMsgpackBytes(mapper, freshData);
-
         if (conflictId <= 0) {
-            System.out.println("Conflict ID is non-positive, skipping cache and writing fresh data for group " + this.name());
-            copyJsonPayload(factory, freshBytes, gen);
-            return;
+            return freshData;
         }
+
+        byte[] freshBytes = writeMsgpackBytes(mapper, freshData);
 
         Map.Entry<Long, byte[]> cachedEntry = null;
         if (!forceUpdate) {
@@ -368,81 +370,22 @@ public enum HeaderGroup {
         }
 
         if (cachedEntry == null) {
-            System.out.println("No cache entry found for group " + this.name() + " and conflict " + conflictId + ", writing fresh data");
-            copyJsonPayload(factory, freshBytes, gen);
             manager.saveConflictRowCache(conflictId, freshBytes, this, now);
-            return;
+            return freshData;
         }
 
         byte[] cachedBytes = cachedEntry.getValue();
 
         if (Arrays.equals(cachedBytes, freshBytes)) {
-            System.out.println("Cache hit for group " + this.name() + " and conflict " + conflictId + ", writing cached data");
-            copyJsonPayload(factory, cachedBytes, gen);
-            return;
+            return freshData;
         }
 
-        try (JsonParser cachedParser = factory.createParser(cachedBytes);
-            JsonParser freshParser = factory.createParser(freshBytes)) {
-            System.out.println("Cache mismatch for group " + this.name() + " and conflict " + conflictId + ", merging cached and fresh data");
-            StreamMerge.mergeFlat(cachedParser, freshParser, gen);
-        }
+        // Mismatch: deserialize cached, merge with fresh (fresh wins on conflict)
+        Map<String, Object> cachedData = mapper.readValue(cachedBytes, mapper.getTypeFactory().constructMapType(LinkedHashMap.class, String.class, Object.class));
+        // same semantics as mergeObjectFlat: cached base, fresh wins per key, new fresh keys added
+        cachedData.putAll(freshData);
 
         manager.saveConflictRowCache(conflictId, freshBytes, this, now);
-    }
-
-    private static void copyJsonPayload(JsonFactory factory, byte[] payload, JsonGenerator gen) throws IOException {
-        try (JsonParser p = factory.createParser(payload)) {
-            JsonToken t = p.nextToken();
-            if (t == null) {
-                System.out.println("Empty payload, writing null. Payload length: " + payload.length);
-                return;
-            }
-
-            if (t != JsonToken.START_OBJECT) {
-                throw new IllegalStateException("Expected START_OBJECT in cached group payload but got " + t);
-            }
-
-            // Flatten: copy entries of the object into the current object
-            while (p.nextToken() != JsonToken.END_OBJECT) { // now at FIELD_NAME
-                System.out.println("Copying field " + p.getCurrentName() + " from payload. Payload length: " + payload.length);
-                gen.copyCurrentStructure(p);
-            }
-        }
-    }
-
-    public static byte[] getBytesZip(
-            ConflictManager manager,
-            Conflict conflict,
-            Map<HeaderGroup, Boolean> forceUpdate,
-            long now
-    ) {
-        System.out.println("Generating conflict " + conflict.getId() + " with forceUpdate " + forceUpdate);
-        ObjectMapper mapper = JteUtil.getSerializer();
-        JsonFactory factory = mapper.getFactory();
-
-        ByteArrayOutputStream out = new ByteArrayOutputStream(16 * 1024);
-
-        try (JsonGenerator gen = factory.createGenerator(out)) {
-            gen.writeStartObject();
-
-            for (Map.Entry<HeaderGroup, Boolean> entry : forceUpdate.entrySet()) {
-                HeaderGroup group = entry.getKey();
-                boolean force = entry.getValue();
-                group.writeGroupWithCacheFlat(manager, gen, conflict.getId(), now, force, conflict);
-            }
-
-            gen.writeNumberField("update_ms", now);
-            gen.writeEndObject();
-
-            gen.flush();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        byte[] arr = out.toByteArray();
-        byte[] compressed = JteUtil.compress(arr);
-        System.out.println("Generated conflict " + conflict.getId() + " with compressed size " + compressed.length + " bytes (uncompressed size: " + arr.length + " bytes)");
-        return compressed;
+        return cachedData;
     }
 }

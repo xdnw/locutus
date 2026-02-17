@@ -9,7 +9,9 @@ import com.jpson.PSON;
 import gg.jte.TemplateOutput;
 import gg.jte.html.OwaspHtmlTemplateOutput;
 import gg.jte.output.StringOutput;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectSet;
 import org.msgpack.jackson.dataformat.MessagePackFactory;
 
 import java.io.ByteArrayInputStream;
@@ -17,11 +19,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.zip.Deflater;
@@ -45,23 +49,75 @@ public class JteUtil {
         return m;
     }
 
-    // Helper: copy inner elements of a MessagePack array into the current generator
-    public static void copyArrayElements(JsonFactory factory,
-                                         byte[] arrayBytes,
-                                         JsonGenerator gen) throws IOException {
-        try (JsonParser p = factory.createParser(arrayBytes)) {
-            JsonToken t = p.nextToken();
-            if (t != JsonToken.START_ARRAY) {
-                // Fallback: copy as single value/structure
-                if (t != null) {
-                    gen.copyCurrentStructure(p);
+    public static void copyArrayElements(ObjectMapper mapper, JsonGenerator out, byte[] arrayBytes)
+            throws IOException {
+
+        try (JsonParser p = mapper.getFactory().createParser(arrayBytes)) {
+            if (p.nextToken() != JsonToken.START_ARRAY) {
+                throw new IOException("Cached part is not an array");
+            }
+            while (p.nextToken() != JsonToken.END_ARRAY) {
+                out.copyCurrentStructure(p); // copies one element (including nested arrays/objects)
+            }
+        }
+    }
+
+    private static Object mergeValues(Object existing, Object incoming) {
+        if (existing instanceof Map<?, ?> em && incoming instanceof Map<?, ?> im) {
+            @SuppressWarnings("unchecked")
+            var ems = (Map<String, Object>) em;
+            @SuppressWarnings("unchecked")
+            var ims = (Map<String, Object>) im;
+
+            merge(ems, ims);
+            return existing; // keep and mutate existing map
+        }
+
+        if (existing instanceof List<?> el && incoming instanceof List<?> il) {
+            return mergeLists(el, il);
+        }
+
+        // incompatible (or different types): incoming wins
+        return incoming;
+    }
+
+    private static List<Object> mergeLists(List<?> el, List<?> il) {
+        // Same size => merge by index
+        if (el.size() == il.size()) {
+            var merged = new ArrayList<Object>(el.size());
+            for (int i = 0; i < el.size(); i++) {
+                merged.add(mergeValues(el.get(i), il.get(i)));
+            }
+            return merged;
+        }
+
+        // Different sizes => keep old behavior (append)
+        var merged = new ArrayList<Object>(el.size() + il.size());
+        merged.addAll((List<?>) el);
+        merged.addAll((List<?>) il);
+        return merged;
+    }
+
+    private static final BiFunction<Object, Object, Object> MERGE_FN = JteUtil::mergeValues;
+
+    @SuppressWarnings("unchecked")
+    public static void merge(Map<String, Object> target, Map<String, Object> source) {
+        if (source == null || source.isEmpty()) return;
+
+        if (source instanceof Object2ObjectMap<?, ?> fastSource) {
+            var entrySet = ((Object2ObjectMap<String, Object>) fastSource).object2ObjectEntrySet();
+            if (entrySet instanceof Object2ObjectMap.FastEntrySet<String, Object> fastEntrySet) {
+                var it = fastEntrySet.fastIterator();
+                while (it.hasNext()) {
+                    var e = it.next();
+                    target.merge(e.getKey(), e.getValue(), MERGE_FN);
                 }
                 return;
             }
-            while ((t = p.nextToken()) != JsonToken.END_ARRAY) {
-                gen.copyCurrentStructure(p);
-            }
         }
+
+        for (var entry : source.entrySet())
+            target.merge(entry.getKey(), entry.getValue(), MERGE_FN);
     }
 
     public static String toB64(JsonObject json) {

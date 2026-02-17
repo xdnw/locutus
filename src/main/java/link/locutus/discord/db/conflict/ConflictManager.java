@@ -2,6 +2,7 @@ package link.locutus.discord.db.conflict;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Predicates;
 import com.google.common.eventbus.Subscribe;
@@ -64,6 +65,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -80,10 +82,12 @@ import java.util.function.Function;
 import java.util.function.IntPredicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static link.locutus.discord.db.conflict.ConflictField.*;
 import static link.locutus.discord.util.IOUtil.writeMsgpackBytes;
 import static link.locutus.discord.util.math.ArrayUtil.ALWAYS_TRUE_INT;
+import static link.locutus.discord.web.jooby.JteUtil.copyArrayElements;
 
 public class ConflictManager {
     private final WarDB db;
@@ -1488,22 +1492,13 @@ public class ConflictManager {
         return names;
     }
 
+    private static final HeaderGroup[] INDEX_GROUPS = { HeaderGroup.INDEX_META, HeaderGroup.INDEX_STATS };
+    private static final Set<HeaderGroup> INDEX_GROUP_SET = EnumSet.of(HeaderGroup.INDEX_META, HeaderGroup.INDEX_STATS);
+    private static final List<String> ALL_HEADERS = Stream.of(HeaderGroup.values()).flatMap(g -> g.getHeaders().stream()).toList();
+
     public byte[] getIndexBytesZip(long time) {
+        try {
         synchronized (this.loadConflictLock) {
-            List<HeaderGroup> groups = List.of(HeaderGroup.INDEX_META, HeaderGroup.INDEX_STATS);
-            Set<HeaderGroup> groupsSet = Set.copyOf(groups);
-
-            Map<Integer, Conflict> map = getConflictMap();
-
-            List<String> allHeaders = new ArrayList<>();
-            Conflict sample = map.values().stream().findFirst().orElse(null);
-            if (sample != null) {
-                for (HeaderGroup g : groups) {
-                    Map<String, Object> groupMap = g.write(this, sample);
-                    allHeaders.addAll(groupMap.keySet());
-                }
-            }
-
             Map<Integer, String> aaNameById = new Int2ObjectOpenHashMap<>();
             synchronized (conflictAlliances) {
                 for (int allianceId : conflictAlliances) {
@@ -1523,46 +1518,46 @@ public class ConflictManager {
 
             Map<Long, List<Long>> sourceSets = getSourceSets();
 
-            ObjectMapper mapper = JteUtil.getSerializer(); // MessagePack-backed
-            ByteArrayOutputStream out = new ByteArrayOutputStream(64 * 1024);
+            ObjectMapper mapper = JteUtil.getSerializer();
+            Map<Integer, Conflict> conflicts = getConflictMap();
+            ByteArrayOutputStream baos = new ByteArrayOutputStream(64 * 1024);
 
-            try (JsonGenerator gen = mapper.getFactory().createGenerator(out)) {
+            try (JsonGenerator gen = mapper.getFactory().createGenerator(baos)) {
+                gen.setCodec(mapper);
+
                 gen.writeStartObject();
 
                 gen.writeFieldName("headers");
-                mapper.writeValue(gen, allHeaders);
+                mapper.writeValue(gen, ALL_HEADERS);
 
                 gen.writeFieldName("conflicts");
                 gen.writeStartArray();
 
-                for (Conflict conflict : map.values()) {
-                    boolean cacheable = conflict.getId() > 0;
+                for (Conflict c : conflicts.values()) {
+                    int id = c.getId();
+                    boolean cacheable = id > 0;
 
-                    Map<HeaderGroup, Map.Entry<Long, byte[]>> cachedByGroup = cacheable
-                            ? loadConflictRowCache(conflict.getId(), groupsSet)
-                            : Collections.emptyMap();
+                    Map<HeaderGroup, Map.Entry<Long, byte[]>> cachedByGroup =
+                            cacheable ? loadConflictRowCache(id, INDEX_GROUP_SET) : Map.of();
 
                     gen.writeStartArray();
 
-                    for (HeaderGroup group : groups) {
-                        Map.Entry<Long, byte[]> pair = cachedByGroup.get(group);
-                        if (pair != null) {
-                            byte[] cachedBytes = pair.getValue();
-                            JteUtil.copyArrayElements(mapper.getFactory(), cachedBytes, gen);
+                    for (HeaderGroup group : INDEX_GROUPS) {
+                        Map.Entry<Long, byte[]> cached = cachedByGroup.get(group);
+                        if (cached != null) {
+                            copyArrayElements(mapper, gen, cached.getValue());
                             continue;
                         }
 
-                        Map<String, Object> groupMap = group.write(this, conflict);
+                        Map<String, Object> groupMap = group.write(this, c);
 
-                        List<Object> part = new ArrayList<>(groupMap.size());
                         for (Object v : groupMap.values()) {
-                            part.add(v);
-                            mapper.writeValue(gen, v); // flatten into row
+                            gen.writeObject(v);
                         }
 
                         if (cacheable) {
-                            byte[] partMsgPack = writeMsgpackBytes(mapper, part);
-                            saveConflictRowCache(conflict.getId(), partMsgPack, group, time);
+                            byte[] part = writeMsgpackBytes(mapper, groupMap.values());
+                            saveConflictRowCache(id, part, group, time);
                         }
                     }
 
@@ -1584,11 +1579,12 @@ public class ConflictManager {
                 mapper.writeValue(gen, getSourceNames(sourceSets.keySet()));
 
                 gen.writeEndObject();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
             }
 
-            return JteUtil.compress(out.toByteArray());
+            return JteUtil.compress(baos.toByteArray());
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
