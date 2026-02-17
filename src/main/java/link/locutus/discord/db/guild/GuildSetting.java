@@ -170,6 +170,7 @@ public abstract class GuildSetting<T> {
     private final GuildSettingSubgroup subgroup;
     private String name;
 
+    @Command
     public GuildSettingSubgroup getSubgroup() {
         return subgroup == null ? GuildSettingSubgroup.NONE : subgroup;
     }
@@ -336,6 +337,16 @@ public abstract class GuildSetting<T> {
         db.setInfo(this, user, value);
         return "Set `" + name() + "` to `" + readableStr + "`\n" +
                 "Delete with " + CM.settings.delete.cmd.key(name);
+    }
+
+    public String setAndValidate(GuildDB db, User user, T value) {
+        value = allowedAndValidate(db, user, value);
+        return set(db, user, value);
+    }
+
+    public String delete(GuildDB db, User user) {
+        db.deleteInfo(this);
+        return "Deleted `" + name() + "`";
     }
 
     public T parse(GuildDB db, String input) {
@@ -651,11 +662,6 @@ public abstract class GuildSetting<T> {
         return category;
     }
 
-    public String delete(GuildDB db, User user) {
-        db.deleteInfo(this);
-        return "Deleted `" + name() + "`";
-    }
-
     public T allowedAndValidate(GuildDB db, User user, T value) {
         DBNation nation = DiscordUtil.getNation(user);
         if (nation == null && (!Settings.INSTANCE.DISCORD.BOT_OWNER_IS_LOCUTUS_ADMIN || user.getIdLong() != Locutus.loader().getAdminUserId())) {
@@ -668,11 +674,6 @@ public abstract class GuildSetting<T> {
             throw new IllegalArgumentException("You do not have permission to set " + name() + " to `" + toReadableString(db, value) + "`");
         }
         return validate(db, user, value);
-    }
-
-    public String setAndValidate(GuildDB db, User user, T value) {
-        value = allowedAndValidate(db, user, value);
-        return set(db, user, value);
     }
 
     public static MessageChannel validateChannel(GuildDB db, MessageChannel channel) {
