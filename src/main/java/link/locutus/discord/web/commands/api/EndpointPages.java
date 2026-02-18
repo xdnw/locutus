@@ -93,7 +93,7 @@ public class EndpointPages extends PageHelper {
         return new WebBulkQuery(result);
     }
 
-    private AtomicLong commandUid = new AtomicLong(0);
+    private final AtomicLong commandUid = new AtomicLong(0);
 
     @Command
     @ReturnType(WebViewCommand.class)
@@ -106,7 +106,7 @@ public class EndpointPages extends PageHelper {
             }
         }
         Object cmdObj = data.get("");
-        if (cmdObj == null || !(cmdObj instanceof String)) throw new IllegalArgumentException("No command provided");
+        if (cmdObj == null || !(cmdObj instanceof String)) throw new IllegalArgumentException("No command provided, instead got: " + cmdObj + " | " + data);
         String cmdStr = (String) cmdObj;
         List<String> split = StringMan.split(cmdStr, " ");
 
