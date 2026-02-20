@@ -139,7 +139,7 @@ public class ConflictCommands {
     @Command(desc = "Sets the wiki page for a conflict")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
-    public String setStatus(ConflictManager manager, Conflict conflict, String status) throws IOException {
+    public String setStatus(ConflictManager manager, Conflict conflict, @TextArea String status) throws IOException {
         conflict.setStatus(status.replace("\\n", "\n"));
         conflict.pushChanges(manager, null, true, false, false, false, true, System.currentTimeMillis());
         return "Done! Set the status of `" + conflict.getName() + "` to `" + status + "`";
@@ -148,7 +148,7 @@ public class ConflictCommands {
     @Command(desc = "Sets the wiki page for a conflict")
     @RolePermission(Roles.MILCOM)
     @CoalitionPermission(Coalition.MANAGE_CONFLICTS)
-    public String setCB(ConflictManager manager, Conflict conflict, String casus_belli) throws IOException {
+    public String setCB(ConflictManager manager, Conflict conflict, @TextArea String casus_belli) throws IOException {
         conflict.setCasusBelli(casus_belli.replace("\\n", "\n"));
         conflict.pushChanges(manager, null, true, false, false, false, true, System.currentTimeMillis());
         return "Done! Set the casus belli of `" + conflict.getName() + "` to `" + casus_belli + "`";

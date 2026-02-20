@@ -53,3 +53,5 @@ lastBackup.txt
 /.github
 .github/.copilot-instructions.md
 
+/.vscode
+/.copilot

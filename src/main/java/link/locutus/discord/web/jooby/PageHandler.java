@@ -80,11 +80,11 @@ public class PageHandler implements Handler {
             ph.register(store);
         }
 
-        new JavalinBindings().register(store);
-        new AuthBindings().register(store);
-        new DiscordWebBindings(placeholders).register(store);
-        new WebPWBindings().register(store);
-        new PrimitiveWebBindings().register(store);
+    new JavalinBindings().register(store);
+    new AuthBindings().register(store);
+    new DiscordWebBindings(placeholders).register(store);
+    new WebPWBindings().register(store);
+    new PrimitiveWebBindings().register(store);
 
         this.validators = PWBindings.createDefaultValidators();
         this.permisser = PWBindings.createDefaultPermisser();
@@ -107,6 +107,7 @@ public class PageHandler implements Handler {
         this.commands.registerSubCommands(new IAEndpoints(), "api");
         this.commands.registerSubCommands(new AdminEndpoints(), "api");
         this.commands.registerSubCommands(new StatEndpoints(), "api");
+        this.commands.registerSubCommands(new ConflictEndpoints(), "api");
         this.commands.registerSubCommands(new CoalitionGraphEndpoints(), "api");
         this.commands.registerSubCommands(new GraphEndpoints(), "api");
         this.commands.registerSubCommands(new TaxEndpoints(), "api");
