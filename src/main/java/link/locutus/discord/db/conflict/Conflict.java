@@ -229,6 +229,7 @@ public class Conflict {
         return null;
     }
 
+    @Command
     public String getCoalitionName(boolean side) {
         return tryGet(side ? COL1 : COL2, f -> side ? f.col1 : f.col2);
     }
