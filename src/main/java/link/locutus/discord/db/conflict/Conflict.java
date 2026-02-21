@@ -988,6 +988,8 @@ public class Conflict {
     public List<String> pushChanges(ConflictManager manager, String webIdOrNull, boolean updatePageMeta,
             boolean updatePageStats, boolean updateGraphMeta, boolean updateGraphStats, boolean updateIndex, long now) {
         CloudStorage aws = manager.getCloud();
+        if (getId() <= 0)
+            updateIndex = false; // can't update index if not in db
         if (webIdOrNull == null) {
             if (getId() == -1)
                 throw new IllegalArgumentException("Conflict has no id");

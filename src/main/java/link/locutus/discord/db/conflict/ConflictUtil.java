@@ -12,15 +12,74 @@ import it.unimi.dsi.fastutil.objects.ObjectIterator;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ConflictUtil {
+    private static final Pattern TEMP_CONFLICT_KEY = Pattern
+            .compile("^conflicts/n/([0-9]+)/([0-9a-fA-F-]{36})\\.gzip$");
+    private static final Pattern TEMP_CONFLICT_PATH = Pattern
+            .compile("^n/([0-9]+)/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$");
+
+    public static VirtualConflictId parseVirtualConflictWebId(String path) {
+        if (path == null || path.isBlank()) {
+            throw new IllegalArgumentException("Virtual conflict path cannot be null or empty");
+        }
+
+        Matcher matcher = TEMP_CONFLICT_PATH.matcher(path.trim());
+        if (!matcher.matches()) {
+            throw new IllegalArgumentException(
+                    "Invalid virtual conflict path `" + path + "`. Expected format: n/{nationId}/{uuid}");
+        }
+
+        int nationId;
+        try {
+            nationId = Integer.parseInt(matcher.group(1));
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid nation id in virtual conflict path `" + path + "`", e);
+        }
+
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(matcher.group(2));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid UUID in virtual conflict path `" + path + "`", e);
+        }
+
+        return new VirtualConflictId(nationId, uuid);
+    }
+
+    public static VirtualConflictId parseVirtualConflictObjectKey(String objectKey) {
+        Matcher matcher = TEMP_CONFLICT_KEY.matcher(objectKey);
+        if (!matcher.matches()) {
+            throw new IllegalArgumentException("Not a virtual conflict object key: `" + objectKey + "`");
+        }
+
+        return parseVirtualConflictWebId("n/" + matcher.group(1) + "/" + matcher.group(2));
+    }
+
+    public record VirtualConflictId(int nationId, UUID uuid) {
+        public String toWebId() {
+            return "n/" + nationId + "/" + uuid;
+        }
+
+        @Override
+        public String toString() {
+            return toWebId();
+        }
+
+        public String toObjectKey() {
+            return "conflicts/" + toWebId() + ".gzip";
+        }
+    }
+
     public static void trimTimeData(Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> turnData) {
         if (turnData.size() < 2) {
             return;
         }
 
-        Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> trimmed =
-                new Long2ObjectArrayMap<>(turnData.size());
+        Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> trimmed = new Long2ObjectArrayMap<>(turnData.size());
         Int2ObjectMap<Int2ObjectMap<Byte2LongOpenHashMap>> previous = new Int2ObjectOpenHashMap<>();
 
         LongArrayList turns = new LongArrayList(turnData.keySet());
@@ -83,8 +142,8 @@ public class ConflictUtil {
 
                     Byte2LongArrayMap delta = null;
 
-                    ObjectIterator<Byte2LongMap.Entry> cityIterator =
-                            currentByAlliance.byte2LongEntrySet().fastIterator();
+                    ObjectIterator<Byte2LongMap.Entry> cityIterator = currentByAlliance.byte2LongEntrySet()
+                            .fastIterator();
                     while (cityIterator.hasNext()) {
                         Byte2LongMap.Entry cityEntry = cityIterator.next();
                         byte cityId = cityEntry.getByteKey();
@@ -101,8 +160,8 @@ public class ConflictUtil {
                         }
                     }
 
-                    ObjectIterator<Byte2LongMap.Entry> previousIterator =
-                            previousByAlliance.byte2LongEntrySet().fastIterator();
+                    ObjectIterator<Byte2LongMap.Entry> previousIterator = previousByAlliance.byte2LongEntrySet()
+                            .fastIterator();
                     while (previousIterator.hasNext()) {
                         Byte2LongMap.Entry prevEntry = previousIterator.next();
                         byte cityId = prevEntry.getByteKey();
@@ -129,11 +188,10 @@ public class ConflictUtil {
                     }
                 }
 
-                ObjectIterator<Int2ObjectMap.Entry<Byte2LongOpenHashMap>> previousAllianceIterator =
-                        previousByMetric.int2ObjectEntrySet().iterator();
+                ObjectIterator<Int2ObjectMap.Entry<Byte2LongOpenHashMap>> previousAllianceIterator = previousByMetric
+                        .int2ObjectEntrySet().iterator();
                 while (previousAllianceIterator.hasNext()) {
-                    Int2ObjectMap.Entry<Byte2LongOpenHashMap> previousAllianceEntry =
-                            previousAllianceIterator.next();
+                    Int2ObjectMap.Entry<Byte2LongOpenHashMap> previousAllianceEntry = previousAllianceIterator.next();
                     int allianceId = previousAllianceEntry.getIntKey();
 
                     if (currentByMetric.containsKey(allianceId)) {
@@ -143,8 +201,8 @@ public class ConflictUtil {
                     Byte2LongOpenHashMap previousByAlliance = previousAllianceEntry.getValue();
                     Byte2LongArrayMap delta = null;
 
-                    ObjectIterator<Byte2LongMap.Entry> cityIterator =
-                            previousByAlliance.byte2LongEntrySet().fastIterator();
+                    ObjectIterator<Byte2LongMap.Entry> cityIterator = previousByAlliance.byte2LongEntrySet()
+                            .fastIterator();
                     while (cityIterator.hasNext()) {
                         Byte2LongMap.Entry cityEntry = cityIterator.next();
                         if (cityEntry.getLongValue() != 0L) {
@@ -162,7 +220,7 @@ public class ConflictUtil {
                                     currentTurn, k -> new Int2ObjectOpenHashMap<>());
                         }
                         trimmedTurn.computeIfAbsent(
-                                        metricId, k -> new Int2ObjectOpenHashMap<>())
+                                metricId, k -> new Int2ObjectOpenHashMap<>())
                                 .put(allianceId, delta);
                     }
                 }
@@ -194,7 +252,7 @@ public class ConflictUtil {
 
     public static long[] computeRange(Map<Long, ?> data) {
         if (data.isEmpty()) {
-            return new long[]{0L, 0L};
+            return new long[] { 0L, 0L };
         }
         long min = Long.MAX_VALUE;
         long max = Long.MIN_VALUE;
@@ -206,14 +264,14 @@ public class ConflictUtil {
                 max = value;
             }
         }
-        return new long[]{min, max};
+        return new long[] { min, max };
     }
 
     public static List<List<List<List<Long>>>> toGraphMapPart(List<Integer> keys,
-                                                              Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> data,
-                                                              long start, long end,
-                                                              List<Integer> aaIds,
-                                                              List<Byte> cities) {
+            Map<Long, Map<Integer, Map<Integer, Map<Byte, Long>>>> data,
+            long start, long end,
+            List<Integer> aaIds,
+            List<Byte> cities) {
         List<List<List<List<Long>>>> turnMetricCitiesTables = new ObjectArrayList<>();
         for (int metricOrdinal : keys) {
             List<List<List<Long>>> metricCitiesTableByAA = new ObjectArrayList<>();

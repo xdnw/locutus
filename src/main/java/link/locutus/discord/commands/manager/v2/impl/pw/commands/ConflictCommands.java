@@ -106,9 +106,7 @@ public class ConflictCommands {
                 if (!ids.isEmpty()) {
                     response.append("Participants: `" + StringMan.join(ids, ",") + "`\n");
                 }
-
             }
-
         } else {
             for (CoalitionSide side : sides) {
                 response.append(side.getName() + ": `" + StringMan.join(side.getAllianceIdsSorted(), ",") + "`\n");
