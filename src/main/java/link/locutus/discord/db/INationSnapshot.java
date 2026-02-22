@@ -1,6 +1,7 @@
 package link.locutus.discord.db;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.nation.DBNationData;
 import link.locutus.discord.db.entities.nation.SimpleDBNation;
@@ -58,4 +59,6 @@ public interface INationSnapshot {
     Set<DBNation> getNationsByBracket(int taxId);
 
     Set<DBNation> getNationsByAlliance(int id);
+
+    Set<DBNation> getNationsByColor(NationColor color);
 }

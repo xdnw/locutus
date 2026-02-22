@@ -6,6 +6,7 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.header.NationHeader;
 import link.locutus.discord.db.entities.nation.DBNationSnapshot;
@@ -210,6 +211,19 @@ public class NationsFileSnapshot implements INationSnapshot {
     public Set<DBNation> getAllNations() {
         synchronized (nations) {
             return new ObjectOpenHashSet<>(nations.values());
+        }
+    }
+
+    @Override
+    public Set<DBNation> getNationsByColor(NationColor color) {
+        synchronized (nations) {
+            Set<DBNation> result = new ObjectOpenHashSet<>();
+            for (DBNationSnapshot nation : nations.values()) {
+                if (nation.getColor() == color) {
+                    result.add(nation);
+                }
+            }
+            return result;
         }
     }
 

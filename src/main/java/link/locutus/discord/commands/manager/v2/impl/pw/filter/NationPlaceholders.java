@@ -3,7 +3,6 @@ package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.Logg;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -26,7 +25,6 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -182,52 +180,31 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
     }
 
     private INationSnapshot getSnapshot(NationModifier modifier) {
-        if (modifier != null && modifier.timestamp != null) {
+        if (modifier == null) return Locutus.imp().getNationDB();
+        if (modifier.resolvedSnapshot != null) return modifier.resolvedSnapshot;
+        if (modifier.timestamp != null) {
             DataDumpParser parser = Locutus.imp().getDataDumper(true);
             try {
                 parser.load();
                 Long day = TimeUtil.getDay(modifier.timestamp);
                 if (day != null && day != TimeUtil.getDay()) {
-                    return parser.getSnapshotDelegate(day, true, modifier.load_snapshot_vm);
+                    INationSnapshot snapshot = parser.getSnapshotDelegate(day, true, modifier.load_snapshot_vm);
+                    modifier.resolvedSnapshot = snapshot;
+                    return snapshot;
                 }
-            } catch (ParseException e) {
-                throw new RuntimeException(e);
-            } catch (IOException e) {
+            } catch (ParseException | IOException e) {
                 throw new RuntimeException(e);
             }
         }
-        return Locutus.imp().getNationDB();
-    }
-
-    @Override
-    public Set<DBNation> parseSet(ValueStore store2, String input, NationModifier modifier) {
-        INationSnapshot snapshot = getSnapshot(modifier);
-        return parseSet(store2, input, snapshot, modifier != null && modifier.allow_deleted);
+        INationSnapshot snapshot = Locutus.imp().getNationDB();
+        modifier.resolvedSnapshot = snapshot;
+        return snapshot;
     }
 
     public Set<DBNation> parseSet(ValueStore store2, String input, INationSnapshot snapshot, boolean allowDeleted) {
-        input = wrapHashLegacy(store2, input);
-        String inputFinal = input;
-        return ArrayUtil.resolveQuery(input,
-                f -> {
-                    long start = System.currentTimeMillis();
-                    Set<DBNation> result = parseSingleElem(store2, f, snapshot, allowDeleted);
-                    long diff = System.currentTimeMillis() - start;
-                    if (diff > 1) {
-                        new Exception().printStackTrace();
-                        Logg.text("DBNation parseSingleElem " + inputFinal + " took " + diff + "ms for " + f);
-                    }
-                    return result;
-                },
-                s -> {
-                    long start = System.currentTimeMillis();
-                    Predicate<DBNation> result = getSingleFilter(store2, s);
-                    long diff = System.currentTimeMillis() - start;
-                    if (diff > 1) {
-                        Logg.text("getSingleFilter " + inputFinal + " took " + diff + "ms for " + s);
-                    }
-                    return result;
-                });
+        NationModifier modifier = new NationModifier(null, allowDeleted, false);
+        modifier.resolvedSnapshot = snapshot;
+        return parseSet(store2, input, modifier);
     }
 
     @Override
@@ -358,6 +335,19 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
     @Override
     public Predicate<DBNation> parseSingleFilter(ValueStore store, String name) {
         return parseSingleFilter(store, name, Locutus.imp().getNationDB());
+    }
+
+    @Override
+    protected Predicate<DBNation> parseSingleFilter(ValueStore store, String name, NationModifier modifier) {
+        INationSnapshot snapshot = getSnapshot(modifier);
+        return parseSingleFilter(store, name, snapshot);
+    }
+
+    @Override
+    protected Set<DBNation> parseSingleElem(ValueStore store, String name, NationModifier modifier) {
+        INationSnapshot snapshot = getSnapshot(modifier);
+        boolean allowDeleted = modifier != null && modifier.allow_deleted;
+        return parseSingleElem(store, name, snapshot, allowDeleted);
     }
 
     public Predicate<DBNation> parseSingleFilter(ValueStore store, String name, INationSnapshot snapshot) {

@@ -10,6 +10,7 @@ import com.politicsandwar.graphql.model.GameInfo;
 import it.unimi.dsi.fastutil.bytes.ByteOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.Logg;
@@ -28,16 +29,24 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.csv.DataDumpParser;
 import link.locutus.discord.apiv3.csv.file.NationsFileSnapshot;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.bindings.MethodEnum;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
+import link.locutus.discord.commands.manager.v2.binding.bindings.ScopedPlaceholderCache;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationModifier;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.stock.Exchange;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.INationSnapshot;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
+import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
@@ -1288,6 +1297,98 @@ public final class PW {
             ValueStore store = ph.createLocals(guild, null, null);
             NationsFileSnapshot snapshot = dumper.getSnapshotDelegate(day, true, loadVm);
             Set<DBNation> result = ph.parseSet(store, filterStr, snapshot, true);
+            return result;
+        } catch (IOException | ParseException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static Map<NationList, NationList> getNationsSnapshots(ValueStore store, List<NationList> lists, NationFilter globalFilter, long snapshotDate, Guild guild) {
+        if (snapshotDate >= TimeUtil.getTimeFromDay(TimeUtil.getDay())) {
+            Map<NationList, NationList> result = new LinkedHashMap<>();
+            for (NationList list : lists) {
+                result.put(list, list);
+            }
+            return result;
+        }
+        NationPlaceholders ph = Locutus.cmd().getV2().getNationPlaceholders();
+        DataDumpParser dumper = Locutus.imp().getDataDumper(true);
+        long day = TimeUtil.getDay(snapshotDate);
+        if (store == null) store = ph.createLocals(guild, null, null);
+
+        NationModifier snapshotModifier = new NationModifier(snapshotDate, false, false);
+
+        Predicate<DBNation> globalPredicate = null;
+        if (globalFilter != null) {
+            String filter = globalFilter.getFilter();
+            if (filter != null && !filter.isEmpty()) {
+                globalPredicate = ph.parseFilter(store, filter, snapshotModifier);
+            } else {
+                globalPredicate = globalFilter;
+            }
+        }
+
+        System.out.println("Getting snapshots for " + lists.size() + " lists with global filter " + (globalFilter == null ? "null" : globalFilter.getFilter()));
+
+        try {
+            INationSnapshot snapshot = dumper.getSnapshotDelegate(day, true, false);
+            Map<NationList, NationList> result = new LinkedHashMap<>();
+            final Predicate<DBNation> globalPredicateFinal = globalPredicate;
+
+            for (NationList list : lists) {
+                Set<DBNation> nations;
+
+                if (list instanceof DBAlliance aa) {
+                    nations = snapshot.getNationsByAlliance(aa.getAlliance_id());
+                } else if (list instanceof NationColor color) {
+                    nations = snapshot.getNationsByColor(color);
+                } else {
+                    String listFilter = list.getFilter();
+                    Set<DBNation> resolved = null;
+
+                    if (listFilter != null && !listFilter.isBlank()) {
+                        try {
+                            // filter-only suffixes (`[... ]`) are not standalone selectors,
+                            // so apply them to the id-mapped base list instead.
+                            if (listFilter.startsWith("[") && listFilter.endsWith("]")) {
+                                resolved = new ObjectOpenHashSet<>();
+                                for (DBNation nation : list.getNations()) {
+                                    DBNation snapshotNation = snapshot.getNationById(nation.getNation_id());
+                                    if (snapshotNation != null) {
+                                        resolved.add(snapshotNation);
+                                    }
+                                }
+                                String inner = listFilter.substring(1, listFilter.length() - 1).trim();
+                                if (!inner.isEmpty()) {
+                                    Predicate<DBNation> listPredicate = ph.parseFilter(store, inner, snapshotModifier);
+                                    resolved.removeIf(n -> !listPredicate.test(n));
+                                }
+                            } else {
+                                resolved = ph.parseSet(store, listFilter, snapshot, true);
+                            }
+                        } catch (RuntimeException ignored) {
+                            // Fallback below to id-based mapping.
+                        }
+                    }
+
+                    if (resolved == null) {
+                        resolved = new ObjectOpenHashSet<>();
+                        for (DBNation nation : list.getNations()) {
+                            DBNation snapshotNation = snapshot.getNationById(nation.getNation_id());
+                            if (snapshotNation != null) {
+                                resolved.add(snapshotNation);
+                            }
+                        }
+                    }
+                    nations = resolved;
+                }
+
+                if (globalPredicateFinal != null) {
+                    nations.removeIf(n -> !globalPredicateFinal.test(n));
+                }
+
+                result.put(list, new SimpleNationList(nations).setFilter(list.getFilter()));
+            }
             return result;
         } catch (IOException | ParseException e) {
             throw new RuntimeException(e);

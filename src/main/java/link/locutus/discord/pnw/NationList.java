@@ -82,11 +82,11 @@ public interface NationList extends NationFilter {
     }
 
     @Command
-    default NationList getNations(ValueStore store, Predicate<DBNation> filter, @Default @Timestamp Long timestamp) {
+    default NationList getNations(ValueStore store, @Default NationFilter filter, @Default @Timestamp Long timestamp) {
         if (timestamp == null || timestamp >= TimeUtil.getTimeFromDay(TimeUtil.getDay())) {
             Set<DBNation> result = new ObjectOpenHashSet<>();
             for (DBNation nation : getNations()) {
-                if (filter.test(nation)) {
+                if (filter == null || filter.test(nation)) {
                     result.add(nation);
                 }
             }
@@ -98,60 +98,11 @@ public interface NationList extends NationFilter {
                 NationList.class,
                 NationList.class,
                 getClass(),
-                MethodEnum.getNationsAt.of(timestamp, filter));
+                MethodEnum.getNationsAt.of(timestamp, filter == null ? null : filter.toCached(timestamp)));
+
 
         return scoped.getMap(this, scopes -> {
-            Map<NationList, NationList> result = new Object2ObjectOpenHashMap<>(scopes.size());
-            Map<Integer, DBNation> uniqueNationsById = new Int2ObjectOpenHashMap<>();
-            Set<String> scopeFilters = new ObjectLinkedOpenHashSet<>();
-            Map<Integer, List<NationList>> nationToScopes = new Int2ObjectOpenHashMap<>();
-            Map<NationList, Set<DBNation>> redistributed = new Object2ObjectOpenHashMap<>(scopes.size());
-            String invocationFilter = filter instanceof NationFilter nf ? nf.getFilter() : null;
-            boolean usePredicatePostFilter = invocationFilter == null || invocationFilter.isBlank();
-            for (NationList scope : scopes) {
-                Set<DBNation> scopeNations = scope.getNations();
-                String scopeFilter = scope.getFilter();
-                if (scopeFilter != null && !scopeFilter.isBlank()) {
-                    scopeFilters.add(scopeFilter);
-                }
-                redistributed.put(scope, new ObjectOpenHashSet<>());
-                for (DBNation nation : scopeNations) {
-                    int nationId = nation.getNation_id();
-                    uniqueNationsById.putIfAbsent(nationId, nation);
-                    nationToScopes.computeIfAbsent(nationId, k -> new ObjectArrayList<>()).add(scope);
-                }
-            }
-            String scopeUnionFilter = scopeFilters.isEmpty() ? null : "((" + String.join(")|(", scopeFilters) + "))";
-            String combinedFilter;
-            if (usePredicatePostFilter) {
-                combinedFilter = scopeUnionFilter;
-            } else if (scopeUnionFilter == null) {
-                combinedFilter = invocationFilter;
-            } else {
-                // Preserve original scope union semantics, then intersect with invocation filter.
-                combinedFilter = scopeUnionFilter + ",(" + invocationFilter + ")";
-            }
-
-            Set<DBNation> snapshot = PW.getNationsSnapshot(uniqueNationsById.values(), combinedFilter, timestamp,
-                    (Guild) null);
-
-            for (DBNation nation : snapshot) {
-                List<NationList> nationScopes = nationToScopes.get(nation.getNation_id());
-                if (nationScopes == null) {
-                    continue;
-                }
-                if (usePredicatePostFilter && !filter.test(nation)) {
-                    continue;
-                }
-                for (NationList scope : nationScopes) {
-                    redistributed.get(scope).add(nation);
-                }
-            }
-
-            for (NationList scope : scopes) {
-                result.put(scope, new SimpleNationList(redistributed.get(scope)));
-            }
-            return result;
+            return PW.getNationsSnapshots(store, scopes, filter, timestamp, null);
         });
     }
 

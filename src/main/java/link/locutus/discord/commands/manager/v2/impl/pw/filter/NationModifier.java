@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.db.INationSnapshot;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 
@@ -12,6 +13,8 @@ public class NationModifier {
     public final Long timestamp;
     public final boolean allow_deleted;
     public final boolean load_snapshot_vm;
+    // Lazily populated by NationPlaceholders.getSnapshot; avoids re-resolving per leaf callback
+    INationSnapshot resolvedSnapshot;
 
     public NationModifier(Long timestamp, boolean allow_deleted, boolean load_snapshot_vm) {
         this.timestamp = timestamp;

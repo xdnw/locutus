@@ -804,10 +804,26 @@ public abstract class Placeholders<T, M> extends BindingHelper {
 
     @Binding(value = "A comma separated list of filters")
     public Predicate<T> parseFilter(ValueStore store2, String input) {
+        return parseFilter(store2, input, null);
+    }
+
+    public Predicate<T> parseFilter(ValueStore store2, String input, M modifier) {
         input = wrapHashLegacy(store2, input);
         return ArrayUtil.parseFilter(input,
-                f -> parseSingleFilter(store2, f),
-                s -> getSingleFilter(store2, s));
+                f -> parseSingleFilter(store2, f, modifier),
+                s -> getSingleFilter(store2, s, modifier));
+    }
+
+    protected Predicate<T> parseSingleFilter(ValueStore store, String input, M modifier) {
+        return parseSingleFilter(store, input);
+    }
+
+    protected Predicate<T> getSingleFilter(ValueStore store, String input, M modifier) {
+        return getSingleFilter(store, input);
+    }
+
+    protected Set<T> parseSingleElem(ValueStore store, String input, M modifier) {
+        return parseSingleElem(store, input);
     }
 
     public Set<T> parseSet(Guild guild, User author, DBNation nation, String input) {
@@ -818,16 +834,16 @@ public abstract class Placeholders<T, M> extends BindingHelper {
         return parseSet(createLocals(guild, author, nation), input, modifier);
     }
 
-    public Set<T> parseSet(ValueStore store2, String input, M modifier) {
-        return parseSet(store2, input);
-    }
-
     @Binding(value = "A comma separated list of items")
     public Set<T> parseSet(ValueStore store2, String input) {
+        return parseSet(store2, input, null);
+    }
+
+    public Set<T> parseSet(ValueStore store2, String input, M modifier) {
         input = wrapHashLegacy(store2, input);
         return ArrayUtil.resolveQuery(input,
-                f -> parseSingleElem(store2, f),
-                s -> getSingleFilter(store2, s));
+                f -> parseSingleElem(store2, f, modifier),
+                s -> getSingleFilter(store2, s, modifier));
     }
 
     protected Predicate<T> getSingleFilter(ValueStore store, String input) {

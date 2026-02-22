@@ -41,6 +41,7 @@ import link.locutus.discord.db.entities.city.SimpleDBCity;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
 import link.locutus.discord.db.entities.metric.OrbisMetric;
 import link.locutus.discord.db.entities.nation.DBNationData;
+import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 import link.locutus.discord.db.entities.nation.SimpleDBNation;
 import link.locutus.discord.db.handlers.SyncableDatabase;
 import link.locutus.discord.event.Event;
@@ -111,6 +112,19 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
     public Set<DBNation> getAllNations() {
         synchronized (nationsById) {
             return new ObjectOpenHashSet<>(nationsById.values());
+        }
+    }
+
+    @Override
+    public Set<DBNation> getNationsByColor(NationColor color) {
+        synchronized (nationsById) {
+            Set<DBNation> result = new ObjectOpenHashSet<>();
+            for (DBNation nation : nationsById.values()) {
+                if (nation.getColor() == color) {
+                    result.add(nation);
+                }
+            }
+            return result;
         }
     }
 
