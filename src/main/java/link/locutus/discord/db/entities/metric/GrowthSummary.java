@@ -58,7 +58,7 @@ public class GrowthSummary {
             int aaId = nation.getAlliance_id();
             if (aaId == 0 || !allowedAlliances.contains(aaId))
                 continue;
-            if (nation.getPositionEnum().id >= Rank.MEMBER.id) {
+            if (nation.getPositionEnum().id >= Rank.MEMBER.id && nation.getVm_turns() == 0) {
                 allianceMembership.computeIfAbsent(aaId, f -> new IntOpenHashSet()).add(entry.getKey());
             }
         }
