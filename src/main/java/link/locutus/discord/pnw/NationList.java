@@ -75,7 +75,7 @@ public interface NationList extends NationFilter {
     }
 
     @Command
-    default NationList getNations(ValueStore<?> store, Predicate<DBNation> filter, @Default Long timestamp) {
+    default NationList getNations(ValueStore store, Predicate<DBNation> filter, @Default Long timestamp) {
         if (timestamp == null) {
             Set<DBNation> result = new ObjectOpenHashSet<>();
             for (DBNation nation : getNations()) {
