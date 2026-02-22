@@ -1287,8 +1287,9 @@ public final class PW {
 
     public static Set<DBNation> getNationsSnapshot(Collection<DBNation> nations, String filterStr, Long snapshotDate,
             Guild guild, boolean loadVm) {
-        if (snapshotDate == null)
+        if (snapshotDate == null || snapshotDate >= TimeUtil.getTimeFromDay(TimeUtil.getDay())) {
             return nations instanceof Set<DBNation> ? (Set<DBNation>) nations : new ObjectOpenHashSet<>(nations);
+        }
         NationPlaceholders ph = Locutus.cmd().getV2().getNationPlaceholders();
 
         DataDumpParser dumper = Locutus.imp().getDataDumper(true);
@@ -1337,7 +1338,6 @@ public final class PW {
 
             for (NationList list : lists) {
                 Set<DBNation> nations;
-
                 if (list instanceof DBAlliance aa) {
                     nations = snapshot.getNationsByAlliance(aa.getAlliance_id());
                 } else if (list instanceof NationColor color) {

@@ -3145,7 +3145,7 @@ public class WarDB extends DBMainV2 {
             attacksByWarId2.computeIfAbsent(warId, f -> new ObjectArrayList<>(size)).add(data);
         }
         Logg.text("Loaded " + attacks.size() + " attacks " + attacksByWarId2.containsKey(2114621));
-        fixAttacks();
+        // fixAttacks();
     }
 
     private void fixAttack(int attackId, Consumer<AbstractCursor> onEach) {

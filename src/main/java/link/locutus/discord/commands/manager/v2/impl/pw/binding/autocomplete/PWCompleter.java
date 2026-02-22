@@ -221,6 +221,12 @@ public class PWCompleter extends BindingHelper {
         return StringMan.completeEnum(input, WarCostMode.class);
     }
 
+        @Autocomplete
+    @Binding(types={TierDeltaMode.class})
+    public List<String> TierDeltaMode(String input) {
+        return StringMan.completeEnum(input, TierDeltaMode.class);
+    }
+
     @Autocomplete
     @Binding(types={RssConvertMode.class})
     public List<String> RssConvertMode(String input) {

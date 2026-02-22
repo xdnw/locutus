@@ -3,6 +3,8 @@ package link.locutus.discord.web.commands.options;
 import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.WarCostMode;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
@@ -36,7 +38,10 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.pnw.*;
+import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.web.commands.binding.value_types.WebOptions;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -87,7 +92,12 @@ public class WebOptionBindings extends BindingHelper {
 
     @Binding(types = {MenuState.class})
     public WebOption MenuState(String input) {
-        return new WebOption(MenuState.class).setOptions(Arrays.stream(MenuState.values()).map(MenuState::name).toList());
+        return WebOption.fromEnum(MenuState.class);
+    }
+
+    @Binding(types = {WarCostMode.class})
+    public WebOption WarCostMode(String input) {
+        return WebOption.fromEnum(WarCostMode.class);
     }
 
 //Category
@@ -241,7 +251,7 @@ public class WebOptionBindings extends BindingHelper {
         return new WebOption(Key.nested(GuildSetting.class, WildcardType.class)).setRequiresGuild()
                 .setOptions((Arrays.stream(GuildKey.values()).map(GuildSetting::name).toList()));
     }
-//EmbeddingSource
+    //EmbeddingSource
     @Binding(types = EmbeddingSource.class)
     public WebOption getEmbeddingSource() {
         return new WebOption(EmbeddingSource.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
@@ -362,6 +372,7 @@ public class WebOptionBindings extends BindingHelper {
     public WebOption getNationOrAlliance() {
         return new WebOption(DBNation.class).setCompositeTypes(DBNation.class, DBAlliance.class);
     }
+
 // NationOrAllianceOrGuildOrTaxid
     @Binding(types = NationOrAllianceOrGuildOrTaxid.class)
     public WebOption getNationOrAllianceOrGuildOrTaxid() {
@@ -408,6 +419,31 @@ public class WebOptionBindings extends BindingHelper {
             }
             return data;
         }, false);
+    }
+    // GrantRequest
+    @Binding(types = GrantRequest.class)
+    public WebOption getGrantRequest() {
+        return new WebOption(GrantRequest.class).setRequiresGuild().setQueryMap((db, user, nation) -> {
+            WebOptions data = new WebOptions(true).withText().withSubtext();
+            List<GrantRequest> requests;
+            if (user != null || nation != null) {
+                if (user != null && Roles.ECON_STAFF.has(user, db.getGuild())) {
+                     requests = db.getGrantRequests();
+                } else if (nation != null) {
+                    requests = db.getGrantRequestsByNation(nation.getId());
+                } else {
+                    return data;
+                }
+            } else {
+                return data;
+            }
+            for (GrantRequest request : requests) {
+                String title = request.getReason() + ": " + PW.getName(request.getNationId(), false) + " | " + request.getCommandName();
+                String subtitle =  "~$" + MathMan.format(ResourceType.convertedTotal(request.getEstimatedAmount())) + " | " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - request.getDateCreated()) + " | " + request.getCommand();
+                data.add(request.getId(), title, subtitle);
+            }
+            return data;
+        }, true);
     }
 //Newsletter
     @Binding(types = Newsletter.class)

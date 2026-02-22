@@ -80,11 +80,11 @@ public class PageHandler implements Handler {
             ph.register(store);
         }
 
-    new JavalinBindings().register(store);
-    new AuthBindings().register(store);
-    new DiscordWebBindings(placeholders).register(store);
-    new WebPWBindings().register(store);
-    new PrimitiveWebBindings().register(store);
+        new JavalinBindings().register(store);
+        new AuthBindings().register(store);
+        new DiscordWebBindings(placeholders).register(store);
+        new WebPWBindings().register(store);
+        new PrimitiveWebBindings().register(store);
 
         this.validators = PWBindings.createDefaultValidators();
         this.permisser = PWBindings.createDefaultPermisser();

@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -526,6 +527,182 @@ public class GraphEndpoints {
 
         CoalitionMetricsGraph table = CoalitionMetricsGraph.create(metrics, startTurn, endTurn, coalitionName, coalition);
         WebGraph graph = table.toHtmlJson();
+        return graph;
+    }
+
+    @Command(desc = "Compare city-tier snapshot deltas (start/end/net/gained/lost) for up to 10 coalitions\n" + 
+    "Defaults", viewable = true)
+    @ReturnType(WebGraph.class)
+    public WebGraph compareTierDeltaGraph(
+            @Me @Default GuildDB db,
+            @Me JSONObject command,
+
+            Set<DBNation> coalition1,
+            @Default Set<DBNation> coalition2,
+            @Default Set<DBNation> coalition3,
+            @Default Set<DBNation> coalition4,
+            @Default Set<DBNation> coalition5,
+            @Default Set<DBNation> coalition6,
+            @Default Set<DBNation> coalition7,
+            @Default Set<DBNation> coalition8,
+            @Default Set<DBNation> coalition9,
+            @Default Set<DBNation> coalition10,
+
+            @Switch("s") @Default("getCities") TypedFunction<DBNation, Double> stat,
+
+            @Switch("b") @Timestamp @Default("30d") Long start,
+            @Switch("c") @Timestamp @Default("0d") Long end,
+
+            @Switch("m") @Default("net") TierDeltaMode mode,
+            @Switch("k") @Default("1") Integer bucket_size,
+
+            @Switch("a") boolean include_apps,
+            @Switch("v") boolean include_vm,
+
+            @Switch("f") @Default Predicate<DBNation> filter
+    ) {
+        if (stat == null) stat = TypedFunction.create(DBNation.class, f -> (double) f.getCities(), "getCities");
+        if (start == null) {
+            start = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30);
+        }
+        if (end == null) {
+            end = System.currentTimeMillis();
+        }
+        if (mode == null) mode = TierDeltaMode.NET;
+        if (bucket_size == null) bucket_size = 1;
+
+        Map<String, Set<DBNation>> coalitionMap = new Object2ObjectLinkedOpenHashMap<>();
+        if (coalition1 != null) coalitionMap.put(command.getString("coalition1"), coalition1);
+        if (coalition2 != null) coalitionMap.put(command.getString("coalition2"), coalition2);
+        if (coalition3 != null) coalitionMap.put(command.getString("coalition3"), coalition3);
+        if (coalition4 != null) coalitionMap.put(command.getString("coalition4"), coalition4);
+        if (coalition5 != null) coalitionMap.put(command.getString("coalition5"), coalition5);
+        if (coalition6 != null) coalitionMap.put(command.getString("coalition6"), coalition6);
+        if (coalition7 != null) coalitionMap.put(command.getString("coalition7"), coalition7);
+        if (coalition8 != null) coalitionMap.put(command.getString("coalition8"), coalition8);
+        if (coalition9 != null) coalitionMap.put(command.getString("coalition9"), coalition9);
+        if (coalition10 != null) coalitionMap.put(command.getString("coalition10"), coalition10);
+        coalitionMap.entrySet().removeIf(e -> e.getValue() == null || e.getValue().isEmpty());
+
+        if (coalitionMap.isEmpty()) {
+            throw new IllegalArgumentException("At least one coalition is required.");
+        }
+
+        List<String> coalitionNames = new ArrayList<>();
+        Map<String, Map<Integer, Integer>> seriesByCoalition = new LinkedHashMap<>();
+        SortedSet<Integer> allBuckets = new TreeSet<>();
+
+        Predicate<DBNation> shouldExcludePredicate = n -> {
+            if (!include_apps && n.getPosition() <= 1) return true;
+            if (!include_vm && n.getVm_turns() != 0) return true;
+            return filter != null && !filter.test(n);
+        };
+
+        for (Map.Entry<String, Set<DBNation>> entry : coalitionMap.entrySet()) {
+            final String coalitionName = entry.getKey();
+            final Set<DBNation> seed = entry.getValue();
+
+            Set<DBNation> startSnapshot = PW.getNationsSnapshot(seed, coalitionName, start, db);
+            Set<DBNation> endSnapshot = PW.getNationsSnapshot(seed, coalitionName, end, db);
+
+            // Apply inclusion/filter rules consistently to both snapshots.
+            startSnapshot.removeIf(shouldExcludePredicate);
+            endSnapshot.removeIf(shouldExcludePredicate);
+
+            Map<Integer, Integer> startCounts = new HashMap<>();
+            Map<Integer, Integer> endCounts = new HashMap<>();
+            Map<Integer, Integer> gainedCounts = new HashMap<>();
+            Map<Integer, Integer> lostCounts = new HashMap<>();
+
+            Map<Integer, Integer> startBucketByNation = new HashMap<>();
+            Map<Integer, Integer> endBucketByNation = new HashMap<>();
+
+            for (DBNation n : startSnapshot) {
+                int bucket = (int) (stat.apply(n) / bucket_size);
+                startCounts.merge(bucket, 1, Integer::sum);
+                startBucketByNation.put(n.getNation_id(), bucket);
+                allBuckets.add(bucket);
+            }
+
+            for (DBNation n : endSnapshot) {
+                int bucket = (int) (stat.apply(n) / bucket_size);
+                endCounts.merge(bucket, 1, Integer::sum);
+                endBucketByNation.put(n.getNation_id(), bucket);
+                allBuckets.add(bucket);
+            }
+
+            // Transition-based gained/lost semantics:
+            // gained[b] = entered bucket b since baseline
+            // lost[b]   = exited bucket b since baseline
+            Set<Integer> allNationIds = new HashSet<>(startBucketByNation.keySet());
+            allNationIds.addAll(endBucketByNation.keySet());
+
+            for (Integer nationId : allNationIds) {
+                Integer from = startBucketByNation.get(nationId);
+                Integer to = endBucketByNation.get(nationId);
+
+                if (Objects.equals(from, to)) continue;
+
+                if (from != null) {
+                    lostCounts.merge(from, 1, Integer::sum);
+                }
+                if (to != null) {
+                    gainedCounts.merge(to, 1, Integer::sum);
+                }
+            }
+
+            Map<Integer, Integer> selectedSeries = new HashMap<>();
+            for (Integer b : allBuckets) {
+                int s = startCounts.getOrDefault(b, 0);
+                int e = endCounts.getOrDefault(b, 0);
+                int g = gainedCounts.getOrDefault(b, 0);
+                int l = lostCounts.getOrDefault(b, 0);
+
+                int value;
+                switch (mode) {
+                    case START_COUNT -> value = s;
+                    case END_COUNT -> value = e;
+                    case GAINED -> value = g;
+                    case LOST -> value = l;
+                    case TURNOVER -> value = g + l;
+                    case NET -> value = e - s;
+                    default -> value = e - s;
+                }
+                selectedSeries.put(b, value);
+            }
+
+            coalitionNames.add(coalitionName);
+            seriesByCoalition.put(coalitionName, selectedSeries);
+        }
+
+        List<Number> xValues = new ArrayList<>();
+        for (Integer b : allBuckets) xValues.add(b);
+
+        List<List<Number>> data = new ArrayList<>();
+        data.add(xValues);
+
+        for (String coalitionName : coalitionNames) {
+            Map<Integer, Integer> series = seriesByCoalition.get(coalitionName);
+            List<Number> row = new ArrayList<>(allBuckets.size());
+            for (Integer b : allBuckets) {
+                row.add(series.getOrDefault(b, 0));
+            }
+            data.add(row);
+        }
+
+        WebGraph graph = new WebGraph();
+        graph.title = mode.label() + " by " + stat.getName();
+        if (bucket_size > 1) {
+            graph.title += "/" + bucket_size;
+        }
+        graph.x = stat.getName() + (bucket_size > 1 ? ("/" + bucket_size) : "");
+        graph.y = mode.label();
+        graph.labels = coalitionNames.toArray(new String[0]);
+        graph.data = (List) data;
+        graph.type = GraphType.SIDE_BY_SIDE_BAR;
+        graph.number_format = TableNumberFormat.SI_UNIT;
+        graph.origin = 0;
+
         return graph;
     }
 }

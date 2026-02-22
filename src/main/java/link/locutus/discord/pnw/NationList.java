@@ -98,7 +98,7 @@ public interface NationList extends NationFilter {
                 NationList.class,
                 NationList.class,
                 getClass(),
-                MethodEnum.getNationsAt.of(timestamp, filter == null ? null : filter.toCached(timestamp)));
+                MethodEnum.getNationsAt.of(TimeUtil.getDay(timestamp), filter == null ? null : filter.getFilter()));
 
 
         return scoped.getMap(this, scopes -> {

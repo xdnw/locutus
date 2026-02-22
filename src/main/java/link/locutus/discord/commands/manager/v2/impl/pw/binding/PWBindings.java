@@ -1628,6 +1628,12 @@ public class PWBindings extends BindingHelper {
         return emum(WarCostMode.class, input);
     }
 
+    @Binding(value = "The mode for calculating tier deltas")
+    public TierDeltaMode TierDeltaMode(String input) {
+        return emum(TierDeltaMode.class, input);
+    }
+
+
     @Binding(value = "The mode for calculating resource conversion")
     public RssConvertMode RssConvertMode(String input) {
         return emum(RssConvertMode.class, input);

@@ -180,6 +180,12 @@ public class WebPWBindings extends WebBindingHelper {
     }
 
     @HtmlInput
+    @Binding(types = TierDeltaMode.class)
+    public String TierDeltaMode(ParameterData param) {
+        return multipleSelect(param, Arrays.asList(TierDeltaMode.values()), s -> new KeyValue<>(s.name(), s.name()));
+    }
+
+    @HtmlInput
     @Binding(types = WarCostStat.class)
     public String WarCostStat(ParameterData param) {
         return multipleSelect(param, Arrays.asList(WarCostStat.values()), s -> new KeyValue<>(s.name(), s.name()));

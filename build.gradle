@@ -58,27 +58,31 @@ tasks.register('runMain', JavaExec) {
     description = 'Run any main class on the project classpath: -PmainClass=... or -DmainClass=... or env MAIN_CLASS'
     classpath = sourceSets.main.runtimeClasspath
 
-    // Use providers so values are available to JavaExec and remain configuration-cache friendly.
+    // Keep task registration lazy so IDE Gradle model sync does not fail.
     def suppliedMain = providers.gradleProperty('mainClass')
             .orElse(providers.systemProperty('mainClass'))
             .orElse(providers.environmentVariable('MAIN_CLASS'))
-    if (!suppliedMain.isPresent()) {
-        throw new GradleException("Please specify -PmainClass=fully.qualified.Main or -DmainClass=... or set MAIN_CLASS env var")
-    }
-    mainClass.set(suppliedMain)
-
     def suppliedArgs = providers.gradleProperty('appArgs')
             .orElse(providers.systemProperty('appArgs'))
-            .orNull
-    if (suppliedArgs) {
-        args suppliedArgs.toString().split(/\s+/)
-    }
-
     def suppliedJvmArgs = providers.gradleProperty('jvmArgs')
             .orElse(providers.systemProperty('jvmArgs'))
-            .orNull
-    if (suppliedJvmArgs) {
-        jvmArgs suppliedJvmArgs.toString().split(/\s+/)
+
+    mainClass.convention(suppliedMain)
+
+    doFirst {
+        if (!mainClass.isPresent()) {
+            throw new GradleException("Please specify -PmainClass=fully.qualified.Main or -DmainClass=... or set MAIN_CLASS env var")
+        }
+
+        def argsValue = suppliedArgs.orNull
+        if (argsValue) {
+            args argsValue.toString().split(/\s+/)
+        }
+
+        def jvmArgsValue = suppliedJvmArgs.orNull
+        if (jvmArgsValue) {
+            jvmArgs jvmArgsValue.toString().split(/\s+/)
+        }
     }
 
     dependsOn tasks.named('classes')

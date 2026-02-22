@@ -135,7 +135,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         // String method = "metric" + (turn - TimeUtil.getTurn(TimeUtil.getOrigin())) +
         // metric;
         ScopedPlaceholderCache<DBAlliance> scoped = PlaceholderCache.getScoped(store, DBAlliance.class,
-                getMetricAt.of(metric, date));
+                getMetricAt.of(metric, turn));
         Double value = scoped.getMap(this,
                 (ThrowingFunction<List<DBAlliance>, Map<DBAlliance, Double>>) f -> {
                     Set<Integer> aaIds = new IntOpenHashSet(f.size());
