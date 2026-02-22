@@ -68,6 +68,7 @@ public class Conflict {
     private long pushedGraph;
     private volatile boolean recalcGraph;
     private long latestWarOrAttack;
+    private volatile ConflictUtil.VirtualConflictId virtualConflictId;
 
     public Conflict(int id, int ordinal, String name, long turnStart, long turnEnd, long pushedIndex, long pushedPage,
             long pushedGraph, boolean recalcGraph) {
@@ -111,6 +112,19 @@ public class Conflict {
 
     public long getLatestWarAttack() {
         return latestWarOrAttack;
+    }
+
+    public boolean isVirtual() {
+        return id <= 0;
+    }
+
+    public ConflictUtil.VirtualConflictId getVirtualConflictId() {
+        return virtualConflictId;
+    }
+
+    public Conflict setVirtualConflictId(ConflictUtil.VirtualConflictId virtualConflictId) {
+        this.virtualConflictId = virtualConflictId;
+        return this;
     }
 
     public long getLatestGraphMs() {
@@ -500,11 +514,13 @@ public class Conflict {
             }
         }
 
-        manager.deleteGraphData(getId());
-        List<ConflictMetric.Entry> entries = new ObjectArrayList<>();
-        entries.addAll(col1Wars.getGraphEntries());
-        entries.addAll(col2Wars.getGraphEntries());
-        manager.addGraphData(entries);
+        if (getId() > 0) {
+            manager.deleteGraphData(getId());
+            List<ConflictMetric.Entry> entries = new ObjectArrayList<>();
+            entries.addAll(col1Wars.getGraphEntries());
+            entries.addAll(col2Wars.getGraphEntries());
+            manager.addGraphData(entries);
+        }
     }
 
     private Conflict checkRecalcGraph() {
@@ -991,9 +1007,14 @@ public class Conflict {
         if (getId() <= 0)
             updateIndex = false; // can't update index if not in db
         if (webIdOrNull == null) {
-            if (getId() == -1)
-                throw new IllegalArgumentException("Conflict has no id");
-            webIdOrNull = Integer.toString(getId());
+            if (isVirtual()) {
+                if (virtualConflictId == null) {
+                    throw new IllegalArgumentException("Conflict has no id");
+                }
+                webIdOrNull = virtualConflictId.toWebId();
+            } else {
+                webIdOrNull = Integer.toString(getId());
+            }
         }
         long ttl = isActive() ? TimeUnit.MINUTES.toSeconds(1) : TimeUnit.MINUTES.toSeconds(5);
         List<String> urls = new ArrayList<>();

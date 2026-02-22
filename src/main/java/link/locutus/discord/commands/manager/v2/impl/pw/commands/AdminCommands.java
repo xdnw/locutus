@@ -60,6 +60,7 @@ import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.announce.AnnounceType;
 import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
+import link.locutus.discord.db.entities.metric.GrowthSummary;
 import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSetting;
@@ -142,8 +143,8 @@ public class AdminCommands {
             "Review the sheet and use `force`, or modify it and provide it as an argument for `servers` to leave multiple guilds at once.")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String cullInactiveGuilds(@Me JSONObject command, @Me GuildDB thisDb, @Me IMessageIO io,
-                                     @Default Set<GuildDB> servers, @Switch("s") SpreadSheet sheet,
-                                     @Switch("f") boolean force) throws GeneralSecurityException, IOException {
+            @Default Set<GuildDB> servers, @Switch("s") SpreadSheet sheet,
+            @Switch("f") boolean force) throws GeneralSecurityException, IOException {
         if (servers != null) {
             if (!force) {
                 io.create()
@@ -159,9 +160,12 @@ public class AdminCommands {
                 Locutus.cmd().getExecutor().schedule(() -> {
                     TextChannel channel = db.getNotifcationChannel();
                     if (channel != null && channel.canTalk()) {
-                        RateLimitUtil.queue(channel.sendMessage("Leaving this guild due to inactivity. Please re-invite this bot if you want to use it again!\n" +
-                                "<https://discord.com/api/oauth2/authorize?client_id=" + Settings.INSTANCE.APPLICATION_ID + "&permissions=395606879321&scope=bot>\n" +
-                                "- <https://github.com/xdnw/locutus/wiki>"));
+                        RateLimitUtil.queue(channel.sendMessage(
+                                "Leaving this guild due to inactivity. Please re-invite this bot if you want to use it again!\n"
+                                        +
+                                        "<https://discord.com/api/oauth2/authorize?client_id="
+                                        + Settings.INSTANCE.APPLICATION_ID + "&permissions=395606879321&scope=bot>\n" +
+                                        "- <https://github.com/xdnw/locutus/wiki>"));
                     }
                     RateLimitUtil.queue(db.getGuild().leave());
                 }, delay, TimeUnit.SECONDS);
@@ -189,8 +193,7 @@ public class AdminCommands {
                 "No Settings",
                 "Member Count",
                 "Alliance Deleted",
-                "Has Registered User"
-        ));
+                "Has Registered User"));
 
         OffsetDateTime now = OffsetDateTime.now();
         OffsetDateTime oneYearAgo = now.minusDays(365);
@@ -210,7 +213,8 @@ public class AdminCommands {
                     }
                     long latestSnowflake = channel.getLatestMessageIdLong();
                     if (latestSnowflake != 0) {
-                        long latestMs = net.dv8tion.jda.api.utils.TimeUtil.getTimeCreated(latestSnowflake).toEpochSecond() * 1000L;
+                        long latestMs = net.dv8tion.jda.api.utils.TimeUtil.getTimeCreated(latestSnowflake)
+                                .toEpochSecond() * 1000L;
                         if (latestMs > oneYearAgoMs) {
                             hasRecentMessage = Math.max(hasRecentMessage, latestMs);
                         }
@@ -227,7 +231,6 @@ public class AdminCommands {
             boolean allianceDeleted = GuildKey.ALLIANCE_ID.getOrNull(other) != null && !other.isValidAlliance();
             boolean isValidAlliance = other.isValidAlliance();
 
-
             boolean joinedLongTimeAgo = other.getGuild().getSelfMember().getTimeJoined().isBefore(oneYearAgo);
 
             boolean hasRecentMember = false;
@@ -236,19 +239,23 @@ public class AdminCommands {
             boolean hasRegisteredUser = false;
 
             for (Member member : other.getGuild().getMembers()) {
-                if (member.getUser().isBot() || member.getUser().isSystem()) continue;
+                if (member.getUser().isBot() || member.getUser().isSystem())
+                    continue;
                 memberCount++;
                 DBNation nation = DiscordUtil.getNation(member.getIdLong());
                 if (nation != null) {
-                    if (!hasRegisteredAdmin && (member.isOwner() || member.getRoles().stream().anyMatch(r -> r.getPermissions().contains(Permission.ADMINISTRATOR)))) {
+                    if (!hasRegisteredAdmin && (member.isOwner() || member.getRoles().stream()
+                            .anyMatch(r -> r.getPermissions().contains(Permission.ADMINISTRATOR)))) {
                         hasRegisteredAdmin = true;
                     }
                     hasRegisteredUser = true;
                 }
-                if (member.getUser().isBot()) continue;
+                if (member.getUser().isBot())
+                    continue;
                 if (member.getTimeJoined().isAfter(oneYearAgo)) {
                     hasRecentMember = true;
-                    if (member.isOwner() || member.getRoles().stream().anyMatch(r -> r.getPermissions().contains(Permission.ADMINISTRATOR))) {
+                    if (member.isOwner() || member.getRoles().stream()
+                            .anyMatch(r -> r.getPermissions().contains(Permission.ADMINISTRATOR))) {
                         hasRecentAdmin = true;
                     }
                 }
@@ -264,7 +271,8 @@ public class AdminCommands {
 
             boolean hasOffshoreAccount = other.getOffshore() != null;
 
-            if (hasRecentChannel || isValidAlliance || !joinedLongTimeAgo || hasRecentMember || hasRecentAdmin || hasRegisteredAdmin || hasRecentRole || hasOffshoreAccount) {
+            if (hasRecentChannel || isValidAlliance || !joinedLongTimeAgo || hasRecentMember || hasRecentAdmin
+                    || hasRegisteredAdmin || hasRecentRole || hasOffshoreAccount) {
                 continue;
             }
 
@@ -280,8 +288,7 @@ public class AdminCommands {
                     hasNoSettings,
                     !lowMemberCount,
                     allianceDeleted,
-                    hasRegisteredUser
-            );
+                    hasRegisteredUser);
             sheet.addRow(row);
             numGuildsToCull++;
         }
@@ -307,23 +314,29 @@ public class AdminCommands {
             You must have at least some funds in the alliance bank for this to work""")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String newOffshore(@Me IMessageIO io, @Me GuildDB db, @Me DBNation nation,
-                              DBAlliance alliance) throws IOException {
+            DBAlliance alliance) throws IOException {
         if (!Settings.INSTANCE.TEST) {
             throw new IllegalArgumentException("Creating new offshore is disabled in production");
         }
         Auth auth = nation.getAuth(false);
         if (auth == null) {
-            throw new IllegalArgumentException("You do not have credentials provided in order to make an alliance in-game. See: " + CM.credentials.login.cmd.toSlashMention());
+            throw new IllegalArgumentException(
+                    "You do not have credentials provided in order to make an alliance in-game. See: "
+                            + CM.credentials.login.cmd.toSlashMention());
         }
         if (alliance.getId() != nation.getAlliance_id()) {
-            throw new IllegalArgumentException("Your nation is not in the alliance you specified (if it is, please use the `!sync <nation>` command and try again)");
+            throw new IllegalArgumentException(
+                    "Your nation is not in the alliance you specified (if it is, please use the `!sync <nation>` command and try again)");
         }
         if (alliance.getMemberDBNations().size() > 1) {
-            throw new IllegalArgumentException("Alliance has more than 1 member. Please create a new alliance with only your nation");
+            throw new IllegalArgumentException(
+                    "Alliance has more than 1 member. Please create a new alliance with only your nation");
         }
-        DBAlliancePosition leaderPos = alliance.getPositions().stream().filter(p -> p.getRank() == Rank.LEADER).findFirst().orElse(null);
+        DBAlliancePosition leaderPos = alliance.getPositions().stream().filter(p -> p.getRank() == Rank.LEADER)
+                .findFirst().orElse(null);
         if (leaderPos == null) {
-            throw new IllegalArgumentException("Failed to find leader position in alliance. See " + CM.admin.sync2.alliances.cmd.toSlashMention());
+            throw new IllegalArgumentException(
+                    "Failed to find leader position in alliance. See " + CM.admin.sync2.alliances.cmd.toSlashMention());
         }
         if (nation.getPositionEnum() != Rank.LEADER && nation.getPositionEnum() != Rank.HEIR) {
             throw new IllegalArgumentException("You must be the alliance leader or heir to use this command");
@@ -331,42 +344,53 @@ public class AdminCommands {
 
         PoliticsAndWarV3 setRankApi = nation.getApi(true);
         if (setRankApi == null) {
-            throw new IllegalArgumentException("Failed to get api. Please ensure your api key is valid: " + CM.credentials.addApiKey.cmd.toSlashMention());
+            throw new IllegalArgumentException("Failed to get api. Please ensure your api key is valid: "
+                    + CM.credentials.addApiKey.cmd.toSlashMention());
         }
 
         // Send funds to new alliance
         OffshoreInstance offshore = db.getOffshore();
         if (offshore == null) {
-            throw new IllegalArgumentException("This server does not have an offshore setup. See: " + CM.offshore.add.cmd.toSlashMention());
+            throw new IllegalArgumentException(
+                    "This server does not have an offshore setup. See: " + CM.offshore.add.cmd.toSlashMention());
         }
         DBAlliance offshoreAA = offshore.getAlliance();
         Auth offshoreAuth = offshoreAA.getAuth(AlliancePermission.WITHDRAW_BANK);
         if (offshoreAuth == null) {
-            throw new IllegalArgumentException("Failed to get credentials for offshore alliance. Please have an admin within the offshore alliance use " + CM.credentials.login.cmd.toSlashMention());
+            throw new IllegalArgumentException(
+                    "Failed to get credentials for offshore alliance. Please have an admin within the offshore alliance use "
+                            + CM.credentials.login.cmd.toSlashMention());
         }
         DBNation offshoreNation = offshoreAuth.getNation();
         User offshoreUser = offshoreNation.getUser();
         if (offshoreUser == null) {
-            throw new IllegalArgumentException("Failed to get discord user for " + offshoreNation.getMarkdownUrl() + ". See: " + CM.register.cmd.toSlashMention());
+            throw new IllegalArgumentException("Failed to get discord user for " + offshoreNation.getMarkdownUrl()
+                    + ". See: " + CM.register.cmd.toSlashMention());
         }
 
         Map<ResourceType, Double> stockpile = offshoreAA.getStockpile();
         if (stockpile == null) {
-            throw new IllegalArgumentException("Failed to get stockpile for offshore alliance. Please ensure api for the offshore key is valid: " + CM.settings_default.registerApiKey.cmd.toSlashMention());
+            throw new IllegalArgumentException(
+                    "Failed to get stockpile for offshore alliance. Please ensure api for the offshore key is valid: "
+                            + CM.settings_default.registerApiKey.cmd.toSlashMention());
         }
         if (stockpile.isEmpty()) {
-            throw new IllegalArgumentException("Offshore alliance has no stockpile (send $1 to it for the purposes of this command)");
+            throw new IllegalArgumentException(
+                    "Offshore alliance has no stockpile (send $1 to it for the purposes of this command)");
         }
         io.send("Checked stockpile");
         TransferResult result = offshore.transferUnsafe(offshoreAuth, alliance, stockpile, "#ignore");
         io.send("Sent stockpile " + result.toLineString());
         if (!result.getStatus().isSuccess()) {
-            throw new IllegalArgumentException("Failed to send funds to new alliance (send $1 to the offshore and try again?):\n" + result.toEmbedString());
+            throw new IllegalArgumentException(
+                    "Failed to send funds to new alliance (send $1 to the offshore and try again?):\n"
+                            + result.toEmbedString());
         }
         Map<ResourceType, Double> stockpileTest = offshoreAA.getStockpile();
         io.send("Checked new stockpile: " + ResourceType.toString(stockpileTest));
         if (!stockpileTest.isEmpty()) {
-            throw new IllegalArgumentException("Stockpile was sent, but AA is not empty. Please contact support, or try again.");
+            throw new IllegalArgumentException(
+                    "Stockpile was sent, but AA is not empty. Please contact support, or try again.");
         }
         // leave alliance ingame and apply to new aa
         offshoreAuth.leaveAlliance(offshoreAA);
@@ -375,17 +399,19 @@ public class AdminCommands {
         io.send("Applied to new alliance");
 
         // set to member
-        AlliancePosition setLeaderResult = setRankApi.assignAlliancePosition(offshoreAuth.getNationId(), leaderPos.getId());
+        AlliancePosition setLeaderResult = setRankApi.assignAlliancePosition(offshoreAuth.getNationId(),
+                leaderPos.getId());
         if (setLeaderResult == null) {
-            io.send("Failed to set position in new alliance. Please set " + offshoreNation.getMarkdownUrl() + " manually to leader");
+            io.send("Failed to set position in new alliance. Please set " + offshoreNation.getMarkdownUrl()
+                    + " manually to leader");
         } else {
             offshoreNation.setAlliance_id(alliance.getId());
             offshoreNation.setAlliancePositionId(leaderPos.getId());
             io.send("Set position in new alliance to " + setLeaderResult);
 
-
         }
-        return BankCommands.addOffshore(io, offshoreUser, offshore.getGuildDB(), offshoreAuth.getNation(), null, alliance, false, false, true);
+        return BankCommands.addOffshore(io, offshoreUser, offshore.getGuildDB(), offshoreAuth.getNation(), null,
+                alliance, false, false, true);
     }
 
     @Command(desc = "Force re-register slash commands for this guild")
@@ -411,10 +437,64 @@ public class AdminCommands {
     @Command(desc = "Force sync alliances from the api")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncAlliances() {
-        Locutus.imp().getNationDB().updateAlliances(f -> {}, Event::post);
+        Locutus.imp().getNationDB().updateAlliances(f -> {
+        }, Event::post);
         return "Done!";
     }
 
+    @Command(desc = "Benchmark GrowthSummary calculation runtime for the provided alliances and date range")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String benchmarkGrowthSummary(Set<DBAlliance> alliances,
+            @Timestamp long start,
+            @Timestamp @Default Long end,
+            @Default Integer iterations,
+            @Switch("w") boolean includeWarmup) throws IOException, ParseException {
+        if (alliances == null || alliances.isEmpty()) {
+            throw new IllegalArgumentException("Please specify at least one alliance");
+        }
+        int iters = iterations == null ? 5 : iterations;
+        if (iters < 1 || iters > 100) {
+            throw new IllegalArgumentException("iterations must be between 1 and 100");
+        }
+
+        long dayStart = TimeUtil.getDay(start);
+        long dayEnd = end == null ? TimeUtil.getDay() : TimeUtil.getDay(end);
+
+        if (includeWarmup) {
+            new GrowthSummary(alliances, dayStart, dayEnd).run();
+        }
+
+        long totalNs = 0L;
+        long minNs = Long.MAX_VALUE;
+        long maxNs = Long.MIN_VALUE;
+        List<Long> samplesMs = new ArrayList<>(iters);
+
+        for (int i = 0; i < iters; i++) {
+            long t0 = System.nanoTime();
+            new GrowthSummary(alliances, dayStart, dayEnd).run();
+            long dt = System.nanoTime() - t0;
+
+            totalNs += dt;
+            minNs = Math.min(minNs, dt);
+            maxNs = Math.max(maxNs, dt);
+            samplesMs.add(TimeUnit.NANOSECONDS.toMillis(dt));
+        }
+
+        double avgMs = (totalNs / (double) iters) / 1_000_000d;
+        double minMs = minNs / 1_000_000d;
+        double maxMs = maxNs / 1_000_000d;
+        long rangeDays = Math.max(0, dayEnd - dayStart);
+
+        return "GrowthSummary benchmark complete\n"
+                + "- alliances: `" + alliances.size() + "`\n"
+                + "- day range: `" + dayStart + " -> " + dayEnd + "` (`" + rangeDays + "` days)\n"
+                + "- iterations: `" + iters + "`\n"
+                + "- warmup: `" + includeWarmup + "`\n"
+                + "- avg: `" + String.format(Locale.ROOT, "%.2f", avgMs) + " ms`\n"
+                + "- min: `" + String.format(Locale.ROOT, "%.2f", minMs) + " ms`\n"
+                + "- max: `" + String.format(Locale.ROOT, "%.2f", maxMs) + " ms`\n"
+                + "- samples(ms): `" + StringMan.join(samplesMs, ",") + "`";
+    }
 
     @Command(desc = "Sync city refund data")
     @RolePermission(value = Roles.ADMIN, root = true)
@@ -425,13 +505,16 @@ public class AdminCommands {
         for (Map.Entry<Integer, DBNationSnapshot> entry : snapshot.getNations(TimeUtil.getDay()).entrySet()) {
             DBNationSnapshot nation = entry.getValue();
             double reduction = nation._costReduction();
-            if (reduction <= 0) continue;
+            if (reduction <= 0)
+                continue;
             DBNation real = DBNation.getById(entry.getKey());
-            if (real == null) continue;
+            if (real == null)
+                continue;
             if (real.getCities() > nation.getCities()) {
                 reduction -= PW.City.cityCost(real, nation.getCities(), real.getCities());
             }
-            if (reduction <= 0) continue;
+            if (reduction <= 0)
+                continue;
             real.edit().setCostReduction(reduction);
             toSave.add(real);
         }
@@ -451,14 +534,16 @@ public class AdminCommands {
             try {
                 if (start + 10000 < System.currentTimeMillis()) {
                     start = System.currentTimeMillis();
-                    io.updateOptionally(msgFuture, "Updating research for " + nation.getMarkdownUrl() + " (" + (i + 1) + "/" + nationList.size() + ")");
+                    io.updateOptionally(msgFuture, "Updating research for " + nation.getMarkdownUrl() + " (" + (i + 1)
+                            + "/" + nationList.size() + ")");
                 }
                 nation.updateResearch();
                 Thread.sleep(350);
                 backoff = 1000;
             } catch (Exception e) {
                 e.printStackTrace();
-                io.create().append("Failed to update research for " + nation.getMarkdownUrl() + ": " + e.getMessage()).send();
+                io.create().append("Failed to update research for " + nation.getMarkdownUrl() + ": " + e.getMessage())
+                        .send();
                 try {
                     Thread.sleep(backoff);
                     backoff += 1000;
@@ -496,10 +581,10 @@ public class AdminCommands {
         return "Set bot name to `" + name + "`";
     }
 
-        @Command(desc = "Sync and debug war rooms",
-    keywords = {WAR, ROOM, SYNC, CHANNEL, UPDATE, WARCAT, CATEGORY})
-    @RolePermission(value = {Roles.ADMIN, Roles.MILCOM}, any = true)
-    public String syncWarrooms(@Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, @Switch("f") boolean force) throws IOException {
+    @Command(desc = "Sync and debug war rooms", keywords = { WAR, ROOM, SYNC, CHANNEL, UPDATE, WARCAT, CATEGORY })
+    @RolePermission(value = { Roles.ADMIN, Roles.MILCOM }, any = true)
+    public String syncWarrooms(@Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, @Switch("f") boolean force)
+            throws IOException {
         long start = System.currentTimeMillis();
 
         StringBuilder response = new StringBuilder();
@@ -511,10 +596,12 @@ public class AdminCommands {
 
         Set<Integer> aaIds = cat.getTrackedAllianceIds();
         if (aaIds.isEmpty()) {
-            errors.add("No alliances being tracked. Set the `" + Coalition.ALLIES.name() + "` coalition: " + CM.coalition.add.cmd.toSlashMention());
+            errors.add("No alliances being tracked. Set the `" + Coalition.ALLIES.name() + "` coalition: "
+                    + CM.coalition.add.cmd.toSlashMention());
         } else {
             response.append("**Alliances:**: `");
-            response.append(aaIds.stream().map(f -> DBAlliance.getOrCreate(f).getMarkdownUrl()).collect(Collectors.joining(",")));
+            response.append(aaIds.stream().map(f -> DBAlliance.getOrCreate(f).getMarkdownUrl())
+                    .collect(Collectors.joining(",")));
             response.append("`\n");
         }
 
@@ -526,7 +613,8 @@ public class AdminCommands {
         }
 
         response.append("**Server:** `" + guild.getName() + "` | `" + guild.getId() + "`");
-        if (guild.getIdLong() != db.getIdLong()) response.append(" (WAR_SERVER is set)");
+        if (guild.getIdLong() != db.getIdLong())
+            response.append(" (WAR_SERVER is set)");
         response.append("\n");
 
         // list the categories
@@ -553,7 +641,8 @@ public class AdminCommands {
         if (categories.isEmpty()) {
             errors.add("No categories found. " +
                     "Create one starting with `warcat`\n" +
-                    "Grant the bot the perms: `" + Arrays.stream(catPerms).map(Permission::getName).collect(Collectors.joining(", ")) + "`\n");
+                    "Grant the bot the perms: `"
+                    + Arrays.stream(catPerms).map(Permission::getName).collect(Collectors.joining(", ")) + "`\n");
         } else {
             response.append("**" + categories.size() + " categories:**\n");
             for (Category category : categories) {
@@ -564,16 +653,20 @@ public class AdminCommands {
                 }
                 Set<Permission> lacking = permissionsMissing.getOrDefault(category, Collections.emptySet());
                 if (!lacking.isEmpty()) {
-                    response.append(" | missing: `" + lacking.stream().map(Permission::getName).collect(Collectors.joining(",")) + "`");
+                    response.append(" | missing: `"
+                            + lacking.stream().map(Permission::getName).collect(Collectors.joining(",")) + "`");
                 }
                 response.append("\n");
             }
         }
 
-        // Say War rooms can be sorted by cities by naming the category e.g. `warcat-c1-10`
+        // Say War rooms can be sorted by cities by naming the category e.g.
+        // `warcat-c1-10`
         if (ranges.isEmpty()) {
-            notes.add("No city ranges found. Create a category starting with `warcat` and ending with a city range e.g. `warcat-c1-10`");
-            notes.add("If a sorted category is full, the next free category will be used, even if a room does not match the filter");
+            notes.add(
+                    "No city ranges found. Create a category starting with `warcat` and ending with a city range e.g. `warcat-c1-10`");
+            notes.add(
+                    "If a sorted category is full, the next free category will be used, even if a room does not match the filter");
             notes.add("You may create multiple categories with the same or overlapping filters");
         }
 
@@ -622,7 +715,8 @@ public class AdminCommands {
             for (Map.Entry<Integer, WarCatReason> entry : toDelete.entrySet()) {
                 int id = entry.getKey();
                 WarCatReason reason = entry.getValue();
-                response.append("- " + PW.getMarkdownUrl(id, false) + ": " + reason.name() + " - " + reason.getReason() + "\n");
+                response.append(
+                        "- " + PW.getMarkdownUrl(id, false) + ": " + reason.name() + " - " + reason.getReason() + "\n");
             }
         }
         if (!toReassign.isEmpty()) {
@@ -638,7 +732,8 @@ public class AdminCommands {
             for (Map.Entry<Integer, Set<TextChannel>> entry : duplicates.entrySet()) {
                 int id = entry.getKey();
                 Set<TextChannel> channels = entry.getValue();
-                response.append("- " + PW.getMarkdownUrl(id, false) + ": " + channels.stream().map(Channel::getAsMention).collect(Collectors.joining(", ")) + "\n");
+                response.append("- " + PW.getMarkdownUrl(id, false) + ": "
+                        + channels.stream().map(Channel::getAsMention).collect(Collectors.joining(", ")) + "\n");
             }
         }
         if (!cantTalk.isEmpty()) {
@@ -671,7 +766,8 @@ public class AdminCommands {
         }
         long diff = System.currentTimeMillis() - start;
         io.create().append("Sync war rooms complete. Took: " + diff + "ms\n" +
-                "See the attached log file for task output. To sort rooms, see: " + CM.war.room.sort.cmd.toSlashMention())
+                "See the attached log file for task output. To sort rooms, see: "
+                + CM.war.room.sort.cmd.toSlashMention())
                 .file("warcat.txt", full.toString()).send();
 
         return null;
@@ -715,7 +811,8 @@ public class AdminCommands {
             @Switch("e") boolean unset_on_error,
             @Switch("f") boolean force) {
         if (!(news_channel instanceof NewsChannel)) {
-            throw new IllegalArgumentException("Invalid channel type: " + news_channel.getType() + ". Must be a news channel");
+            throw new IllegalArgumentException(
+                    "Invalid channel type: " + news_channel.getType() + ". Must be a news channel");
         }
         NewsChannel subscribe = (NewsChannel) news_channel;
         GuildDB thisDb = Locutus.imp().getGuildDB(subscribe.getGuild());
@@ -725,24 +822,29 @@ public class AdminCommands {
             return "Invalid setting type: " + setting.getType() + ". Not a channel";
         }
 
-        String errorMessage = "Failed to subscribe to channel: " + subscribe.getAsMention() + "(#" + subscribe.getName() + ") in " + thisDb.getGuild() + " " + invite.getUrl() + "\n" +
+        String errorMessage = "Failed to subscribe to channel: " + subscribe.getAsMention() + "(#" + subscribe.getName()
+                + ") in " + thisDb.getGuild() + " " + invite.getUrl() + "\n" +
                 "Please join the server and subscribe manually for future updates";
 
         List<String> infoMsgs = new ArrayList<>();
         List<String> errorMsgs = new ArrayList<>();
 
         for (GuildDB otherDb : guilds) {
-            if (subscribe.getGuild().getIdLong() == otherDb.getIdLong()) continue;
+            if (subscribe.getGuild().getIdLong() == otherDb.getIdLong())
+                continue;
             String raw = setting.getRaw(otherDb, false);
-            if (raw == null) continue;
+            if (raw == null)
+                continue;
             Object value = setting.getOrNull(otherDb);
             if (value == null) {
-                String msg = otherDb.getGuild().toString() + ": Invalid value `" + raw + "`. See " + CM.admin.settings.unset.cmd.toSlashMention();
+                String msg = otherDb.getGuild().toString() + ": Invalid value `" + raw + "`. See "
+                        + CM.admin.settings.unset.cmd.toSlashMention();
                 if (unset_on_error) {
                     otherDb.deleteInfo(setting);
                     msg += " (deleted setting)";
                     TextChannel backupChannel = otherDb.getNotifcationChannel();
-                    if (backupChannel != null) RateLimitUtil.queue(backupChannel.sendMessage(msg + "\n" + errorMessage));
+                    if (backupChannel != null)
+                        RateLimitUtil.queue(backupChannel.sendMessage(msg + "\n" + errorMessage));
                 }
                 errorMsgs.add(msg);
                 continue;
@@ -755,7 +857,8 @@ public class AdminCommands {
                     otherDb.deleteInfo(setting);
                     msg += " (deleted setting)";
                     TextChannel backupChannel = otherDb.getNotifcationChannel();
-                    if (backupChannel != null) RateLimitUtil.queue(backupChannel.sendMessage(msg + "\n" + errorMessage));
+                    if (backupChannel != null)
+                        RateLimitUtil.queue(backupChannel.sendMessage(msg + "\n" + errorMessage));
                 }
                 errorMsgs.add(msg);
                 continue;
@@ -766,13 +869,15 @@ public class AdminCommands {
                     otherDb.deleteInfo(setting);
                     msg += " (deleted setting)";
                     TextChannel backupChannel = otherDb.getNotifcationChannel();
-                    if (backupChannel != null) RateLimitUtil.queue(backupChannel.sendMessage(msg + "\n" + errorMessage));
+                    if (backupChannel != null)
+                        RateLimitUtil.queue(backupChannel.sendMessage(msg + "\n" + errorMessage));
                 }
                 errorMsgs.add(msg);
                 continue;
             }
             if (!self.hasPermission(Permission.MANAGE_WEBHOOKS)) {
-                String msg = otherDb.getGuild().toString() + ": Bot does not have permission to manage webhooks in " + channel.getAsMention();
+                String msg = otherDb.getGuild().toString() + ": Bot does not have permission to manage webhooks in "
+                        + channel.getAsMention();
                 if (force && unset_on_error) {
                     otherDb.deleteInfo(setting);
                     msg += " (deleted setting)";
@@ -782,7 +887,8 @@ public class AdminCommands {
                 continue;
             }
 
-            String successMsg = otherDb.getGuild().toString() + ": Unset " + setting.name() + " from " + channel.getAsMention();
+            String successMsg = otherDb.getGuild().toString() + ": Unset " + setting.name() + " from "
+                    + channel.getAsMention();
             if (!force) {
                 infoMsgs.add(successMsg);
                 continue;
@@ -805,7 +911,8 @@ public class AdminCommands {
         }
         if (!force) {
             String title = "Confirm unset news";
-            StringBuilder body = new StringBuilder("Using news from " + subscribe.getAsMention() + " in " + thisDb.getGuild() + "\n");
+            StringBuilder body = new StringBuilder(
+                    "Using news from " + subscribe.getAsMention() + " in " + thisDb.getGuild() + "\n");
             body.append("Unset on error: `" + unset_on_error + "`\n");
             body.append("Servers Subscribed: `" + infoMsgs.size() + "`\n");
             body.append("Errors: `" + errorMsgs.size() + "`\n");
@@ -817,7 +924,7 @@ public class AdminCommands {
         }
         io.create().append("Done! " + infoMsgs.size() + " servers subscribed" +
                 " | " + errorMsgs.size() + " errors\n" +
-                        "See attached files for details")
+                "See attached files for details")
                 .file("info.txt", String.join("\n", infoMsgs))
                 .file("errors.txt", String.join("\n", errorMsgs))
                 .send();
@@ -829,14 +936,14 @@ public class AdminCommands {
     @Ephemeral
     public String unsetKeys(@Me IMessageIO io, @Me JSONObject command,
             Set<GuildSetting> settings, Set<GuildDB> guilds,
-                                @Switch("t") boolean unset_cant_talk,
-                                @Switch("i") boolean unset_null,
-                                @Switch("p") boolean unset_key_no_perms,
-                                @Switch("g") boolean unset_invalid_aa,
-                                @Switch("a") boolean unset_all,
-                                @Switch("v") boolean unset_validate,
-                                @Switch("m") String unsetMessage,
-                                @Switch("f") boolean force) {
+            @Switch("t") boolean unset_cant_talk,
+            @Switch("i") boolean unset_null,
+            @Switch("p") boolean unset_key_no_perms,
+            @Switch("g") boolean unset_invalid_aa,
+            @Switch("a") boolean unset_all,
+            @Switch("v") boolean unset_validate,
+            @Switch("m") String unsetMessage,
+            @Switch("f") boolean force) {
         Map<Guild, Map<GuildSetting, Set<String>>> unsetReasons = new LinkedHashMap<>();
 
         Set<GuildSetting> channelTypes = new ObjectLinkedOpenHashSet<>();
@@ -853,17 +960,21 @@ public class AdminCommands {
             Map<GuildSetting, Boolean> isUnset = new LinkedHashMap<>();
             BiConsumer<GuildSetting, String> unset = (setting, reason) -> {
                 if (force) {
-                    if (isUnset.getOrDefault(setting, false)) return;
+                    if (isUnset.getOrDefault(setting, false))
+                        return;
                     isUnset.put(setting, true);
                     String previousValue = setting.getRaw(otherDb, false);
                     Object value = setting.getOrNull(otherDb, false);
 
                     otherDb.deleteInfo(setting);
 
-                    String message = setting.name() + ": " + reason + ": " + (unsetMessage == null ? "" : unsetMessage) + "\nPrevious value: `" + previousValue + "`";
+                    String message = setting.name() + ": " + reason + ": " + (unsetMessage == null ? "" : unsetMessage)
+                            + "\nPrevious value: `" + previousValue + "`";
                     TextChannel sendTo = null;
-                    if (value instanceof TextChannel tc && tc.canTalk()) sendTo = tc;
-                    if (sendTo == null) sendTo = otherDb.getNotifcationChannel();
+                    if (value instanceof TextChannel tc && tc.canTalk())
+                        sendTo = tc;
+                    if (sendTo == null)
+                        sendTo = otherDb.getNotifcationChannel();
                     if (sendTo != null) {
                         try {
                             RateLimitUtil.queue(sendTo.sendMessage(message));
@@ -874,31 +985,36 @@ public class AdminCommands {
             };
 
             Guild otherGuild = otherDb.getGuild();
-            Map<GuildSetting, Set<String>> byGuild = unsetReasons.computeIfAbsent(otherGuild, k -> new LinkedHashMap<>());
+            Map<GuildSetting, Set<String>> byGuild = unsetReasons.computeIfAbsent(otherGuild,
+                    k -> new LinkedHashMap<>());
             // only channel modes
             for (GuildSetting setting : channelTypes) {
                 Channel channel = (Channel) setting.getOrNull(otherDb);
-                if (channel == null) continue;
+                if (channel == null)
+                    continue;
                 if (unset_cant_talk) {
                     if (!(channel instanceof GuildMessageChannel gmc) || !gmc.canTalk()) {
-                        if (force) unset.accept(setting, "No Talk Permissions in " + channel.getAsMention());
+                        if (force)
+                            unset.accept(setting, "No Talk Permissions in " + channel.getAsMention());
                         byGuild.computeIfAbsent(setting, k -> new ObjectLinkedOpenHashSet<>()).add("Can't talk");
                         continue;
                     }
                 }
             }
-//            // only non channel modes
-//            for (GuildSetting setting : nonChanTypes) {
-//
-//            }
+            // // only non channel modes
+            // for (GuildSetting setting : nonChanTypes) {
+            //
+            // }
             // all type modes
             for (GuildSetting setting : settings) {
                 String raw = setting.getRaw(otherDb, false);
-                if (raw == null) continue;
+                if (raw == null)
+                    continue;
                 Object value = setting.getOrNull(otherDb);
                 if (unset_null) {
                     if (value == null) {
-                        if (force) unset.accept(setting, "Invalid value (null)");
+                        if (force)
+                            unset.accept(setting, "Invalid value (null)");
                         byGuild.computeIfAbsent(setting, k -> new ObjectLinkedOpenHashSet<>()).add("Null");
                         continue;
                     }
@@ -912,7 +1028,8 @@ public class AdminCommands {
                         notAllowedReason = e.getMessage();
                     }
                     if (!allowed) {
-                        if (force) unset.accept(setting, notAllowedReason);
+                        if (force)
+                            unset.accept(setting, notAllowedReason);
                         byGuild.computeIfAbsent(setting, k -> new ObjectLinkedOpenHashSet<>()).add(notAllowedReason);
                         continue;
                     }
@@ -927,7 +1044,8 @@ public class AdminCommands {
                         validateReason = e.getMessage();
                     }
                     if (!valid) {
-                        if (force) unset.accept(setting, validateReason);
+                        if (force)
+                            unset.accept(setting, validateReason);
                         byGuild.computeIfAbsent(setting, k -> new ObjectLinkedOpenHashSet<>()).add(validateReason);
                         continue;
                     }
@@ -935,15 +1053,17 @@ public class AdminCommands {
                 }
                 if (unset_invalid_aa) {
                     if (!otherDb.isValidAlliance()) {
-//                        if (force) otherDb.deleteInfo(setting);
-                        if (force) unset.accept(setting, "No valid Alliance registered");
+                        // if (force) otherDb.deleteInfo(setting);
+                        if (force)
+                            unset.accept(setting, "No valid Alliance registered");
                         byGuild.computeIfAbsent(setting, k -> new ObjectLinkedOpenHashSet<>()).add("Invalid AA");
                         continue;
                     }
                 }
                 if (unset_all) {
-//                    if (force) otherDb.deleteInfo(setting);
-                    if (force) unset.accept(setting, "Setting removed by administrator.");
+                    // if (force) otherDb.deleteInfo(setting);
+                    if (force)
+                        unset.accept(setting, "Setting removed by administrator.");
                     byGuild.computeIfAbsent(setting, k -> new ObjectLinkedOpenHashSet<>()).add("All");
                 }
             }
@@ -963,7 +1083,8 @@ public class AdminCommands {
 
         if (!force) {
             String title = "Confirm unset keys";
-            StringBuilder body = new StringBuilder("Unset " + settings.size() + " keys for " + guilds.size() + " servers\n");
+            StringBuilder body = new StringBuilder(
+                    "Unset " + settings.size() + " keys for " + guilds.size() + " servers\n");
             body.append("Unset on error: `" + unset_null + "`\n");
             body.append("Servers affected: `" + unsetReasons.size() + "`\n");
             io.create().confirmation(title, body.toString(), command)
@@ -982,41 +1103,41 @@ public class AdminCommands {
     @Command(desc = "Generate a google spreadsheet for a guild setting value for a set of discord servers")
     @RolePermission(value = Roles.ADMIN, root = true)
     @Ephemeral
-    public String infoBulk(@Me GuildDB db, @Me User user, @Me IMessageIO io, GuildSetting<?> setting, Set<GuildDB> guilds, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String infoBulk(@Me GuildDB db, @Me User user, @Me IMessageIO io, GuildSetting<?> setting,
+            Set<GuildDB> guilds, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.SETTINGS_SERVERS);
         }
 
         // admin bulk_setting key
-        //- include alliances registered column (alliance ids)
-        //- have column for coalitions guild is in
-        //- have column for isValidAlliance
-        //- have column for number of active members 7200 in the alliance
+        // - include alliances registered column (alliance ids)
+        // - have column for coalitions guild is in
+        // - have column for isValidAlliance
+        // - have column for number of active members 7200 in the alliance
 
         List<String> header = new ArrayList<>(Arrays.asList(
-            "guild",
-            "guild_name",
-            "owner",
-            "owner_id",
-            "setting",
-            "raw",
-            "readable",
-            "is_invalid",
-            "lack_perms",
-            "root_col",
-            "alliances",
-            "aa_valid",
-            "active_aa_members"
-        ));
+                "guild",
+                "guild_name",
+                "owner",
+                "owner_id",
+                "setting",
+                "raw",
+                "readable",
+                "is_invalid",
+                "lack_perms",
+                "root_col",
+                "alliances",
+                "aa_valid",
+                "active_aa_members"));
 
         sheet.setHeader(header);
 
         GuildDB root = Locutus.imp().getRootDb();
 
-
         for (GuildDB otherDb : guilds) {
             String raw = setting.getRaw(otherDb, false);
-            if (raw == null) continue;
+            if (raw == null)
+                continue;
             Object value = setting.getOrNull(otherDb, false);
             String readable = value == null ? "![NULL]" : ((GuildSetting) setting).toReadableString(db, value);
             boolean noPerms = !setting.allowed(db);
@@ -1031,7 +1152,8 @@ public class AdminCommands {
             header.set(6, readable);
             header.set(7, value == null ? "true" : "false");
             header.set(8, noPerms ? "true" : "false");
-            Set<Coalition> hasOnRoot = Arrays.stream(Coalition.values()).filter(otherDb::hasCoalitionPermsOnRoot).collect(Collectors.toSet());
+            Set<Coalition> hasOnRoot = Arrays.stream(Coalition.values()).filter(otherDb::hasCoalitionPermsOnRoot)
+                    .collect(Collectors.toSet());
             header.set(9, hasOnRoot.stream().map(Coalition::name).collect(Collectors.joining(",")));
             Set<Integer> aaIds = otherDb.getAllianceIds();
             header.set(10, aaIds == null ? "" : aaIds.toString());
@@ -1081,17 +1203,21 @@ public class AdminCommands {
         List<DiscordBan> toAdd = new ArrayList<>();
         for (Guild guild : checkGuilds) {
             Role botRole = guild.getBotRole();
-            if (botRole == null) continue;
-            if (!botRole.hasPermission(Permission.BAN_MEMBERS)) continue;
+            if (botRole == null)
+                continue;
+            if (!botRole.hasPermission(Permission.BAN_MEMBERS))
+                continue;
             try {
                 List<Guild.Ban> bans = RateLimitUtil.complete(guild.retrieveBanList());
                 for (Guild.Ban ban : bans) {
                     User user = ban.getUser();
                     String reason = ban.getReason();
-                    if (reason == null) reason = "";
+                    if (reason == null)
+                        reason = "";
 
                     // long user, long server, long date, String reason
-                    DiscordBan discordBan = new DiscordBan(user.getIdLong(), guild.getIdLong(), System.currentTimeMillis(), reason);
+                    DiscordBan discordBan = new DiscordBan(user.getIdLong(), guild.getIdLong(),
+                            System.currentTimeMillis(), reason);
                     toAdd.add(discordBan);
                 }
             } catch (Throwable e) {
@@ -1109,12 +1235,11 @@ public class AdminCommands {
     public String showFileQueue(
             @Me GuildDB db,
             @Me IMessageIO io,
-                                @Arg("Specify a timestamp to attach a tallied log of requests over a timeframe\n" +
-                                        "Instead of just a summary of current items in the queue")
-                                @Default @Timestamp Long timestamp,
-                                @Arg("The number of top results to include\n" +
-                                        "Default: 25")
-                                @Switch("r") Integer numResults) throws URISyntaxException {
+            @Arg("Specify a timestamp to attach a tallied log of requests over a timeframe\n" +
+                    "Instead of just a summary of current items in the queue") @Default @Timestamp Long timestamp,
+            @Arg("The number of top results to include\n" +
+                    "Default: 25") @Switch("r") Integer numResults)
+            throws URISyntaxException {
         if (db != Locutus.imp().getRootDb()) {
             throw new IllegalArgumentException("This command is only available in the root server");
         }
@@ -1130,7 +1255,8 @@ public class AdminCommands {
             for (PageRequestQueue.PageRequestTask<?> task : copy) {
                 long priority = task.getPriority();
                 int ordinal = (int) (priority / Integer.MAX_VALUE);
-                if (ordinal >= PagePriority.values.length) unknown++;
+                if (ordinal >= PagePriority.values.length)
+                    unknown++;
                 else {
                     PagePriority pagePriority = PagePriority.values[ordinal];
                     pagePriorities.put(pagePriority, pagePriorities.getOrDefault(pagePriority, 0) + 1);
@@ -1140,7 +1266,8 @@ public class AdminCommands {
         List<Map.Entry<PagePriority, Integer>> entries = new ArrayList<>(pagePriorities.entrySet());
         // sort
         entries.sort((o1, o2) -> o2.getValue() - o1.getValue());
-        if (numResults == null) numResults = 25;
+        if (numResults == null)
+            numResults = 25;
 
         StringBuilder sb = new StringBuilder();
         sb.append("**File Queue:** " + size + "\n");
@@ -1160,14 +1287,16 @@ public class AdminCommands {
             int domainI = 1;
             for (Map.Entry<String, Integer> entry : byDomain.entrySet()) {
                 sb.append("- " + entry.getKey()).append(": ").append(entry.getValue()).append("\n");
-                if (domainI++ >= numResults) break;
+                if (domainI++ >= numResults)
+                    break;
             }
 
             sb.append("\n**By URL:**\n");
             int urlI = 1;
             for (Map.Entry<String, Integer> entry : byUrl.entrySet()) {
                 sb.append("- " + entry.getKey()).append(": ").append(entry.getValue()).append("\n");
-                if (urlI++ >= numResults) break;
+                if (urlI++ >= numResults)
+                    break;
             }
 
             RequestTracker v3Tracker = PoliticsAndWarV3.getRequestTracker();
@@ -1177,12 +1306,12 @@ public class AdminCommands {
                 int v3I = 1;
                 for (Map.Entry<String, Integer> entry : v3Request.entrySet()) {
                     sb.append("- " + entry.getKey()).append(": ").append(entry.getValue()).append("\n");
-                    if (v3I++ >= numResults) break;
+                    if (v3I++ >= numResults)
+                        break;
                 }
             }
 
         }
-
 
         if (numResults > 25) {
             io.create().file("queue.txt", sb.toString()).send();
@@ -1194,8 +1323,10 @@ public class AdminCommands {
 
     @Command(desc = "Generate and save the wiki pages for the bot")
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String dumpWiki(@Default String pathRelative) throws IOException, InvocationTargetException, IllegalAccessException {
-        if (pathRelative == null) pathRelative = "../locutus.wiki";
+    public String dumpWiki(@Default String pathRelative)
+            throws IOException, InvocationTargetException, IllegalAccessException {
+        if (pathRelative == null)
+            pathRelative = "../locutus.wiki";
         CommandManager2 manager = Locutus.imp().getCommandManager().getV2();
         WikiGenHandler generator = new WikiGenHandler(pathRelative, manager);
         generator.writeDefaults();
@@ -1205,12 +1336,13 @@ public class AdminCommands {
 
     @Command(desc = "Generate and save the wiki pages for the bot")
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String saveWebPojos(@Default String pathRelative, @Switch("e") boolean skipEndpoints, @Switch("c") boolean skipCommands) throws IOException, InvocationTargetException, IllegalAccessException {
+    public String saveWebPojos(@Default String pathRelative, @Switch("e") boolean skipEndpoints,
+            @Switch("c") boolean skipCommands) throws IOException, InvocationTargetException, IllegalAccessException {
         File pathRelativeFile = pathRelative == null ? null : new File(pathRelative);
-        TsEndpointGenerator.writeFiles(WebRoot.getInstance().getPageHandler(), pathRelativeFile, !skipEndpoints, !skipCommands);
+        TsEndpointGenerator.writeFiles(WebRoot.getInstance().getPageHandler(), pathRelativeFile, !skipEndpoints,
+                !skipCommands);
         return "Done!";
     }
-
 
     @Command(desc = "Fetch and update the treasure data from the API")
     @RolePermission(value = Roles.ADMIN, root = true)
@@ -1219,10 +1351,11 @@ public class AdminCommands {
         return "Done!";
     }
 
-    @Command(desc = "Generate a sheet of recorded login times for a set of nations within a time range", viewable = true,
-    keywords = {LOGIN, TIMES, USER, ACTIVITY, SESSION, HISTORY, TRACK, RECORD, TIMESTAMP, SPREADSHEET})
+    @Command(desc = "Generate a sheet of recorded login times for a set of nations within a time range", viewable = true, keywords = {
+            LOGIN, TIMES, USER, ACTIVITY, SESSION, HISTORY, TRACK, RECORD, TIMESTAMP, SPREADSHEET })
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
-    public String loginTimes(@Me @Default GuildDB db, @Me IMessageIO io, Set<DBNation> nations, @Timestamp long cutoff, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
+    public String loginTimes(@Me @Default GuildDB db, @Me IMessageIO io, Set<DBNation> nations, @Timestamp long cutoff,
+            @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.NATION_SHEET);
         }
@@ -1235,11 +1368,11 @@ public class AdminCommands {
         }
         List<String> header = new ArrayList<>(Arrays.asList(
                 "nation",
-                "time"
-        ));
+                "time"));
         sheet.setHeader(header);
         for (DBNation nation : nations) {
-            List<DBSpyUpdate> activity = Locutus.imp().getNationDB().getSpyActivityByNation(nation.getNation_id(), cutoff);
+            List<DBSpyUpdate> activity = Locutus.imp().getNationDB().getSpyActivityByNation(nation.getNation_id(),
+                    cutoff);
             for (DBSpyUpdate update : activity) {
                 header.set(0, String.valueOf(nation.getNation_id()));
                 header.set(1, TimeUtil.format(TimeUtil.YYYY_MM_DD_HH_MM_SS, update.timestamp));
@@ -1285,7 +1418,8 @@ public class AdminCommands {
                     username = null;
                 }
             }
-            if (username == null) username = discordId + "";
+            if (username == null)
+                username = discordId + "";
 
             // register the user
             count++;
@@ -1343,7 +1477,6 @@ public class AdminCommands {
         return response + footer;
     }
 
-
     @Command(desc = "Reset city names")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String resetCityNames(@Me DBNation me, @Me Auth auth, String name) throws IOException {
@@ -1352,7 +1485,6 @@ public class AdminCommands {
         }
         return "Done!";
     }
-
 
     @Command(desc = "Terminate running tasks and attempt to stop the bot")
     @RolePermission(value = Roles.ADMIN, root = true)
@@ -1364,7 +1496,8 @@ public class AdminCommands {
             "Only works if those are configured")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncReferrals(@Me GuildDB db) {
-        if (!db.isValidAlliance()) return "Not in an alliance";
+        if (!db.isValidAlliance())
+            return "Not in an alliance";
         Collection<DBNation> nations = db.getAllianceList().getNations(true, 10000, true);
         for (DBNation nation : nations) {
             db.getHandler().onRefer(nation);
@@ -1373,9 +1506,11 @@ public class AdminCommands {
     }
 
     @Command(desc = "Set the archive status of the bot's announcement")
-    @RolePermission(any = true, value = {Roles.INTERNAL_AFFAIRS, Roles.MILCOM, Roles.ADMIN, Roles.FOREIGN_AFFAIRS, Roles.ECON})
+    @RolePermission(any = true, value = { Roles.INTERNAL_AFFAIRS, Roles.MILCOM, Roles.ADMIN, Roles.FOREIGN_AFFAIRS,
+            Roles.ECON })
     public String archiveAnnouncement(@Me GuildDB db, int announcementId, @Default Boolean archive) {
-        if (archive == null) archive = true;
+        if (archive == null)
+            archive = true;
         db.setAnnouncementActive(announcementId, !archive);
         return (archive ? "Archived" : "Unarchived") + " announcement with id: #" + announcementId;
     }
@@ -1389,7 +1524,8 @@ public class AdminCommands {
             return "No announcements found with content: `" + invite + "`";
         } else {
             return "Found " + matches.size() + " matches:\n- " +
-                    matches.stream().map(f -> "{ID:" + f.ann_id + ", receiver:" + f.receiverNation + "}").collect(Collectors.joining("\n- "));
+                    matches.stream().map(f -> "{ID:" + f.ann_id + ", receiver:" + f.receiverNation + "}")
+                            .collect(Collectors.joining("\n- "));
         }
     }
 
@@ -1422,7 +1558,8 @@ public class AdminCommands {
             return "No announcements found with id: #" + announcementId;
         } else if (matches.size() == 1) {
             Announcement.PlayerAnnouncement match = matches.get(0);
-            return "Closest match: " + match.receiverNation + " with " + diffMin + " differences:\n```\n" + match.getContent() + "\n```";
+            return "Closest match: " + match.receiverNation + " with " + diffMin + " differences:\n```\n"
+                    + match.getContent() + "\n```";
         } else {
             StringBuilder response = new StringBuilder();
             response.append(matches.size() + " matches with " + diffMin + " differences:\n");
@@ -1440,35 +1577,38 @@ public class AdminCommands {
     @HasApi
     @NoFormat
     public String announce(@Me GuildDB db, @Me Guild guild, @Me JSONObject command, @Me IMessageIO currentChannel,
-                           @Me User author,
-                           NationList sendTo,
-                           @Arg("The subject used for sending an in-game mail if a discord direct message fails") String subject,
-                           @Arg("The message you want to send") @TextArea String announcement,
-                           @Arg("""
-                                   Lines of replacement words or phrases, separated by `|` for each variation
-                                   Add multiple lines for each replacement you want
-                                   You can use \\n for newline for discord slash commands""") @TextArea String replacements,
-                           @Arg("The channel to post the announcement to (must be same server)") @Switch("c") MessageChannel channel,
-                           @Arg("The text to post in the channel below the hidden announcement (e.g. mentions)") @Switch("b") String bottomText,
-                           @Arg("The required number of differences between each message") @Switch("v") @Default("0") Integer requiredVariation,
-                           @Arg("The required depth of changes from the original message") @Switch("r") @Default("0") Integer requiredDepth,
-                           @Arg("Variation seed. The same seed will produce the same variations, otherwise results are random") @Switch("s") Long seed,
-                           @Arg("If messages are sent in-game") @Switch("m") boolean sendMail,
-                           @Arg("If messages are sent via discord direct message") @Switch("d") boolean sendDM,
-                           @Switch("f") boolean force) throws IOException {
+            @Me User author,
+            NationList sendTo,
+            @Arg("The subject used for sending an in-game mail if a discord direct message fails") String subject,
+            @Arg("The message you want to send") @TextArea String announcement,
+            @Arg("""
+                    Lines of replacement words or phrases, separated by `|` for each variation
+                    Add multiple lines for each replacement you want
+                    You can use \\n for newline for discord slash commands""") @TextArea String replacements,
+            @Arg("The channel to post the announcement to (must be same server)") @Switch("c") MessageChannel channel,
+            @Arg("The text to post in the channel below the hidden announcement (e.g. mentions)") @Switch("b") String bottomText,
+            @Arg("The required number of differences between each message") @Switch("v") @Default("0") Integer requiredVariation,
+            @Arg("The required depth of changes from the original message") @Switch("r") @Default("0") Integer requiredDepth,
+            @Arg("Variation seed. The same seed will produce the same variations, otherwise results are random") @Switch("s") Long seed,
+            @Arg("If messages are sent in-game") @Switch("m") boolean sendMail,
+            @Arg("If messages are sent via discord direct message") @Switch("d") boolean sendDM,
+            @Switch("f") boolean force) throws IOException {
         // ensure channel is in same server or null
         if (channel != null && ((GuildMessageChannel) channel).getGuild().getIdLong() != guild.getIdLong()) {
-            throw new IllegalArgumentException("Channel must be in the same server: " + ((GuildMessageChannel) channel).getGuild() + " != " + guild);
+            throw new IllegalArgumentException("Channel must be in the same server: "
+                    + ((GuildMessageChannel) channel).getGuild() + " != " + guild);
         }
         if (bottomText != null && channel == null) {
             throw new IllegalArgumentException("Bottom text requires a channel");
         }
 
         ApiKeyPool keys = (sendMail || sendDM) ? db.getMailKey() : null;
-        if ((sendMail || sendDM) && keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention());
+        if ((sendMail || sendDM) && keys == null)
+            throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention());
         Set<Integer> aaIds = db.getAllianceIds();
         if (sendMail || sendDM) {
-            if (!Roles.MAIL.hasOnRoot(author)) GPTUtil.checkThrowModeration(announcement + "\n" + replacements);
+            if (!Roles.MAIL.hasOnRoot(author))
+                GPTUtil.checkThrowModeration(announcement + "\n" + replacements);
         }
 
         List<String> errors = new ArrayList<>();
@@ -1483,35 +1623,44 @@ public class AdminCommands {
                 continue;
             }
             if (!aaIds.isEmpty() && !aaIds.contains(nation.getAlliance_id())) {
-                throw new IllegalArgumentException("Cannot send to nation not in alliance: " + nation.getNation() + " | " + user);
+                throw new IllegalArgumentException(
+                        "Cannot send to nation not in alliance: " + nation.getNation() + " | " + user);
             }
             if (!force) {
                 if (nation.active_m() > 20000)
-                    return "The " + nations.size() + " receivers includes inactive for >2 weeks. Use `" + sendTo.getFilter() + ",#active_m<20000` or set `force` to confirm";
+                    return "The " + nations.size() + " receivers includes inactive for >2 weeks. Use `"
+                            + sendTo.getFilter() + ",#active_m<20000` or set `force` to confirm";
                 if (nation.getVm_turns() > 0)
-                    return "The " + nations.size() + " receivers includes vacation mode nations. Use `" + sendTo.getFilter() + ",#vm_turns=0` or set `force` to confirm";
+                    return "The " + nations.size() + " receivers includes vacation mode nations. Use `"
+                            + sendTo.getFilter() + ",#vm_turns=0` or set `force` to confirm";
                 if (nation.getPosition() < 1) {
-                    return "The " + nations.size() + " receivers includes applicants. Use `" + sendTo.getFilter() + ",#position>1` or set `force` to confirm";
+                    return "The " + nations.size() + " receivers includes applicants. Use `" + sendTo.getFilter()
+                            + ",#position>1` or set `force` to confirm";
                 }
             }
         }
 
         List<String> replacementLines = Announcement.getReplacements(replacements);
         Random random = seed == null ? new Random() : new Random(seed);
-        Set<String> results = StringMan.enumerateReplacements(announcement, replacementLines, nations.size() + 1000, requiredVariation, requiredDepth);
+        Set<String> results = StringMan.enumerateReplacements(announcement, replacementLines, nations.size() + 1000,
+                requiredVariation, requiredDepth);
 
-        if (results.size() < nations.size()) return "Not enough entropy. Please provide more replacements";
+        if (results.size() < nations.size())
+            return "Not enough entropy. Please provide more replacements";
 
         if (!force) {
             StringBuilder confirmBody = new StringBuilder();
-            if (!sendDM && !sendMail) confirmBody.append("**Warning: No ingame or direct message option has been specified**\n");
+            if (!sendDM && !sendMail)
+                confirmBody.append("**Warning: No ingame or direct message option has been specified**\n");
             confirmBody.append("Send DM (`-d`): " + sendDM).append("\n");
             confirmBody.append("Send Ingame (`-m`): " + sendMail).append("\n");
             if (!errors.isEmpty()) {
                 confirmBody.append("\n**Errors**:\n- " + StringMan.join(errors, "\n- ")).append("\n");
             }
-//            DiscordUtil.createEmbedCommand(currentChannel, "Send to " + nations.size() + " nations", confirmBody + "\nPress to confirm", );
-            DiscordUtil.pending(currentChannel, command, "Send to " + nations.size() + " nations", confirmBody + "\nPress to confirm");
+            // DiscordUtil.createEmbedCommand(currentChannel, "Send to " + nations.size() +
+            // " nations", confirmBody + "\nPress to confirm", );
+            DiscordUtil.pending(currentChannel, command, "Send to " + nations.size() + " nations",
+                    confirmBody + "\nPress to confirm");
             return null;
         }
 
@@ -1562,7 +1711,8 @@ public class AdminCommands {
             output.append("\nFailed Mail: " + StringMan.getString(failedToMail));
         }
 
-        int annId = db.addAnnouncement(AnnounceType.MESSAGE, author, subject, announcement, replacements, sendTo.getFilter(), false);
+        int annId = db.addAnnouncement(AnnounceType.MESSAGE, author, subject, announcement, replacements,
+                sendTo.getFilter(), false);
         output.append("\n\nAnnouncement ID: " + annId);
         for (Map.Entry<DBNation, String> entry : sentMessages.entrySet()) {
             byte[] diff = StringMan.getDiffBytes(announcement, entry.getValue());
@@ -1596,38 +1746,38 @@ public class AdminCommands {
         return output.toString().trim();
     }
 
-
-
-//    @Command
-//    @RolePermission(value = Roles.ADMIN, root = true)
-//    public String whitelistAuto(double requiredBank, double requiredDeposit, long timeFrame) {
-//        GuildDB rootDb = Locutus.imp().getRootDb();
-//        OffshoreInstance offshore = rootDb.getOffshore();
-//
-//        long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(10);
-//
-//        Set<Integer> currentWhitelist = rootDb.getCoalition(Coalition.WHITELISTED_AUTO);
-//        Set<Integer> offshoring = rootDb.getCoalition(Coalition.OFFSHORING);
-//
-//        Map<Integer, Double> totalDepositByAA = new HashMap<>();
-//        Map<Integer, Double> totalTransferByAA = new HashMap<>();
-//
-//        for (int allianceId : offshoring) {
-//            GuildDB other = Locutus.imp().getGuildDBByAA(allianceId);
-//            if (other == null || other.getOffshoreDB() != rootDb) continue;
-//
-//            double[] deposits = offshore.getDeposits(other, false);
-//            double total = PW.convertedTotal(deposits);
-//
-//            List<Transaction2> tx = offshore.getTransactionsAA(allianceId, false);
-//            tx.removeIf(f -> f.tx_datetime < cutoff);
-//            tx.removeIf(f -> f.sender_id != allianceId);
-//            double txWeek = tx.stream().mapToDouble(f -> f.convertedTotal()).sum();
-//
-//
-//
-//        }
-//    }
+    // @Command
+    // @RolePermission(value = Roles.ADMIN, root = true)
+    // public String whitelistAuto(double requiredBank, double requiredDeposit, long
+    // timeFrame) {
+    // GuildDB rootDb = Locutus.imp().getRootDb();
+    // OffshoreInstance offshore = rootDb.getOffshore();
+    //
+    // long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(10);
+    //
+    // Set<Integer> currentWhitelist =
+    // rootDb.getCoalition(Coalition.WHITELISTED_AUTO);
+    // Set<Integer> offshoring = rootDb.getCoalition(Coalition.OFFSHORING);
+    //
+    // Map<Integer, Double> totalDepositByAA = new HashMap<>();
+    // Map<Integer, Double> totalTransferByAA = new HashMap<>();
+    //
+    // for (int allianceId : offshoring) {
+    // GuildDB other = Locutus.imp().getGuildDBByAA(allianceId);
+    // if (other == null || other.getOffshoreDB() != rootDb) continue;
+    //
+    // double[] deposits = offshore.getDeposits(other, false);
+    // double total = PW.convertedTotal(deposits);
+    //
+    // List<Transaction2> tx = offshore.getTransactionsAA(allianceId, false);
+    // tx.removeIf(f -> f.tx_datetime < cutoff);
+    // tx.removeIf(f -> f.sender_id != allianceId);
+    // double txWeek = tx.stream().mapToDouble(f -> f.convertedTotal()).sum();
+    //
+    //
+    //
+    // }
+    // }
 
     @Command(desc = """
             Add or remove a role from a set of members on discord based on a spreadsheet
@@ -1638,14 +1788,11 @@ public class AdminCommands {
             - `role`, `role1`, `roleN` (multiple, or use comma separated values in one cell)""")
     @RolePermission(value = Roles.ADMIN)
     public String maskSheet(@Me IMessageIO io, @Me GuildDB db, @Me Guild guild, @Me JSONObject command,
-                            SpreadSheet sheet,
-                            @Arg("Remove these roles from users not assigned the role in the sheet")
-                            @Switch("u") Set<Role> removeRoles,
-                            @Arg("Remove all roles mentioned in the sheet")
-                            @Switch("ra") boolean removeAll,
-                            @Arg("List nations that are not assigned a role in the sheet")
-                            @Switch("ln") Set<DBNation> listMissing,
-                            @Switch("f") boolean force) {
+            SpreadSheet sheet,
+            @Arg("Remove these roles from users not assigned the role in the sheet") @Switch("u") Set<Role> removeRoles,
+            @Arg("Remove all roles mentioned in the sheet") @Switch("ra") boolean removeAll,
+            @Arg("List nations that are not assigned a role in the sheet") @Switch("ln") Set<DBNation> listMissing,
+            @Switch("f") boolean force) {
         sheet.loadValues(null, true);
         List<Object> nations = sheet.findColumn("nation");
         List<Object> leaders = sheet.findColumn("leader");
@@ -1674,11 +1821,13 @@ public class AdminCommands {
                     String roleNameList = roleCell.toString();
                     for (String roleName : roleNameList.split(",")) {
                         roleName = roleName.trim();
-                        if (parsed.contains(roleName)) continue;
+                        if (parsed.contains(roleName))
+                            continue;
                         parsed.add(roleName);
                         try {
                             Role role = DiscordBindings.role(guild, roleName);
-                            if (removeRoles == null) removeRoles = new ObjectLinkedOpenHashSet<>();
+                            if (removeRoles == null)
+                                removeRoles = new ObjectLinkedOpenHashSet<>();
                             removeRoles.add(role);
                         } catch (IllegalArgumentException e) {
                             continue;
@@ -1696,7 +1845,8 @@ public class AdminCommands {
 
         Set<DBNation> nationsInSheet = new ObjectLinkedOpenHashSet<>();
 
-        int max = Math.max(Math.max(nations == null ? 0 : nations.size(), leaders == null ? 0 : leaders.size()), users == null ? 0 : users.size());
+        int max = Math.max(Math.max(nations == null ? 0 : nations.size(), leaders == null ? 0 : leaders.size()),
+                users == null ? 0 : users.size());
         for (int i = 0; i < max; i++) {
             Object nationObj = nations == null || nations.size() < i ? null : nations.get(i);
             String nationStr = nationObj == null ? null : nationObj.toString();
@@ -1737,7 +1887,8 @@ public class AdminCommands {
             } catch (IllegalArgumentException e) {
                 errors.add("[Row:" + (i + 2) + "] " + e.getMessage());
             }
-            if (user == null) continue;
+            if (user == null)
+                continue;
             if (listMissing != null) {
                 DBNation nation = DBNation.getByUser(user);
                 if (nation != null) {
@@ -1776,7 +1927,8 @@ public class AdminCommands {
                         }
                         rolesAdded.computeIfAbsent(member, f -> new ObjectLinkedOpenHashSet<>()).add(role);
                     } catch (IllegalArgumentException e) {
-                        errors.add("[Row:" + (i + 2) + ",Column:" + columnName + "] `" + input + "` -> `" + roleName + "`: " + e.getMessage());
+                        errors.add("[Row:" + (i + 2) + ",Column:" + columnName + "] `" + input + "` -> `" + roleName
+                                + "`: " + e.getMessage());
                         continue;
                     }
                 }
@@ -1785,7 +1937,8 @@ public class AdminCommands {
 
         if (removeRoles != null && !removeRoles.isEmpty()) {
             for (Member member : guild.getMembers()) {
-                if (member.getUser().isBot()) continue;
+                if (member.getUser().isBot())
+                    continue;
                 Set<Role> granted = rolesAllowed.getOrDefault(member, Collections.emptySet());
                 Set<Role> memberRoles = null;
                 for (Role role : removeRoles) {
@@ -1808,7 +1961,8 @@ public class AdminCommands {
 
         if (listMissing != null) {
             StringBuilder listMissingMessage = new StringBuilder();
-            Set<DBNation> missingNations = listMissing.stream().filter(f -> !nationsInSheet.contains(f)).collect(Collectors.toSet());
+            Set<DBNation> missingNations = listMissing.stream().filter(f -> !nationsInSheet.contains(f))
+                    .collect(Collectors.toSet());
             if (!missingNations.isEmpty()) {
                 listMissingMessage.append("nation,leader,url,username,user_id\n");
                 for (DBNation nation : missingNations) {
@@ -1831,7 +1985,8 @@ public class AdminCommands {
         }
 
         if (removeRoles != null) {
-            body.append("**removeRoles**: `").append(removeRoles.stream().map(Role::getName).collect(Collectors.joining(","))).append("`\n");
+            body.append("**removeRoles**: `")
+                    .append(removeRoles.stream().map(Role::getName).collect(Collectors.joining(","))).append("`\n");
         }
 
         if (rolesRemoved.isEmpty() && rolesAdded.isEmpty()) {
@@ -1870,8 +2025,9 @@ public class AdminCommands {
 
     @Command(desc = "Add or remove a role from a set of members on discord")
     @RolePermission(Roles.ADMIN)
-    public String mask(@Me Member me, @Me GuildDB db, Set<Member> members, Role role, boolean value, @Arg("If the role should be added or removed from all other members\n" +
-            "If `value` is true, the role will be removed, else added") @Switch("r") boolean toggleMaskFromOthers) {
+    public String mask(@Me Member me, @Me GuildDB db, Set<Member> members, Role role, boolean value,
+            @Arg("If the role should be added or removed from all other members\n" +
+                    "If `value` is true, the role will be removed, else added") @Switch("r") boolean toggleMaskFromOthers) {
         List<String> response = new ArrayList<>();
         for (Member member : members) {
             User user = member.getUser();
@@ -1893,7 +2049,8 @@ public class AdminCommands {
         }
         if (toggleMaskFromOthers) {
             for (Member member : db.getGuild().getMembers()) {
-                if (members.contains(member)) continue;
+                if (members.contains(member))
+                    continue;
                 Set<Role> memberRoles = member.getUnsortedRoles();
                 if (value) {
                     if (memberRoles.contains(role)) {
@@ -1914,16 +2071,19 @@ public class AdminCommands {
     @Command(desc = "Send a direct message on discord to the nations specified\n" +
             "If they are not registered, then no message will be sent")
     @RolePermission(value = Roles.MAIL, root = true)
-    public String dm(@Me User author, @Me Guild guild, @Me IMessageIO io, @Me JSONObject command, Set<DBNation> nations, String message, @Switch("f") boolean force) {
+    public String dm(@Me User author, @Me Guild guild, @Me IMessageIO io, @Me JSONObject command, Set<DBNation> nations,
+            String message, @Switch("f") boolean force) {
         if (nations.size() > 500) {
             throw new IllegalArgumentException("Too many nations: " + nations.size() + " (max 500)");
         }
         if (!force) {
             String title = "Send " + nations.size() + " messages";
             Set<Integer> alliances = new IntLinkedOpenHashSet();
-            for (DBNation nation : nations) alliances.add(nation.getAlliance_id());
+            for (DBNation nation : nations)
+                alliances.add(nation.getAlliance_id());
             String embedTitle = title + " to nations.";
-            if (alliances.size() != 1) embedTitle += " in " + alliances.size() + " alliances.";
+            if (alliances.size() != 1)
+                embedTitle += " in " + alliances.size() + " alliances.";
             String dmMsg = "content: ```" + message + "```";
             io.create().embed(embedTitle, dmMsg).confirmation(command).send();
             return null;
@@ -1950,10 +2110,13 @@ public class AdminCommands {
         if (users.isEmpty()) {
             return "No users found. Are they registered? " + CM.register.cmd.toSlashMention();
         }
-        if (!Roles.MAIL.hasOnRoot(author)) GPTUtil.checkThrowModeration(message);
-        CompletableFuture<IMessageBuilder> msgFuture = io.sendMessage("Sending " + users.size() + " with " + errors.size() + " errors\n" + StringMan.join(errors, "\n"));
+        if (!Roles.MAIL.hasOnRoot(author))
+            GPTUtil.checkThrowModeration(message);
+        CompletableFuture<IMessageBuilder> msgFuture = io.sendMessage(
+                "Sending " + users.size() + " with " + errors.size() + " errors\n" + StringMan.join(errors, "\n"));
         for (User mention : users) {
-            mention.openPrivateChannel().queue(f -> RateLimitUtil.queue(f.sendMessage(author.getAsMention() + " said: " + message + "\n\n(no reply)")));
+            mention.openPrivateChannel().queue(f -> RateLimitUtil
+                    .queue(f.sendMessage(author.getAsMention() + " said: " + message + "\n\n(no reply)")));
         }
         io.sendMessage("Done! Sent " + users.size() + " messages");
         return null;
@@ -1962,17 +2125,19 @@ public class AdminCommands {
     @Command(desc = """
             Edit an attribute of your in-game alliance
             Attributes match the in-game fields and are case sensitive
-            Run the command without arguments to get a list of attributes"""
-    )
+            Run the command without arguments to get a list of attributes""")
     @RolePermission(Roles.ADMIN)
-    public String editAlliance(@Me GuildDB db, DBAlliance alliance, @Default String attribute, @Default @TextArea String value) throws Exception {
+    public String editAlliance(@Me GuildDB db, DBAlliance alliance, @Default String attribute,
+            @Default @TextArea String value) throws Exception {
         if (!db.isAllianceId(alliance.getAlliance_id())) {
-            return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.settings.info.cmd.toSlashMention() + " with key: " + GuildKey.ALLIANCE_ID.name();
+            return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: "
+                    + CM.settings.info.cmd.toSlashMention() + " with key: " + GuildKey.ALLIANCE_ID.name();
         }
 
         Rank rank = attribute != null && attribute.toLowerCase().contains("bank") ? Rank.HEIR : Rank.OFFICER;
         Auth auth = alliance.getAuth(AlliancePermission.EDIT_ALLIANCE_INFO);
-        if (auth == null) return "No authorization set";
+        if (auth == null)
+            return "No authorization set";
 
         StringBuilder response = new StringBuilder();
 
@@ -1996,7 +2161,8 @@ public class AdminCommands {
 
     @Command(desc = "Remove a discord role the bot uses for command permissions")
     @RolePermission(Roles.ADMIN)
-    public String unregisterRole(@Me GuildDB db, Roles locutusRole, @Arg("Only remove a role mapping for this alliance") @Default DBAlliance alliance) {
+    public String unregisterRole(@Me GuildDB db, Roles locutusRole,
+            @Arg("Only remove a role mapping for this alliance") @Default DBAlliance alliance) {
         return aliasRole(db, locutusRole, null, alliance, true);
     }
 
@@ -2011,22 +2177,29 @@ public class AdminCommands {
                 response.add(aaId + ": " + role.getName());
             }
         }
-        if (response.isEmpty()) return "";
+        if (response.isEmpty())
+            return "";
         return "- " + StringMan.join(response, "\n- ");
     }
 
     @Command(desc = "Set the discord roles the bot uses for command permissions")
     @RolePermission(Roles.ADMIN)
-    public static String aliasRole(@Me GuildDB db, @Default Roles locutusRole, @Default() Role discordRole, @Arg("If the role mapping is only for a specific alliance (WIP)") @Default() DBAlliance alliance, @Arg("Remove the existing mapping instead of setting it") @Switch("r") boolean removeRole) {
+    public static String aliasRole(@Me GuildDB db, @Default Roles locutusRole, @Default() Role discordRole,
+            @Arg("If the role mapping is only for a specific alliance (WIP)") @Default() DBAlliance alliance,
+            @Arg("Remove the existing mapping instead of setting it") @Switch("r") boolean removeRole) {
         if (alliance != null && !removeRole && discordRole != null) {
             if (!db.isAllianceId(alliance.getAlliance_id())) {
-                return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.settings.info.cmd.toSlashMention() + " with key: " + GuildKey.ALLIANCE_ID.name();
+                return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild()
+                        + ". See: " + CM.settings.info.cmd.toSlashMention() + " with key: "
+                        + GuildKey.ALLIANCE_ID.name();
             }
             if (locutusRole != null && !locutusRole.allowAlliance()) {
-                throw new IllegalArgumentException("The role `" + locutusRole.name() + "` does not allow alliance specific mappings, please leave `alliance` blank");
+                throw new IllegalArgumentException("The role `" + locutusRole.name()
+                        + "` does not allow alliance specific mappings, please leave `alliance` blank");
             }
             if (db.getAllianceIds().size() < 2) {
-                throw new IllegalArgumentException("Alliance specific roles are only supported when multiple alliances are registered to a guild. Please register more alliances or leave `alliance` blank");
+                throw new IllegalArgumentException(
+                        "Alliance specific roles are only supported when multiple alliances are registered to a guild. Please register more alliances or leave `alliance` blank");
             }
         }
         StringBuilder response = new StringBuilder();
@@ -2040,11 +2213,13 @@ public class AdminCommands {
                     // remove all roles registered to it
                     for (Map.Entry<Roles, Map<Long, Long>> locEntry : allMapping.entrySet()) {
                         for (Map.Entry<Long, Long> discEntry : locEntry.getValue().entrySet()) {
-                            long aaId =discEntry.getKey();
-                            if (alliance != null && aaId != alliance.getAlliance_id()) continue;
+                            long aaId = discEntry.getKey();
+                            if (alliance != null && aaId != alliance.getAlliance_id())
+                                continue;
                             if (discEntry.getValue() == discordRole.getIdLong()) {
-                                String aaStr =  aaId == 0 ? "*" : PW.getName(aaId, true);
-                                rolesListStr.add("Removed " + locEntry.getKey().name() + " from " + discordRole.getName() + " (AA:" + aaId + ")");
+                                String aaStr = aaId == 0 ? "*" : PW.getName(aaId, true);
+                                rolesListStr.add("Removed " + locEntry.getKey().name() + " from "
+                                        + discordRole.getName() + " (AA:" + aaId + ")");
                                 db.deleteRole(locEntry.getKey(), aaId);
                             }
                         }
@@ -2054,7 +2229,8 @@ public class AdminCommands {
                     }
                     response.append("Removed aliases for " + discordRole.getName() + ":\n- ");
                     response.append(StringMan.join(rolesListStr, "\n- "));
-                    response.append("\n\nUse " + CM.role.setAlias.cmd.toSlashMention() + " to view current role aliases");
+                    response.append(
+                            "\n\nUse " + CM.role.setAlias.cmd.toSlashMention() + " to view current role aliases");
                     return response.toString();
                 }
 
@@ -2068,7 +2244,8 @@ public class AdminCommands {
                             if (aaId == 0) {
                                 rolesListStr.add("*:" + role.name());
                             } else {
-                                rolesListStr.add(DBAlliance.getOrCreate((int) aaId).getName() + "/" + aaId + ":" + role.name());
+                                rolesListStr.add(
+                                        DBAlliance.getOrCreate((int) aaId).getName() + "/" + aaId + ":" + role.name());
                             }
                         }
                     }
@@ -2078,7 +2255,8 @@ public class AdminCommands {
                 }
                 response.append("Aliases for " + discordRole.getName() + ":\n- ");
                 response.append(StringMan.join(rolesListStr, "\n- "));
-                if (showGlobalMappingInfo) response.append("\n`note: " + Messages.GLOBAL_ROLE_MAPPING_INFO + "`");
+                if (showGlobalMappingInfo)
+                    response.append("\n`note: " + Messages.GLOBAL_ROLE_MAPPING_INFO + "`");
                 return response.toString();
             }
 
@@ -2090,7 +2268,8 @@ public class AdminCommands {
                     registeredRoles.add(role + ":\n" + mappingToString(mapping));
                     continue;
                 }
-                if (role.getKey() != null && db.getOrNull(role.getKey()) == null) continue;
+                if (role.getKey() != null && db.getOrNull(role.getKey()) == null)
+                    continue;
                 unregisteredRoles.add(role + ":\n" + mappingToString(mapping));
             }
 
@@ -2138,14 +2317,15 @@ public class AdminCommands {
         }
 
         if (removeRole) {
-            throw new IllegalArgumentException("Cannot remove role alias with this command. Use " + CM.role.unregister.cmd.locutusRole(locutusRole.name()).toSlashCommand());
+            throw new IllegalArgumentException("Cannot remove role alias with this command. Use "
+                    + CM.role.unregister.cmd.locutusRole(locutusRole.name()).toSlashCommand());
         }
-
 
         int aaId = alliance == null ? 0 : alliance.getAlliance_id();
         String allianceStr = alliance == null ? "*" : alliance.getName() + "/" + aaId;
         db.addRole(locutusRole, discordRole, aaId);
-        return "Added role alias: " + locutusRole.name().toLowerCase() + " to " + discordRole.getName() + " for alliance " + allianceStr + "\n" +
+        return "Added role alias: " + locutusRole.name().toLowerCase() + " to " + discordRole.getName()
+                + " for alliance " + allianceStr + "\n" +
                 "To unregister, use " + CM.role.unregister.cmd.locutusRole(locutusRole.name()).toSlashCommand();
     }
 
@@ -2185,10 +2365,12 @@ public class AdminCommands {
         StringBuilder response = new StringBuilder();
         for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
             List<String> keys = db.getOrNull(GuildKey.API_KEY);
-            if (keys == null) return "No keys found for guild " + db.getGuild().getName() + " (" + db.getGuild().getId() + ")";
+            if (keys == null)
+                return "No keys found for guild " + db.getGuild().getName() + " (" + db.getGuild().getId() + ")";
             for (String key : keys) {
                 try {
-                    ApiKeyDetails stats = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();
+                    ApiKeyDetails stats = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build())
+                            .getApiKeyStats();
                     Locutus.imp().getDiscordDB().addApiKey(stats.getNation().getId(), key);
 
                     response.append(key + ": success" + "\n");
@@ -2216,8 +2398,10 @@ public class AdminCommands {
     @Ephemeral
     @HasOffshore
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String clearInvalidAccounts(@Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, @Switch("f") boolean force) {
-        if (!db.isOffshore()) return "This command can only be run on guilds that are an offshore";
+    public String clearInvalidAccounts(@Me IMessageIO io, @Me JSONObject command, @Me GuildDB db,
+            @Switch("f") boolean force) {
+        if (!db.isOffshore())
+            return "This command can only be run on guilds that are an offshore";
         Set<Long> ids = db.getCoalitionRaw(Coalition.OFFSHORING);
         List<Long> toRemove = new LongArrayList();
         for (long id : ids) {
@@ -2256,49 +2440,54 @@ public class AdminCommands {
         return "Removed " + toRemove.size() + " invalid accounts:\n" + msg.toString();
     }
 
-//    @Command(desc = "Check if current api keys are valid")
-//    @RolePermission(value = Roles.ADMIN, root = true)
-//    public String validateAPIKeys() {
-//        // Validate v3 keys used in the guild db?
-//        return "TODO";
-//        Set<String> keys = Locutus.imp().getPnwApiV2().getApiKeyUsageStats().keySet();
-//        Map<String, String> failed = new LinkedHashMap<>();
-//        Map<String, ApiKeyDetails> success = new LinkedHashMap<>();
-//        for (String key : keys) {
-//            try {
-//                ApiKeyDetails stats = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();
-//                if (stats != null && stats.getNation() != null && stats.getNation().getId() != null) {
-//                    success.put(key, stats);
-//                } else {
-//                    failed.put(key, "Error: null (1)");
-//                }
-//            } catch (Throwable e) {
-//                failed.put(key, e.getMessage());
-//            }
-//        }
-//        StringBuilder response = new StringBuilder();
-//        for (Map.Entry<String, String> e : failed.entrySet()) {
-//            response.append(e.getKey() + ": " + e.getValue() + "\n");
-//        }
-//        for (Map.Entry<String, ApiKeyDetails> e : success.entrySet()) {
-//            String key = e.getKey();
-//            ApiKeyDetails record = e.getValue();
-//            int natId = record.getNation().getId();
-//            DBNation nation = DBNation.getById(natId);
-//            if (nation != null) {
-//                response.append(key + ": " + record.toString() + " | " + nation.getNation() + " | " + nation.getAllianceName() + " | " + nation.getPosition() + "\n");
-//            } else {
-//                response.append(e.getKey() + ": " + e.getValue() + "\n");
-//            }
-//        }
-//        System.out.println(response); // keep
-//        return "Done (see console)";
-//    }
+    // @Command(desc = "Check if current api keys are valid")
+    // @RolePermission(value = Roles.ADMIN, root = true)
+    // public String validateAPIKeys() {
+    // // Validate v3 keys used in the guild db?
+    // return "TODO";
+    // Set<String> keys =
+    // Locutus.imp().getPnwApiV2().getApiKeyUsageStats().keySet();
+    // Map<String, String> failed = new LinkedHashMap<>();
+    // Map<String, ApiKeyDetails> success = new LinkedHashMap<>();
+    // for (String key : keys) {
+    // try {
+    // ApiKeyDetails stats = new
+    // PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();
+    // if (stats != null && stats.getNation() != null && stats.getNation().getId()
+    // != null) {
+    // success.put(key, stats);
+    // } else {
+    // failed.put(key, "Error: null (1)");
+    // }
+    // } catch (Throwable e) {
+    // failed.put(key, e.getMessage());
+    // }
+    // }
+    // StringBuilder response = new StringBuilder();
+    // for (Map.Entry<String, String> e : failed.entrySet()) {
+    // response.append(e.getKey() + ": " + e.getValue() + "\n");
+    // }
+    // for (Map.Entry<String, ApiKeyDetails> e : success.entrySet()) {
+    // String key = e.getKey();
+    // ApiKeyDetails record = e.getValue();
+    // int natId = record.getNation().getId();
+    // DBNation nation = DBNation.getById(natId);
+    // if (nation != null) {
+    // response.append(key + ": " + record.toString() + " | " + nation.getNation() +
+    // " | " + nation.getAllianceName() + " | " + nation.getPosition() + "\n");
+    // } else {
+    // response.append(e.getKey() + ": " + e.getValue() + "\n");
+    // }
+    // }
+    // System.out.println(response); // keep
+    // return "Done (see console)";
+    // }
 
     @Command(desc = "Test your alliance recruitment message by sending it to the bot creator's nation")
     @RolePermission(value = Roles.ADMIN)
     public String testRecruitMessage(@Me GuildDB db) throws IOException {
-        MailApiResponse response = db.sendRecruitMessage(Locutus.imp().getNationDB().getNationById(Locutus.loader().getNationId()));
+        MailApiResponse response = db
+                .sendRecruitMessage(Locutus.imp().getNationDB().getNationById(Locutus.loader().getNationId()));
         String msg;
         if (response.status() != MailApiSuccess.SUCCESS) {
             msg = response.status() + ": " + response.error();
@@ -2315,7 +2504,7 @@ public class AdminCommands {
 
     @Command(desc = "Purge a category's channels older than the time specified")
     @RolePermission(value = Roles.ADMIN)
-    public String debugPurgeChannels(Category category, @Range(min=60) @Timestamp long cutoff) {
+    public String debugPurgeChannels(Category category, @Range(min = 60) @Timestamp long cutoff) {
         int deleted = 0;
         for (GuildMessageChannel GuildMessageChannel : category.getTextChannels()) {
             if (GuildMessageChannel.getLatestMessageIdLong() > 0) {
@@ -2325,7 +2514,8 @@ public class AdminCommands {
                     if (created > cutoff) {
                         continue;
                     }
-                } catch (Throwable ignore) {}
+                } catch (Throwable ignore) {
+                }
             }
             RateLimitUtil.queue(GuildMessageChannel.delete());
             deleted++;
@@ -2348,12 +2538,14 @@ public class AdminCommands {
             Set<Integer> aaIds = db.getAllianceIds();
 
             if (nation != null && nation.active_m() > 30000) {
-                response.append(guild + "/" + StringMan.getString(aaIds) + ": owner (nation:" + nation.getNation_id() + ") is inactive " + TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m()) + "\n");
+                response.append(guild + "/" + StringMan.getString(aaIds) + ": owner (nation:" + nation.getNation_id()
+                        + ") is inactive " + TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m()) + "\n");
                 continue;
             }
             // In an alliance with inactive leadership (1 month)
             if (!aaIds.isEmpty() && !db.isValidAlliance()) {
-                response.append(guild + "/" + StringMan.getString(aaIds) + ": alliance is invalid (nation:" + (nation == null ? "" : nation.getNation_id() + ")\n"));
+                response.append(guild + "/" + StringMan.getString(aaIds) + ": alliance is invalid (nation:"
+                        + (nation == null ? "" : nation.getNation_id() + ")\n"));
                 continue;
             }
 
@@ -2362,16 +2554,18 @@ public class AdminCommands {
                 boolean error = false;
                 long last = 0;
 
-                outer:
-                for (GuildMessageChannel channel : guild.getTextChannels()) {
-                    if (channel.getLatestMessageIdLong() == 0) continue;
+                outer: for (GuildMessageChannel channel : guild.getTextChannels()) {
+                    if (channel.getLatestMessageIdLong() == 0)
+                        continue;
                     try {
                         long latestSnowflake = channel.getLatestMessageIdLong();
-                        long latestMs = net.dv8tion.jda.api.utils.TimeUtil.getTimeCreated(latestSnowflake).toEpochSecond() * 1000L;
+                        long latestMs = net.dv8tion.jda.api.utils.TimeUtil.getTimeCreated(latestSnowflake)
+                                .toEpochSecond() * 1000L;
                         if (latestMs > cutoff) {
                             List<Message> messages = RateLimitUtil.complete(channel.getHistory().retrievePast(5));
                             for (Message message : messages) {
-                                if (message.getAuthor().isSystem() || message.getAuthor().isBot() || guild.getMember(message.getAuthor()) == null) {
+                                if (message.getAuthor().isSystem() || message.getAuthor().isBot()
+                                        || guild.getMember(message.getAuthor()) == null) {
                                     continue;
                                 }
                                 last = Math.max(last, message.getTimeCreated().toEpochSecond() * 1000L);
@@ -2410,7 +2604,7 @@ public class AdminCommands {
             }
         }
         for (long id : toRemove) {
-            db.removeCoalition(id,coalition);
+            db.removeCoalition(id, coalition);
         }
         return "Removed `" + StringMan.join(toRemove, ",") + "` from " + Coalition.OFFSHORING;
 
@@ -2420,7 +2614,8 @@ public class AdminCommands {
     @RolePermission(value = Roles.ADMIN, root = true)
     public String leaveServer(long guildId) {
         GuildDB db = Locutus.imp().getGuildDB(guildId);
-        if (db == null) return "Server not found " + guildId;
+        if (db == null)
+            return "Server not found " + guildId;
         Guild guild = db.getGuild();
         RateLimitUtil.queue(guild.leave());
         return "Leaving " + guild.getName();
@@ -2440,7 +2635,8 @@ public class AdminCommands {
 
         for (Long id : coalitions) {
             List<String> notice = notices.computeIfAbsent(id, f -> new ArrayList<>());
-            GuildDB otherDb = (id > Integer.MAX_VALUE) ? Locutus.imp().getGuildDB(id) : Locutus.imp().getGuildDBByAA(id.intValue());
+            GuildDB otherDb = (id > Integer.MAX_VALUE) ? Locutus.imp().getGuildDB(id)
+                    : Locutus.imp().getGuildDBByAA(id.intValue());
             if (otherDb == null) {
                 notice.add("- No database found");
                 hasError.add(id);
@@ -2455,7 +2651,7 @@ public class AdminCommands {
                     notice.add("\n- AA does not exist: " + id);
                     printDeposits.add(id);
                 } else {
-                   notice.add(" **ALLIANCE**");
+                    notice.add(" **ALLIANCE**");
                 }
             }
 
@@ -2482,7 +2678,8 @@ public class AdminCommands {
             }
             transactions.removeIf(f -> f.tx_datetime > System.currentTimeMillis());
             transactions.removeIf(f -> f.receiver_id == f.banker_nation && f.tx_id > 0);
-            long latestTx = transactions.isEmpty() ? 0 : transactions.stream().mapToLong(f -> f.tx_datetime).max().getAsLong();
+            long latestTx = transactions.isEmpty() ? 0
+                    : transactions.stream().mapToLong(f -> f.tx_datetime).max().getAsLong();
             if (latestTx < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(14)) {
                 String timeStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - latestTx);
                 notice.add("\n- Latest Transfer: `" + timeStr + "`");
@@ -2505,7 +2702,9 @@ public class AdminCommands {
                     }
                 }
                 if (minActiveM > 10000) {
-                    notice.add("\n- Inactive Leadership: `" + (latestNation != null ? "<" + latestNation.getUrl() + ">" : null) + " | " + TimeUtil.secToTime(TimeUnit.MINUTES, minActiveM) + "`");
+                    notice.add("\n- Inactive Leadership: `"
+                            + (latestNation != null ? "<" + latestNation.getUrl() + ">" : null) + " | "
+                            + TimeUtil.secToTime(TimeUnit.MINUTES, minActiveM) + "`");
                     printDeposits.add(id);
                 }
             }
@@ -2515,14 +2714,16 @@ public class AdminCommands {
                 notice.add("\n- Owner is Unregistered");
                 printDeposits.add(id);
             } else if (nation.active_m() > 10000) {
-                notice.add("\n- Owner is inactive: <@" + owner.getIdLong() + "> | <" + nation.getUrl() + "> | `" + TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m()) + "`");
+                notice.add("\n- Owner is inactive: <@" + owner.getIdLong() + "> | <" + nation.getUrl() + "> | `"
+                        + TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m()) + "`");
                 printDeposits.add(id);
             }
         }
 
         StringBuilder response = new StringBuilder();
         for (long id : coalitions) {
-            if (!hasError.contains(id)) continue;
+            if (!hasError.contains(id))
+                continue;
             List<String> notes = notices.get(id);
             response.append("\n\n**").append(id).append("**");
             for (String note : notes) {
@@ -2535,7 +2736,8 @@ public class AdminCommands {
                 } else {
                     depo = offshore.getDeposits((int) id, false);
                 }
-                response.append("\n- Deposits: `" + ResourceType.toString(depo) + "` worth: `$" + MathMan.format(ResourceType.convertedTotal(depo)) + "`");
+                response.append("\n- Deposits: `" + ResourceType.toString(depo) + "` worth: `$"
+                        + MathMan.format(ResourceType.convertedTotal(depo)) + "`");
             }
             response.append("\n\n");
         }
@@ -2562,7 +2764,6 @@ public class AdminCommands {
         return result.toString();
     }
 
-
     @Command(desc = "Calculate this turns alliance metrics for the top alliances (default 80) and save them")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncMetrics(@Default("80") int topX) throws IOException, ParseException {
@@ -2580,7 +2781,9 @@ public class AdminCommands {
         db.updateAllCities(events::add);
         if (events.size() > 0) {
             Locutus.imp().getExecutor().submit(() -> {
-                for (Event event : events) event.post();;
+                for (Event event : events)
+                    event.post();
+                ;
             });
         }
         result.append("events: " + events.size() + "\n");
@@ -2599,7 +2802,9 @@ public class AdminCommands {
         db.updateAllCities(events::add);
         if (events.size() > 0) {
             Locutus.imp().getExecutor().submit(() -> {
-                for (Event event : events) event.post();;
+                for (Event event : events)
+                    event.post();
+                ;
             });
         }
         result.append("events: " + events.size() + "\n");
@@ -2608,32 +2813,33 @@ public class AdminCommands {
         return result.toString();
     }
 
-//    @Command()
-//    @RolePermission(value = Roles.ADMIN, root = true)
-//    public String syncCitiesTest2(NationDB db, @Me DBNation me) throws IOException, ParseException {
-//        Map<Integer, JavaCity> cities = me.getCityMap(true);
-//        StringBuilder result = new StringBuilder();
-//        result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
-//
-//        List<Event> events = new ArrayList<>();
-//        db.updateAllCities(events::add);
-//        if (events.size() > 0) {
-//            Locutus.imp().getExecutor().submit(() -> {
-//                for (Event event : events) event.post();;
-//            });
-//        }
-//        result.append("events: " + events.size() + "\n");
-//        result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
-//        result.append("Updated all cities. " + events.size() + " changes detected");
-//        return result.toString();
-//    }
-
+    // @Command()
+    // @RolePermission(value = Roles.ADMIN, root = true)
+    // public String syncCitiesTest2(NationDB db, @Me DBNation me) throws
+    // IOException, ParseException {
+    // Map<Integer, JavaCity> cities = me.getCityMap(true);
+    // StringBuilder result = new StringBuilder();
+    // result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
+    //
+    // List<Event> events = new ArrayList<>();
+    // db.updateAllCities(events::add);
+    // if (events.size() > 0) {
+    // Locutus.imp().getExecutor().submit(() -> {
+    // for (Event event : events) event.post();;
+    // });
+    // }
+    // result.append("events: " + events.size() + "\n");
+    // result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
+    // result.append("Updated all cities. " + events.size() + " changes detected");
+    // return result.toString();
+    // }
 
     @Command(desc = """
             Fetch and update nations from the API
             If no nations are specified, then all will be fetched
             Note: This does not update cities""")
-    public String syncNations(NationDB db, @Default @AllowDeleted Set<DBNation> nations, @Switch("d") boolean dirtyNations) throws IOException, ParseException {
+    public String syncNations(NationDB db, @Default @AllowDeleted Set<DBNation> nations,
+            @Switch("d") boolean dirtyNations) throws IOException, ParseException {
         if (dirtyNations) {
             db.updateDirtyNations(Event::post, Integer.MAX_VALUE);
         }
@@ -2647,7 +2853,9 @@ public class AdminCommands {
         }
         if (events.size() > 0) {
             Locutus.imp().getExecutor().submit(() -> {
-                for (Event event : events) event.post();;
+                for (Event event : events)
+                    event.post();
+                ;
             });
         }
         return "Updated " + updatedIds.size() + " nations. " + events.size() + " changes detected";
@@ -2658,10 +2866,12 @@ public class AdminCommands {
             If no alliance is specified, only public bank records are fetched
             Alliance records are restricted by API limitations, typically 14 days, regardless of the timestamp specified""")
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String syncBanks(@Me GuildDB db, @Me IMessageIO channel, @Default DBAlliance alliance, @Default @Timestamp Long timestamp) throws IOException, ParseException {
+    public String syncBanks(@Me GuildDB db, @Me IMessageIO channel, @Default DBAlliance alliance,
+            @Default @Timestamp Long timestamp) throws IOException, ParseException {
         if (alliance != null) {
             db = alliance.getGuildDB();
-            if (db == null) throw new IllegalArgumentException("No guild found for AA:" + alliance);
+            if (db == null)
+                throw new IllegalArgumentException("No guild found for AA:" + alliance);
 
             channel.send("Syncing banks for " + db.getGuild() + "...");
             OffshoreInstance bank = alliance.getBank();
@@ -2681,10 +2891,12 @@ public class AdminCommands {
 
     @Command(desc = "Fetch and save forum post topic names, optionally for a specific section id/section name")
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String syncForum(@Default Integer sectionId, @Default String sectionName) throws IOException, ParseException, SQLException {
+    public String syncForum(@Default Integer sectionId, @Default String sectionName)
+            throws IOException, ParseException, SQLException {
         ForumDB forumDB = Locutus.imp().getForumDb();
         if (sectionId != null) {
-            if (sectionName == null) sectionName = forumDB.getSectionName(sectionId);
+            if (sectionName == null)
+                sectionName = forumDB.getSectionName(sectionId);
             if (sectionName == null) {
                 throw new IllegalArgumentException("No section found for id: " + sectionId);
             }
@@ -2716,7 +2928,8 @@ public class AdminCommands {
                     } catch (Throwable e) {
                         errors.put(nation, e.getMessage());
                     }
-                } catch (IllegalArgumentException ignore) {}
+                } catch (IllegalArgumentException ignore) {
+                }
             }
         }
 
@@ -2737,7 +2950,9 @@ public class AdminCommands {
 
     @Command(desc = "Generate a sheet of nation customization (or lack thereof), and mark specific nation ids in the sheet with the ids provided", viewable = true)
     @RolePermission(value = Roles.MEMBER, onlyInGuildAlliance = true)
-    public String multiInfoSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet, @Switch("m") Set<DBNation> mark) throws IOException, ParseException, GeneralSecurityException {
+    public String multiInfoSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations,
+            @Switch("s") SpreadSheet sheet, @Switch("m") Set<DBNation> mark)
+            throws IOException, ParseException, GeneralSecurityException {
         Set<Integer> nationIds = new IntOpenHashSet(nations.stream().map(DBNation::getId).collect(Collectors.toSet()));
         Map<Integer, String> discords = new Int2ObjectOpenHashMap<>();
         Map<Integer, Set<Long>> discordIds = new Int2ObjectOpenHashMap<>();
@@ -2803,8 +3018,7 @@ public class AdminCommands {
                 "uid_match",
                 "bot_validated",
                 "irl_verified",
-                "mark"
-        ));
+                "mark"));
 
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.MULTI_BULK);
@@ -2817,11 +3031,13 @@ public class AdminCommands {
             SnapshotMultiData.MultiData data = orbisMultiData.data.get(nation.getNation_id());
             Long locationPair = data == null ? null : (Long) data.location();
             Continent continent = nation.getContinent();
-            boolean isMostCommon = locationPair != null && orbisMultiData.mostCommonLocation.get(continent).equals(locationPair);
+            boolean isMostCommon = locationPair != null
+                    && orbisMultiData.mostCommonLocation.get(continent).equals(locationPair);
             String mostCommonMsg = locationPair == null ? "null" : (isMostCommon ? "Default" : "Custom");
 
             String flagUrl = data == null ? null : (String) data.flagUrl();
-            String customFlagMsg = flagUrl == null ? "null" : (orbisMultiData.flagCounts.getOrDefault(flagUrl, 0) <= 1 ? "Custom" : "Default");
+            String customFlagMsg = flagUrl == null ? "null"
+                    : (orbisMultiData.flagCounts.getOrDefault(flagUrl, 0) <= 1 ? "Custom" : "Default");
             String currency = data == null ? "null" : (String) data.currency();
             String portrait = data == null ? "null" : (String) data.portraitUrl();
             String leaderTitle = data == null ? "null" : (String) data.leaderTitle();
@@ -2863,14 +3079,16 @@ public class AdminCommands {
         if (!duplicateDiscordNames.isEmpty()) {
             StringBuilder discordMsg = new StringBuilder("\n### Duplicate Discord Names\n");
             for (Map.Entry<String, Set<Integer>> entry : duplicateDiscordNames.entrySet()) {
-                discordMsg.append(entry.getKey()).append(": ").append(StringMan.join(entry.getValue(), ",")).append("\n");
+                discordMsg.append(entry.getKey()).append(": ").append(StringMan.join(entry.getValue(), ","))
+                        .append("\n");
             }
             msg.append(discordMsg.toString());
         }
         if (!duplicateDiscordIds.isEmpty()) {
             StringBuilder discordMsg = new StringBuilder("\n### Duplicate Discord IDs\n");
             for (Map.Entry<Long, Set<Integer>> entry : duplicateDiscordIds.entrySet()) {
-                discordMsg.append(entry.getKey()).append(": ").append(StringMan.join(entry.getValue(), ",")).append("\n");
+                discordMsg.append(entry.getKey()).append(": ").append(StringMan.join(entry.getValue(), ","))
+                        .append("\n");
             }
             msg.append(discordMsg.toString());
         }
@@ -2889,12 +3107,13 @@ public class AdminCommands {
 
     @Command(desc = "List players currently sharing a network or an active ban", viewable = true)
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public synchronized String hasSameNetworkAsBan(@Me IMessageIO io, @Me @Default User author, Set<DBNation> nations, @Switch("e") boolean listExpired,
-                                                   @Switch("a") boolean onlySameAlliance,
-                                                   @Switch("t") @Timediff Long onlySimilarTime,
-                                                   @Switch("d") boolean sortByAgeDays,
-                                                   @Switch("l") boolean sortByLogin,
-                                                   @Switch("f") boolean forceUpdate) throws IOException {
+    public synchronized String hasSameNetworkAsBan(@Me IMessageIO io, @Me @Default User author, Set<DBNation> nations,
+            @Switch("e") boolean listExpired,
+            @Switch("a") boolean onlySameAlliance,
+            @Switch("t") @Timediff Long onlySimilarTime,
+            @Switch("d") boolean sortByAgeDays,
+            @Switch("l") boolean sortByLogin,
+            @Switch("f") boolean forceUpdate) throws IOException {
         if (forceUpdate && nations.size() > 300 && !Roles.ADMIN.hasOnRoot(author)) {
             throw new IllegalArgumentException("Too many nations to update");
         }
@@ -2933,12 +3152,15 @@ public class AdminCommands {
         long now = System.currentTimeMillis();
         for (int i = 0; i < nationsList.size(); i++) {
             DBNation nation = nationsList.get(i);
-            if (!forceUpdate && nation.getVm_turns() > 0 || nation.active_m() > 10080) continue;
+            if (!forceUpdate && nation.getVm_turns() > 0 || nation.active_m() > 10080)
+                continue;
             long dateUpdated = UPDATED_UID.getOrDefault(nation.getId(), 0L);
-            if (dateUpdated != 0 && (!forceUpdate || now - dateUpdated < TimeUnit.DAYS.toMillis(1))) continue;
+            if (dateUpdated != 0 && (!forceUpdate || now - dateUpdated < TimeUnit.DAYS.toMillis(1)))
+                continue;
             if (!nationIdsWithUids.contains(nation.getId())) {
                 if (System.currentTimeMillis() - start > 10000) {
-                    msg = io.updateOptionally(msgFuture, "Fetching " + nation.getNation() + "(" + i + "/" + nationsList.size() + ")");
+                    msg = io.updateOptionally(msgFuture,
+                            "Fetching " + nation.getNation() + "(" + i + "/" + nationsList.size() + ")");
                     start = System.currentTimeMillis();
                 }
                 UPDATED_UID.put(nation.getId(), now);
@@ -2969,11 +3191,13 @@ public class AdminCommands {
             for (DBNation nation : nationsToUpdate) {
                 long dateUpdated = UPDATED_UID.getOrDefault(nation.getId(), 0L);
                 if (System.currentTimeMillis() - start > 10000) {
-                    msg = io.updateOptionally(msgFuture, "Updating " + nation.getNation() + "(" + i + "/" + nationsToUpdate.size() + ")");
+                    msg = io.updateOptionally(msgFuture,
+                            "Updating " + nation.getNation() + "(" + i + "/" + nationsToUpdate.size() + ")");
                     start = System.currentTimeMillis();
                 }
                 if (System.currentTimeMillis() - start > 10000) {
-                    msg = io.updateOptionally(msgFuture, "Updating " + nation.getNation() + "(" + i + "/" + nationsToUpdate.size() + ")");
+                    msg = io.updateOptionally(msgFuture,
+                            "Updating " + nation.getNation() + "(" + i + "/" + nationsToUpdate.size() + ")");
                     start = System.currentTimeMillis();
                 }
                 nation.fetchUid(true);
@@ -2984,8 +3208,10 @@ public class AdminCommands {
                 }
                 i++;
             }
-            if (msg != null && msg.getId() > 0) io.delete(msg.getId());
-            return hasSameNetworkAsBan(io, author, nations, listExpired, onlySameAlliance, onlySimilarTime, sortByAgeDays, sortByLogin, false);
+            if (msg != null && msg.getId() > 0)
+                io.delete(msg.getId());
+            return hasSameNetworkAsBan(io, author, nations, listExpired, onlySameAlliance, onlySimilarTime,
+                    sortByAgeDays, sortByLogin, false);
         }
 
         sharesDiscord.entrySet().removeIf(entry -> entry.getValue().size() <= 1);
@@ -3001,14 +3227,17 @@ public class AdminCommands {
                 }
             }
             if (onlySameAlliance) {
-                Set<Integer> aaIds = entry.getValue().stream().map(DBNation::getAlliance_id).collect(Collectors.toSet());
-                entry.getValue().removeIf(nation -> nation.getAlliance_id() == 0 || !aaIds.contains(nation.getAlliance_id()));
+                Set<Integer> aaIds = entry.getValue().stream().map(DBNation::getAlliance_id)
+                        .collect(Collectors.toSet());
+                entry.getValue()
+                        .removeIf(nation -> nation.getAlliance_id() == 0 || !aaIds.contains(nation.getAlliance_id()));
             }
             if (onlySimilarTime != null) {
                 Map<Integer, Boolean> hasSimilarTime = new Object2BooleanOpenHashMap<>();
                 for (DBNation nation : entry.getValue()) {
                     for (DBNation other : entry.getValue()) {
-                        if (nation == other) continue;
+                        if (nation == other)
+                            continue;
                         if (Math.abs(nation.lastActiveMs() - other.lastActiveMs()) < onlySimilarTime) {
                             hasSimilarTime.put(nation.getId(), true);
                             hasSimilarTime.put(other.getId(), true);
@@ -3027,18 +3256,21 @@ public class AdminCommands {
 
         for (DBNation nation : nations) {
             PwUid uid = latestUids.get(nation.getId());
-            if (uid == null) continue;
+            if (uid == null)
+                continue;
             Set<Integer> nationIds = uidsByNation.get(uid);
 
             List<DBBan> natBans = nation.getBans();
-            if (!listExpired) natBans.removeIf(DBBan::isExpired);
+            if (!listExpired)
+                natBans.removeIf(DBBan::isExpired);
 
             if (!natBans.isEmpty()) {
                 sameNetworkBans.put(nation, new HashSet<>(natBans));
             }
 
             for (int id : nationIds) {
-                if (id == nation.getId()) continue;
+                if (id == nation.getId())
+                    continue;
                 DBBan ban = bans.get(id);
                 if (ban != null && (listExpired || !ban.isExpired())) {
                     sameNetworkBans.computeIfAbsent(nation, k -> new HashSet<>()).add(ban);
@@ -3051,7 +3283,8 @@ public class AdminCommands {
         if (!sharesDiscord.isEmpty()) {
             response.append("## Active nations sharing the same discord:\n");
             for (Map.Entry<Long, Set<DBNation>> entry : sharesDiscord.entrySet()) {
-                if (entry.getValue().isEmpty()) continue;
+                if (entry.getValue().isEmpty())
+                    continue;
                 response.append(entry.getKey()).append(":\n");
                 for (DBNation nation : entry.getValue()) {
                     response.append("- ").append(nation.getUrl());
@@ -3069,7 +3302,8 @@ public class AdminCommands {
         if (!uidsByNationExisting.isEmpty()) {
             response.append("## Active nations sharing the same network:\n");
             for (Map.Entry<PwUid, Set<DBNation>> entry : uidsByNationExisting.entrySet()) {
-                if (entry.getValue().isEmpty()) continue;
+                if (entry.getValue().isEmpty())
+                    continue;
                 response.append(entry.getKey().toHexString()).append(":\n");
                 List<DBNation> sorted = new ArrayList<>(entry.getValue());
                 if (sortByAgeDays) {
@@ -3095,7 +3329,8 @@ public class AdminCommands {
             response.append("## Bans on the same network:\n");
             for (Map.Entry<DBNation, Set<DBBan>> entry : sameNetworkBans.entrySet()) {
                 DBNation nation = entry.getKey();
-                if (!nations.contains(nation)) continue;
+                if (!nations.contains(nation))
+                    continue;
                 // Key then dot points, with nation url
                 response.append(entry.getKey().getUrl()).append(":\n");
                 for (DBBan ban : entry.getValue()) {
@@ -3106,7 +3341,8 @@ public class AdminCommands {
                     if (ban.isExpired()) {
                         banStr.append(" (expired)");
                     } else {
-                        banStr.append(" (expires ").append(TimeUtil.secToTime(TimeUnit.MILLISECONDS, ban.getTimeRemaining())).append(")");
+                        banStr.append(" (expires ")
+                                .append(TimeUtil.secToTime(TimeUnit.MILLISECONDS, ban.getTimeRemaining())).append(")");
                     }
                     banStr.append(": `" + ban.reason.replace("\n", " ") + "`");
                     response.append("- ").append(banStr).append("\n");
@@ -3130,8 +3366,9 @@ public class AdminCommands {
                 LootEntry existing = Locutus.imp().getNationDB().getAllianceLoot(attack.getAllianceIdLooted());
                 if (existing != null && existing.getDate() < attack.getDate()) {
                     Double pct = attack.getLootPercent();
-                    if (pct == 0) pct = 0.01;
-                    double factor = 1/pct;
+                    if (pct == 0)
+                        pct = 0.01;
+                    double factor = 1 / pct;
                     double[] loot = attack.getLoot();
 
                     double[] lootCopy = loot == null ? ResourceType.getBuffer() : loot.clone();
@@ -3139,11 +3376,13 @@ public class AdminCommands {
                         lootCopy[i] = (lootCopy[i] * factor) - lootCopy[i];
                     }
 
-                    loots.add(LootEntry.forAlliance(attack.getAllianceIdLooted(), attack.getDate(), lootCopy, NationLootType.WAR_LOSS));
+                    loots.add(LootEntry.forAlliance(attack.getAllianceIdLooted(), attack.getDate(), lootCopy,
+                            NationLootType.WAR_LOSS));
                 }
             }
         });
-        if (loots.isEmpty()) return "No new loot found";
+        if (loots.isEmpty())
+            return "No new loot found";
         Locutus.imp().runEventsAsync(events -> Locutus.imp().getNationDB().saveLoot(loots, events));
         return "Done!";
     }
@@ -3164,13 +3403,13 @@ public class AdminCommands {
         return "Done!";
     }
 
-
     @Command(desc = """
             Returns a list of forum profiles and their respective nation id / discord tag
             Deprecated because it is an unauthenticated list, anyone can set their discord or nation on the forums
             Information purposes only""")
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String syncForumProfiles(@Me GuildDB guildDB, @Me IMessageIO io, @Default SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String syncForumProfiles(@Me GuildDB guildDB, @Me IMessageIO io, @Default SpreadSheet sheet)
+            throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(guildDB, SheetKey.FORUM_PROFILES);
         }
@@ -3180,8 +3419,7 @@ public class AdminCommands {
                 "profile",
                 "discord",
                 "discord_id",
-                "nation_id"
-        ));
+                "nation_id"));
         sheet.setHeader(header);
 
         for (int i = 0; i < 15000; i++) {
@@ -3190,8 +3428,10 @@ public class AdminCommands {
             try {
                 String html = FileUtil.readStringFromURL(PagePriority.FORUM_PAGE, url);
                 Document dom = Jsoup.parse(html);
-                int nationId = Integer.parseInt(dom.select("strong:matches(Nation ID)").first().parent().nextElementSibling().text());
-                String discordId = dom.select("strong:matches(Discord Name)").first().parent().nextElementSibling().text();
+                int nationId = Integer
+                        .parseInt(dom.select("strong:matches(Nation ID)").first().parent().nextElementSibling().text());
+                String discordId = dom.select("strong:matches(Discord Name)").first().parent().nextElementSibling()
+                        .text();
 
                 if (nationId != 0) {
                     String[] split = discordId.split("#");
@@ -3199,7 +3439,8 @@ public class AdminCommands {
                     if (split.length == 2) {
                         Long userId;
                         for (PNWUser dbUser : Locutus.imp().getDiscordDB().getRegisteredUsers().values()) {
-                            if (dbUser.getDiscordName() != null && dbUser.getDiscordName().equalsIgnoreCase(discordId)) {
+                            if (dbUser.getDiscordName() != null
+                                    && dbUser.getDiscordName().equalsIgnoreCase(discordId)) {
                                 userId = dbUser.getDiscordId();
                                 user = Locutus.imp().getDiscordApi().getUserById(userId);
                                 break;
@@ -3228,7 +3469,7 @@ public class AdminCommands {
         return null;
     }
 
-    //    SyncBounties
+    // SyncBounties
     @Command(desc = "Force a fetch and update of bounties from the api")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncBounties() throws IOException {
@@ -3236,8 +3477,7 @@ public class AdminCommands {
         return "Done!";
     }
 
-
-//    SyncWarRooms
+    // SyncWarRooms
     @Command(desc = "Force a fetch and update of war rooms for each guild")
     @RolePermission(value = Roles.MILCOM)
     public String purgeWarRooms( // war room delete_all
@@ -3253,10 +3493,13 @@ public class AdminCommands {
         if (channel != null) {
             Guild chanGuild = ((GuildMessageChannel) channel).getGuild();
             if (!Roles.MILCOM.has(user, chanGuild)) {
-                throw new IllegalArgumentException("Missing " + Roles.MILCOM.toDiscordRoleNameElseInstructions(chanGuild));
+                throw new IllegalArgumentException(
+                        "Missing " + Roles.MILCOM.toDiscordRoleNameElseInstructions(chanGuild));
             }
         }
-        WarRoom room = channel instanceof GuildMessageChannel mC ? WarRoomUtil.getGlobalWarRoom(mC, WarCatReason.PURGE_COMMAND) : null;
+        WarRoom room = channel instanceof GuildMessageChannel mC
+                ? WarRoomUtil.getGlobalWarRoom(mC, WarCatReason.PURGE_COMMAND)
+                : null;
         if (channel != null && room == null) {
             throw new IllegalArgumentException("Channel is not a war room");
         }
@@ -3271,7 +3514,8 @@ public class AdminCommands {
                 StandardGuildMessageChannel guildChan = entry.getValue().getChannel();
                 if (guildChan != null) {
                     Category category = guildChan.getParentCategory();
-                    if (category != null) categories.add(category);
+                    if (category != null)
+                        categories.add(category);
                     RateLimitUtil.queue(guildChan.delete());
                 }
                 iter.remove();
@@ -3296,10 +3540,12 @@ public class AdminCommands {
         for (Transaction2 tx : records) {
             Map<DepositType, Object> notes = tx.getNoteMap();
             Number cashObj = (Number) notes.get(DepositType.CASH);
-            if (cashObj == null) continue;
+            if (cashObj == null)
+                continue;
 
             double expectedCashValueIfBroken = tx.resources[ResourceType.MONEY.ordinal()];
-            if (Math.abs(cashObj.doubleValue() - expectedCashValueIfBroken) > 0.01) continue;
+            if (Math.abs(cashObj.doubleValue() - expectedCashValueIfBroken) > 0.01)
+                continue;
 
             Object rssObj = notes.get(DepositType.RSS);
             if (rssObj != null) {
@@ -3309,7 +3555,8 @@ public class AdminCommands {
 
             boolean hasOtherRss = false;
             for (ResourceType type : ResourceType.values()) {
-                if (type == ResourceType.MONEY || type == ResourceType.CREDITS) continue;
+                if (type == ResourceType.MONEY || type == ResourceType.CREDITS)
+                    continue;
                 double val = tx.resources[type.ordinal()];
                 if (Math.abs(val) > 0.01) {
                     hasOtherRss = true;
@@ -3327,7 +3574,8 @@ public class AdminCommands {
             String newNote = baseNote.isEmpty() ? "#rss=" + rssBits : baseNote + " #rss=" + rssBits;
 
             numFixed++;
-            System.out.println("Fixing tx " + tx.tx_id + " for nation " + tx.sender_id + " | " + tx.note + " -> " + newNote);
+            System.out.println(
+                    "Fixing tx " + tx.tx_id + " for nation " + tx.sender_id + " | " + tx.note + " -> " + newNote);
 
             // apply change and persist
             tx.note = newNote;
@@ -3339,36 +3587,41 @@ public class AdminCommands {
 
     @Command(desc = "Show conversion rates")
     @RolePermission(value = Roles.ADMIN)
-    public String conversionRates(@Me IMessageIO io, @Me GuildDB db, @Timestamp long date, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String conversionRates(@Me IMessageIO io, @Me GuildDB db, @Timestamp long date, Set<DBNation> nations,
+            @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.CONVERSION_RATES);
         }
 
         Map<ResourceType, Double> weeklyAverage = new EnumMap<>(ResourceType.class);
         for (ResourceType type : ResourceType.values) {
-            if (type == ResourceType.MONEY || type == ResourceType.CREDITS) continue;
+            if (type == ResourceType.MONEY || type == ResourceType.CREDITS)
+                continue;
             Double value = Locutus.imp().getTradeDB().getWeeklyAverage(type, date, type.getMarketValue());
             weeklyAverage.put(type, value);
         }
 
         GuildDB delegate = db.getDelegateServer();
-        if (delegate == null) delegate = db;
+        if (delegate == null)
+            delegate = db;
         boolean allowConversionDefault = db.getOrNull(GuildKey.RESOURCE_CONVERSION) == Boolean.TRUE;
         if (!allowConversionDefault) {
-            throw new IllegalArgumentException("Resource conversion is not enabled on this server. See: " + CM.settings_bank_conversion.RESOURCE_CONVERSION.cmd.toSlashMention());
+            throw new IllegalArgumentException("Resource conversion is not enabled on this server. See: "
+                    + CM.settings_bank_conversion.RESOURCE_CONVERSION.cmd.toSlashMention());
         }
         Role role = Roles.RESOURCE_CONVERSION.toRole2(delegate);
 
-        // build header: basic columns + one column per resource (skip MONEY and CREDITS)
+        // build header: basic columns + one column per resource (skip MONEY and
+        // CREDITS)
         List<String> header = new ArrayList<>(Arrays.asList(
                 "nation",
                 "alliance",
                 "cities",
-                "has_role"
-        ));
+                "has_role"));
         List<ResourceType> resourceTypes = new ArrayList<>();
         for (ResourceType rt : ResourceType.values()) {
-            if (rt == ResourceType.MONEY || rt == ResourceType.CREDITS) continue;
+            if (rt == ResourceType.MONEY || rt == ResourceType.CREDITS)
+                continue;
             resourceTypes.add(rt);
             header.add(rt.name().toLowerCase() + "_rate");
         }
@@ -3417,17 +3670,19 @@ public class AdminCommands {
         return null;
     }
 
-//    SyncTreaties
+    // SyncTreaties
     @Command(desc = "Force a fetch and update of treaties from the api")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncTreaties() throws IOException {
         Locutus.imp().getNationDB().updateTreaties(Event::post);
         return "Updated treaties!";
     }
-//    SyncAttacks
+
+    // SyncAttacks
     @Command(desc = "Force a fetch and update of attacks from the api")
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String syncAttacks(@Switch("a") boolean runAlerts, @Switch("f") boolean fixAttacks, @Switch("w") Set<DBWar> fixWars) throws IOException {
+    public String syncAttacks(@Switch("a") boolean runAlerts, @Switch("f") boolean fixAttacks,
+            @Switch("w") Set<DBWar> fixWars) throws IOException {
         if (fixAttacks) {
             Locutus.imp().getWarDb().reEncodeBadAttacks();
         }
@@ -3441,11 +3696,13 @@ public class AdminCommands {
         if (fixWars != null && !fixWars.isEmpty()) {
             AttackCursorFactory factory = new AttackCursorFactory(Locutus.imp().getWarDb());
             List<Integer> ids = fixWars.stream().map(DBWar::getWarId).collect(Collectors.toList());
-            List<WarAttack> attacks = Locutus.imp().getV3().fetchAttacks(f -> f.setWar_id(ids), PoliticsAndWarV3.ErrorResponse.THROW);
+            List<WarAttack> attacks = Locutus.imp().getV3().fetchAttacks(f -> f.setWar_id(ids),
+                    PoliticsAndWarV3.ErrorResponse.THROW);
             if (attacks.isEmpty()) {
                 return "No attacks found for the specified wars";
             }
-            List<AbstractCursor> attacksAdapted = attacks.stream().map(f -> factory.load(f, true)).collect(Collectors.toList());
+            List<AbstractCursor> attacksAdapted = attacks.stream().map(f -> factory.load(f, true))
+                    .collect(Collectors.toList());
             Locutus.imp().getWarDb().saveAttacks(attacksAdapted, null, false, true);
             numAttacks = attacksAdapted.size();
             for (AbstractCursor attack : attacksAdapted) {
@@ -3454,29 +3711,34 @@ public class AdminCommands {
 
         }
 
-        return "Done: (alerts=" + runAlerts + ", fixAttacks=" + fixAttacks + ", fixWars=" + (fixWars == null ? "null" : fixWars.size()) + "/" + numAttacks + ")";
+        return "Done: (alerts=" + runAlerts + ", fixAttacks=" + fixAttacks + ", fixWars="
+                + (fixWars == null ? "null" : fixWars.size()) + "/" + numAttacks + ")";
     }
-//    SyncTrade
+
+    // SyncTrade
     @Command(desc = "Force a fetch and update of trades from the api")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncTrade() throws IOException {
         Locutus.imp().getTradeManager().updateTradeList(Event::post);
         return "Done!";
     }
-//    SyncUid [all]
+
+    // SyncUid [all]
     @Command(desc = "Force a fetch and update of uids from the api")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncUid(boolean all) throws IOException {
         if (all) {
             Collection<DBNation> nations = Locutus.imp().getNationDB().getAllNations();
             for (DBNation nation : nations) {
-                if (!Locutus.imp().getDiscordDB().getUuids(nation.getNation_id()).isEmpty()) continue;
+                if (!Locutus.imp().getDiscordDB().getUuids(nation.getNation_id()).isEmpty())
+                    continue;
                 PwUid uid = new GetUid(nation, false).call();
             }
         } else {
             Map<PwUid, Set<Integer>> map = Locutus.imp().getDiscordDB().getUuidMap();
             for (Map.Entry<PwUid, Set<Integer>> entry : map.entrySet()) {
-                if (entry.getValue().size() <= 1) continue;
+                if (entry.getValue().size() <= 1)
+                    continue;
 
                 for (int nationId : entry.getValue()) {
                     DBNation nation = Locutus.imp().getNationDB().getNationById(nationId);
@@ -3488,9 +3750,9 @@ public class AdminCommands {
         }
         return "Done! See also " + CM.admin.list.multis.cmd.toSlashMention();
     }
-//    SyncTaxes
-    @Command(desc = "Force a fetch and update of taxes from the api",
-    groups = {
+
+    // SyncTaxes
+    @Command(desc = "Force a fetch and update of taxes from the api", groups = {
             "Alliance to update",
             "Update via sheet tax records",
             "Update via login"
@@ -3498,21 +3760,17 @@ public class AdminCommands {
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncTaxes(
             @Me GuildDB db, @Me IMessageIO io,
-            @Arg(value = "Specify other alliances, instead of the ones registered to this guild", group = 0)
-            @Switch("a") DBAlliance alliance,
-            @Arg(value = "The timeframe to update")
-            @Switch("t") @Timestamp Long timestamp,
+            @Arg(value = "Specify other alliances, instead of the ones registered to this guild", group = 0) @Switch("a") DBAlliance alliance,
+            @Arg(value = "The timeframe to update") @Switch("t") @Timestamp Long timestamp,
             @Arg(value = "Update using values in a spreadsheet\n" +
-                    "Deprecated, use the api instead (i.e. no arguments)", group = 1)
-            @Switch("s") SpreadSheet sheet_deprecated,
-            @Arg(value = "Use the legacy deprecated method to update via login (not recommended)", group = 2)
-            @Switch("l") boolean legacy_deprecated
-            ) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
+                    "Deprecated, use the api instead (i.e. no arguments)", group = 1) @Switch("s") SpreadSheet sheet_deprecated,
+            @Arg(value = "Use the legacy deprecated method to update via login (not recommended)", group = 2) @Switch("l") boolean legacy_deprecated)
+            throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
         if (legacy_deprecated && sheet_deprecated != null) {
             throw new IllegalArgumentException("Cannot use both `sheet_deprecated` and `legacy_deprecated`");
         }
 
-        Set<Integer> aaIds = alliance != null ? Set.of(alliance.getId()): db.getAllianceIds();
+        Set<Integer> aaIds = alliance != null ? Set.of(alliance.getId()) : db.getAllianceIds();
         if (aaIds.size() > 1) {
             throw new IllegalArgumentException("Too many alliances to update (max 1). Please specify an alliance");
         }
@@ -3532,7 +3790,8 @@ public class AdminCommands {
             if (aa == null) {
                 throw new IllegalArgumentException("Alliance AA:" + aaId + " is not registered to guild: " + aaId);
             }
-            CompletableFuture<IMessageBuilder> msgFuture = (io.sendMessage("Syncing taxes for " + aaId + ". Please wait..."));
+            CompletableFuture<IMessageBuilder> msgFuture = (io
+                    .sendMessage("Syncing taxes for " + aaId + ". Please wait..."));
 
             int taxesCount = aa.updateTaxesLegacy(timestamp);
 
@@ -3551,23 +3810,27 @@ public class AdminCommands {
         return "Updated " + taxes.size() + " records.";
     }
 
-//    SyncMail /mail check
+    // SyncMail /mail check
     @Command(desc = "Force a fetch and update of mail for a nation")
     @RolePermission(value = Roles.MAIL)
-    public String syncMail(@Me User user, @Me IMessageIO io, @Me DBNation nation, @Default DBNation account) throws IOException {
+    public String syncMail(@Me User user, @Me IMessageIO io, @Me DBNation nation, @Default DBNation account)
+            throws IOException {
         if (account != null && account.getId() != nation.getId()) {
             GuildDB db = account.getGuildDB();
             if (db != null) {
                 if (!Roles.MAIL.has(user, db.getGuild())) {
-                    throw new IllegalArgumentException("Missing " + Roles.MAIL.toDiscordRoleNameElseInstructions(db.getGuild()));
+                    throw new IllegalArgumentException(
+                            "Missing " + Roles.MAIL.toDiscordRoleNameElseInstructions(db.getGuild()));
                 }
             } else {
                 if (!Roles.ADMIN.hasOnRoot(user)) {
-                    throw new IllegalArgumentException("Missing " + Roles.ADMIN.toDiscordRoleNameElseInstructions(Locutus.imp().getServer()));
+                    throw new IllegalArgumentException(
+                            "Missing " + Roles.ADMIN.toDiscordRoleNameElseInstructions(Locutus.imp().getServer()));
                 }
             }
         }
-        if (account == null) account = nation;
+        if (account == null)
+            account = nation;
         new AlertMailTask(account.getAuth(true), io.getIdLong()).run();
         return "Done!";
     }
@@ -3576,7 +3839,9 @@ public class AdminCommands {
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncOffshore(DBAlliance alliance) throws IOException {
         OffshoreInstance bank = alliance.getBank();
-        if (bank == null) throw new IllegalArgumentException("No bank found for " + alliance + ". Set one with " + CM.offshore.add.cmd.toSlashMention());
+        if (bank == null)
+            throw new IllegalArgumentException(
+                    "No bank found for " + alliance + ". Set one with " + CM.offshore.add.cmd.toSlashMention());
         bank.sync(0L, false);
         return "Done!";
     }
@@ -3586,7 +3851,8 @@ public class AdminCommands {
         List<DBTrade> offers = new ArrayList<>();
         for (int id : ids) {
             DBTrade trade = Locutus.imp().getTradeManager().getTradeDb().getTradeById(id);
-            if (trade != null) offers.add(trade);
+            if (trade != null)
+                offers.add(trade);
         }
         return "- " + StringMan.join(offers, "\n- ");
     }
@@ -3600,13 +3866,15 @@ public class AdminCommands {
         sb.append("Members:\n");
         for (Member member : guild.getMembers()) {
             User user = member.getUser();
-            if (user.isBot() || user.isSystem()) continue;
+            if (user.isBot() || user.isSystem())
+                continue;
             String username = user.getName() + " (" + user.getIdLong() + ")";
             StringBuilder line = new StringBuilder("- ").append(username);
 
             DBNation nation = DiscordUtil.getNation(user.getIdLong());
             if (nation != null) {
-                line.append(" | Nation: ").append(nation.getNation()).append("/").append(nation.getId()).append(nation.getAllianceName());
+                line.append(" | Nation: ").append(nation.getNation()).append("/").append(nation.getId())
+                        .append(nation.getAllianceName());
             }
 
             String roles = member.getRoles().stream().map(Role::getName).collect(Collectors.joining(", "));
@@ -3638,7 +3906,8 @@ public class AdminCommands {
     @RolePermission(value = Roles.ADMIN, root = true)
     public String nationMeta(DBNation nation, NationMeta meta) {
         ByteBuffer buf = nation.getMeta(meta);
-        if (buf == null) return "No value set.";
+        if (buf == null)
+            return "No value set.";
 
         byte[] arr = new byte[buf.remaining()];
         buf.get(arr);
@@ -3665,8 +3934,8 @@ public class AdminCommands {
     @Command(desc = "Run a command as another user")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String sudo(@Me Guild guild, @Me IMessageIO io, String command,
-                       @Switch("u") User user,
-                       @Switch("n") DBNation nation) {
+            @Switch("u") User user,
+            @Switch("n") DBNation nation) {
         if (user == null && nation == null) {
             throw new IllegalArgumentException("Specify a user or nation");
         }
@@ -3702,18 +3971,22 @@ public class AdminCommands {
     @NoFormat
     @Command(desc = "Format a command for each nation, and run it as yourself")
     @RolePermission(value = Roles.ADMIN)
-    public String runForNations(@Me GuildDB db, @Me User user, @Me DBNation me, @Me IMessageIO io, NationPlaceholders placeholders, ValueStore store,
-                              Set<DBNation> nations, String command) {
+    public String runForNations(@Me GuildDB db, @Me User user, @Me DBNation me, @Me IMessageIO io,
+            NationPlaceholders placeholders, ValueStore store,
+            Set<DBNation> nations, String command) {
         if (!db.hasAlliance()) {
-            throw new IllegalArgumentException("No alliance registered to this guild. " + CM.settings_default.registerAlliance.cmd.toSlashMention());
+            throw new IllegalArgumentException("No alliance registered to this guild. "
+                    + CM.settings_default.registerAlliance.cmd.toSlashMention());
         }
         for (DBNation nation : nations) {
             if (!db.isAllianceId(nation.getAlliance_id())) {
-                throw new IllegalArgumentException("Nation " + nation.getMarkdownUrl() + " is not in the alliance/s " + db.getAllianceIds());
+                throw new IllegalArgumentException(
+                        "Nation " + nation.getMarkdownUrl() + " is not in the alliance/s " + db.getAllianceIds());
             }
         }
         if (nations.size() > 300) {
-            throw new IllegalArgumentException("Too many nations to update (max: 300, provided: " + nations.size() + ")");
+            throw new IllegalArgumentException(
+                    "Too many nations to update (max: 300, provided: " + nations.size() + ")");
         }
 
         PlaceholderCache<DBNation> cache = new PlaceholderCache<>(nations);
@@ -3733,7 +4006,8 @@ public class AdminCommands {
         for (DBNation nation : nations) {
             try {
                 String formattedCmd = formatFunc.apply(nation);
-                Map.Entry<CommandResult, List<StringMessageBuilder>> response = me.runCommandInternally(db.getGuild(), user, formattedCmd);
+                Map.Entry<CommandResult, List<StringMessageBuilder>> response = me.runCommandInternally(db.getGuild(),
+                        user, formattedCmd);
                 condensed.append("# " + nation.getMarkdownUrl() + ": " + response.getKey() + "\n");
                 for (StringMessageBuilder msg : response.getValue()) {
                     msg.writeTo(condensed);
@@ -3753,7 +4027,7 @@ public class AdminCommands {
     @Command(desc = "Run a command as multiple nations")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String sudoNations(@Me GuildDB db, @Me IMessageIO io, NationPlaceholders placeholders, ValueStore store,
-                              Set<DBNation> nations, String command) {
+            Set<DBNation> nations, String command) {
         PlaceholderCache<DBNation> cache = new PlaceholderCache<>(nations);
         Function<DBNation, String> formatFunc = placeholders.getFormatFunction(store, command, cache, true);
 
@@ -3773,7 +4047,8 @@ public class AdminCommands {
             String formattedCmd = formatFunc.apply(nation);
             User nationUser = nation.getUser();
             try {
-                Map.Entry<CommandResult, List<StringMessageBuilder>> response = nation.runCommandInternally(db.getGuild(), nationUser, formattedCmd);
+                Map.Entry<CommandResult, List<StringMessageBuilder>> response = nation
+                        .runCommandInternally(db.getGuild(), nationUser, formattedCmd);
                 condensed.append("# " + nation.getMarkdownUrl() + ": " + response.getKey() + "\n");
                 for (StringMessageBuilder msg : response.getValue()) {
                     msg.writeTo(condensed);

@@ -4,8 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import link.locutus.discord.db.entities.conflict.ConflictCategory;
 import link.locutus.discord.web.jooby.CloudItem;
+import link.locutus.discord.web.jooby.CloudStorage;
 import link.locutus.discord.web.jooby.JteUtil;
-import link.locutus.discord.web.jooby.S3CompatibleStorage;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -13,9 +13,9 @@ import java.util.Collections;
 import java.util.List;
 
 public class VirtualConflictStorageManager {
-    private final S3CompatibleStorage storage;
+    private final CloudStorage storage;
 
-    public VirtualConflictStorageManager(S3CompatibleStorage storage) {
+    public VirtualConflictStorageManager(CloudStorage storage) {
         this.storage = storage;
     }
 
@@ -38,19 +38,30 @@ public class VirtualConflictStorageManager {
         return Collections.unmodifiableList(ids);
     }
 
-    public Conflict loadConflict(String webId) {
-        return loadConflict(ConflictUtil.parseVirtualConflictWebId(webId));
-    }
-
     public Conflict loadConflict(ConflictUtil.VirtualConflictId id) {
-        byte[] zipped = storage.getObject(id.toObjectKey());
+        byte[] zipped;
+        try {
+            zipped = storage.getObject(id.toObjectKey());
+        } catch (IOException e) {
+            throw new IllegalArgumentException(
+                    "Failed to read temporary conflict payload from `" + id.toObjectKey() + "`", e);
+        }
+        if (zipped == null || zipped.length == 0) {
+            throw new IllegalArgumentException(
+                    "Temporary conflict not found for id `" + id.toWebId() + "`");
+        }
         byte[] unpacked = JteUtil.decompress(zipped);
+        if (unpacked == null || unpacked.length == 0) {
+            throw new IllegalArgumentException(
+                    "Temporary conflict payload is empty for id `" + id.toWebId() + "`");
+        }
 
         VirtualConflictPayload data;
         try {
             data = JteUtil.getSerializer().readValue(unpacked, VirtualConflictPayload.class);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to deserialize temporary conflict from `" + id.toObjectKey() + "`", e);
+            throw new IllegalArgumentException(
+                    "Failed to deserialize temporary conflict from `" + id.toObjectKey() + "`", e);
         }
 
         long startMs = data.start != null ? data.start : System.currentTimeMillis();
@@ -61,6 +72,7 @@ public class VirtualConflictStorageManager {
         Conflict conflict = new Conflict(-1, -1,
                 data.name == null || data.name.isBlank() ? "Generated conflict" : data.name,
                 turnStart, turnEnd, 0, 0, 0, false);
+        conflict.setVirtualConflictId(id);
 
         String col1Name = "Coalition 1";
         String col2Name = "Coalition 2";
@@ -81,6 +93,10 @@ public class VirtualConflictStorageManager {
         addParticipants(conflict, data.coalitions.get(1).allianceIds, false);
 
         return conflict;
+    }
+
+    public void deleteConflict(ConflictUtil.VirtualConflictId id) {
+        storage.deleteObject(id.toObjectKey());
     }
 
     private static void addParticipants(Conflict conflict, List<Integer> allianceIds, boolean isPrimary) {

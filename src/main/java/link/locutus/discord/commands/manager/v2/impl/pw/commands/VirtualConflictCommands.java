@@ -57,10 +57,11 @@ public class VirtualConflictCommands {
             conflict.updateGraphsLegacy(manager);
         }
 
-        String id = "n/" + nation.getId() + "/" + UUID.randomUUID();
+        ConflictUtil.VirtualConflictId id = new ConflictUtil.VirtualConflictId(nation.getId(), UUID.randomUUID());
+        conflict.setVirtualConflictId(id);
         long now = System.currentTimeMillis();
-        conflict.pushChanges(manager, id, true, true, false, false, false, now);
-        return Settings.INSTANCE.WEB.CONFLICTS.SITE + "/conflict?id=" + id + "\n" +
+        conflict.pushChanges(manager, id.toWebId(), true, true, false, false, false, now);
+        return Settings.INSTANCE.WEB.CONFLICTS.SITE + "/conflict?id=" + id.toWebId() + "\n" +
                 "Note: Generated conflicts do NOT auto update.";
     }
 
@@ -77,7 +78,7 @@ public class VirtualConflictCommands {
 
         try {
             Integer nationFilter = null;
-            String loadId = args.length == 0 ? SAMPLE_VIRTUAL_CONFLICT_PATH : null;
+            String loadId = SAMPLE_VIRTUAL_CONFLICT_PATH;
             VirtualConflictStorageManager virtualConflictManager = new VirtualConflictStorageManager(aws);
 
             if (args.length >= 1 && !args[0].isBlank()) {
@@ -101,9 +102,10 @@ public class VirtualConflictCommands {
             if (loadId != null) {
                 String idToLoad = loadId;
                 try {
-                    Conflict loaded = virtualConflictManager.loadConflict(idToLoad);
+                    ConflictUtil.VirtualConflictId typedId = ConflictUtil.parseVirtualConflictWebId(idToLoad);
+                    Conflict loaded = virtualConflictManager.loadConflict(typedId);
                     System.out.println("\nLoaded temp conflict: " + loaded.getName());
-                    System.out.println("- id: " + idToLoad);
+                    System.out.println("- id: " + typedId.toWebId());
                     System.out.println("- startTurn: " + loaded.getStartTurn());
                     System.out.println("- endTurn: " + loaded.getEndTurn());
                     System.out.println("- coalition1: " + loaded.getCoalitionName(true) + " (" + loaded.getCoalition1().size() + " alliances)");
