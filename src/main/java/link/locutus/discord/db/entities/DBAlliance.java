@@ -20,7 +20,6 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.ScopedPlaceholderCache;
-import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.builder.RankBuilder;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
@@ -730,44 +729,6 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         return body.toString();
     }
 
-    @Command(desc = "Sum of nation attribute for specific nations in alliance")
-    public double getTotal(@NoFormat TypedFunction<DBNation, Double> attribute,
-            @NoFormat @Default NationFilter filter) {
-        Set<DBNation> nations = filter == null ? getNations() : getNations(filter.toCached(Long.MAX_VALUE));
-        return nations.stream().mapToDouble(attribute::apply).sum();
-    }
-
-    @Command(desc = "Average of nation attribute for specific nations in alliance")
-    public double getAverage(@NoFormat TypedFunction<DBNation, Double> attribute,
-            @NoFormat @Default NationFilter filter) {
-        Set<DBNation> nations = filter == null ? getNations() : getNations(filter.toCached(Long.MAX_VALUE));
-        return nations.stream().mapToDouble(attribute::apply).average().orElse(0);
-    }
-
-    @Command(desc = "Returns the average value of the given attribute per another attribute (such as cities)")
-    public double getAveragePer(@NoFormat TypedFunction<DBNation, Double> attribute,
-            @NoFormat TypedFunction<DBNation, Double> per, @Default NationFilter filter) {
-        double total = 0;
-        double perTotal = 0;
-        for (DBNation nation : getNations(filter.toCached(Long.MAX_VALUE))) {
-            total += attribute.apply(nation);
-            perTotal += per.apply(nation);
-        }
-        return total / perTotal;
-    }
-
-    @Command(desc = "Number of members, not including VM")
-    public int countMembers() {
-        return getMemberDBNations().size();
-    }
-
-    @Command(desc = "Count of nations in alliance matching a filter")
-    public int countNations(@NoFormat @Default NationFilter filter) {
-        if (filter == null)
-            return getNations().size();
-        return getNations(filter.toCached(Long.MAX_VALUE)).size();
-    }
-
     @Command(desc = "Is allied with another alliance")
     public boolean hasDefensiveTreaty(@NoFormat Set<DBAlliance> alliances) {
         for (DBAlliance alliance : alliances) {
@@ -797,25 +758,6 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     public int getTreatyOrdinal(DBAlliance alliance) {
         Treaty treaty = getTreaties().get(alliance.getId());
         return treaty == null ? 0 : treaty.getType().getStrength();
-    }
-
-    @Command(desc = "Market value of alliance revenue of taxable member nations")
-    public double getRevenueConverted() {
-        return ResourceType.convertedTotal(getRevenue());
-    }
-
-    @Command(desc = "Revenue of taxable alliance members")
-    public Map<ResourceType, Double> getRevenue() {
-        return getRevenue(getNations(DBNation::isTaxable));
-    }
-
-    private Map<ResourceType, Double> getRevenue(Set<DBNation> nations) {
-        double[] total = ResourceType.getBuffer();
-        ValueStore<DBNation> cacheStore = PlaceholderCache.createCache(nations, DBNation.class);
-        for (DBNation nation : nations) {
-            total = ResourceType.add(total, nation.getRevenue(cacheStore));
-        }
-        return ResourceType.resourcesToMap(total);
     }
 
     @Command(desc = "Get the markdown url of this alliance")

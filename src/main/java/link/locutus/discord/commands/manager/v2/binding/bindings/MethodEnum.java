@@ -25,6 +25,9 @@ public enum MethodEnum {
     getMetricsAt,
     getGrowthSummary,
 
+    // NationList methods
+    getNationsAt,
+
     ;
 
     private final MethodIdentity identity;
