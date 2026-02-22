@@ -71,8 +71,8 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
                 new SelectorInfo("USER_ID", "123456789012345678", "A discord user id"),
                 new SelectorInfo("TAX_ID", "tax_id=1234", "A tax bracket id or url"),
                 new SelectorInfo("*", null, "All nations"),
-                new SelectorInfo("nation(<timestamp>,[includeVM:bool]):SELECTOR", "nation(5d,true):*", "Snapshot at a specific date, optionally including vacation mode")
-        ));
+                new SelectorInfo("nation(<timestamp>,[includeVM:bool]):SELECTOR", "nation(5d,true):*",
+                        "Snapshot at a specific date, optionally including vacation mode")));
     }
 
     @Override
@@ -91,8 +91,7 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
         List<Function<DBNation, Double>> sortCriteria = List.of(
                 n -> (double) n.getAlliance_id(),
                 n -> (double) n.getCities(),
-                n -> (double) n.getId()
-        );
+                n -> (double) n.getId());
         return superSet.stream().sorted((n1, n2) -> {
             for (Function<DBNation, Double> criteria : sortCriteria) {
                 double val1 = criteria.apply(n1);
@@ -107,48 +106,53 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
 
     @NoFormat
     @Command(desc = "Nation snapshot settings (optional)")
-    public NationModifier create(@Arg("The date to use, rounded to the nearest day") @Switch("t") @Timestamp Long timestamp,
-                                 @Switch("d") boolean allow_deleted,
-                                 @Arg("If VM nations are fetched if a snapshot date is specified")@Switch("v") boolean load_snapshot_vm) {
+    public NationModifier create(
+            @Arg("The date to use, rounded to the nearest day") @Switch("t") @Timestamp Long timestamp,
+            @Switch("d") boolean allow_deleted,
+            @Arg("If VM nations are fetched if a snapshot date is specified") @Switch("v") boolean load_snapshot_vm) {
         return new NationModifier(timestamp, allow_deleted, load_snapshot_vm);
     }
 
     @NoFormat
     @Command(desc = "Add an alias for a selection of Nations")
-    @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, @AllowEmpty Set<DBNation> nations) {
+    @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF,
+            Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
+    public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name,
+            @AllowEmpty Set<DBNation> nations) {
         return _addSelectionAlias(this, command, db, name, nations, "nations");
     }
 
     @NoFormat
     @Command(desc = "Add columns to a Nation sheet")
-    @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                             @Default TypedFunction<DBNation, String> a,
-                             @Default TypedFunction<DBNation, String> b,
-                             @Default TypedFunction<DBNation, String> c,
-                             @Default TypedFunction<DBNation, String> d,
-                             @Default TypedFunction<DBNation, String> e,
-                             @Default TypedFunction<DBNation, String> f,
-                             @Default TypedFunction<DBNation, String> g,
-                             @Default TypedFunction<DBNation, String> h,
-                             @Default TypedFunction<DBNation, String> i,
-                             @Default TypedFunction<DBNation, String> j,
-                             @Default TypedFunction<DBNation, String> k,
-                             @Default TypedFunction<DBNation, String> l,
-                             @Default TypedFunction<DBNation, String> m,
-                             @Default TypedFunction<DBNation, String> n,
-                             @Default TypedFunction<DBNation, String> o,
-                             @Default TypedFunction<DBNation, String> p,
-                             @Default TypedFunction<DBNation, String> q,
-                             @Default TypedFunction<DBNation, String> r,
-                             @Default TypedFunction<DBNation, String> s,
-                             @Default TypedFunction<DBNation, String> t,
-                             @Default TypedFunction<DBNation, String> u,
-                             @Default TypedFunction<DBNation, String> v,
-                             @Default TypedFunction<DBNation, String> w,
-                             @Default TypedFunction<DBNation, String> x) throws GeneralSecurityException, IOException {
-        return Placeholders._addColumns(this, command,db, io, author, sheet,
+    @RolePermission(value = { Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF,
+            Roles.ECON, Roles.FOREIGN_AFFAIRS }, any = true)
+    public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author,
+            @Switch("s") SheetTemplate sheet,
+            @Default TypedFunction<DBNation, String> a,
+            @Default TypedFunction<DBNation, String> b,
+            @Default TypedFunction<DBNation, String> c,
+            @Default TypedFunction<DBNation, String> d,
+            @Default TypedFunction<DBNation, String> e,
+            @Default TypedFunction<DBNation, String> f,
+            @Default TypedFunction<DBNation, String> g,
+            @Default TypedFunction<DBNation, String> h,
+            @Default TypedFunction<DBNation, String> i,
+            @Default TypedFunction<DBNation, String> j,
+            @Default TypedFunction<DBNation, String> k,
+            @Default TypedFunction<DBNation, String> l,
+            @Default TypedFunction<DBNation, String> m,
+            @Default TypedFunction<DBNation, String> n,
+            @Default TypedFunction<DBNation, String> o,
+            @Default TypedFunction<DBNation, String> p,
+            @Default TypedFunction<DBNation, String> q,
+            @Default TypedFunction<DBNation, String> r,
+            @Default TypedFunction<DBNation, String> s,
+            @Default TypedFunction<DBNation, String> t,
+            @Default TypedFunction<DBNation, String> u,
+            @Default TypedFunction<DBNation, String> v,
+            @Default TypedFunction<DBNation, String> w,
+            @Default TypedFunction<DBNation, String> x) throws GeneralSecurityException, IOException {
+        return Placeholders._addColumns(this, command, db, io, author, sheet,
                 a, b, c, d, e, f, g, h, i, j,
                 k, l, m, n, o, p, q, r, s, t,
                 u, v, w, x);
@@ -165,12 +169,14 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
     }
 
     public static Set<DBNation> getByRole(Guild guild, String name, Role role, INationSnapshot snapshot) {
-        if (role == null) throw new IllegalArgumentException("Invalid role: `" + name + "`");
+        if (role == null)
+            throw new IllegalArgumentException("Invalid role: `" + name + "`");
         List<Member> members = guild.getMembersWithRoles(role);
         Set<DBNation> nations = new ObjectLinkedOpenHashSet<>();
         for (Member member : members) {
             DBNation nation = snapshot.getNationByUser(member.getUser());
-            if (nation != null) nations.add(nation);
+            if (nation != null)
+                nations.add(nation);
         }
         return nations;
     }
@@ -201,13 +207,15 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
 
     public Set<DBNation> parseSet(ValueStore store2, String input, INationSnapshot snapshot, boolean allowDeleted) {
         input = wrapHashLegacy(store2, input);
+        String inputFinal = input;
         return ArrayUtil.resolveQuery(input,
                 f -> {
-            long start = System.currentTimeMillis();
+                    long start = System.currentTimeMillis();
                     Set<DBNation> result = parseSingleElem(store2, f, snapshot, allowDeleted);
                     long diff = System.currentTimeMillis() - start;
                     if (diff > 1) {
-                        Logg.text("parseSingleElem took " + diff + "ms for " + f);
+                        new Exception().printStackTrace();
+                        Logg.text("DBNation parseSingleElem " + inputFinal + " took " + diff + "ms for " + f);
                     }
                     return result;
                 },
@@ -216,7 +224,7 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
                     Predicate<DBNation> result = getSingleFilter(store2, s);
                     long diff = System.currentTimeMillis() - start;
                     if (diff > 1) {
-                        Logg.text("getSingleFilter took " + diff + "ms for " + s);
+                        Logg.text("getSingleFilter " + inputFinal + " took " + diff + "ms for " + s);
                     }
                     return result;
                 });
@@ -231,11 +239,13 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
         return parseSingleElem(store, name, Locutus.imp().getNationDB(), allowDeleted);
     }
 
-    public Set<DBNation> parseSingleElem(ValueStore store, String name, INationSnapshot snapshot, boolean allowDeleted) {
+    public Set<DBNation> parseSingleElem(ValueStore store, String name, INationSnapshot snapshot,
+            boolean allowDeleted) {
         name = name.trim();
         long start = System.currentTimeMillis();
         Set<DBNation> selection = PlaceholdersMap.getSelection(this, store, name);
-        if (selection != null) return selection;
+        if (selection != null)
+            return selection;
         String nameLower = name.toLowerCase(Locale.ROOT);
         Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
         if (name.equals("*")) {
@@ -245,7 +255,8 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
             int taxId = PW.parseTaxId(name);
             return snapshot.getNationsByBracket(taxId);
         } else if (SpreadSheet.isSheet(nameLower)) {
-            Set<DBNation> nations = SpreadSheet.parseSheet(name, List.of("nation", "leader", "{nation}", "{leader}", "{id}"), true,
+            Set<DBNation> nations = SpreadSheet.parseSheet(name,
+                    List.of("nation", "leader", "{nation}", "{leader}", "{id}"), true,
                     s -> switch (s.toLowerCase(Locale.ROOT)) {
                         case "nation", "{nation}", "{id}" -> 0;
                         case "leader", "{leader}" -> 1;
@@ -258,9 +269,10 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
                         };
                     });
             return nations;
-        }  else if (nameLower.startsWith("aa:") || nameLower.startsWith("alliance:")) {
+        } else if (nameLower.startsWith("aa:") || nameLower.startsWith("alliance:")) {
             Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name.split(":", 2)[1].trim());
-            if (alliances == null) throw new IllegalArgumentException("Invalid alliance: `" + name + "`");
+            if (alliances == null)
+                throw new IllegalArgumentException("Invalid alliance: `" + name + "`");
             Set<DBNation> allianceMembers = snapshot.getNationsByAlliance(alliances);
             return allianceMembers;
         } else if (nameLower.startsWith("<@&") && guild != null) {
@@ -271,7 +283,8 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
             if (user != null) {
                 DBNation nation = snapshot.getNationByUser(user);
                 if (nation == null) {
-                    throw new IllegalArgumentException("User `" + DiscordUtil.getFullUsername(user) + "` is not registered. See " + CM.register.cmd.toSlashMention());
+                    throw new IllegalArgumentException("User `" + DiscordUtil.getFullUsername(user)
+                            + "` is not registered. See " + CM.register.cmd.toSlashMention());
                 }
                 return Set.of(nation);
             }
@@ -282,7 +295,8 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
                 if (user != null) {
                     DBNation nation = snapshot.getNationByUser(user);
                     if (nation == null) {
-                        throw new IllegalArgumentException("User `" + DiscordUtil.getFullUsername(user) + "` is not registered. See " + CM.register.cmd.toSlashMention());
+                        throw new IllegalArgumentException("User `" + DiscordUtil.getFullUsername(user)
+                                + "` is not registered. See " + CM.register.cmd.toSlashMention());
                     }
                     return Set.of(nation);
                 }
@@ -292,13 +306,14 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
                 }
             }
             DBNation nation = snapshot.getNationById((int) id);
-            if (nation != null) return Set.of(nation);
+            if (nation != null)
+                return Set.of(nation);
             Set<DBNation> nations = snapshot.getNationsByAlliance((int) id);
             if (!nations.isEmpty()) {
                 return nations;
             }
-//            DBAlliance alliance = DBAlliance.get((int) id);
-//            if (alliance != null) return alliance.getNations();
+            // DBAlliance alliance = DBAlliance.get((int) id);
+            // if (alliance != null) return alliance.getNations();
         }
 
         Set<DBNation> nations = new ObjectLinkedOpenHashSet<>();
@@ -368,9 +383,10 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
                     });
             Set<Integer> ids = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
             return f -> ids.contains(f.getId());
-        }  else if (nameLower.startsWith("aa:") || nameLower.startsWith("alliance:")) {
+        } else if (nameLower.startsWith("aa:") || nameLower.startsWith("alliance:")) {
             Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name.split(":", 2)[1].trim());
-            if (alliances == null) throw new IllegalArgumentException("Invalid alliance: `" + name + "`");
+            if (alliances == null)
+                throw new IllegalArgumentException("Invalid alliance: `" + name + "`");
             return f -> alliances.contains(f.getAlliance_id());
         } else if (MathMan.isInteger(nameLower)) {
             int id = Integer.parseInt(nameLower);
@@ -396,9 +412,11 @@ public class NationPlaceholders extends Placeholders<DBNation, NationModifier> {
                 if (role != null) {
                     return f -> {
                         User user = f.getUser();
-                        if (user == null) return false;
+                        if (user == null)
+                            return false;
                         Member member = role.getGuild().getMember(user);
-                        if (member == null) return false;
+                        if (member == null)
+                            return false;
                         return member.getUnsortedRoles().contains(role);
                     };
                 } else if (name.contains("#")) {
