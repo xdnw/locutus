@@ -2028,12 +2028,6 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 
     public double getAssetAcquiredValue(ValueStore store, Predicate<GrowthAsset> summaries,
             Predicate<MembershipChangeReason> reasons, boolean effective, @Timestamp long start,
-            @Timestamp @Default Long end) {
-        return getAssetAcquiredValue(store, summaries, reasons, effective, start, end, null);
-    }
-
-    public double getAssetAcquiredValue(ValueStore store, Predicate<GrowthAsset> summaries,
-            Predicate<MembershipChangeReason> reasons, boolean effective, @Timestamp long start,
             @Timestamp @Default Long end, @Default Predicate<DBNation> nations) {
         GrowthSummary.AllianceGrowthSummary summary = getGrowthSummary(store, start, end, nations);
         return ResourceType.convertedTotal(summary.getSpending(summaries, reasons, effective));
