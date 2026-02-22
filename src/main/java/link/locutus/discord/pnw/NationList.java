@@ -1,6 +1,11 @@
 package link.locutus.discord.pnw;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import net.dv8tion.jda.api.entities.Guild;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.NationColor;
@@ -12,6 +17,7 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.MethodEnum;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.ScopedPlaceholderCache;
@@ -23,6 +29,7 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 
 import java.util.*;
@@ -75,8 +82,8 @@ public interface NationList extends NationFilter {
     }
 
     @Command
-    default NationList getNations(ValueStore store, Predicate<DBNation> filter, @Default Long timestamp) {
-        if (timestamp == null) {
+    default NationList getNations(ValueStore store, Predicate<DBNation> filter, @Default @Timestamp Long timestamp) {
+        if (timestamp == null || timestamp >= TimeUtil.getTimeFromDay(TimeUtil.getDay())) {
             Set<DBNation> result = new ObjectOpenHashSet<>();
             for (DBNation nation : getNations()) {
                 if (filter.test(nation)) {
@@ -94,29 +101,57 @@ public interface NationList extends NationFilter {
                 MethodEnum.getNationsAt.of(timestamp, filter));
 
         return scoped.getMap(this, scopes -> {
-            Map<NationList, NationList> result = new HashMap<>();
+            Map<NationList, NationList> result = new Object2ObjectOpenHashMap<>(scopes.size());
+            Map<Integer, DBNation> uniqueNationsById = new Int2ObjectOpenHashMap<>();
+            Set<String> scopeFilters = new ObjectLinkedOpenHashSet<>();
+            Map<Integer, List<NationList>> nationToScopes = new Int2ObjectOpenHashMap<>();
+            Map<NationList, Set<DBNation>> redistributed = new Object2ObjectOpenHashMap<>(scopes.size());
+            String invocationFilter = filter instanceof NationFilter nf ? nf.getFilter() : null;
+            boolean usePredicatePostFilter = invocationFilter == null || invocationFilter.isBlank();
             for (NationList scope : scopes) {
-                Set<DBNation> snapshot = PW.getNationsSnapshot(scope.getNations(), scope.getFilter(), timestamp,
-                        (net.dv8tion.jda.api.entities.Guild) null);
-                Set<DBNation> filtered = new ObjectOpenHashSet<>();
-                for (DBNation nation : snapshot) {
-                    if (filter.test(nation)) {
-                        filtered.add(nation);
-                    }
+                Set<DBNation> scopeNations = scope.getNations();
+                String scopeFilter = scope.getFilter();
+                if (scopeFilter != null && !scopeFilter.isBlank()) {
+                    scopeFilters.add(scopeFilter);
                 }
-                result.put(scope, new SimpleNationList(filtered));
+                redistributed.put(scope, new ObjectOpenHashSet<>());
+                for (DBNation nation : scopeNations) {
+                    int nationId = nation.getNation_id();
+                    uniqueNationsById.putIfAbsent(nationId, nation);
+                    nationToScopes.computeIfAbsent(nationId, k -> new ObjectArrayList<>()).add(scope);
+                }
+            }
+            String scopeUnionFilter = scopeFilters.isEmpty() ? null : "((" + String.join(")|(", scopeFilters) + "))";
+            String combinedFilter;
+            if (usePredicatePostFilter) {
+                combinedFilter = scopeUnionFilter;
+            } else if (scopeUnionFilter == null) {
+                combinedFilter = invocationFilter;
+            } else {
+                // Preserve original scope union semantics, then intersect with invocation filter.
+                combinedFilter = scopeUnionFilter + ",(" + invocationFilter + ")";
+            }
+
+            Set<DBNation> snapshot = PW.getNationsSnapshot(uniqueNationsById.values(), combinedFilter, timestamp,
+                    (Guild) null);
+
+            for (DBNation nation : snapshot) {
+                List<NationList> nationScopes = nationToScopes.get(nation.getNation_id());
+                if (nationScopes == null) {
+                    continue;
+                }
+                if (usePredicatePostFilter && !filter.test(nation)) {
+                    continue;
+                }
+                for (NationList scope : nationScopes) {
+                    redistributed.get(scope).add(nation);
+                }
+            }
+
+            for (NationList scope : scopes) {
+                result.put(scope, new SimpleNationList(redistributed.get(scope)));
             }
             return result;
-        }, scope -> {
-            Set<DBNation> snapshot = PW.getNationsSnapshot(scope.getNations(), scope.getFilter(), timestamp,
-                    (net.dv8tion.jda.api.entities.Guild) null);
-            Set<DBNation> filtered = new ObjectOpenHashSet<>();
-            for (DBNation nation : snapshot) {
-                if (filter.test(nation)) {
-                    filtered.add(nation);
-                }
-            }
-            return new SimpleNationList(filtered);
         });
     }
 
