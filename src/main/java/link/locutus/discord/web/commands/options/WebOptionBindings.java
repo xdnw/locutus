@@ -4,6 +4,7 @@ import com.google.common.base.Predicates;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.TierDeltaMode;
 import link.locutus.discord.apiv1.enums.WarCostMode;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
@@ -98,6 +99,11 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = {WarCostMode.class})
     public WebOption WarCostMode(String input) {
         return WebOption.fromEnum(WarCostMode.class);
+    }
+
+    @Binding(types = {TierDeltaMode.class})
+    public WebOption TierDeltaMode(String input) {
+        return WebOption.fromEnum(TierDeltaMode.class);
     }
 
 //Category
