@@ -11,7 +11,11 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
+import link.locutus.discord.commands.manager.v2.binding.bindings.MethodEnum;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
+import link.locutus.discord.commands.manager.v2.binding.bindings.ScopedPlaceholderCache;
+import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -32,13 +36,14 @@ public interface NationList extends NationFilter {
     default AllianceList toAllianceList() {
         return new AllianceList(getAllianceIds());
     }
+
     @Override
     default String getFilter() {
         return null;
     }
 
     @Override
-    default boolean test(DBNation dbNation){
+    default boolean test(DBNation dbNation) {
         return getNations().contains(dbNation);
     }
 
@@ -62,10 +67,57 @@ public interface NationList extends NationFilter {
 
     default void updateCities(boolean events) {
         if (events) {
-            Locutus.imp().runEventsAsync(f -> Locutus.imp().getNationDB().updateCitiesOfNations(getNationIds(), true, true, f));
+            Locutus.imp().runEventsAsync(
+                    f -> Locutus.imp().getNationDB().updateCitiesOfNations(getNationIds(), true, true, f));
         } else {
             Locutus.imp().getNationDB().updateCitiesOfNations(getNationIds(), true, true, null);
         }
+    }
+
+    @Command
+    default NationList getNations(ValueStore store, Predicate<DBNation> filter, @Default Long timestamp) {
+        if (timestamp == null) {
+            Set<DBNation> result = new ObjectOpenHashSet<>();
+            for (DBNation nation : getNations()) {
+                if (filter.test(nation)) {
+                    result.add(nation);
+                }
+            }
+            return new SimpleNationList(result);
+        }
+
+        ScopedPlaceholderCache<NationList> scoped = PlaceholderCache.getScopedAssignableTo(
+                store,
+                NationList.class,
+                NationList.class,
+                getClass(),
+                MethodEnum.getNationsAt.of(timestamp, filter));
+
+        return scoped.getMap(this, scopes -> {
+            Map<NationList, NationList> result = new HashMap<>();
+            for (NationList scope : scopes) {
+                Set<DBNation> snapshot = PW.getNationsSnapshot(scope.getNations(), scope.getFilter(), timestamp,
+                        (net.dv8tion.jda.api.entities.Guild) null);
+                Set<DBNation> filtered = new ObjectOpenHashSet<>();
+                for (DBNation nation : snapshot) {
+                    if (filter.test(nation)) {
+                        filtered.add(nation);
+                    }
+                }
+                result.put(scope, new SimpleNationList(filtered));
+            }
+            return result;
+        }, scope -> {
+            Set<DBNation> snapshot = PW.getNationsSnapshot(scope.getNations(), scope.getFilter(), timestamp,
+                    (net.dv8tion.jda.api.entities.Guild) null);
+            Set<DBNation> filtered = new ObjectOpenHashSet<>();
+            for (DBNation nation : snapshot) {
+                if (filter.test(nation)) {
+                    filtered.add(nation);
+                }
+            }
+            return new SimpleNationList(filtered);
+        });
     }
 
     @Command
@@ -84,10 +136,10 @@ public interface NationList extends NationFilter {
     default double[] getAverageMMR(@Default Boolean update) {
         double[] total = getTotalMMR(update == Boolean.TRUE);
         double num = total[4];
-        return new double[] {total[0] / num, total[1] / num, total[2] / num, total[3] / num};
+        return new double[] { total[0] / num, total[1] / num, total[2] / num, total[3] / num };
     }
 
-    default  <T> Map<T, NationList> groupBy(Function<DBNation, T> groupBy) {
+    default <T> Map<T, NationList> groupBy(Function<DBNation, T> groupBy) {
         Map<T, List<DBNation>> mapList = new HashMap<>();
         for (DBNation nation : getNations()) {
             T group = groupBy.apply(nation);
@@ -100,7 +152,7 @@ public interface NationList extends NationFilter {
         return result;
     }
 
-    default  Map<Integer, NationList> byTier() {
+    default Map<Integer, NationList> byTier() {
         return groupBy(DBNation::getCities);
     }
 
@@ -114,6 +166,7 @@ public interface NationList extends NationFilter {
 
     /**
      * in the form [barracks, factories, hangars, drydocks, cities]
+     * 
      * @param update
      * @return
      */
@@ -127,10 +180,11 @@ public interface NationList extends NationFilter {
 
         if (update) {
             Locutus.imp().getNationDB().markDirtyIncorrectCities(getNations(), true, true);
-            Locutus.imp().returnEventsAsync(events -> Locutus.imp().getNationDB().updateDirtyCities(false, events, Integer.MAX_VALUE));
+            Locutus.imp().returnEventsAsync(
+                    events -> Locutus.imp().getNationDB().updateDirtyCities(false, events, Integer.MAX_VALUE));
         }
         for (DBNation nation : getNations()) {
-            Map<Integer, JavaCity> cities = nation.getCityMap(false, false,false);
+            Map<Integer, JavaCity> cities = nation.getCityMap(false, false, false);
             numCities += cities.size();
             for (Map.Entry<Integer, JavaCity> cityEntry : cities.entrySet()) {
                 barracks += cityEntry.getValue().getBuilding(Buildings.BARRACKS);
@@ -140,11 +194,12 @@ public interface NationList extends NationFilter {
             }
         }
 
-        return new double[] {barracks, factories, hangars, drydocks, numCities};
+        return new double[] { barracks, factories, hangars, drydocks, numCities };
     }
 
     /**
      * in the form [soldiers, tanks, aircraft, ships, cities]
+     * 
      * @return
      */
     default double[] getTotalMMRUnit() {
@@ -161,7 +216,7 @@ public interface NationList extends NationFilter {
             ships += nation.getShips();
             numCities += nation.getCities();
         }
-        return new double[] {soldiers, tanks, aircraft, ships, numCities};
+        return new double[] { soldiers, tanks, aircraft, ships, numCities };
     }
 
     default String toMarkdown() {
@@ -169,13 +224,15 @@ public interface NationList extends NationFilter {
     }
 
     // arguments for controlling which information to include
-    default String toMarkdown(boolean includeAlliance, boolean includeRevenue, boolean includeWars, boolean includeColor, boolean includePositions, boolean includeData, boolean includeMMR) {
+    default String toMarkdown(boolean includeAlliance, boolean includeRevenue, boolean includeWars,
+            boolean includeColor, boolean includePositions, boolean includeData, boolean includeMMR) {
         StringBuilder body = new StringBuilder();
         Set<DBNation> nations = getNations();
         body.append("> " + nations.size() + " nations ");
         int countNone = nations.stream().filter(f -> f.getAlliance_id() == 0).collect(Collectors.toSet()).size();
         if (includeAlliance) {
-            Set<DBAlliance> alliances = nations.stream().map(DBNation::getAlliance).filter(Objects::nonNull).collect(Collectors.toSet());
+            Set<DBAlliance> alliances = nations.stream().map(DBNation::getAlliance).filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
             if (alliances.isEmpty()) {
                 body.append("(No alliance)\n");
             } else if (alliances.size() == 1) {
@@ -195,7 +252,9 @@ public interface NationList extends NationFilter {
             }
         }
         if (includeColor) {
-            Map<NationColor, Integer> colors = ArrayUtil.sortMap(nations.stream().collect(Collectors.groupingBy(DBNation::getColor, Collectors.summingInt(f -> 1))), true);
+            Map<NationColor, Integer> colors = ArrayUtil.sortMap(
+                    nations.stream().collect(Collectors.groupingBy(DBNation::getColor, Collectors.summingInt(f -> 1))),
+                    true);
             if (colors.size() == 1) {
                 NationColor color = colors.keySet().iterator().next();
                 body.append("**Color:** `" + color + "`\n");
@@ -203,27 +262,37 @@ public interface NationList extends NationFilter {
                 body.append("**Colors:** `" + StringMan.getString(colors) + "`\n");
             }
         }
-//        Map<WarPolicy, Integer> warPolicy = ArrayUtil.sortMap(nations.stream().collect(Collectors.groupingBy(DBNation::getWarPolicy, Collectors.summingInt(f -> 1))), true);
-//        if (warPolicy.size() == 1) {
-//            WarPolicy policy = warPolicy.keySet().iterator().next();
-//            body.append("**War Policy:** `" + policy + "`\n");
-//        } else {
-//            body.append("**War Policies:** `" + StringMan.getString(warPolicy) + "`\n");
-//        }
+        // Map<WarPolicy, Integer> warPolicy =
+        // ArrayUtil.sortMap(nations.stream().collect(Collectors.groupingBy(DBNation::getWarPolicy,
+        // Collectors.summingInt(f -> 1))), true);
+        // if (warPolicy.size() == 1) {
+        // WarPolicy policy = warPolicy.keySet().iterator().next();
+        // body.append("**War Policy:** `" + policy + "`\n");
+        // } else {
+        // body.append("**War Policies:** `" + StringMan.getString(warPolicy) + "`\n");
+        // }
 
         if (includePositions || includeData) {
             body.append("```\n");
-            Set<DBNation> members = nations.stream().filter(n -> n.getPosition() > Rank.APPLICANT.id && n.getVm_turns() == 0).collect(Collectors.toSet());
+            Set<DBNation> members = nations.stream()
+                    .filter(n -> n.getPosition() > Rank.APPLICANT.id && n.getVm_turns() == 0)
+                    .collect(Collectors.toSet());
             if (includePositions) {
                 // Number of members / applicants (active past day)
-                Set<DBNation> activeMembers = members.stream().filter(n -> n.active_m() < 7200).collect(Collectors.toSet());
+                Set<DBNation> activeMembers = members.stream().filter(n -> n.active_m() < 7200)
+                        .collect(Collectors.toSet());
                 Set<DBNation> taxableMembers = members.stream().filter(DBNation::isTaxable).collect(Collectors.toSet());
-                Set<DBNation> applicants = nations.stream().filter(n -> n.getPosition() == Rank.APPLICANT.id && n.getVm_turns() == 0).collect(Collectors.toSet());
-                Set<DBNation> activeApplicants = applicants.stream().filter(n -> n.active_m() < 7200).collect(Collectors.toSet());
+                Set<DBNation> applicants = nations.stream()
+                        .filter(n -> n.getPosition() == Rank.APPLICANT.id && n.getVm_turns() == 0)
+                        .collect(Collectors.toSet());
+                Set<DBNation> activeApplicants = applicants.stream().filter(n -> n.active_m() < 7200)
+                        .collect(Collectors.toSet());
                 // 5 members (3 active/2 taxable) | 2 applicants (1 active)
-                body.append(members.size()).append(" members (").append(activeMembers.size()).append(" active/").append(taxableMembers.size()).append(" taxable)");
+                body.append(members.size()).append(" members (").append(activeMembers.size()).append(" active/")
+                        .append(taxableMembers.size()).append(" taxable)");
                 if (!applicants.isEmpty()) {
-                    body.append(" | ").append(applicants.size()).append(" applicants (").append(activeApplicants.size()).append(" active)");
+                    body.append(" | ").append(applicants.size()).append(" applicants (").append(activeApplicants.size())
+                            .append(" active)");
                 }
                 body.append("\n");
             }
@@ -236,7 +305,8 @@ public interface NationList extends NationFilter {
                 double score = members.stream().mapToDouble(DBNation::getScore).sum();
                 body.append(off).append("\uD83D\uDDE1 | ")
                         .append(def).append("\uD83D\uDEE1 | ")
-                        .append(cities).append("\uD83C\uDFD9").append(" (avg:").append(MathMan.format(avgCities)).append(") | ")
+                        .append(cities).append("\uD83C\uDFD9").append(" (avg:").append(MathMan.format(avgCities))
+                        .append(") | ")
                         .append(MathMan.format(score)).append("ns");
             }
             body.append("\n```\n");
@@ -264,8 +334,10 @@ public interface NationList extends NationFilter {
             for (DBWar war : getActiveWars()) {
                 DBNation attacker = war.getNation(true);
                 DBNation defender = war.getNation(false);
-                if (attacker == null || attacker.active_m() > 7200) continue;
-                if (defender == null || defender.active_m() > 7200) continue;
+                if (attacker == null || attacker.active_m() > 7200)
+                    continue;
+                if (defender == null || defender.active_m() > 7200)
+                    continue;
                 int otherAAId = nations.contains(attacker) ? defender.getAlliance_id() : attacker.getAlliance_id();
                 if (otherAAId > 0) {
                     DBAlliance otherAA = DBAlliance.getOrCreate(otherAAId);
@@ -317,7 +389,90 @@ public interface NationList extends NationFilter {
         return getNations().stream().filter(nations).collect(Collectors.toSet());
     }
 
-    private Map<ResourceType, Double> getRevenue() {
+    @Command(desc = "Sum of nation attribute for the selected nations")
+    default double getTotal(@NoFormat TypedFunction<DBNation, Double> attribute,
+            @NoFormat @Default NationFilter filter) {
+        if (filter == null) {
+            return getNations().stream().mapToDouble(attribute::apply).sum();
+        }
+        Predicate<DBNation> predicate = filter.toCached(Long.MAX_VALUE);
+        double total = 0;
+        for (DBNation nation : getNations()) {
+            if (predicate.test(nation)) {
+                total += attribute.apply(nation);
+            }
+        }
+        return total;
+    }
+
+    @Command(desc = "Average of nation attribute for the selected nations")
+    default double getAverage(@NoFormat TypedFunction<DBNation, Double> attribute,
+            @NoFormat @Default NationFilter filter) {
+        if (filter == null) {
+            return getNations().stream().mapToDouble(attribute::apply).average().orElse(0);
+        }
+        Predicate<DBNation> predicate = filter.toCached(Long.MAX_VALUE);
+        double total = 0;
+        int count = 0;
+        for (DBNation nation : getNations()) {
+            if (predicate.test(nation)) {
+                total += attribute.apply(nation);
+                count++;
+            }
+        }
+        return count == 0 ? 0 : total / count;
+    }
+
+    @Command(desc = "Average of one nation attribute per another attribute")
+    default double getAveragePer(@NoFormat TypedFunction<DBNation, Double> attribute,
+            @NoFormat TypedFunction<DBNation, Double> per,
+            @Default NationFilter filter) {
+        Predicate<DBNation> predicate = filter == null ? null : filter.toCached(Long.MAX_VALUE);
+        double total = 0;
+        double perTotal = 0;
+        for (DBNation nation : getNations()) {
+            if (predicate != null && !predicate.test(nation)) {
+                continue;
+            }
+            total += attribute.apply(nation);
+            perTotal += per.apply(nation);
+        }
+        return total / perTotal;
+    }
+
+    @Command(desc = "Number of members, not including VM")
+    default int countMembers() {
+        int count = 0;
+        for (DBNation nation : getNations()) {
+            if (nation.getPosition() > Rank.APPLICANT.id && nation.getVm_turns() == 0) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    @Command(desc = "Count of selected nations matching a filter")
+    default int countNations(@NoFormat @Default NationFilter filter) {
+        if (filter == null) {
+            return getNations().size();
+        }
+        Predicate<DBNation> predicate = filter.toCached(Long.MAX_VALUE);
+        int count = 0;
+        for (DBNation nation : getNations()) {
+            if (predicate.test(nation)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    @Command(desc = "Market value of taxable nation revenue")
+    default double getRevenueConverted() {
+        return ResourceType.convertedTotal(getRevenue());
+    }
+
+    @Command(desc = "Revenue of taxable nations")
+    default Map<ResourceType, Double> getRevenue() {
         return getRevenue(getNationsMatching(DBNation::isTaxable));
     }
 
@@ -353,7 +508,7 @@ public interface NationList extends NationFilter {
         double airBuyTotal = (total.getAircraft() - oldAir) / oldAir;
         double navyBuyTotal = (total.getShips() - oldSea) / oldSea;
 
-        return new double[] {soldierBuyTotal, tankBuyTotal, airBuyTotal, navyBuyTotal};
+        return new double[] { soldierBuyTotal, tankBuyTotal, airBuyTotal, navyBuyTotal };
     }
 
     default double getScore() {
@@ -369,27 +524,27 @@ public interface NationList extends NationFilter {
     default Set<Integer> updateSpies(boolean updateManually) {
         Set<DBNation> toUpdate = new HashSet<>(getNations());
         return toUpdate.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
-//        toUpdate.removeIf(f -> f.getVm_turns() > 0 || f.active_m() > 7200);
-//        Set<Integer> alliances = new HashSet<>();
-//        for (DBNation nation : toUpdate) {
-//            if (nation.getPosition() > Rank.APPLICANT.id) {
-//                alliances.add(nation.getAlliance_id());
-//            }
-//        }
-//        Set<Integer> updated = new HashSet<>();
-//        boolean hasUpdated = false;
-//        for (Integer allianceId : alliances) {
-//            Set<Integer> result = DBAlliance.getOrCreate(allianceId).updateSpies(false);
-//            updated.addAll(result);
-//            toUpdate.removeIf(f -> result.contains(f.getId()));
-//        }
-//        if (updateManually) {
-//            for (DBNation nation : toUpdate) {
-//                nation.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK);
-//                updated.add(nation.getId());
-//            }
-//        }
-//        return updated;
+        // toUpdate.removeIf(f -> f.getVm_turns() > 0 || f.active_m() > 7200);
+        // Set<Integer> alliances = new HashSet<>();
+        // for (DBNation nation : toUpdate) {
+        // if (nation.getPosition() > Rank.APPLICANT.id) {
+        // alliances.add(nation.getAlliance_id());
+        // }
+        // }
+        // Set<Integer> updated = new HashSet<>();
+        // boolean hasUpdated = false;
+        // for (Integer allianceId : alliances) {
+        // Set<Integer> result = DBAlliance.getOrCreate(allianceId).updateSpies(false);
+        // updated.addAll(result);
+        // toUpdate.removeIf(f -> result.contains(f.getId()));
+        // }
+        // if (updateManually) {
+        // for (DBNation nation : toUpdate) {
+        // nation.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK);
+        // updated.add(nation.getId());
+        // }
+        // }
+        // return updated;
     }
 
     default boolean contains(DBNation f) {
