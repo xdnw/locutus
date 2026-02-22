@@ -30,14 +30,21 @@ public class GrowthSummary {
     private final Set<Integer> allowedAlliances;
     private final long dayStart;
     private final long dayEnd;
+    private final Predicate<DBNation> nationPredicate;
 
     public GrowthSummary(Set<DBAlliance> alliances, long dayStart, long dayEnd) throws IOException, ParseException {
+        this(alliances, dayStart, dayEnd, null);
+    }
+
+    public GrowthSummary(Set<DBAlliance> alliances, long dayStart, long dayEnd, Predicate<DBNation> nationPredicate)
+            throws IOException, ParseException {
         this.allowedAlliances = new IntOpenHashSet();
         for (DBAlliance alliance : alliances)
             allowedAlliances.add(alliance.getId());
 
         this.dayStart = dayStart;
         this.dayEnd = dayEnd;
+        this.nationPredicate = nationPredicate == null ? f -> true : nationPredicate;
     }
 
     private Map<Integer, Set<Integer>> allianceMembership(Map<Integer, DBNation> nations,
@@ -45,6 +52,9 @@ public class GrowthSummary {
         Map<Integer, Set<Integer>> allianceMembership = new Int2ObjectOpenHashMap<>();
         for (Map.Entry<Integer, DBNation> entry : nations.entrySet()) {
             DBNation nation = entry.getValue();
+            if (!nationPredicate.test(nation)) {
+                continue;
+            }
             int aaId = nation.getAlliance_id();
             if (aaId == 0 || !allowedAlliances.contains(aaId))
                 continue;

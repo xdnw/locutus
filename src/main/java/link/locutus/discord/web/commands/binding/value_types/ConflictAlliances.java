@@ -17,10 +17,6 @@ public class ConflictAlliances {
     public ConflictAlliances() {
     }
 
-    public ConflictAlliances(Map<Integer, List<List<Integer>>> conflict_alliances) {
-        this.conflict_alliances = conflict_alliances;
-    }
-
     public ConflictAlliances(Map<Integer, String> alliance_names,
             Map<Integer, List<List<Integer>>> conflict_alliances) {
         this.alliance_names = alliance_names;

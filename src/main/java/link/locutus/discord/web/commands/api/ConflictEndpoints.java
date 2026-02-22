@@ -49,8 +49,6 @@ public class ConflictEndpoints extends PageHelper {
         }
 
         Map<Integer, List<List<Integer>>> byConflict = manager.getConflictAlliances(conflicts);
-        // copy into fastutil map for consistency/performance while exposing a generic
-        // Map in the DTO
         for (Map.Entry<Integer, List<List<Integer>>> e : byConflict.entrySet())
             byConflictFast.put(e.getKey(), e.getValue());
 

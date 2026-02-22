@@ -2041,17 +2041,23 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
 
     public GrowthSummary.AllianceGrowthSummary getGrowthSummary(ValueStore store, @Timestamp long start,
             @Timestamp @Default Long end) {
+        return getGrowthSummary(store, start, end, null);
+    }
+
+    public GrowthSummary.AllianceGrowthSummary getGrowthSummary(ValueStore store, @Timestamp long start,
+            @Timestamp @Default Long end, @Default Predicate<DBNation> nations) {
         long dayStart = TimeUtil.getDay(start);
         long dayEnd = end == null ? TimeUtil.getDay() : TimeUtil.getDay(end);
+        int nationFilterKey = nations == null ? 0 : nations.hashCode();
         ScopedPlaceholderCache<DBAlliance> scoped = PlaceholderCache.getScoped(store, DBAlliance.class,
-                getGrowthSummary.of(dayStart, dayEnd));
+                getGrowthSummary.of(dayStart, dayEnd, nationFilterKey));
         GrowthSummary.AllianceGrowthSummary r = scoped.getMap(this,
                 (ThrowingFunction<List<DBAlliance>, Map<DBAlliance, GrowthSummary.AllianceGrowthSummary>>) f -> {
                     Set<DBAlliance> alliances = new ObjectOpenHashSet<>();
                     for (DBAlliance aa : f) {
                         alliances.add(aa);
                     }
-                    GrowthSummary summary = new GrowthSummary(alliances, dayStart, dayEnd).run();
+                    GrowthSummary summary = new GrowthSummary(alliances, dayStart, dayEnd, nations).run();
                     Map<Integer, GrowthSummary.AllianceGrowthSummary> summaries = summary.getSummaries();
                     Map<DBAlliance, GrowthSummary.AllianceGrowthSummary> result = new Object2ObjectOpenHashMap<>();
                     for (DBAlliance alliance : f) {
@@ -2068,14 +2074,26 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     public Map<ResourceType, Double> getAssetAcquired(ValueStore store, Predicate<GrowthAsset> summaries,
             Predicate<MembershipChangeReason> reasons, boolean effective, @Timestamp long start,
             @Timestamp @Default Long end) {
-        GrowthSummary.AllianceGrowthSummary summary = getGrowthSummary(store, start, end);
+        return getAssetAcquired(store, summaries, reasons, effective, start, end, null);
+    }
+
+    public Map<ResourceType, Double> getAssetAcquired(ValueStore store, Predicate<GrowthAsset> summaries,
+            Predicate<MembershipChangeReason> reasons, boolean effective, @Timestamp long start,
+            @Timestamp @Default Long end, @Default Predicate<DBNation> nations) {
+        GrowthSummary.AllianceGrowthSummary summary = getGrowthSummary(store, start, end, nations);
         return ResourceType.resourcesToMap(summary.getSpending(summaries, reasons, effective));
     }
 
     public double getAssetAcquiredValue(ValueStore store, Predicate<GrowthAsset> summaries,
             Predicate<MembershipChangeReason> reasons, boolean effective, @Timestamp long start,
             @Timestamp @Default Long end) {
-        GrowthSummary.AllianceGrowthSummary summary = getGrowthSummary(store, start, end);
+        return getAssetAcquiredValue(store, summaries, reasons, effective, start, end, null);
+    }
+
+    public double getAssetAcquiredValue(ValueStore store, Predicate<GrowthAsset> summaries,
+            Predicate<MembershipChangeReason> reasons, boolean effective, @Timestamp long start,
+            @Timestamp @Default Long end, @Default Predicate<DBNation> nations) {
+        GrowthSummary.AllianceGrowthSummary summary = getGrowthSummary(store, start, end, nations);
         return ResourceType.convertedTotal(summary.getSpending(summaries, reasons, effective));
     }
 
@@ -2105,30 +2123,32 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     // city
-    @Command(desc = "Resource deltas for selected assets while nations remained members (UNCHANGED day-to-day states); includes nations that later leave")
+    @Command(desc = "Resource deltas for selected assets while nations remained members (UNCHANGED day-to-day states); includes nations that later leave. Optional nation filter is evaluated per day snapshot")
     public Map<ResourceType, Double> getSpending(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start,
-            @Timestamp @Default Long end) {
-        return getAssetAcquired(store, assets::contains, f -> f == MembershipChangeReason.UNCHANGED, false, start, end);
+            @Timestamp @Default Long end, @Default Predicate<DBNation> nations) {
+        return getAssetAcquired(store, assets::contains, f -> f == MembershipChangeReason.UNCHANGED, false, start, end,
+                nations);
     }
 
-    @Command(desc = "Same as getSpending, but only counts nations that are still members at end")
+    @Command(desc = "Same as getSpending, but only counts nations that are still members at end. Optional nation filter is evaluated per day snapshot")
     public Map<ResourceType, Double> getEffectiveSpending(ValueStore store, Set<GrowthAsset> assets,
-            @Timestamp long start, @Timestamp @Default Long end) {
-        return getAssetAcquired(store, assets::contains, f -> f == MembershipChangeReason.UNCHANGED, true, start, end);
+            @Timestamp long start, @Timestamp @Default Long end, @Default Predicate<DBNation> nations) {
+        return getAssetAcquired(store, assets::contains, f -> f == MembershipChangeReason.UNCHANGED, true, start, end,
+                nations);
     }
 
-    @Command(desc = "Market value of getSpending for selected assets")
+    @Command(desc = "Market value of getSpending for selected assets. Optional nation filter is evaluated per day snapshot")
     public double getSpendingValue(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start,
-            @Timestamp @Default Long end) {
+            @Timestamp @Default Long end, @Default Predicate<DBNation> nations) {
         return getAssetAcquiredValue(store, assets::contains, f -> f == MembershipChangeReason.UNCHANGED, false, start,
-                end);
+                end, nations);
     }
 
-    @Command(desc = "Market value of getEffectiveSpending for selected assets")
+    @Command(desc = "Market value of getEffectiveSpending for selected assets. Optional nation filter is evaluated per day snapshot")
     public double getEffectiveSpendingValue(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start,
-            @Timestamp @Default Long end) {
+            @Timestamp @Default Long end, @Default Predicate<DBNation> nations) {
         return getAssetAcquiredValue(store, assets::contains, f -> f == MembershipChangeReason.UNCHANGED, true, start,
-                end);
+                end, nations);
     }
 
     @Command(desc = "Net member change over the period: members at end that were not members at start minus members at start that are not members at end")
@@ -2155,17 +2175,17 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         return total;
     }
 
-    @Command(desc = "Sum of count deltas for selected assets in UNCHANGED states (nations may later leave)")
+    @Command(desc = "Sum of count deltas for selected assets in UNCHANGED states (nations may later leave). Optional nation filter is evaluated per day snapshot")
     public int getBoughtAssetCount(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start,
-            @Timestamp @Default Long end) {
-        return getGrowthSummary(store, start, end)
+            @Timestamp @Default Long end, @Default Predicate<DBNation> nations) {
+        return getGrowthSummary(store, start, end, nations)
                 .getAssetCounts(assets::contains, f -> f == MembershipChangeReason.UNCHANGED, false);
     }
 
-    @Command(desc = "Same as getBoughtAssetCount, but only for nations that are still members at end")
+    @Command(desc = "Same as getBoughtAssetCount, but only for nations that are still members at end. Optional nation filter is evaluated per day snapshot")
     public int getEffectiveBoughtAssetCount(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start,
-            @Timestamp @Default Long end) {
-        return getGrowthSummary(store, start, end)
+            @Timestamp @Default Long end, @Default Predicate<DBNation> nations) {
+        return getGrowthSummary(store, start, end, nations)
                 .getAssetCounts(assets::contains, f -> f == MembershipChangeReason.UNCHANGED, true);
     }
 
@@ -2207,28 +2227,34 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     @Command(desc = """
             Asset counts grouped by membership-change reasons
             Join/recruit/return reasons use holdings at entry; leave/delete/vm-left reasons use holdings at exit
-            For in-alliance day-to-day growth (UNCHANGED), use getBoughtAssetCount/getEffectiveBoughtAssetCount""")
+            For in-alliance day-to-day growth (UNCHANGED), use getBoughtAssetCount/getEffectiveBoughtAssetCount
+            Optional nation filter is evaluated per day snapshot""")
     public int getMembershipChangeAssetCount(ValueStore store, Set<MembershipChangeReason> reasons,
-            Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
-        return getGrowthSummary(store, start, end)
+            Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end,
+            @Default Predicate<DBNation> nations) {
+        return getGrowthSummary(store, start, end, nations)
                 .getAssetCounts(assets::contains, reasons::contains, false);
     }
 
     @Command(desc = """
             Market value of getMembershipChangeAssetCount for selected assets/reasons
-            Join/recruit/return reasons use holdings at entry; leave/delete/vm-left reasons use holdings at exit""")
+            Join/recruit/return reasons use holdings at entry; leave/delete/vm-left reasons use holdings at exit
+            Optional nation filter is evaluated per day snapshot""")
     public double getMembershipChangeAssetValue(ValueStore store, Set<MembershipChangeReason> reasons,
-            Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
-        return getGrowthSummary(store, start, end)
+            Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end,
+            @Default Predicate<DBNation> nations) {
+        return getGrowthSummary(store, start, end, nations)
                 .getSpendingValue(assets::contains, reasons::contains, false);
     }
 
     @Command(desc = """
             Resource breakdown of getMembershipChangeAssetValue for selected assets/reasons
-            Join/recruit/return reasons use holdings at entry; leave/delete/vm-left reasons use holdings at exit""")
+            Join/recruit/return reasons use holdings at entry; leave/delete/vm-left reasons use holdings at exit
+            Optional nation filter is evaluated per day snapshot""")
     public Map<ResourceType, Double> getMembershipChangeAssetRss(ValueStore store, Set<MembershipChangeReason> reasons,
-            Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end) {
-        return ResourceType.resourcesToMap(getGrowthSummary(store, start, end)
+            Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end,
+            @Default Predicate<DBNation> nations) {
+        return ResourceType.resourcesToMap(getGrowthSummary(store, start, end, nations)
                 .getSpending(assets::contains, reasons::contains, false));
     }
 
