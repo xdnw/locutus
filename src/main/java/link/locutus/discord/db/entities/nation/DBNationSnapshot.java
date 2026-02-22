@@ -11,17 +11,23 @@ import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static link.locutus.discord.apiv1.core.Utility.unsupported;
 
 public class DBNationSnapshot extends DBNation implements DBNationGetter {
     private DataWrapper<NationHeader> wrapper;
     private final int offset;
+    private volatile double cachedInfra = Double.NaN;
+    private volatile double cachedLand = Double.NaN;
+    private volatile double cachedInfraValue = Double.NaN;
+    private volatile double cachedLandValue = Double.NaN;
+    private volatile int cachedCityCount = -1;
+    private volatile Map<Integer, DBCity> cachedSnapshotCities;
     // cache data??
 //    private Object[] cache;
 
@@ -40,6 +46,83 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
         } else {
             throw new IllegalStateException("Cannot add city to non-unique or local wrapper.");
         }
+        cachedSnapshotCities = null;
+        invalidateCityAggregates();
+    }
+
+    private void invalidateCityAggregates() {
+        cachedInfra = Double.NaN;
+        cachedLand = Double.NaN;
+        cachedInfraValue = Double.NaN;
+        cachedLandValue = Double.NaN;
+        cachedCityCount = -1;
+    }
+
+    private void ensureCityAggregates() {
+        if (cachedCityCount >= 0) {
+            return;
+        }
+        synchronized (this) {
+            if (cachedCityCount >= 0) {
+                return;
+            }
+            double infra = 0;
+            double land = 0;
+            double infraValue = 0;
+            double landValue = 0;
+            int cityCount = 0;
+            for (Map.Entry<Integer, DBCity> entry : _getCitiesV3().entrySet()) {
+                DBCity city = entry.getValue();
+                double cityInfra = city.getInfra();
+                double cityLand = city.getLand();
+                infra += cityInfra;
+                land += cityLand;
+                infraValue += PW.City.Infra.calculateInfra(0, cityInfra);
+                landValue += PW.City.Land.calculateLand(0, cityLand);
+                cityCount++;
+            }
+            cachedInfra = infra;
+            cachedLand = land;
+            cachedInfraValue = infraValue;
+            cachedLandValue = landValue;
+            cachedCityCount = cityCount;
+        }
+    }
+
+    @Override
+    public double getInfra() {
+        ensureCityAggregates();
+        return cachedInfra;
+    }
+
+    @Override
+    public double getTotalLand() {
+        ensureCityAggregates();
+        return cachedLand;
+    }
+
+    @Override
+    public double getAvg_infra() {
+        ensureCityAggregates();
+        return cachedCityCount == 0 ? 0 : cachedInfra / cachedCityCount;
+    }
+
+    @Override
+    public double getAvgLand() {
+        ensureCityAggregates();
+        return cachedCityCount == 0 ? 0 : cachedLand / cachedCityCount;
+    }
+
+    @Override
+    public double infraValue() {
+        ensureCityAggregates();
+        return cachedInfraValue;
+    }
+
+    @Override
+    public double landValue() {
+        ensureCityAggregates();
+        return cachedLandValue;
     }
 
     public int getOffset() {
@@ -198,12 +281,33 @@ public class DBNationSnapshot extends DBNation implements DBNationGetter {
 
     @Override
     public Map<Integer, DBCity> _getCitiesV3() {
-        Function<Integer, Map<Integer, DBCity>> getCities = wrapper.getGetCities();
-        if (getCities != null) {
-            return getCities.apply(getNation_id());
+        Map<Integer, DBCity> cached = cachedSnapshotCities;
+        if (cached != null) {
+            return cached;
         }
-        Map<Integer, DBCity> cities = super._getCitiesV3();
-        return cities.entrySet().stream().filter(e -> e.getValue().getCreated() <= wrapper.date).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+        synchronized (this) {
+            cached = cachedSnapshotCities;
+            if (cached != null) {
+                return cached;
+            }
+            Function<Integer, Map<Integer, DBCity>> getCities = wrapper.getGetCities();
+            Map<Integer, DBCity> result;
+            if (getCities != null) {
+                result = getCities.apply(getNation_id());
+            } else {
+                Map<Integer, DBCity> cities = super._getCitiesV3();
+                result = new HashMap<>(cities.size());
+                long snapshotDate = wrapper.date;
+                for (Map.Entry<Integer, DBCity> entry : cities.entrySet()) {
+                    if (entry.getValue().getCreated() <= snapshotDate) {
+                        result.put(entry.getKey(), entry.getValue());
+                    }
+                }
+            }
+            cachedSnapshotCities = result;
+            return result;
+        }
     }
 
     @Override

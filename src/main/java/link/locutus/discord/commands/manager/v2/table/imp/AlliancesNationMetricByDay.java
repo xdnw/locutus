@@ -35,19 +35,26 @@ public class AlliancesNationMetricByDay extends SimpleTable<Void> {
     private final @NotNull List<Integer> allianceIdsSorted;
 
     public static Set<DBAlliance> resolveAlliances(Set<DBAlliance> alliances) {
-        if (alliances == null) alliances = Locutus.imp().getNationDB().getAlliances(true, true, true, 15);
+        if (alliances == null)
+            alliances = Locutus.imp().getNationDB().getAlliances(true, true, true, 15);
         if (alliances.size() > 100) {
             alliances.removeIf(f -> f.getNations(true, 10080, true).isEmpty());
         }
-        if (alliances.isEmpty()) throw new IllegalArgumentException("No alliances found");
+        if (alliances.isEmpty())
+            throw new IllegalArgumentException("No alliances found");
         return alliances;
     }
 
-    public static Map<Long, double[]> generateData(Consumer<Long> progressMessage, TypedFunction<DBNation, Double> metric, @Timestamp long start, @Timestamp long end, AllianceMetricMode mode, @Arg("The alliances to include. Defaults to top 15") @Default Set<DBAlliance> alliances, @Default Predicate<DBNation> filter, @Switch("a") boolean includeApps) throws IOException, ParseException {
+    public static Map<Long, double[]> generateData(Consumer<Long> progressMessage,
+            TypedFunction<DBNation, Double> metric, @Timestamp long start, @Timestamp long end, AllianceMetricMode mode,
+            @Arg("The alliances to include. Defaults to top 15") @Default Set<DBAlliance> alliances,
+            @Default Predicate<DBNation> filter, @Switch("a") boolean includeApps) throws IOException, ParseException {
         alliances = resolveAlliances(alliances);
-        List<Integer> allianceIdsSorted = alliances.stream().map(DBAlliance::getAlliance_id).sorted().collect(Collectors.toList());
+        List<Integer> allianceIdsSorted = alliances.stream().map(DBAlliance::getAlliance_id).sorted()
+                .collect(Collectors.toList());
         Set<Integer> allianceIdsSet = new IntOpenHashSet(allianceIdsSorted);
-        Predicate<DBNation> filterFinal = filter == null ? f -> allianceIdsSet.contains(f.getAlliance_id()) : f -> allianceIdsSet.contains(f.getAlliance_id()) && filter.test(f);
+        Predicate<DBNation> filterFinal = filter == null ? f -> allianceIdsSet.contains(f.getAlliance_id())
+                : f -> allianceIdsSet.contains(f.getAlliance_id()) && filter.test(f);
 
         Map<Long, double[]> valuesByDay = new Long2ObjectLinkedOpenHashMap<>();
 
@@ -68,14 +75,18 @@ public class AlliancesNationMetricByDay extends SimpleTable<Void> {
             Arrays.fill(buffer, 0);
             Arrays.fill(counts, 0);
 
-            if (day < dayStart || day > dayEnd) continue;
-            Map<Integer, DBNationSnapshot> nations = parser.getNations(day);
+            if (day < dayStart || day > dayEnd)
+                continue;
+            Map<Integer, DBNationSnapshot> nations = parser.getNations(day, true);
             for (Map.Entry<Integer, DBNationSnapshot> entry : nations.entrySet()) {
                 DBNationSnapshot nation = entry.getValue();
-                if (!filterFinal.test(nation)) continue;
+                if (!filterFinal.test(nation))
+                    continue;
                 int allianceId = nation.getAlliance_id();
-                if (allianceId == 0 || !allianceIdsSet.contains(allianceId)) continue;
-                if (!includeApps && nation.getPositionEnum().id <= Rank.APPLICANT.id) continue;
+                if (allianceId == 0 || !allianceIdsSet.contains(allianceId))
+                    continue;
+                if (!includeApps && nation.getPositionEnum().id <= Rank.APPLICANT.id)
+                    continue;
 
                 double value = metric.apply(nation);
                 int index = allianceIndex.get(allianceId);
@@ -107,21 +118,31 @@ public class AlliancesNationMetricByDay extends SimpleTable<Void> {
 
             if (System.currentTimeMillis() - timer.get() > 10000) {
                 timer.getAndSet(System.currentTimeMillis());
-                if (progressMessage != null) progressMessage.accept(day);
+                if (progressMessage != null)
+                    progressMessage.accept(day);
             }
         }
         return valuesByDay;
     }
 
-    public static AlliancesNationMetricByDay create(TypedFunction<DBNation, Double> metric, @Timestamp long start, @Timestamp long end, AllianceMetricMode mode, @Arg("The alliances to include. Defaults to top 15") @Default Set<DBAlliance> alliances, @Default Predicate<DBNation> filter, @Switch("a") boolean includeApps) throws IOException, ParseException {
+    public static AlliancesNationMetricByDay create(TypedFunction<DBNation, Double> metric, @Timestamp long start,
+            @Timestamp long end, AllianceMetricMode mode,
+            @Arg("The alliances to include. Defaults to top 15") @Default Set<DBAlliance> alliances,
+            @Default Predicate<DBNation> filter, @Switch("a") boolean includeApps) throws IOException, ParseException {
         alliances = resolveAlliances(alliances);
-        return new AlliancesNationMetricByDay(generateData(null, metric, start, end, mode, alliances, filter, includeApps), metric, start, end, alliances);
+        return new AlliancesNationMetricByDay(
+                generateData(null, metric, start, end, mode, alliances, filter, includeApps), metric, start, end,
+                alliances);
     }
 
-    public AlliancesNationMetricByDay(Map<Long, double[]> valuesByDay, TypedFunction<DBNation, Double> metric, @Timestamp long start, @Timestamp long end, @Arg("The alliances to include. Defaults to top 15") @Default Set<DBAlliance> alliances) throws IOException, ParseException {
+    public AlliancesNationMetricByDay(Map<Long, double[]> valuesByDay, TypedFunction<DBNation, Double> metric,
+            @Timestamp long start, @Timestamp long end,
+            @Arg("The alliances to include. Defaults to top 15") @Default Set<DBAlliance> alliances)
+            throws IOException, ParseException {
         alliances = resolveAlliances(alliances);
         this.valuesByDay = valuesByDay;
-        this.allianceIdsSorted = alliances.stream().map(DBAlliance::getAlliance_id).sorted().collect(Collectors.toList());
+        this.allianceIdsSorted = alliances.stream().map(DBAlliance::getAlliance_id).sorted()
+                .collect(Collectors.toList());
         String[] labels = allianceIdsSorted.stream().map(f -> PW.getName(f, true)).toArray(String[]::new);
         this.minDay = TimeUtil.getDay(start);
         this.maxDay = Math.min(TimeUtil.getDay(), TimeUtil.getDay(end + TimeUnit.HOURS.toDays(23)));

@@ -129,6 +129,41 @@ public class WarStatistics {
         }
     }
 
+    public void updateDayTierGraph(ConflictManager manager, long day, Map<Integer, Map<Byte, int[]>> data, boolean force, boolean save) {
+        if (!force) {
+            if (graphDataByDay.containsKey(day)) return;
+        } else {
+            if (save && graphDataByDay.containsKey(day)) {
+                manager.clearGraphData(List.of(ConflictMetric.INFRA, ConflictMetric.BEIGE, ConflictMetric.NATION), getParent().getId(), getParent().isPrimary(), day);
+            }
+        }
+
+        DayTierGraphData graphData = new DayTierGraphData();
+        for (Map.Entry<Integer, Map<Byte, int[]>> allianceEntry : data.entrySet()) {
+            int allianceId = allianceEntry.getKey();
+            Map<Byte, Integer> nationByTier = graphData.getOrCreate(ConflictMetric.NATION, allianceId);
+            Map<Byte, Integer> infraByTier = graphData.getOrCreate(ConflictMetric.INFRA, allianceId);
+            Map<Byte, Integer> beigeByTier = graphData.getOrCreate(ConflictMetric.BEIGE, allianceId);
+            for (Map.Entry<Byte, int[]> tierEntry : allianceEntry.getValue().entrySet()) {
+                byte cityTier = tierEntry.getKey();
+                int[] values = tierEntry.getValue();
+                if (values[0] > 0) {
+                    nationByTier.put(cityTier, values[0]);
+                }
+                if (values[1] > 0) {
+                    infraByTier.put(cityTier, values[1]);
+                }
+                if (values[2] > 0) {
+                    beigeByTier.put(cityTier, values[2]);
+                }
+            }
+        }
+        graphDataByDay.put(day, graphData);
+        if (save) {
+            graphData.save(manager, getParent().getId(), getParent().isPrimary(), day);
+        }
+    }
+
     public void updateTurnTierGraph(ConflictManager manager, long turn, Set<DBNation> nations, boolean force, boolean save) {
         if (!force) {
             if (graphDataByTurn.containsKey(turn)) return;

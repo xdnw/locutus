@@ -38,12 +38,14 @@ public class DataDumpParser {
     private long lastUpdatedCities = 0;
     private final File cityDir, nationDir;
     private final Dictionary nationDict, cityDict;
+    private final DataUtil util;
 
     public DataDumpParser() {
         this.cityDir = new File(Settings.INSTANCE.DATABASE.DATA_DUMP.CITIES);
         this.nationDir = new File(Settings.INSTANCE.DATABASE.DATA_DUMP.NATIONS);
         this.nationDict = new Dictionary(nationDir);
         this.cityDict = new Dictionary(cityDir);
+        this.util = new DataUtil(this);
     }
 
     public File getNationDir() {
@@ -54,22 +56,28 @@ public class DataDumpParser {
         return cityDir;
     }
 
-    public NationsFileSnapshot getSnapshotDelegate(long day, boolean loadCities, boolean loadVm) throws IOException, ParseException {
+    public NationsFileSnapshot getSnapshotDelegate(long day, boolean loadCities, boolean loadVm)
+            throws IOException, ParseException {
         NationsFileSnapshot snapshot = new NationsFileSnapshot(this, day, loadCities);
-        if (loadVm) snapshot.loadVm(null);
+        if (loadVm)
+            snapshot.loadVm(null);
         return snapshot;
     }
 
     // old method, for reference only:
-    // (long day, boolean loadCities, boolean includeVM, Predicate<Integer> allowedNations, Predicate<Integer> allowedAlliances, @Nullable Predicate<DBNation> nationFilter) throws IOException, ParseException {
+    // (long day, boolean loadCities, boolean includeVM, Predicate<Integer>
+    // allowedNations, Predicate<Integer> allowedAlliances, @Nullable
+    // Predicate<DBNation> nationFilter) throws IOException, ParseException {
 
     // new method
-    public Map<Integer, DBNationSnapshot> getNations(long day) throws IOException, ParseException {
+    public Map<Integer, DBNationSnapshot> getNations(long day, boolean loadCities) throws IOException, ParseException {
         NationsFile nationsFile = getNearestNationFile(day);
-        CitiesFile citiesFile = getNearestCityFile(day);
         Function<Integer, Map<Integer, DBCity>> fetchCities = null;
-        if (citiesFile != null) {
-            fetchCities = citiesFile.loadCities();
+        if (loadCities) {
+            CitiesFile citiesFile = getNearestCityFile(day);
+            if (citiesFile != null) {
+                fetchCities = citiesFile.loadCities();
+            }
         }
         Map<Integer, DBNationSnapshot> nations = nationsFile.readNations(fetchCities);
         return nations;
@@ -149,7 +157,8 @@ public class DataDumpParser {
 
     public void withNationFile(long day, Consumer<NationsFile> withFile) throws IOException, ParseException {
         downloadNationFilesByDay();
-        if (nationFilesByDay == null) return;
+        if (nationFilesByDay == null)
+            return;
         synchronized (nationFilesByDay) {
             NationsFile nationFile = nationFilesByDay.get(day);
             if (nationFile != null) {
@@ -159,17 +168,20 @@ public class DataDumpParser {
     }
 
     public void iterateAll(Predicate<Long> acceptDay,
-                            BiConsumer<NationHeader, DataFile<DBNation, NationHeader, NationHeaderReader>.Builder> nationColumns,
-                            BiConsumer<CityHeader, DataFile<DBCity, CityHeader, CityHeaderReader>.Builder> cityColumns,
-                            BiConsumer<Long, NationHeaderReader> nationRows,
-                            BiConsumer<Long, CityHeaderReader> cityRows,
-                            Consumer<Long> onEach) throws IOException, ParseException {
+            BiConsumer<NationHeader, DataFile<DBNation, NationHeader, NationHeaderReader>.Builder> nationColumns,
+            BiConsumer<CityHeader, DataFile<DBCity, CityHeader, CityHeaderReader>.Builder> cityColumns,
+            BiConsumer<Long, NationHeaderReader> nationRows,
+            BiConsumer<Long, CityHeaderReader> cityRows,
+            Consumer<Long> onEach) throws IOException, ParseException {
         load();
         iterateFiles((day, nationFile, cityFile) -> {
             try {
-                if (!acceptDay.test(day)) return;
-                if (cityRows != null && cityFile == null) return;
-                if (nationRows != null && nationFile == null) return;
+                if (!acceptDay.test(day))
+                    return;
+                if (cityRows != null && cityFile == null)
+                    return;
+                if (nationRows != null && nationFile == null)
+                    return;
                 if (nationRows != null) {
                     DataFile<DBNation, NationHeader, NationHeaderReader>.Builder reader = nationFile.reader();
                     if (nationColumns == null) {
@@ -192,28 +204,32 @@ public class DataDumpParser {
                     onEach.accept(day);
                 }
             } catch (IOException e) {
-                Logg.text("Error reading file " + day + " | " + (cityFile == null ? "no city file" : cityFile.getFilePart()));
+                Logg.text("Error reading file " + day + " | "
+                        + (cityFile == null ? "no city file" : cityFile.getFilePart()));
                 throw new RuntimeException(e);
             } catch (Throwable e) {
-                Logg.text("Error reading file (2) " + day + " | " + (cityFile == null ? "no city file" : cityFile.getFilePart()));
+                Logg.text("Error reading file (2) " + day + " | "
+                        + (cityFile == null ? "no city file" : cityFile.getFilePart()));
                 throw e;
             }
         });
     }
 
     public DataUtil getUtil() {
-        return new DataUtil(this);
+        return util;
     }
 
     public Map<Long, CitiesFile> getCityFilesByDay() {
-        if (cityFilesByDay == null) return Collections.emptyMap();
+        if (cityFilesByDay == null)
+            return Collections.emptyMap();
         synchronized (cityFilesByDay) {
             return new Long2ObjectLinkedOpenHashMap<>(cityFilesByDay);
         }
     }
 
     public Map<Long, NationsFile> getNationFilesByDay() {
-        if (nationFilesByDay == null) return Collections.emptyMap();
+        if (nationFilesByDay == null)
+            return Collections.emptyMap();
         synchronized (nationFilesByDay) {
             return new Long2ObjectLinkedOpenHashMap<>(nationFilesByDay);
         }
@@ -231,7 +247,8 @@ public class DataDumpParser {
                     String fileUrl = url + subUrl;
                     File saveAs = new File(savePath, subUrl.replace(".zip", ""));
                     filesByDate.put(DataFile.parseDateFromFile(saveAs.getName()), saveAs);
-                    if (saveAs.exists()) continue;
+                    if (saveAs.exists())
+                        continue;
                     download(fileUrl, saveAs);
                 }
             }
@@ -255,13 +272,16 @@ public class DataDumpParser {
         }
     }
 
-    private <T, H extends DataHeader<T>, U extends DataReader<H>, F extends DataFile<T, H, U>> F getNearest(Map<Long, F> map, long day) {
-        if (map == null) return null;
+    private <T, H extends DataHeader<T>, U extends DataReader<H>, F extends DataFile<T, H, U>> F getNearest(
+            Map<Long, F> map, long day) {
+        if (map == null)
+            return null;
         F exact;
         synchronized (map) {
             exact = map.get(day);
         }
-        if (exact != null) return exact;
+        if (exact != null)
+            return exact;
         F nearest = null;
         long nearestDiff = Long.MAX_VALUE;
         synchronized (map) {
@@ -295,20 +315,22 @@ public class DataDumpParser {
 
                     String prefix = "nations";
                     for (File file : nationDir.listFiles()) {
-                        if (!DataFile.isValidName(file, prefix)) continue;
+                        if (!DataFile.isValidName(file, prefix))
+                            continue;
                         NationsFile natFile = new NationsFile(file, nationDict);
                         long day = natFile.getDay();
                         nationFilesByDay.putIfAbsent(day, natFile);
                     }
                     lastUpdatedNations = nationFilesByDay.keySet().stream().max(Long::compareTo).orElse(0L);
                 }
-                }
             }
+        }
         long currentDay = TimeUtil.getDay();
         if (currentDay > lastUpdatedNations) {
             synchronized (this) {
                 if (currentDay > lastUpdatedNations) {
-                    Map<Long, File> downloaded = load(Settings.PNW_URL() + "/data/nations/", new File(Settings.INSTANCE.DATABASE.DATA_DUMP.NATIONS));
+                    Map<Long, File> downloaded = load(Settings.PNW_URL() + "/data/nations/",
+                            new File(Settings.INSTANCE.DATABASE.DATA_DUMP.NATIONS));
                     downloaded.forEach((time, file) -> {
                         long day = TimeUtil.getDay(time);
                         NationsFile natFile = new NationsFile(file, nationDict);
@@ -332,7 +354,8 @@ public class DataDumpParser {
 
                     String prefix = "cities";
                     for (File file : cityDir.listFiles()) {
-                        if (!DataFile.isValidName(file, prefix)) continue;
+                        if (!DataFile.isValidName(file, prefix))
+                            continue;
                         CitiesFile cityFile = new CitiesFile(file, cityDict);
                         long day = cityFile.getDay();
                         cityFilesByDay.putIfAbsent(day, cityFile);
@@ -345,7 +368,8 @@ public class DataDumpParser {
         if (currentDay > lastUpdatedCities) {
             synchronized (this) {
                 if (currentDay > lastUpdatedCities) {
-                    Map<Long, File> downloaded = load(Settings.PNW_URL() + "/data/cities/", new File(Settings.INSTANCE.DATABASE.DATA_DUMP.CITIES));
+                    Map<Long, File> downloaded = load(Settings.PNW_URL() + "/data/cities/",
+                            new File(Settings.INSTANCE.DATABASE.DATA_DUMP.CITIES));
                     downloaded.forEach((time, file) -> {
                         long day = TimeUtil.getDay(time);
                         CitiesFile cityFile = new CitiesFile(file, cityDict);

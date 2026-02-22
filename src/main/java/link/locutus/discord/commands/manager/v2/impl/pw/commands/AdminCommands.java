@@ -502,7 +502,7 @@ public class AdminCommands {
         Set<DBNation> toSave = new HashSet<>();
 
         DataDumpParser snapshot = Locutus.imp().getDataDumper(true);
-        for (Map.Entry<Integer, DBNationSnapshot> entry : snapshot.getNations(TimeUtil.getDay()).entrySet()) {
+        for (Map.Entry<Integer, DBNationSnapshot> entry : snapshot.getNations(TimeUtil.getDay(), true).entrySet()) {
             DBNationSnapshot nation = entry.getValue();
             double reduction = nation._costReduction();
             if (reduction <= 0)

@@ -21,23 +21,27 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.stream.Collectors;
 
 public class NationsFileSnapshot implements INationSnapshot {
     private final Map<Integer, DBNationSnapshot> nations;
     private final long day;
     private final DataDumpParser dumper;
     private final boolean loadCities;
+    private volatile Map<Integer, Set<DBNation>> allianceIndex;
+    private volatile Map<String, DBNation> leaderIndex;
+    private volatile Map<String, DBNation> nameIndex;
 
     public NationsFileSnapshot(DataDumpParser dumper, long day, boolean loadCities) throws IOException, ParseException {
         this.day = day;
         this.dumper = dumper;
         this.loadCities = loadCities;
-        this.nations = dumper.getNations(day);
+        // Snapshot instances may apply VM overlays; keep per-instance state isolated.
+        this.nations = new Int2ObjectOpenHashMap<>(dumper.getNations(day, loadCities));
     }
 
     public NationsFileSnapshot loadVm(@Nullable Set<Integer> nationIds) throws IOException, ParseException {
@@ -50,7 +54,8 @@ public class NationsFileSnapshot implements INationSnapshot {
                     }
                 }
             }
-            if (missing.isEmpty()) return this;
+            if (missing.isEmpty())
+                return this;
         }
 
         long start = System.currentTimeMillis();
@@ -69,7 +74,8 @@ public class NationsFileSnapshot implements INationSnapshot {
         Map<Integer, Set<Integer>> nationsByDay = new Int2ObjectOpenHashMap<>();
         for (int id : missing) {
             List<Map.Entry<Integer, Integer>> ranges = vmRanges.get(id);
-            if (ranges == null) continue;
+            if (ranges == null)
+                continue;
             for (Map.Entry<Integer, Integer> range : ranges) {
                 int startDay = range.getKey();
                 int endDay = range.getValue();
@@ -99,21 +105,25 @@ public class NationsFileSnapshot implements INationSnapshot {
             long enteredVm = TimeUtil.getTurn(TimeUtil.getTimeFromDay((long) fetchDay));
             tasks.add(executor.submit(() -> {
                 try {
-                    Map<Integer, DBNationSnapshot> addNations = dumper.getNations(fetchDay);
+                    Map<Integer, DBNationSnapshot> addNations = dumper.getNations(fetchDay, loadCities);
                     synchronized (nations) {
                         for (Map.Entry<Integer, DBNationSnapshot> entry2 : addNations.entrySet()) {
                             int nationId = entry2.getKey();
-                            if (!ids.contains(nationId)) continue;
+                            if (!ids.contains(nationId))
+                                continue;
                             DBNationSnapshot nation = entry2.getValue();
                             // update VM turns
                             long leavingVmMs = leavingVm.get(nationId);
                             long enteredVmMs = enteredVm;
                             int offset = nation.getOffset();
 
-                            GlobalDataWrapper<NationHeader> wrapper = (GlobalDataWrapper<NationHeader>) nation.getWrapper();
-                            DataWrapper<NationHeader> newWrapper = new GlobalDataWrapper<>(timestamp, wrapper.header, wrapper.data, wrapper.getCities);
+                            GlobalDataWrapper<NationHeader> wrapper = (GlobalDataWrapper<NationHeader>) nation
+                                    .getWrapper();
+                            DataWrapper<NationHeader> newWrapper = new GlobalDataWrapper<>(timestamp, wrapper.header,
+                                    wrapper.data, wrapper.getCities);
 
-                            DBNationSnapshotVm newNation = new DBNationSnapshotVm(newWrapper, nation.getOffset(), leavingVmMs, enteredVmMs);
+                            DBNationSnapshotVm newNation = new DBNationSnapshotVm(newWrapper, nation.getOffset(),
+                                    leavingVmMs, enteredVmMs);
                             nations.put(nationId, newNation);
                         }
                     }
@@ -126,7 +136,37 @@ public class NationsFileSnapshot implements INationSnapshot {
             FileUtil.get(task);
         }
 
+        synchronized (nations) {
+            // VM backfill mutates nation entries; discard derived lookup indexes.
+            allianceIndex = null;
+            leaderIndex = null;
+            nameIndex = null;
+        }
+
         return this;
+    }
+
+    private void ensureIndexesLocked() {
+        if (allianceIndex != null && leaderIndex != null && nameIndex != null) {
+            return;
+        }
+        Map<Integer, Set<DBNation>> alliances = new Int2ObjectOpenHashMap<>();
+        Map<String, DBNation> leaders = new java.util.HashMap<>();
+        Map<String, DBNation> names = new java.util.HashMap<>();
+        for (DBNationSnapshot nation : nations.values()) {
+            alliances.computeIfAbsent(nation.getAlliance_id(), k -> new ObjectOpenHashSet<>()).add(nation);
+            String leader = nation.getLeader();
+            if (leader != null && !leader.isEmpty()) {
+                leaders.putIfAbsent(leader.toLowerCase(Locale.ROOT), nation);
+            }
+            String natName = nation.getName();
+            if (natName != null && !natName.isEmpty()) {
+                names.putIfAbsent(natName.toLowerCase(Locale.ROOT), nation);
+            }
+        }
+        allianceIndex = alliances;
+        leaderIndex = leaders;
+        nameIndex = names;
     }
 
     @Override
@@ -139,20 +179,30 @@ public class NationsFileSnapshot implements INationSnapshot {
     @Override
     public Set<DBNation> getNationsByAlliance(Set<Integer> alliances) {
         synchronized (nations) {
-            return nations.values().stream().filter(n -> alliances.contains(n.getAlliance_id())).collect(Collectors.toSet());
+            ensureIndexesLocked();
+            Set<DBNation> result = new ObjectOpenHashSet<>();
+            for (int allianceId : alliances) {
+                Set<DBNation> members = allianceIndex.get(allianceId);
+                if (members != null && !members.isEmpty()) {
+                    result.addAll(members);
+                }
+            }
+            return result;
         }
     }
 
     @Override
     public DBNation getNationByLeader(String input) {
         synchronized (nations) {
-            return nations.values().stream().filter(n -> n.getLeader().equalsIgnoreCase(input)).findFirst().orElse(null);
+            ensureIndexesLocked();
+            return leaderIndex.get(input.toLowerCase(Locale.ROOT));
         }
     }
 
     public DBNation getNationByName(String input) {
         synchronized (nations) {
-            return nations.values().stream().filter(n -> n.getName().equalsIgnoreCase(input)).findFirst().orElse(null);
+            ensureIndexesLocked();
+            return nameIndex.get(input.toLowerCase(Locale.ROOT));
         }
     }
 
@@ -166,14 +216,25 @@ public class NationsFileSnapshot implements INationSnapshot {
     @Override
     public Set<DBNation> getNationsByBracket(int taxId) {
         synchronized (nations) {
-            return nations.values().stream().filter(n -> n.getTax_id() == taxId).collect(Collectors.toSet());
+            Set<DBNation> result = new ObjectOpenHashSet<>();
+            for (DBNationSnapshot nation : nations.values()) {
+                if (nation.getTax_id() == taxId) {
+                    result.add(nation);
+                }
+            }
+            return result;
         }
     }
 
     @Override
     public Set<DBNation> getNationsByAlliance(int id) {
         synchronized (nations) {
-            return nations.values().stream().filter(n -> n.getAlliance_id() == id).collect(Collectors.toSet());
+            ensureIndexesLocked();
+            Set<DBNation> members = allianceIndex.get(id);
+            if (members == null || members.isEmpty()) {
+                return new ObjectOpenHashSet<>();
+            }
+            return new ObjectOpenHashSet<>(members);
         }
     }
 }

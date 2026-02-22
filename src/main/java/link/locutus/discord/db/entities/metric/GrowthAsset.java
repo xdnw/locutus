@@ -3,6 +3,10 @@ package link.locutus.discord.db.entities.metric;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBCity;
+import link.locutus.discord.util.PW;
+
+import java.util.Map;
 
 public enum GrowthAsset {
     CITIES(AllianceMetric.CITY, AllianceMetric.CITY_VALUE) {
@@ -54,6 +58,46 @@ public enum GrowthAsset {
         }
 
         @Override
+        public int getAndValue(DBNation nation, double[] valueOut) {
+            double infra = 0;
+            double value = 0;
+            for (Map.Entry<Integer, DBCity> entry : nation._getCitiesV3().entrySet()) {
+                DBCity city = entry.getValue();
+                double cityInfra = city.getInfra();
+                infra += cityInfra;
+                value += PW.City.Infra.calculateInfra(0, cityInfra);
+            }
+            valueOut[ResourceType.MONEY.ordinal()] += value;
+            return (int) infra;
+        }
+
+        @Override
+        public int getDeltaAndValue(DBNation from, DBNation to, double[] valueOut) {
+            double fromInfra = 0;
+            double toInfra = 0;
+            double fromValue = 0;
+            double toValue = 0;
+
+            for (Map.Entry<Integer, DBCity> entry : from._getCitiesV3().entrySet()) {
+                DBCity city = entry.getValue();
+                double cityInfra = city.getInfra();
+                fromInfra += cityInfra;
+                fromValue += PW.City.Infra.calculateInfra(0, cityInfra);
+            }
+            for (Map.Entry<Integer, DBCity> entry : to._getCitiesV3().entrySet()) {
+                DBCity city = entry.getValue();
+                double cityInfra = city.getInfra();
+                toInfra += cityInfra;
+                toValue += PW.City.Infra.calculateInfra(0, cityInfra);
+            }
+
+            valueOut[ResourceType.MONEY.ordinal()] += (toValue - fromValue);
+            int fromAmt = (int) fromInfra;
+            int toAmt = (int) toInfra;
+            return toAmt - fromAmt;
+        }
+
+        @Override
         public double[] value(double[] buffer, DBNation nation) {
             buffer[ResourceType.MONEY.ordinal()] += nation.infraValue();
             return buffer;
@@ -69,6 +113,46 @@ public enum GrowthAsset {
         @Override
         public int get(DBNation nation) {
             return (int) nation.getTotalLand();
+        }
+
+        @Override
+        public int getAndValue(DBNation nation, double[] valueOut) {
+            double land = 0;
+            double value = 0;
+            for (Map.Entry<Integer, DBCity> entry : nation._getCitiesV3().entrySet()) {
+                DBCity city = entry.getValue();
+                double cityLand = city.getLand();
+                land += cityLand;
+                value += PW.City.Land.calculateLand(0, cityLand);
+            }
+            valueOut[ResourceType.MONEY.ordinal()] += value;
+            return (int) land;
+        }
+
+        @Override
+        public int getDeltaAndValue(DBNation from, DBNation to, double[] valueOut) {
+            double fromLand = 0;
+            double toLand = 0;
+            double fromValue = 0;
+            double toValue = 0;
+
+            for (Map.Entry<Integer, DBCity> entry : from._getCitiesV3().entrySet()) {
+                DBCity city = entry.getValue();
+                double cityLand = city.getLand();
+                fromLand += cityLand;
+                fromValue += PW.City.Land.calculateLand(0, cityLand);
+            }
+            for (Map.Entry<Integer, DBCity> entry : to._getCitiesV3().entrySet()) {
+                DBCity city = entry.getValue();
+                double cityLand = city.getLand();
+                toLand += cityLand;
+                toValue += PW.City.Land.calculateLand(0, cityLand);
+            }
+
+            valueOut[ResourceType.MONEY.ordinal()] += (toValue - fromValue);
+            int fromAmt = (int) fromLand;
+            int toAmt = (int) toLand;
+            return toAmt - fromAmt;
         }
 
         @Override
@@ -93,6 +177,16 @@ public enum GrowthAsset {
     }
 
     public abstract int get(DBNation nation);
+
+    public int getAndValue(DBNation nation, double[] valueOut) {
+        value(valueOut, nation);
+        return get(nation);
+    }
+
+    public int getDeltaAndValue(DBNation from, DBNation to, double[] valueOut) {
+        value(valueOut, from, to);
+        return get(to) - get(from);
+    }
 
     public abstract double[] value(double[] buffer, DBNation nation);
 

@@ -95,7 +95,7 @@ public class GrowthSummary {
             if (day == dayEnd + 1) {
                 return Locutus.imp().getNationDB().getNationsById();
             }
-            return (Map) dumper.getNations(day);
+            return (Map) dumper.getNations(day, true);
         };
 
         Map<Integer, DBNation> last = fetchNations.apply(dayStart);
@@ -210,13 +210,11 @@ public class GrowthSummary {
                 // boundary.
                 // This keeps reason buckets intuitive (assets brought in vs assets removed).
                 int amtDiff;
-                double[] valueDiff;
+                double[] valueDiff = ResourceType.getBuffer();
                 if (reason.afterwardsMember() && !reason.previouslyMember()) {
-                    amtDiff = to == null ? 0 : asset.get(to);
-                    valueDiff = to == null ? ResourceType.getBuffer() : asset.value(ResourceType.getBuffer(), to);
+                    amtDiff = to == null ? 0 : asset.getAndValue(to, valueDiff);
                 } else if (reason.previouslyMember() && !reason.afterwardsMember()) {
-                    amtDiff = from == null ? 0 : asset.get(from);
-                    valueDiff = from == null ? ResourceType.getBuffer() : asset.value(ResourceType.getBuffer(), from);
+                    amtDiff = from == null ? 0 : asset.getAndValue(from, valueDiff);
                 } else {
                     throw new IllegalArgumentException("Invalid state: " + reason);
                 }
@@ -231,14 +229,15 @@ public class GrowthSummary {
         }
         if (reason == MembershipChangeReason.UNCHANGED && toMember) {
             for (GrowthAsset asset : GROWTH_ASSETS) {
-                int amtDiff = asset.get(to) - asset.get(from);
+                double[] valueDiff = ResourceType.getBuffer();
+                int amtDiff = asset.getDeltaAndValue(from, to, valueDiff);
 
                 Int2IntOpenHashMap countByNation = summary.getOrCreateCountMap(asset, reason);
                 countByNation.merge(nationId, amtDiff, Integer::sum);
 
                 Int2ObjectOpenHashMap<double[]> valueByNation = summary.getOrCreateValueMap(asset, reason);
                 double[] growthValue = valueByNation.computeIfAbsent(nationId, k -> ResourceType.getBuffer());
-                asset.value(growthValue, from, to);
+                ResourceType.add(growthValue, valueDiff);
             }
         }
     }

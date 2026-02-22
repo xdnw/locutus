@@ -20,41 +20,43 @@ public class NationsFile extends DataFile<DBNation, NationHeader, NationHeaderRe
         super(file, parseDateFromFile(file.getName()), () -> new NationHeader(dict), (NationHeaderReader::new));
     }
 
-    private ThreadLocal<SoftReference<Map<Integer, DBNationSnapshot>>> nationsCache = ThreadLocal.withInitial(() -> new SoftReference<>(null));
+    // Keep separate caches for city-aware and city-agnostic wrappers.
+    // This avoids returning a no-city map for callers that require city access.
+    private SoftReference<Map<Integer, DBNationSnapshot>> nationsCacheWithCities = new SoftReference<>(null);
+    private SoftReference<Map<Integer, DBNationSnapshot>> nationsCacheNoCities = new SoftReference<>(null);
 
     public synchronized Map<Integer, DBNationSnapshot> readNations(CitiesFile cf) throws IOException {
         Function<Integer, Map<Integer, DBCity>> fetchCities = cf == null ? null : cf.loadCities();
         return readNations(fetchCities);
     }
 
-    public synchronized Map<Integer, DBNationSnapshot> readNations(Function<Integer, Map<Integer, DBCity>> fetchCities) throws IOException {
-        SoftReference<Map<Integer, DBNationSnapshot>> softRef = nationsCache.get();
+    public synchronized Map<Integer, DBNationSnapshot> readNations(Function<Integer, Map<Integer, DBCity>> fetchCities)
+            throws IOException {
+        boolean hasCities = fetchCities != null;
+        SoftReference<Map<Integer, DBNationSnapshot>> softRef = hasCities ? nationsCacheWithCities
+                : nationsCacheNoCities;
         Map<Integer, DBNationSnapshot> cached = (softRef != null) ? softRef.get() : null;
-        if (cached != null) return cached;
-        synchronized (this) {
-            softRef = nationsCache.get();
-            cached = (softRef != null) ? softRef.get() : null;
-            if (cached != null) return cached;
+        if (cached != null)
+            return cached;
 
-            NationHeader header = getGlobalHeader();
-            byte[] data = this.getBytes();
-            Header<DBNation> colInfo = header.readIndexes(data);
-            int bytesPerRow = colInfo.bytesPerRow;
+        NationHeader header = getGlobalHeader();
+        byte[] data = this.getBytes();
+        Header<DBNation> colInfo = header.readIndexes(data);
+        int bytesPerRow = colInfo.bytesPerRow;
+        int rows = (data.length - colInfo.initialOffset) / bytesPerRow;
 
-            int rows = (data.length - colInfo.initialOffset) / bytesPerRow;
-            int remainder = (data.length - colInfo.initialOffset) % bytesPerRow;
+        DataWrapper wrapper = new GlobalDataWrapper(getDate(), header, data, fetchCities);
 
-            DataWrapper wrapper = new GlobalDataWrapper(getDate(), header, data, fetchCities);
-
-            Map<Integer, DBNationSnapshot> result = new Int2ObjectOpenHashMap<>();
-            for (int i = colInfo.initialOffset; i < data.length; i += bytesPerRow) {
-                DBNationSnapshot nation = new DBNationSnapshot(wrapper, i);
-                if (nation != null) {
-                    result.put(nation.getNation_id(), nation);
-                }
-            }
-            nationsCache.set(new SoftReference<>(result));
-            return result;
+        Map<Integer, DBNationSnapshot> result = new Int2ObjectOpenHashMap<>(rows);
+        for (int i = colInfo.initialOffset; i < data.length; i += bytesPerRow) {
+            DBNationSnapshot nation = new DBNationSnapshot(wrapper, i);
+            result.put(nation.getNation_id(), nation);
         }
+        if (hasCities) {
+            nationsCacheWithCities = new SoftReference<>(result);
+        } else {
+            nationsCacheNoCities = new SoftReference<>(result);
+        }
+        return result;
     }
 }
