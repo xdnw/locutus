@@ -67,6 +67,7 @@ public class PageHandler implements Handler {
 
     private final CommandGroup commands;
     private final ValueStore<Object> store;
+   private final ValueStore<Object> webOptionStore; 
     private final ValidatorStore validators;
     private final PermissionHandler permisser;
     private final ObjectMapper serializer;
@@ -118,29 +119,6 @@ public class PageHandler implements Handler {
 
         ValueStore<?> phStore = placeholders.getStore();
         Set<Parser> parsers = new HashSet<>(phStore.getParsers().values());
-//        for (ParametricCallable cmd : Locutus.cmd().getV2().getCommands().getParametricCallables(f -> {
-//            RolePermission rolePerm = f.getMethod().getAnnotation(RolePermission.class);
-//            if (rolePerm != null && (rolePerm.root() || rolePerm.alliance() || rolePerm.guild() > 0)) {
-//                return false;
-//            }
-//            GuildCoalition guildPerm = f.getMethod().getAnnotation(GuildCoalition.class);
-//            if (guildPerm != null) {
-//                return false;
-//            }
-//            DenyPermission deny = f.getMethod().getAnnotation(DenyPermission.class);
-//            if (deny != null) {
-//                return false;
-//            }
-//            WhitelistPermission whitelist = f.getMethod().getAnnotation(WhitelistPermission.class);
-//            if (whitelist != null) {
-//                return false;
-//            }
-//            return true;
-//        })) {
-//            for (ParameterData param : cmd.getUserParameters()) {
-//                parsers.add(param.getBinding());
-//            }
-//        }
         parsers.removeIf(f -> {
             if (!f.isConsumer(phStore)) return true;
             return false;
@@ -167,23 +145,20 @@ public class PageHandler implements Handler {
             }
         }
         this.serializer = new ObjectMapper(new MessagePackFactory());
+
+        this.webOptionStore = new SimpleValueStore<>();
+        new WebOptionBindings().register(store);
+        store.addProvider(Key.of(PlaceholdersMap.class), placeholders);
+    }
+
+    public MCPHandler createMCP() {
+        return new MCPHandler();
     }
 
     public ObjectMapper getSerializer() {
         return serializer;
     }
 
-    //    private Schema generateSchema() {
-//        CommandGroup api = (CommandGroup) commands.get("api");
-//        Set<Class<?>> schemaClasses = new ObjectLinkedOpenHashSet<>();
-//        for (ParametricCallable cmd : api.getParametricCallables(Predicates.alwaysTrue())) {
-//            Method method = cmd.getMethod();
-//            ReturnType returnType = method.getAnnotation(ReturnType.class);
-//            if (returnType == null) throw new IllegalArgumentException("No return type for " + method.getName() + " in " + method.getDeclaringClass().getSimpleName());
-//            Class<?> clazz = returnType.value();
-//        }
-//        return TsEndpointGenerator.generateSchema(schemaClasses);
-//    }
     private volatile Map<String, WebOption> queryOptions;
     private final Object queryOptionsLock = new Object();
 
@@ -193,9 +168,6 @@ public class PageHandler implements Handler {
             synchronized (queryOptionsLock) {
                 tmp = queryOptions;
                 if (tmp == null) {
-                    SimpleValueStore<Object> store = new SimpleValueStore<>();
-                    new WebOptionBindings().register(store);
-                    store.addProvider(Key.of(PlaceholdersMap.class), placeholders);
                     tmp = new ConcurrentHashMap<>();
 
                     for (Parser optionParser : store.getParsers().values()) {

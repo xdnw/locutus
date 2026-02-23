@@ -49,6 +49,8 @@ public class WebRoot {
     private final TemplateEngine jteEngine;
     private final DirectoryCodeResolver jteResolver;
 
+    private final MCPHandler mcpHandler;
+
     private static TemplateEngine createTemplateEngine() {
         TemplateEngine engine = TemplateEngine.createPrecompiled(Path.of("src/main/jte"), ContentType.Plain);
         engine.setHtmlCommentsPreserved(false);
@@ -164,6 +166,7 @@ public class WebRoot {
         }).start(port);
 
         this.pageHandler = new PageHandler(Locutus.imp().getCommandManager().getV2().getPlaceholders());
+        this.mcpHandler = pageHandler.createMCP();
         this.webDB = new WebDB();
 
 //        // Disabled. Client doesn't reliably send referrer info
@@ -175,6 +178,14 @@ public class WebRoot {
 //        });
 
         this.app.get("/robots.txt", ctx -> ctx.result("User-agent: *\nDisallow: /"));
+
+        this.app.sse("/mcp/sse", client -> {
+            mcpHandler.sse(client);
+        });
+
+        this.app.post("/mcp/message", ctx -> {
+            mcpHandler.handleMessage(ctx);
+        });
 
         this.app.get("/sse/**", new SseHandler2(new Consumer<SseMessageOutput>() {
             @Override

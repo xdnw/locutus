@@ -1021,32 +1021,40 @@ public class ParametricCallable<T> implements ICommand<T> {
     @Override
     public Map<String, Object> toJsonSchema(Map<Key<?>, Map<String, Object>> primitiveCache) {
         Map<String, Object> root = new Object2ObjectLinkedOpenHashMap<>();
-        root.put("type", "function");
-        root.put("name", getFullPath().replaceAll(" ", "-").toLowerCase(Locale.ROOT));
+        
+        // 1. Name must be max 64 chars, only alphanumeric, underscores, hyphens
+        String name = getFullPath().replaceAll("[^a-zA-Z0-9_-]", "-").toLowerCase(Locale.ROOT);
+        if (name.length() > 64) name = name.substring(0, 64);
+        root.put("name", name);
+        
+        // 2. Description is strictly required
         String desc = simpleDesc();
         if (desc == null || desc.isEmpty()) {
-            throw new IllegalArgumentException("Command " + getFullPath() + " has no description, which is required for tool calls");
+            throw new IllegalArgumentException("Command " + getFullPath() + " has no description.");
         }
         root.put("description", desc);
-        Map<String, Object> params = new Object2ObjectLinkedOpenHashMap<>();
-        params.put("type", "object");
-
+        
+        // 3. Rename 'parameters' to 'inputSchema'
+        Map<String, Object> inputSchema = new Object2ObjectLinkedOpenHashMap<>();
+        inputSchema.put("type", "object");
+        
         Map<String, Object> properties = new Object2ObjectLinkedOpenHashMap<>();
-
         List<String> required = new ArrayList<>();
+        
         for (ParameterData param : userParameters) {
             String paramName = param.getName().toLowerCase(Locale.ROOT);
-            if (!param.isFlag() && param.getDefaultValue() != null) {
+            // FIX: If it DOES NOT have a default value, it is required.
+            if (!param.isFlag() && (param.getDefaultValue() == null || param.getDefaultValue().length == 0)) {
                 required.add(paramName);
             }
             properties.put(paramName, param.toToolJson(primitiveCache));
         }
-
-        if (!properties.isEmpty()) params.put("properties", properties);
-        if (!required.isEmpty()) params.put("required", required);
-        if (params.size() > 1) {
-            root.put("parameters", params);
-        }
+        
+        if (!properties.isEmpty()) inputSchema.put("properties", properties);
+        if (!required.isEmpty()) inputSchema.put("required", required);
+        
+        root.put("inputSchema", inputSchema);
+        
         return root;
     }
 }

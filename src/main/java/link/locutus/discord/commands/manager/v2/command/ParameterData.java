@@ -7,6 +7,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.ArgChoice;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.gpt.GPTUtil;
+import link.locutus.discord.gpt.mcp.MCPUtil;
 import link.locutus.discord.util.StringMan;
 
 import java.lang.annotation.Annotation;
@@ -93,7 +94,7 @@ public class ParameterData {
 
         Map<String, Object> primitiveType = primitiveCache.get(key);
         if (primitiveType == null && key.getAnnotations().length != 0) {
-            primitiveType = GPTUtil.toJsonSchema(type, false);
+            primitiveType = MCPUtil.toJsonSchema(type, false);
             primitiveCache.put(key, primitiveType);
         }
         if (primitiveType != null) {
@@ -101,7 +102,7 @@ public class ParameterData {
         } else {
             Key<?> bindingWebType = binding.getWebTypeOrNull();
             if (bindingWebType == null) bindingWebType = key;
-            String definitionName = GPTUtil.getJsonName(bindingWebType.toSimpleString());
+            String definitionName = MCPUtil.getJsonName(bindingWebType.toSimpleString());
             arg.put("$ref", definitionName);
         }
 
