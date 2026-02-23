@@ -1,18 +1,17 @@
 package link.locutus.discord.web.jooby;
 
-import com.google.gson.reflect.TypeToken;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonSyntaxException;
 import io.javalin.http.Context;
 import io.javalin.http.sse.SseClient;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -36,7 +35,6 @@ import net.dv8tion.jda.api.entities.User;
 
 public class MCPHandler {
     private static final String JSON_RPC_VERSION = "2.0";
-    private static final Type MAP_TYPE = TypeToken.getParameterized(Map.class, String.class, Object.class).getType();
 
     @FunctionalInterface
     public interface LocalStoreFactory extends BiFunction<LocalValueStore<?>, Context, LocalValueStore<?>> {
@@ -112,19 +110,20 @@ public class MCPHandler {
             return;
         }
 
+        Object requestId = null;
         try {
-            Map<String, Object> requestRaw = parseRpcRequest(ctx.body());
-            Object id = requestRaw.get("id");
-            RpcRequest request = new RpcRequest(id, asString(requestRaw.get("method")), asMap(requestRaw.get("params")));
+            RpcRequestDto requestRaw = parseRpcRequest(ctx.body());
+            requestId = requestRaw.id;
+            RpcRequest request = new RpcRequest(requestRaw.id, requestRaw.method, requestRaw.params);
 
             if (request.method() == null || request.method().isEmpty()) {
-                sendRpcResponse(ctx, sseClient, error(id, -32600, "Invalid Request: missing method"));
+                sendRpcResponse(ctx, sseClient, error(request.id(), -32600, "Invalid Request: missing method"));
                 return;
             }
 
             RpcMethodHandler handler = methodHandlers.get(request.method());
             if (handler == null) {
-                sendRpcResponse(ctx, sseClient, error(id, -32601, "Method not found"));
+                sendRpcResponse(ctx, sseClient, error(request.id(), -32601, "Method not found"));
                 return;
             }
 
@@ -135,10 +134,12 @@ public class MCPHandler {
             }
             sendRpcResponse(ctx, sseClient, result.response());
         } catch (IllegalArgumentException e) {
-            sendRpcResponse(ctx, sseClient, error(null, -32600, "Invalid Request: " + e.getMessage()));
+            sendRpcResponse(ctx, sseClient, error(requestId, -32600, "Invalid Request: " + e.getMessage()));
+        } catch (JsonSyntaxException e) {
+            sendRpcResponse(ctx, sseClient, error(requestId, -32600, "Invalid Request: " + e.getMessage()));
         } catch (Throwable e) {
             e.printStackTrace();
-            sendRpcResponse(ctx, sseClient, error(null, -32603, "Internal error: " + e.getMessage()));
+            sendRpcResponse(ctx, sseClient, error(requestId, -32603, "Internal error: " + e.getMessage()));
         }
     }
 
@@ -178,12 +179,13 @@ public class MCPHandler {
     private RpcMethodResult handleToolsCall(Context ctx, RpcRequest request) {
         ensureToolCache();
 
-        String toolName = asString(request.params().get("name"));
+        ToolCallParams params = parseToolsCallParams(request.params());
+        String toolName = params.name;
         if (toolName == null || toolName.isEmpty()) {
             return RpcMethodResult.respond(ok(request.id(), toolError("Missing tool name in params.name")));
         }
 
-        Map<String, Object> toolArgs = asMap(request.params().get("arguments"));
+        Map<String, Object> toolArgs = params.arguments;
         if (toolArgs == null) {
             toolArgs = Collections.emptyMap();
         }
@@ -239,7 +241,7 @@ public class MCPHandler {
                 Map<String, ParametricCallable<?>> index = new LinkedHashMap<>();
                 List<String> duplicates = new ArrayList<>();
                 for (ParametricCallable<?> command : commands) {
-                    String name = getMcpToolName(command);
+                    String name = MCPUtil.getToolName(command);
                     if (index.containsKey(name)) {
                         duplicates.add(name);
                         continue;
@@ -254,12 +256,23 @@ public class MCPHandler {
         }
     }
 
-    private Map<String, Object> parseRpcRequest(String body) {
-        Map<String, Object> request = WebUtil.GSON.fromJson(body, MAP_TYPE);
+    private RpcRequestDto parseRpcRequest(String body) {
+        RpcRequestDto request = WebUtil.GSON.fromJson(body, RpcRequestDto.class);
         if (request == null) {
             throw new IllegalArgumentException("Request body is empty or invalid JSON");
         }
         return request;
+    }
+
+    private ToolCallParams parseToolsCallParams(JsonObject params) {
+        if (params == null) {
+            return new ToolCallParams();
+        }
+        ToolCallParams parsed = WebUtil.GSON.fromJson(params, ToolCallParams.class);
+        if (parsed == null) {
+            return new ToolCallParams();
+        }
+        return parsed;
     }
 
     private Map<String, Object> ok(Object id, Object result) {
@@ -301,36 +314,6 @@ public class MCPHandler {
         );
     }
 
-    private static String getMcpToolName(ParametricCallable<?> command) {
-        // Mirrors ParametricCallable#toJsonSchema name generation exactly.
-        String name = command.getFullPath("-").toLowerCase(Locale.ROOT);
-        if (name.length() > 64) {
-            name = name.substring(0, 64);
-        }
-        return name;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Map<String, Object> asMap(Object value) {
-        if (value == null) {
-            return null;
-        }
-        if (value instanceof Map<?, ?> map) {
-            return (Map<String, Object>) map;
-        }
-        throw new IllegalArgumentException("Expected object but got: " + value.getClass().getSimpleName());
-    }
-
-    private static String asString(Object value) {
-        if (value == null) {
-            return null;
-        }
-        if (value instanceof String s) {
-            return s;
-        }
-        throw new IllegalArgumentException("Expected string but got: " + value.getClass().getSimpleName());
-    }
-
     private static Throwable rootCause(Throwable throwable) {
         Throwable current = throwable;
         while (current.getCause() != null && current.getCause() != current) {
@@ -343,12 +326,23 @@ public class MCPHandler {
         RpcMethodResult handle(Context ctx, RpcRequest request);
     }
 
-    private record RpcRequest(Object id, String method, Map<String, Object> params) {
+    private record RpcRequest(Object id, String method, JsonObject params) {
         private RpcRequest {
             if (params == null) {
-                params = Collections.emptyMap();
+                params = new JsonObject();
             }
         }
+    }
+
+    private static class RpcRequestDto {
+        Object id;
+        String method;
+        JsonObject params;
+    }
+
+    private static class ToolCallParams {
+        String name;
+        Map<String, Object> arguments;
     }
 
     private record RpcMethodResult(Map<String, Object> response, boolean noSseResponse) {

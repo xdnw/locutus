@@ -12,6 +12,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
+import link.locutus.discord.gpt.mcp.MCPUtil;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
@@ -1023,11 +1024,7 @@ public class ParametricCallable<T> implements ICommand<T> {
         Map<String, Object> root = new Object2ObjectLinkedOpenHashMap<>();
         
         // 1. Name must be max 64 chars, only alphanumeric, underscores, hyphens
-        String name = this.getFullPath("-").toLowerCase(Locale.ROOT);
-        if (!name.matches("[a-z0-9_-]+")) {
-            throw new IllegalArgumentException("Command name must only contain alphanumeric characters, underscores, or hyphens: " + name);
-        }
-        if (name.length() > 64) name = name.substring(0, 64);
+        String name = MCPUtil.getToolName(this);
         root.put("name", name);
         
         // 2. Description is strictly required

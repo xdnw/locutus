@@ -158,7 +158,7 @@ public class PageHandler implements Handler {
                 commands.getParametricCallables(Predicates.alwaysTrue()),
                 validators,
                 permisser,
-                this::setupLocals
+                (locals, ctx) -> locals == null ? createLocals(ctx) : setupLocals(locals, ctx)
         );
     }
 
@@ -301,7 +301,7 @@ public class PageHandler implements Handler {
 
             } else if (cmds.size() == 1){
                 CommandManager2 v2 = Locutus.imp().getCommandManager().getV2();
-                LocalValueStore locals = setupLocals(null, ctx);
+                LocalValueStore locals = createLocals(ctx);
                 String cmdStr = cmds.get(0);
                 Logg.text("Web SSE(legacy): " + cmdStr + " | [" + logInfo(locals) + "]");
                 v2.run(locals, io, cmdStr, false, true);
@@ -482,7 +482,7 @@ public class PageHandler implements Handler {
     }
 
     private ArgumentStack createStack(Context ctx, List<String> args) {
-        LocalValueStore locals = setupLocals(null, ctx);
+        LocalValueStore locals = createLocals(ctx);
         ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
         locals.addProvider(stack);
         return stack;
@@ -662,7 +662,7 @@ public class PageHandler implements Handler {
         return call;
     }
 
-    public LocalValueStore setupLocals(LocalValueStore<?> locals, Context ctx) {
+    private LocalValueStore setupLocals(LocalValueStore<?> locals, Context ctx) {
         WebStore ws;
         if (locals == null) {
             locals = new LocalValueStore<>(store);
@@ -721,7 +721,7 @@ public class PageHandler implements Handler {
             if (pathStr.startsWith("/")) pathStr = pathStr.substring(1);
             List<String> path = new ArrayList<>(Arrays.asList(pathStr.split("/")));
             path.remove("command");
-            LocalValueStore locals = setupLocals(null, ctx);
+            LocalValueStore locals = createLocals(ctx);
             ws = (WebStore) locals.getProvided(WebStore.class);
             CommandCallable cmd = commands.getCallable(path);
             if (cmd == null) {
