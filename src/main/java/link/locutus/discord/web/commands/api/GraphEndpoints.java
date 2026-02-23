@@ -510,7 +510,7 @@ public class GraphEndpoints {
         return graph;
     }
 
-    @Command(viewable = true)
+    @Command(desc = "Generate alliance-specific metric graph over a time range", viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph allianceStats(Set<AllianceMetric> metrics, @Timestamp long start, @Timestamp long end, Set<DBAlliance> coalition) {
         String title = "aaStats";

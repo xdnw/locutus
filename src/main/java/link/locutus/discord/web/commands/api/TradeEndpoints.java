@@ -19,7 +19,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class TradeEndpoints {
-    @Command(viewable = true)
+    @Command(desc = "Graph average trade price per unit by day for given resources", viewable = true)
     @ReturnType(WebGraph.class)
     public WebGraph tradePriceByDayJson(link.locutus.discord.db.TradeDB tradeDB, TradeManager manager, Set<ResourceType> resources, @Range(min = 1) int days) {
         resources.remove(ResourceType.MONEY);

@@ -76,6 +76,10 @@ public interface IMessageBuilder {
         return StringMan.toJson(root);
     }
 
+    default List<Map<String, Object>> toMcpContentItems() {
+        return List.of(McpMessageContentAdapter.textItem(toString()));
+    }
+
     long getId();
 
     IMessageBuilder clear();

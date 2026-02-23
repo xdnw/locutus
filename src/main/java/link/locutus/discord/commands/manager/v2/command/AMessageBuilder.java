@@ -107,6 +107,42 @@ public abstract class AMessageBuilder implements IMessageBuilder {
     }
 
     @Override
+    public List<Map<String, Object>> toMcpContentItems() {
+        List<Map<String, Object>> items = new ArrayList<>();
+
+        String content = contentShrink.toString().trim();
+        if (!content.isEmpty()) {
+            items.add(McpMessageContentAdapter.structuredTextItem(content, "markdown"));
+        }
+
+        for (EmbedShrink embed : embeds) {
+            items.add(McpMessageContentAdapter.embedTextItem(embed));
+        }
+
+        for (Map.Entry<String, String> entry : buttons.entrySet()) {
+            items.add(McpMessageContentAdapter.actionItem(entry.getValue(), entry.getKey()));
+        }
+
+        for (Map.Entry<String, String> entry : links.entrySet()) {
+            items.add(McpMessageContentAdapter.linkItem(entry.getValue(), entry.getKey()));
+        }
+
+        for (Map.Entry<String, byte[]> entry : images.entrySet()) {
+            items.add(McpMessageContentAdapter.imageItem(entry.getKey(), entry.getValue()));
+        }
+
+        for (Map.Entry<String, byte[]> entry : files.entrySet()) {
+            items.addAll(McpMessageContentAdapter.resourceItems(entry.getKey(), entry.getValue()));
+        }
+
+        for (GraphMessageInfo tableInfo : tables) {
+            items.add(McpMessageContentAdapter.graphItem(tableInfo));
+        }
+
+        return items;
+    }
+
+    @Override
     public IMessageBuilder graph(TimeNumericTable table, TimeFormat timeFormat, TableNumberFormat numberFormat, GraphType type, long originDate) {
         tables.add(new GraphMessageInfo(table, timeFormat, numberFormat, type, originDate));
         return this;

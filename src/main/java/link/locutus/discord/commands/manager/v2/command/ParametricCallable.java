@@ -11,8 +11,10 @@ import link.locutus.discord.commands.manager.v2.binding.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.gpt.mcp.MCPUtil;
+import link.locutus.discord.user.Roles;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
@@ -1056,5 +1058,11 @@ public class ParametricCallable<T> implements ICommand<T> {
         root.put("inputSchema", inputSchema);
         
         return root;
+    }
+
+    public boolean isAdmin() {
+        RolePermission rolePerm = this.getAnnotation(RolePermission.class);
+        if (rolePerm == null) return false;
+        return rolePerm.root() && rolePerm.value().length == 1 && rolePerm.value()[0] == Roles.ADMIN;
     }
 }

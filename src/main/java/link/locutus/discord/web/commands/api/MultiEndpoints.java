@@ -19,7 +19,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class MultiEndpoints {
-    @Command(viewable = true)
+    @Command(desc = "Get multi-buster data for a nation, updating if outdated", viewable = true)
     @ReturnType(MultiResult.class)
     public MultiResult multi_buster(@AllowDeleted DBNation nation, @Default Boolean forceUpdate) throws InterruptedException {
         synchronized (MultiEndpoints.class) {
@@ -33,7 +33,7 @@ public class MultiEndpoints {
     private static WeakReference<SnapshotMultiData> snapshotData = new WeakReference<>(null);
     private static WeakReference<Map<Integer, PwUid>> uids = new WeakReference<>(null);
 
-    @Command(viewable = true)
+    @Command(desc = "Generate advanced multi report using snapshot data and UID map", viewable = true)
     @ReturnType(AdvMultiReport.class)
     public AdvMultiReport multi_v2(@AllowDeleted DBNation nation, @Default Boolean forceUpdate) throws IOException, ParseException {
         synchronized (MultiEndpoints.class) {

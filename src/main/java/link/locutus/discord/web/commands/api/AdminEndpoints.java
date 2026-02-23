@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class AdminEndpoints {
-    @Command(viewable = true)
+    @Command(desc = "List repeating tasks, hiding errors for non-admins", viewable = true)
     @ReturnType(value = TaskList.class, cache = CacheType.SessionStorage, duration = 15)
     public TaskList locutus_tasks(@Me @Default User user) {
         boolean isAdmin = user != null && Roles.ADMIN.hasOnRoot(user);
@@ -36,7 +36,7 @@ public class AdminEndpoints {
         return res;
     }
 
-    @Command(viewable = true)
+    @Command(desc = "Get detailed information and recent history for a specific repeating task", viewable = true)
     @ReturnType(value = TaskDetails.class, cache = CacheType.SessionStorage, duration = 15)
     public TaskDetails locutus_task(@Me @Default User user, int id) {
         boolean isAdmin = user != null && Roles.ADMIN.hasOnRoot(user);

@@ -206,12 +206,6 @@ public class SlashCommandManager extends ListenerAdapter {
         return cmds;
     }
 
-    private boolean isAdmin(ParametricCallable<?> cmd) {
-        RolePermission rolePerm = cmd.getAnnotation(RolePermission.class);
-        if (rolePerm == null) return false;
-        return rolePerm.root() && rolePerm.value().length == 1 && rolePerm.value()[0] == Roles.ADMIN;
-    }
-
     public static Collection<ChannelType> getChannelType(Type type) {
         if (type instanceof Class tClass) {
             while (tClass != null) {
@@ -673,7 +667,7 @@ public class SlashCommandManager extends ListenerAdapter {
                 adaptCommands(finalMappings, subCmd, subId, root, discGroup, updaters);
             }
         } else if (callable instanceof ParametricCallable parametric) {
-            if (!registerAdminCmds && isAdmin(parametric)) return root;
+            if (!registerAdminCmds && parametric.isAdmin()) return root;
             List<OptionData> options = createOptions(parametric, updaters);
             String fullPath = "";
             fullPath += root.getName() + " ";
@@ -772,7 +766,6 @@ public class SlashCommandManager extends ListenerAdapter {
                             parser = getCommands().getStore().get(completerKey);
                             if (parser != null && !parser.getKey().equals(emptyKey)) {
                                 option.setAutoComplete(true);
-                                System.out.println("Found autocomplete for " + param.getName() + " | " + parser.getKey());
                             } else {
                                 if (bindingKeys.add(completerKey) && Settings.INSTANCE.LEGACY_SETTINGS.PRINT_MISSING_AUTOCOMPLETE) {
                                     Logg.text("No autocomplete binding: " + binding.getKey());

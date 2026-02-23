@@ -24,7 +24,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class CoalitionGraphEndpoints {
-    @Command(viewable = true)
+    @Command(desc = "Generate coalition graphs for specified metrics across spheres", viewable = true)
     @ReturnType(CoalitionGraphs.class)
     public CoalitionGraphs globalStats(Set<AllianceMetric> metrics, @Timestamp long start, @Timestamp long end, int topX) {
         if (topX > 250) throw new IllegalArgumentException("Treaty information is not available for those alliances (outside top 250)");
@@ -67,7 +67,7 @@ public class CoalitionGraphEndpoints {
         return globalMil;
     }
 
-    @Command(viewable = true)
+    @Command(desc = "Generate tiered coalition graphs with custom grouping for nation metrics", viewable = true)
     @NoFormat
     @ReturnType(CoalitionGraphs.class)
     public CoalitionGraphs globalTierStats(Set<TypedFunction<DBNation, Double>> metrics, int topX, @Default("getCities") TypedFunction<DBNation, Double> groupBy, @Switch("t") boolean total) {

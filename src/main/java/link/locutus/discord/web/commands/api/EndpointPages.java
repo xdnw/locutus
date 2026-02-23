@@ -42,7 +42,7 @@ import static link.locutus.discord.web.WebUtil.resolveOAuthRedirect;
 import static link.locutus.discord.web.jooby.PageHandler.CookieType.*;
 
 public class EndpointPages extends PageHelper {
-    @Command
+    @Command(desc = "Check whether the given user and guild have permission for a command")
     @ReturnType(WebPermission.class)
     public WebPermission permission(WebStore ws, ICommand<?> command, @Me @Default User user, @Me @Default Guild guild) {
         try {
@@ -54,7 +54,7 @@ public class EndpointPages extends PageHelper {
         }
     }
 
-    @Command
+    @Command(desc = "Execute a batch of API queries and return their results")
     @ReturnType(WebBulkQuery.class)
     public WebBulkQuery query(Context context, WebStore ws, List<Map.Entry<String, Map<String, Object>>> queries) throws IOException {
         PageHandler handler = WebRoot.getInstance().getPageHandler();
@@ -95,7 +95,7 @@ public class EndpointPages extends PageHelper {
 
     private final AtomicLong commandUid = new AtomicLong(0);
 
-    @Command
+    @Command(desc = "Execute an arbitrary Web endpoint command string and capture output")
     @ReturnType(WebViewCommand.class)
     public Object command(Context context, WebStore ws,
                               Map<String, Object> data) {
@@ -142,7 +142,7 @@ public class EndpointPages extends PageHelper {
         }
     }
 
-    @Command
+    @Command(desc = "Set authentication token cookie and optionally guild ID")
     @ReturnType(WebSuccess.class)
     public Object set_token(Context context, UUID token, @Default Long guild_id) {
         DBAuthRecord record = WebRoot.db().get(token);
@@ -157,7 +157,7 @@ public class EndpointPages extends PageHelper {
         return success();
     }
 
-    @Command
+    @Command(desc = "Select a guild for the session and return its basic info")
     @ReturnType(SetGuild.class)
     public SetGuild set_guild(Context context, Guild guild, @Me @Default DBAuthRecord auth) {
         String id = guild.getId();
@@ -167,7 +167,7 @@ public class EndpointPages extends PageHelper {
         return new SetGuild(id, name, icon);
     }
 
-    @Command
+    @Command(desc = "Clear the current guild selection cookie")
     @ReturnType(WebSuccess.class)
     public WebSuccess unset_guild(Context context) {
         String removeCookieStrings = GUILD_ID.getCookieId() + "=; Max-Age=0; Path=/; HttpOnly";
@@ -175,7 +175,7 @@ public class EndpointPages extends PageHelper {
         return success();
     }
 
-    @Command
+    @Command(desc = "Get mail login URL for the specified nation")
     @ReturnType(WebUrl.class)
     public Object login_mail(Context context, DBNation nation, @Me @Default DBAuthRecord auth) throws IOException {
         if (auth != null) {
@@ -185,7 +185,7 @@ public class EndpointPages extends PageHelper {
         return new WebUrl(mailUrl);
     }
 
-    @Command(viewable = true)
+    @Command(desc = "Fetch UI options for an input type based on current user/guild/nation context", viewable = true)
     @ReturnType(value = WebOptions.class, cache = CacheType.LocalStorage, duration = 30)
     public Object input_options(String type, @Me @Default GuildDB db, @Me @Default User user, @Me @Default DBNation nation) {
         PageHandler ph = WebRoot.getInstance().getPageHandler();
@@ -210,7 +210,7 @@ public class EndpointPages extends PageHelper {
         }
     }
 
-    @Command
+    @Command(desc = "Exchange OAuth code for an auth token and set session cookie")
     @ReturnType(WebSuccess.class)
     public Object set_oauth_code(Context context, @Me @Default DBNation me, String code) throws IOException {
         String redirect = resolveOAuthRedirect(context);
@@ -233,7 +233,7 @@ public class EndpointPages extends PageHelper {
         return success();
     }
 
-    @Command
+    @Command(desc = "Log out the current user and clear authentication cookies")
     @ReturnType(WebSuccess.class)
     public Object logout(WebStore ws, Context context, @Me @Default DBAuthRecord auth) {
         if (auth == null) {
@@ -252,7 +252,7 @@ public class EndpointPages extends PageHelper {
         return success();
     }
 
-    @Command(viewable = true)
+    @Command(desc = "Retrieve the current web session information", viewable = true)
     @ReturnType(value = WebSession.class, cache = CacheType.LocalStorage)
     public Object session(WebStore ws, Context context, @Me @Default DBAuthRecord auth) throws IOException {
         Guild guild = auth == null ? null : AuthBindings.guild(context, auth.getNation(true), auth.getUser(true), false);
@@ -267,7 +267,7 @@ public class EndpointPages extends PageHelper {
         }
     }
 
-    @Command
+    @Command(desc = "Unregister the current user from the system after confirmation")
     @ReturnType(WebValue.class)
     public Object unregister(@Me @Default DBAuthRecord auth, boolean confirm) {
         if (auth == null) {
@@ -288,7 +288,7 @@ public class EndpointPages extends PageHelper {
         return new WebValue(auth.getUUID().toString());
     }
 
-    @Command
+    @Command(desc = "Register a new user mapping after confirmation")
     @ReturnType(WebSuccess.class)
     public Object register(@Me @Default DBAuthRecord auth, boolean confirm) {
         if (auth == null) {

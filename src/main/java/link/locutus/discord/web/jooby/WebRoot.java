@@ -179,11 +179,8 @@ public class WebRoot {
 
         this.app.get("/robots.txt", ctx -> ctx.result("User-agent: *\nDisallow: /"));
 
-        this.app.sse("/mcp/sse", client -> {
-            mcpHandler.sse(client);
-        });
-
-        this.app.post("/mcp/message", ctx -> {
+        this.app.post("/mcp/sse", ctx -> {
+            System.out.println("MCP SSE request");
             mcpHandler.handleMessage(ctx);
         });
 

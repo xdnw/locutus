@@ -118,32 +118,6 @@ public class PageHandler implements Handler {
         this.commands.registerCommands(this);
 
         ValueStore<?> phStore = placeholders.getStore();
-        Set<Parser> parsers = new HashSet<>(phStore.getParsers().values());
-        parsers.removeIf(f -> {
-            if (!f.isConsumer(phStore)) return true;
-            return false;
-        });
-
-        List<Key> missingKeys = new ArrayList<>();
-        for (Parser parser : parsers) {
-            if (!parser.isConsumer(phStore)) continue;
-
-            Key htmlKey = parser.getKey().append(HtmlInput.class);
-            try {
-                Parser htmlParser = store.get(htmlKey);
-                if (htmlParser == null) {
-                    missingKeys.add(htmlKey);
-                }
-            } catch (Exception e) {
-                missingKeys.add(htmlKey);
-            }
-        }
-        // print missing
-        if (!missingKeys.isEmpty()) {
-            for (Key missingKey : missingKeys) {
-                Logg.info("Missing: " + missingKey);
-            }
-        }
         this.serializer = new ObjectMapper(new MessagePackFactory());
 
         this.webOptionStore = new SimpleValueStore<>();
@@ -155,7 +129,6 @@ public class PageHandler implements Handler {
         return new MCPHandler(
                 store,
                 webOptionStore,
-                commands.getParametricCallables(Predicates.alwaysTrue()),
                 validators,
                 permisser,
                 (locals, ctx) -> locals == null ? createLocals(ctx) : setupLocals(locals, ctx)
@@ -320,9 +293,9 @@ public class PageHandler implements Handler {
     }
 
     private static String logInfo(LocalValueStore valueStore) {
-        Guild guild = (Guild) valueStore.getProvided(Key.of(Guild.class, Me.class));
-        DBNation nation = (DBNation) valueStore.getProvided(Key.of(DBNation.class, Me.class));
-        User user = (User) valueStore.getProvided(Key.of(User.class, Me.class));
+        Guild guild = (Guild) valueStore.getProvided(Key.of(Guild.class, Me.class), false);
+        DBNation nation = (DBNation) valueStore.getProvided(Key.of(DBNation.class, Me.class), false);
+        User user = (User) valueStore.getProvided(Key.of(User.class, Me.class), false);
         List<String> parts = new ObjectArrayList<>();
         if (guild != null) {
             parts.add(guild.toString());

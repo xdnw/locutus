@@ -914,24 +914,22 @@ public class CommandManager2 {
             this.commands.registerMethod(help, List.of("help"), "moderation_check", "moderation_check");
 
             GPTCommands gptCommands = new GPTCommands();
-            this.commands.registerMethod(gptCommands, List.of("chat", "dataset"), "embeddingSelect", "select");
-            this.commands.registerMethod(gptCommands, List.of("help"), "find_placeholder", "find_nation_placeholder");
-            this.commands.registerMethod(gptCommands, List.of("chat", "dataset"), "list_documents", "list");
-            this.commands.registerMethod(gptCommands, List.of("chat", "dataset"), "view_document", "view");
-            this.commands.registerMethod(gptCommands, List.of("chat", "dataset"), "delete_document", "delete");
-            this.commands.registerMethod(gptCommands, List.of("chat", "dataset"), "save_embeddings", "import_sheet");
-            this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "chatResume", "resume");
-            this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "chatPause", "pause");
-            this.commands.registerMethod(gptCommands, List.of("channel", "rename"), "emojifyChannels", "bulk");
-
-            this.commands.registerMethod(gptCommands, List.of("chat", "conversion"), "showConverting", "list");
-            this.commands.registerMethod(gptCommands, List.of("chat", "conversion"), "generate_factsheet",
-                    "add_document");
-            this.commands.registerMethod(gptCommands, List.of("chat", "conversion"), "pauseConversion", "pause");
-            this.commands.registerMethod(gptCommands, List.of("chat", "conversion"), "resumeConversion", "resume");
-            this.commands.registerMethod(gptCommands, List.of("chat", "conversion"), "deleteConversion", "delete");
-
-            this.commands.registerMethod(gptCommands, List.of("chat"), "unban", "unban");
+            // this.commands.registerMethod(gptCommands, List.of("chat", "dataset"), "embeddingSelect", "select");
+            // this.commands.registerMethod(gptCommands, List.of("help"), "find_placeholder", "find_nation_placeholder");
+            // this.commands.registerMethod(gptCommands, List.of("chat", "dataset"), "list_documents", "list");
+            // this.commands.registerMethod(gptCommands, List.of("chat", "dataset"), "view_document", "view");
+            // this.commands.registerMethod(gptCommands, List.of("chat", "dataset"), "delete_document", "delete");
+            // this.commands.registerMethod(gptCommands, List.of("chat", "dataset"), "save_embeddings", "import_sheet");
+            // this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "chatResume", "resume");
+            // this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "chatPause", "pause");
+            // this.commands.registerMethod(gptCommands, List.of("channel", "rename"), "emojifyChannels", "bulk");
+            // this.commands.registerMethod(gptCommands, List.of("chat", "conversion"), "showConverting", "list");
+            // this.commands.registerMethod(gptCommands, List.of("chat", "conversion"), "generate_factsheet",
+            //         "add_document");
+            // this.commands.registerMethod(gptCommands, List.of("chat", "conversion"), "pauseConversion", "pause");
+            // this.commands.registerMethod(gptCommands, List.of("chat", "conversion"), "resumeConversion", "resume");
+            // this.commands.registerMethod(gptCommands, List.of("chat", "conversion"), "deleteConversion", "delete");
+            // this.commands.registerMethod(gptCommands, List.of("chat"), "unban", "unban");
 
             this.commands.registerMethod(gptCommands, List.of("help"), "find_command2", "find_command");
 

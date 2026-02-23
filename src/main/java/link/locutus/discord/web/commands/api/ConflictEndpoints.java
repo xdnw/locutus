@@ -38,7 +38,7 @@ public class ConflictEndpoints extends PageHelper {
         throw new IllegalArgumentException("You do not have permission to access this temporary conflict");
     }
 
-    @Command(viewable = true)
+    @Command(desc = "Fetch alliance names and participant lists for given conflicts", viewable = true)
     @ReturnType(value = ConflictAlliances.class)
     public Object conflictAlliances(@Me GuildDB db, ConflictManager manager, Set<Conflict> conflicts) {
         Int2ObjectMap<String> allianceNames = new Int2ObjectOpenHashMap<>();
@@ -68,7 +68,7 @@ public class ConflictEndpoints extends PageHelper {
         return new ConflictAlliances(allianceNames, byConflictFast);
     }
 
-    @Command(viewable = true)
+    @Command(desc = "List temporary virtual conflicts accessible to the current user", viewable = true)
     @ReturnType(value = WebOptions.class)
     public Object virtualConflicts(ConflictManager manager, @Me @Default GuildDB db, @Me @Default Guild guild,
             @Me @Default User user, @Me @Default DBNation me, @Switch("a") boolean all) {
@@ -97,7 +97,7 @@ public class ConflictEndpoints extends PageHelper {
         return options;
     }
 
-    @Command(viewable = true)
+    @Command(desc = "Retrieve detailed information about a specific temporary conflict", viewable = true)
     @ReturnType(value = WebVirtualConflict.class)
     public Object virtualConflictInfo(ConflictManager manager, Conflict conflict, @Me @Default GuildDB db,
             @Me @Default Guild guild, @Me @Default User user, @Me @Default DBNation me) {
@@ -153,7 +153,7 @@ public class ConflictEndpoints extends PageHelper {
                 posts);
     }
 
-    @Command
+    @Command(desc = "Delete a specified temporary conflict if the caller has appropriate permissions")
     @ReturnType(value = WebSuccess.class)
     public Object removeVirtualConflict(ConflictManager manager, Conflict conflict, @Me @Default GuildDB db,
             @Me @Default Guild guild, @Me @Default User user, @Me @Default DBNation me) {
