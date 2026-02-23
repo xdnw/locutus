@@ -2042,7 +2042,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         return endVal - startVal;
     }
 
-    @Command(desc = "Net change in market value for selected assets between start and end snapshots")
+    @Command(desc = "How much the market value of selected assets types changed between the start and end of the period for the alliance")
     public double getNetAssetValue(ValueStore store, Set<GrowthAsset> asset, @Timestamp long start,
             @Timestamp @Default Long end) {
         if (end == null)
@@ -2058,36 +2058,35 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         return endVal - startVal;
     }
 
-    // city
-    @Command(desc = "Resource deltas for selected assets while nations remained members (UNCHANGED day-to-day states); includes nations that later leave. Optional nation filter is evaluated per day snapshot")
+    @Command(desc = "Resource value of selected assets purchased among nations while they remained members. Includes nations that later left the alliance. An optional nation filter can be applied per daily snapshot")
     public Map<ResourceType, Double> getSpending(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start,
             @Timestamp @Default Long end, @Default Predicate<DBNation> nations) {
         return getAssetAcquired(store, assets::contains, f -> f == MembershipChangeReason.UNCHANGED, false, start, end,
                 nations);
     }
 
-    @Command(desc = "Same as getSpending, but only counts nations that are still members at end. Optional nation filter is evaluated per day snapshot")
+    @Command(desc = "Resource value of selected assets purchased among nations while they remained members, counting only nations that are still members at the end of the period. An optional nation filter can be applied per daily snapshot")
     public Map<ResourceType, Double> getEffectiveSpending(ValueStore store, Set<GrowthAsset> assets,
             @Timestamp long start, @Timestamp @Default Long end, @Default Predicate<DBNation> nations) {
         return getAssetAcquired(store, assets::contains, f -> f == MembershipChangeReason.UNCHANGED, true, start, end,
                 nations);
     }
 
-    @Command(desc = "Market value of getSpending for selected assets. Optional nation filter is evaluated per day snapshot")
+    @Command(desc = "Market value of selected assets purchased among nations while they remained members. Includes nations that later left the alliance. An optional nation filter can be applied per daily snapshot")
     public double getSpendingValue(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start,
             @Timestamp @Default Long end, @Default Predicate<DBNation> nations) {
         return getAssetAcquiredValue(store, assets::contains, f -> f == MembershipChangeReason.UNCHANGED, false, start,
                 end, nations);
     }
 
-    @Command(desc = "Market value of getEffectiveSpending for selected assets. Optional nation filter is evaluated per day snapshot")
+    @Command(desc = "Market value of selected assets purchased among nations while they remained members, counting only nations that are still members at the end of the period. An optional nation filter can be applied per daily snapshot")
     public double getEffectiveSpendingValue(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start,
             @Timestamp @Default Long end, @Default Predicate<DBNation> nations) {
         return getAssetAcquiredValue(store, assets::contains, f -> f == MembershipChangeReason.UNCHANGED, true, start,
                 end, nations);
     }
 
-    @Command(desc = "Net member change over the period: members at end that were not members at start minus members at start that are not members at end")
+    @Command(desc = "Net membership change over the period: members who joined minus members who left")
     public int getNetMembersAcquired(ValueStore store, @Timestamp long start, @Timestamp @Default Long end) {
         GrowthSummary.AllianceGrowthSummary summary = getGrowthSummary(store, start, end);
         int total = 0;
@@ -2111,14 +2110,14 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
         return total;
     }
 
-    @Command(desc = "Sum of count deltas for selected assets in UNCHANGED states (nations may later leave). Optional nation filter is evaluated per day snapshot")
+    @Command(desc = "Number of selected assets purchased among nations while they remained members. Includes nations that later left the alliance. An optional nation filter can be applied per daily snapshot")
     public int getBoughtAssetCount(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start,
             @Timestamp @Default Long end, @Default Predicate<DBNation> nations) {
         return getGrowthSummary(store, start, end, nations)
                 .getAssetCounts(assets::contains, f -> f == MembershipChangeReason.UNCHANGED, false);
     }
 
-    @Command(desc = "Same as getBoughtAssetCount, but only for nations that are still members at end. Optional nation filter is evaluated per day snapshot")
+    @Command(desc = "Number of selected assets purchased among nations while they remained members, counting only nations that are still members at the end of the period. An optional nation filter can be applied per daily snapshot")
     public int getEffectiveBoughtAssetCount(ValueStore store, Set<GrowthAsset> assets, @Timestamp long start,
             @Timestamp @Default Long end, @Default Predicate<DBNation> nations) {
         return getGrowthSummary(store, start, end, nations)
@@ -2128,14 +2127,14 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     //
 
     @Command(desc = """
-            Count of membership-change events by reason (event count, not unique nations)
+            A count of membership events by reason (event count, not unique nations)
             A nation can contribute multiple events over the period
-            - RECRUITED: Nation <=7d old enters member rank
-            - JOINED: Nation >7d old enters member rank
-            - LEFT: Nation leaves member rank without delete/vm transition
-            - DELETED: Nation was present, then missing and no current nation record
-            - VM_LEFT: Nation was present, then missing but still exists now
-            - VM_RETURNED: Nation appears after being missing (or newly observed) and age >7d""")
+            - RECRUITED: A new nation (<=7 days old) which joined the alliance
+            - JOINED: A nation (>7 days old) which joined the alliance
+            - LEFT: A nation left without being deleted or going into vacation mode
+            - DELETED: A nation in the alliance deleted
+            - VM_LEFT: A nation went vacation mode but still exists
+            - VM_RETURNED: A nation joined after vacation mode, and is older than 7 days""")
     public int getMembershipChangesByReason(ValueStore store, Set<MembershipChangeReason> reasons,
             @Timestamp long start, @Timestamp @Default Long end) {
         return getGrowthSummary(store, start, end)
@@ -2143,7 +2142,7 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     @Command(desc = """
-            Count of membership-change events by reason
+            Total number of membership-change events for the selected reasons
             A nation can contribute multiple events over the period""")
     public int getMembershipChangeEventsByReason(ValueStore store, Set<MembershipChangeReason> reasons,
             @Timestamp long start, @Timestamp @Default Long end) {
@@ -2152,8 +2151,8 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     @Command(desc = """
-            Count of unique nations with at least one matching membership-change reason
-            Each nation is counted at most once per selected reason over the period""")
+            Number of distinct nations that had at least one event of each selected reason
+            Each nation is counted only once per reason, regardless of how many times it occurred""")
     public int getMembershipChangeUniqueNationsByReason(ValueStore store, Set<MembershipChangeReason> reasons,
             @Timestamp long start, @Timestamp @Default Long end) {
         return getGrowthSummary(store, start, end)
@@ -2161,10 +2160,11 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     @Command(desc = """
-            Asset counts grouped by membership-change reasons
-            Join/recruit/return reasons use holdings at entry; leave/delete/vm-left reasons use holdings at exit
-            For in-alliance day-to-day growth (UNCHANGED), use getBoughtAssetCount/getEffectiveBoughtAssetCount
-            Optional nation filter is evaluated per day snapshot""")
+            Assets grouped by the reason a nation's membership changed
+            For nations joining or returning, assets at the time of entry are used
+            For nations leaving or being deleted, assets at the time of exit are used
+            This does not include assets purchased while nations remained members
+            An optional nation filter can be applied per daily snapshot""")
     public int getMembershipChangeAssetCount(ValueStore store, Set<MembershipChangeReason> reasons,
             Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end,
             @Default Predicate<DBNation> nations) {
@@ -2173,9 +2173,9 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     @Command(desc = """
-            Market value of getMembershipChangeAssetCount for selected assets/reasons
-            Join/recruit/return reasons use holdings at entry; leave/delete/vm-left reasons use holdings at exit
-            Optional nation filter is evaluated per day snapshot""")
+            Market value of assets grouped by the reason a nation's membership changed
+            Entry assets are used for joins/returns; exit assets are used for departures
+            An optional nation filter can be applied per daily snapshot""")
     public double getMembershipChangeAssetValue(ValueStore store, Set<MembershipChangeReason> reasons,
             Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end,
             @Default Predicate<DBNation> nations) {
@@ -2184,9 +2184,9 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     @Command(desc = """
-            Resource breakdown of getMembershipChangeAssetValue for selected assets/reasons
-            Join/recruit/return reasons use holdings at entry; leave/delete/vm-left reasons use holdings at exit
-            Optional nation filter is evaluated per day snapshot""")
+            Resources of assets grouped by the reason a nation's membership changed
+            Entry assets are used for joins/returns; exit assets are used for departures
+            An optional nation filter can be applied per daily snapshot""")
     public Map<ResourceType, Double> getMembershipChangeAssetRss(ValueStore store, Set<MembershipChangeReason> reasons,
             Set<GrowthAsset> assets, @Timestamp long start, @Timestamp @Default Long end,
             @Default Predicate<DBNation> nations) {

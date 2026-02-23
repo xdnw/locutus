@@ -38,6 +38,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.WebUtil;
+import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
@@ -50,6 +51,7 @@ import javax.annotation.Nullable;
 import java.io.File;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -72,15 +74,23 @@ public class CommandManager2 {
         Map<String, Object> optionsData = new LinkedHashMap<>();
 
         Set<Parser<?>> parsers = new ObjectLinkedOpenHashSet<>();
-        for (ParametricCallable<?> callable : commands.getParametricCallables(Predicates.alwaysTrue())) {
-            for (ParameterData param : callable.getUserParameters()) {
-                Parser<?> parser = param.getBinding();
-                Class<?>[] webType = parser.getWebType();
-                if (webType == null || webType.length == 0) {
-                    parsers.add(parser);
+        Consumer<CommandGroup> addParsers = group -> {
+            for (ParametricCallable<?> callable : group.getParametricCallables(Predicates.alwaysTrue())) {
+                for (ParameterData param : callable.getUserParameters()) {
+                    Parser<?> parser = param.getBinding();
+                    Class<?>[] webType = parser.getWebType();
+                    if (webType == null || webType.length == 0) {
+                        parsers.add(parser);
+                    }
                 }
             }
+        };
+        addParsers.accept(commands);
+        WebRoot web = WebRoot.getInstance();
+        if (web != null) {
+            addParsers.accept(web.getPageHandler().getCommands());
         }
+
         for (Parser<?> parser : parsers) {
             Key<?> key = parser.getKey();
             Map<String, Object> typeJson = parser.toJson();
