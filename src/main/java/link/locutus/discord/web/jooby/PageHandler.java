@@ -147,12 +147,19 @@ public class PageHandler implements Handler {
         this.serializer = new ObjectMapper(new MessagePackFactory());
 
         this.webOptionStore = new SimpleValueStore<>();
-        new WebOptionBindings().register(store);
+        new WebOptionBindings().register(webOptionStore);
         store.addProvider(Key.of(PlaceholdersMap.class), placeholders);
     }
 
     public MCPHandler createMCP() {
-        return new MCPHandler();
+        return new MCPHandler(
+                store,
+                webOptionStore,
+                commands.getParametricCallables(Predicates.alwaysTrue()),
+                validators,
+                permisser,
+                this::setupLocals
+        );
     }
 
     public ObjectMapper getSerializer() {
@@ -700,6 +707,10 @@ public class PageHandler implements Handler {
 //            locals.addProvider(Key.of(GuildDB.class, Me.class), guildDb);
 //        }
         return locals;
+    }
+
+    public LocalValueStore<?> createLocals(Context ctx) {
+        return setupLocals(null, ctx);
     }
 
     public void sseCmdPage(SseMessageOutput sse) throws IOException {

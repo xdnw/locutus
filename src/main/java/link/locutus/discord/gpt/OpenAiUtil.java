@@ -4,6 +4,7 @@ import com.openai.core.JsonValue;
 import com.openai.models.ResponseFormatJsonSchema;
 import com.openai.models.moderations.Moderation;
 
+import java.text.Normalizer;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -179,7 +180,7 @@ public class OpenAiUtil {
         Map<String, String> sanitizedDescByName = new HashMap<>();
         for (String name : names) {
             String desc = items.get(name);
-            String sanitized = desc == null ? null : GPTUtil.sanitizeForStrictSchema(desc, 256);
+            String sanitized = desc == null ? null : sanitizeForStrictSchema(desc, 256);
             if (sanitized != null && !sanitized.isBlank()) {
                 sanitizedDescByName.put(name, sanitized);
             }
@@ -216,7 +217,7 @@ public class OpenAiUtil {
         rankingSchema.put("minItems", names.size());
         rankingSchema.put("maxItems", names.size());
 
-        String rankingDesc = GPTUtil.sanitizeForStrictSchema(
+        String rankingDesc = sanitizeForStrictSchema(
                 "Return a permutation (no repeats) of the given item names in ranking order.", 256);
         if (rankingDesc != null && !rankingDesc.isBlank()) {
             rankingSchema.put("description", rankingDesc);
@@ -249,7 +250,7 @@ public class OpenAiUtil {
                 .additionalProperties(schemaMap) // inject full schema
                 .build();
 
-        String topLevelDesc = GPTUtil.sanitizeForStrictSchema(
+        String topLevelDesc = sanitizeForStrictSchema(
                 "Return a permutation of the input item names in ranking order.", 256);
 
         ResponseFormatJsonSchema.JsonSchema.Builder jsonSchemaBuilder = ResponseFormatJsonSchema.JsonSchema.builder()
@@ -267,5 +268,83 @@ public class OpenAiUtil {
 
         responseFormat.validate();
         return responseFormat;
+    }
+
+    /**
+     * Sanitize an arbitrary description to be safer for OpenAI strict structured outputs.
+     *
+     * Steps:
+     *  1) Normalize (NFC)
+     *  2) Escape " risky " chars to \\uXXXX form (double-quote, backslash, control chars, newline, CR, tab,
+     *     line separators U+2028/U+2029)
+     *  3) Trim to maxLen
+     *  4) Final fallback: remove any remaining characters not in an expansive allowed Unicode category set
+     *     (letters, numbers, punctuation, symbols, space separators, marks).
+     *
+     * @param input the original description
+     * @param maxLen maximum allowed length for result (will append "..." if truncated)
+     * @return sanitized description string
+     */
+    public static String sanitizeForStrictSchema(String input, int maxLen) {
+        if (input == null) return null;
+
+        // 1) normalize
+        String normalized = Normalizer.normalize(input, Normalizer.Form.NFC);
+
+        // 2) iterate codepoints and escape risky ones to \\uXXXX (constructed to avoid Java source-level \\u escapes)
+        StringBuilder sb = new StringBuilder(normalized.length());
+
+        for (int i = 0; i < normalized.length();) {
+            int cp = normalized.codePointAt(i);
+            i += Character.charCount(cp);
+
+            // Risky structural/control characters to escape:
+            // - double-quote (")
+            // - backslash (\)
+            // - ASCII control characters U+0000..U+001F, and DEL U+007F
+            // - newline, carriage return, tab explicitly
+            // - Unicode line/separator characters U+2028, U+2029
+            boolean isAsciiControl = (cp >= 0x00 && cp <= 0x1F) || cp == 0x7F;
+            if (cp == '"' || cp == '\\' || isAsciiControl || cp == 0x2028 || cp == 0x2029) {
+                sb.append(unicodeEscape(cp));
+                continue;
+            }
+
+            // otherwise append the character(s) as-is
+            sb.appendCodePoint(cp);
+        }
+
+        // 3) trim to maxLen (keeping it readable)
+        String partiallySanitized = sb.toString();
+        if (maxLen > 0 && partiallySanitized.length() > maxLen) {
+            partiallySanitized = partiallySanitized.substring(0, maxLen) + "...";
+        }
+
+        // 4) final fallback: remove anything not in an expansive allowed set.
+        //    This regex keeps: letters, numbers, punctuation, symbols, space separators, marks.
+        //    If you'd like more permissive behavior (allow other categories), we can loosen this.
+        String allowedClass = "[^\\p{L}\\p{N}\\p{P}\\p{S}\\p{Zs}\\p{M}]+"; // chars to REMOVE
+        String finalSanitized = partiallySanitized.replaceAll(allowedClass, "");
+
+        // Also collapse multiple spaces to single space (optional, but keeps things tidy)
+        finalSanitized = finalSanitized.replaceAll("\\s{2,}", " ").trim();
+
+        return finalSanitized;
+    }
+
+    // Build a string like "\u0022" for a codepoint.
+    // We construct it using concatenation ("\\", "u", hex) to avoid containing \\uXXXX sequences
+    // directly in the Java source (which would be processed as Unicode escapes).
+    private static String unicodeEscape(int codePoint) {
+        // Format hex uppercase, zero-padded to 4 (for BMP). For code points > 0xFFFF we still produce the codepoint
+        // in hex (may be more than 4 digits) — but \\u escapes are 4-digit, so for non-BMP we map to surrogate escapes.
+        if (codePoint <= 0xFFFF) {
+            return "\\" + "u" + String.format("%04X", codePoint);
+        } else {
+            // non-BMP: convert to surrogate pair and emit two \\uXXXX escapes
+            char[] sur = Character.toChars(codePoint);
+            return "\\" + "u" + String.format("%04X", (int) sur[0])
+                    + "\\" + "u" + String.format("%04X", (int) sur[1]);
+        }
     }
 }

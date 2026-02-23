@@ -1023,7 +1023,10 @@ public class ParametricCallable<T> implements ICommand<T> {
         Map<String, Object> root = new Object2ObjectLinkedOpenHashMap<>();
         
         // 1. Name must be max 64 chars, only alphanumeric, underscores, hyphens
-        String name = getFullPath().replaceAll("[^a-zA-Z0-9_-]", "-").toLowerCase(Locale.ROOT);
+        String name = this.getFullPath("-").toLowerCase(Locale.ROOT);
+        if (!name.matches("[a-z0-9_-]+")) {
+            throw new IllegalArgumentException("Command name must only contain alphanumeric characters, underscores, or hyphens: " + name);
+        }
         if (name.length() > 64) name = name.substring(0, 64);
         root.put("name", name);
         
