@@ -367,7 +367,7 @@ public class WebOptionBindings extends BindingHelper {
     //NationOrAllianceOrGuild -> set components to nation, alliance and guild
     @Binding(types = NationOrAllianceOrGuild.class)
     public WebOption getNationOrAllianceOrGuild() {
-        return new WebOption(DBNation.class).setCompositeTypes(DBNation.class, DBAlliance.class, GuildDB.class);
+        return new WebOption(NationOrAllianceOrGuild.class).setCompositeTypes(DBNation.class, DBAlliance.class, GuildDB.class);
     }
     @Binding(types = GuildOrAlliance.class)
     public WebOption getGuildOrAlliance() {
@@ -376,13 +376,13 @@ public class WebOptionBindings extends BindingHelper {
     //NationOrAlliance
     @Binding(types = NationOrAlliance.class)
     public WebOption getNationOrAlliance() {
-        return new WebOption(DBNation.class).setCompositeTypes(DBNation.class, DBAlliance.class);
+        return new WebOption(NationOrAlliance.class).setCompositeTypes(DBNation.class, DBAlliance.class);
     }
 
 // NationOrAllianceOrGuildOrTaxid
     @Binding(types = NationOrAllianceOrGuildOrTaxid.class)
     public WebOption getNationOrAllianceOrGuildOrTaxid() {
-        return new WebOption(DBNation.class).setCompositeTypes(DBNation.class, DBAlliance.class, GuildDB.class, TaxBracket.class);
+        return new WebOption(NationOrAllianceOrGuildOrTaxid.class).setCompositeTypes(DBNation.class, DBAlliance.class, GuildDB.class, TaxBracket.class);
     }
     //Treaty
     @Binding(types = Treaty.class)
