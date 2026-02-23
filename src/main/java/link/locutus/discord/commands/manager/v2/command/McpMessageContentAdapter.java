@@ -74,7 +74,7 @@ public final class McpMessageContentAdapter {
         }
     }
 
-    public static Map<String, Object> toolResult(Collection<? extends IMessageBuilder> messages, Object result, String mode) {
+    public static Map<String, Object> toolResult(Collection<? extends IMessageBuilder> messages, Object result) {
         List<Map<String, Object>> content = fromMessages(messages);
         appendResultObject(content, result);
         if (content.isEmpty()) {
@@ -84,7 +84,6 @@ public final class McpMessageContentAdapter {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("content", content);
         payload.put("metadata", Map.of(
-                "mode", mode,
                 "messageCount", messages == null ? 0 : messages.size(),
                 "itemCount", content.size()
         ));
