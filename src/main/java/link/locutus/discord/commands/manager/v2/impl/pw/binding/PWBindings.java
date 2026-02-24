@@ -69,6 +69,8 @@ import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.task.ia.AuditType;
 import link.locutus.discord.util.task.mail.Mail;
 import link.locutus.discord.util.trade.TradeManager;
+import link.locutus.discord.web.commands.mcp.DataQueryMode;
+import link.locutus.discord.web.commands.mcp.ExecuteMode;
 import link.locutus.discord.web.jooby.CloudStorage;
 import link.locutus.discord.web.jooby.S3CompatibleStorage;
 import net.dv8tion.jda.api.entities.Guild;
@@ -1645,6 +1647,16 @@ public class PWBindings extends BindingHelper {
     @Binding(value = "The mode for calculating war costs")
     public WarCostMode WarCostMode(String input) {
         return emum(WarCostMode.class, input);
+    }
+
+    @Binding(value = "The mode for calculating war costs")
+    public DataQueryMode DataQueryMode(String input) {
+        return emum(DataQueryMode.class, input);
+    }
+
+    @Binding(value = "The execution mode for the command")
+    public ExecuteMode ExecuteMode(String input) {
+        return emum(ExecuteMode.class, input);
     }
 
     @Binding(value = "The mode for calculating tier deltas")
