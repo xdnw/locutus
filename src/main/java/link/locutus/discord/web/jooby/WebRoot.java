@@ -184,7 +184,7 @@ public class WebRoot {
             mcpHandler.handleMessage(ctx);
         });
 
-        this.app.get("/sse/**", new SseHandler2(new Consumer<SseMessageOutput>() {
+        this.app.get("/sse/*", new SseHandler2(new Consumer<SseMessageOutput>() {
             @Override
             public void accept(SseMessageOutput sse) {
                 pageHandler.sse(sse);
