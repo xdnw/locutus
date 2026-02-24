@@ -20,20 +20,12 @@ import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import net.dv8tion.jda.api.entities.User;
 import java.lang.reflect.Type;
-import java.text.Normalizer;
 import java.util.*;
 import java.util.function.Function;
 public class MCPUtil {
 
     public static String getToolName(ParametricCallable<?> command) {
-        String name = command.getFullPath("-").toLowerCase(Locale.ROOT);
-        if (!name.matches("[a-z0-9_-]+")) {
-            throw new IllegalArgumentException("Command name must only contain alphanumeric characters, underscores, or hyphens: " + name);
-        }
-        if (name.length() > 64) {
-            name = name.substring(0, 64);
-        }
-        return name;
+        return command.getFullPath("-").toLowerCase(Locale.ROOT);
     }
     
     public static Map<String, Object> toJsonSchema(Type type, boolean supportUnknown) {

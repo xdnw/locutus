@@ -14,6 +14,7 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
+import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
@@ -1616,6 +1617,24 @@ public class PWBindings extends BindingHelper {
         List<String> options = Arrays.asList(constants).stream().map(GuildSetting::name).collect(Collectors.toList());
         throw new IllegalArgumentException(
                 "Invalid category: `" + input + "`. Options: " + StringMan.getString(options));
+    }
+
+    @Binding(value = "A registered parser type (key)")
+    public Parser<?> parser(ValueStore<Object> store, String input) {
+        Map<String, Parser> parsersByName = store.getParsersByName();
+        Parser<?> parser = parsersByName.get(input);
+        if (parser != null) {
+            return parser;
+        }
+
+        String normalized = input.replace(" ", "").toLowerCase(Locale.ROOT);
+        for (Map.Entry<String, Parser> entry : parsersByName.entrySet()) {
+            String key = entry.getKey();
+            if (key.replace(" ", "").toLowerCase(Locale.ROOT).equals(normalized)) {
+                return entry.getValue();
+            }
+        }
+        throw new IllegalArgumentException("Unknown parser type: `" + input + "`");
     }
 
     @Binding(value = "Types of users to clear roles of")

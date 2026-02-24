@@ -3,35 +3,51 @@ package link.locutus.discord.web.jooby;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
 import io.javalin.http.Context;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.function.BiFunction;
-
 import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
+import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandGroup;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.command.StringMessageIO;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.gpt.mcp.MCPUtil;
 import link.locutus.discord.gpt.mcp.SchemaBindings;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.mcp.MCPCommands;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.Locale;
+
 public class MCPHandler {
+    private static final String CONTRACT_VERSION = "2026-02-24";
+    public static final int DEFAULT_PAGE_LIMIT = 25;
+    public static final int MAX_PAGE_LIMIT = 250;
+    private static final int INLINE_RESULT_MAX_BYTES = 120_000;
+    private static final long RESULT_REF_TTL_MILLIS = TimeUnit.MINUTES.toMillis(20);
+
     @FunctionalInterface
     public interface LocalStoreFactory extends BiFunction<LocalValueStore<?>, Context, LocalValueStore<?>> {
     }
@@ -44,10 +60,9 @@ public class MCPHandler {
     private final PermissionHandler permisser;
     private final LocalStoreFactory localStoreFactory;
 
-    private final Map<String, RpcMethodHandler> methodHandlers = new HashMap<>();
+    private final Map<UUID, ResultRefRecord> resultRefs = new ConcurrentHashMap<>();
 
     private volatile Map<String, Object> toolsListSchema;
-    private volatile Map<String, ParametricCallable<?>> toolByName;
     private final Object toolCacheLock = new Object();
 
     public MCPHandler(
@@ -59,7 +74,6 @@ public class MCPHandler {
     ) {
         this.store = Objects.requireNonNull(store, "store");
         this.htmlOptionStore = Objects.requireNonNull(htmlOptionStore, "htmlOptionStore");
-        
         this.validators = Objects.requireNonNull(validators, "validators");
         this.permisser = Objects.requireNonNull(permisser, "permisser");
         this.localStoreFactory = Objects.requireNonNull(localStoreFactory, "localStoreFactory");
@@ -68,9 +82,8 @@ public class MCPHandler {
         new SchemaBindings().register(schemaStore);
 
         this.commands = CommandGroup.createRoot(store, validators);
-        this.commands.registerCommands(new MCPCommands());
-
-        registerMethodHandlers();
+        this.commands.registerCommands(new MCPCommands(this));
+        this.commands.registerSubCommands(new RpcCommands(), "rpc");
     }
 
     public void handleMessage(Context ctx) {
@@ -80,7 +93,109 @@ public class MCPHandler {
         });
     }
 
-    private void processRequest(Context ctx, java.util.function.Consumer<Map<String, Object>> responder) {
+    public Set<ParametricCallable<?>> getToolCallables() {
+        return commands.getParametricCallables(callable -> !isInternalRpcCommand(callable));
+    }
+
+    public ParametricCallable<?> resolveTool(String requestedName) {
+        if (requestedName == null || requestedName.isBlank()) {
+            return null;
+        }
+        String normalized = requestedName.toLowerCase(Locale.ROOT).trim();
+        List<String> path = Arrays.stream(normalized.split("-"))
+                .filter(part -> part != null && !part.isBlank())
+                .toList();
+        if (path.isEmpty()) {
+            return null;
+        }
+
+        CommandCallable callable;
+        try {
+            callable = commands.getCallable(new ArrayList<>(path));
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+
+        if (!(callable instanceof ParametricCallable<?> parametric)) {
+            return null;
+        }
+        if (isInternalRpcCommand(parametric)) {
+            return null;
+        }
+        return MCPUtil.getToolName(parametric).equals(normalized) ? parametric : null;
+    }
+
+    public LocalValueStore<?> createLocals(Context ctx) {
+        return localStoreFactory.apply(null, ctx);
+    }
+
+    public ParsedCommand parseCommand(ParametricCallable<?> callable, Map<String, Object> arguments, Context ctx) {
+        LocalValueStore<?> locals = createLocals(ctx);
+        callable.validatePermissions(locals, permisser);
+        Object[] parsed = callable.parseArgumentMap2(arguments, locals, validators, permisser, true);
+
+        Map<String, Object> normalized = new LinkedHashMap<>();
+        List<ParameterData> params = callable.getUserParameters();
+        for (int i = 0; i < params.size(); i++) {
+            Object value = i < parsed.length ? parsed[i] : null;
+            normalized.put(params.get(i).getName(), StringMan.toSerializable(value));
+        }
+        return new ParsedCommand(locals, parsed, normalized);
+    }
+
+    public Map<String, Object> executeParsed(ParametricCallable<?> callable, ParsedCommand parsed) {
+        Guild guild = (Guild) parsed.locals().getProvided(Key.of(Guild.class, Me.class), false);
+        User user = (User) parsed.locals().getProvided(Key.of(User.class, Me.class), false);
+
+        StringMessageIO io = new StringMessageIO(user, guild);
+        parsed.locals().addProvider(Key.of(IMessageIO.class, Me.class), io);
+        Object result = callable.call(null, parsed.locals(), parsed.arguments());
+        return io.toMcpToolResult(result);
+    }
+
+    public Object maybeStoreLargeResult(Object payload, String contentType) {
+        String json = WebUtil.GSON.toJson(payload);
+        if (json.length() <= INLINE_RESULT_MAX_BYTES) {
+            return payload;
+        }
+
+        UUID resultRef = UUID.randomUUID();
+        int estimatedSize = json.length();
+        long expiresAt = System.currentTimeMillis() + RESULT_REF_TTL_MILLIS;
+        resultRefs.put(resultRef, new ResultRefRecord(payload, contentType, estimatedSize, expiresAt));
+        return new ResultRefEnvelope(resultRef, isoMillis(expiresAt), contentType, estimatedSize, new PageInfo(0, 0, 0, 0, null));
+    }
+
+    public Object getResultRef(UUID resultRef, int cursor, int limit) {
+        ResultRefRecord record = resultRefs.get(resultRef);
+        if (record == null || record.expiresAt < System.currentTimeMillis()) {
+            resultRefs.remove(resultRef);
+            throw new IllegalArgumentException("Unknown or expired result_ref: " + resultRef);
+        }
+
+        Object payload = record.payload;
+        if (payload instanceof Map<?, ?> map && map.get("rows") instanceof List<?> rowsAny) {
+            List<?> rows = rowsAny;
+            int from = Math.min(cursor, rows.size());
+            int to = Math.min(from + limit, rows.size());
+
+            Map<String, Object> page = new LinkedHashMap<>();
+            page.putAll((Map<String, Object>) map);
+            page.put("rows", new ArrayList<>(rows.subList(from, to)));
+            page.put("page_info", pageInfo(from, to, rows.size(), limit));
+            page.put("result_ref", resultRef);
+            page.put("expires_at", isoMillis(record.expiresAt));
+            return page;
+        }
+
+        return new ResultRefDataResponse(resultRef, isoMillis(record.expiresAt), record.contentType, payload);
+    }
+
+    public static PageInfo pageInfo(int from, int to, int total, int limit) {
+        return new PageInfo(from, limit, total, Math.max(0, to - from), to >= total ? null : to);
+    }
+
+    private void processRequest(Context ctx, Consumer<Map<String, Object>> responder) {
         Object requestId = null;
         try {
             RpcRequestDto requestRaw = parseRpcRequest(ctx.body());
@@ -92,129 +207,89 @@ public class MCPHandler {
                 return;
             }
 
-            RpcMethodHandler handler = methodHandlers.get(request.method());
-            if (handler == null) {
+            RpcMethodResult result = invokeRpcMethod(ctx, request);
+            if (result == null) {
                 responder.accept(RpcResponseFactory.error(request.id(), -32601, "Method not found"));
                 return;
             }
-
-            RpcMethodResult result = handler.handle(ctx, request);
             if (result.noSseResponse()) {
                 ctx.status(202);
                 return;
             }
             responder.accept(result.response());
         } catch (IllegalArgumentException e) {
-            e.printStackTrace();
-            responder.accept(RpcResponseFactory.error(requestId, -32600, "Invalid Request (1): " + e.getMessage()));
+            responder.accept(RpcResponseFactory.error(requestId, -32600, "Invalid Request: " + e.getMessage()));
         } catch (JsonSyntaxException e) {
-            e.printStackTrace();
-            responder.accept(RpcResponseFactory.error(requestId, -32600, "Invalid Request (2): " + e.getMessage()));
+            responder.accept(RpcResponseFactory.error(requestId, -32600, "Invalid Request: " + e.getMessage()));
         } catch (Throwable e) {
-            e.printStackTrace();
-            responder.accept(RpcResponseFactory.error(requestId, -32603, "Internal error: " + e.getMessage()));
-        }
-    }
-
-    private void registerMethodHandlers() {
-        methodHandlers.put("initialize", this::handleInitialize);
-        methodHandlers.put("notifications/initialized", this::handleInitializedNotification);
-        methodHandlers.put("tools/list", this::handleToolsList);
-        methodHandlers.put("tools/call", this::handleToolsCall);
-    }
-
-    private RpcMethodResult handleInitialize(Context ctx, RpcRequest request) {
-        Map<String, Object> initResult = new LinkedHashMap<>();
-        initResult.put("protocolVersion", "2025-11-25");
-        initResult.put("capabilities", Map.of("tools", Map.of()));
-        initResult.put("serverInfo", Map.of(
-                "name", "Locutus",
-                "version", "1.0.0"
-        ));
-        return RpcMethodResult.respond(RpcResponseFactory.success(request.id(), initResult));
-    }
-
-    private RpcMethodResult handleInitializedNotification(Context ctx, RpcRequest request) {
-        // notifications/initialized is acknowledged by HTTP 202 only.
-        return RpcMethodResult.noResponse();
-    }
-
-    private RpcMethodResult handleToolsList(Context ctx, RpcRequest request) {
-        ensureToolCache();
-        return RpcMethodResult.respond(RpcResponseFactory.success(request.id(), toolsListSchema));
-    }
-
-    private RpcMethodResult handleToolsCall(Context ctx, RpcRequest request) {
-        ensureToolCache();
-
-        ToolCallParams params = parseToolsCallParams(request.params());
-        String toolName = params.name;
-        if (toolName == null || toolName.isEmpty()) {
-            return RpcMethodResult.respond(RpcResponseFactory.success(request.id(), RpcResponseFactory.resultError("Missing tool name in params.name")));
-        }
-
-        Map<String, Object> toolArgs = params.arguments;
-        if (toolArgs == null) {
-            toolArgs = Collections.emptyMap();
-        }
-
-        ParametricCallable<?> tool = toolByName.get(toolName);
-        if (tool == null) {
-            return RpcMethodResult.respond(RpcResponseFactory.success(request.id(), RpcResponseFactory.resultError("Unknown tool: " + toolName)));
-        }
-
-        try {
-            Map<String, Object> output = executeTool(tool, toolArgs, ctx);
-            return RpcMethodResult.respond(RpcResponseFactory.success(request.id(), RpcResponseFactory.resultContent(output)));
-        } catch (Throwable e) {
-            e.printStackTrace();
             Throwable root = rootCause(e);
             String message = root.getMessage() == null || root.getMessage().isEmpty()
                     ? root.getClass().getSimpleName()
                     : root.getMessage();
-            return RpcMethodResult.respond(RpcResponseFactory.success(request.id(), RpcResponseFactory.resultError(message)));
+            responder.accept(RpcResponseFactory.error(requestId, -32603, "Internal error: " + message));
         }
     }
 
-    private Map<String, Object> executeTool(ParametricCallable<?> callable, Map<String, Object> arguments, Context ctx) {
-        LocalValueStore<?> locals = localStoreFactory.apply(null, ctx);
-        Guild guild = (Guild) locals.getProvided(Key.of(Guild.class, Me.class), false);
-        User user = (User) locals.getProvided(Key.of(User.class, Me.class), false);
+    private RpcMethodResult invokeRpcMethod(Context ctx, RpcRequest request) {
+        CommandCallable callable;
+        try {
+            callable = commands.getCallable(new ArrayList<>(List.of("rpc", request.method())));
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
 
-        StringMessageIO io = new StringMessageIO(user, guild, StringMessageIO.Mode.STRUCTURED);
-        locals.addProvider(Key.of(IMessageIO.class, Me.class), io);
-        callable.validatePermissions(locals, permisser);
-        Object[] parsed = callable.parseArgumentMap2(arguments, locals, validators, permisser, true);
-        Object result = callable.call(null, locals, parsed);
-        return io.toMcpToolResult(result);
+        if (!(callable instanceof ParametricCallable<?> parametric)) {
+            throw new IllegalArgumentException("RPC method is not executable: " + request.method());
+        }
+
+        Map<String, Object> params = request.params() == null
+                ? Collections.emptyMap()
+                : WebUtil.GSON.fromJson(request.params(), Map.class);
+        Map<String, Object> rawParams = params == null ? Collections.emptyMap() : params;
+        ParsedCommand parsed = parseCommand(parametric, rawParams, ctx);
+        Object result = parametric.call(null, parsed.locals(), parsed.arguments());
+
+        if (result instanceof RpcNoResponse) {
+            return RpcMethodResult.noResponse();
+        }
+        return RpcMethodResult.respond(RpcResponseFactory.success(request.id(), result));
     }
 
     private void ensureToolCache() {
-        if (toolsListSchema != null && toolByName != null) {
+        if (toolsListSchema != null) {
             return;
         }
         synchronized (toolCacheLock) {
-            Set<ParametricCallable<?>> commandList = commands.getParametricCallables(f -> true);
+            Set<ParametricCallable<?>> commandList = getToolCallables();
             if (toolsListSchema == null) {
                 toolsListSchema = MCPUtil.toJsonSchema(store, htmlOptionStore, schemaStore, commandList, null, null, null);
             }
-            if (toolByName == null) {
-                Map<String, ParametricCallable<?>> index = new LinkedHashMap<>();
-                List<String> duplicates = new ArrayList<>();
-                for (ParametricCallable<?> command : commandList) {
-                    String name = MCPUtil.getToolName(command);
-                    if (index.containsKey(name)) {
-                        duplicates.add(name);
-                        continue;
-                    }
-                    index.put(name, command);
-                }
-                if (!duplicates.isEmpty()) {
-                    throw new IllegalStateException("Duplicate MCP tool names found: " + String.join(", ", duplicates));
-                }
-                toolByName = index;
-            }
         }
+    }
+
+    private boolean isInternalRpcCommand(ParametricCallable<?> callable) {
+        return callable.getFullPath().toLowerCase(Locale.ROOT).startsWith("rpc ");
+    }
+
+    public Map<String, Object> getToolsListSchema() {
+        ensureToolCache();
+        return toolsListSchema;
+    }
+
+    private ToolCallResponse envelopeSuccess(Object data, String traceId, long startedAt) {
+        return new ToolCallResponse(true, null, meta(traceId, startedAt), data);
+    }
+
+    private ToolCallResponse envelopeError(String code, String message, String traceId, long startedAt) {
+        return new ToolCallResponse(false, new ErrorBody(code, message), meta(traceId, startedAt), null);
+    }
+
+    private Meta meta(String traceId, long startedAt) {
+        return new Meta(CONTRACT_VERSION, traceId, Math.max(0, System.currentTimeMillis() - startedAt));
+    }
+
+    private String isoMillis(long millis) {
+        return java.time.Instant.ofEpochMilli(millis).toString();
     }
 
     private RpcRequestDto parseRpcRequest(String body) {
@@ -225,17 +300,6 @@ public class MCPHandler {
         return request;
     }
 
-    private ToolCallParams parseToolsCallParams(JsonObject params) {
-        if (params == null) {
-            return new ToolCallParams();
-        }
-        ToolCallParams parsed = WebUtil.GSON.fromJson(params, ToolCallParams.class);
-        if (parsed == null) {
-            return new ToolCallParams();
-        }
-        return parsed;
-    }
-
     private static Throwable rootCause(Throwable throwable) {
         Throwable current = throwable;
         while (current.getCause() != null && current.getCause() != current) {
@@ -244,8 +308,10 @@ public class MCPHandler {
         return current;
     }
 
-    private interface RpcMethodHandler {
-        RpcMethodResult handle(Context ctx, RpcRequest request);
+    public record ParsedCommand(LocalValueStore<?> locals, Object[] arguments, Map<String, Object> normalizedArguments) {
+    }
+
+    private record ResultRefRecord(Object payload, String contentType, int estimatedSize, long expiresAt) {
     }
 
     private record RpcRequest(Object id, String method, JsonObject params) {
@@ -262,11 +328,6 @@ public class MCPHandler {
         JsonObject params;
     }
 
-    private static class ToolCallParams {
-        String name;
-        Map<String, Object> arguments;
-    }
-
     private record RpcMethodResult(Map<String, Object> response, boolean noSseResponse) {
         static RpcMethodResult respond(Map<String, Object> response) {
             return new RpcMethodResult(response, false);
@@ -275,5 +336,85 @@ public class MCPHandler {
         static RpcMethodResult noResponse() {
             return new RpcMethodResult(null, true);
         }
+    }
+
+    public record PageInfo(int cursor, int limit, int total, int returned, Integer next_cursor) {
+    }
+
+    public record ResultRefEnvelope(UUID result_ref, String expires_at, String content_type, int estimated_size, PageInfo page_info) {
+    }
+
+    public record ResultRefDataResponse(UUID result_ref, String expires_at, String content_type, Object data) {
+    }
+
+    private record ToolCallResponse(boolean ok, ErrorBody error, Meta meta, Object data) {
+    }
+
+    private record ErrorBody(String code, String message) {
+    }
+
+    private record Meta(String contract_version, String trace_id, long timing_ms) {
+    }
+
+    private enum RpcNoResponse {
+        INSTANCE
+    }
+
+    public class RpcCommands {
+        @Command(aliases = {"initialize"})
+        public Object initialize() {
+            return new InitializeResponse(
+                    "2025-11-25",
+                    new Capabilities(new ToolCapabilities()),
+                    new ServerInfo("Locutus", "1.0.0")
+            );
+        }
+
+        @Command(aliases = {"notifications/initialized"})
+        public Object notifications_initialized() {
+            return RpcNoResponse.INSTANCE;
+        }
+
+        @Command(aliases = {"tools/list"})
+        public Object tools_list() {
+            return getToolsListSchema();
+        }
+
+        @Command(aliases = {"tools/call"})
+        public Object tools_call(Context context, String name, @Default Map<String, Object> arguments) {
+            String traceId = UUID.randomUUID().toString();
+            long started = System.currentTimeMillis();
+            try {
+                ParametricCallable<?> tool = resolveTool(name);
+                if (tool == null) {
+                    throw new IllegalArgumentException("Unknown tool: " + name);
+                }
+                Map<String, Object> toolArgs = arguments == null ? Collections.emptyMap() : arguments;
+                ParsedCommand parsed = parseCommand(tool, toolArgs, context);
+                Map<String, Object> output = executeParsed(tool, parsed);
+                Object payload = maybeStoreLargeResult(output, "application/json");
+                return envelopeSuccess(payload, traceId, started);
+            } catch (IllegalArgumentException e) {
+                return envelopeError("invalid_arguments", e.getMessage(), traceId, started);
+            } catch (Throwable e) {
+                Throwable root = rootCause(e);
+                String message = root.getMessage() == null || root.getMessage().isEmpty()
+                        ? root.getClass().getSimpleName()
+                        : root.getMessage();
+                return envelopeError("internal_error", message, traceId, started);
+            }
+        }
+    }
+
+    private record InitializeResponse(String protocolVersion, Capabilities capabilities, ServerInfo serverInfo) {
+    }
+
+    private record Capabilities(ToolCapabilities tools) {
+    }
+
+    private record ToolCapabilities() {
+    }
+
+    private record ServerInfo(String name, String version) {
     }
 }
