@@ -804,10 +804,16 @@ public abstract class Placeholders<T, M> extends BindingHelper {
 
     @Binding(value = "A comma separated list of filters")
     public Predicate<T> parseFilter(ValueStore store2, String input) {
-        return parseFilter(store2, input, null);
+        input = wrapHashLegacy(store2, input);
+        return ArrayUtil.parseFilter(input,
+                f -> parseSingleFilter(store2, f),
+                s -> getSingleFilter(store2, s));
     }
 
     public Predicate<T> parseFilter(ValueStore store2, String input, M modifier) {
+        if (modifier == null) {
+            return parseFilter(store2, input);
+        }
         input = wrapHashLegacy(store2, input);
         return ArrayUtil.parseFilter(input,
                 f -> parseSingleFilter(store2, f, modifier),
@@ -836,10 +842,16 @@ public abstract class Placeholders<T, M> extends BindingHelper {
 
     @Binding(value = "A comma separated list of items")
     public Set<T> parseSet(ValueStore store2, String input) {
-        return parseSet(store2, input, null);
+        input = wrapHashLegacy(store2, input);
+        return ArrayUtil.resolveQuery(input,
+                f -> parseSingleElem(store2, f),
+                s -> getSingleFilter(store2, s));
     }
 
     public Set<T> parseSet(ValueStore store2, String input, M modifier) {
+        if (modifier == null) {
+            return parseSet(store2, input);
+        }
         input = wrapHashLegacy(store2, input);
         return ArrayUtil.resolveQuery(input,
                 f -> parseSingleElem(store2, f, modifier),
