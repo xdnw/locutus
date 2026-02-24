@@ -60,7 +60,6 @@ import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.announce.AnnounceType;
 import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.db.entities.metric.AllianceMetric;
-import link.locutus.discord.db.entities.metric.GrowthSummary;
 import link.locutus.discord.db.entities.nation.DBNationSnapshot;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSetting;
@@ -440,60 +439,6 @@ public class AdminCommands {
         Locutus.imp().getNationDB().updateAlliances(f -> {
         }, Event::post);
         return "Done!";
-    }
-
-    @Command(desc = "Benchmark GrowthSummary calculation runtime for the provided alliances and date range")
-    @RolePermission(value = Roles.ADMIN, root = true)
-    public String benchmarkGrowthSummary(Set<DBAlliance> alliances,
-            @Timestamp long start,
-            @Timestamp @Default Long end,
-            @Default Integer iterations,
-            @Switch("w") boolean includeWarmup) throws IOException, ParseException {
-        if (alliances == null || alliances.isEmpty()) {
-            throw new IllegalArgumentException("Please specify at least one alliance");
-        }
-        int iters = iterations == null ? 5 : iterations;
-        if (iters < 1 || iters > 100) {
-            throw new IllegalArgumentException("iterations must be between 1 and 100");
-        }
-
-        long dayStart = TimeUtil.getDay(start);
-        long dayEnd = end == null ? TimeUtil.getDay() : TimeUtil.getDay(end);
-
-        if (includeWarmup) {
-            new GrowthSummary(alliances, dayStart, dayEnd).run();
-        }
-
-        long totalNs = 0L;
-        long minNs = Long.MAX_VALUE;
-        long maxNs = Long.MIN_VALUE;
-        List<Long> samplesMs = new ArrayList<>(iters);
-
-        for (int i = 0; i < iters; i++) {
-            long t0 = System.nanoTime();
-            new GrowthSummary(alliances, dayStart, dayEnd).run();
-            long dt = System.nanoTime() - t0;
-
-            totalNs += dt;
-            minNs = Math.min(minNs, dt);
-            maxNs = Math.max(maxNs, dt);
-            samplesMs.add(TimeUnit.NANOSECONDS.toMillis(dt));
-        }
-
-        double avgMs = (totalNs / (double) iters) / 1_000_000d;
-        double minMs = minNs / 1_000_000d;
-        double maxMs = maxNs / 1_000_000d;
-        long rangeDays = Math.max(0, dayEnd - dayStart);
-
-        return "GrowthSummary benchmark complete\n"
-                + "- alliances: `" + alliances.size() + "`\n"
-                + "- day range: `" + dayStart + " -> " + dayEnd + "` (`" + rangeDays + "` days)\n"
-                + "- iterations: `" + iters + "`\n"
-                + "- warmup: `" + includeWarmup + "`\n"
-                + "- avg: `" + String.format(Locale.ROOT, "%.2f", avgMs) + " ms`\n"
-                + "- min: `" + String.format(Locale.ROOT, "%.2f", minMs) + " ms`\n"
-                + "- max: `" + String.format(Locale.ROOT, "%.2f", maxMs) + " ms`\n"
-                + "- samples(ms): `" + StringMan.join(samplesMs, ",") + "`";
     }
 
     @Command(desc = "Sync city refund data")

@@ -312,9 +312,6 @@ public class CommandManager2 {
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "checkActiveConflicts",
                 "active_conflicts");
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "dumpWiki", "export_wiki");
-        getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "benchmarkGrowthSummary",
-                "growth_benchmark");
-
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "sync2"), "saveWebPojos", "web_pojos");
 
         getCommands().registerMethod(new AdminCommands(), List.of("admin", "debug"), "apiUsageStats", "api_usage");
