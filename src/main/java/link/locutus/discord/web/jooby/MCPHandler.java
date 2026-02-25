@@ -55,7 +55,8 @@ public class MCPHandler {
     private final ValueStore<Object> store;
     private final ValueStore<Object> htmlOptionStore;
     private final ValueStore<Object> schemaStore;
-    private final CommandGroup commands;
+    private final CommandGroup toolCommands;
+    private final CommandGroup rpcCommands;
     private final ValidatorStore validators;
     private final PermissionHandler permisser;
     private final LocalStoreFactory localStoreFactory;
@@ -81,9 +82,15 @@ public class MCPHandler {
         this.schemaStore = new SimpleValueStore<>();
         new SchemaBindings().register(schemaStore);
 
-        this.commands = CommandGroup.createRoot(store, validators);
-        this.commands.registerCommands(new MCPCommands(this));
-        this.commands.registerSubCommands(new RpcCommands(), "rpc");
+        this.toolCommands = CommandGroup.createRoot(store, validators);
+        this.toolCommands.registerCommands(new MCPCommands(this));
+
+        this.rpcCommands = CommandGroup.createRoot(store, validators);
+        RpcCommands rpc = new RpcCommands();
+        this.rpcCommands.registerMethod(rpc, List.of(), "initialize", "initialize");
+        this.rpcCommands.registerMethod(rpc, List.of("notifications"), "notifications_initialized", "initialized");
+        this.rpcCommands.registerMethod(rpc, List.of("tools"), "tools_list", "list");
+        this.rpcCommands.registerMethod(rpc, List.of("tools"), "tools_call", "call");
     }
 
     public void handleMessage(Context ctx) {
@@ -94,15 +101,35 @@ public class MCPHandler {
     }
 
     public Set<ParametricCallable<?>> getToolCallables() {
-        return commands.getParametricCallables(callable -> !isInternalRpcCommand(callable));
+        return toolCommands.getParametricCallables(callable -> true);
     }
 
     public ParametricCallable<?> resolveTool(String requestedName) {
-        if (requestedName == null || requestedName.isBlank()) {
+        String normalized = MCPUtil.canonicalToolName(requestedName);
+        List<String> path = MCPUtil.getToolPathTokens(requestedName);
+        if (path.isEmpty()) {
             return null;
         }
-        String normalized = requestedName.toLowerCase(Locale.ROOT).trim();
-        List<String> path = Arrays.stream(normalized.split("-"))
+
+        CommandCallable callable;
+        try {
+            callable = toolCommands.getCallable(new ArrayList<>(path));
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+
+        if (!(callable instanceof ParametricCallable<?> parametric)) {
+            return null;
+        }
+        return MCPUtil.getToolName(parametric).equals(normalized) ? parametric : null;
+    }
+
+    private ParametricCallable<?> resolveRpcMethod(String methodName) {
+        if (methodName == null || methodName.isBlank()) {
+            return null;
+        }
+
+        List<String> path = Arrays.stream(methodName.toLowerCase(Locale.ROOT).trim().split("/"))
                 .filter(part -> part != null && !part.isBlank())
                 .toList();
         if (path.isEmpty()) {
@@ -111,18 +138,12 @@ public class MCPHandler {
 
         CommandCallable callable;
         try {
-            callable = commands.getCallable(new ArrayList<>(path));
+            callable = rpcCommands.getCallable(new ArrayList<>(path));
         } catch (IllegalArgumentException e) {
             return null;
         }
 
-        if (!(callable instanceof ParametricCallable<?> parametric)) {
-            return null;
-        }
-        if (isInternalRpcCommand(parametric)) {
-            return null;
-        }
-        return MCPUtil.getToolName(parametric).equals(normalized) ? parametric : null;
+        return callable instanceof ParametricCallable<?> parametric ? parametric : null;
     }
 
     public LocalValueStore<?> createLocals(Context ctx) {
@@ -151,6 +172,14 @@ public class MCPHandler {
         parsed.locals().addProvider(Key.of(IMessageIO.class, Me.class), io);
         Object result = callable.call(null, parsed.locals(), parsed.arguments());
         return io.toMcpToolResult(result);
+    }
+
+    private <T> T parseAndInvoke(Context ctx,
+                                 ParametricCallable<?> callable,
+                                 Map<String, Object> arguments,
+                                 ParsedCommandInvoker<T> invoker) {
+        ParsedCommand parsed = parseCommand(callable, arguments == null ? Collections.emptyMap() : arguments, ctx);
+        return invoker.invoke(callable, parsed);
     }
 
     public Object maybeStoreLargeResult(Object payload, String contentType) {
@@ -231,23 +260,17 @@ public class MCPHandler {
     }
 
     private RpcMethodResult invokeRpcMethod(Context ctx, RpcRequest request) {
-        CommandCallable callable;
-        try {
-            callable = commands.getCallable(new ArrayList<>(List.of("rpc", request.method())));
-        } catch (IllegalArgumentException e) {
+        ParametricCallable<?> parametric = resolveRpcMethod(request.method());
+        if (parametric == null) {
             return null;
-        }
-
-        if (!(callable instanceof ParametricCallable<?> parametric)) {
-            throw new IllegalArgumentException("RPC method is not executable: " + request.method());
         }
 
         Map<String, Object> params = request.params() == null
                 ? Collections.emptyMap()
                 : WebUtil.GSON.fromJson(request.params(), Map.class);
         Map<String, Object> rawParams = params == null ? Collections.emptyMap() : params;
-        ParsedCommand parsed = parseCommand(parametric, rawParams, ctx);
-        Object result = parametric.call(null, parsed.locals(), parsed.arguments());
+        Object result = parseAndInvoke(ctx, parametric, rawParams,
+                (callable, parsed) -> callable.call(null, parsed.locals(), parsed.arguments()));
 
         if (result instanceof RpcNoResponse) {
             return RpcMethodResult.noResponse();
@@ -265,10 +288,6 @@ public class MCPHandler {
                 toolsListSchema = MCPUtil.toJsonSchema(store, htmlOptionStore, schemaStore, commandList, null, null, null);
             }
         }
-    }
-
-    private boolean isInternalRpcCommand(ParametricCallable<?> callable) {
-        return callable.getFullPath().toLowerCase(Locale.ROOT).startsWith("rpc ");
     }
 
     public Map<String, Object> getToolsListSchema() {
@@ -360,6 +379,11 @@ public class MCPHandler {
         INSTANCE
     }
 
+    @FunctionalInterface
+    private interface ParsedCommandInvoker<T> {
+        T invoke(ParametricCallable<?> callable, ParsedCommand parsed);
+    }
+
     public class RpcCommands {
         @Command(aliases = {"initialize"})
         public Object initialize() {
@@ -370,17 +394,17 @@ public class MCPHandler {
             );
         }
 
-        @Command(aliases = {"notifications/initialized"})
+        @Command(aliases = {"initialized"})
         public Object notifications_initialized() {
             return RpcNoResponse.INSTANCE;
         }
 
-        @Command(aliases = {"tools/list"})
+        @Command(aliases = {"list"})
         public Object tools_list() {
             return getToolsListSchema();
         }
 
-        @Command(aliases = {"tools/call"})
+        @Command(aliases = {"call"})
         public Object tools_call(Context context, String name, @Default Map<String, Object> arguments) {
             String traceId = UUID.randomUUID().toString();
             long started = System.currentTimeMillis();
@@ -390,8 +414,7 @@ public class MCPHandler {
                     throw new IllegalArgumentException("Unknown tool: " + name);
                 }
                 Map<String, Object> toolArgs = arguments == null ? Collections.emptyMap() : arguments;
-                ParsedCommand parsed = parseCommand(tool, toolArgs, context);
-                Map<String, Object> output = executeParsed(tool, parsed);
+                Map<String, Object> output = parseAndInvoke(context, tool, toolArgs, MCPHandler.this::executeParsed);
                 Object payload = maybeStoreLargeResult(output, "application/json");
                 return envelopeSuccess(payload, traceId, started);
             } catch (IllegalArgumentException e) {

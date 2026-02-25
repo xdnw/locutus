@@ -75,12 +75,18 @@ public class MCPCommands {
         List<Map<String, Object>> items = new ArrayList<>();
         for (ParametricCallable<?> cmd : handler.getToolCallables()) {
             String name = MCPUtil.getToolName(cmd);
+            String fullPath = cmd.getFullPath(" ");
 
             if (viewable_only && !cmd.isViewable()) {
                 continue;
             }
-            if (path_prefix != null && !path_prefix.isBlank() && !cmd.getFullPath().toLowerCase().startsWith(path_prefix.toLowerCase())) {
-                continue;
+            if (path_prefix != null && !path_prefix.isBlank()) {
+                String prefix = path_prefix.toLowerCase();
+                boolean matchesHumanPath = fullPath.toLowerCase().startsWith(prefix);
+                boolean matchesCanonicalName = name.startsWith(prefix);
+                if (!matchesHumanPath && !matchesCanonicalName) {
+                    continue;
+                }
             }
             if (supports_type != null && !supportsTypeMatch(cmd, supports_type)) {
                 continue;
@@ -93,7 +99,8 @@ public class MCPCommands {
 
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("name", name);
-            row.put("path", cmd.getFullPath());
+            row.put("path", fullPath);
+            row.put("canonical_name", name);
             row.put("description", cmd.simpleDesc());
             row.put("score", score);
 

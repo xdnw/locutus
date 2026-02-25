@@ -27,6 +27,20 @@ public class MCPUtil {
     public static String getToolName(ParametricCallable<?> command) {
         return command.getFullPath("-").toLowerCase(Locale.ROOT);
     }
+
+    public static List<String> getToolPathTokens(String toolName) {
+        if (toolName == null || toolName.isBlank()) {
+            return Collections.emptyList();
+        }
+        return Arrays.stream(toolName.toLowerCase(Locale.ROOT).trim().split("-"))
+                .filter(part -> part != null && !part.isBlank())
+                .toList();
+    }
+
+    public static String canonicalToolName(String toolName) {
+        List<String> tokens = getToolPathTokens(toolName);
+        return tokens.isEmpty() ? "" : String.join("-", tokens);
+    }
     
     public static Map<String, Object> toJsonSchema(Type type, boolean supportUnknown) {
         Map<String, Object> schema = new Object2ObjectLinkedOpenHashMap<>();
