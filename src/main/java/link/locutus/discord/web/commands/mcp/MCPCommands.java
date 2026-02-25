@@ -47,17 +47,6 @@ public class MCPCommands {
     private final MCPHandler handler;
     private final Map<UUID, ValidationRecord> validations = new ConcurrentHashMap<>();
 
-    public enum ExecuteMode {
-        validate,
-        execute
-    }
-
-    public enum DataQueryMode {
-        plan,
-        sample,
-        full
-    }
-
     public MCPCommands(MCPHandler handler) {
         this.handler = handler;
     }
@@ -153,13 +142,13 @@ public class MCPCommands {
 
         ParametricCallable<?> cmd = requireParametricCommand(command);
         Map<String, Object> rawArgs = arguments == null ? Map.of() : arguments;
-        ExecuteMode actualMode = mode == null ? ExecuteMode.execute : mode;
+        ExecuteMode actualMode = mode == null ? ExecuteMode.EXECUTE : mode;
 
         MCPHandler.ParsedCommand parsed = handler.parseCommand(cmd, rawArgs, context);
         String commandName = MCPUtil.getToolName(cmd);
         String argsHash = hashPayload(parsed.normalizedArguments());
 
-        if (actualMode == ExecuteMode.validate) {
+        if (actualMode == ExecuteMode.VALIDATE) {
             UUID key = idempotency_key == null ? UUID.randomUUID() : idempotency_key;
             long expiresAt = System.currentTimeMillis() + IDEMPOTENCY_TTL_MILLIS;
             validations.put(key, new ValidationRecord(commandName, argsHash, expiresAt, methodMetadata(cmd)));
@@ -196,8 +185,8 @@ public class MCPCommands {
         String querySelection = selection == null || selection.isBlank() ? "*" : selection;
         int offset = cursor == null ? 0 : cursor;
         int pageLimit = limit == null ? MCPHandler.DEFAULT_PAGE_LIMIT : limit;
-        DataQueryMode actualMode = mode == null ? DataQueryMode.sample : mode;
-        if (actualMode == DataQueryMode.sample) {
+        DataQueryMode actualMode = mode == null ? DataQueryMode.SAMPLE : mode;
+        if (actualMode == DataQueryMode.SAMPLE) {
             pageLimit = Math.min(pageLimit, 50);
         }
 
@@ -242,7 +231,7 @@ public class MCPCommands {
         schema.put("columns", columns);
         schema.put("types", typeNames);
 
-        if (actualMode == DataQueryMode.plan) {
+        if (actualMode == DataQueryMode.PLAN) {
             return new DataQueryPlan(
                 type.getSimpleName(),
                 querySelection,
@@ -266,7 +255,7 @@ public class MCPCommands {
             MCPHandler.pageInfo(from, to, entities.size(), pageLimit)
         );
 
-        if (actualMode == DataQueryMode.full) {
+        if (actualMode == DataQueryMode.FULL) {
             DataQueryPayload fullData = new DataQueryPayload(
                 type.getSimpleName(),
                 querySelection,
@@ -370,11 +359,11 @@ public class MCPCommands {
         Object parsed = setting.parse(db, value == null ? "" : value);
         validateSettingValue(setting, db, user, parsed);
 
-        ExecuteMode actualMode = mode == null ? ExecuteMode.execute : mode;
+        ExecuteMode actualMode = mode == null ? ExecuteMode.EXECUTE : mode;
         String argsHash = hashPayload(StringMan.toSerializable(parsed));
         String commandName = "setting:" + setting.name();
 
-        if (actualMode == ExecuteMode.validate) {
+        if (actualMode == ExecuteMode.VALIDATE) {
             UUID key = idempotency_key == null ? UUID.randomUUID() : idempotency_key;
             long expiresAt = System.currentTimeMillis() + IDEMPOTENCY_TTL_MILLIS;
             validations.put(key, new ValidationRecord(commandName, argsHash, expiresAt, null));

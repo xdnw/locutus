@@ -43,6 +43,8 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.task.ia.AuditType;
+import link.locutus.discord.web.commands.mcp.DataQueryMode;
+import link.locutus.discord.web.commands.mcp.ExecuteMode;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.ISnowflake;
 import net.dv8tion.jda.api.entities.Member;
@@ -219,6 +221,18 @@ public class PWCompleter extends BindingHelper {
     @Binding(types={WarCostMode.class})
     public List<String> WarCostMode(String input) {
         return StringMan.completeEnum(input, WarCostMode.class);
+    }
+
+    @Autocomplete
+    @Binding(types={DataQueryMode.class})
+    public List<String> DataQueryMode(String input) {
+        return StringMan.completeEnum(input, DataQueryMode.class);
+    }
+
+    @Autocomplete
+    @Binding(types={ExecuteMode.class})
+    public List<String> ExecuteMode(String input) {
+        return StringMan.completeEnum(input, ExecuteMode.class);
     }
 
         @Autocomplete

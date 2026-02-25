@@ -44,6 +44,8 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.web.commands.binding.value_types.WebOptions;
+import link.locutus.discord.web.commands.mcp.DataQueryMode;
+import link.locutus.discord.web.commands.mcp.ExecuteMode;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
@@ -99,6 +101,16 @@ public class WebOptionBindings extends BindingHelper {
     @Binding(types = {WarCostMode.class})
     public WebOption WarCostMode(String input) {
         return WebOption.fromEnum(WarCostMode.class);
+    }
+
+    @Binding(types = {DataQueryMode.class})
+    public WebOption DataQueryMode(String input) {
+        return WebOption.fromEnum(DataQueryMode.class);
+    }
+
+    @Binding(types = {ExecuteMode.class})
+    public WebOption ExecuteMode(String input) {
+        return WebOption.fromEnum(ExecuteMode.class);
     }
 
     @Binding(types = {TierDeltaMode.class})

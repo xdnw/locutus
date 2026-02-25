@@ -150,7 +150,7 @@ public class PageHandler implements Handler {
                 if (tmp == null) {
                     tmp = new ConcurrentHashMap<>();
 
-                    for (Parser optionParser : store.getParsers().values()) {
+                    for (Parser optionParser : webOptionStore.getParsers().values()) {
                         try {
                             Object option = optionParser.apply(store, null);
                             if (!(option instanceof WebOption)) {
