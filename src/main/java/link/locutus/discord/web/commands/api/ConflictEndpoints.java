@@ -171,4 +171,24 @@ public class ConflictEndpoints extends PageHelper {
         storageManager.deleteConflict(virtualId);
         return success();
     }
+
+    @Command(desc = "Fetch forum announcement posts for given conflicts", viewable = true)
+    @ReturnType(value = ConflictPosts.class)
+    public Object conflictPosts(ConflictManager manager, Set<Conflict> conflicts) {
+        Map<Integer, Map<String, List>> result = new Int2ObjectOpenHashMap<>();
+
+        if (conflicts == null || conflicts.isEmpty()) {
+            return new ConflictPosts(result);
+        }
+
+        for (Conflict conflict : conflicts) {
+            if (conflict == null) continue;
+            Map<String, List> announcements = conflict.getAnnouncementsList();
+            if (!announcements.isEmpty()) {
+                result.put(conflict.getId(), announcements);
+            }
+        }
+
+        return new ConflictPosts(result);
+    }
 }

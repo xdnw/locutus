@@ -113,6 +113,7 @@ public class PageHandler implements Handler {
         this.commands.registerSubCommands(new GraphEndpoints(), "api");
         this.commands.registerSubCommands(new TaxEndpoints(), "api");
         this.commands.registerSubCommands(new MultiEndpoints(), "api");
+        this.commands.registerSubCommands(new TreatyEndpoints(), "api");
 
         this.commands.registerCommands(new TestPages());
         this.commands.registerCommands(this);
@@ -483,7 +484,6 @@ public class PageHandler implements Handler {
             Logg.text(logMsg);
 
             switch (path.toLowerCase(Locale.ROOT)) {
-
                 case "command": {
                     stack.consumeNext();
                     CommandCallable cmd = manager.getCommands().getCallable(args);

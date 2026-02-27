@@ -2142,15 +2142,6 @@ public class DBAlliance implements NationList, NationOrAlliance, GuildOrAlliance
     }
 
     @Command(desc = """
-            Total number of membership-change events for the selected reasons
-            A nation can contribute multiple events over the period""")
-    public int getMembershipChangeEventsByReason(ValueStore store, Set<MembershipChangeReason> reasons,
-            @Timestamp long start, @Timestamp @Default Long end) {
-        return getGrowthSummary(store, start, end)
-                .getReasonCounts(reasons::contains);
-    }
-
-    @Command(desc = """
             Number of distinct nations that had at least one event of each selected reason
             Each nation is counted only once per reason, regardless of how many times it occurred""")
     public int getMembershipChangeUniqueNationsByReason(ValueStore store, Set<MembershipChangeReason> reasons,
