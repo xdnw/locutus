@@ -26,6 +26,8 @@ import link.locutus.discord.web.commands.mcp.MCPCommands;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -38,8 +40,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
-import java.util.function.Consumer;
 import java.util.Locale;
+import java.util.function.Supplier;
 
 public class MCPHandler {
     private static final String CONTRACT_VERSION = "2026-02-24";
@@ -47,6 +49,10 @@ public class MCPHandler {
     public static final int MAX_PAGE_LIMIT = 250;
     private static final int INLINE_RESULT_MAX_BYTES = 120_000;
     private static final long RESULT_REF_TTL_MILLIS = TimeUnit.MINUTES.toMillis(20);
+    private static final String JSON_CONTENT_TYPE = "application/json";
+    private static final String EVENT_STREAM_CONTENT_TYPE = "text/event-stream";
+    private static final String MCP_SESSION_HEADER = "Mcp-Session-Id";
+    private static final Set<String> MCP_ENVELOPE_PARAM_KEYS = Set.of("_meta", "task");
 
     @FunctionalInterface
     public interface LocalStoreFactory extends BiFunction<LocalValueStore<?>, Context, LocalValueStore<?>> {
@@ -60,6 +66,7 @@ public class MCPHandler {
     private final ValidatorStore validators;
     private final PermissionHandler permisser;
     private final LocalStoreFactory localStoreFactory;
+    private final Supplier<MCPUtil.SchemaDebugObserver> schemaDebugObserverFactory;
 
     private final Map<UUID, ResultRefRecord> resultRefs = new ConcurrentHashMap<>();
 
@@ -71,19 +78,24 @@ public class MCPHandler {
             ValueStore<Object> htmlOptionStore,
             ValidatorStore validators,
             PermissionHandler permisser,
-            LocalStoreFactory localStoreFactory
+            LocalStoreFactory localStoreFactory,
+            boolean registerDefaultToolCommands,
+            Supplier<MCPUtil.SchemaDebugObserver> schemaDebugObserverFactory
     ) {
         this.store = Objects.requireNonNull(store, "store");
         this.htmlOptionStore = Objects.requireNonNull(htmlOptionStore, "htmlOptionStore");
         this.validators = Objects.requireNonNull(validators, "validators");
         this.permisser = Objects.requireNonNull(permisser, "permisser");
         this.localStoreFactory = Objects.requireNonNull(localStoreFactory, "localStoreFactory");
+        this.schemaDebugObserverFactory = schemaDebugObserverFactory;
 
         this.schemaStore = new SimpleValueStore<>();
         new SchemaBindings().register(schemaStore);
 
         this.toolCommands = CommandGroup.createRoot(store, validators);
-        this.toolCommands.registerCommands(new MCPCommands(this));
+        if (registerDefaultToolCommands) {
+            this.toolCommands.registerCommands(new MCPCommands(this));
+        }
 
         this.rpcCommands = CommandGroup.createRoot(store, validators);
         RpcCommands rpc = new RpcCommands();
@@ -93,11 +105,71 @@ public class MCPHandler {
         this.rpcCommands.registerMethod(rpc, List.of("tools"), "tools_call", "call");
     }
 
-    public void handleMessage(Context ctx) {
-        processRequest(ctx, response -> {
-            ctx.contentType("application/json");
-            ctx.status(200).result(WebUtil.GSON.toJson(response));
-        });
+    public void registerToolCommands(Object toolCommandGroup) {
+        toolCommands.registerCommands(toolCommandGroup);
+        synchronized (toolCacheLock) {
+            toolsListSchema = null;
+        }
+    }
+
+    public void handleHttpRpcPost(Context ctx) {
+        if (!"POST".equalsIgnoreCase(ctx.req().getMethod())) {
+            respondMethodNotAllowed(ctx, "Use POST for JSON-RPC requests");
+            return;
+        }
+
+        RpcTransportResult transportResult = processHttpRpcRequest(ctx);
+        ctx.contentType(JSON_CONTENT_TYPE);
+        if (transportResult.noImmediateBodyResponse()) {
+            ctx.status(202);
+            return;
+        }
+        ctx.status(transportResult.statusCode()).result(WebUtil.GSON.toJson(transportResult.payload()));
+    }
+
+    public void handleHttpSessionGet(Context ctx) {
+        if (!"GET".equalsIgnoreCase(ctx.req().getMethod())) {
+            respondMethodNotAllowed(ctx, "Use GET for MCP session stream establishment");
+            return;
+        }
+
+        String accept = ctx.header("Accept");
+        if (accept != null && !accept.contains(EVENT_STREAM_CONTENT_TYPE) && !accept.contains("*/*")) {
+            ctx.status(406)
+                    .contentType(JSON_CONTENT_TYPE)
+                    .result(WebUtil.GSON.toJson(Map.of(
+                            "error", "Not Acceptable",
+                            "message", "GET /mcp requires Accept: text/event-stream"
+                    )));
+            return;
+        }
+
+        String sessionId = normalizeSessionId(ctx.header(MCP_SESSION_HEADER));
+        ctx.status(200);
+        ctx.contentType(EVENT_STREAM_CONTENT_TYPE);
+        ctx.header("Cache-Control", "no-cache");
+        ctx.header("Connection", "keep-alive");
+        ctx.header("X-Accel-Buffering", "no");
+        ctx.header(MCP_SESSION_HEADER, sessionId);
+
+        try {
+            // Streamable HTTP session bootstrap event.
+            ctx.res().getOutputStream().write((
+                    "event: session\n" +
+                            "data: " + WebUtil.GSON.toJson(Map.of(
+                            "session_id", sessionId,
+                            "transport", "streamable-http",
+                            "endpoint", "/mcp"
+                    )) + "\n\n"
+            ).getBytes(StandardCharsets.UTF_8));
+            ctx.res().getOutputStream().flush();
+        } catch (IOException e) {
+            throw new RuntimeException("Unable to open MCP session stream", e);
+        }
+    }
+
+    public void handleUnsupportedMethod(Context ctx) {
+        respondMethodNotAllowed(ctx, "Supported methods for /mcp are GET and POST");
     }
 
     public Set<ParametricCallable<?>> getToolCallables() {
@@ -202,14 +274,14 @@ public class MCPHandler {
             throw new IllegalArgumentException("Unknown or expired result_ref: " + resultRef);
         }
 
-        Object payload = record.payload;
-        if (payload instanceof Map<?, ?> map && map.get("rows") instanceof List<?> rowsAny) {
+        Map<String, Object> pagedShape = toPagedShape(record.payload);
+        if (pagedShape != null && pagedShape.get("rows") instanceof List<?> rowsAny) {
             List<?> rows = rowsAny;
             int from = Math.min(cursor, rows.size());
             int to = Math.min(from + limit, rows.size());
 
             Map<String, Object> page = new LinkedHashMap<>();
-            page.putAll((Map<String, Object>) map);
+            page.putAll(pagedShape);
             page.put("rows", new ArrayList<>(rows.subList(from, to)));
             page.put("page_info", pageInfo(from, to, rows.size(), limit));
             page.put("result_ref", resultRef);
@@ -217,14 +289,28 @@ public class MCPHandler {
             return page;
         }
 
-        return new ResultRefDataResponse(resultRef, isoMillis(record.expiresAt), record.contentType, payload);
+        return new ResultRefDataResponse(resultRef, isoMillis(record.expiresAt), record.contentType, record.payload);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> toPagedShape(Object payload) {
+        if (payload == null) {
+            return null;
+        }
+        if (payload instanceof Map<?, ?> map) {
+            return (Map<String, Object>) map;
+        }
+
+        // Keep paging logic map-based at the boundary, but allow typed DTO payloads internally.
+        Map<String, Object> converted = WebUtil.GSON.fromJson(WebUtil.GSON.toJson(payload), Map.class);
+        return converted != null && converted.containsKey("rows") ? converted : null;
     }
 
     public static PageInfo pageInfo(int from, int to, int total, int limit) {
         return new PageInfo(from, limit, total, Math.max(0, to - from), to >= total ? null : to);
     }
 
-    private void processRequest(Context ctx, Consumer<Map<String, Object>> responder) {
+    private RpcTransportResult processHttpRpcRequest(Context ctx) {
         Object requestId = null;
         try {
             RpcRequestDto requestRaw = parseRpcRequest(ctx.body());
@@ -232,34 +318,31 @@ public class MCPHandler {
             RpcRequest request = new RpcRequest(requestRaw.id, requestRaw.method, requestRaw.params);
 
             if (request.method() == null || request.method().isEmpty()) {
-                responder.accept(RpcResponseFactory.error(request.id(), -32600, "Invalid Request: missing method"));
-                return;
+                return RpcTransportResult.withBody(400, RpcResponseFactory.error(request.id(), -32600, "Invalid Request: missing method"));
             }
 
-            RpcMethodResult result = invokeRpcMethod(ctx, request);
+            RpcMethodResult result = dispatchRpcRequest(ctx, request);
             if (result == null) {
-                responder.accept(RpcResponseFactory.error(request.id(), -32601, "Method not found"));
-                return;
+                return RpcTransportResult.withBody(200, RpcResponseFactory.error(request.id(), -32601, "Method not found"));
             }
-            if (result.noSseResponse()) {
-                ctx.status(202);
-                return;
+            if (result.noImmediateBodyResponse()) {
+                return RpcTransportResult.noImmediateBodyResponse(202);
             }
-            responder.accept(result.response());
+            return RpcTransportResult.withBody(200, result.response());
         } catch (IllegalArgumentException e) {
-            responder.accept(RpcResponseFactory.error(requestId, -32600, "Invalid Request: " + e.getMessage()));
+            return RpcTransportResult.withBody(400, RpcResponseFactory.error(requestId, -32600, "Invalid Request: " + e.getMessage()));
         } catch (JsonSyntaxException e) {
-            responder.accept(RpcResponseFactory.error(requestId, -32600, "Invalid Request: " + e.getMessage()));
+            return RpcTransportResult.withBody(400, RpcResponseFactory.error(requestId, -32600, "Invalid Request: " + e.getMessage()));
         } catch (Throwable e) {
             Throwable root = rootCause(e);
             String message = root.getMessage() == null || root.getMessage().isEmpty()
                     ? root.getClass().getSimpleName()
                     : root.getMessage();
-            responder.accept(RpcResponseFactory.error(requestId, -32603, "Internal error: " + message));
+            return RpcTransportResult.withBody(500, RpcResponseFactory.error(requestId, -32603, "Internal error: " + message));
         }
     }
 
-    private RpcMethodResult invokeRpcMethod(Context ctx, RpcRequest request) {
+    private RpcMethodResult dispatchRpcRequest(Context ctx, RpcRequest request) {
         ParametricCallable<?> parametric = resolveRpcMethod(request.method());
         if (parametric == null) {
             return null;
@@ -269,13 +352,35 @@ public class MCPHandler {
                 ? Collections.emptyMap()
                 : WebUtil.GSON.fromJson(request.params(), Map.class);
         Map<String, Object> rawParams = params == null ? Collections.emptyMap() : params;
-        Object result = parseAndInvoke(ctx, parametric, rawParams,
+        Map<String, Object> normalizedParams = stripMcpEnvelopeParams(rawParams);
+        Object result = parseAndInvoke(ctx, parametric, normalizedParams,
                 (callable, parsed) -> callable.call(null, parsed.locals(), parsed.arguments()));
 
         if (result instanceof RpcNoResponse) {
             return RpcMethodResult.noResponse();
         }
         return RpcMethodResult.respond(RpcResponseFactory.success(request.id(), result));
+    }
+
+    private Map<String, Object> stripMcpEnvelopeParams(Map<String, Object> params) {
+        if (params == null || params.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        boolean containsEnvelopeParams = false;
+        for (String key : params.keySet()) {
+            if (MCP_ENVELOPE_PARAM_KEYS.contains(key)) {
+                containsEnvelopeParams = true;
+                break;
+            }
+        }
+        if (!containsEnvelopeParams) {
+            return params;
+        }
+
+        Map<String, Object> filtered = new LinkedHashMap<>(params);
+        MCP_ENVELOPE_PARAM_KEYS.forEach(filtered::remove);
+        return filtered;
     }
 
     private void ensureToolCache() {
@@ -285,7 +390,8 @@ public class MCPHandler {
         synchronized (toolCacheLock) {
             Set<ParametricCallable<?>> commandList = getToolCallables();
             if (toolsListSchema == null) {
-                toolsListSchema = MCPUtil.toJsonSchema(store, htmlOptionStore, schemaStore, commandList, null, null, null);
+                MCPUtil.SchemaDebugObserver debugObserver = schemaDebugObserverFactory == null ? null : schemaDebugObserverFactory.get();
+                toolsListSchema = MCPUtil.toJsonSchema(store, htmlOptionStore, schemaStore, commandList, null, null, null, debugObserver);
             }
         }
     }
@@ -307,6 +413,22 @@ public class MCPHandler {
         return new Meta(CONTRACT_VERSION, traceId, Math.max(0, System.currentTimeMillis() - startedAt));
     }
 
+    private void logToolCallFailure(String traceId, String toolName, Map<String, Object> arguments, Throwable error) {
+        String argsJson;
+        try {
+            argsJson = WebUtil.GSON.toJson(arguments == null ? Collections.emptyMap() : arguments);
+        } catch (Throwable serializationError) {
+            argsJson = "<failed to serialize arguments: " + serializationError.getMessage() + ">";
+        }
+
+        System.err.println("[MCP tools/call] trace_id=" + traceId
+                + " tool=" + toolName
+                + " arguments=" + argsJson
+                + " error=" + error.getClass().getSimpleName()
+                + ": " + error.getMessage());
+        error.printStackTrace(System.err);
+    }
+
     private String isoMillis(long millis) {
         return java.time.Instant.ofEpochMilli(millis).toString();
     }
@@ -317,6 +439,23 @@ public class MCPHandler {
             throw new IllegalArgumentException("Request body is empty or invalid JSON");
         }
         return request;
+    }
+
+    private String normalizeSessionId(String sessionIdHeader) {
+        if (sessionIdHeader == null || sessionIdHeader.isBlank()) {
+            return UUID.randomUUID().toString();
+        }
+        return sessionIdHeader.trim();
+    }
+
+    private void respondMethodNotAllowed(Context ctx, String message) {
+        ctx.status(405)
+                .contentType(JSON_CONTENT_TYPE)
+                .header("Allow", "GET, POST")
+                .result(WebUtil.GSON.toJson(Map.of(
+                        "error", "Method Not Allowed",
+                        "message", message
+                )));
     }
 
     private static Throwable rootCause(Throwable throwable) {
@@ -347,13 +486,23 @@ public class MCPHandler {
         JsonObject params;
     }
 
-    private record RpcMethodResult(Map<String, Object> response, boolean noSseResponse) {
+    private record RpcMethodResult(Map<String, Object> response, boolean noImmediateBodyResponse) {
         static RpcMethodResult respond(Map<String, Object> response) {
             return new RpcMethodResult(response, false);
         }
 
         static RpcMethodResult noResponse() {
             return new RpcMethodResult(null, true);
+        }
+    }
+
+    private record RpcTransportResult(int statusCode, Map<String, Object> payload, boolean noImmediateBodyResponse) {
+        static RpcTransportResult withBody(int statusCode, Map<String, Object> payload) {
+            return new RpcTransportResult(statusCode, payload, false);
+        }
+
+        static RpcTransportResult noImmediateBodyResponse(int statusCode) {
+            return new RpcTransportResult(statusCode, null, true);
         }
     }
 
@@ -386,7 +535,9 @@ public class MCPHandler {
 
     public class RpcCommands {
         @Command(aliases = {"initialize"})
-        public Object initialize() {
+        public Object initialize(@Default String protocolVersion,
+                     @Default Map<String, Object> capabilities,
+                     @Default Map<String, Object> clientInfo) {
             return new InitializeResponse(
                     "2025-11-25",
                     new Capabilities(new ToolCapabilities()),
@@ -408,18 +559,20 @@ public class MCPHandler {
         public Object tools_call(Context context, String name, @Default Map<String, Object> arguments) {
             String traceId = UUID.randomUUID().toString();
             long started = System.currentTimeMillis();
+            Map<String, Object> toolArgs = arguments == null ? Collections.emptyMap() : arguments;
             try {
                 ParametricCallable<?> tool = resolveTool(name);
                 if (tool == null) {
                     throw new IllegalArgumentException("Unknown tool: " + name);
                 }
-                Map<String, Object> toolArgs = arguments == null ? Collections.emptyMap() : arguments;
                 Map<String, Object> output = parseAndInvoke(context, tool, toolArgs, MCPHandler.this::executeParsed);
                 Object payload = maybeStoreLargeResult(output, "application/json");
                 return envelopeSuccess(payload, traceId, started);
             } catch (IllegalArgumentException e) {
+                logToolCallFailure(traceId, name, toolArgs, e);
                 return envelopeError("invalid_arguments", e.getMessage(), traceId, started);
             } catch (Throwable e) {
+                logToolCallFailure(traceId, name, toolArgs, e);
                 Throwable root = rootCause(e);
                 String message = root.getMessage() == null || root.getMessage().isEmpty()
                         ? root.getClass().getSimpleName()

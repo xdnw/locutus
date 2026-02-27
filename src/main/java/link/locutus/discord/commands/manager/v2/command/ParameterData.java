@@ -103,7 +103,7 @@ public class ParameterData {
             Key<?> bindingWebType = binding.getWebTypeOrNull();
             if (bindingWebType == null) bindingWebType = key;
             String definitionName = MCPUtil.getJsonName(bindingWebType.toSimpleString());
-            arg.put("$ref", definitionName);
+            arg.put("$ref", "#/$defs/" + definitionName);
         }
 
         return arg;

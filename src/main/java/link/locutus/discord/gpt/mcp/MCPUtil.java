@@ -24,6 +24,16 @@ import java.util.*;
 import java.util.function.Function;
 public class MCPUtil {
 
+    public interface SchemaDebugObserver {
+        void onToolSchema(String toolName, Map<String, Object> toolSchema);
+
+        void onToolSchemaError(String toolName, String path, String message, String value);
+
+        void onToolsListSchema(Map<String, Object> toolsListSchema,
+                               Map<String, Object> definitions,
+                               Map<Key<?>, Map<String, Object>> primitiveCache);
+    }
+
     public static String getToolName(ParametricCallable<?> command) {
         return command.getFullPath("-").toLowerCase(Locale.ROOT);
     }
@@ -179,7 +189,7 @@ public class MCPUtil {
                     for (Object constant : constants) {
                         Enum<?> e = (Enum<?>) constant;
                         Map<String, Object> entry = new LinkedHashMap<>();
-                        entry.put("value", e.name());
+                        entry.put("const", e.name());
                         entry.put("description", constant.toString());
                         oneOfList.add(entry);
                     }
@@ -211,8 +221,24 @@ public class MCPUtil {
         throw new IllegalArgumentException("Unsupported type: " + type.getTypeName());
     }
 
-    public static Map<String, Object> toJsonSchema(ValueStore store, ValueStore htmlOptionsStore, ValueStore schemaStore, Collection<ParametricCallable<?>> commands, GuildDB guildDB, User user, DBNation nation) {
-        Map<String, Object> root = new Object2ObjectLinkedOpenHashMap<>();
+    public static Map<String, Object> toJsonSchema(ValueStore store,
+                                                    ValueStore htmlOptionsStore,
+                                                    ValueStore schemaStore,
+                                                    Collection<ParametricCallable<?>> commands,
+                                                    GuildDB guildDB,
+                                                    User user,
+                                                    DBNation nation) {
+        return toJsonSchema(store, htmlOptionsStore, schemaStore, commands, guildDB, user, nation, null);
+    }
+
+    public static Map<String, Object> toJsonSchema(ValueStore store,
+                                                    ValueStore htmlOptionsStore,
+                                                    ValueStore schemaStore,
+                                                    Collection<ParametricCallable<?>> commands,
+                                                    GuildDB guildDB,
+                                                    User user,
+                                                    DBNation nation,
+                                                    SchemaDebugObserver schemaDebugObserver) {
 
         Map<Key<?>, Map<String, Object>> primitiveCache = new Object2ObjectLinkedOpenHashMap<>();
 
@@ -265,8 +291,7 @@ public class MCPUtil {
             if (typeDesc == null || typeDesc.isEmpty()) typeDesc = parser.getDescription();
             String[] examples = parser.getExamples();
 
-            argumentDef.put("type", typeName);
-            if (!typeDesc.isEmpty()) argumentDef.put("description", typeDesc);
+            if (typeDesc != null && !typeDesc.isEmpty()) argumentDef.put("description", typeDesc);
             else {
                 String classAndMethodOrNull = (parser instanceof MethodParser<?> methodParser) ?
                         methodParser.getMethod().getDeclaringClass().getSimpleName() + "." + methodParser.getMethod().getName()
@@ -286,7 +311,7 @@ public class MCPUtil {
                 if (toolOptions != null) {
                     return (Map<String, Object>) toolOptions.apply(store, null);
                 }
-                if (t instanceof ParameterizedType) {
+                if (t.getType() instanceof ParameterizedType) {
                     System.err.println("[Gpt-Tool] Not checking options for parameterized type: " + t);
                     return null;
                 }
@@ -391,9 +416,10 @@ public class MCPUtil {
 
             definitions.put(typeName, argumentDef);
         }
+
         List<Map<String, Object>> tools = new ObjectArrayList<>();
         for (ParametricCallable<?> command : commands) {
-            String cmdName = command.getFullPath().toLowerCase();
+            String cmdName = getToolName(command);
             try {
                 Map<String, Object> toolSchema = command.toJsonSchema(primitiveCache);
                 
@@ -404,10 +430,17 @@ public class MCPUtil {
                         inputSchema.put("$defs", definitions);
                     }
                 }
+
+                if (schemaDebugObserver != null) {
+                    schemaDebugObserver.onToolSchema(cmdName, toolSchema);
+                }
                 
                 tools.add(toolSchema);
             } catch (IllegalArgumentException e) {
                 System.err.println("[Gpt-Tool] Skipping command " + cmdName + " in JSON schema generation: " + e.getMessage());
+                if (schemaDebugObserver != null) {
+                    schemaDebugObserver.onToolSchemaError(cmdName, "$.tool[" + cmdName + "]", "command.toJsonSchema failed", e.getMessage());
+                }
             }
         }
         
@@ -415,6 +448,11 @@ public class MCPUtil {
         // we return it as the result of the tools/list JSON-RPC call.
         Map<String, Object> mcpResult = new Object2ObjectLinkedOpenHashMap<>();
         mcpResult.put("tools", tools);
+
+        if (schemaDebugObserver != null) {
+            schemaDebugObserver.onToolsListSchema(mcpResult, definitions, primitiveCache);
+        }
+
         return mcpResult; 
     }
 }

@@ -20,10 +20,12 @@ import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ReflectionUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
+import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.HtmlInput;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.json.JSONObject;
 
+import java.math.BigDecimal;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.*;
@@ -777,6 +779,24 @@ public class ParametricCallable<T> implements ICommand<T> {
         return new JSONObject(argsByParamName);
     }
 
+    private Object normalizePartialParseValue(Object value) {
+        if (value instanceof Number number) {
+            return canonicalNumberString(number);
+        }
+        if (value instanceof Map<?, ?> || value instanceof Collection<?> || value.getClass().isArray()) {
+            return WebUtil.GSON.toJson(value);
+        }
+        return value.toString();
+    }
+
+    private String canonicalNumberString(Number number) {
+        try {
+            return new BigDecimal(number.toString()).stripTrailingZeros().toPlainString();
+        } catch (NumberFormatException e) {
+            return number.toString();
+        }
+    }
+
     public Object[] parseArgumentMap2(Map<String, Object> combined, ValueStore store, ValidatorStore validators, PermissionHandler permisser, boolean partialParse) {
         validatePermissions(store, permisser);
 
@@ -824,10 +844,18 @@ public class ParametricCallable<T> implements ICommand<T> {
                             return o;
                         }
                     }
-                    if (o.getClass() != String.class) {
-                        throw new IllegalArgumentException("Cannot parse " + o.getClass() + " to " + typeClass + " for " + getFullPath() + " parameter " + param.getName());
+                    Parser<?> parser = locals.get(param.getBinding().getKey());
+                    try {
+                        return parser.apply(store, o);
+                    } catch (RuntimeException firstError) {
+                        if (o.getClass() != String.class) {
+                            try {
+                                return parser.apply(store, normalizePartialParseValue(o));
+                            } catch (RuntimeException ignored) {
+                            }
+                        }
+                        throw new IllegalArgumentException("Cannot parse " + o.getClass() + " to " + typeClass + " for " + getFullPath() + " parameter " + param.getName() + "(value is: " + o + ")");
                     }
-                    return locals.get(param.getBinding().getKey()).apply(store, o.toString());
                 }
             };
         } else {
@@ -863,7 +891,7 @@ public class ParametricCallable<T> implements ICommand<T> {
                 String alias = aliases.get(name);
                 if (alias != null) param = parameterMap.get(alias);
             }
-            if (param == null) throw new IllegalArgumentException("Could not find param: `" + entry.getKey() + "` for command " + getFullPath());
+            if (param == null) throw new IllegalArgumentException("Could not find param: `" + entry.getKey() + "` for command " + getFullPath() + " (sent with value: " + entry.getValue() + ")");
 
             argsByParams.put(param, entry.getValue());
             if (param.isFlag()) {

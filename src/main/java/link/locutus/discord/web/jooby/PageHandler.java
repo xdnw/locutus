@@ -117,11 +117,11 @@ public class PageHandler implements Handler {
         this.commands.registerCommands(new TestPages());
         this.commands.registerCommands(this);
 
-        ValueStore<?> phStore = placeholders.getStore();
         this.serializer = new ObjectMapper(new MessagePackFactory());
 
         this.webOptionStore = new SimpleValueStore<>();
         new WebOptionBindings().register(webOptionStore);
+        
         store.addProvider(Key.of(PlaceholdersMap.class), placeholders);
     }
 
@@ -131,7 +131,9 @@ public class PageHandler implements Handler {
                 webOptionStore,
                 validators,
                 permisser,
-                (locals, ctx) -> locals == null ? createLocals(ctx) : setupLocals(locals, ctx)
+                (locals, ctx) -> locals == null ? createLocals(ctx) : setupLocals(locals, ctx),
+                true,
+                null
         );
     }
 
@@ -187,6 +189,10 @@ public class PageHandler implements Handler {
 
     public ValueStore<Object> getStore() {
         return store;
+    }
+
+    public ValueStore<Object> getWebOptionStore() {
+        return webOptionStore;
     }
 
     public ValidatorStore getValidators() {

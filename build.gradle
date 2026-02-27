@@ -1,6 +1,7 @@
 /**
  * Generic runner: call any main without adding a new task each time
  * Usage: gradlew runMain -PmainClass=fully.qualified.MainClass [-PappArgs="a b"] [-PjvmArgs="-Xmx512m"]
+ * Includes both main and test runtime classpaths so test harness mains can run too.
  *
  * Generate JTE
  * .\gradlew -PwithJtePrecompile generateJte
@@ -56,7 +57,7 @@ tasks.register('runCustomMain', JavaExec) {
 tasks.register('runMain', JavaExec) {
     group = 'application'
     description = 'Run any main class on the project classpath: -PmainClass=... or -DmainClass=... or env MAIN_CLASS'
-    classpath = sourceSets.main.runtimeClasspath
+    classpath = sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
 
     // Keep task registration lazy so IDE Gradle model sync does not fail.
     def suppliedMain = providers.gradleProperty('mainClass')
@@ -86,6 +87,7 @@ tasks.register('runMain', JavaExec) {
     }
 
     dependsOn tasks.named('classes')
+    dependsOn tasks.named('testClasses')
 }
 
 def useJooq = providers.gradleProperty("jooq").isPresent()
@@ -313,6 +315,8 @@ dependencies {
     implementation 'cn.easyproject:easyocr:3.0.4-RELEASE'
     implementation 'com.vdurmont:emoji-java:5.1.1'
     implementation 'info.debatty:java-string-similarity:2.0.0'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
 }
 
 configurations {
@@ -670,4 +674,8 @@ sourceSets.main.java.srcDir(jooqGeneratedDir)
 // Optional: clean generated outputs
 tasks.named('clean') {
     delete(graphqlGeneratedDir, jteGeneratedDir, jooqGeneratedDir)
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
 }

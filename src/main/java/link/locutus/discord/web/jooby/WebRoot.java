@@ -179,10 +179,15 @@ public class WebRoot {
 
         this.app.get("/robots.txt", ctx -> ctx.result("User-agent: *\nDisallow: /"));
 
-        this.app.post("/mcp/sse", ctx -> {
-            System.out.println("MCP SSE request");
-            mcpHandler.handleMessage(ctx);
-        });
+        this.app.post("/mcp", mcpHandler::handleHttpRpcPost);
+        this.app.get("/mcp", mcpHandler::handleHttpSessionGet);
+        this.app.put("/mcp", mcpHandler::handleUnsupportedMethod);
+        this.app.patch("/mcp", mcpHandler::handleUnsupportedMethod);
+        this.app.delete("/mcp", mcpHandler::handleUnsupportedMethod);
+        this.app.options("/mcp", mcpHandler::handleUnsupportedMethod);
+
+        this.app.get("/mcp/sse", ctx -> ctx.status(410).result("Deprecated endpoint. Use /mcp with streamable HTTP transport."));
+        this.app.post("/mcp/sse", ctx -> ctx.status(410).result("Deprecated endpoint. Use /mcp with JSON-RPC POST."));
 
         this.app.get("/sse/*", new SseHandler2(new Consumer<SseMessageOutput>() {
             @Override

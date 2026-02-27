@@ -21,6 +21,15 @@ These wiki pages provide comprehensive documentation on various aspects of Locut
 
 If you prefer to host Locutus on your own server, you can follow the [Self Hosting Guide](https://github.com/xdnw/locutus/wiki/Hosting-Locutus) available in the GitHub repository. This guide will walk you through the process of setting up Locutus on your server and configuring it to meet your specific requirements.
 
+## MCP Transport
+
+Locutus exposes MCP over canonical streamable HTTP at `/mcp`.
+
+- `POST /mcp`: JSON-RPC request/response (`application/json`).
+- `GET /mcp`: streamable HTTP session bootstrap (`text/event-stream`).
+- Supported RPC methods include `initialize`, `notifications/initialized`, `tools/list`, and `tools/call`.
+- Legacy `/mcp/sse` is deprecated and returns `410 Gone`.
+
 ## Future Development
 
 We are constantly working on improving Locutus and adding new features. We value user feedback and suggestions, so if you have any ideas or feature requests, please don't hesitate to let us know.

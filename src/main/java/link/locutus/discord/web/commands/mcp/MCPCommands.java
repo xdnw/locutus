@@ -43,12 +43,20 @@ import java.util.concurrent.TimeUnit;
 
 public class MCPCommands {
     private static final long IDEMPOTENCY_TTL_MILLIS = TimeUnit.MINUTES.toMillis(10);
+    private static final String JSON_CONTENT_TYPE = "application/json";
+    private static final String ERROR_IDEMPOTENCY_REQUIRED = "idempotency_key is required in execute mode; run validate first";
+    private static final String ERROR_IDEMPOTENCY_EXPIRED = "idempotency_key is missing or expired; run validate again";
 
     private final MCPHandler handler;
     private final Map<UUID, ValidationRecord> validations = new ConcurrentHashMap<>();
 
     public MCPCommands(MCPHandler handler) {
         this.handler = handler;
+    }
+
+    @Command(desc = "Test MCP command")
+    public Object test_command(String arg1, @Default String arg2) {
+        return Map.of("arg1", arg1, "arg2", arg2);
     }
 
     @Command(desc = "Unified command discovery. Query omitted means browse/list; query present means ranked search", aliases = {"command_discover"})
@@ -61,7 +69,7 @@ public class MCPCommands {
         int offset = cursor == null ? 0 : cursor;
         int pageLimit = limit == null ? MCPHandler.DEFAULT_PAGE_LIMIT : limit;
 
-        List<Map<String, Object>> items = new ArrayList<>();
+        List<CommandDiscoverItem> items = new ArrayList<>();
         for (ParametricCallable<?> cmd : handler.getToolCallables()) {
             String name = MCPUtil.getToolName(cmd);
             String fullPath = cmd.getFullPath(" ");
@@ -86,39 +94,31 @@ public class MCPCommands {
                 continue;
             }
 
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("name", name);
-            row.put("path", fullPath);
-            row.put("canonical_name", name);
-            row.put("description", cmd.simpleDesc());
-            row.put("score", score);
-
-            List<Map<String, Object>> args = new ArrayList<>();
+            List<CommandDiscoverArgument> args = new ArrayList<>();
             for (ParameterData p : cmd.getUserParameters()) {
-                Map<String, Object> arg = new LinkedHashMap<>();
-                arg.put("name", p.getName());
-                arg.put("type", p.getBinding().getKey().toSimpleString());
-                arg.put("required", !p.isOptional() && (p.getDefaultValue() == null || p.getDefaultValue().length == 0));
-                arg.put("description", p.getDescription());
-                args.add(arg);
+                args.add(new CommandDiscoverArgument(
+                    p.getName(),
+                    p.getBinding().getKey().toSimpleString(),
+                    !p.isOptional() && (p.getDefaultValue() == null || p.getDefaultValue().length == 0),
+                    p.getDescription()
+                ));
             }
-            row.put("arguments", args);
-            items.add(row);
+            items.add(new CommandDiscoverItem(name, fullPath, name, cmd.simpleDesc(), args, score));
         }
 
         items.sort((a, b) -> {
-            int scoreCmp = Integer.compare(((Number) b.get("score")).intValue(), ((Number) a.get("score")).intValue());
+            int scoreCmp = Integer.compare(b.score(), a.score());
             if (scoreCmp != 0) {
                 return scoreCmp;
             }
-            return a.get("name").toString().compareToIgnoreCase(b.get("name").toString());
+            return a.name().compareToIgnoreCase(b.name());
         });
 
         int from = Math.min(offset, items.size());
         int to = Math.min(from + pageLimit, items.size());
-        List<Map<String, Object>> page = new ArrayList<>(items.subList(from, to));
-        for (Map<String, Object> item : page) {
-            item.remove("score");
+        List<CommandDiscoverItemPublic> page = new ArrayList<>();
+        for (CommandDiscoverItem item : items.subList(from, to)) {
+            page.add(item.toPublicShape());
         }
 
         return new CommandDiscoverResponse(page, MCPHandler.pageInfo(from, to, items.size(), pageLimit), query);
@@ -156,18 +156,18 @@ public class MCPCommands {
         }
 
         if (idempotency_key == null) {
-            throw new IllegalArgumentException("idempotency_key is required in execute mode; run validate first");
+            throw new IllegalArgumentException(ERROR_IDEMPOTENCY_REQUIRED);
         }
         ValidationRecord record = validations.remove(idempotency_key);
         if (record == null || record.expiresAt < System.currentTimeMillis()) {
-            throw new IllegalArgumentException("idempotency_key is missing or expired; run validate again");
+            throw new IllegalArgumentException(ERROR_IDEMPOTENCY_EXPIRED);
         }
         if (!record.commandName.equals(commandName) || !record.argsHash.equals(argsHash)) {
             throw new IllegalArgumentException("idempotency_key does not match validated command/arguments");
         }
 
         Map<String, Object> output = handler.executeParsed(cmd, parsed);
-        return new ExecutionResponse(commandName, idempotency_key, handler.maybeStoreLargeResult(output, "application/json"));
+        return new ExecutionResponse(commandName, idempotency_key, handler.maybeStoreLargeResult(output, JSON_CONTENT_TYPE));
     }
 
     @Command(desc = "Query placeholder-backed data tables with plan/sample/full modes", aliases = {"data_query"})
@@ -227,9 +227,7 @@ public class MCPCommands {
             }
         }
 
-        Map<String, Object> schema = new LinkedHashMap<>();
-        schema.put("columns", columns);
-        schema.put("types", typeNames);
+        DataQuerySchema schema = new DataQuerySchema(columns, typeNames);
 
         if (actualMode == DataQueryMode.PLAN) {
             return new DataQueryPlan(
@@ -264,7 +262,7 @@ public class MCPCommands {
                 warnings,
                 null
             );
-            return handler.maybeStoreLargeResult(fullData, "application/json");
+            return handler.maybeStoreLargeResult(fullData, JSON_CONTENT_TYPE);
         }
 
         return payload;
@@ -286,7 +284,7 @@ public class MCPCommands {
         int offset = cursor == null ? 0 : cursor;
         int pageLimit = limit == null ? MCPHandler.DEFAULT_PAGE_LIMIT : limit;
 
-        List<Map<String, Object>> items = new ArrayList<>();
+        List<SettingsDiscoverItem> items = new ArrayList<>();
         for (GuildSetting<?> setting : GuildKey.values()) {
             if (query != null && !query.isBlank()) {
                 String q = query.toLowerCase();
@@ -303,16 +301,16 @@ public class MCPCommands {
                 continue;
             }
 
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("name", setting.name());
-            row.put("type", setting.getType().toSimpleString());
-            row.put("category", setting.getCategory().name());
-            row.put("help", setting.help());
-            row.put("requirements", setting.getRequirementDesc());
-            items.add(row);
+            items.add(new SettingsDiscoverItem(
+                setting.name(),
+                setting.getType().toSimpleString(),
+                setting.getCategory().name(),
+                setting.help(),
+                setting.getRequirementDesc()
+            ));
         }
 
-        items.sort(Comparator.comparing(o -> o.get("name").toString()));
+        items.sort(Comparator.comparing(SettingsDiscoverItem::name));
         int from = Math.min(offset, items.size());
         int to = Math.min(from + pageLimit, items.size());
 
@@ -371,11 +369,11 @@ public class MCPCommands {
         }
 
         if (idempotency_key == null) {
-            throw new IllegalArgumentException("idempotency_key is required in execute mode; run validate first");
+            throw new IllegalArgumentException(ERROR_IDEMPOTENCY_REQUIRED);
         }
         ValidationRecord record = validations.remove(idempotency_key);
         if (record == null || record.expiresAt < System.currentTimeMillis()) {
-            throw new IllegalArgumentException("idempotency_key is missing or expired; run validate again");
+            throw new IllegalArgumentException(ERROR_IDEMPOTENCY_EXPIRED);
         }
         if (!record.commandName.equals(commandName) || !record.argsHash.equals(argsHash)) {
             throw new IllegalArgumentException("idempotency_key does not match validated setting/value");
@@ -482,7 +480,28 @@ public class MCPCommands {
     private record MethodMetadata(String declaring_class, String method_name, String signature) {
     }
 
-    private record CommandDiscoverResponse(List<Map<String, Object>> items, MCPHandler.PageInfo page_info, String query) {
+    private record CommandDiscoverArgument(String name, String type, boolean required, String description) {
+    }
+
+    private record CommandDiscoverItem(String name,
+                                       String path,
+                                       String canonical_name,
+                                       String description,
+                                       List<CommandDiscoverArgument> arguments,
+                                       int score) {
+        private CommandDiscoverItemPublic toPublicShape() {
+            return new CommandDiscoverItemPublic(name, path, canonical_name, description, arguments);
+        }
+    }
+
+    private record CommandDiscoverItemPublic(String name,
+                                             String path,
+                                             String canonical_name,
+                                             String description,
+                                             List<CommandDiscoverArgument> arguments) {
+    }
+
+    private record CommandDiscoverResponse(List<CommandDiscoverItemPublic> items, MCPHandler.PageInfo page_info, String query) {
     }
 
     private record ValidationResponse(String name, Map<String, Object> normalized_args, boolean validated, UUID idempotency_key, String expires_at, MethodMetadata method_metadata) {
@@ -491,7 +510,10 @@ public class MCPCommands {
     private record ExecutionResponse(String name, UUID idempotency_key, Object result) {
     }
 
-    private record SettingsDiscoverResponse(List<Map<String, Object>> items, MCPHandler.PageInfo page_info) {
+    private record SettingsDiscoverItem(String name, String type, String category, String help, List<String> requirements) {
+    }
+
+    private record SettingsDiscoverResponse(List<SettingsDiscoverItem> items, MCPHandler.PageInfo page_info) {
     }
 
     private record SettingValidationResponse(String name, Object validated_value, boolean validated, UUID idempotency_key, String expires_at) {
@@ -500,11 +522,14 @@ public class MCPCommands {
     private record SettingExecutionResponse(String name, UUID idempotency_key, String result) {
     }
 
-    private record DataQueryPlan(String type, String selection, int estimated_cardinality, long estimated_cost,
-                                 Map<String, Object> schema, List<String> warnings) {
+    private record DataQuerySchema(List<String> columns, List<String> types) {
     }
 
-    private record DataQueryPayload(String type, String selection, Map<String, Object> schema,
+    private record DataQueryPlan(String type, String selection, int estimated_cardinality, long estimated_cost,
+                                 DataQuerySchema schema, List<String> warnings) {
+    }
+
+    private record DataQueryPayload(String type, String selection, DataQuerySchema schema,
                                     List<Map<String, Object>> rows, List<String> warnings,
                                     MCPHandler.PageInfo page_info) {
     }
