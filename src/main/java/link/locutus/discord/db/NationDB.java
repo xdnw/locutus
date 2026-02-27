@@ -596,17 +596,22 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
 
     public void deleteTreaties(Set<Treaty> treaties, Consumer<Event> eventConsumer) {
         long turn = TimeUtil.getTurn(System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(2));
+        long now = System.currentTimeMillis();
         for (Treaty treaty : treaties) {
             boolean removed = false;
             synchronized (treatiesByAlliance) {
                 removed |= treatiesByAlliance.getOrDefault(treaty.getFromId(), Collections.EMPTY_MAP).remove(treaty.getToId()) != null;
                 removed |= treatiesByAlliance.getOrDefault(treaty.getToId(), Collections.EMPTY_MAP).remove(treaty.getFromId()) != null;
             }
-            if (removed && eventConsumer != null) {
+            if (removed) {
                 if (treaty.getTurnEnds() <= turn + 1) {
-                    eventConsumer.accept(new TreatyExpireEvent(treaty));
+                    addTreatyChange(now, TreatyChangeAction.EXPIRED, treaty.getType(),
+                            treaty.getFromId(), treaty.getToId(), 0);
+                    if (eventConsumer != null) eventConsumer.accept(new TreatyExpireEvent(treaty));
                 } else {
-                    eventConsumer.accept(new TreatyCancelEvent(treaty));
+                    addTreatyChange(now, TreatyChangeAction.CANCELLED, treaty.getType(),
+                            treaty.getFromId(), treaty.getToId(), treaty.isPermanent() ? -1 : treaty.getTurnsRemaining());
+                    if (eventConsumer != null) eventConsumer.accept(new TreatyCancelEvent(treaty));
                 }
             }
         }
@@ -834,16 +839,21 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         // The snapshots seem to return incorrect results, missing existing treaties and including ones that are gone?
         List<com.politicsandwar.graphql.model.Treaty> treatiesV3 = v3.fetchTreaties(r -> {});
 
-        // Don't call events if first time
-        if (treatiesByAlliance.isEmpty()) eventConsumer = f -> {};
-        updateTreaties(treatiesV3, eventConsumer, true);
+        // Don't call events or log changes if first time
+        boolean firstLoad = treatiesByAlliance.isEmpty();
+        if (firstLoad) eventConsumer = f -> {};
+        updateTreaties(treatiesV3, eventConsumer, Predicates.alwaysTrue(), !firstLoad);
     }
 
     public void updateTreaties(List<com.politicsandwar.graphql.model.Treaty> treatiesV3, Consumer<Event> eventConsumer, boolean deleteMissing) {
-        updateTreaties(treatiesV3, eventConsumer, deleteMissing ? Predicates.alwaysTrue() : f -> deleteMissing);
+        updateTreaties(treatiesV3, eventConsumer, deleteMissing ? Predicates.alwaysTrue() : f -> deleteMissing, true);
     }
 
     public void updateTreaties(List<com.politicsandwar.graphql.model.Treaty> treatiesV3, Consumer<Event> eventConsumer, Predicate<Treaty> deleteMissing) {
+        updateTreaties(treatiesV3, eventConsumer, deleteMissing, true);
+    }
+
+    public void updateTreaties(List<com.politicsandwar.graphql.model.Treaty> treatiesV3, Consumer<Event> eventConsumer, Predicate<Treaty> deleteMissing, boolean logChanges) {
         Set<Treaty> toDelete = new ObjectOpenHashSet<>();
         Set<Treaty> allTreaties = this.getTreaties();
         for (Treaty treaty : allTreaties) {
@@ -901,6 +911,37 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
         }
 
         saveTreaties(added);
+
+        long now = System.currentTimeMillis();
+
+        if (logChanges) {
+            for (Map.Entry<Treaty, Treaty> entry : modified.entrySet()) {
+                Treaty prev = entry.getKey();
+                Treaty current = entry.getValue();
+                int turnsRemaining = current.isPermanent() ? -1 : current.getTurnsRemaining();
+                if (current.getType() != prev.getType()) {
+                    addTreatyChange(now, TreatyChangeAction.SIGNED, current.getType(),
+                            current.getFromId(), current.getToId(), turnsRemaining);
+                } else if (!prev.isPermanent() && current.getTurnEnds() > prev.getTurnEnds() + 2) {
+                    addTreatyChange(now, TreatyChangeAction.EXTENDED, current.getType(),
+                            current.getFromId(), current.getToId(), turnsRemaining);
+                }
+            }
+            for (Treaty current : deletedOrExpired) {
+                if (current.getTurnEnds() <= turn + 1) {
+                    addTreatyChange(now, TreatyChangeAction.EXPIRED, current.getType(),
+                            current.getFromId(), current.getToId(), 0);
+                } else {
+                    addTreatyChange(now, TreatyChangeAction.CANCELLED, current.getType(),
+                            current.getFromId(), current.getToId(), current.isPermanent() ? -1 : current.getTurnsRemaining());
+                }
+            }
+            for (Treaty current : newTreaties) {
+                int turnsRemaining = current.isPermanent() ? -1 : current.getTurnsRemaining();
+                addTreatyChange(now, TreatyChangeAction.SIGNED, current.getType(),
+                        current.getFromId(), current.getToId(), turnsRemaining);
+            }
+        }
 
         if (eventConsumer != null) {
             for (Map.Entry<Treaty, Treaty> entry : modified.entrySet()) {
@@ -2618,6 +2659,18 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
                     .putColumn("turn_ends", ColumnType.BIGINT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
                     .create(getDb());
 
+            executeStmt("CREATE TABLE IF NOT EXISTS `TREATY_CHANGES` (" +
+                    "`timestamp` BIGINT NOT NULL, " +
+                    "`action` INT NOT NULL, " +
+                    "`treaty_type` INT NOT NULL, " +
+                    "`from_alliance_id` INT NOT NULL, " +
+                    "`to_alliance_id` INT NOT NULL, " +
+                    "`turns_remaining` INT NOT NULL" +
+                    ")");
+            executeStmt("CREATE INDEX IF NOT EXISTS idx_treaty_changes_timestamp ON TREATY_CHANGES (timestamp)");
+            executeStmt("CREATE INDEX IF NOT EXISTS idx_treaty_changes_from ON TREATY_CHANGES (from_alliance_id)");
+            executeStmt("CREATE INDEX IF NOT EXISTS idx_treaty_changes_to ON TREATY_CHANGES (to_alliance_id)");
+
             String nationLoot = TablePreset.create("NATION_LOOT3")
                     .putColumn("id", ColumnType.INT.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
                     .putColumn("total_rss", ColumnType.BINARY.struct().setPrimary(false).setNullAllowed(false).configure(f -> f.apply(null)))
@@ -4165,6 +4218,41 @@ public class NationDB extends DBMainV2 implements SyncableDatabase, INationSnaps
             Map<Integer, Treaty> treaties = treatiesByAlliance.get(allianceId);
             return treaties == null || treaties.isEmpty() ? Collections.EMPTY_MAP : new Int2ObjectOpenHashMap<>(treaties);
         }
+    }
+
+    public void addTreatyChange(long timestamp, TreatyChangeAction action, TreatyType treatyType,
+                                int fromAllianceId, int toAllianceId, int turnsRemaining) {
+        update("INSERT INTO `TREATY_CHANGES` (`timestamp`, `action`, `treaty_type`, `from_alliance_id`, `to_alliance_id`, `turns_remaining`) VALUES(?, ?, ?, ?, ?, ?)",
+                (ThrowingConsumer<PreparedStatement>) stmt -> {
+                    stmt.setLong(1, timestamp);
+                    stmt.setInt(2, action.ordinal());
+                    stmt.setInt(3, treatyType.ordinal());
+                    stmt.setInt(4, fromAllianceId);
+                    stmt.setInt(5, toAllianceId);
+                    stmt.setInt(6, turnsRemaining);
+                });
+    }
+
+    public List<DBTreatyChange> getTreatyChangesSince(long timestamp) {
+        List<DBTreatyChange> result = new ArrayList<>();
+        try (PreparedStatement stmt = prepareQuery("SELECT * FROM TREATY_CHANGES WHERE timestamp >= ? ORDER BY timestamp ASC")) {
+            stmt.setLong(1, timestamp);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    result.add(new DBTreatyChange(
+                            rs.getLong("timestamp"),
+                            TreatyChangeAction.values[rs.getInt("action")],
+                            TreatyType.values[rs.getInt("treaty_type")],
+                            rs.getInt("from_alliance_id"),
+                            rs.getInt("to_alliance_id"),
+                            rs.getInt("turns_remaining")
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return result;
     }
 
     private ConcurrentHashMap<Integer, Long> turnActivityCache = new ConcurrentHashMap<>();
