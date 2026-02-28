@@ -224,7 +224,8 @@ public class TsEndpointGenerator {
         ReturnType returnType = method.getAnnotation(ReturnType.class);
         boolean isPost = !cmdAnn.viewable();
         if (returnType == null) throw new IllegalArgumentException("No return type for " + method.getName() + " in " + method.getDeclaringClass().getSimpleName());
-        String typeName = adaptType(returnType.value().getSimpleName());
+        String tsType = composeTsType(returnType.value());
+        String typeLabel = composeTsTypeLabel(returnType.value());
         String path = cmd.getFullPath("/").replace("api/", "");
         String constName = path.replace("/", "_").toUpperCase();
 
@@ -234,8 +235,8 @@ public class TsEndpointGenerator {
         }
 
         List<String> cachePolicy = new ArrayList<>();
-        Long cacheDuration = returnType != null ? returnType.duration() : 5000;
-        CacheType cacheType = returnType != null ? returnType.cache() : CacheType.Memory;
+        Long cacheDuration = returnType.duration();
+        CacheType cacheType = returnType.cache();
         if (returnType.cache() != CacheType.None) {
             cachePolicy.add("type: '" + returnType.cache().name() + "'");
             cachePolicy.add("duration: " + returnType.duration());
@@ -272,15 +273,15 @@ public class TsEndpointGenerator {
         }
 
         String tsDef = """
-                export const {constName}: CommonEndpoint<ApiTypes.{typeName}, {argValues}, {argValuesAllOptional}> = {
-                    endpoint: new ApiEndpoint<ApiTypes.{typeName}>(
+                export const {constName}: CommonEndpoint<{tsType}, {argValues}, {argValuesAllOptional}> = {
+                    endpoint: new ApiEndpoint<{tsType}>(
                         "{constNameLower}",
                         "{path}",
                         {paramsJson},
-                        (data: unknown) => data as ApiTypes.{typeName},
+                        (data: unknown) => data as {tsType},
                         {cacheDuration},
                         {cacheType},
-                        "{typeName}",
+                        "{typeLabel}",
                         `{desc}`,
                         {isPost}
                     )
@@ -288,7 +289,8 @@ public class TsEndpointGenerator {
                 .replace("{path}", path)
                 .replace("{constName}", constName)
                 .replace("{constNameLower}", constName.toLowerCase())
-                .replace("{typeName}", typeName)
+                .replace("{tsType}", tsType)
+                .replace("{typeLabel}", typeLabel)
                 .replace("{paramsJson}", paramsJson)
                 .replace("{argValues}", argValues)
                 .replace("{cacheDuration}", cacheDuration.toString())
@@ -299,6 +301,72 @@ public class TsEndpointGenerator {
                 .replace("{isPost}", String.valueOf(isPost))
                 ;
         return new TsEndpoint(constName, tsDef);
+    }
+
+    /**
+     * Build a fully-qualified TypeScript type expression from a {@link ReturnType} annotation.
+     * Custom types are prefixed with {@code ApiTypes.}; TS primitives are left bare.
+     * <p>
+     * The annotation's {@code value()} is a {@code Class[]} where the first element is the raw type
+     * and remaining elements are type arguments:
+     * <ul>
+     *   <li>{@code @ReturnType(Foo.class)}                             → {@code ApiTypes.Foo}</li>
+     *   <li>{@code @ReturnType({List.class, Foo.class})}               → {@code ApiTypes.Foo[]}</li>
+     *   <li>{@code @ReturnType({Set.class, Foo.class})}                → {@code ApiTypes.Foo[]}</li>
+     *   <li>{@code @ReturnType({Map.class, String.class, Foo.class})}  → {@code Record<string, ApiTypes.Foo>}</li>
+     * </ul>
+     */
+    private static String composeTsType(Class<?>[] classes) {
+        if (classes.length == 0) throw new IllegalArgumentException("@ReturnType value must not be empty");
+        Class<?> raw = classes[0];
+
+        if (List.class.isAssignableFrom(raw) || Set.class.isAssignableFrom(raw)) {
+            if (classes.length != 2) {
+                throw new IllegalArgumentException(
+                        "List/Set @ReturnType requires exactly one type argument, got " + (classes.length - 1));
+            }
+            return qualifyTsType(classes[1]) + "[]";
+        }
+        if (Map.class.isAssignableFrom(raw)) {
+            if (classes.length != 3) {
+                throw new IllegalArgumentException(
+                        "Map @ReturnType requires exactly two type arguments, got " + (classes.length - 1));
+            }
+            return "Record<" + qualifyTsType(classes[1]) + ", " + qualifyTsType(classes[2]) + ">";
+        }
+        if (classes.length > 1) {
+            throw new IllegalArgumentException(
+                    raw.getSimpleName() + " is not a supported generic container (List, Set, Map); extra type arguments are not allowed");
+        }
+        return qualifyTsType(raw);
+    }
+
+    /**
+     * Build a human-readable label for the type (used as a string identifier, not a TS type expression).
+     */
+    private static String composeTsTypeLabel(Class<?>[] classes) {
+        Class<?> raw = classes[0];
+        if (List.class.isAssignableFrom(raw) || Set.class.isAssignableFrom(raw)) {
+            return adaptType(classes[1].getSimpleName()) + "[]";
+        }
+        if (Map.class.isAssignableFrom(raw)) {
+            return "Record<" + adaptType(classes[1].getSimpleName()) + ", " + adaptType(classes[2].getSimpleName()) + ">";
+        }
+        return adaptType(raw.getSimpleName());
+    }
+
+    /**
+     * Return the fully-qualified TypeScript type for a Java class.
+     * TS primitives ({@code string}, {@code number}, {@code boolean}) are returned bare;
+     * custom types are prefixed with {@code ApiTypes.}.
+     */
+    private static String qualifyTsType(Class<?> clazz) {
+        String simple = clazz.getSimpleName();
+        String adapted = adaptType(simple);
+        if (adapted.equals(simple)) {
+            return "ApiTypes." + adapted;
+        }
+        return adapted;
     }
 
     private static String adaptType(String simpleName) {

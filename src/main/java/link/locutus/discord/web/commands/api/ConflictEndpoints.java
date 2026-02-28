@@ -27,41 +27,55 @@ public class ConflictEndpoints extends PageHelper {
         return hasMilcom && hasCoalitionPerm;
     }
 
-    private void requireVirtualConflictAccess(Conflict conflict, DBNation me, User user, Guild guild, GuildDB db) {
-        if (hasVirtualConflictAdminPerms(user, guild, db)) {
-            return;
+    /**
+     * Validate that the conflict is virtual, the caller has access, and the virtual id is present.
+     * @return the validated id
+     * @throws IllegalArgumentException if validation fails
+     */
+    private ConflictUtil.VirtualConflictId requireValidVirtualConflict(Conflict conflict, DBNation me, User user, Guild guild, GuildDB db) {
+        if (conflict == null || !conflict.isVirtual()) {
+            throw new IllegalArgumentException("Please provide a temporary conflict");
         }
-        ConflictUtil.VirtualConflictId virtualId = conflict == null ? null : conflict.getVirtualConflictId();
-        if (virtualId != null && me != null && me.getId() == virtualId.nationId()) {
-            return;
+        // Permission: admin perms OR owner nation
+        if (!hasVirtualConflictAdminPerms(user, guild, db)) {
+            ConflictUtil.VirtualConflictId virtualId = conflict.getVirtualConflictId();
+            if (virtualId == null || me == null || me.getId() != virtualId.nationId()) {
+                throw new IllegalArgumentException("You do not have permission to access this temporary conflict");
+            }
         }
-        throw new IllegalArgumentException("You do not have permission to access this temporary conflict");
+        ConflictUtil.VirtualConflictId virtualId = conflict.getVirtualConflictId();
+        if (virtualId == null) {
+            throw new IllegalArgumentException("Temporary conflict id is missing");
+        }
+        return virtualId;
+    }
+
+    /** Resolve alliance ids to names, skipping unknowns. */
+    private static void resolveAllianceNames(ConflictManager manager, Iterable<Integer> allianceIds, Int2ObjectMap<String> out) {
+        for (Integer aaId : allianceIds) {
+            int key = aaId.intValue();
+            if (!out.containsKey(key)) {
+                String name = manager.getAllianceNameOrNull(aaId);
+                if (name != null) out.put(key, name);
+            }
+        }
     }
 
     @Command(desc = "Fetch alliance names and participant lists for given conflicts", viewable = true)
     @ReturnType(value = ConflictAlliances.class)
     public Object conflictAlliances(@Me GuildDB db, ConflictManager manager, Set<Conflict> conflicts) {
         Int2ObjectMap<String> allianceNames = new Int2ObjectOpenHashMap<>();
-        Int2ObjectMap<List<List<Integer>>> byConflictFast = new Int2ObjectOpenHashMap<>();
 
         if (conflicts == null || conflicts.isEmpty()) {
-            return new ConflictAlliances(allianceNames, byConflictFast);
+            return new ConflictAlliances(allianceNames, new Int2ObjectOpenHashMap<>());
         }
 
         Map<Integer, List<List<Integer>>> byConflict = manager.getConflictAlliances(conflicts);
-        for (Map.Entry<Integer, List<List<Integer>>> e : byConflict.entrySet())
-            byConflictFast.put(e.getKey(), e.getValue());
+        Int2ObjectMap<List<List<Integer>>> byConflictFast = new Int2ObjectOpenHashMap<>(byConflict);
 
         for (List<List<Integer>> sides : byConflictFast.values()) {
             for (List<Integer> side : sides) {
-                for (Integer aaId : side) {
-                    int key = aaId.intValue();
-                    if (!allianceNames.containsKey(key)) {
-                        String name = manager.getAllianceNameOrNull(aaId);
-                        if (name != null)
-                            allianceNames.put(key, name);
-                    }
-                }
+                resolveAllianceNames(manager, side, allianceNames);
             }
         }
 
@@ -69,7 +83,7 @@ public class ConflictEndpoints extends PageHelper {
     }
 
     @Command(desc = "List temporary virtual conflicts accessible to the current user", viewable = true)
-    @ReturnType(value = WebOptions.class)
+    @ReturnType({List.class, VirtualConflictMeta.class})
     public Object virtualConflicts(ConflictManager manager, @Me @Default GuildDB db, @Me @Default Guild guild,
             @Me @Default User user, @Me @Default DBNation me, @Switch("a") boolean all) {
         boolean hasAdminPerms = hasVirtualConflictAdminPerms(user, guild, db);
@@ -80,7 +94,7 @@ public class ConflictEndpoints extends PageHelper {
         Integer nationFilter = null;
         if (!all) {
             if (me == null) {
-                return new WebOptions(false).withText().withSubtext();
+                return List.of();
             }
             nationFilter = me.getId();
         }
@@ -88,48 +102,26 @@ public class ConflictEndpoints extends PageHelper {
         VirtualConflictStorageManager storageManager = new VirtualConflictStorageManager(manager.getCloud());
         List<ConflictUtil.VirtualConflictId> ids = storageManager.listIds(nationFilter);
 
-        WebOptions options = new WebOptions(false).withText().withSubtext();
-        String site = link.locutus.discord.config.Settings.INSTANCE.WEB.CONFLICTS.SITE;
+        List<VirtualConflictMeta> entries = new ArrayList<>(ids.size());
         for (ConflictUtil.VirtualConflictId id : ids) {
-            String webId = id.toWebId();
-            options.add(webId, webId, site + "/conflict?id=" + webId);
+            entries.add(new VirtualConflictMeta(id.nationId(), id.uuid().toString()));
         }
-        return options;
+        return entries;
     }
 
     @Command(desc = "Retrieve detailed information about a specific temporary conflict", viewable = true)
     @ReturnType(value = WebVirtualConflict.class)
     public Object virtualConflictInfo(ConflictManager manager, Conflict conflict, @Me @Default GuildDB db,
             @Me @Default Guild guild, @Me @Default User user, @Me @Default DBNation me) {
-        if (conflict == null || !conflict.isVirtual()) {
-            return error("Please provide a temporary conflict");
-        }
-        requireVirtualConflictAccess(conflict, me, user, guild, db);
+        ConflictUtil.VirtualConflictId virtualId = requireValidVirtualConflict(conflict, me, user, guild, db);
 
-        ConflictUtil.VirtualConflictId virtualId = conflict.getVirtualConflictId();
-        if (virtualId == null) {
-            return error("Temporary conflict id is missing");
-        }
-
-        Int2ObjectMap<String> allianceNames = new Int2ObjectOpenHashMap<>();
         List<Integer> side1 = new ArrayList<>(conflict.getCoalition1());
         List<Integer> side2 = new ArrayList<>(conflict.getCoalition2());
-        for (Integer aaId : side1) {
-            if (!allianceNames.containsKey(aaId)) {
-                String name = manager.getAllianceNameOrNull(aaId);
-                if (name != null) {
-                    allianceNames.put(aaId, name);
-                }
-            }
-        }
-        for (Integer aaId : side2) {
-            if (!allianceNames.containsKey(aaId)) {
-                String name = manager.getAllianceNameOrNull(aaId);
-                if (name != null) {
-                    allianceNames.put(aaId, name);
-                }
-            }
-        }
+
+        Int2ObjectMap<String> allianceNames = new Int2ObjectOpenHashMap<>();
+        resolveAllianceNames(manager, side1, allianceNames);
+        resolveAllianceNames(manager, side2, allianceNames);
+
         Map<Integer, List<List<Integer>>> byConflict = new Int2ObjectOpenHashMap<>();
         byConflict.put(conflict.getId(), List.of(side1, side2));
         ConflictAlliances alliances = new ConflictAlliances(allianceNames, byConflict);
@@ -157,15 +149,7 @@ public class ConflictEndpoints extends PageHelper {
     @ReturnType(value = WebSuccess.class)
     public Object removeVirtualConflict(ConflictManager manager, Conflict conflict, @Me @Default GuildDB db,
             @Me @Default Guild guild, @Me @Default User user, @Me @Default DBNation me) {
-        if (conflict == null || !conflict.isVirtual()) {
-            return error("Please provide a temporary conflict");
-        }
-        requireVirtualConflictAccess(conflict, me, user, guild, db);
-
-        ConflictUtil.VirtualConflictId virtualId = conflict.getVirtualConflictId();
-        if (virtualId == null) {
-            return error("Temporary conflict id is missing");
-        }
+        ConflictUtil.VirtualConflictId virtualId = requireValidVirtualConflict(conflict, me, user, guild, db);
 
         VirtualConflictStorageManager storageManager = new VirtualConflictStorageManager(manager.getCloud());
         storageManager.deleteConflict(virtualId);
