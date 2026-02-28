@@ -175,6 +175,7 @@ if (useTs) {
                 'link.locutus.discord.web.commands.binding.value_types.ConflictAlliances',
                 'link.locutus.discord.web.commands.binding.value_types.ConflictPosts',
                 'link.locutus.discord.web.commands.binding.value_types.WebVirtualConflict',
+                'link.locutus.discord.web.commands.binding.value_types.VirtualConflictMeta',
         ]
         outputKind = 'module'
         nullableAnnotations = ['org.checkerframework.checker.nullness.qual.Nullable']
