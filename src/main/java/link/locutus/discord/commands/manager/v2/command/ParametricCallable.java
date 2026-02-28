@@ -1051,6 +1051,10 @@ public class ParametricCallable<T> implements ICommand<T> {
 
     @Override
     public Map<String, Object> toJsonSchema(Map<Key<?>, Map<String, Object>> primitiveCache) {
+        return toJsonSchema(primitiveCache, null);
+    }
+
+    public Map<String, Object> toJsonSchema(Map<Key<?>, Map<String, Object>> primitiveCache, ValueStore store) {
         Map<String, Object> root = new Object2ObjectLinkedOpenHashMap<>();
         
         // 1. Name must be max 64 chars, only alphanumeric, underscores, hyphens
@@ -1077,7 +1081,8 @@ public class ParametricCallable<T> implements ICommand<T> {
             if (!param.isFlag() && (param.getDefaultValue() == null || param.getDefaultValue().length == 0)) {
                 required.add(paramName);
             }
-            properties.put(paramName, param.toToolJson(primitiveCache));
+            MCPUtil.CanonicalSchemaType canonicalSchemaType = MCPUtil.resolveCanonicalSchemaType(store, param, getFullPath());
+            properties.put(paramName, param.toToolJson(primitiveCache, canonicalSchemaType.schemaKey(), canonicalSchemaType.schemaKey().getType()));
         }
         
         if (!properties.isEmpty()) inputSchema.put("properties", properties);

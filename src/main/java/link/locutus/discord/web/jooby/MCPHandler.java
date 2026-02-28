@@ -329,6 +329,8 @@ public class MCPHandler {
                 return RpcTransportResult.noImmediateBodyResponse(202);
             }
             return RpcTransportResult.withBody(200, result.response());
+        } catch (RpcProtocolException e) {
+            return RpcTransportResult.withBody(400, RpcResponseFactory.error(requestId, e.code(), e.getMessage()));
         } catch (IllegalArgumentException e) {
             return RpcTransportResult.withBody(400, RpcResponseFactory.error(requestId, -32600, "Invalid Request: " + e.getMessage()));
         } catch (JsonSyntaxException e) {
@@ -353,8 +355,17 @@ public class MCPHandler {
                 : WebUtil.GSON.fromJson(request.params(), Map.class);
         Map<String, Object> rawParams = params == null ? Collections.emptyMap() : params;
         Map<String, Object> normalizedParams = stripMcpEnvelopeParams(rawParams);
-        Object result = parseAndInvoke(ctx, parametric, normalizedParams,
-                (callable, parsed) -> callable.call(null, parsed.locals(), parsed.arguments()));
+        Object result;
+        try {
+            result = parseAndInvoke(ctx, parametric, normalizedParams,
+                    (callable, parsed) -> callable.call(null, parsed.locals(), parsed.arguments()));
+        } catch (Throwable throwable) {
+            Throwable root = rootCause(throwable);
+            if (root instanceof RpcProtocolException rpcProtocolException) {
+                throw rpcProtocolException;
+            }
+            throw throwable;
+        }
 
         if (result instanceof RpcNoResponse) {
             return RpcMethodResult.noResponse();
@@ -401,16 +412,50 @@ public class MCPHandler {
         return toolsListSchema;
     }
 
-    private ToolCallResponse envelopeSuccess(Object data, String traceId, long startedAt) {
-        return new ToolCallResponse(true, null, meta(traceId, startedAt), data);
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> callToolSuccessResult(Object payload, String traceId, long startedAt) {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        if (payload instanceof Map<?, ?> payloadMap && payloadMap.containsKey("content")) {
+            result.putAll((Map<String, Object>) payloadMap);
+        } else if (payload instanceof ResultRefEnvelope envelope) {
+            result.put("content", List.of(Map.of(
+                    "type", "text",
+                    "text", "Result exceeded inline transport size. Retrieve it with result_get using result_ref."
+            )));
+            result.put("structuredContent", Map.of(
+                    "result_ref", envelope.result_ref(),
+                    "expires_at", envelope.expires_at(),
+                    "content_type", envelope.content_type(),
+                    "estimated_size", envelope.estimated_size(),
+                    "page_info", envelope.page_info()
+            ));
+        } else {
+            result.put("content", List.of(Map.of(
+                    "type", "text",
+                    "text", WebUtil.GSON.toJson(payload)
+            )));
+            if (payload instanceof Map<?, ?> payloadMap) {
+                result.put("structuredContent", payloadMap);
+            }
+        }
+
+        result.put("_meta", meta(traceId, startedAt));
+        return result;
     }
 
-    private ToolCallResponse envelopeError(String code, String message, String traceId, long startedAt) {
-        return new ToolCallResponse(false, new ErrorBody(code, message), meta(traceId, startedAt), null);
+    private Map<String, Object> callToolErrorResult(String message, String traceId, long startedAt) {
+        Map<String, Object> result = new LinkedHashMap<>(RpcResponseFactory.resultError(message));
+        result.put("_meta", meta(traceId, startedAt));
+        return result;
     }
 
-    private Meta meta(String traceId, long startedAt) {
-        return new Meta(CONTRACT_VERSION, traceId, Math.max(0, System.currentTimeMillis() - startedAt));
+    private Map<String, Object> meta(String traceId, long startedAt) {
+        return Map.of(
+                "contract_version", CONTRACT_VERSION,
+                "trace_id", traceId,
+                "timing_ms", Math.max(0, System.currentTimeMillis() - startedAt)
+        );
     }
 
     private void logToolCallFailure(String traceId, String toolName, Map<String, Object> arguments, Throwable error) {
@@ -486,6 +531,24 @@ public class MCPHandler {
         JsonObject params;
     }
 
+    private static class RpcProtocolException extends RuntimeException {
+        private final int code;
+
+        private RpcProtocolException(int code, String message) {
+            super(message);
+            this.code = code;
+        }
+
+        private RpcProtocolException(int code, String message, Throwable cause) {
+            super(message, cause);
+            this.code = code;
+        }
+
+        private int code() {
+            return code;
+        }
+    }
+
     private record RpcMethodResult(Map<String, Object> response, boolean noImmediateBodyResponse) {
         static RpcMethodResult respond(Map<String, Object> response) {
             return new RpcMethodResult(response, false);
@@ -513,15 +576,6 @@ public class MCPHandler {
     }
 
     public record ResultRefDataResponse(UUID result_ref, String expires_at, String content_type, Object data) {
-    }
-
-    private record ToolCallResponse(boolean ok, ErrorBody error, Meta meta, Object data) {
-    }
-
-    private record ErrorBody(String code, String message) {
-    }
-
-    private record Meta(String contract_version, String trace_id, long timing_ms) {
     }
 
     private enum RpcNoResponse {
@@ -563,21 +617,28 @@ public class MCPHandler {
             try {
                 ParametricCallable<?> tool = resolveTool(name);
                 if (tool == null) {
-                    throw new IllegalArgumentException("Unknown tool: " + name);
+                    throw new RpcProtocolException(-32602, "Unknown tool: " + name);
                 }
-                Map<String, Object> output = parseAndInvoke(context, tool, toolArgs, MCPHandler.this::executeParsed);
+
+                ParsedCommand parsed;
+                try {
+                    parsed = parseCommand(tool, toolArgs, context);
+                } catch (IllegalArgumentException e) {
+                    throw new RpcProtocolException(-32602, "Invalid params: " + e.getMessage(), e);
+                }
+
+                Map<String, Object> output = executeParsed(tool, parsed);
                 Object payload = maybeStoreLargeResult(output, "application/json");
-                return envelopeSuccess(payload, traceId, started);
-            } catch (IllegalArgumentException e) {
-                logToolCallFailure(traceId, name, toolArgs, e);
-                return envelopeError("invalid_arguments", e.getMessage(), traceId, started);
+                return callToolSuccessResult(payload, traceId, started);
+            } catch (RpcProtocolException e) {
+                throw e;
             } catch (Throwable e) {
                 logToolCallFailure(traceId, name, toolArgs, e);
                 Throwable root = rootCause(e);
                 String message = root.getMessage() == null || root.getMessage().isEmpty()
                         ? root.getClass().getSimpleName()
                         : root.getMessage();
-                return envelopeError("internal_error", message, traceId, started);
+                return callToolErrorResult(message, traceId, started);
             }
         }
     }

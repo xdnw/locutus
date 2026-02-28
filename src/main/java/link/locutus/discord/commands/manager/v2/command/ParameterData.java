@@ -59,6 +59,15 @@ public class ParameterData {
     }
 
     public Map<String, Object> toToolJson(Map<Key<?>, Map<String, Object>> primitiveCache) {
+        Key<?> key = binding.getKey();
+        Key<?> webType = binding.getWebTypeOrNull();
+        if (webType != null) {
+            key = webType;
+        }
+        return toToolJson(primitiveCache, key, key.getType());
+    }
+
+    public Map<String, Object> toToolJson(Map<Key<?>, Map<String, Object>> primitiveCache, Key<?> schemaKey, Type primitiveType) {
         Map<String, Object> arg = new Object2ObjectLinkedOpenHashMap<>();
 
         if (defaultValue != null && defaultValue.length != 0) {
@@ -80,10 +89,6 @@ public class ParameterData {
         if (filter != null) {
             arg.put("pattern", filter.value());
         }
-        Key<?> key = binding.getKey();
-        Key<?> webType = binding.getWebTypeOrNull();
-        if (webType != null) key = webType;
-
         String[] examples = binding.getExamples();
         if (examples != null && examples.length > 0) {
             arg.put("examples", Arrays.asList(examples));
@@ -92,17 +97,17 @@ public class ParameterData {
             arg.put("description", this.desc);
         }
 
-        Map<String, Object> primitiveType = primitiveCache.get(key);
-        if (primitiveType == null && key.getAnnotations().length != 0) {
-            primitiveType = MCPUtil.toJsonSchema(type, false);
-            primitiveCache.put(key, primitiveType);
+        Map<String, Object> primitiveSchema = primitiveCache.get(schemaKey);
+        if (primitiveSchema == null) {
+            primitiveSchema = MCPUtil.inlineJsonSchemaOrNull(schemaKey, primitiveType);
+            if (primitiveSchema != null) {
+                primitiveCache.put(schemaKey, primitiveSchema);
+            }
         }
-        if (primitiveType != null) {
-            arg.putAll(primitiveType);
+        if (primitiveSchema != null) {
+            arg.putAll(primitiveSchema);
         } else {
-            Key<?> bindingWebType = binding.getWebTypeOrNull();
-            if (bindingWebType == null) bindingWebType = key;
-            String definitionName = MCPUtil.getJsonName(bindingWebType.toSimpleString());
+            String definitionName = MCPUtil.getJsonName(schemaKey.toSimpleString());
             arg.put("$ref", "#/$defs/" + definitionName);
         }
 

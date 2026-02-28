@@ -285,6 +285,8 @@ public class CommandManager2 {
                 "add_all_for_nation");
         getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "edit"), "addManualWars",
                 "add_none_war");
+                getCommands().registerMethod(new ConflictCommands(), List.of("conflict", "edit"), "removeAnnouncement",
+                "remove_forum_post");
         getCommands().registerMethod(new SettingCommands(), List.of("bank"), "importTransactions", "import_transfers");
         getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "info", "info");
         getCommands().registerMethod(new AppMenuCommands(), List.of("menu"), "list", "list");

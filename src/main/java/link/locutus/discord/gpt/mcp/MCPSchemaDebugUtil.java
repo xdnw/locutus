@@ -66,7 +66,18 @@ public final class MCPSchemaDebugUtil {
     }
 
     public static void collectSchemaIssues(Object node, String path, List<Map<String, Object>> issues, String toolName) {
+        collectSchemaIssues(node, path, issues, toolName, Set.of());
+    }
+
+    private static void collectSchemaIssues(Object node,
+                                            String path,
+                                            List<Map<String, Object>> issues,
+                                            String toolName,
+                                            Set<String> inheritedDefs) {
         if (node instanceof Map<?, ?> map) {
+            Set<String> localDefs = extractDefNames(map);
+            Set<String> activeDefs = localDefs.isEmpty() ? inheritedDefs : localDefs;
+
             Object type = map.get("type");
             if (type instanceof String typeName && !VALID_JSON_SCHEMA_TYPES.contains(typeName)) {
                 issues.add(issue(toolName, path + ".type", "invalid JSON Schema type", typeName));
@@ -82,8 +93,15 @@ public final class MCPSchemaDebugUtil {
             }
 
             Object ref = map.get("$ref");
-            if (ref instanceof String refValue && !refValue.startsWith("#/$defs/")) {
-                issues.add(issue(toolName, path + ".$ref", "non-standard $ref; expected #/$defs/...", refValue));
+            if (ref instanceof String refValue) {
+                if (!refValue.startsWith("#/$defs/")) {
+                    issues.add(issue(toolName, path + ".$ref", "non-standard $ref; expected #/$defs/...", refValue));
+                } else {
+                    String refName = refValue.substring("#/$defs/".length());
+                    if (!activeDefs.contains(refName)) {
+                        issues.add(issue(toolName, path + ".$ref", "unresolved $ref in current defs scope", refValue));
+                    }
+                }
             }
 
             Object oneOf = map.get("oneOf");
@@ -99,16 +117,30 @@ public final class MCPSchemaDebugUtil {
             for (Map.Entry<?, ?> entry : map.entrySet()) {
                 Object key = entry.getKey();
                 String childPath = key == null ? path + ".<null>" : path + "." + key;
-                collectSchemaIssues(entry.getValue(), childPath, issues, toolName);
+                collectSchemaIssues(entry.getValue(), childPath, issues, toolName, activeDefs);
             }
             return;
         }
 
         if (node instanceof List<?> list) {
             for (int i = 0; i < list.size(); i++) {
-                collectSchemaIssues(list.get(i), path + "[" + i + "]", issues, toolName);
+                collectSchemaIssues(list.get(i), path + "[" + i + "]", issues, toolName, inheritedDefs);
             }
         }
+    }
+
+    private static Set<String> extractDefNames(Map<?, ?> map) {
+        Object defs = map.get("$defs");
+        if (!(defs instanceof Map<?, ?> defsMap) || defsMap.isEmpty()) {
+            return Set.of();
+        }
+        Set<String> names = new LinkedHashSet<>();
+        for (Object key : defsMap.keySet()) {
+            if (key != null) {
+                names.add(String.valueOf(key));
+            }
+        }
+        return names;
     }
 
     public static Map<String, Object> issue(String toolName, String path, String message, String value) {
@@ -144,7 +176,8 @@ public final class MCPSchemaDebugUtil {
             @Override
             public void onToolsListSchema(Map<String, Object> toolsList,
                                           Map<String, Object> definitions,
-                                          Map<Key<?>, Map<String, Object>> primitiveCache) {
+                              Map<Key<?>, Map<String, Object>> primitiveCache,
+                              Map<String, Integer> perToolDefinitionCounts) {
                 collectSchemaIssues(toolsList, "$.tools_list", schemaIssues, "tools/list");
                 writeSchemaDebugArtifacts(
                         toolsList,
@@ -152,6 +185,7 @@ public final class MCPSchemaDebugUtil {
                         primitiveCache,
                         perToolSchemas,
                         schemaIssues,
+                    perToolDefinitionCounts,
                         store,
                         htmlOptionsStore,
                         schemaStore,
@@ -168,6 +202,7 @@ public final class MCPSchemaDebugUtil {
                                                  Map<Key<?>, Map<String, Object>> primitiveCache,
                                                  Map<String, Object> perToolSchemas,
                                                  List<Map<String, Object>> schemaIssues,
+                                                 Map<String, Integer> perToolDefinitionCounts,
                                                  ValueStore store,
                                                  ValueStore htmlOptionsStore,
                                                  ValueStore schemaStore,
@@ -183,6 +218,11 @@ public final class MCPSchemaDebugUtil {
             writeJson(runDir.resolve("primitive-cache-schema.json"), toPrimitiveCacheMap(primitiveCache));
             writeJson(runDir.resolve("schema-issues.json"), schemaIssues);
             writeJson(runDir.resolve("per-tool-schema.json"), perToolSchemas);
+            Map<String, Object> metadata = new LinkedHashMap<>();
+            metadata.put("defs_strategy", "PER_TOOL_LOCAL_ONLY");
+            metadata.put("global_defs_count", definitions == null ? 0 : definitions.size());
+            metadata.put("per_tool_defs", perToolDefinitionCounts == null ? Map.of() : perToolDefinitionCounts);
+            writeJson(runDir.resolve("schema-summary.json"), metadata);
 
             Set<ParametricCallable<?>> discordCommands = getDiscordCommands();
             writeJson(runDir.resolve("discord-commands-schema.json"), toDiscordCommandsSchema(discordCommands));

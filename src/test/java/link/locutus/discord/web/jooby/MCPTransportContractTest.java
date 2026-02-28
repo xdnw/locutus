@@ -11,12 +11,12 @@ import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.ArgChoice;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
-import link.locutus.discord.gpt.mcp.MCPUtil;
 import link.locutus.discord.web.WebUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,8 +29,10 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.lang.reflect.Type;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -89,6 +91,7 @@ class MCPTransportContractTest {
         new PrimitiveBindings().register(store);
         Type mapType = new TypeToken<Map<String, Object>>() { }.getType();
         store.addParser((Key<Map<String, Object>>) (Key<?>) Key.of(mapType), new MapArgumentParser(mapType));
+        store.addParser((Key<ChoiceValue>) (Key<?>) Key.of(ChoiceValue.class), new ChoiceValueParser());
 
         store.addDynamicProvider(Key.of(Context.class), valueStore ->
                 valueStore.getProvided(Key.of(Context.class, Me.class), false)
@@ -200,9 +203,8 @@ class MCPTransportContractTest {
 
         JsonObject body = assertStandardSuccessEnvelope(toolsCallResponse);
         JsonObject result = body.getAsJsonObject("result");
-        assertTrue(result.has("ok"));
-        assertTrue(result.has("meta"));
-        assertTrue(result.has("data") || result.has("error"));
+        assertMcpCallToolResultShape(result);
+        assertNoLegacyToolEnvelope(result);
     }
 
     @Test
@@ -216,8 +218,9 @@ class MCPTransportContractTest {
         )));
 
         HttpResponse<String> response = postJson("/mcp", rpcPayload("tools/call", "call-meta", params).toString());
-        JsonObject body = assertStandardSuccessEnvelope(response);
-        assertTrue(body.getAsJsonObject("result").get("ok").getAsBoolean());
+        JsonObject result = assertStandardSuccessEnvelope(response).getAsJsonObject("result");
+        assertMcpCallToolResultShape(result);
+        assertNoLegacyToolEnvelope(result);
     }
 
     @Test
@@ -228,8 +231,9 @@ class MCPTransportContractTest {
         params.add("task", WebUtil.GSON.toJsonTree(Map.of("id", "task-1", "label", "discover")));
 
         HttpResponse<String> response = postJson("/mcp", rpcPayload("tools/call", "call-task", params).toString());
-        JsonObject body = assertStandardSuccessEnvelope(response);
-        assertTrue(body.getAsJsonObject("result").get("ok").getAsBoolean());
+        JsonObject result = assertStandardSuccessEnvelope(response).getAsJsonObject("result");
+        assertMcpCallToolResultShape(result);
+        assertNoLegacyToolEnvelope(result);
     }
 
     @Test
@@ -247,8 +251,38 @@ class MCPTransportContractTest {
         params.add("arguments", arguments);
 
         HttpResponse<String> response = postJson("/mcp", rpcPayload("tools/call", "call-numeric-int", params).toString());
-        JsonObject body = assertStandardSuccessEnvelope(response);
-        assertTrue(body.getAsJsonObject("result").get("ok").getAsBoolean());
+        JsonObject result = assertStandardSuccessEnvelope(response).getAsJsonObject("result");
+        assertMcpCallToolResultShape(result);
+        assertNoLegacyToolEnvelope(result);
+    }
+
+    @Test
+    void toolsCallUnknownToolReturnsProtocolInvalidParamsError() throws Exception {
+        JsonObject params = new JsonObject();
+        params.addProperty("name", "unknown_tool");
+        params.add("arguments", WebUtil.GSON.toJsonTree(Map.of()));
+
+        HttpResponse<String> response = postJson("/mcp", rpcPayload("tools/call", "call-unknown-tool", params).toString());
+        JsonObject body = JsonParser.parseString(response.body()).getAsJsonObject();
+
+        assertEquals(400, response.statusCode());
+        assertEquals("2.0", body.get("jsonrpc").getAsString());
+        assertTrue(body.has("error"));
+        assertEquals(-32602, body.getAsJsonObject("error").get("code").getAsInt());
+    }
+
+    @Test
+    void toolsCallExecutionFailureReturnsCallToolResultWithIsError() throws Exception {
+        JsonObject params = new JsonObject();
+        params.addProperty("name", "test_fail");
+        params.add("arguments", WebUtil.GSON.toJsonTree(Map.of()));
+
+        HttpResponse<String> response = postJson("/mcp", rpcPayload("tools/call", "call-fail", params).toString());
+        JsonObject result = assertStandardSuccessEnvelope(response).getAsJsonObject("result");
+
+        assertMcpCallToolResultShape(result);
+        assertTrue(result.has("isError"));
+        assertTrue(result.get("isError").getAsBoolean());
     }
 
     @Test
@@ -283,6 +317,174 @@ class MCPTransportContractTest {
         assertEquals(envelope.result_ref(), response.result_ref());
         assertEquals("application/json", response.content_type());
         assertNotNull(response.data());
+    }
+
+    @Test
+    void toolsListEmitsPerToolLocalDefsOnlyAndKeepsToolsEnvelope() throws Exception {
+        HttpResponse<String> response = postJson("/mcp", rpcPayload("tools/list", "tools-local-defs", Map.of()).toString());
+        JsonObject body = assertStandardSuccessEnvelope(response);
+        JsonObject result = body.getAsJsonObject("result");
+
+        assertTrue(result.has("tools"));
+        assertTrue(!result.has("$defs"));
+
+        JsonObject tool = findToolWithRefProperty(result);
+        assertNotNull(tool);
+        JsonObject inputSchema = tool.getAsJsonObject("inputSchema");
+        assertTrue(hasRefProperty(inputSchema));
+        assertTrue(inputSchema.has("$defs"));
+    }
+
+    @Test
+    void primitiveArgumentsEmitInlinePrimitiveTypeWithoutRef() throws Exception {
+        HttpResponse<String> response = postJson("/mcp", rpcPayload("tools/list", "tools-primitive", Map.of()).toString());
+        JsonObject body = assertStandardSuccessEnvelope(response);
+        JsonObject result = body.getAsJsonObject("result");
+
+        JsonObject tool = findToolWithInlinePrimitiveProperty(result);
+        assertNotNull(tool);
+        JsonObject inputSchema = tool.getAsJsonObject("inputSchema");
+        assertTrue(hasInlinePrimitiveProperty(inputSchema));
+    }
+
+    @Test
+    void toolsListSchemaConformsToMcpToolShapeAndExcludesLegacyMetadata() throws Exception {
+        HttpResponse<String> response = postJson("/mcp", rpcPayload("tools/list", "tools-shape", Map.of()).toString());
+        JsonObject body = assertStandardSuccessEnvelope(response);
+        JsonObject result = body.getAsJsonObject("result");
+
+        assertTrue(result.has("tools"));
+        assertTrue(!result.has("$defs"));
+
+        Set<String> allowedToolKeys = Set.of("name", "description", "inputSchema");
+        for (var entry : result.getAsJsonArray("tools")) {
+            JsonObject tool = entry.getAsJsonObject();
+            Set<String> actualKeys = new HashSet<>();
+            for (var property : tool.entrySet()) {
+                actualKeys.add(property.getKey());
+            }
+            assertEquals(allowedToolKeys, actualKeys);
+
+            JsonObject inputSchema = tool.getAsJsonObject("inputSchema");
+            assertNotNull(inputSchema);
+            assertEquals("object", inputSchema.get("type").getAsString());
+
+            assertTrue(!containsForbiddenSchemaKey(inputSchema, "help"));
+            assertTrue(!containsForbiddenSchemaKey(inputSchema, "annotations"));
+            assertTrue(!containsForbiddenSchemaKey(inputSchema, "flag"));
+        }
+    }
+
+    private JsonObject findTool(JsonObject toolsListResult, String toolName) {
+        String expected = toolName.toLowerCase().replace('_', '-');
+        for (var entry : toolsListResult.getAsJsonArray("tools")) {
+            JsonObject tool = entry.getAsJsonObject();
+            String actual = tool.get("name").getAsString().toLowerCase().replace('_', '-');
+            if (actual.equals(expected) || actual.endsWith("-" + expected) || actual.contains(expected)) {
+                return tool;
+            }
+        }
+        return null;
+    }
+
+    private JsonObject findToolByProperty(JsonObject toolsListResult, String propertyName) {
+        for (var entry : toolsListResult.getAsJsonArray("tools")) {
+            JsonObject tool = entry.getAsJsonObject();
+            JsonObject inputSchema = tool.getAsJsonObject("inputSchema");
+            if (inputSchema == null || !inputSchema.has("properties")) {
+                continue;
+            }
+            JsonObject properties = inputSchema.getAsJsonObject("properties");
+            if (properties.has(propertyName)) {
+                return tool;
+            }
+        }
+        return null;
+    }
+
+    private JsonObject findToolWithRefProperty(JsonObject toolsListResult) {
+        for (var entry : toolsListResult.getAsJsonArray("tools")) {
+            JsonObject tool = entry.getAsJsonObject();
+            JsonObject inputSchema = tool.getAsJsonObject("inputSchema");
+            if (inputSchema != null && hasRefProperty(inputSchema)) {
+                return tool;
+            }
+        }
+        return null;
+    }
+
+    private JsonObject findToolWithInlinePrimitiveProperty(JsonObject toolsListResult) {
+        for (var entry : toolsListResult.getAsJsonArray("tools")) {
+            JsonObject tool = entry.getAsJsonObject();
+            JsonObject inputSchema = tool.getAsJsonObject("inputSchema");
+            if (inputSchema != null && hasInlinePrimitiveProperty(inputSchema)) {
+                return tool;
+            }
+        }
+        return null;
+    }
+
+    private boolean hasRefProperty(JsonObject inputSchema) {
+        if (!inputSchema.has("properties")) {
+            return false;
+        }
+        JsonObject properties = inputSchema.getAsJsonObject("properties");
+        for (var propertyEntry : properties.entrySet()) {
+            if (propertyEntry.getValue().isJsonObject() && propertyEntry.getValue().getAsJsonObject().has("$ref")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasInlinePrimitiveProperty(JsonObject inputSchema) {
+        if (!inputSchema.has("properties")) {
+            return false;
+        }
+        JsonObject properties = inputSchema.getAsJsonObject("properties");
+        for (var propertyEntry : properties.entrySet()) {
+            if (!propertyEntry.getValue().isJsonObject()) {
+                continue;
+            }
+            JsonObject schema = propertyEntry.getValue().getAsJsonObject();
+            if (schema.has("type") && !schema.has("$ref")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean containsForbiddenSchemaKey(JsonObject node, String forbiddenKey) {
+        for (var entry : node.entrySet()) {
+            if (forbiddenKey.equals(entry.getKey())) {
+                return true;
+            }
+            if (entry.getValue().isJsonObject() && containsForbiddenSchemaKey(entry.getValue().getAsJsonObject(), forbiddenKey)) {
+                return true;
+            }
+            if (entry.getValue().isJsonArray()) {
+                for (var item : entry.getValue().getAsJsonArray()) {
+                    if (item.isJsonObject() && containsForbiddenSchemaKey(item.getAsJsonObject(), forbiddenKey)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private void assertMcpCallToolResultShape(JsonObject result) {
+        assertTrue(result.has("content"));
+        assertTrue(result.get("content").isJsonArray());
+        assertTrue(result.getAsJsonArray("content").size() > 0);
+        assertTrue(result.getAsJsonArray("content").get(0).getAsJsonObject().has("type"));
+    }
+
+    private void assertNoLegacyToolEnvelope(JsonObject result) {
+        assertTrue(!result.has("ok"));
+        assertTrue(!result.has("meta"));
+        assertTrue(!result.has("data"));
+        assertTrue(!result.has("error"));
     }
 
     private JsonObject assertStandardSuccessEnvelope(HttpResponse<String> response) {
@@ -323,12 +525,22 @@ class MCPTransportContractTest {
     }
 
     public static class TestToolCommands {
-        @Command(aliases = {"test_command"})
+        @Command(aliases = {"test_command"}, desc = "Echo a simple argument")
         public Object test_command(String arg1) {
             return Map.of("arg1", arg1);
         }
 
-        @Command(aliases = {"data_query"})
+        @Command(aliases = {"test_fail"}, desc = "Always fails for MCP error-path validation")
+        public Object test_fail() {
+            throw new IllegalStateException("forced failure");
+        }
+
+        @Command(aliases = {"test_choice"}, desc = "Return a constrained choice")
+        public Object test_choice(@ArgChoice({"alpha", "beta", "gamma"}) ChoiceValue choice) {
+            return Map.of("choice", choice.value());
+        }
+
+        @Command(aliases = {"data_query"}, desc = "Return a mock paged data shape")
         public Object data_query(String type,
                                  String selection,
                                  String columns,
@@ -397,6 +609,56 @@ class MCPTransportContractTest {
         @Override
         public Map<String, Object> toJson() {
             return Map.of("type", "object");
+        }
+    }
+
+    private record ChoiceValue(String value) {
+    }
+
+    private static class ChoiceValueParser implements Parser<ChoiceValue> {
+        private final Key<ChoiceValue> key = (Key<ChoiceValue>) (Key<?>) Key.of(ChoiceValue.class);
+
+        @Override
+        public ChoiceValue apply(ArgumentStack arg) {
+            throw new UnsupportedOperationException("ArgumentStack parsing is not used in this transport test");
+        }
+
+        @Override
+        public ChoiceValue apply(ValueStore store, Object t) {
+            if (t == null) {
+                return null;
+            }
+            return new ChoiceValue(String.valueOf(t));
+        }
+
+        @Override
+        public boolean isConsumer(ValueStore store) {
+            return true;
+        }
+
+        @Override
+        public Key<?> getKey() {
+            return key;
+        }
+
+        @Override
+        public String getDescription() {
+            return "Choice value";
+        }
+
+        @Override
+        public String[] getExamples() {
+            return new String[]{"alpha"};
+        }
+
+        @Override
+        public Class<?>[] getWebType() {
+            return new Class<?>[0];
+        }
+
+        @Override
+        public Map<String, Object> toJson() {
+            return Map.of("type", "string");
         }
     }
 }
