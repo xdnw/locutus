@@ -100,11 +100,12 @@ public class ConflictEndpoints extends PageHelper {
         }
 
         VirtualConflictStorageManager storageManager = new VirtualConflictStorageManager(manager.getCloud());
-        List<ConflictUtil.VirtualConflictId> ids = storageManager.listIds(nationFilter);
+        List<VirtualConflictStorageManager.VirtualConflictObjectMeta> metadata = storageManager.listObjectMetadata(nationFilter);
 
-        List<VirtualConflictMeta> entries = new ArrayList<>(ids.size());
-        for (ConflictUtil.VirtualConflictId id : ids) {
-            entries.add(new VirtualConflictMeta(id.nationId(), id.uuid().toString()));
+        List<VirtualConflictMeta> entries = new ArrayList<>(metadata.size());
+        for (VirtualConflictStorageManager.VirtualConflictObjectMeta entry : metadata) {
+            ConflictUtil.VirtualConflictId id = entry.id();
+            entries.add(new VirtualConflictMeta(id.nationId(), id.uuid().toString(), entry.dateModified()));
         }
         return entries;
     }

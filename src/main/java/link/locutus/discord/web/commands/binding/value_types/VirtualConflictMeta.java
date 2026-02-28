@@ -9,13 +9,20 @@ public class VirtualConflictMeta {
     public int nationId;
     /** Unique identifier for this virtual conflict */
     public String uuid;
+    /** Last modified timestamp (epoch millis) from cloud object metadata */
+    public long dateModified;
 
     public VirtualConflictMeta() {
     }
 
     public VirtualConflictMeta(int nationId, String uuid) {
+        this(nationId, uuid, 0L);
+    }
+
+    public VirtualConflictMeta(int nationId, String uuid, long dateModified) {
         this.nationId = nationId;
         this.uuid = uuid;
+        this.dateModified = dateModified;
     }
 }
 

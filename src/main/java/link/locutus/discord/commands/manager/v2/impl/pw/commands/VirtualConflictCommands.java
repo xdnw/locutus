@@ -24,8 +24,6 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 public class VirtualConflictCommands {
-    private static final String SAMPLE_VIRTUAL_CONFLICT_PATH = "n/189573/902bce00-67fb-4b98-8dc5-44bd3592914b";
-
     @Command(desc = "Create a temporary conflict between two coalitions\n" +
             "Conflict is not auto updated")
     @RolePermission(Roles.ADMIN)
@@ -63,61 +61,5 @@ public class VirtualConflictCommands {
         conflict.pushChanges(manager, id.toWebId(), true, true, false, false, false, now);
         return Settings.INSTANCE.WEB.CONFLICTS.SITE + "/conflict?id=" + id.toWebId() + "\n" +
                 "Note: Generated conflicts do NOT auto update.";
-    }
-
-    public static void main(String[] args) {
-        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
-
-        S3CompatibleStorage aws = S3CompatibleStorage.forAwsS3(
-                Settings.INSTANCE.WEB.S3.ACCESS_KEY,
-                Settings.INSTANCE.WEB.S3.SECRET_ACCESS_KEY,
-                Settings.INSTANCE.WEB.S3.BUCKET,
-                Settings.INSTANCE.WEB.S3.REGION,
-                Settings.INSTANCE.WEB.S3.BASE_URL
-        );
-
-        try {
-            Integer nationFilter = null;
-            String loadId = SAMPLE_VIRTUAL_CONFLICT_PATH;
-            VirtualConflictStorageManager virtualConflictManager = new VirtualConflictStorageManager(aws);
-
-            if (args.length >= 1 && !args[0].isBlank()) {
-                if (args[0].startsWith("n/")) {
-                    loadId = args[0];
-                } else {
-                    nationFilter = Integer.parseInt(args[0]);
-                }
-            }
-            if (args.length >= 2 && !args[1].isBlank()) {
-                loadId = args[1];
-            }
-
-            List<ConflictUtil.VirtualConflictId> virtualConflictIds = virtualConflictManager.listIds(nationFilter);
-            System.out.println("Found " + virtualConflictIds.size() + " temporary conflicts"
-                    + (nationFilter == null ? "" : " for nation " + nationFilter) + ":");
-            for (ConflictUtil.VirtualConflictId id : virtualConflictIds) {
-                System.out.println("- " + id + " -> " + Settings.INSTANCE.WEB.CONFLICTS.SITE + "/conflict?id=" + id);
-            }
-
-            if (loadId != null) {
-                String idToLoad = loadId;
-                try {
-                    ConflictUtil.VirtualConflictId typedId = ConflictUtil.parseVirtualConflictWebId(idToLoad);
-                    Conflict loaded = virtualConflictManager.loadConflict(typedId);
-                    System.out.println("\nLoaded temp conflict: " + loaded.getName());
-                    System.out.println("- id: " + typedId.toWebId());
-                    System.out.println("- startTurn: " + loaded.getStartTurn());
-                    System.out.println("- endTurn: " + loaded.getEndTurn());
-                    System.out.println("- coalition1: " + loaded.getCoalitionName(true) + " (" + loaded.getCoalition1().size() + " alliances)");
-                    System.out.println("- coalition2: " + loaded.getCoalitionName(false) + " (" + loaded.getCoalition2().size() + " alliances)");
-                } catch (Exception e) {
-                    System.err.println("Failed to load conflict `" + idToLoad + "`: " + e.getMessage());
-                }
-            } else {
-                System.out.println("No specific conflict id requested; listing only.");
-            }
-        } finally {
-            aws.close();
-        }
     }
 }

@@ -37,6 +37,8 @@ import java.util.*;
 import java.util.function.Function;
 
 public class TsEndpointGenerator {
+    // .\gradlew.bat runMain -PmainClass="link.locutus.discord.web.jooby.adapter.TsEndpointGenerator"
+    // ./gradlew -Pts generateTypeScript
     public static void main(String[] args) {
         try {
             ValueStore<Object> store = PWBindings.createDefaultStore();

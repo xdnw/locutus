@@ -13,6 +13,9 @@ import java.util.Collections;
 import java.util.List;
 
 public class VirtualConflictStorageManager {
+    public record VirtualConflictObjectMeta(ConflictUtil.VirtualConflictId id, long dateModified) {
+    }
+
     private final CloudStorage storage;
 
     public VirtualConflictStorageManager(CloudStorage storage) {
@@ -20,22 +23,31 @@ public class VirtualConflictStorageManager {
     }
 
     public List<ConflictUtil.VirtualConflictId> listIds(Integer nationIdOrNull) {
-        List<ConflictUtil.VirtualConflictId> ids = new ArrayList<>();
+        List<VirtualConflictObjectMeta> metadata = listObjectMetadata(nationIdOrNull);
+        List<ConflictUtil.VirtualConflictId> ids = new ArrayList<>(metadata.size());
+        for (VirtualConflictObjectMeta entry : metadata) {
+            ids.add(entry.id());
+        }
+        return Collections.unmodifiableList(ids);
+    }
+
+    public List<VirtualConflictObjectMeta> listObjectMetadata(Integer nationIdOrNull) {
+        List<VirtualConflictObjectMeta> entries = new ArrayList<>();
         String prefix = nationIdOrNull == null ? "conflicts/n/" : "conflicts/n/" + nationIdOrNull + "/";
 
         for (CloudItem object : storage.getObjects(prefix)) {
             try {
                 ConflictUtil.VirtualConflictId id = ConflictUtil.parseVirtualConflictObjectKey(object.key());
                 if (nationIdOrNull == null || id.nationId() == nationIdOrNull) {
-                    ids.add(id);
+                    entries.add(new VirtualConflictObjectMeta(id, object.lastModified()));
                 }
             } catch (IllegalArgumentException ignored) {
                 // Ignore unrelated S3 keys under the same prefix.
             }
         }
 
-        ids.sort((a, b) -> a.toWebId().compareTo(b.toWebId()));
-        return Collections.unmodifiableList(ids);
+        entries.sort((a, b) -> a.id().toWebId().compareTo(b.id().toWebId()));
+        return Collections.unmodifiableList(entries);
     }
 
     public Conflict loadConflict(ConflictUtil.VirtualConflictId id) {
@@ -61,7 +73,7 @@ public class VirtualConflictStorageManager {
             data = JteUtil.getSerializer().readValue(unpacked, VirtualConflictPayload.class);
         } catch (IOException e) {
             throw new IllegalArgumentException(
-                    "Failed to deserialize temporary conflict from `" + id.toObjectKey() + "`", e);
+                    "Failed to deserialize temporary conflict from `" + id.toObjectKey() + "` | " + unpacked.length, e);
         }
 
         long startMs = data.start != null ? data.start : System.currentTimeMillis();
