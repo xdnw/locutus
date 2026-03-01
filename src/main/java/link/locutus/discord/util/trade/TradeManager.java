@@ -242,6 +242,14 @@ public class TradeManager {
 
         low = lowTmp;
         high = highTmp;
+
+        double[] lowSpot = new double[lowTmp.length];
+        double[] highSpot = new double[highTmp.length];
+        for (int i = 0; i < lowTmp.length; i++) {
+            lowSpot[i] = lowTmp[i] > 0 ? lowTmp[i] : 0;
+            highSpot[i] = highTmp[i] != Integer.MAX_VALUE && highTmp[i] > 0 ? highTmp[i] : 0;
+        }
+        ResourceType.updateCachedMarketPrices(lowSpot, highSpot);
     }
 
     private void loadActiveTrades() {
@@ -328,6 +336,8 @@ public class TradeManager {
         lowAvg[ResourceType.CREDITS.ordinal()] = 50_000_000;
         highAvg[0] = 1;
         highAvg[ResourceType.CREDITS.ordinal()] = 50_000_000;
+
+        ResourceType.updateCachedMarketPrices(lowAvg, highAvg);
 
         loadActiveTrades();
         return this;

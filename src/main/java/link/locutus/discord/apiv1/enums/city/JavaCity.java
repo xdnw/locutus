@@ -23,6 +23,7 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.search.BFSUtil;
 import link.locutus.discord.util.scheduler.KeyValue;
 
 import java.io.*;
@@ -562,6 +563,10 @@ public class JavaCity implements IMutableCity {
         if (optimized == null) return null;
         copy.setBuildings(optimized);
         return copy;
+    }
+
+    public static BFSUtil.SearchMetrics getLastOptimizationMetrics() {
+        return BFSUtil.getLastMetrics();
     }
 
     public double profitConvertedCached(Continent continent, double rads, Predicate<Project> hasProject, int numCities, double grossModifier) {

@@ -119,6 +119,9 @@ public enum ResourceType {
         }
     }
     private static final Pattern RSS_PATTERN;;
+    private static final double[] FALLBACK_PRICE_BY_TYPE;
+    private static final double[] CACHED_HIGH_PRICE_BY_TYPE;
+    private static final double[] CACHED_LOW_PRICE_BY_TYPE;
 
     static {
         String regex = "\\$([0-9|,.]+), ([0-9|,.]+) coal, ([0-9|,.]+) oil, " +
@@ -126,6 +129,54 @@ public enum ResourceType {
                 "gasoline, ([0-9|,.]+) munitions, ([0-9|,.]+) steel, ([0-9|,.]+) aluminum[,]{0,1} and " +
                 "([0-9|,.]+) food";
         RSS_PATTERN = Pattern.compile(regex);
+
+        FALLBACK_PRICE_BY_TYPE = new double[ResourceType.values().length];
+        Arrays.fill(FALLBACK_PRICE_BY_TYPE, 3000d);
+        FALLBACK_PRICE_BY_TYPE[MONEY.ordinal()] = 1d;
+        FALLBACK_PRICE_BY_TYPE[CREDITS.ordinal()] = 50_000_000d;
+        FALLBACK_PRICE_BY_TYPE[FOOD.ordinal()] = 100d;
+        FALLBACK_PRICE_BY_TYPE[COAL.ordinal()] = 3800d;
+        FALLBACK_PRICE_BY_TYPE[OIL.ordinal()] = 3700d;
+        FALLBACK_PRICE_BY_TYPE[URANIUM.ordinal()] = 3250d;
+        FALLBACK_PRICE_BY_TYPE[LEAD.ordinal()] = 4100d;
+        FALLBACK_PRICE_BY_TYPE[IRON.ordinal()] = 3900d;
+        FALLBACK_PRICE_BY_TYPE[BAUXITE.ordinal()] = 3800d;
+        FALLBACK_PRICE_BY_TYPE[GASOLINE.ordinal()] = 3150d;
+        FALLBACK_PRICE_BY_TYPE[MUNITIONS.ordinal()] = 1850d;
+        FALLBACK_PRICE_BY_TYPE[STEEL.ordinal()] = 3800d;
+        FALLBACK_PRICE_BY_TYPE[ALUMINUM.ordinal()] = 2650d;
+
+        CACHED_HIGH_PRICE_BY_TYPE = FALLBACK_PRICE_BY_TYPE.clone();
+        CACHED_LOW_PRICE_BY_TYPE = FALLBACK_PRICE_BY_TYPE.clone();
+    }
+
+    private static double getFallbackPrice(ResourceType type) {
+        return FALLBACK_PRICE_BY_TYPE[type.ordinal()];
+    }
+
+    public static void updateCachedMarketPrices(double[] lowPriceByType, double[] highPriceByType) {
+        synchronized (ResourceType.class) {
+            for (ResourceType type : values) {
+                int ordinal = type.ordinal();
+                double low = lowPriceByType != null && ordinal < lowPriceByType.length ? lowPriceByType[ordinal] : 0;
+                double high = highPriceByType != null && ordinal < highPriceByType.length ? highPriceByType[ordinal] : 0;
+                CACHED_LOW_PRICE_BY_TYPE[ordinal] = low > 0 ? low : getFallbackPrice(type);
+                CACHED_HIGH_PRICE_BY_TYPE[ordinal] = high > 0 ? high : getFallbackPrice(type);
+            }
+        }
+    }
+
+    public static void resetCachedMarketPricesToFallback() {
+        synchronized (ResourceType.class) {
+            System.arraycopy(FALLBACK_PRICE_BY_TYPE, 0, CACHED_LOW_PRICE_BY_TYPE, 0, FALLBACK_PRICE_BY_TYPE.length);
+            System.arraycopy(FALLBACK_PRICE_BY_TYPE, 0, CACHED_HIGH_PRICE_BY_TYPE, 0, FALLBACK_PRICE_BY_TYPE.length);
+        }
+    }
+
+    private static double getCachedPrice(ResourceType type, boolean useHighPrice) {
+        int ordinal = type.ordinal();
+        double value = useHighPrice ? CACHED_HIGH_PRICE_BY_TYPE[ordinal] : CACHED_LOW_PRICE_BY_TYPE[ordinal];
+        return value > 0 ? value : getFallbackPrice(type);
     }
 
     public static ResourceType parseChar(Character s) {
@@ -576,27 +627,27 @@ public enum ResourceType {
     }
 
     public static double convertedTotalPositive(ResourceType type, double amt) {
-        return Locutus.imp().getTradeManager().getHighAvg(type) * amt;
+        if (amt == 0) {
+            return 0;
+        }
+        return getCachedPrice(type, true) * amt;
     }
 
     public static double convertedTotalNegative(ResourceType type, double amt) {
-        return Locutus.imp().getTradeManager().getLowAvg(type) * amt;
+        if (amt == 0) {
+            return 0;
+        }
+        return getCachedPrice(type, false) * amt;
     }
 
     public static double convertedTotal(ResourceType type, double amt) {
-        if (amt != 0) {
-            try {
-                Locutus locutus = Locutus.imp();
-//                if (amt < 0) {
-//                    return locutus.getTradeManager().getLowAvg(type) * amt;
-//                } else
-//                {
-                return locutus.getTradeManager().getHighAvg(type) * amt;
-//                }
-            } catch (NullPointerException ignore) {}
-            return type == MONEY ? amt : 0;
+        if (amt == 0) {
+            return 0;
         }
-        return 0;
+        if (amt < 0) {
+            return getCachedPrice(type, false) * amt;
+        }
+        return getCachedPrice(type, true) * amt;
     }
 
     public static double[] max(double[] rss1, double[] rss2) {

@@ -24,7 +24,6 @@ import link.locutus.discord.web.WebUtil;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.function.ToDoubleFunction;
 
@@ -145,55 +144,15 @@ public interface ICity {
     int getNuke_turn();
 
     default INationCity findBest(Continent continent, int numCities, ToDoubleFunction<INationCity> valueFunction, Predicate<INationCity> goal, Predicate<Project> hasProject, double rads, double grossModifier, Double infraLow) {
-        DBCity origin = new SimpleDBCity(this);
+        return CityFallbackHeuristic.findBest(this, continent, numCities, valueFunction, goal, hasProject, rads, grossModifier, infraLow, Locutus.imp().getNationDB().getCities());
+    }
 
-        origin.setOptimalPower(continent);
+    default INationCity findBestFromDonors(Continent continent, int numCities, ToDoubleFunction<INationCity> valueFunction, Predicate<INationCity> goal, Predicate<Project> hasProject, double rads, double grossModifier, Double infraLow, Iterable<DBCity> donors) {
+        return CityFallbackHeuristic.findBest(this, continent, numCities, valueFunction, goal, hasProject, rads, grossModifier, infraLow, donors);
+    }
 
-        Predicate<Building> militaryOrPower = f -> f.getType() == BuildingType.MILITARY || f.getType() == BuildingType.POWER;
-        int milAndPowerImps = origin.getNumBuildingsMatching(militaryOrPower);
-        int slotsNonMilOrPower = ((int) ArrayUtil.toCents(origin.getInfra()) / 50_00) - milAndPowerImps;
-        if (slotsNonMilOrPower <= 0) {
-            return null;
-        }
-
-        long date = System.currentTimeMillis();
-        BiConsumer<DBCity, double[]> getRevenue = (city, buffer) -> {
-            PW.City.profit(continent, rads, date, hasProject, buffer, numCities, grossModifier, false, 12, city);
-        };
-        ToDoubleFunction<DBCity> convertedFunc = city -> {
-            return PW.City.profitConverted(continent, rads, hasProject, numCities, grossModifier, city);
-        };
-
-        Predicate<Building> nonMilitaryOrPower = f -> switch (f.getType()) {
-            case MILITARY, POWER -> false;
-            default -> true;
-        };
-        double bestValue = Double.MIN_VALUE;
-        INationCity best = null;
-        for (DBCity other : Locutus.imp().getNationDB().getCities()) {
-            int otherImps = other.getNumBuildingsMatching(nonMilitaryOrPower);
-            if (otherImps != slotsNonMilOrPower) {
-                continue;
-            }
-            SimpleNationCity copy = new SimpleNationCity(other, getRevenue, convertedFunc);
-            copy.setMilitaryBuildings(origin);
-            copy.setPowerBuildings(origin);
-            if (!copy.canBuild(continent, hasProject, false)) {
-                continue;
-            }
-            copy.setNuke_turn(0);
-            copy.setLand(origin.getLand());
-            copy.setInfra(Objects.requireNonNullElseGet(infraLow, origin::getInfra));
-            copy.setDateCreated(origin.getCreated());
-
-            if (goal != null && !goal.test(copy)) continue;
-            double value = valueFunction.applyAsDouble(copy);
-            if (value > bestValue) {
-                bestValue = value;
-                best = copy;
-            }
-        }
-        return best;
+    default INationCity findBestExactSlotOnlyFromDonors(Continent continent, int numCities, ToDoubleFunction<INationCity> valueFunction, Predicate<INationCity> goal, Predicate<Project> hasProject, double rads, double grossModifier, Double infraLow, Iterable<DBCity> donors) {
+        return CityFallbackHeuristic.findBestExactSlotOnly(this, continent, numCities, valueFunction, goal, hasProject, rads, grossModifier, infraLow, donors);
     }
 
     default Map.Entry<Integer, Integer> getNukeDamage(Predicate<Project> hasProject) {

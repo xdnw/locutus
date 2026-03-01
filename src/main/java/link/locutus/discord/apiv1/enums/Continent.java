@@ -168,7 +168,11 @@ public enum Continent {
 
     @Command(desc = "Returns the season modifier for this continent")
     public double getSeasonModifier() {
-        return getSeasonModifierDate(Locutus.imp().getTradeManager().getGameDate());
+        Locutus locutus = Locutus.imp();
+        if (locutus == null) {
+            return getSeasonModifierDate(System.currentTimeMillis());
+        }
+        return getSeasonModifierDate(locutus.getTradeManager().getGameDate());
     }
 
     @Command(desc = "Returns the season modifier for this continent at the given date")
@@ -216,7 +220,11 @@ public enum Continent {
 
     @Command(desc = "Returns the radiation index for this continent")
     public double getRadIndex() {
-        return Locutus.imp().getTradeManager().getGlobalRadiation(this);
+        Locutus locutus = Locutus.imp();
+        if (locutus == null) {
+            return 0;
+        }
+        return locutus.getTradeManager().getGlobalRadiation(this);
     }
 
     public String getAcronym() {

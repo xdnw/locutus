@@ -14,8 +14,13 @@ import java.util.*;
 import java.util.function.*;
 
 public final class CityNode implements INationCity {
-    private final byte[] modifiable;
-    private double revenueFull = Double.MIN_VALUE;
+    private static final int POPULATION_DIRTY_SENTINEL = Integer.MIN_VALUE;
+
+    private long packedBuildings;
+    private double revenueFull = Double.NaN;
+    private double diseaseValue = Double.NaN;
+    private double crimeValue = Double.NaN;
+    private int populationValue = POPULATION_DIRTY_SENTINEL;
     private double baseRevenue = 0;
 
     private char numBuildings;
@@ -42,7 +47,7 @@ public final class CityNode implements INationCity {
         }
         for (int i = modIs; i < modIe; i++) {
             int finalI = i;
-            getNumBuildings[i] = (n, c) -> (int) n.modifiable[finalI - modIs];
+            getNumBuildings[i] = (n, c) -> n.getPackedMutable(finalI - modIs);
         }
         for (int i = modIe; i < Buildings.values().length; i++) {
             int finalI = i;
@@ -121,8 +126,10 @@ public final class CityNode implements INationCity {
         private final boolean selfSufficient;
         private final int maxSlots;
         private final double infraLow;
-        private final double[][] modifiableProfit;
         private final double[][] marginalProfit;
+        private final int[] shift;
+        private final long[] mask;
+        private final int[] cap;
         private final long dateCreated;
         private int maxIndex;
 
@@ -222,9 +229,30 @@ public final class CityNode implements INationCity {
             baseProfitConverted -= ResourceType.convertedTotalNegative(ResourceType.FOOD, food);
             this.baseProfitConverted = baseProfitConverted;
 
+            this.shift = new int[LENGTH];
+            this.mask = new long[LENGTH];
+            this.cap = new int[LENGTH];
+
+            int bitOffset = 0;
+            for (int j = 0; j < LENGTH; j++) {
+                Building building = Buildings.get(modIs + j);
+                int capJ = building.getCap(hasProject);
+                if (capJ <= 0 || capJ > 200) {
+                    throw new IllegalArgumentException("Building " + building.name() + " has no cap");
+                }
+                int bits = bitsForCount(capJ);
+                if (bitOffset + bits > 63) {
+                    throw new IllegalStateException("Packed city mutable building layout exceeds 63 bits");
+                }
+                shift[j] = bitOffset;
+                cap[j] = capJ;
+                long localMask = bits == 63 ? -1L : ((1L << bits) - 1L);
+                mask[j] = (localMask << bitOffset);
+                bitOffset += bits;
+            }
+
             ADD_BUILDING = new Consumer[modIe - modIs];
             REMOVE_BUILDING = new Consumer[modIe - modIs];
-            this.modifiableProfit = new double[modIe - modIs][];
             this.marginalProfit = new double[modIe - modIs][];
 
             for (int i = modIs, j = 0; i < modIe; i++, j++) {
@@ -232,109 +260,106 @@ public final class CityNode implements INationCity {
                 Building building = Buildings.get(i);
                 int addCommerce = building.getCommerce();
                 int addPollution = building.getPollution(hasProject);
-                int cap = building.getCap(hasProject);
-                if (cap <= 0 || cap > 200) {
-                    throw new IllegalArgumentException("Building " + building.name() + " has no cap");
-                }
-                double[] profitConverted = new double[cap];
-                for (int k = 0; k < cap; k++) {
-                    profitConverted[k] = building.profitConverted(continent, rads, hasProject, this.land, k + 1);
-                }
+                int cap = this.cap[j];
                 double[] marginalProfitJ = new double[cap];
                 double lastMarginal = 0;
                 for (int k = 0; k < cap; k++) {
-                    double profit = profitConverted[k];
+                    double profit = building.profitConverted(continent, rads, hasProject, this.land, k + 1);
                     marginalProfitJ[k] = profit - lastMarginal;
                     lastMarginal = profit;
                 }
 
-                modifiableProfit[j] = profitConverted;
                 marginalProfit[j] = marginalProfitJ;
 
                 if (addCommerce != 0) {
                     if (addPollution != 0) {
                         ADD_BUILDING[j] = (n) -> {
-                            byte amt = n.modifiable[finalJ];
+                            int amt = n.getPackedMutable(finalJ);
                             n.baseRevenue += marginalProfitJ[amt];
 
                             n.commerce += addCommerce;
                             n.pollution += addPollution;
                             n.numBuildings++;
-                            n.modifiable[finalJ]++;
-                            n.revenueFull = Double.MIN_VALUE;
+                            n.setPackedMutable(finalJ, amt + 1);
+                            n.invalidateDerivedCache();
                         };
                         REMOVE_BUILDING[j] = (n) -> {
-                            byte amt = n.modifiable[finalJ];
+                            int amt = n.getPackedMutable(finalJ);
                             n.baseRevenue -= marginalProfitJ[amt - 1];
 
                             n.commerce -= addCommerce;
                             n.pollution -= addPollution;
                             n.numBuildings--;
-                            n.modifiable[finalJ]--;
-                            n.revenueFull = Double.MIN_VALUE;
+                            n.setPackedMutable(finalJ, amt - 1);
+                            n.invalidateDerivedCache();
                         };
                     } else {
                         ADD_BUILDING[j] = (n) -> {
-                            byte amt = n.modifiable[finalJ];
+                            int amt = n.getPackedMutable(finalJ);
                             n.baseRevenue += marginalProfitJ[amt];
 
                             n.commerce += addCommerce;
                             n.numBuildings++;
-                            n.modifiable[finalJ]++;
-                            n.revenueFull = Double.MIN_VALUE;
+                            n.setPackedMutable(finalJ, amt + 1);
+                            n.invalidateDerivedCache();
                         };
                         REMOVE_BUILDING[j] = (n) -> {
-                            byte amt = n.modifiable[finalJ];
+                            int amt = n.getPackedMutable(finalJ);
                             n.baseRevenue -= marginalProfitJ[amt - 1];
 
                             n.commerce -= addCommerce;
                             n.numBuildings--;
-                            n.modifiable[finalJ]--;
-                            n.revenueFull = Double.MIN_VALUE;
+                            n.setPackedMutable(finalJ, amt - 1);
+                            n.invalidateDerivedCache();
                         };
                     }
                 } else if (addPollution != 0) {
                     ADD_BUILDING[j] = (n) -> {
-                        byte amt = n.modifiable[finalJ];
+                        int amt = n.getPackedMutable(finalJ);
                         n.baseRevenue += marginalProfitJ[amt];
 
                         n.pollution += addPollution;
                         n.numBuildings++;
-                        n.modifiable[finalJ]++;
-                        n.revenueFull = Double.MIN_VALUE;
+                        n.setPackedMutable(finalJ, amt + 1);
+                        n.invalidateDerivedCache();
                     };
                     REMOVE_BUILDING[j] = (n) -> {
-                        byte amt = n.modifiable[finalJ];
+                        int amt = n.getPackedMutable(finalJ);
                         n.baseRevenue -= marginalProfitJ[amt - 1];
 
                         n.pollution -= addPollution;
                         n.numBuildings--;
-                        n.modifiable[finalJ]--;
-                        n.revenueFull = Double.MIN_VALUE;
+                        n.setPackedMutable(finalJ, amt - 1);
+                        n.invalidateDerivedCache();
                     };
                 } else {
                     ADD_BUILDING[j] = (n) -> {
-                        byte amt = n.modifiable[finalJ];
+                        int amt = n.getPackedMutable(finalJ);
                         n.baseRevenue += marginalProfitJ[amt];
 
                         n.numBuildings++;
-                        n.modifiable[finalJ]++;
-                        n.revenueFull = Double.MIN_VALUE;
+                        n.setPackedMutable(finalJ, amt + 1);
+                        n.invalidateDerivedCache();
                     };
                     REMOVE_BUILDING[j] = (n) -> {
-                        byte amt = n.modifiable[finalJ];
+                        int amt = n.getPackedMutable(finalJ);
                         n.baseRevenue -= marginalProfitJ[amt - 1];
 
                         n.numBuildings--;
-                        n.modifiable[finalJ]--;
-                        n.revenueFull = Double.MIN_VALUE;
+                        n.setPackedMutable(finalJ, amt - 1);
+                        n.invalidateDerivedCache();
                     };
                 }
             }
         }
 
+        private static int bitsForCount(int cap) {
+            int states = cap + 1;
+            return Math.max(1, 32 - Integer.numberOfLeadingZeros(states - 1));
+        }
+
         public CityNode create() {
-            CityNode node = new CityNode(this, new byte[LENGTH], numBuildings, baseCommerce, basePollution, 0d, 0);
+            CityNode node = new CityNode(this, 0L, numBuildings, baseCommerce, basePollution, 0d, 0);
             return node;
         }
 
@@ -369,11 +394,45 @@ public final class CityNode implements INationCity {
         public double getLand() {
             return land;
         }
+
+        public int getMaxSlots() {
+            return maxSlots;
+        }
+
+        public double getOptimisticPopulationUpperBound() {
+            return basePopulation * ageBonus;
+        }
+
+        public double getCommerceIncomeAt(int commerce) {
+            int clamped = Math.max(0, Math.min(commerceIncome.length - 1, commerce));
+            return commerceIncome[clamped];
+        }
+
+        public double getMarginalProfit(Building building, int currentAmt) {
+            int ordinal = building.ordinal();
+            if (ordinal < modIs || ordinal >= modIe) {
+                return 0;
+            }
+            double[] marginal = marginalProfit[ordinal - modIs];
+            if (currentAmt < 0 || currentAmt >= marginal.length) {
+                return 0;
+            }
+            return marginal[currentAmt];
+        }
     }
 
     public CityNode(CachedCity origin, byte[] modifiable, char numBuildings, byte commerce, char pollution, double baseRevenue, int index) {
+        this(origin, 0L, numBuildings, commerce, pollution, baseRevenue, index);
+        for (int i = 0; i < Math.min(modifiable.length, LENGTH); i++) {
+            int amount = modifiable[i] & 0xFF;
+            setPackedMutable(i, amount);
+        }
+        invalidateDerivedCache();
+    }
+
+    public CityNode(CachedCity origin, long packedBuildings, char numBuildings, byte commerce, char pollution, double baseRevenue, int index) {
         this.cached = origin;
-        this.modifiable = modifiable;
+        this.packedBuildings = packedBuildings;
         this.numBuildings = numBuildings;
         this.commerce = commerce;
         this.pollution = pollution;
@@ -382,7 +441,12 @@ public final class CityNode implements INationCity {
     }
 
     public CityNode clone() {
-        return new CityNode(cached, modifiable.clone(), numBuildings, commerce, pollution, baseRevenue, index);
+        CityNode copy = new CityNode(cached, packedBuildings, numBuildings, commerce, pollution, baseRevenue, index);
+        copy.revenueFull = revenueFull;
+        copy.diseaseValue = diseaseValue;
+        copy.crimeValue = crimeValue;
+        copy.populationValue = populationValue;
+        return copy;
     }
 
     @Override
@@ -420,6 +484,27 @@ public final class CityNode implements INationCity {
         return getNumBuildings[ordinal].apply(this, cached);
     }
 
+    private int getPackedMutable(int modIndex) {
+        int shift = cached.shift[modIndex];
+        long mask = cached.mask[modIndex];
+        return (int) ((packedBuildings & mask) >>> shift);
+    }
+
+    private void setPackedMutable(int modIndex, int value) {
+        int shift = cached.shift[modIndex];
+        long mask = cached.mask[modIndex];
+        int clamped = Math.max(0, Math.min(value, cached.cap[modIndex]));
+        long encoded = ((long) clamped << shift) & mask;
+        packedBuildings = (packedBuildings & ~mask) | encoded;
+    }
+
+    private void invalidateDerivedCache() {
+        revenueFull = Double.NaN;
+        diseaseValue = Double.NaN;
+        crimeValue = Double.NaN;
+        populationValue = POPULATION_DIRTY_SENTINEL;
+    }
+
     public void add(Building building) {
         cached.ADD_BUILDING[building.ordinal() - modIs].accept(this);
     }
@@ -434,8 +519,8 @@ public final class CityNode implements INationCity {
         double revenue = cached.baseProfitConverted + cached.commerceIncome[commerce & 0xFF] * population;
         profitBuffer[0] += revenue;
 
-        for (int i = 0; i < modifiable.length; i++) {
-            byte amt = modifiable[i];
+        for (int i = 0; i < LENGTH; i++) {
+            int amt = getPackedMutable(i);
             if (amt == 0) continue;
             Building building = Buildings.get(i + modIs);
             building.profit(cached.continent, cached.rads, -1L, cached.hasProject, this, profitBuffer, 12, amt);
@@ -444,22 +529,15 @@ public final class CityNode implements INationCity {
     }
 
     public final double getRevenueConverted() {
-        if (revenueFull != Double.MIN_VALUE) {
+        if (!Double.isNaN(revenueFull)) {
             return revenueFull;
         }
         CachedCity c        = cached;
-        byte[] mods         = modifiable;
-        double[][] mProfit  = c.modifiableProfit;
         int pop             = calcPopulation();
         double rev          = c.baseProfitConverted + c.commerceIncome[commerce & 0xFF] * pop;
-//        for (int i = 0, len = mods.length; i < len; i++) {
-//            int amt = mods[i];
-//            if (amt > 0) {
-//                rev += mProfit[i][amt - 1];
-//            }
-//        }
         rev += baseRevenue;
-        return revenueFull = rev;
+        revenueFull = rev;
+        return rev;
     }
 
     @Override
@@ -468,9 +546,13 @@ public final class CityNode implements INationCity {
     }
 
     public final int calcPopulation() {
+        if (populationValue != POPULATION_DIRTY_SENTINEL) {
+            return populationValue;
+        }
         double disease = calcDisease();
         double crime = calcCrime();
-        return calcPopulation(disease, crime);
+        populationValue = calcPopulation(disease, crime);
+        return populationValue;
     }
 
     public final int calcPopulation(double disease, double crime) {
@@ -485,14 +567,18 @@ public final class CityNode implements INationCity {
     }
 
     public final double calcDisease() {
-        int hospitals        = modifiable[HOSPITAL_MOD_INDEX] & 0xFF;
+        if (!Double.isNaN(diseaseValue)) {
+            return diseaseValue;
+        }
+        int hospitals        = getPackedMutable(HOSPITAL_MOD_INDEX);
         double pollutionMod  = pollution * 0.05;
         double base          = cached.baseDisease + pollutionMod;
 
         if (hospitals > 0) {
             base -= hospitals * cached.hospitalPct;
         }
-        return Math.max(0, base);
+        diseaseValue = Math.max(0, base);
+        return diseaseValue;
     }
 
     @Override
@@ -501,14 +587,18 @@ public final class CityNode implements INationCity {
     }
 
     public double calcCrime() {
-        int police           = modifiable[POLICE_MOD_INDEX] & 0xFF;
+        if (!Double.isNaN(crimeValue)) {
+            return crimeValue;
+        }
+        int police           = getPackedMutable(POLICE_MOD_INDEX);
         double crimeVal      = cached.crimeCache[commerce & 0xFF];
 
         if (police > 0) {
             crimeVal -= police * cached.policePct;
             if (crimeVal < 0) crimeVal = 0;
         }
-        return crimeVal;
+        crimeValue = crimeVal;
+        return crimeValue;
     }
 
     @Override
@@ -524,5 +614,96 @@ public final class CityNode implements INationCity {
     @Override
     public int getNumBuildings() {
         return numBuildings;
+    }
+
+    public double optimisticRevenueUpperBound(Building[] orderedBuildings, int startIndex, double[] topGainScratch) {
+        double scoreNow = getRevenueConverted();
+        int freeSlots = getFreeSlots();
+        if (freeSlots <= 0) {
+            return scoreNow;
+        }
+
+        int scratchLen = Math.min(freeSlots, topGainScratch.length);
+        if (scratchLen <= 0) {
+            return scoreNow;
+        }
+
+        int heapSize = 0;
+
+        int commerceGainPotential = 0;
+        for (int i = Math.max(0, startIndex); i < orderedBuildings.length; i++) {
+            Building building = orderedBuildings[i];
+            int currentAmt = getBuilding(building);
+            int cap = building.cap(cached.hasProject());
+            int room = cap - currentAmt;
+            if (room <= 0) {
+                continue;
+            }
+            int addCommerce = building.getCommerce();
+            if (addCommerce > 0) {
+                commerceGainPotential += room * addCommerce;
+            }
+
+            for (int level = currentAmt; level < cap; level++) {
+                double marginal = cached.getMarginalProfit(building, level);
+                if (marginal <= 0) {
+                    continue;
+                }
+
+                if (heapSize < scratchLen) {
+                    topGainScratch[heapSize] = marginal;
+                    siftUpMin(topGainScratch, heapSize);
+                    heapSize++;
+                } else if (marginal > topGainScratch[0]) {
+                    topGainScratch[0] = marginal;
+                    siftDownMin(topGainScratch, heapSize, 0);
+                }
+            }
+        }
+
+        double optimisticExtraProfit = 0d;
+        for (int i = 0; i < heapSize; i++) {
+            optimisticExtraProfit += topGainScratch[i];
+        }
+
+        int optimisticCommerce = Math.min(cached.getMaxCommerce(), getCommerce() + commerceGainPotential);
+        double optimisticPop = cached.getOptimisticPopulationUpperBound();
+        double optimisticCommerceIncome = cached.getCommerceIncomeAt(optimisticCommerce) * optimisticPop;
+        double currentCommerceIncome = cached.getCommerceIncomeAt(getCommerce()) * calcPopulation();
+        double optimisticCommerceDelta = Math.max(0d, optimisticCommerceIncome - currentCommerceIncome);
+
+        return scoreNow + optimisticExtraProfit + optimisticCommerceDelta;
+    }
+
+    private static void siftUpMin(double[] heap, int index) {
+        double value = heap[index];
+        while (index > 0) {
+            int parent = (index - 1) >>> 1;
+            if (heap[parent] <= value) {
+                break;
+            }
+            heap[index] = heap[parent];
+            index = parent;
+        }
+        heap[index] = value;
+    }
+
+    private static void siftDownMin(double[] heap, int size, int index) {
+        double value = heap[index];
+        int half = size >>> 1;
+        while (index < half) {
+            int left = (index << 1) + 1;
+            int right = left + 1;
+            int minChild = left;
+            if (right < size && heap[right] < heap[left]) {
+                minChild = right;
+            }
+            if (heap[minChild] >= value) {
+                break;
+            }
+            heap[index] = heap[minChild];
+            index = minChild;
+        }
+        heap[index] = value;
     }
 }

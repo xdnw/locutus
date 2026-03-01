@@ -4800,18 +4800,19 @@ public class BankCommands {
                             }
                         }
                     }
+                }
 
-                    response.append("Registered " + offshoreAlliance.getQualifiedId() + " as an offshore. See: https://github.com/xdnw/locutus/wiki/banking");
-                    if (aaIds.isEmpty()) {
-                        response.append("\n(Your guild id, and the id of your account with the offshore is `" + root.getIdLong() + "`)");
-                    }
-                    if (root.getOrNull(GuildKey.WAR_ALERT_FOR_OFFSHORES) == null) {
-                        if (offshoreDB.getOrNull(GuildKey.PUBLIC_OFFSHORING) == Boolean.TRUE) {
-                            GuildKey.WAR_ALERT_FOR_OFFSHORES.set(root, user, false);
-                            response.append("\nNote: Offshore War alerts are disabled. Enable using: " + GuildKey.WAR_ALERT_FOR_OFFSHORES.getCommandObj(root, true));
-                        } else {
-                            response.append("\nNote: Disable offshore war alerts using: " + GuildKey.WAR_ALERT_FOR_OFFSHORES.getCommandObj(root, false));
-                        }
+                response.append("Registered " + offshoreAlliance.getQualifiedId() + " as an offshore");
+                response.append(buildExternalOffshoreNextSteps());
+                if (aaIds.isEmpty()) {
+                    response.append("\n(Your guild id, and the id of your account with the offshore is `" + root.getIdLong() + "`)");
+                }
+                if (root.getOrNull(GuildKey.WAR_ALERT_FOR_OFFSHORES) == null) {
+                    if (offshoreDB.getOrNull(GuildKey.PUBLIC_OFFSHORING) == Boolean.TRUE) {
+                        GuildKey.WAR_ALERT_FOR_OFFSHORES.set(root, user, false);
+                        response.append("\nNote: Offshore War alerts are disabled. Enable using: " + GuildKey.WAR_ALERT_FOR_OFFSHORES.getCommandObj(root, true));
+                    } else {
+                        response.append("\nNote: Disable offshore war alerts using: " + GuildKey.WAR_ALERT_FOR_OFFSHORES.getCommandObj(root, false));
                     }
                 }
 
@@ -4828,5 +4829,12 @@ public class BankCommands {
 
         response.append("\nDone!");
         return response.toString();
+    }
+
+    private static String buildExternalOffshoreNextSteps() {
+        return "\nNext steps:\n" +
+                "- Check balance: " + CM.deposits.check.cmd.toSlashMention() + "\n" +
+                "- Withdraw funds: " + CM.transfer.self.cmd.toSlashMention() + " or " + CM.transfer.resources.cmd.toSlashMention() + "\n" +
+                "- Deposit/offshore funds: " + CM.offshore.send.cmd.toSlashMention();
     }
 }

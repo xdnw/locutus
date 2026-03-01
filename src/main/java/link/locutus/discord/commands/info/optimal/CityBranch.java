@@ -15,23 +15,18 @@ import link.locutus.discord.util.search.BFSUtil;
 import java.util.*;
 import java.util.function.*;
 
-public class CityBranch implements BiConsumer<CityNode, PriorityQueue<CityNode>>, Consumer<CityNode> {
+public class CityBranch implements BiConsumer<CityNode, Consumer<CityNode>>, Consumer<CityNode> {
     private final Building[] buildings;
     private boolean usedOrigin = false;
     private Building originBuilding = null;
 
     private final CityNode.CachedCity origin;
+    private final double[] optimisticBoundScratch;
 
     public CityNode toOptimal(ToDoubleFunction<INationCity> valueFunction, Predicate<INationCity> goal, long timeout) {
         if (goal == null) {
             goal = f -> f.getFreeSlots() <= 0;
         }
-
-        // todo test TObjectPriorityQueue trove
-        // todo test eclipse collection
-
-        ObjectHeapPriorityQueue<CityNode> queue = new ObjectHeapPriorityQueue<CityNode>(500000,
-                (o1, o2) -> Double.compare(valueFunction.applyAsDouble(o2), valueFunction.applyAsDouble(o1)));
 
         CityNode init = origin.create();
         origin.setMaxIndex(buildings.length);
@@ -54,12 +49,50 @@ public class CityBranch implements BiConsumer<CityNode, PriorityQueue<CityNode>>
             throw new IllegalArgumentException("The city infrastructure (" + MathMan.format(init.getInfra()) + ") is too low for the required buildings (required infra: " + MathMan.format(init.getRequiredInfra()) + ")");
         }
 
-        CityNode optimized = new BFSUtil<CityNode>((Predicate) goal, (ToDoubleFunction) valueFunction, (Function) valueCompletionFunction, this, this, init, queue, timeout).search();
+        boolean enableRevenueBound = isRevenueObjective((ToDoubleFunction<INationCity>) valueFunction, init);
+        ToDoubleFunction<CityNode> upperBoundFunction = enableRevenueBound
+                ? node -> node.optimisticRevenueUpperBound(buildings, node.getIndex(), optimisticBoundScratch)
+                : node -> Double.POSITIVE_INFINITY;
+
+        CityNode optimized = new BFSUtil<CityNode>((Predicate) goal,
+                (ToDoubleFunction) valueFunction,
+                (Function) valueCompletionFunction,
+                upperBoundFunction,
+                this,
+                this,
+                init,
+                timeout).search();
         return optimized;
+    }
+
+    private boolean isRevenueObjective(ToDoubleFunction<INationCity> valueFunction, CityNode init) {
+        double initExpected = init.getRevenueConverted();
+        double initValue = valueFunction.applyAsDouble(init);
+        if (Math.abs(initExpected - initValue) > 1e-9) {
+            return false;
+        }
+        CityNode probe = null;
+        for (Building building : buildings) {
+            int current = init.getBuilding(building);
+            if (current >= building.cap(origin.hasProject())) {
+                continue;
+            }
+            probe = init.clone();
+            probe.add(building);
+            probe.setIndex(init.getIndex());
+            break;
+        }
+        if (probe == null) {
+            return true;
+        }
+        double probeExpected = probe.getRevenueConverted();
+        double probeValue = valueFunction.applyAsDouble(probe);
+        return Math.abs(probeExpected - probeValue) <= 1e-9;
     }
 
     public CityBranch(CityNode.CachedCity cached) {
         this.origin = cached;
+        this.optimisticBoundScratch = new double[Math.max(4, cached.getMaxSlots())];
         Map<ResourceBuilding, Double> rssBuildings = new Object2DoubleOpenHashMap<>();
         for (Building building : Buildings.values()) {
             if (!building.canBuild(origin.getContinent())) continue;
@@ -93,6 +126,15 @@ public class CityBranch implements BiConsumer<CityNode, PriorityQueue<CityNode>>
             if (building instanceof ServiceBuilding) allBuildings.add(building);
         }
         this.buildings = allBuildings.toArray(new Building[0]);
+    }
+
+    public int getBranchingWidth() {
+        return buildings.length;
+    }
+
+    public CityNode createInitialNode() {
+        origin.setMaxIndex(buildings.length);
+        return origin.create();
     }
 
     private static void resortList(List<Building> rssSorted) {
@@ -147,7 +189,7 @@ public class CityBranch implements BiConsumer<CityNode, PriorityQueue<CityNode>>
     }
 
     @Override
-    public void accept(CityNode origin, PriorityQueue<CityNode> cities) {
+    public void accept(CityNode origin, Consumer<CityNode> cities) {
         usedOrigin = false;
         int freeSlots = origin.getFreeSlots();
         if (freeSlots <= 0) {
@@ -175,13 +217,13 @@ public class CityBranch implements BiConsumer<CityNode, PriorityQueue<CityNode>>
                 }
                 for (ResourceType req : rssBuild.getResourceTypesConsumed()) {
                     if (origin.getBuilding(req.getBuilding()) < reqAmt) {
-                        cities.enqueue(create(origin, currBuildingIndex + 1));
+                        cities.accept(create(origin, currBuildingIndex + 1));
                         return;
                     }
                 }
             }
             CityNode next = create(origin, building, currBuildingIndex);
-            cities.enqueue(next);
+            cities.accept(next);
 //            CityNode nextCity = next.getKey();
 //            boolean checkDisease = nextCity.calcDisease(hasProject) > 0 && nextCity.getBuilding(Buildings.HOSPITAL) < Buildings.HOSPITAL.cap(hasProject);
 //            if (checkDisease) {
@@ -194,28 +236,28 @@ public class CityBranch implements BiConsumer<CityNode, PriorityQueue<CityNode>>
         } else if (building instanceof CommerceBuilding) {
             int commerce = origin.getCommerce();
             if (commerce < this.origin.getMaxCommerce()) {
-                cities.enqueue(create(origin, building, currBuildingIndex));
+                cities.accept(create(origin, building, currBuildingIndex));
             }
         } else if (building instanceof ServiceBuilding) {
             if (building == Buildings.HOSPITAL) {
                 double disease = origin.calcDisease(this.origin.hasProject());
                 if (disease > 0) {
-                    cities.enqueue(create(origin, building, currBuildingIndex));
+                    cities.accept(create(origin, building, currBuildingIndex));
                 }
             } else if (building == Buildings.RECYCLING_CENTER) {
                 int pollution = origin.getPollution();
                 if (pollution > 0) {
-                    cities.enqueue(create(origin, building, currBuildingIndex));
+                    cities.accept(create(origin, building, currBuildingIndex));
                 }
             } else if (building == Buildings.POLICE_STATION) {
                 double crime = origin.calcCrime(this.origin.hasProject());
                 if (crime > 0) {
-                    cities.enqueue(create(origin, building, currBuildingIndex));
+                    cities.accept(create(origin, building, currBuildingIndex));
                 }
             }
         }
         if (currBuildingIndex < this.buildings.length - 1) {
-            cities.enqueue(create(origin, currBuildingIndex + 1));
+            cities.accept(create(origin, currBuildingIndex + 1));
         }
 //        if (!usedOrigin)
 //        {
