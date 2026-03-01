@@ -158,13 +158,16 @@ final class CityFallbackHeuristic {
 
         for (DBCity donor : donors) {
             SimpleNationCity normalized = normalize(donor);
-            String civSig = civilianSignature(normalized);
 
             if (useBeamSearch) {
+                SimpleNationCity repaired = repairBeamBaseline(normalized);
+                if (repaired == null) continue;
+
+                String civSig = civilianSignature(repaired);
                 if (!seenSignatures.add(civSig)) continue;
-                SimpleNationCity fitted = fitCivilianSlots(normalized);
+                SimpleNationCity fitted = fitCivilianSlots(repaired);
                 if (fitted == null) continue;
-                // fitCivilianSlots guarantees civilian count + feasibility; just check goal
+                if (!isValidCandidate(fitted)) continue;
                 if (goal != null && !goal.test(fitted)) continue;
                 double value = valueFunction.applyAsDouble(fitted);
                 if (!Double.isFinite(value)) continue;
@@ -174,7 +177,7 @@ final class CityFallbackHeuristic {
                 }
             } else {
                 if (getCivilianCount(normalized) != targetCivilianSlots) continue;
-                if (!isValidExactCandidate(normalized)) continue;
+                if (!isValidCandidate(normalized)) continue;
                 if (goal != null && !goal.test(normalized)) continue;
                 double value = valueFunction.applyAsDouble(normalized);
                 if (!Double.isFinite(value)) continue;
@@ -185,6 +188,79 @@ final class CityFallbackHeuristic {
             }
         }
         return best;
+    }
+
+    private SimpleNationCity repairBeamBaseline(SimpleNationCity source) {
+        SimpleNationCity repaired = new SimpleNationCity(source, getRevenue, convertedFunc);
+        int civilianCount = 0;
+
+        for (int bi = 0; bi < CIVILIAN_BUILDINGS.length; bi++) {
+            Building building = CIVILIAN_BUILDINGS[bi];
+            int current = repaired.getBuilding(building);
+            if (current <= 0) {
+                continue;
+            }
+
+            int cap = civilianCaps[bi];
+            int clamped = cap < 0 ? 0 : Math.min(current, cap);
+            if (clamped != current) {
+                repaired.setBuilding(building, clamped);
+            }
+            civilianCount += clamped;
+        }
+
+        int overflow = civilianCount - targetCivilianSlots;
+        while (overflow > 0) {
+            if (!dropLeastHarmfulCivilian(repaired)) {
+                return null;
+            }
+            overflow--;
+        }
+
+        return repaired;
+    }
+
+    private boolean dropLeastHarmfulCivilian(SimpleNationCity candidate) {
+        int bestIndex = -1;
+        double bestValue = Double.NEGATIVE_INFINITY;
+
+        for (int bi = 0; bi < CIVILIAN_BUILDINGS.length; bi++) {
+            Building building = CIVILIAN_BUILDINGS[bi];
+            int current = candidate.getBuilding(building);
+            if (current <= 0) {
+                continue;
+            }
+
+            SimpleNationCity probe = new SimpleNationCity(candidate, getRevenue, convertedFunc);
+            probe.setBuilding(building, current - 1);
+            if (!isStructurallyFeasible(probe)) {
+                continue;
+            }
+
+            double value = valueFunction.applyAsDouble(probe);
+            if (!Double.isFinite(value)) {
+                continue;
+            }
+
+            if (value > bestValue) {
+                bestValue = value;
+                bestIndex = bi;
+            }
+        }
+
+        if (bestIndex < 0) {
+            return false;
+        }
+
+        Building selected = CIVILIAN_BUILDINGS[bestIndex];
+        candidate.setBuilding(selected, candidate.getBuilding(selected) - 1);
+        return true;
+    }
+
+    private boolean isStructurallyFeasible(ICity candidate) {
+        if (!candidate.canBuild(continent, hasProject, false)) return false;
+        if (candidate.getRequiredInfra() > targetInfra) return false;
+        return candidate.getPoweredInfra() >= targetInfra;
     }
 
     // --- normalization ---
@@ -258,6 +334,7 @@ final class CityFallbackHeuristic {
         double bestValue = Double.NEGATIVE_INFINITY;
         for (SimpleNationCity candidate : beam) {
             if (getCivilianCount(candidate) != targetCivilianSlots) continue;
+            if (!isValidCandidate(candidate)) continue;
             double value = valueFunction.applyAsDouble(candidate);
             if (!Double.isFinite(value)) continue;
             if (value > bestValue) {
@@ -268,12 +345,10 @@ final class CityFallbackHeuristic {
         return best;
     }
 
-    // --- validation for exact-slot-only path (no beam search) ---
+    // --- validation ---
 
-    private boolean isValidExactCandidate(ICity candidate) {
-        if (!candidate.canBuild(continent, hasProject, false)) return false;
-        if (candidate.getRequiredInfra() > targetInfra) return false;
-        return candidate.getPoweredInfra() >= targetInfra;
+    private boolean isValidCandidate(ICity candidate) {
+        return isStructurallyFeasible(candidate);
     }
 
     // --- signature helpers ---

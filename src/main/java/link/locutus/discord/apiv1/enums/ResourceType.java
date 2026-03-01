@@ -85,14 +85,16 @@ public enum ResourceType {
 
     public static Supplier<Double> convertedCostLazy(double[] amount) {
         return new CachedSupplier<>(() -> {
-            Locutus.imp().getTradeManager();
+            Locutus lc = Locutus.imp();
+            if (lc != null) lc.getTradeManager();
             return convertedTotal(amount);
         });
     }
 
     public static Supplier<Double> convertedCostLazy(ResourceType type, double amt) {
         return new CachedSupplier<>(() -> {
-            Locutus.imp().getTradeManager();
+            Locutus lc = Locutus.imp();
+            if (lc != null) lc.getTradeManager();
             return convertedTotal(type, amt);
         });
     }
