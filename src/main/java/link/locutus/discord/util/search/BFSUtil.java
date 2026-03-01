@@ -40,6 +40,18 @@ public class BFSUtil<T> {
     private static final String SCHEDULE_MIN_IMPROVEMENT_EPS_ENV = "LOCUTUS_BFS_SCHEDULE_MIN_IMPROVEMENT_EPSILON";
     private static final String SCHEDULE_GRACE_DELAY_PROPERTY = "locutus.bfs.schedule.graceDelayMs";
     private static final String SCHEDULE_GRACE_DELAY_ENV = "LOCUTUS_BFS_SCHEDULE_GRACE_DELAY_MS";
+    private static final String SCHEDULE_STAGNATION_WINDOW_PROPERTY = "locutus.bfs.schedule.stagnationWindow";
+    private static final String SCHEDULE_STAGNATION_WINDOW_ENV = "LOCUTUS_BFS_SCHEDULE_STAGNATION_WINDOW";
+    private static final String SCHEDULE_PRESSURE_THRESHOLD_PROPERTY = "locutus.bfs.schedule.pressureThreshold";
+    private static final String SCHEDULE_PRESSURE_THRESHOLD_ENV = "LOCUTUS_BFS_SCHEDULE_PRESSURE_THRESHOLD";
+    private static final String SCHEDULE_MAX_STEP_PROPERTY = "locutus.bfs.schedule.maxStep";
+    private static final String SCHEDULE_MAX_STEP_ENV = "LOCUTUS_BFS_SCHEDULE_MAX_STEP";
+    private static final String FRONTIER_STALE_REFRESH_BUDGET_PROPERTY = "locutus.bfs.frontier.staleRefreshBudget";
+    private static final String FRONTIER_STALE_REFRESH_BUDGET_ENV = "LOCUTUS_BFS_FRONTIER_STALE_REFRESH_BUDGET";
+    private static final String FRONTIER_HEAD_STABILIZATION_LIMIT_PROPERTY = "locutus.bfs.frontier.headStabilizationLimit";
+    private static final String FRONTIER_HEAD_STABILIZATION_LIMIT_ENV = "LOCUTUS_BFS_FRONTIER_HEAD_STABILIZATION_LIMIT";
+    private static final String FRONTIER_FALLBACK_EAGER_REBUILD_PROPERTY = "locutus.bfs.frontier.fallbackEagerRebuild";
+    private static final String FRONTIER_FALLBACK_EAGER_REBUILD_ENV = "LOCUTUS_BFS_FRONTIER_FALLBACK_EAGER_REBUILD";
     private static final String CITY_NODE_CLASS = "link.locutus.discord.db.entities.CityNode";
 
     private static final ThreadLocal<SearchMetrics> LAST_METRICS = new ThreadLocal<>();
@@ -189,6 +201,20 @@ public class BFSUtil<T> {
         void reprioritize(Function<T, Double> reprioritizer);
     }
 
+    private record FrontierMaintenancePolicy(int staleRefreshBudget, int headStabilizationLimit, boolean allowFallbackEagerRebuild) {
+        static FrontierMaintenancePolicy resolve() {
+            int staleRefreshBudget = (int) parsePositiveLongOrDefault(
+                    readStringPropertyOrEnv(FRONTIER_STALE_REFRESH_BUDGET_PROPERTY, FRONTIER_STALE_REFRESH_BUDGET_ENV),
+                    32L);
+            int headStabilizationLimit = (int) parsePositiveLongOrDefault(
+                    readStringPropertyOrEnv(FRONTIER_HEAD_STABILIZATION_LIMIT_PROPERTY, FRONTIER_HEAD_STABILIZATION_LIMIT_ENV),
+                    256L);
+            String fallbackRaw = readStringPropertyOrEnv(FRONTIER_FALLBACK_EAGER_REBUILD_PROPERTY, FRONTIER_FALLBACK_EAGER_REBUILD_ENV);
+            boolean fallback = fallbackRaw == null || Boolean.parseBoolean(fallbackRaw);
+            return new FrontierMaintenancePolicy(Math.max(1, staleRefreshBudget), Math.max(1, headStabilizationLimit), fallback);
+        }
+    }
+
     private static final class ObjectFrontier<T> implements Frontier<T> {
         private static <T> int compare(ScoredNode<T> left, ScoredNode<T> right) {
             int byPriority = Double.compare(right.priorityScore, left.priorityScore);
@@ -205,12 +231,14 @@ public class BFSUtil<T> {
         private final ObjectHeapPriorityQueue<ScoredNode<T>> queue =
                 new ObjectHeapPriorityQueue<>(500000, ObjectFrontier::compare);
         private final ReprioritizeMode reprioritizeMode;
+        private final FrontierMaintenancePolicy maintenancePolicy;
         private Function<T, Double> activeReprioritizer;
         private long activeEpoch;
         private long nextSequence;
 
-        private ObjectFrontier(ReprioritizeMode reprioritizeMode) {
+        private ObjectFrontier(ReprioritizeMode reprioritizeMode, FrontierMaintenancePolicy maintenancePolicy) {
             this.reprioritizeMode = reprioritizeMode;
+            this.maintenancePolicy = maintenancePolicy;
         }
 
         private double activePriorityFor(T state, double exactScore) {
@@ -230,14 +258,10 @@ public class BFSUtil<T> {
             }
 
             if (reprioritizeMode == ReprioritizeMode.LAZY && activeReprioritizer != null) {
-                while (!queue.isEmpty()) {
-                    ScoredNode<T> top = queue.first();
-                    if (top.epoch == activeEpoch) {
-                        break;
-                    }
-                    top.priorityScore = activeReprioritizer.apply(top.state);
-                    top.epoch = activeEpoch;
-                    queue.changed();
+                refreshHeadStale(maintenancePolicy.staleRefreshBudget());
+                if (!isHeadFresh() && !stabilizeHead(maintenancePolicy.headStabilizationLimit())
+                        && maintenancePolicy.allowFallbackEagerRebuild()) {
+                    refreshAllStaleEager();
                 }
             }
 
@@ -263,14 +287,54 @@ public class BFSUtil<T> {
             if (reprioritizeMode == ReprioritizeMode.LAZY || queue.isEmpty()) {
                 return;
             }
+            refreshAllStaleEager();
+        }
+
+        private boolean isHeadFresh() {
+            return queue.isEmpty() || queue.first().epoch == activeEpoch;
+        }
+
+        private void refreshHeadStale(int budget) {
+            int refreshed = 0;
+            while (!queue.isEmpty() && refreshed < budget) {
+                ScoredNode<T> top = queue.first();
+                if (top.epoch == activeEpoch) {
+                    return;
+                }
+                top.priorityScore = activeReprioritizer.apply(top.state);
+                top.epoch = activeEpoch;
+                queue.changed();
+                refreshed++;
+            }
+        }
+
+        private boolean stabilizeHead(int maxRefreshes) {
+            int refreshed = 0;
+            while (!queue.isEmpty() && refreshed < maxRefreshes) {
+                ScoredNode<T> top = queue.first();
+                if (top.epoch == activeEpoch) {
+                    return true;
+                }
+                top.priorityScore = activeReprioritizer.apply(top.state);
+                top.epoch = activeEpoch;
+                queue.changed();
+                refreshed++;
+            }
+            return isHeadFresh();
+        }
+
+        private void refreshAllStaleEager() {
             int size = queue.size();
+            @SuppressWarnings("unchecked")
             ScoredNode<T>[] entries = new ScoredNode[size];
             for (int i = 0; i < size; i++) {
                 entries[i] = queue.dequeue();
             }
             for (ScoredNode<T> entry : entries) {
-                entry.priorityScore = reprioritizer.apply(entry.state);
-                entry.epoch = activeEpoch;
+                if (entry.epoch != activeEpoch) {
+                    entry.priorityScore = activeReprioritizer.apply(entry.state);
+                    entry.epoch = activeEpoch;
+                }
                 queue.enqueue(entry);
             }
         }
@@ -293,10 +357,12 @@ public class BFSUtil<T> {
         private long nextSequence;
         private long activeEpoch;
         private final ReprioritizeMode reprioritizeMode;
+        private final FrontierMaintenancePolicy maintenancePolicy;
         private Function<T, Double> activeReprioritizer;
 
-        private PrimitiveFrontier(ReprioritizeMode reprioritizeMode) {
+        private PrimitiveFrontier(ReprioritizeMode reprioritizeMode, FrontierMaintenancePolicy maintenancePolicy) {
             this.reprioritizeMode = reprioritizeMode;
+            this.maintenancePolicy = maintenancePolicy;
         }
 
         private double activePriorityFor(T state, double exactScore) {
@@ -347,15 +413,10 @@ public class BFSUtil<T> {
             }
 
             if (reprioritizeMode == ReprioritizeMode.LAZY && activeReprioritizer != null) {
-                while (heapSize > 0) {
-                    int topSlot = heapSlots[0];
-                    if (epochBySlot[topSlot] == activeEpoch) {
-                        break;
-                    }
-                    T topState = (T) stateBySlot[topSlot];
-                    priorityBySlot[topSlot] = activeReprioritizer.apply(topState);
-                    epochBySlot[topSlot] = activeEpoch;
-                    siftDown(0);
+                refreshHeadStale(maintenancePolicy.staleRefreshBudget());
+                if (!isHeadFresh() && !stabilizeHead(maintenancePolicy.headStabilizationLimit())
+                        && maintenancePolicy.allowFallbackEagerRebuild()) {
+                    refreshAllStaleEager();
                 }
             }
 
@@ -396,11 +457,55 @@ public class BFSUtil<T> {
             if (reprioritizeMode == ReprioritizeMode.LAZY || heapSize == 0) {
                 return;
             }
+            refreshAllStaleEager();
+        }
+
+        @SuppressWarnings("unchecked")
+        private void refreshHeadStale(int budget) {
+            int refreshed = 0;
+            while (heapSize > 0 && refreshed < budget) {
+                int topSlot = heapSlots[0];
+                if (epochBySlot[topSlot] == activeEpoch) {
+                    return;
+                }
+                T topState = (T) stateBySlot[topSlot];
+                priorityBySlot[topSlot] = activeReprioritizer.apply(topState);
+                epochBySlot[topSlot] = activeEpoch;
+                siftDown(0);
+                refreshed++;
+            }
+        }
+
+        private boolean isHeadFresh() {
+            return heapSize == 0 || epochBySlot[heapSlots[0]] == activeEpoch;
+        }
+
+        @SuppressWarnings("unchecked")
+        private boolean stabilizeHead(int maxRefreshes) {
+            int refreshed = 0;
+            while (heapSize > 0 && refreshed < maxRefreshes) {
+                int topSlot = heapSlots[0];
+                if (epochBySlot[topSlot] == activeEpoch) {
+                    return true;
+                }
+                T topState = (T) stateBySlot[topSlot];
+                priorityBySlot[topSlot] = activeReprioritizer.apply(topState);
+                epochBySlot[topSlot] = activeEpoch;
+                siftDown(0);
+                refreshed++;
+            }
+            return isHeadFresh();
+        }
+
+        @SuppressWarnings("unchecked")
+        private void refreshAllStaleEager() {
             for (int i = 0; i < heapSize; i++) {
                 int slot = heapSlots[i];
-                T state = (T) stateBySlot[slot];
-                priorityBySlot[slot] = reprioritizer.apply(state);
-                epochBySlot[slot] = activeEpoch;
+                if (epochBySlot[slot] != activeEpoch) {
+                    T state = (T) stateBySlot[slot];
+                    priorityBySlot[slot] = activeReprioritizer.apply(state);
+                    epochBySlot[slot] = activeEpoch;
+                }
             }
             for (int i = (heapSize >>> 1) - 1; i >= 0; i--) {
                 siftDown(i);
@@ -505,10 +610,11 @@ public class BFSUtil<T> {
 
     private Frontier<T> createFrontier() {
         ReprioritizeMode reprioritizeMode = ReprioritizeMode.resolve();
+        FrontierMaintenancePolicy maintenancePolicy = FrontierMaintenancePolicy.resolve();
         if (origin != null && CITY_NODE_CLASS.equals(origin.getClass().getName())) {
-            return new PrimitiveFrontier<>(reprioritizeMode);
+            return new PrimitiveFrontier<>(reprioritizeMode, maintenancePolicy);
         }
-        return new ObjectFrontier<>(reprioritizeMode);
+        return new ObjectFrontier<>(reprioritizeMode, maintenancePolicy);
     }
 
     public T search() {
@@ -538,6 +644,7 @@ public class BFSUtil<T> {
         final double[] recentBest = new double[Math.max(2, adaptivePolicy.slopeWindow())];
         int recentBestCount = 0;
         int recentBestIndex = 0;
+        int stagnationWindows = 0;
         int lastQueueSize = 0;
 
         long delay = 5000;
@@ -588,9 +695,15 @@ public class BFSUtil<T> {
                     } else if (max == null && completeFactor + 0.05 < 2 && valueCompletionFunction != null) {
                         boolean isNew = completeFactor == 0;
                         int queueSize = frontier.size();
+                        double improvementSlope = schedulerMode == SchedulerMode.LEGACY
+                            ? 0d
+                            : computeImprovementSlope(recentBest, recentBestCount, recentBestIndex);
+                        boolean stagnatingNow = schedulerMode != SchedulerMode.LEGACY
+                            && Math.abs(improvementSlope) < adaptivePolicy.minImprovementEpsilon();
+                        stagnationWindows = stagnatingNow ? stagnationWindows + 1 : 0;
                         double nextFactor = schedulerMode == SchedulerMode.LEGACY
                                 ? legacyNextFactor(completeFactor)
-                            : adaptivePolicy.nextFactor(completeFactor, timeout, diff, queueSize, lastQueueSize, maxValue, recentBest, recentBestCount, recentBestIndex);
+                            : adaptivePolicy.nextFactor(completeFactor, timeout, diff, queueSize, lastQueueSize, improvementSlope, stagnationWindows);
                         completeFactor = Math.min(2d, nextFactor);
                         completionValue = valueCompletionFunction.apply(completeFactor);
                         if (stage != SearchStage.AGGRESSIVE) {
@@ -767,13 +880,33 @@ public class BFSUtil<T> {
         }
     }
 
-    private record AdaptiveSchedulePolicy(double baseStep, int slopeWindow, double minImprovementEpsilon, long graceDelayMs) {
+    private static double computeImprovementSlope(double[] recentBest, int recentBestCount, int recentBestIndex) {
+        if (recentBestCount < 2) {
+            return 0d;
+        }
+        int newestIndex = (recentBestIndex - 1 + recentBest.length) % recentBest.length;
+        int oldestIndex = recentBestCount < recentBest.length ? 0 : recentBestIndex;
+        double oldest = recentBest[oldestIndex];
+        double newest = recentBest[newestIndex];
+        return (newest - oldest) / Math.max(1, recentBestCount - 1);
+    }
+
+    private record AdaptiveSchedulePolicy(double baseStep,
+                                          int slopeWindow,
+                                          double minImprovementEpsilon,
+                                          long graceDelayMs,
+                                          int stagnationWindow,
+                                          double pressureThreshold,
+                                          double maxStep) {
         static AdaptiveSchedulePolicy resolve() {
             double baseStep = parsePositiveDoubleOrDefault(readStringPropertyOrEnv(SCHEDULE_BASE_STEP_PROPERTY, SCHEDULE_BASE_STEP_ENV), 0.03d);
             int slopeWindow = (int) parsePositiveLongOrDefault(readStringPropertyOrEnv(SCHEDULE_SLOPE_WINDOW_PROPERTY, SCHEDULE_SLOPE_WINDOW_ENV), 8L);
             double minImprovementEpsilon = parsePositiveDoubleOrDefault(readStringPropertyOrEnv(SCHEDULE_MIN_IMPROVEMENT_EPS_PROPERTY, SCHEDULE_MIN_IMPROVEMENT_EPS_ENV), 1e-6d);
             long graceDelayMs = parsePositiveLongOrDefault(readStringPropertyOrEnv(SCHEDULE_GRACE_DELAY_PROPERTY, SCHEDULE_GRACE_DELAY_ENV), 2500L);
-            return new AdaptiveSchedulePolicy(baseStep, slopeWindow, minImprovementEpsilon, graceDelayMs);
+            int stagnationWindow = (int) parsePositiveLongOrDefault(readStringPropertyOrEnv(SCHEDULE_STAGNATION_WINDOW_PROPERTY, SCHEDULE_STAGNATION_WINDOW_ENV), 3L);
+            double pressureThreshold = parsePositiveDoubleOrDefault(readStringPropertyOrEnv(SCHEDULE_PRESSURE_THRESHOLD_PROPERTY, SCHEDULE_PRESSURE_THRESHOLD_ENV), 1.08d);
+            double maxStep = parsePositiveDoubleOrDefault(readStringPropertyOrEnv(SCHEDULE_MAX_STEP_PROPERTY, SCHEDULE_MAX_STEP_ENV), 0.18d);
+            return new AdaptiveSchedulePolicy(baseStep, slopeWindow, minImprovementEpsilon, graceDelayMs, Math.max(1, stagnationWindow), pressureThreshold, maxStep);
         }
 
         double nextFactor(double currentFactor,
@@ -781,56 +914,53 @@ public class BFSUtil<T> {
                           long elapsedMs,
                           int queueSize,
                           int previousQueueSize,
-                          double bestScore,
-                          double[] recentBest,
-                          int recentBestCount,
-                          int recentBestIndex) {
+                          double improvementSlope,
+                          int stagnationWindows) {
             if (timeoutMs <= 0) {
                 return currentFactor + baseStep;
             }
             double elapsedRatio = Math.min(2d, Math.max(0d, elapsedMs / (double) timeoutMs));
             double queueGrowthRatio = previousQueueSize <= 0 ? 1d : (queueSize / (double) Math.max(1, previousQueueSize));
+            double absSlope = Math.abs(improvementSlope);
+            boolean improvementResumed = absSlope >= minImprovementEpsilon;
+            boolean sustainedStagnation = stagnationWindows >= stagnationWindow;
+            boolean pressureHigh = queueGrowthRatio >= pressureThreshold;
 
-            double improvementSlope = 0d;
-            if (recentBestCount >= 2 && bestScore != Double.NEGATIVE_INFINITY) {
-                int newestIndex = (recentBestIndex - 1 + recentBest.length) % recentBest.length;
-                int oldestIndex = recentBestCount < recentBest.length ? 0 : recentBestIndex;
-                double oldest = recentBest[oldestIndex];
-                double newest = recentBest[newestIndex];
-                improvementSlope = (newest - oldest) / Math.max(1, recentBestCount - 1);
+            double step = baseStep * 0.35d;
+            if (sustainedStagnation || pressureHigh || elapsedRatio >= 0.9d) {
+                double elapsedNorm = Math.min(1d, Math.max(0d, (elapsedRatio - 0.5d) / 0.7d));
+                double pressureNorm = Math.min(1d, Math.max(0d, (queueGrowthRatio - 1d) / Math.max(0.01d, pressureThreshold - 1d)));
+                double stagnationNorm = Math.min(1d, stagnationWindows / (double) Math.max(1, stagnationWindow));
+                double progress = (elapsedNorm * 0.45d) + (pressureNorm * 0.30d) + (stagnationNorm * 0.25d);
+                step = baseStep * (0.8d + progress * 2.4d);
             }
 
-            double step = baseStep;
-            if (elapsedRatio > 0.9d) {
-                step += baseStep * 2d;
-            } else if (elapsedRatio > 0.6d) {
-                step += baseStep;
+            if (improvementResumed) {
+                step *= 0.65d;
             }
 
-            if (queueGrowthRatio > 1.1d) {
-                step += baseStep * 0.5d;
-            }
-            if (Math.abs(improvementSlope) < minImprovementEpsilon) {
-                step += baseStep * 0.75d;
-            }
-
+            step = Math.max(baseStep * 0.15d, Math.min(step, maxStep));
             return currentFactor + step;
         }
     }
 
     private double upperBound(T node, double exactScore, SearchMetrics metrics) {
+        return invokeBoundFunction(upperBoundFunction, node, exactScore, metrics);
+    }
+
+    private double invokeBoundFunction(ToDoubleFunction<T> function, T node, double exactScore, SearchMetrics metrics) {
         boolean profileEnabled = metrics.profileEnabled;
         long t0 = profileEnabled ? System.nanoTime() : 0L;
         if (profileEnabled) {
             metrics.upperBoundCalls++;
         }
-        if (upperBoundFunction == null) {
+        if (function == null) {
             if (profileEnabled) {
                 metrics.upperBoundTimeNs += System.nanoTime() - t0;
             }
             return Double.POSITIVE_INFINITY;
         }
-        double upper = upperBoundFunction.applyAsDouble(node);
+        double upper = function.applyAsDouble(node);
         if (Double.isNaN(upper)) {
             if (profileEnabled) {
                 metrics.upperBoundTimeNs += System.nanoTime() - t0;

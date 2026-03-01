@@ -51,7 +51,7 @@ public class CityBranch implements BiConsumer<CityNode, Consumer<CityNode>>, Con
 
         boolean enableRevenueBound = isRevenueObjective((ToDoubleFunction<INationCity>) valueFunction, init);
         ToDoubleFunction<CityNode> upperBoundFunction = enableRevenueBound
-                ? node -> node.optimisticRevenueUpperBound(buildings, node.getIndex(), optimisticBoundScratch)
+            ? node -> node.optimisticRevenueUpperBound(buildings, node.getIndex(), optimisticBoundScratch)
                 : node -> Double.POSITIVE_INFINITY;
 
         CityNode optimized = new BFSUtil<CityNode>((Predicate) goal,
