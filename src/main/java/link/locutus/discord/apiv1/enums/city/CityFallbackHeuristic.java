@@ -1,6 +1,7 @@
 package link.locutus.discord.apiv1.enums.city;
 
 import it.unimi.dsi.fastutil.longs.Long2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.apiv1.enums.BuildingType;
 import link.locutus.discord.apiv1.enums.Continent;
@@ -36,6 +37,8 @@ final class CityFallbackHeuristic {
     private static final Building[] CIVILIAN_BUILDINGS = Arrays.stream(Buildings.values())
             .filter(f -> f.getType() != BuildingType.MILITARY && f.getType() != BuildingType.POWER)
             .toArray(Building[]::new);
+
+    private static final int NUM_CIVILIAN_BUILDINGS = CIVILIAN_BUILDINGS.length;
 
     // --- instance fields: fixed for the entire search ---
     private final Continent continent;
@@ -132,16 +135,16 @@ final class CityFallbackHeuristic {
         this.evalDate = evalDate;
         this.debugCounters = Boolean.getBoolean("locutus.cityFallback.debugCounters");
 
-        this.civilianCaps = new int[CIVILIAN_BUILDINGS.length];
-        this.civilianOrdinals = new int[CIVILIAN_BUILDINGS.length];
+        this.civilianCaps = new int[NUM_CIVILIAN_BUILDINGS];
+        this.civilianOrdinals = new int[NUM_CIVILIAN_BUILDINGS];
         this.ordinalToCivilianIndex = new int[PW.City.Building.SIZE];
-        this.civilianShift = new int[CIVILIAN_BUILDINGS.length];
-        this.civilianBits = new int[CIVILIAN_BUILDINGS.length];
-        this.civilianMask = new long[CIVILIAN_BUILDINGS.length];
+        this.civilianShift = new int[NUM_CIVILIAN_BUILDINGS];
+        this.civilianBits = new int[NUM_CIVILIAN_BUILDINGS];
+        this.civilianMask = new long[NUM_CIVILIAN_BUILDINGS];
         Arrays.fill(this.ordinalToCivilianIndex, -1);
 
         int bitOffset = 0;
-        for (int i = 0; i < CIVILIAN_BUILDINGS.length; i++) {
+        for (int i = 0; i < NUM_CIVILIAN_BUILDINGS; i++) {
             Building b = CIVILIAN_BUILDINGS[i];
             civilianCaps[i] = b.canBuild(continent) ? b.getCap(hasProject) : -1;
             civilianOrdinals[i] = b.ordinal();
@@ -191,16 +194,16 @@ final class CityFallbackHeuristic {
             pollutionContributionByOrdinal[building.ordinal()] = building.pollution(hasProject);
         }
 
-        this.profitLookupOffset = new int[CIVILIAN_BUILDINGS.length];
+        this.profitLookupOffset = new int[NUM_CIVILIAN_BUILDINGS];
         int totalCaps = 0;
-        for (int i = 0; i < CIVILIAN_BUILDINGS.length; i++) {
+        for (int i = 0; i < NUM_CIVILIAN_BUILDINGS; i++) {
             profitLookupOffset[i] = totalCaps;
             int cap = Math.max(0, civilianCaps[i]);
             totalCaps += (cap + 1);
         }
         this.flatCivilianProfitLookup = new double[totalCaps];
 
-        for (int i = 0; i < CIVILIAN_BUILDINGS.length; i++) {
+        for (int i = 0; i < NUM_CIVILIAN_BUILDINGS; i++) {
             int cap = Math.max(0, civilianCaps[i]);
             Building building = CIVILIAN_BUILDINGS[i];
             for (int amt = 1; amt <= cap; amt++) {
@@ -331,13 +334,11 @@ final class CityFallbackHeuristic {
         if (best == null) return null;
 
         SimpleNationCity materialized = new SimpleNationCity(best.donor(), getRevenue, convertedFunc);
-        normalizeInto(materialized, best.donor());
-        applyPackedState(materialized, best.state());
+        normalizeAndApplyInto(materialized, best.donor(), best.state());
         return materialized;
     }
 
     private EvaluatedCandidate evaluateDonor(DBCity donor, boolean useBeamSearch, DonorWorker worker) {
-        // Keep cached states across donor evaluations! Just cap the size to prevent memory leaks.
         worker.localScoreCache().clear();
 
         long donorState = packCivilianState(donor);
@@ -350,7 +351,7 @@ final class CityFallbackHeuristic {
             int civilianCount = 0;
 
             // Inline baseline repair (No object allocation overhead)
-            for (int bi = 0; bi < CIVILIAN_BUILDINGS.length; bi++) {
+            for (int bi = 0; bi < NUM_CIVILIAN_BUILDINGS; bi++) {
                 int current = (int) ((repairedState & civilianMask[bi]) >>> civilianShift[bi]);
                 if (current <= 0) continue;
 
@@ -400,7 +401,6 @@ final class CityFallbackHeuristic {
     }
 
     private long dropLeastHarmfulCivilian(long state, PackedCandidateView view, DonorWorker worker) {
-        // Ensure view reflects current state before incremental probing
         view.setCivilianState(state);
 
         int bestIndex = -1;
@@ -408,19 +408,23 @@ final class CityFallbackHeuristic {
         PackedCandidateView childView = worker.childView();
         Long2DoubleOpenHashMap localScoreCache = worker.localScoreCache();
 
-        for (int bi = 0; bi < CIVILIAN_BUILDINGS.length; bi++) {
-            // Inlined bitwise extraction
+        for (int bi = 0; bi < NUM_CIVILIAN_BUILDINGS; bi++) {
             int current = (int) ((state & civilianMask[bi]) >>> civilianShift[bi]);
             if (current <= 0) continue;
 
-            // Inlined bitwise replacement
             long probeState = (state & ~civilianMask[bi]) | (((long) (current - 1) << civilianShift[bi]) & civilianMask[bi]);
 
             double value = localScoreCache.get(probeState);
             if (Double.isNaN(value)) {
-                childView.setCivilianStateIncremental(view, bi, current - 1);
+                // BACKTRACKING: Temporarily mutate parent array, evaluate, and revert
+                int ordinal = civilianOrdinals[bi];
+                view.unpacked[ordinal] = current - 1;
+
+                childView.setCivilianStateIncremental(view, bi, current, current - 1);
                 value = valueFunction.applyAsDouble(childView);
                 localScoreCache.put(probeState, value);
+
+                view.unpacked[ordinal] = current; // Revert mutation
             }
 
             if (!Double.isFinite(value)) continue;
@@ -431,23 +435,24 @@ final class CityFallbackHeuristic {
         }
 
         if (bestIndex < 0) return Long.MIN_VALUE;
-
-        // Inlined bitwise final return
         int current = (int) ((state & civilianMask[bestIndex]) >>> civilianShift[bestIndex]);
         return (state & ~civilianMask[bestIndex]) | (((long) (current - 1) << civilianShift[bestIndex]) & civilianMask[bestIndex]);
     }
 
     private boolean isFastStructurallyFeasible(int civilianCount) {
-        return hasSufficientPower && civilianCount <= maxFeasibleCivilianCount;
+        return civilianCount <= maxFeasibleCivilianCount;
     }
 
     private DonorWorker newDonorWorker() {
         Long2DoubleOpenHashMap localScoreCache = new Long2DoubleOpenHashMap(4096);
         localScoreCache.defaultReturnValue(Double.NaN);
-        return new DonorWorker(new PackedCandidateView(), new PackedCandidateView(), new long[BEAM_WIDTH], new long[BEAM_WIDTH], new double[BEAM_WIDTH], localScoreCache);
+        LongOpenHashSet beamSet = new LongOpenHashSet(BEAM_WIDTH * 2);
+        return new DonorWorker(new PackedCandidateView(), new PackedCandidateView(),
+                new long[BEAM_WIDTH], new long[BEAM_WIDTH], new double[BEAM_WIDTH],
+                localScoreCache, beamSet);
     }
 
-    private void normalizeInto(SimpleNationCity target, DBCity donor) {
+    private void normalizeAndApplyInto(SimpleNationCity target, DBCity donor, long state) {
         target.set(donor, true);
         target.setNuke_turn(0);
         target.setLand(targetLand);
@@ -455,9 +460,14 @@ final class CityFallbackHeuristic {
         target.setDateCreated(origin.getCreated());
         target.setMilitaryBuildings(origin);
         target.setPowerBuildings(targetSignature);
+        // Merged from applyPackedState:
+        for (int bi = 0; bi < NUM_CIVILIAN_BUILDINGS; bi++) {
+            target.setBuilding(CIVILIAN_BUILDINGS[bi], getPackedCount(state, bi));
+        }
     }
 
     private long fitCivilianSlots(long startState, int startCivilianCount, DonorWorker worker, PackedCandidateView view) {
+        if (!hasSufficientPower) return Long.MIN_VALUE;
         int steps = Math.abs(targetCivilianSlots - startCivilianCount);
         if (steps == 0) return startState;
 
@@ -471,38 +481,62 @@ final class CityFallbackHeuristic {
         PackedCandidateView childView = worker.childView();
         Long2DoubleOpenHashMap localScoreCache = worker.localScoreCache();
 
+        LongOpenHashSet beamSet = worker.beamSet();
+        beamSet.clear();
+
         for (int i = 0; i < steps; i++) {
             int stepCivilianCount = addMode ? (startCivilianCount + i + 1) : (startCivilianCount - i - 1);
             if (!isFastStructurallyFeasible(stepCivilianCount)) return Long.MIN_VALUE;
 
-            // Reset tracking array instead of stepDedup.clear()
             for (int k = 0; k < BEAM_WIDTH; k++) topScores[k] = Double.NEGATIVE_INFINITY;
             int keep = 0;
 
             for (int beamIndex = 0; beamIndex < beamSize; beamIndex++) {
                 long parentState = beamStates[beamIndex];
-
-                // Ensure parentView reflects this state before incremental child scoring
                 view.setCivilianState(parentState);
 
-                if (addMode) {
-                    for (int bi = 0; bi < CIVILIAN_BUILDINGS.length; bi++) {
-                        int cap = civilianCaps[bi];
-                        int amt = (int) ((parentState & civilianMask[bi]) >>> civilianShift[bi]);
+                for (int bi = 0; bi < NUM_CIVILIAN_BUILDINGS; bi++) {
+                    int cap = civilianCaps[bi];
+                    int amt = (int) ((parentState & civilianMask[bi]) >>> civilianShift[bi]);
+
+                    if (addMode) {
                         if (cap < 0 || amt >= cap) continue;
-
-                        long childState = (parentState & ~civilianMask[bi]) | (((long) (amt + 1) << civilianShift[bi]) & civilianMask[bi]);
-                        processChildState(childState, bi, amt + 1, view, childView, localScoreCache, topScores, nextBeam, keep);
-                        if (keep < BEAM_WIDTH) keep++; // Process method manages shifting internally
-                    }
-                } else {
-                    for (int bi = 0; bi < CIVILIAN_BUILDINGS.length; bi++) {
-                        int amt = (int) ((parentState & civilianMask[bi]) >>> civilianShift[bi]);
+                    } else {
                         if (amt <= 0) continue;
+                    }
 
-                        long childState = (parentState & ~civilianMask[bi]) | (((long) (amt - 1) << civilianShift[bi]) & civilianMask[bi]);
-                        processChildState(childState, bi, amt - 1, view, childView, localScoreCache, topScores, nextBeam, keep);
-                        if (keep < BEAM_WIDTH) keep++; // Process method manages shifting internally
+                    int newAmt = addMode ? amt + 1 : amt - 1;
+                    long childState = (parentState & ~civilianMask[bi]) | (((long) newAmt << civilianShift[bi]) & civilianMask[bi]);
+
+                    double value = localScoreCache.get(childState);
+                    if (Double.isNaN(value)) {
+                        // BACKTRACKING: Temporarily mutate parent array
+                        int ordinal = civilianOrdinals[bi];
+                        view.unpacked[ordinal] = newAmt;
+
+                        childView.setCivilianStateIncremental(view, bi, amt, newAmt);
+                        value = valueFunction.applyAsDouble(childView);
+                        localScoreCache.put(childState, value);
+
+                        // Revert mutation
+                        view.unpacked[ordinal] = amt;
+                    }
+
+                    if (!Double.isFinite(value)) continue;
+
+                    if (keep < BEAM_WIDTH || value > topScores[BEAM_WIDTH - 1]) {
+                        if (beamSet.add(childState)) {
+                            int pos = Math.min(keep, BEAM_WIDTH - 1);
+                            while (pos > 0 && value > topScores[pos - 1]) pos--;
+                            int shift = Math.min(keep, BEAM_WIDTH - 1);
+                            for (int k = shift; k > pos; k--) {
+                                topScores[k] = topScores[k - 1];
+                                nextBeam[k] = nextBeam[k - 1];
+                            }
+                            topScores[pos] = value;
+                            nextBeam[pos] = childState;
+                            if (keep < BEAM_WIDTH) keep++;
+                        }
                     }
                 }
             }
@@ -510,54 +544,23 @@ final class CityFallbackHeuristic {
             if (keep == 0) return Long.MIN_VALUE;
 
             beamSize = keep;
-            for (int k = 0; k < beamSize; k++) {
-                beamStates[k] = nextBeam[k];
-            }
+
+            // DOUBLE BUFFERING: Swap references instead of copying arrays!
+            long[] temp = beamStates;
+            beamStates = nextBeam;
+            nextBeam = temp;
         }
 
-        // Pick best from final beam — scores already cached, no recomputation needed
         long bestState = Long.MIN_VALUE;
         double bestValue = Double.NEGATIVE_INFINITY;
         for (int i = 0; i < beamSize; i++) {
-            double value = scoreState(beamStates[i], view, worker); // hits cache, nearly free
+            double value = scoreState(beamStates[i], view, worker);
             if (value > bestValue) {
                 bestValue = value;
                 bestState = beamStates[i];
             }
         }
         return bestState;
-    }
-
-    private void processChildState(long childState, int bi, int newAmt, PackedCandidateView view, PackedCandidateView childView,
-                                   Long2DoubleOpenHashMap localScoreCache, double[] topScores, long[] nextBeam, int keep) {
-        double value = localScoreCache.get(childState);
-        if (Double.isNaN(value)) {
-            childView.setCivilianStateIncremental(view, bi, newAmt);
-            value = valueFunction.applyAsDouble(childView);
-            localScoreCache.put(childState, value);
-        }
-
-        if (!Double.isFinite(value)) return;
-
-        if (keep < BEAM_WIDTH || value > topScores[BEAM_WIDTH - 1]) {
-            boolean duplicate = false;
-            for (int k = 0; k < keep; k++) {
-                if (nextBeam[k] == childState) {
-                    duplicate = true; break;
-                }
-            }
-            if (!duplicate) {
-                int pos = Math.min(keep, BEAM_WIDTH - 1);
-                while (pos > 0 && value > topScores[pos - 1]) pos--;
-                int shift = Math.min(keep, BEAM_WIDTH - 1);
-                for (int k = shift; k > pos; k--) {
-                    topScores[k] = topScores[k - 1];
-                    nextBeam[k] = nextBeam[k - 1];
-                }
-                topScores[pos] = value;
-                nextBeam[pos] = childState;
-            }
-        }
     }
 
     private static int bitsForCount(int cap) {
@@ -567,7 +570,7 @@ final class CityFallbackHeuristic {
 
     private long packCivilianState(ICity city) {
         long state = 0L;
-        for (int bi = 0; bi < CIVILIAN_BUILDINGS.length; bi++) {
+        for (int bi = 0; bi < NUM_CIVILIAN_BUILDINGS; bi++) {
             int value = city.getBuilding(CIVILIAN_BUILDINGS[bi]);
             state = setPackedCount(state, bi, value);
         }
@@ -597,14 +600,14 @@ final class CityFallbackHeuristic {
 
     private int getPackedCivilianCount(long state) {
         int total = 0;
-        for (int bi = 0; bi < CIVILIAN_BUILDINGS.length; bi++) {
+        for (int bi = 0; bi < NUM_CIVILIAN_BUILDINGS; bi++) {
             total += getPackedCount(state, bi);
         }
         return total;
     }
 
     private void applyPackedState(SimpleNationCity city, long state) {
-        for (int bi = 0; bi < CIVILIAN_BUILDINGS.length; bi++) {
+        for (int bi = 0; bi < NUM_CIVILIAN_BUILDINGS; bi++) {
             city.setBuilding(CIVILIAN_BUILDINGS[bi], getPackedCount(state, bi));
         }
     }
@@ -642,7 +645,7 @@ final class CityFallbackHeuristic {
         private double cachedCivilianRevenue;
         private double cachedRevenueConverted;
         private int cachedNumBuildings;
-        private int cachedUncappedCommerce;
+        private int uncappedCommerce;
 
         private int pendingOrdinal = -1;
         private int pendingAmt = 0;
@@ -661,7 +664,7 @@ final class CityFallbackHeuristic {
             double civilianRevenue = 0d;
             int civilians = 0;
 
-            for (int i = 0; i < CIVILIAN_BUILDINGS.length; i++) {
+            for (int i = 0; i < NUM_CIVILIAN_BUILDINGS; i++) {
                 // Inlined bitwise
                 int amt = (int) ((state & civilianMask[i]) >>> civilianShift[i]);
                 int ordinal = civilianOrdinals[i];
@@ -678,7 +681,7 @@ final class CityFallbackHeuristic {
             // Cache buildings so we don't recalculate on every loop
             this.cachedNumBuildings = fixedBuildingTotal + civilians;
             int uncappedComm = comm; // before the Math.min
-            this.cachedUncappedCommerce = uncappedComm;
+            this.uncappedCommerce = uncappedComm;
             this.cachedCommerce = Math.min(uncappedComm, maxCommerce);
             this.cachedPollution = pol;
 
@@ -705,47 +708,42 @@ final class CityFallbackHeuristic {
             this.cachedRevenueConverted = fixedRevenueConverted + civilianRevenue + income - foodConverted;
         }
 
-        void setCivilianStateIncremental(PackedCandidateView parent, int changedBi, int newAmt) {
-            lastSetState = Long.MIN_VALUE;
-            this.unpacked = parent.unpacked; // borrow reference - READ ONLY during scoring
-            int ordinal = civilianOrdinals[changedBi];
-            int oldAmt = parent.unpacked[ordinal];
-            this.pendingOrdinal = ordinal;
-            this.pendingAmt = newAmt;
+        void setCivilianStateIncremental(PackedCandidateView parent, int changedBi, int oldAmt, int newAmt) {
+            this.unpacked = parent.unpacked; // Borrow reference safely (Array is mutated externally)
 
-            int newUncappedComm = parent.cachedUncappedCommerce + (newAmt - oldAmt) * commerceContributionByOrdinal[ordinal];
-            int newComm = Math.min(newUncappedComm, maxCommerce);
+            int ordinal = civilianOrdinals[changedBi];
+
+            // Apply delta to UNCAPPED commerce, then cap it safely
+            this.uncappedCommerce = parent.uncappedCommerce + (newAmt - oldAmt) * commerceContributionByOrdinal[ordinal];
+            int newComm = Math.min(this.uncappedCommerce, maxCommerce);
 
             int newPol  = parent.cachedPollution + (newAmt - oldAmt) * pollutionContributionByOrdinal[ordinal];
 
-            // Mapped to 1D Array flat cache
             int offset = profitLookupOffset[changedBi];
             double newCivilianRevenue = parent.cachedCivilianRevenue
                     + flatCivilianProfitLookup[offset + newAmt]
                     - flatCivilianProfitLookup[offset + oldAmt];
 
-            int hospitals = (ordinal == HOSPITAL_ORDINAL) ? newAmt : parent.unpacked[HOSPITAL_ORDINAL];
-            int police    = (ordinal == POLICE_ORDINAL) ? newAmt : parent.unpacked[POLICE_ORDINAL];
+            int hospitals = (ordinal == Buildings.HOSPITAL.ordinal()) ? newAmt : parent.unpacked[Buildings.HOSPITAL.ordinal()];
+            int police    = (ordinal == Buildings.POLICE_STATION.ordinal()) ? newAmt : parent.unpacked[Buildings.POLICE_STATION.ordinal()];
 
-            // Branchless Math.max bypass
             double disease = diseaseBase - (hospitals > 0 ? hospitals * hospitalPct : 0d) + newPol * 0.05d;
             double newDisease = disease > 0d ? disease : 0d;
 
             double crime = crimeByCommerce[newComm] - (police > 0 ? police * policePct : 0d);
             double newCrime = crime > 0d ? crime : 0d;
 
-            double diseaseDeaths = newDisease * diseaseDeathFactor;
-            double crimeDeaths = newCrime * crimeDeathFactor - 25d;
+            double diseaseDeaths = newDisease * 0.01d * basePopulation;
+            double crimeDeaths = newCrime * 0.1d * basePopulation - 25d;
             if (crimeDeaths < 0d) crimeDeaths = 0d;
 
             double pop = (basePopulation - diseaseDeaths - crimeDeaths) * ageBonus;
-            int newPop = (int) (pop > 10d ? pop + 0.5d : 10.5d);
+            int newPop = (int) Math.round(pop > 10d ? pop : 10d);
 
             double newIncome = (incomeFactorA * newComm + incomeFactorB) * newPop;
 
             this.cachedNumBuildings      = parent.cachedNumBuildings + (newAmt - oldAmt);
-            this.cachedUncappedCommerce = newUncappedComm;
-            this.cachedCommerce = newComm;
+            this.cachedCommerce          = newComm;
             this.cachedPollution         = newPol;
             this.cachedDisease           = newDisease;
             this.cachedCrime             = newCrime;
@@ -815,7 +813,15 @@ final class CityFallbackHeuristic {
         }
     }
 
-    private record DonorWorker(PackedCandidateView view, PackedCandidateView childView, long[] beamStates, long[] nextBeam, double[] topScores, Long2DoubleOpenHashMap localScoreCache) {}
+    private record DonorWorker(
+            PackedCandidateView view,
+            PackedCandidateView childView,
+            long[] beamStates,
+            long[] nextBeam,
+            double[] topScores,
+            Long2DoubleOpenHashMap localScoreCache,
+            LongOpenHashSet beamSet  // ADD THIS
+    ) {}
 
     private record EvaluatedCandidate(DBCity donor, long state, double value, int donorId) { }
 }
