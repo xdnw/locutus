@@ -1,13 +1,11 @@
 package link.locutus.discord.apiv1.enums.city;
 
-import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.city.SimpleDBCity;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -92,6 +90,36 @@ class OptimalBuildCapRegressionTest {
         assertNotNull(best);
         assertTrue(best.getBuilding(Buildings.STADIUM) <= cap,
                 "Fallback beam path returned over-cap stadium count: " + best.getBuilding(Buildings.STADIUM) + " > " + cap);
+    }
+
+    @Test
+    void fallbackBeamPathRepairsSingleInvalidDonorIntoValidCandidate() {
+        JavaCity source = new JavaCity()
+                .setInfra(500)
+                .setLand(1500d)
+                .setAge(800);
+
+        JavaCity invalidDonor = new JavaCity()
+                .setInfra(500)
+                .setLand(1500d)
+                .setAge(800);
+        invalidDonor.setBuilding(Buildings.STADIUM, 9);
+
+        INationCity best = source.findBestFromDonors(
+                Continent.NORTH_AMERICA,
+                10,
+                city -> city.getBuilding(Buildings.STADIUM),
+                null,
+                NO_PROJECTS,
+                0d,
+                1d,
+                null,
+                List.of(new SimpleDBCity(invalidDonor)));
+
+        assertNotNull(best);
+        int cap = Buildings.STADIUM.cap(NO_PROJECTS);
+        assertTrue(best.getBuilding(Buildings.STADIUM) <= cap,
+                "Fallback repair produced over-cap stadium count: " + best.getBuilding(Buildings.STADIUM) + " > " + cap);
     }
 
     @Test
