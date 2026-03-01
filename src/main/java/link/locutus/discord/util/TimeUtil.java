@@ -234,7 +234,15 @@ public class TimeUtil {
         if (string.length() == 0) return 0;
         if (string.equals("60d")) return TimeUnit.DAYS.toSeconds(60);
 
-        if (string.length() > 10 && ((string.charAt(0) == 't' && string.startsWith("timestamp:")) || (MathMan.isInteger(string) && string.length() > 12))) {
+        if ((MathMan.isInteger(string) && string.length() > 12)) {
+            long timestamp = Long.parseLong(string);
+            if (forwards) {
+                return (timestamp - currentTime) / 1000L;
+            } else {
+                return (currentTime - timestamp) / 1000L;
+            }
+        }
+        if (string.length() > 10 && ((string.charAt(0) == 't' && string.startsWith("timestamp:")))) {
             long timestamp = Long.parseLong(string.split(":")[1]);
             if (forwards) {
                 return (timestamp - currentTime) / 1000L;

@@ -1590,7 +1590,7 @@ public class ConflictManager {
 
     private static final HeaderGroup[] INDEX_GROUPS = { HeaderGroup.INDEX_META, HeaderGroup.INDEX_STATS };
     private static final Set<HeaderGroup> INDEX_GROUP_SET = EnumSet.of(HeaderGroup.INDEX_META, HeaderGroup.INDEX_STATS);
-    private static final List<String> ALL_HEADERS = Stream.of(HeaderGroup.values())
+    private static final List<String> INDEX_HEADERS = Stream.of(INDEX_GROUPS)
             .flatMap(g -> g.getHeaders().stream()).toList();
 
     public byte[] getIndexBytesZip(long time) {
@@ -1622,7 +1622,7 @@ public class ConflictManager {
                             ? loadConflictRowCache(id, INDEX_GROUP_SET)
                             : Map.of();
 
-                    List<Object> row = new ObjectArrayList<>(ALL_HEADERS.size());
+                    List<Object> row = new ObjectArrayList<>(INDEX_HEADERS.size());
 
                     for (HeaderGroup group : INDEX_GROUPS) {
                         Map.Entry<Long, byte[]> cached = cachedByGroup.get(group);
@@ -1648,7 +1648,7 @@ public class ConflictManager {
                 }
 
                 Map<String, Object> result = new Object2ObjectLinkedOpenHashMap<>();
-                result.put("headers", ALL_HEADERS);
+                result.put("headers", INDEX_HEADERS);
                 result.put("conflicts", conflictRows);
                 result.put("alliance_ids", allianceIds);
                 result.put("alliance_names", aaNames);

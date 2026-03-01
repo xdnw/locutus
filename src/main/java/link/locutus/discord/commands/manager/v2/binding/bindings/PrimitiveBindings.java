@@ -281,6 +281,9 @@ public class PrimitiveBindings extends BindingHelper {
             return parsed.getTime();
         }
         try {
+            if ((MathMan.isInteger(argument) && argument.length() > 12)) {
+                return Long.parseLong(argument);
+            }
             return System.currentTimeMillis() - TimeUtil.timeToSec(argument) * 1000;
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Invalid timestamp: `" + argument + "`: " + e.getMessage());
