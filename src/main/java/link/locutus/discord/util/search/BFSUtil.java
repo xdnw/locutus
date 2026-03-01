@@ -782,7 +782,7 @@ public class BFSUtil<T> {
         if (envValue != null) {
             return Boolean.parseBoolean(envValue);
         }
-        return false;
+        return true;
     }
 
     private static long resolveMaxTimeoutMs() {
