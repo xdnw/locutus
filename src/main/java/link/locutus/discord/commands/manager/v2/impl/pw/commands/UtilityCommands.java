@@ -2465,7 +2465,6 @@ public class UtilityCommands {
             double[] unitCost = ResourceType.resourcesToArray(unit.getCost(amt.intValue(), research));
             double[] unitUpkeep = unit.addUpkeep(ResourceType.getBuffer(), amt.intValue(), wartime, research, upkeepFactor).clone();
 
-            unitUpkeep = PW.multiply(unitUpkeep, amt);
 
             ResourceType.add(cost, unitCost);
             ResourceType.add(upkeep, unitUpkeep);

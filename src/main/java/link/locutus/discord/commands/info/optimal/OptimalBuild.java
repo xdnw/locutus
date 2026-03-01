@@ -135,7 +135,7 @@ public class OptimalBuild extends Command {
 
         Set<Project> addProject = new HashSet<>();
 
-        boolean positiceCash = false;
+        boolean positiveCash = false;
         boolean manu = true;
         String mmr = null;
 
@@ -247,7 +247,7 @@ public class OptimalBuild extends Command {
                         iter.remove();
                     }
                     case "cash" -> {
-                        positiceCash = Boolean.parseBoolean(split[1]);
+                        positiveCash = Boolean.parseBoolean(split[1]);
                         iter.remove();
                     }
                     case "tax", "taxes", "taxrate" -> {
@@ -556,7 +556,7 @@ public class OptimalBuild extends Command {
             };
         }
 
-        if (positiceCash) {
+        if (positiveCash) {
             Predicate<INationCity> parentGoal = goal;
             double[] profitBuffer = new double[ResourceType.values.length];
             double upkeepCash = 0;
@@ -567,7 +567,7 @@ public class OptimalBuild extends Command {
                 if (numBuilt == 0) continue;
                 int amt = building.getUnitCap() * numBuilt;
                 double[] upkeep = unit.addUpkeep(ResourceType.getBuffer(), amt, true, f -> finalMe.getResearch(null, f), finalMe.getMilitaryUpkeepFactor());
-                upkeepCash += upkeep[0] * amt;
+                upkeepCash += upkeep[0];
             }
             double finalUpkeepCash = upkeepCash;
             goal = city -> {

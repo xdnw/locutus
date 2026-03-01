@@ -142,6 +142,7 @@ public class DamageStatGroup {
                 case AIRSTRIKE_MONEY:
                 case AIRSTRIKE_INFRA:
                 case MISSILE:
+                case FORTIFY:
                 case NUKE:
                     continue;
             }
