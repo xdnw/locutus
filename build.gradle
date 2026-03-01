@@ -123,6 +123,7 @@ java {
 }
 
 if (useTs) {
+    // ./gradlew -Pts generateTypeScript
     apply plugin: "cz.habarta.typescript-generator"
     tasks.named('generateTypeScript') {
         jsonLibrary = 'jackson2'
@@ -178,6 +179,8 @@ if (useTs) {
                 'link.locutus.discord.web.commands.binding.value_types.ConflictPosts',
                 'link.locutus.discord.web.commands.binding.value_types.WebVirtualConflict',
                 'link.locutus.discord.web.commands.binding.value_types.VirtualConflictMeta',
+                'link.locutus.discord.web.commands.binding.value_types.WebTreatyChanges',
+                'link.locutus.discord.web.commands.binding.value_types.WebCurrentTreaties',
         ]
         outputKind = 'module'
         nullableAnnotations = ['org.checkerframework.checker.nullness.qual.Nullable']

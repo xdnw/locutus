@@ -20,8 +20,6 @@ public class BFSUtil<T> {
     private final long timeout;
 
     private static final long DEFAULT_MAX_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(1);
-    private static final String PROFILE_PROPERTY = "locutus.bfs.profile";
-    private static final String PROFILE_ENV = "LOCUTUS_BFS_PROFILE";
     private static final String PRUNING_PROPERTY = "locutus.bfs.boundPruning";
     private static final String PRUNING_ENV = "LOCUTUS_BFS_BOUND_PRUNING";
     private static final String STRICT_TIMEOUT_PROPERTY = "locutus.bfs.strictTimeout";
@@ -54,83 +52,9 @@ public class BFSUtil<T> {
     private static final String FRONTIER_FALLBACK_EAGER_REBUILD_ENV = "LOCUTUS_BFS_FRONTIER_FALLBACK_EAGER_REBUILD";
     private static final String CITY_NODE_CLASS = "link.locutus.discord.db.entities.CityNode";
 
-    private static final ThreadLocal<SearchMetrics> LAST_METRICS = new ThreadLocal<>();
-
     public enum SearchStage {
         EXACT,
         AGGRESSIVE
-    }
-
-    public static final class SearchMetrics {
-        public boolean profileEnabled;
-        public long elapsedMs;
-        public long expandedNodes;
-        public long enqueuedNodes;
-        public long prunedByBound;
-        public long valueFunctionCalls;
-        public long valueFunctionTimeNs;
-        public long upperBoundCalls;
-        public long upperBoundTimeNs;
-        public long goalChecks;
-        public long goalCheckTimeNs;
-        public long pruneChecks;
-        public long pruneCheckTimeNs;
-        public long branchCalls;
-        public long branchTimeNs;
-        public long enqueueTimeNs;
-        public long reprioritizeTimeNs;
-        public long timeoutChecks;
-        public long timeoutAdjustments;
-        public long timeoutStartShiftMs;
-        public long queueReprioritizations;
-        public int stageTransitions;
-        public int maxQueueSize;
-        public double nodesPerSecond;
-        public double bestScore = Double.NEGATIVE_INFINITY;
-        public SearchStage lastStage = SearchStage.EXACT;
-        public double checkpoint25Score = Double.NEGATIVE_INFINITY;
-        public double checkpoint50Score = Double.NEGATIVE_INFINITY;
-        public double checkpoint75Score = Double.NEGATIVE_INFINITY;
-        public double checkpoint100Score = Double.NEGATIVE_INFINITY;
-        public String reprioritizeMode = "lazy";
-        public String schedulerMode = "adaptive";
-
-        public SearchMetrics copy() {
-            SearchMetrics copy = new SearchMetrics();
-            copy.profileEnabled = profileEnabled;
-            copy.elapsedMs = elapsedMs;
-            copy.expandedNodes = expandedNodes;
-            copy.enqueuedNodes = enqueuedNodes;
-            copy.prunedByBound = prunedByBound;
-            copy.valueFunctionCalls = valueFunctionCalls;
-            copy.valueFunctionTimeNs = valueFunctionTimeNs;
-            copy.upperBoundCalls = upperBoundCalls;
-            copy.upperBoundTimeNs = upperBoundTimeNs;
-            copy.goalChecks = goalChecks;
-            copy.goalCheckTimeNs = goalCheckTimeNs;
-            copy.pruneChecks = pruneChecks;
-            copy.pruneCheckTimeNs = pruneCheckTimeNs;
-            copy.branchCalls = branchCalls;
-            copy.branchTimeNs = branchTimeNs;
-            copy.enqueueTimeNs = enqueueTimeNs;
-            copy.reprioritizeTimeNs = reprioritizeTimeNs;
-            copy.timeoutChecks = timeoutChecks;
-            copy.timeoutAdjustments = timeoutAdjustments;
-            copy.timeoutStartShiftMs = timeoutStartShiftMs;
-            copy.queueReprioritizations = queueReprioritizations;
-            copy.stageTransitions = stageTransitions;
-            copy.maxQueueSize = maxQueueSize;
-            copy.nodesPerSecond = nodesPerSecond;
-            copy.bestScore = bestScore;
-            copy.lastStage = lastStage;
-            copy.checkpoint25Score = checkpoint25Score;
-            copy.checkpoint50Score = checkpoint50Score;
-            copy.checkpoint75Score = checkpoint75Score;
-            copy.checkpoint100Score = checkpoint100Score;
-            copy.reprioritizeMode = reprioritizeMode;
-            copy.schedulerMode = schedulerMode;
-            return copy;
-        }
     }
 
     private enum ReprioritizeMode {
@@ -596,11 +520,6 @@ public class BFSUtil<T> {
         this.timeout = timeout;
     }
 
-    public static SearchMetrics getLastMetrics() {
-        SearchMetrics metrics = LAST_METRICS.get();
-        return metrics == null ? null : metrics.copy();
-    }
-
     private static double computeNodesPerSecond(long processed, long elapsedMs) {
         if (elapsedMs <= 0) {
             return processed;
@@ -622,18 +541,11 @@ public class BFSUtil<T> {
 
         T max = null;
         double maxValue = Double.NEGATIVE_INFINITY;
-
-        SearchMetrics metrics = new SearchMetrics();
-        boolean profileEnabled = isProfilingEnabled();
         boolean boundPruningEnabled = isBoundPruningEnabled();
         boolean strictTimeoutEnabled = isStrictTimeoutEnabled();
         long maxTimeoutMs = resolveMaxTimeoutMs();
-        ReprioritizeMode reprioritizeMode = ReprioritizeMode.resolve();
         SchedulerMode schedulerMode = SchedulerMode.resolve();
         AdaptiveSchedulePolicy adaptivePolicy = AdaptiveSchedulePolicy.resolve();
-        metrics.profileEnabled = profileEnabled;
-        metrics.reprioritizeMode = reprioritizeMode.name().toLowerCase();
-        metrics.schedulerMode = schedulerMode.name().toLowerCase();
         SearchStage stage = SearchStage.EXACT;
 
         long originalStart = System.currentTimeMillis();
@@ -649,42 +561,23 @@ public class BFSUtil<T> {
 
         long delay = 5000;
 
-        final ToDoubleFunction<T> timedValueFunction = node -> {
-            if (!profileEnabled) {
-                return valueFunction.applyAsDouble(node);
-            }
-            long t0 = System.nanoTime();
-            double value = valueFunction.applyAsDouble(node);
-            metrics.valueFunctionCalls++;
-            metrics.valueFunctionTimeNs += System.nanoTime() - t0;
-            return value;
-        };
-
         final FrontierEntry<T> current = new FrontierEntry<>();
-        double originExactScore = timedValueFunction.applyAsDouble(origin);
-        long enqueueStart = profileEnabled ? System.nanoTime() : 0L;
+        double originExactScore = valueFunction.applyAsDouble(origin);
         frontier.push(origin,
                 originExactScore,
             boundPruningEnabled ? Double.NaN : Double.POSITIVE_INFINITY,
                 0);
-        metrics.enqueuedNodes++;
-        metrics.maxQueueSize = Math.max(metrics.maxQueueSize, frontier.size());
-        if (profileEnabled) {
-            metrics.enqueueTimeNs += System.nanoTime() - enqueueStart;
-        }
 
-        int i = 0;
+        long expandedNodes = 0;
+        long i = 0;
         while (!frontier.isEmpty()) {
             if (!frontier.popBest(current)) {
                 break;
             }
-            metrics.expandedNodes++;
+            expandedNodes++;
             i++;
 
             if (strictTimeoutEnabled || (i & 0xFFFF) == 0) {
-                if (profileEnabled) {
-                    metrics.timeoutChecks++;
-                }
                 long diff = System.currentTimeMillis() - start;
                 if (diff > timeout) {
                     if (strictTimeoutEnabled) {
@@ -708,26 +601,13 @@ public class BFSUtil<T> {
                         completionValue = valueCompletionFunction.apply(completeFactor);
                         if (stage != SearchStage.AGGRESSIVE) {
                             stage = SearchStage.AGGRESSIVE;
-                            metrics.stageTransitions++;
                         }
-                        metrics.lastStage = stage;
                         if (isNew || completeFactor >= 0.1) {
-                            long reprioritizeStart = profileEnabled ? System.nanoTime() : 0L;
                             frontier.reprioritize(completionValue);
-                            metrics.queueReprioritizations++;
-                            if (profileEnabled) {
-                                metrics.reprioritizeTimeNs += System.nanoTime() - reprioritizeStart;
-                            }
                         }
 
-                        if (profileEnabled) {
-                            metrics.timeoutAdjustments++;
-                        }
                         long adjustmentDelay = schedulerMode == SchedulerMode.LEGACY ? delay : adaptivePolicy.graceDelayMs();
                         start = System.currentTimeMillis() - timeout + adjustmentDelay;
-                        if (profileEnabled) {
-                            metrics.timeoutStartShiftMs += adjustmentDelay;
-                        }
                         lastQueueSize = queueSize;
                     } else if (System.currentTimeMillis() - originalStart > maxTimeoutMs) {
                         break;
@@ -735,49 +615,29 @@ public class BFSUtil<T> {
                 }
             }
 
-            long pruneStart = profileEnabled ? System.nanoTime() : 0L;
-            if (profileEnabled) {
-                metrics.pruneChecks++;
-            }
             if (boundPruningEnabled && maxValue != Double.NEGATIVE_INFINITY) {
                 double threshold = aggressivePruneThreshold(maxValue, stage);
                 if (current.exactScore > threshold) {
-                    if (profileEnabled) {
-                        metrics.pruneCheckTimeNs += System.nanoTime() - pruneStart;
-                    }
                 } else {
                 double upperBound = current.upperBound;
                 if (Double.isNaN(upperBound)) {
-                    upperBound = upperBound(current.state, current.exactScore, metrics);
+                    upperBound = upperBound(current.state, current.exactScore);
                     current.upperBound = upperBound;
                 }
                     if (upperBound <= threshold) {
-                    if (profileEnabled) {
-                        metrics.pruneCheckTimeNs += System.nanoTime() - pruneStart;
-                    }
-                    metrics.prunedByBound++;
                     garbageLastMax.accept(current.state);
                     continue;
                 }
                 }
             }
-            if (profileEnabled) {
-                metrics.pruneCheckTimeNs += System.nanoTime() - pruneStart;
-            }
 
-            long goalStart = profileEnabled ? System.nanoTime() : 0L;
             boolean result = goal.test(current.state);
-            if (profileEnabled) {
-                metrics.goalChecks++;
-                metrics.goalCheckTimeNs += System.nanoTime() - goalStart;
-            }
             if (result) {
                 double value = current.exactScore;
                 if (value > maxValue) {
                     T lastMax = max;
                     max = current.state;
                     maxValue = value;
-                    metrics.bestScore = maxValue;
 
                     if (lastMax != null && lastMax != current.state) {
                         garbageLastMax.accept(lastMax);
@@ -788,26 +648,13 @@ public class BFSUtil<T> {
                 continue;
             }
 
-            long branchStart = profileEnabled ? System.nanoTime() : 0L;
-            if (profileEnabled) {
-                metrics.branchCalls++;
-            }
             branch.accept(current.state, child -> {
-                double exactScore = timedValueFunction.applyAsDouble(child);
-                long childEnqueueStart = profileEnabled ? System.nanoTime() : 0L;
+                double exactScore = valueFunction.applyAsDouble(child);
                 frontier.push(child,
                         exactScore,
                         boundPruningEnabled ? Double.NaN : Double.POSITIVE_INFINITY,
                         current.depth + 1);
-                metrics.enqueuedNodes++;
-                metrics.maxQueueSize = Math.max(metrics.maxQueueSize, frontier.size());
-                if (profileEnabled) {
-                    metrics.enqueueTimeNs += System.nanoTime() - childEnqueueStart;
-                }
             });
-            if (profileEnabled) {
-                metrics.branchTimeNs += System.nanoTime() - branchStart;
-            }
 
             if (maxValue != Double.NEGATIVE_INFINITY) {
                 recentBest[recentBestIndex] = maxValue;
@@ -816,38 +663,11 @@ public class BFSUtil<T> {
                     recentBestCount++;
                 }
             }
-
-            updateConvergenceCheckpoints(metrics, timeout, System.currentTimeMillis() - originalStart, maxValue);
         }
 
         long diff = System.currentTimeMillis() - originalStart;
-        metrics.elapsedMs = diff;
-        metrics.nodesPerSecond = computeNodesPerSecond(metrics.expandedNodes, diff);
-        metrics.bestScore = maxValue;
-        metrics.lastStage = stage;
-        LAST_METRICS.set(metrics.copy());
-
-        Logg.text("BFS/A* searched " + metrics.expandedNodes + " options in " + diff + "ms for a rate of " + MathMan.format(metrics.nodesPerSecond) + " per second"
-                + " | enqueued=" + metrics.enqueuedNodes
-                + " | prunedByBound=" + metrics.prunedByBound
-            + " | boundPruning=" + boundPruningEnabled
-                + " | reprioritized=" + metrics.queueReprioritizations
-                + " | bestScore=" + MathMan.format(maxValue));
-        Logg.text("BFS/A* profile"
-            + " | profileEnabled=" + metrics.profileEnabled
-            + " | valueCalls=" + metrics.valueFunctionCalls
-            + " | valueMs=" + MathMan.format(metrics.valueFunctionTimeNs / 1_000_000d)
-            + " | upperBoundCalls=" + metrics.upperBoundCalls
-            + " | upperBoundMs=" + MathMan.format(metrics.upperBoundTimeNs / 1_000_000d)
-            + " | goalMs=" + MathMan.format(metrics.goalCheckTimeNs / 1_000_000d)
-            + " | pruneMs=" + MathMan.format(metrics.pruneCheckTimeNs / 1_000_000d)
-            + " | branchMs=" + MathMan.format(metrics.branchTimeNs / 1_000_000d)
-            + " | enqueueMs=" + MathMan.format(metrics.enqueueTimeNs / 1_000_000d)
-            + " | reprioritizeMs=" + MathMan.format(metrics.reprioritizeTimeNs / 1_000_000d)
-            + " | timeoutChecks=" + metrics.timeoutChecks
-            + " | timeoutAdjustments=" + metrics.timeoutAdjustments
-            + " | reprioritizeMode=" + metrics.reprioritizeMode
-            + " | schedulerMode=" + metrics.schedulerMode);
+        double nodesPerSecond = computeNodesPerSecond(expandedNodes, diff);
+        Logg.text("BFS/A* searched " + expandedNodes + " options in " + diff + "ms for a rate of " + MathMan.format(nodesPerSecond) + " per second");
         return max;
     }
 
@@ -860,24 +680,6 @@ public class BFSUtil<T> {
             next += 0.2;
         }
         return next;
-    }
-
-    private static void updateConvergenceCheckpoints(SearchMetrics metrics, long timeoutMs, long elapsedMs, double bestScore) {
-        if (timeoutMs <= 0 || bestScore == Double.NEGATIVE_INFINITY) {
-            return;
-        }
-        if (metrics.checkpoint25Score == Double.NEGATIVE_INFINITY && elapsedMs * 4L >= timeoutMs) {
-            metrics.checkpoint25Score = bestScore;
-        }
-        if (metrics.checkpoint50Score == Double.NEGATIVE_INFINITY && elapsedMs * 2L >= timeoutMs) {
-            metrics.checkpoint50Score = bestScore;
-        }
-        if (metrics.checkpoint75Score == Double.NEGATIVE_INFINITY && elapsedMs * 4L >= timeoutMs * 3L) {
-            metrics.checkpoint75Score = bestScore;
-        }
-        if (metrics.checkpoint100Score == Double.NEGATIVE_INFINITY && elapsedMs >= timeoutMs) {
-            metrics.checkpoint100Score = bestScore;
-        }
     }
 
     private static double computeImprovementSlope(double[] recentBest, int recentBestCount, int recentBestIndex) {
@@ -944,45 +746,19 @@ public class BFSUtil<T> {
         }
     }
 
-    private double upperBound(T node, double exactScore, SearchMetrics metrics) {
-        return invokeBoundFunction(upperBoundFunction, node, exactScore, metrics);
+    private double upperBound(T node, double exactScore) {
+        return invokeBoundFunction(upperBoundFunction, node, exactScore);
     }
 
-    private double invokeBoundFunction(ToDoubleFunction<T> function, T node, double exactScore, SearchMetrics metrics) {
-        boolean profileEnabled = metrics.profileEnabled;
-        long t0 = profileEnabled ? System.nanoTime() : 0L;
-        if (profileEnabled) {
-            metrics.upperBoundCalls++;
-        }
+    private double invokeBoundFunction(ToDoubleFunction<T> function, T node, double exactScore) {
         if (function == null) {
-            if (profileEnabled) {
-                metrics.upperBoundTimeNs += System.nanoTime() - t0;
-            }
             return Double.POSITIVE_INFINITY;
         }
         double upper = function.applyAsDouble(node);
         if (Double.isNaN(upper)) {
-            if (profileEnabled) {
-                metrics.upperBoundTimeNs += System.nanoTime() - t0;
-            }
             return Double.POSITIVE_INFINITY;
         }
-        if (profileEnabled) {
-            metrics.upperBoundTimeNs += System.nanoTime() - t0;
-        }
         return Math.max(exactScore, upper);
-    }
-
-    private static boolean isProfilingEnabled() {
-        String propertyValue = System.getProperty(PROFILE_PROPERTY);
-        if (propertyValue != null) {
-            return Boolean.parseBoolean(propertyValue);
-        }
-        String envValue = System.getenv(PROFILE_ENV);
-        if (envValue != null) {
-            return Boolean.parseBoolean(envValue);
-        }
-        return true;
     }
 
     private static boolean isBoundPruningEnabled() {

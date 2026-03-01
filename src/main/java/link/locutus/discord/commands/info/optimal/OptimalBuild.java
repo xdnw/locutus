@@ -340,12 +340,12 @@ public class OptimalBuild extends Command {
 
         CompletableFuture<IMessageBuilder> future = io.send("Please wait...");
 
-        ToDoubleFunction<INationCity> valueFunc;
+        ToDoubleFunction<INationCity> baseValueFunc;
         if (taxes != null) {
             double[] buffer = new double[ResourceType.values.length];
             double moneyFactor = (100 - taxes.money) / 100d;
             double rssFactor = (100 - taxes.resources) / 100d;
-            valueFunc = javaCity -> {
+            baseValueFunc = javaCity -> {
                 Arrays.fill(buffer, 0);
                 double[] profit = javaCity.getProfit(buffer);
                 profit[0] *= moneyFactor;
@@ -357,7 +357,7 @@ public class OptimalBuild extends Command {
                 return ResourceType.convertedTotal(profit);
             };
         } else {
-            valueFunc = INationCity::getRevenueConverted;
+            baseValueFunc = INationCity::getRevenueConverted;
         }
 
 //        if (infraLow != null) {
@@ -379,187 +379,57 @@ public class OptimalBuild extends Command {
 //            };
 //        }
 
+        double minPopulationThreshold = Double.NEGATIVE_INFINITY;
         if (popLimit != null) {
-            Double finalpopLimit = popLimit;
-
-            ToDoubleFunction<INationCity> parent = valueFunc;
-            valueFunc = city -> {
-                if (city.calcPopulation(hasProject) < finalpopLimit) return Double.NEGATIVE_INFINITY;
-                return parent.applyAsDouble(city);
-            };
+            minPopulationThreshold = Math.max(minPopulationThreshold, popLimit);
         }
-
         if (popLow != null) {
-            Double finalpopLimit = popLow;
-
-            ToDoubleFunction<INationCity> parent = valueFunc;
-            valueFunc = city -> {
-                if (city.calcPopulation(hasProject) < finalpopLimit) return Double.NEGATIVE_INFINITY;
-                return parent.applyAsDouble(city);
-            };
+            minPopulationThreshold = Math.max(minPopulationThreshold, popLow);
         }
 
-        Predicate<INationCity> goal = javaCity -> javaCity.getFreeSlots() <= 0;
+        final boolean requireDiseaseConstraint = diseaseLimit != null;
+        final double finalDiseaseLimit = requireDiseaseConstraint ? diseaseLimit : Double.NaN;
+        final double hospitalPct = requireDiseaseConstraint && hasProject.test(Projects.CLINICAL_RESEARCH_CENTER) ? 3.5 : 2.5;
+        final double recyclingPct = requireDiseaseConstraint ? (-Buildings.RECYCLING_CENTER.pollution(hasProject)) * 0.05 : Double.NaN;
+        final double subwayPct = requireDiseaseConstraint ? (-Buildings.SUBWAY.pollution(hasProject)) * 0.05 : Double.NaN;
 
-        if (!manu) {
-            Predicate<INationCity> parent = goal;
-            goal = city -> {
-                if (parent.test(city)) {
-                    if (city.getBuilding(Buildings.MUNITIONS_FACTORY) > city.getBuilding(Buildings.LEAD_MINE))
-                        return false;
-                    if (city.getBuilding(Buildings.GAS_REFINERY) > city.getBuilding(Buildings.OIL_WELL))
-                        return false;
-                    if (city.getBuilding(Buildings.ALUMINUM_REFINERY) > city.getBuilding(Buildings.BAUXITE_MINE))
-                        return false;
-                    if (city.getBuilding(Buildings.STEEL_MILL) > city.getBuilding(Buildings.COAL_MINE) || city.getBuilding(Buildings.STEEL_MILL) > city.getBuilding(Buildings.IRON_MINE))
-                        return false;
-                    return true;
-                }
-                return false;
-            };
-        }
-        if (steel != null) {
-            int steelFinal = steel;
-            Predicate<INationCity> parent = goal;
-            goal = city -> {
-                if (parent.test(city)) {
-                    if (city.getBuilding(Buildings.STEEL_MILL) < steelFinal) return false;
-                    return true;
-                }
-                return false;
-            };
-        }
-        if (gasoline != null) {
-            int gasolineFinal = gasoline;
-            Predicate<INationCity> parent = goal;
-            goal = city -> {
-                if (parent.test(city)) {
-                    if (city.getBuilding(Buildings.GAS_REFINERY) < gasolineFinal) return false;
-                    return true;
-                }
-                return false;
-            };
-        }
-        if (munitions != null) {
-            int munitionsFinal = munitions;
-            Predicate<INationCity> parent = goal;
-            goal = city -> {
-                if (parent.test(city)) {
-                    if (city.getBuilding(Buildings.MUNITIONS_FACTORY) < munitionsFinal) return false;
-                    return true;
-                }
-                return false;
-            };
-        }
-        if (aluminum != null) {
-            int aluminumFinal = aluminum;
-            Predicate<INationCity> parent = goal;
-            goal = city -> {
-                if (parent.test(city)) {
-                    if (city.getBuilding(Buildings.ALUMINUM_REFINERY) < aluminumFinal) return false;
-                    return true;
-                }
-                return false;
-            };
-        }
-
-        if (diseaseLimit != null) {
-            Double finalDiseaseLimit = diseaseLimit;
-
-            double hospitalPct = hasProject.test(Projects.CLINICAL_RESEARCH_CENTER) ? 3.5 : 2.5;
-            double recyclingPct = (-Buildings.RECYCLING_CENTER.pollution(hasProject)) * 0.05;
-            double subwayPct = (-Buildings.SUBWAY.pollution(hasProject)) * 0.05;
-
-            ToDoubleFunction<INationCity> parent = valueFunc;
-            valueFunc = city -> {
-                Double disease = city.calcDisease(hasProject);
-                if (disease > finalDiseaseLimit) {
-
-                    int remainingSlots = city.getFreeSlots();
-                    if (remainingSlots == 0) return Double.NEGATIVE_INFINITY;
-
-                    int latestBuilding = 0;
-                    for (int j = Buildings.SUBWAY.ordinal(); j <= Buildings.RECYCLING_CENTER.ordinal(); j++) {
-                        if (city.getBuildingOrdinal(j) > 0) latestBuilding = j;
-                    }
-
-                    double pollutionDisease = city.calcPollution(hasProject) * 0.05;
-                    double diseaseInfra = disease - pollutionDisease;
-
-                    if (latestBuilding <= Buildings.RECYCLING_CENTER.ordinal()) {
-                        int amt = (int) Math.min(Math.ceil(pollutionDisease / recyclingPct), Math.min(Buildings.RECYCLING_CENTER.cap(hasProject), remainingSlots));
-                        if (amt > 0) {
-                            pollutionDisease = Math.max(0, pollutionDisease - recyclingPct * amt);
-                            double reduced = pollutionDisease + diseaseInfra;
-                            if (reduced <= finalDiseaseLimit) return parent.applyAsDouble(city);
-                            remainingSlots -= amt;
-                            if (remainingSlots <= 0) return Double.NEGATIVE_INFINITY;
-                        }
-                    }
-
-                    if (latestBuilding <= Buildings.HOSPITAL.ordinal()) {
-                        int amt = Math.min(Buildings.HOSPITAL.cap(hasProject), remainingSlots);
-                        if (amt > 0) {
-                            diseaseInfra -= hospitalPct * amt;
-                            double reduced = pollutionDisease + diseaseInfra;
-                            if (reduced <= finalDiseaseLimit) return parent.applyAsDouble(city);
-                            remainingSlots -= amt;
-                            if (remainingSlots <= 0) return Double.NEGATIVE_INFINITY;
-                        }
-                    }
-
-                    if (latestBuilding <= Buildings.RECYCLING_CENTER.ordinal()) {
-                        int amt = (int) Math.min(Math.ceil(pollutionDisease / subwayPct), Math.min(Buildings.SUBWAY.cap(hasProject), remainingSlots));
-                        if (amt > 0) {
-                            pollutionDisease = Math.max(0, pollutionDisease - subwayPct * amt);
-                            double reduced = pollutionDisease + diseaseInfra;
-                            if (reduced <= finalDiseaseLimit) return parent.applyAsDouble(city);
-                        }
-                    }
-
-                    return Double.NEGATIVE_INFINITY;
-                }
-                return parent.applyAsDouble(city);
-            };
-        }
-
-        if (crimeLimit != null) {
-            double policePct = hasProject.test(Projects.SPECIALIZED_POLICE_TRAINING_PROGRAM) ? 3.5 : 2.5;
-            int max = Buildings.POLICE_STATION.cap(hasProject);
-            Double finalCrimeLimit = crimeLimit;
-
+        final boolean requireCrimeConstraint = crimeLimit != null;
+        final double finalCrimeLimit = requireCrimeConstraint ? crimeLimit : Double.NaN;
+        final double policePct = requireCrimeConstraint && hasProject.test(Projects.SPECIALIZED_POLICE_TRAINING_PROGRAM) ? 3.5 : 2.5;
+        final int maxPolice = requireCrimeConstraint ? Buildings.POLICE_STATION.cap(hasProject) : 0;
+        final int policeTailDiff;
+        if (requireCrimeConstraint) {
             int maxIndex = PW.City.Building.SIZE - 1;
             int policeIndex = Buildings.POLICE_STATION.ordinal();
-            int diff = maxIndex - policeIndex;
-
-            ToDoubleFunction<INationCity> parent = valueFunc;
-            valueFunc = city -> {
-                double crime = city.calcCrime(hasProject);
-                if (crime > finalCrimeLimit) {
-                    int remainingSlots = city.getFreeSlots();
-                    if (remainingSlots == 0) return Double.NEGATIVE_INFINITY;
-                    int currentPolice = city.getBuilding(Buildings.POLICE_STATION);
-                    if (currentPolice >= max) return Double.NEGATIVE_INFINITY;
-                    double reduced = crime - Math.min(max - currentPolice, remainingSlots) * policePct;
-                    if (reduced > crime) return Double.NEGATIVE_INFINITY;
-                    if (city instanceof CityNode node) {
-                        int index = node.getIndex();
-                        int cachedMaxIndex = node.getCached().getMaxIndex() - 1;
-                        if (index > cachedMaxIndex - diff) {
-                            return Double.NEGATIVE_INFINITY;
-                        }
-                    } else {
-                        return Double.NEGATIVE_INFINITY;
-                    }
-                }
-                return parent.applyAsDouble(city);
-            };
+            policeTailDiff = maxIndex - policeIndex;
+        } else {
+            policeTailDiff = 0;
         }
 
-        if (positiveCash) {
-            Predicate<INationCity> parentGoal = goal;
-            double[] profitBuffer = new double[ResourceType.values.length];
-            double upkeepCash = 0;
+        final double finalMinPopulationThreshold = minPopulationThreshold;
+        final ToDoubleFunction<INationCity> valueFunc = city -> {
+            if (finalMinPopulationThreshold > Double.NEGATIVE_INFINITY && city.calcPopulation(hasProject) < finalMinPopulationThreshold) {
+                return Double.NEGATIVE_INFINITY;
+            }
+            if (requireDiseaseConstraint && !passesDiseaseConstraint(city, hasProject, finalDiseaseLimit, hospitalPct, recyclingPct, subwayPct)) {
+                return Double.NEGATIVE_INFINITY;
+            }
+            if (requireCrimeConstraint && !passesCrimeConstraint(city, hasProject, finalCrimeLimit, policePct, maxPolice, policeTailDiff)) {
+                return Double.NEGATIVE_INFINITY;
+            }
+            return baseValueFunc.applyAsDouble(city);
+        };
+
+        final int requiredSteel = steel == null ? -1 : steel;
+        final int requiredGasoline = gasoline == null ? -1 : gasoline;
+        final int requiredMunitions = munitions == null ? -1 : munitions;
+        final int requiredAluminum = aluminum == null ? -1 : aluminum;
+        final boolean requireRawParity = !manu;
+
+        final boolean requirePositiveCash = positiveCash;
+        final double[] profitBuffer = requirePositiveCash ? new double[ResourceType.values.length] : null;
+        double upkeepCash = 0;
+        if (requirePositiveCash) {
             for (MilitaryUnit unit : MilitaryUnit.values) {
                 MilitaryBuilding building = unit.getBuilding();
                 if (building == null) continue;
@@ -569,18 +439,35 @@ public class OptimalBuild extends Command {
                 double[] upkeep = unit.addUpkeep(ResourceType.getBuffer(), amt, true, f -> finalMe.getResearch(null, f), finalMe.getMilitaryUpkeepFactor());
                 upkeepCash += upkeep[0];
             }
-            double finalUpkeepCash = upkeepCash;
-            goal = city -> {
-                if (parentGoal.test(city)) {
-                    Arrays.fill(profitBuffer, 0);
-                    city.getProfit(profitBuffer);
-                    profitBuffer[0] += 500000d / numCities;
-                    profitBuffer[0] -= finalUpkeepCash;
-                    return !(profitBuffer[0] < 0);
-                }
-                return false;
-            };
         }
+        final double finalUpkeepCash = upkeepCash;
+
+        final Predicate<INationCity> goal = city -> {
+            if (city.getFreeSlots() > 0) {
+                return false;
+            }
+            if (requireRawParity) {
+                if (city.getBuilding(Buildings.MUNITIONS_FACTORY) > city.getBuilding(Buildings.LEAD_MINE)) return false;
+                if (city.getBuilding(Buildings.GAS_REFINERY) > city.getBuilding(Buildings.OIL_WELL)) return false;
+                if (city.getBuilding(Buildings.ALUMINUM_REFINERY) > city.getBuilding(Buildings.BAUXITE_MINE)) return false;
+                if (city.getBuilding(Buildings.STEEL_MILL) > city.getBuilding(Buildings.COAL_MINE)
+                        || city.getBuilding(Buildings.STEEL_MILL) > city.getBuilding(Buildings.IRON_MINE)) return false;
+            }
+            if (requiredSteel >= 0 && city.getBuilding(Buildings.STEEL_MILL) < requiredSteel) return false;
+            if (requiredGasoline >= 0 && city.getBuilding(Buildings.GAS_REFINERY) < requiredGasoline) return false;
+            if (requiredMunitions >= 0 && city.getBuilding(Buildings.MUNITIONS_FACTORY) < requiredMunitions) return false;
+            if (requiredAluminum >= 0 && city.getBuilding(Buildings.ALUMINUM_REFINERY) < requiredAluminum) return false;
+            if (requirePositiveCash) {
+                Arrays.fill(profitBuffer, 0);
+                city.getProfit(profitBuffer);
+                profitBuffer[0] += 500000d / numCities;
+                profitBuffer[0] -= finalUpkeepCash;
+                if (profitBuffer[0] < 0) {
+                    return false;
+                }
+            }
+            return true;
+        };
 
         JavaCity optimized;
         if (days == null) {
@@ -648,6 +535,110 @@ public class OptimalBuild extends Command {
         io.create().embed(title, result.toString()).commandButton(command, emoji).send();
 //        DiscordUtil.createEmbedCommand(channel, title, result.toString(), emoji, command);
         return null;
+    }
+
+    private static boolean passesDiseaseConstraint(
+            INationCity city,
+            Predicate<Project> hasProject,
+            double diseaseLimit,
+            double hospitalPct,
+            double recyclingPct,
+            double subwayPct
+    ) {
+        double disease = city.calcDisease(hasProject);
+        if (disease <= diseaseLimit) {
+            return true;
+        }
+
+        int remainingSlots = city.getFreeSlots();
+        if (remainingSlots == 0) {
+            return false;
+        }
+
+        int latestBuilding = 0;
+        for (int j = Buildings.SUBWAY.ordinal(); j <= Buildings.RECYCLING_CENTER.ordinal(); j++) {
+            if (city.getBuildingOrdinal(j) > 0) {
+                latestBuilding = j;
+            }
+        }
+
+        double pollutionDisease = city.calcPollution(hasProject) * 0.05;
+        double diseaseInfra = disease - pollutionDisease;
+
+        if (latestBuilding <= Buildings.RECYCLING_CENTER.ordinal()) {
+            int amt = (int) Math.min(Math.ceil(pollutionDisease / recyclingPct), Math.min(Buildings.RECYCLING_CENTER.cap(hasProject), remainingSlots));
+            if (amt > 0) {
+                pollutionDisease = Math.max(0, pollutionDisease - recyclingPct * amt);
+                if (pollutionDisease + diseaseInfra <= diseaseLimit) {
+                    return true;
+                }
+                remainingSlots -= amt;
+                if (remainingSlots <= 0) {
+                    return false;
+                }
+            }
+        }
+
+        if (latestBuilding <= Buildings.HOSPITAL.ordinal()) {
+            int amt = Math.min(Buildings.HOSPITAL.cap(hasProject), remainingSlots);
+            if (amt > 0) {
+                diseaseInfra -= hospitalPct * amt;
+                if (pollutionDisease + diseaseInfra <= diseaseLimit) {
+                    return true;
+                }
+                remainingSlots -= amt;
+                if (remainingSlots <= 0) {
+                    return false;
+                }
+            }
+        }
+
+        if (latestBuilding <= Buildings.RECYCLING_CENTER.ordinal()) {
+            int amt = (int) Math.min(Math.ceil(pollutionDisease / subwayPct), Math.min(Buildings.SUBWAY.cap(hasProject), remainingSlots));
+            if (amt > 0) {
+                pollutionDisease = Math.max(0, pollutionDisease - subwayPct * amt);
+                return pollutionDisease + diseaseInfra <= diseaseLimit;
+            }
+        }
+
+        return false;
+    }
+
+    private static boolean passesCrimeConstraint(
+            INationCity city,
+            Predicate<Project> hasProject,
+            double crimeLimit,
+            double policePct,
+            int maxPolice,
+            int policeTailDiff
+    ) {
+        double crime = city.calcCrime(hasProject);
+        if (crime <= crimeLimit) {
+            return true;
+        }
+
+        int remainingSlots = city.getFreeSlots();
+        if (remainingSlots == 0) {
+            return false;
+        }
+
+        int currentPolice = city.getBuilding(Buildings.POLICE_STATION);
+        if (currentPolice >= maxPolice) {
+            return false;
+        }
+
+        double reduced = crime - Math.min(maxPolice - currentPolice, remainingSlots) * policePct;
+        if (reduced > crime) {
+            return false;
+        }
+
+        if (!(city instanceof CityNode node)) {
+            return false;
+        }
+
+        int index = node.getIndex();
+        int cachedMaxIndex = node.getCached().getMaxIndex() - 1;
+        return index <= cachedMaxIndex - policeTailDiff;
     }
 
     private void checkup(IMessageIO io, DBNation me, int cityId, JavaCity city) {
