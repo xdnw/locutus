@@ -555,7 +555,12 @@ public class JavaCity implements IMutableCity {
         CityNode.CachedCity cached = new CityNode.CachedCity(this, continent, selfSufficient, hasProject, numCities, grossModifier, rads, infraLow);
         CityBranch searchServices = new CityBranch(cached);
         CityNode optimized = searchServices.toOptimal(valueFunction, goal, timeout);
+        long start = System.currentTimeMillis();
         INationCity best = !checkBest ? null : findBest(continent, numCities, valueFunction, goal, hasProject, rads, grossModifier, infraLow);
+        long diff = System.currentTimeMillis() - start;
+        if (diff > 100) {
+            System.out.println("Finding best took " + diff + "ms");
+        }
         if (best != null && (optimized == null || valueFunction.applyAsDouble(best) > valueFunction.applyAsDouble(optimized))) {
             System.out.println("Best was better than optimized: " + valueFunction.applyAsDouble(best) + " vs " + (optimized == null ? "null" : valueFunction.applyAsDouble(optimized)) + " | prior city json was: " + (optimized == null ? "null" : optimized.toJson(false)));
             return new JavaCity(best);
