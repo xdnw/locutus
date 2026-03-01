@@ -268,8 +268,8 @@ public class TradeDB extends DBMainV2 {
         double[] currentMargins = new double[types.size()];
         for (int i = 0; i < types.size(); i++) {
             ResourceType type = types.get(i);
-            double high = Locutus.imp().getTradeManager().getHighAvg(type);
-            double low = Locutus.imp().getTradeManager().getLowAvg(type);
+            double high = ResourceType.getCachedHighPrice(type);
+            double low = ResourceType.getCachedLowPrice(type);
             if (high < 0 || low < 0) continue; // skip negative values
             double margin = high - low;
             if (percent) margin = 100 * margin / high;
@@ -566,8 +566,8 @@ public class TradeDB extends DBMainV2 {
                     rssMin = ppu;
                     rssMax = ppu;
                 } else {
-                    rssMin = Locutus.imp().getTradeManager().getLowAvg(tradeFor);
-                    rssMax = Locutus.imp().getTradeManager().getHighAvg(tradeFor);
+                    rssMin = ResourceType.getCachedLowPrice(tradeFor);
+                    rssMax = ResourceType.getCachedHighPrice(tradeFor);
                     if (rssMin > rssMax) rssMin = rssMax;
                     if (rssMax < rssMin) rssMax = rssMin;
                 }
@@ -578,8 +578,8 @@ public class TradeDB extends DBMainV2 {
                 return new KeyValue<>(min, max);
             }
 
-            double cashMin = minPPU > 0 ? minPPU : Locutus.imp().getTradeManager().getLowAvg(getResource());
-            double cashMax = maxPPU > 0 ? maxPPU : Locutus.imp().getTradeManager().getHighAvg(getResource());
+            double cashMin = minPPU > 0 ? minPPU : ResourceType.getCachedLowPrice(getResource());
+            double cashMax = maxPPU > 0 ? maxPPU : ResourceType.getCachedHighPrice(getResource());
             if (cashMin > cashMax) cashMin = cashMax;
             if (cashMax < cashMin) cashMax = cashMin;
             return new KeyValue<>(cashMin, cashMax);
@@ -829,8 +829,8 @@ public class TradeDB extends DBMainV2 {
             } else if (maxPPU > 0) {
                 ppuRange = "<" + MathMan.format(maxPPU);
             } else {
-                String low = MathMan.format(Locutus.imp().getTradeManager().getLowAvg(getResource()));
-                String high = MathMan.format(Locutus.imp().getTradeManager().getHighAvg(getResource()));
+                String low = MathMan.format(ResourceType.getCachedLowPrice(getResource()));
+                String high = MathMan.format(ResourceType.getCachedHighPrice(getResource()));
                 if (compact) {
                     ppuRange = "~" + low + "-" + high;
                 } else {

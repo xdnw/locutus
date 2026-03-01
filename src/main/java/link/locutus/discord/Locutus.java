@@ -463,7 +463,7 @@ public final class Locutus extends ListenerAdapter {
         return loader.getSlashCommandManager();
     }
 
-    public static Locutus imp() {
+    public static final Locutus imp() {
         return INSTANCE;
     }
 

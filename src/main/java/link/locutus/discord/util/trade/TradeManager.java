@@ -56,9 +56,6 @@ import java.util.stream.Collectors;
 public class TradeManager {
 
     private int[] low, high;
-    private double[] highAvg;
-    private double[] lowAvg;
-
     private double[] gameAvg;
     private long gameAvgUpdated = -1;
     private final TradeDB tradeDb;
@@ -66,6 +63,8 @@ public class TradeManager {
     private Map<Integer, DBTrade> activeTradesById = new ConcurrentHashMap<>();
 
     private Map<ResourceType, Queue<TradeDB.BulkTradeOffer>> offersByResource = new ConcurrentHashMap<>();
+    private volatile boolean loaded = false;
+    private volatile boolean updateAvg = false;
 
     public TradeManager() throws SQLException, ClassNotFoundException {
         this.tradeDb = new TradeDB();
@@ -215,16 +214,6 @@ public class TradeManager {
         return deleted;
     }
 
-//    private void addBulkOffer(TradeDB.BulkTradeOffer offer) {}
-//
-//    public void loadBulkOffers() {
-//        List<TradeDB.BulkTradeOffer> offers = tradeDb.getMarketOffers();
-//        // iterate offers and add to offersByResource
-//        for (TradeDB.BulkTradeOffer offer : offers) {
-//            addBulkOffer(offer, false);
-//        }
-//    }
-
     private void updateLowHighCache() {
         int[] lowTmp = new int[ResourceType.values.length];
         int[] highTmp = new int[ResourceType.values.length];
@@ -242,14 +231,6 @@ public class TradeManager {
 
         low = lowTmp;
         high = highTmp;
-
-        double[] lowSpot = new double[lowTmp.length];
-        double[] highSpot = new double[highTmp.length];
-        for (int i = 0; i < lowTmp.length; i++) {
-            lowSpot[i] = lowTmp[i] > 0 ? lowTmp[i] : 0;
-            highSpot[i] = highTmp[i] != Integer.MAX_VALUE && highTmp[i] > 0 ? highTmp[i] : 0;
-        }
-        ResourceType.updateCachedMarketPrices(lowSpot, highSpot);
     }
 
     private void loadActiveTrades() {
@@ -257,16 +238,94 @@ public class TradeManager {
         updateLowHighCache();
     }
 
+    private static final class AverageComputation {
+        private final Map<ResourceType, Double> lowMap;
+        private final Map<ResourceType, Double> highMap;
+        private final int[] buyCountByResource;
+        private final int[] sellCountByResource;
+
+        private AverageComputation(Map<ResourceType, Double> lowMap,
+                                   Map<ResourceType, Double> highMap,
+                                   int[] buyCountByResource,
+                                   int[] sellCountByResource) {
+            this.lowMap = lowMap;
+            this.highMap = highMap;
+            this.buyCountByResource = buyCountByResource;
+            this.sellCountByResource = sellCountByResource;
+        }
+    }
+
+    private static final class AverageAccumulator {
+        private final long[][] ppuHigh;
+        private final long[][] ppuLow;
+        private final int[] ppuWindowLow;
+        private final int[] buyCountByResource;
+        private final int[] sellCountByResource;
+
+        private AverageAccumulator(long[][] ppuHigh,
+                                   long[][] ppuLow,
+                                   int[] ppuWindowLow,
+                                   int[] buyCountByResource,
+                                   int[] sellCountByResource) {
+            this.ppuHigh = ppuHigh;
+            this.ppuLow = ppuLow;
+            this.ppuWindowLow = ppuWindowLow;
+            this.buyCountByResource = buyCountByResource;
+            this.sellCountByResource = sellCountByResource;
+        }
+    }
+
+    private int getAverageMinPpu(ResourceType type) {
+        switch (type) {
+            default:
+            case CREDITS:
+                return -1;
+            case FOOD:
+                return 30;
+            case COAL:
+            case OIL:
+            case URANIUM:
+            case LEAD:
+            case IRON:
+            case BAUXITE:
+            case GASOLINE:
+            case MUNITIONS:
+            case STEEL:
+            case ALUMINUM:
+                return 1000;
+        }
+    }
+
+    private int getAverageMaxPpu(ResourceType type) {
+        switch (type) {
+            default:
+            case CREDITS:
+                return -1;
+            case FOOD:
+                return 5000;
+            case COAL:
+            case OIL:
+            case URANIUM:
+            case LEAD:
+            case IRON:
+            case BAUXITE:
+            case GASOLINE:
+            case MUNITIONS:
+            case STEEL:
+            case ALUMINUM:
+                return 10000;
+        }
+    }
+
     public synchronized TradeManager load() {
-        if (lowAvg != null) return this;
+        if (loaded) return this;
+        loaded = true;
         long cutOff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7);
         List<DBTrade> trades = getTradeDb().getTrades(cutOff);
         if (trades.isEmpty()) {
             if (low == null) low = new int[ResourceType.values.length];
             if (high == null) high = new int[ResourceType.values.length];
-            lowAvg = new double[ResourceType.values.length];
-            highAvg = new double[ResourceType.values.length];
-
+            updateAvg = true;
             if (Settings.INSTANCE.TASKS.COMPLETED_TRADES_SECONDS > 0) {
                 try {
                     updateTradeList(null);
@@ -275,69 +334,8 @@ public class TradeManager {
                 }
             }
         } else {
-            int[] buyPerRss = new int[ResourceType.values.length];
-            int[] sellPerRss = new int[ResourceType.values.length];
-            for (DBTrade trade : trades) {
-                if (trade.isBuy()) {
-                    buyPerRss[trade.getResource().ordinal()]++;
-                } else {
-                    sellPerRss[trade.getResource().ordinal()]++;
-                }
-            }
-            Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> averages = getAverage(trades);
-            lowAvg = ResourceType.resourcesToArray(averages.getKey());
-            highAvg = ResourceType.resourcesToArray(averages.getValue());
-            // reset lowAvg and highAvg for resources with less than 10 trades
-            for (ResourceType type : ResourceType.values) {
-                if (type == ResourceType.MONEY || type == ResourceType.CREDITS) continue;
-                int i = type.ordinal();
-                if (buyPerRss[i] < 10 || sellPerRss[i] < 10) {
-                    lowAvg[i] = 0;
-                    highAvg[i] = 0;
-                }
-            }
+            updateCachedWeeklyAverages(trades, cutOff);
         }
-
-        Map<ResourceType, Integer> initDefaults = new EnumMap<>(ResourceType.class);
-        initDefaults.put(ResourceType.MONEY, 1);
-        initDefaults.put(ResourceType.CREDITS, 50_000_000);
-        if (Settings.INSTANCE.TEST && false) {
-            initDefaults.put(ResourceType.FOOD, 10);
-            initDefaults.put(ResourceType.COAL, 25);
-            initDefaults.put(ResourceType.OIL, 25);
-            initDefaults.put(ResourceType.URANIUM, 25);
-            initDefaults.put(ResourceType.LEAD, 25);
-            initDefaults.put(ResourceType.IRON, 25);
-            initDefaults.put(ResourceType.BAUXITE, 25);
-            initDefaults.put(ResourceType.GASOLINE, 150);
-            initDefaults.put(ResourceType.MUNITIONS, 100);
-            initDefaults.put(ResourceType.STEEL, 200);
-            initDefaults.put(ResourceType.ALUMINUM, 100);
-        } else {
-            initDefaults.put(ResourceType.FOOD, 100);
-            initDefaults.put(ResourceType.COAL, 3800);
-            initDefaults.put(ResourceType.OIL, 3700);
-            initDefaults.put(ResourceType.URANIUM, 3250);
-            initDefaults.put(ResourceType.LEAD, 4100);
-            initDefaults.put(ResourceType.IRON, 3900);
-            initDefaults.put(ResourceType.BAUXITE, 3800);
-            initDefaults.put(ResourceType.GASOLINE, 3150);
-            initDefaults.put(ResourceType.MUNITIONS, 1850);
-            initDefaults.put(ResourceType.STEEL, 3800);
-            initDefaults.put(ResourceType.ALUMINUM, 2650);
-        }
-        for (ResourceType type : ResourceType.values) {
-            int def = initDefaults.getOrDefault(type, 3000);
-            if (lowAvg[type.ordinal()] <= 0) lowAvg[type.ordinal()] = def;
-            if (highAvg[type.ordinal()] <= 0) highAvg[type.ordinal()] = def;
-        }
-
-        lowAvg[0] = 1;
-        lowAvg[ResourceType.CREDITS.ordinal()] = 50_000_000;
-        highAvg[0] = 1;
-        highAvg[ResourceType.CREDITS.ordinal()] = 50_000_000;
-
-        ResourceType.updateCachedMarketPrices(lowAvg, highAvg);
 
         loadActiveTrades();
         return this;
@@ -374,55 +372,15 @@ public class TradeManager {
 
     public Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> getAverage(long cutOff) {
         List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(cutOff);
-        return getAverage(trades);
+        return getAverage(trades, cutOff);
     }
 
     public Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> getAverage(List<DBTrade> trades) {
-        return getAverage(trades, new Function<ResourceType, Integer>() {
-            @Override
-            public Integer apply(ResourceType type) {
-                switch (type) {
-                    default:
-                    case CREDITS:
-                        return -1;
-                    case FOOD:
-                        return 30;
-                    case COAL:
-                    case OIL:
-                    case URANIUM:
-                    case LEAD:
-                    case IRON:
-                    case BAUXITE:
-                    case GASOLINE:
-                    case MUNITIONS:
-                    case STEEL:
-                    case ALUMINUM:
-                        return 1000;
-                }
-            }
-        }, new Function<ResourceType, Integer>() {
-            @Override
-            public Integer apply(ResourceType type) {
-                switch (type) {
-                    default:
-                    case CREDITS:
-                        return -1;
-                    case FOOD:
-                        return 5000;
-                    case COAL:
-                    case OIL:
-                    case URANIUM:
-                    case LEAD:
-                    case IRON:
-                    case BAUXITE:
-                    case GASOLINE:
-                    case MUNITIONS:
-                    case STEEL:
-                    case ALUMINUM:
-                        return 10000;
-                }
-            }
-        });
+        return getAverage(trades, 0);
+    }
+
+    public Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> getAverage(List<DBTrade> trades, long cutOff) {
+        return getAverage(trades, cutOff, this::getAverageMinPpu, this::getAverageMaxPpu);
     }
 
     public static boolean isValidPPU(ResourceType type, int price) {
@@ -433,9 +391,28 @@ public class TradeManager {
     }
 
     public Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> getAverage(List<DBTrade> trades, Function<ResourceType, Integer> minF, Function<ResourceType, Integer> maxF) {
+        return getAverage(trades, 0, minF, maxF);
+    }
+
+    public Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> getAverage(List<DBTrade> trades, long cutOff, Function<ResourceType, Integer> minF, Function<ResourceType, Integer> maxF) {
+        AverageComputation computation = computeAverage(trades, cutOff, minF, maxF);
+        return new KeyValue<>(computation.lowMap, computation.highMap);
+    }
+
+    private AverageComputation computeAverage(Iterable<DBTrade> trades, long cutOff, Function<ResourceType, Integer> minF, Function<ResourceType, Integer> maxF) {
+        AverageAccumulator accumulator = newAverageAccumulator(minF, maxF);
+        for (DBTrade offer : trades) {
+            addTradeToAverage(accumulator, offer, cutOff);
+        }
+        return toAverageComputation(accumulator);
+    }
+
+    private AverageAccumulator newAverageAccumulator(Function<ResourceType, Integer> minF, Function<ResourceType, Integer> maxF) {
         long[][] ppuHigh = new long[ResourceType.values.length][];
         long[][] ppuLow = new long[ResourceType.values.length][];
         int[] ppuWindowLow = new int[ResourceType.values.length];
+        int[] buyCountByResource = new int[ResourceType.values.length];
+        int[] sellCountByResource = new int[ResourceType.values.length];
 
         for (int i = 0; i < ResourceType.values.length; i++) {
             ResourceType type = ResourceType.values[i];
@@ -456,40 +433,50 @@ public class TradeManager {
             ppuLow[i] = new long[len];
         }
 
-        for (DBTrade offer : trades) {
-            ResourceType type = offer.getResource();
-            if (!isValidPPU(type, offer.getPpu())) {
-                continue;
-            }
-            long[] ppuArr;
-            if (offer.isBuy()) {
-                ppuArr = ppuLow[type.ordinal()];
-            } else {
-                ppuArr = ppuHigh[type.ordinal()];
-            }
-            int min = ppuWindowLow[type.ordinal()];
-            if (min == -1) {
-                ppuArr[0] += offer.getQuantity();
-                ppuArr[1] += offer.getPpu() * (long) offer.getQuantity();
-            } else {
-                int arrI = offer.getPpu() - min;
-                if (arrI >= 0 && arrI < ppuArr.length) {
-                    ppuArr[arrI] += offer.getQuantity();
-                }
-            }
+        return new AverageAccumulator(ppuHigh, ppuLow, ppuWindowLow, buyCountByResource, sellCountByResource);
+    }
+
+    private void addTradeToAverage(AverageAccumulator accumulator, DBTrade offer, long cutOff) {
+        if (cutOff > 0 && offer.getDate() < cutOff) {
+            return;
         }
+        ResourceType type = offer.getResource();
+        if (!isValidPPU(type, offer.getPpu())) {
+            return;
+        }
+        long[] ppuArr;
+        if (offer.isBuy()) {
+            ppuArr = accumulator.ppuLow[type.ordinal()];
+            accumulator.buyCountByResource[type.ordinal()]++;
+        } else {
+            ppuArr = accumulator.ppuHigh[type.ordinal()];
+            accumulator.sellCountByResource[type.ordinal()]++;
+        }
+        int min = accumulator.ppuWindowLow[type.ordinal()];
+        if (min == -1) {
+            ppuArr[0] += offer.getQuantity();
+            ppuArr[1] += offer.getPpu() * (long) offer.getQuantity();
+            return;
+        }
+        int arrI = offer.getPpu() - min;
+        if (arrI >= 0 && arrI < ppuArr.length) {
+            ppuArr[arrI] += offer.getQuantity();
+        }
+    }
+
+    private AverageComputation toAverageComputation(AverageAccumulator accumulator) {
         Map<ResourceType, Double> lowMap = new ConcurrentHashMap<>();
         Map<ResourceType, Double> highMap = new ConcurrentHashMap<>();
         for (ResourceType type : ResourceType.values) {
             if (type == ResourceType.MONEY) continue;
             int i = type.ordinal();
-            int min = ppuWindowLow[type.ordinal()];
-            long[] lowArr = ppuLow[i];
-            long[] highArr = ppuHigh[i];
+            int min = accumulator.ppuWindowLow[type.ordinal()];
+            long[] lowArr = accumulator.ppuLow[i];
+            long[] highArr = accumulator.ppuHigh[i];
             double low,high;
             if (min == -1) {
-                low = lowArr[1] / (double) lowArr[0];
-                high = lowArr[1] / (double) lowArr[0];
+                low = lowArr[0] == 0 ? 0 : lowArr[1] / (double) lowArr[0];
+                high = highArr[0] == 0 ? 0 : highArr[1] / (double) highArr[0];
             } else {
                 low = min + ArrayUtil.getMedian(lowArr);
                 high = min + ArrayUtil.getMedian(highArr);
@@ -498,8 +485,36 @@ public class TradeManager {
             highMap.put(type, high);
         }
 
-        return new KeyValue<>(lowMap, highMap);
+        return new AverageComputation(lowMap, highMap, accumulator.buyCountByResource, accumulator.sellCountByResource);
+    }
 
+    private void updateCachedWeeklyAverages(Iterable<DBTrade> trades, long cutOff) {
+        AverageComputation computation = computeAverage(trades, cutOff, this::getAverageMinPpu, this::getAverageMaxPpu);
+        double[] lowAvg = ResourceType.resourcesToArray(computation.lowMap);
+        double[] highAvg = ResourceType.resourcesToArray(computation.highMap);
+        for (ResourceType type : ResourceType.values) {
+            if (type == ResourceType.MONEY || type == ResourceType.CREDITS) continue;
+            int i = type.ordinal();
+            if (computation.buyCountByResource[i] < 10 || computation.sellCountByResource[i] < 10) {
+                lowAvg[i] = 0;
+                highAvg[i] = 0;
+            }
+        }
+        ResourceType.updateCachedMarketPrices(lowAvg, highAvg);
+    }
+
+    private void updateCachedWeeklyAverages(AverageComputation computation) {
+        double[] lowAvg = ResourceType.resourcesToArray(computation.lowMap);
+        double[] highAvg = ResourceType.resourcesToArray(computation.highMap);
+        for (ResourceType type : ResourceType.values) {
+            if (type == ResourceType.MONEY || type == ResourceType.CREDITS) continue;
+            int i = type.ordinal();
+            if (computation.buyCountByResource[i] < 10 || computation.sellCountByResource[i] < 10) {
+                lowAvg[i] = 0;
+                highAvg[i] = 0;
+            }
+        }
+        ResourceType.updateCachedMarketPrices(lowAvg, highAvg);
     }
 
     public Map<Integer, double[]> inflows(Collection<Transfer> transfers) {
@@ -658,63 +673,6 @@ public class TradeManager {
             result.put(entry.getKey(), entry.getValue().longValue());
         }
         return ArrayUtil.sortMapKeys(result, true);
-//        Map<Long, Long> result = TimeUtil.runDayTask("vmap." + type.ordinal(), new Function<Long, Map<Long, Long>>() {
-//            @Override
-//            public Map<Long, Long> apply(Long aLong) {
-//                try {
-//                    String url = "" + Settings.PNW_URL() + "/world-graphs/graphID=%s";
-//                    String html = FileUtil.readStringFromURL(PagePriority.WORLD_GRAPHS, String.format(url, type.getGraphId()));
-//
-//                    String var = String.format("total_%s_over_time_Trace1", type.name().toLowerCase());
-//                    int varI = html.indexOf(var);
-//                    int start = html.indexOf("{", varI);
-//                    int end = StringMan.findMatchingBracket(html, start);
-//                    String json = html.substring(start, end + 1);
-//                    JsonParser jsonParser = new JsonParser();
-//
-//                    JsonObject data = jsonParser.parse(json).getAsJsonObject();
-//                    JsonArray dates = data.getAsJsonArray("x");
-//                    JsonArray totals = data.getAsJsonArray("y");
-//
-//                    Map<Long, Long> result = new Long2LongLinkedOpenHashMap();
-//
-//
-//
-//                    for (int i = 0; i < totals.size(); i++) {
-//                        long volume = Long.parseLong(totals.get(i).getAsString());
-//                        long date = TimeUtil.parseDate(TimeUtil.YYYY_MM_DD_HH_MM_SS, dates.get(i).getAsString());
-//                        result.put(date, volume);
-//                    }
-//
-//                    // save
-//                    {
-//                        long[] resultArr = new long[result.size() * 2];
-//                        int i = 0;
-//                        for (Map.Entry<Long, Long> entry : result.entrySet()) {
-//                            resultArr[i] = entry.getKey();
-//                            resultArr[i + result.size()] = entry.getValue();
-//                            i++;
-//                        }
-//                        byte[] array = ArrayUtil.toByteArray(resultArr);
-//                        Locutus.imp().getDiscordDB().setInfo(DiscordMeta.RESOURCE_VOLUME_TYPE, type.ordinal(), array);
-//                    }
-//
-//                    return result;
-//                } catch (IOException | ParseException e) {
-//                    throw new RuntimeException(e);
-//                }
-//            }
-//        });
-//        if (result == null) {
-//            ByteBuffer data = Locutus.imp().getDiscordDB().getInfo(DiscordMeta.RESOURCE_VOLUME_TYPE, type.ordinal());
-//            long[] resultArr = ArrayUtil.toLongArray(data.array());
-//            result = new Long2LongLinkedOpenHashMap();
-//            int len2 = resultArr.length / 2;
-//            for (int i = 0; i < len2; i++) {
-//                result.put(resultArr[i], resultArr[i + len2]);
-//            }
-//        }
-//        return result;
     }
 
     public long[] getVolumeHistory(ResourceType type) {
@@ -738,13 +696,6 @@ public class TradeManager {
         return low[type.ordinal()];
     }
 
-    public double getHighAvg(ResourceType type) {
-        return highAvg[type.ordinal()];
-    }
-
-    public double getLowAvg(ResourceType type) {
-        return lowAvg[type.ordinal()];
-    }
 
     public Map<ResourceType, Double> getHigh() {
         Map<ResourceType, Double> result = new EnumMap<ResourceType, Double>(ResourceType.class);
@@ -769,7 +720,7 @@ public class TradeManager {
         return lastUpdateTradeList;
     }
 
-    public synchronized boolean updateTradeListIfOutdated(long cutoff, Consumer<Event> eventConsumer) {
+    public boolean updateTradeListIfOutdated(long cutoff, Consumer<Event> eventConsumer) {
         if (lastUpdateTradeList < cutoff) {
             return updateTradeList(eventConsumer);
         }
@@ -778,17 +729,29 @@ public class TradeManager {
 
     public synchronized boolean updateTradeList(Consumer<Event> eventConsumer) {
         PoliticsAndWarV3 api = Locutus.imp().getApiPool();
+        long avgCutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7);
+        AverageAccumulator averageAccumulator = updateAvg ? newAverageAccumulator(this::getAverageMinPpu, this::getAverageMaxPpu) : null;
         // get last trade
         List<DBTrade> latestTrades = tradeDb.getTrades(f -> f.order("tradeId", QueryOrder.OrderDirection.DESC).limit(1));
         DBTrade latest = latestTrades.isEmpty() ? null : latestTrades.get(0);
         int latestId = latest == null ? 0 : latest.getTradeId();
         long latestDate = latest == null ? 0 : latest.getDate();
+
+
+        // if updateAvg=true then it needs to calculate the average (of trades past 1w) and update the avg then set updateAvg to false
+
         if (latest == null || latestDate < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(2)) {
             lastUpdateTradeList = System.currentTimeMillis();
             if (eventConsumer == null && Settings.INSTANCE.ENABLED_COMPONENTS.SNAPSHOTS) {
                 List<Trade> apiTrades = api.readSnapshot(PagePriority.API_TRADE_GET, Trade.class);
                 List<DBTrade> tradeList = new ObjectArrayList<>(apiTrades.size());
-                apiTrades.forEach(f -> tradeList.add(new DBTrade(f)));
+                apiTrades.forEach(f -> {
+                    DBTrade dbTrade = new DBTrade(f);
+                    tradeList.add(dbTrade);
+                    if (averageAccumulator != null) {
+                        addTradeToAverage(averageAccumulator, dbTrade, avgCutoff);
+                    }
+                });
                 tradeDb.saveTrades(tradeList);
             } else {
                 List<DBTrade> trades = new ObjectArrayList<>();
@@ -798,7 +761,11 @@ public class TradeManager {
                     }
                 }, trade -> {
                     synchronized (trades) {
-                        trades.add(new DBTrade(trade));
+                        DBTrade dbTrade = new DBTrade(trade);
+                        trades.add(dbTrade);
+                        if (averageAccumulator != null) {
+                            addTradeToAverage(averageAccumulator, dbTrade, avgCutoff);
+                        }
                         if (trades.size() > 1000) {
                             tradeDb.saveTrades(trades);
                             trades.clear();
@@ -816,6 +783,11 @@ public class TradeManager {
             if (fetchNewTradesNextTick) {
                 List<Trade> trades = api.fetchTradesWithInfo(f -> f.setMin_id(latestId + 1), Predicates.alwaysTrue());
                 fetched.addAll(trades);
+                if (averageAccumulator != null) {
+                    for (Trade trade : trades) {
+                        addTradeToAverage(averageAccumulator, new DBTrade(trade), avgCutoff);
+                    }
+                }
 
                 fetchedNewTrades = true;
                 fetchNewTradesNextTick = false;
@@ -837,6 +809,11 @@ public class TradeManager {
                     public void accept(List<Integer> integers) {
                         List<Trade> trades = api.fetchTradesWithInfo(f -> f.setId(integers), Predicates.alwaysTrue());
                         fetched.addAll(trades);
+                        if (averageAccumulator != null) {
+                            for (Trade trade : trades) {
+                                addTradeToAverage(averageAccumulator, new DBTrade(trade), avgCutoff);
+                            }
+                        }
                     }
                 });
                 int finalIdToAdd = idToAdd;
@@ -846,7 +823,11 @@ public class TradeManager {
 
                 processTrades(fetched, idsToFetch, mixupAlerts, eventConsumer);
             }
-            List<DBTrade> newTrades = new ArrayList<>();
+        }
+
+        if (averageAccumulator != null) {
+            updateCachedWeeklyAverages(toAverageComputation(averageAccumulator));
+            updateAvg = false;
         }
         updateLowHighCache();
         return true;

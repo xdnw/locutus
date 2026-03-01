@@ -84,11 +84,17 @@ public enum ResourceType {
     ALUMINUM("aluminum", "withaluminum", 8, 2500, 40, 9, 5, 1.36, () -> Projects.BAUXITEWORKS, 3, BAUXITE);
 
     public static Supplier<Double> convertedCostLazy(double[] amount) {
-        return new CachedSupplier<>(() -> convertedTotal(amount));
+        return new CachedSupplier<>(() -> {
+            Locutus.imp().getTradeManager();
+            return convertedTotal(amount);
+        });
     }
 
     public static Supplier<Double> convertedCostLazy(ResourceType type, double amt) {
-        return new CachedSupplier<>(() -> convertedTotal(type, amt));
+        return new CachedSupplier<>(() -> {
+            Locutus.imp().getTradeManager();
+            return convertedTotal(type, amt);
+        });
     }
 
     private static final Type RESOURCE_TYPE = new TypeToken<Map<ResourceType, Double>>() {}.getType();
@@ -173,10 +179,12 @@ public enum ResourceType {
         }
     }
 
-    private static double getCachedPrice(ResourceType type, boolean useHighPrice) {
-        int ordinal = type.ordinal();
-        double value = useHighPrice ? CACHED_HIGH_PRICE_BY_TYPE[ordinal] : CACHED_LOW_PRICE_BY_TYPE[ordinal];
-        return value > 0 ? value : getFallbackPrice(type);
+    public static double getCachedLowPrice(ResourceType type) {
+        return CACHED_LOW_PRICE_BY_TYPE[type.ordinal()];
+    }
+
+    public static double getCachedHighPrice(ResourceType type) {
+        return CACHED_HIGH_PRICE_BY_TYPE[type.ordinal()];
     }
 
     public static ResourceType parseChar(Character s) {
@@ -630,14 +638,14 @@ public enum ResourceType {
         if (amt == 0) {
             return 0;
         }
-        return getCachedPrice(type, true) * amt;
+        return getCachedHighPrice(type) * amt;
     }
 
     public static double convertedTotalNegative(ResourceType type, double amt) {
         if (amt == 0) {
             return 0;
         }
-        return getCachedPrice(type, false) * amt;
+        return getCachedLowPrice(type) * amt;
     }
 
     public static double convertedTotal(ResourceType type, double amt) {
@@ -645,9 +653,9 @@ public enum ResourceType {
             return 0;
         }
         if (amt < 0) {
-            return getCachedPrice(type, false) * amt;
+            return getCachedLowPrice(type) * amt;
         }
-        return getCachedPrice(type, true) * amt;
+        return getCachedHighPrice(type) * amt;
     }
 
     public static double[] max(double[] rss1, double[] rss2) {
@@ -1187,17 +1195,17 @@ public enum ResourceType {
 
     @Command(desc = "The market value of this resource (weekly average)")
     public double getMarketValue() {
-        return Locutus.imp().getTradeManager().getLowAvg(this);
+        return getCachedLowPrice(this);
     }
 
     @Command(desc = "The average weekly sell price of this resource")
     public double getLowAverage() {
-        return Locutus.imp().getTradeManager().getLowAvg(this);
+        return getCachedLowPrice(this);
     }
 
     @Command(desc = "The average weekly buy price of this resource")
     public double getHighAverage() {
-        return Locutus.imp().getTradeManager().getHighAvg(this);
+        return getCachedHighPrice(this);
     }
 
     @Command(desc = "The margin between the current top buy and sell price on the market")

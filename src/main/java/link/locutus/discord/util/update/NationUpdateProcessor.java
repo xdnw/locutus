@@ -956,7 +956,7 @@ public class NationUpdateProcessor {
             int otherId = seller.equals(current.getNation_id()) ? buyer : seller;
             String name = PW.getMarkdownUrl(otherId, false);
 
-            double value = offer.getPpu() > 1 ? offer.getQuantity() * offer.getPpu() : Locutus.imp().getTradeManager().getHighAvg(offer.getResource()) * offer.getQuantity();
+            double value = offer.getPpu() > 1 ? offer.getQuantity() * offer.getPpu() : ResourceType.getCachedHighPrice(offer.getResource()) * offer.getQuantity();
             map.put(name, map.getOrDefault(name, 0d) + value);
 
             total += value;
