@@ -25,6 +25,7 @@ import java.util.function.ToDoubleFunction;
 
 public class CityBranch implements BiConsumer<CityNode, Consumer<CityNode>>, Consumer<CityNode> {
     private final Building[] buildings;
+    private final int[] buildingModIndices;
     private final int[] buildingCaps;
     private boolean usedOrigin = false;
     private Building originBuilding = null;
@@ -60,7 +61,7 @@ public class CityBranch implements BiConsumer<CityNode, Consumer<CityNode>>, Con
 
         boolean enableRevenueBound = isRevenueObjective((ToDoubleFunction<INationCity>) valueFunction, init);
         ToDoubleFunction<CityNode> upperBoundFunction = enableRevenueBound
-            ? node -> node.optimisticRevenueUpperBound(buildings, node.getIndex(), optimisticBoundScratch)
+            ? node -> node.optimisticRevenueUpperBound(buildingModIndices, node.getIndex(), optimisticBoundScratch)
                 : node -> Double.POSITIVE_INFINITY;
 
         CityNode optimized = new BFSUtil<CityNode>((Predicate) goal,
@@ -135,9 +136,13 @@ public class CityBranch implements BiConsumer<CityNode, Consumer<CityNode>>, Con
             if (building instanceof ServiceBuilding) allBuildings.add(building);
         }
         this.buildings = allBuildings.toArray(new Building[0]);
+        this.buildingModIndices = new int[this.buildings.length];
         this.buildingCaps = new int[this.buildings.length];
         for (int i = 0; i < this.buildings.length; i++) {
-            this.buildingCaps[i] = this.buildings[i].cap(origin.hasProject());
+            Building building = this.buildings[i];
+            this.buildingCaps[i] = building.cap(origin.hasProject());
+            int ordinal = building.ordinal();
+            this.buildingModIndices[i] = origin.isMutableBuildingOrdinal(ordinal) ? origin.toMutableIndex(ordinal) : -1;
         }
     }
 

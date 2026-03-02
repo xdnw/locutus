@@ -111,11 +111,15 @@ public final class CityNode implements INationCity {
         private final double infraLow;
         private final double[][] marginalProfit;
         private final double[][] cumulativeProfit;
+        private final int[] positiveMarginalDepth;
         private final int[] shift;
         private final long[] mask;
         private final int[] cap;
         private final long dateCreated;
         private int maxIndex;
+        private final int[] ordinalToModIndex;
+        private Building[] modIndicesCacheKey;
+        private int[] modIndicesCacheValue;
 
         public CachedCity(JavaCity city, Continent continent, boolean selfSufficient, Predicate<Project> hasProject, int numCities, double grossModifier, double rads, Double infraLow) {
             this.hasProject = hasProject;
@@ -239,6 +243,7 @@ public final class CityNode implements INationCity {
             this.mutablePollutionDelta = new int[modIe - modIs];
             this.marginalProfit = new double[modIe - modIs][];
             this.cumulativeProfit = new double[modIe - modIs][];
+            this.positiveMarginalDepth = new int[modIe - modIs];
 
             for (int i = modIs, j = 0; i < modIe; i++, j++) {
                 Building building = Buildings.get(i);
@@ -255,10 +260,25 @@ public final class CityNode implements INationCity {
                     cumulativeProfitJ[k + 1] = lastMarginal;
                 }
 
+                int positiveDepth = cap;
+                for (int k = 0; k < cap; k++) {
+                    if (marginalProfitJ[k] <= 0d) {
+                        positiveDepth = k;
+                        break;
+                    }
+                }
+
                 mutableCommerceDelta[j] = addCommerce;
                 mutablePollutionDelta[j] = addPollution;
                 marginalProfit[j] = marginalProfitJ;
                 cumulativeProfit[j] = cumulativeProfitJ;
+                positiveMarginalDepth[j] = positiveDepth;
+            }
+
+            this.ordinalToModIndex = new int[Buildings.values().length];
+            Arrays.fill(this.ordinalToModIndex, -1);
+            for (int i = modIs; i < modIe; i++) {
+                this.ordinalToModIndex[i] = i - modIs;
             }
         }
 
@@ -385,6 +405,18 @@ public final class CityNode implements INationCity {
 
         public long incrementMutableByBuildingOrdinal(long packedBuildings, int ordinal) {
             return incrementMutable(packedBuildings, toMutableIndex(ordinal));
+        }
+
+        public int[] getOrComputeModIndices(Building[] orderedBuildings) {
+            if (orderedBuildings == modIndicesCacheKey) return modIndicesCacheValue;
+            int[] result = new int[orderedBuildings.length];
+            int[] lookup = ordinalToModIndex;
+            for (int i = 0; i < orderedBuildings.length; i++) {
+                result[i] = lookup[orderedBuildings[i].ordinal()];
+            }
+            modIndicesCacheKey = orderedBuildings;
+            modIndicesCacheValue = result;
+            return result;
         }
     }
 
@@ -526,8 +558,8 @@ public final class CityNode implements INationCity {
                 int amount = cached.getMutableAmount(packedBuildings, modIndex);
                 if (amount <= 0) continue;
                 this.numBuildings += amount;
-                this.commerce     += amount * cached.getMutableCommerceDelta(modIndex);
-                this.pollution    += amount * cached.getMutablePollutionDelta(modIndex);
+                this.commerce     += amount * cached.mutableCommerceDelta[modIndex];
+                this.pollution    += amount * cached.mutablePollutionDelta[modIndex];
                 this.baseRevenue  += cached.getMutableCumulativeProfit(modIndex, amount);
             }
         }
@@ -550,15 +582,11 @@ public final class CityNode implements INationCity {
     }
 
     public final double getRevenueConverted() {
-        if (!Double.isNaN(revenueFull)) {
-            return revenueFull;
-        }
-        CachedCity c        = cached;
-        populationValue = calcPopulation(calcDiseaseRaw(), calcCrimeRaw());
-        double rev          = c.baseProfitConverted + c.commerceIncome[commerce] * populationValue;
-        rev += baseRevenue;
-        revenueFull = rev;
-        return rev;
+        if (!Double.isNaN(revenueFull)) return revenueFull;
+        CachedCity c = cached;
+        int pop = calcPopulation();
+        double rev = c.baseProfitConverted + c.commerceIncome[commerce] * pop + baseRevenue;
+        return revenueFull = rev;
     }
 
     @Override
@@ -643,6 +671,10 @@ public final class CityNode implements INationCity {
     }
 
     public double optimisticRevenueUpperBound(Building[] orderedBuildings, int startIndex, double[] topGainScratch) {
+        return optimisticRevenueUpperBound(cached.getOrComputeModIndices(orderedBuildings), startIndex, topGainScratch);
+    }
+
+    public double optimisticRevenueUpperBound(int[] orderedModIndices, int startIndex, double[] topGainScratch) {
         double scoreNow = getRevenueConverted();
         int freeSlots = getFreeSlots();
         if (freeSlots <= 0) {
@@ -657,24 +689,27 @@ public final class CityNode implements INationCity {
         int heapSize = 0;
 
         int commerceGainPotential = 0;
-        for (int i = startIndex; i < orderedBuildings.length; i++) {
-            Building building = orderedBuildings[i];
-            int currentAmt = getBuilding(building);
-            int cap = cached.capByBuilding[building.ordinal()];
+        for (int i = startIndex; i < orderedModIndices.length; i++) {
+            int modIndex = orderedModIndices[i];
+            if (modIndex < 0) {
+                continue;
+            }
+
+            int currentAmt = getPackedMutable(modIndex);
+            int cap = cached.cap[modIndex];
             int room = cap - currentAmt;
             if (room <= 0) {
                 continue;
             }
-            int addCommerce = building.getCommerce();
+            int addCommerce = cached.mutableCommerceDelta[modIndex];
             if (addCommerce > 0) {
                 commerceGainPotential += room * addCommerce;
             }
 
-            for (int level = currentAmt; level < cap; level++) {
-                double marginal = cached.getMarginalProfit(building, level);
-                if (marginal <= 0) {
-                    break;
-                }
+            int positiveCap = Math.min(cap, cached.positiveMarginalDepth[modIndex]);
+            double[] marginalByLevel = cached.marginalProfit[modIndex];
+            for (int level = currentAmt; level < positiveCap; level++) {
+                double marginal = marginalByLevel[level];
                 if (heapSize == scratchLen && marginal <= topGainScratch[0]) {
                     break;
                 }
