@@ -446,7 +446,7 @@ final class CityFallbackHeuristic {
     private DonorWorker newDonorWorker() {
         Long2DoubleOpenHashMap localScoreCache = new Long2DoubleOpenHashMap(4096);
         localScoreCache.defaultReturnValue(Double.NaN);
-        LongOpenHashSet beamSet = new LongOpenHashSet(BEAM_WIDTH * 2);
+        LongOpenHashSet beamSet = new LongOpenHashSet(BEAM_WIDTH * NUM_CIVILIAN_BUILDINGS * 2);
         return new DonorWorker(new PackedCandidateView(), new PackedCandidateView(),
                 new long[BEAM_WIDTH], new long[BEAM_WIDTH], new double[BEAM_WIDTH],
                 localScoreCache, beamSet);
@@ -482,9 +482,9 @@ final class CityFallbackHeuristic {
         Long2DoubleOpenHashMap localScoreCache = worker.localScoreCache();
 
         LongOpenHashSet beamSet = worker.beamSet();
-        beamSet.clear();
 
         for (int i = 0; i < steps; i++) {
+            beamSet.clear();
             int stepCivilianCount = addMode ? (startCivilianCount + i + 1) : (startCivilianCount - i - 1);
             if (!isFastStructurallyFeasible(stepCivilianCount)) return Long.MIN_VALUE;
 
@@ -647,9 +647,6 @@ final class CityFallbackHeuristic {
         private int cachedNumBuildings;
         private int uncappedCommerce;
 
-        private int pendingOrdinal = -1;
-        private int pendingAmt = 0;
-
         public PackedCandidateView() {
             this.unpacked = Arrays.copyOf(fixedBuildingCounts, fixedBuildingCounts.length);
         }
@@ -657,7 +654,6 @@ final class CityFallbackHeuristic {
         void setCivilianState(long state) {
             if (state == lastSetState) return;
             lastSetState = state;
-            pendingOrdinal = -1;
 
             int comm = fixedCommerce;
             int pol = fixedPollution;
@@ -738,7 +734,7 @@ final class CityFallbackHeuristic {
             if (crimeDeaths < 0d) crimeDeaths = 0d;
 
             double pop = (basePopulation - diseaseDeaths - crimeDeaths) * ageBonus;
-            int newPop = (int) Math.round(pop > 10d ? pop : 10d);
+            int newPop = (int) (pop > 10d ? pop + 0.5d : 10.5d);
 
             double newIncome = (incomeFactorA * newComm + incomeFactorB) * newPop;
 
@@ -776,13 +772,12 @@ final class CityFallbackHeuristic {
 
         @Override
         public int getBuilding(Building building) {
-            int ord = building.ordinal();
-            return ord == pendingOrdinal ? pendingAmt : unpacked[ord];
+            return unpacked[building.ordinal()];
         }
 
         @Override
         public int getBuildingOrdinal(int ordinal) {
-            return ordinal == pendingOrdinal ? pendingAmt : unpacked[ordinal];
+            return unpacked[ordinal];
         }
 
         // Direct cached fields (Replaces massive recursive tree evaluation overhead!)
