@@ -294,13 +294,15 @@ public class BFSUtil<T> {
         }
 
         private boolean higherPrioritySlot(int leftSlot, int rightSlot) {
-            int byPriority = Double.compare(priorityBySlot[leftSlot], priorityBySlot[rightSlot]);
-            if (byPriority != 0) {
-                return byPriority > 0;
+            double leftPriority = priorityBySlot[leftSlot];
+            double rightPriority = priorityBySlot[rightSlot];
+            if (leftPriority != rightPriority) {
+                return leftPriority > rightPriority;
             }
-            int byDepth = Integer.compare(depthBySlot[rightSlot], depthBySlot[leftSlot]);
-            if (byDepth != 0) {
-                return byDepth > 0;
+            int leftDepth = depthBySlot[leftSlot];
+            int rightDepth = depthBySlot[rightSlot];
+            if (leftDepth != rightDepth) {
+                return rightDepth > leftDepth;
             }
             return sequenceBySlot[leftSlot] < sequenceBySlot[rightSlot];
         }

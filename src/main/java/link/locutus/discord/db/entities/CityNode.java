@@ -24,7 +24,7 @@ public final class CityNode implements INationCity {
     private double baseRevenue = 0;
 
     private char numBuildings;
-    private byte commerce;
+    private char commerce;
     private char pollution;
 
     private int index;
@@ -37,23 +37,6 @@ public final class CityNode implements INationCity {
     private static final int HOSPITAL_MOD_INDEX = Buildings.HOSPITAL.ordinal() - modIs;
     private static final int POLICE_MOD_INDEX  = Buildings.POLICE_STATION.ordinal() - modIs;
 
-
-    private static final BiFunction<CityNode, CachedCity, Integer>[] getNumBuildings;
-    static {
-        getNumBuildings = new BiFunction[Buildings.values().length];
-        for (int i = 0; i < modIs; i++) {
-            int finalI = i;
-            getNumBuildings[i] = (n, c) -> c.getBuildingOrdinal(finalI);
-        }
-        for (int i = modIs; i < modIe; i++) {
-            int finalI = i;
-            getNumBuildings[i] = (n, c) -> n.getPackedMutable(finalI - modIs);
-        }
-        for (int i = modIe; i < Buildings.values().length; i++) {
-            int finalI = i;
-            getNumBuildings[i] = (n, c) -> c.getBuildingOrdinal(finalI);
-        }
-    }
 
     @Override
     public int getNuke_turn() {
@@ -98,13 +81,14 @@ public final class CityNode implements INationCity {
         private final Consumer<CityNode>[] REMOVE_BUILDING;
 
         private final byte[] buildings;
+        public final int[] capByBuilding;
         private final char basePollution;
         private final List<Building> existing;
         private final List<Building> buildable;
         private final Building[] buildableArr;
         private final Building[] buildablePollution;
         private final int maxCommerce;
-        private final byte baseCommerce;
+        private final char baseCommerce;
         private final double basePopulation;
         private final double ageBonus;
         private final double baseDisease;
@@ -132,10 +116,6 @@ public final class CityNode implements INationCity {
         private final int[] cap;
         private final long dateCreated;
         private int maxIndex;
-
-        public int getBuildingOrdinal(int ordinal) {
-            return buildings[ordinal];
-        }
 
         public CachedCity(JavaCity city, Continent continent, boolean selfSufficient, Predicate<Project> hasProject, int numCities, double grossModifier, double rads, Double infraLow) {
             this.hasProject = hasProject;
@@ -180,9 +160,13 @@ public final class CityNode implements INationCity {
 
             this.buildableArr = buildable.toArray(new Building[0]);
             this.buildablePollution = Arrays.stream(buildableArr).filter(f -> f.pollution(hasProject) > 0).toArray(Building[]::new);
+            this.capByBuilding = new int[Buildings.values().length];
+            for (Building building : Buildings.values()) {
+                capByBuilding[building.ordinal()] = building.getCap(hasProject);
+            }
 
             this.maxCommerce = city.getMaxCommerce(hasProject);
-            this.baseCommerce = (byte) (hasProject.test(Projects.TELECOMMUNICATIONS_SATELLITE) ? 2 : 0);
+            this.baseCommerce = (char) (hasProject.test(Projects.TELECOMMUNICATIONS_SATELLITE) ? 2 : 0);
 
             this.basePopulation = this.infraLow * 100;
             this.ageBonus = (1 + Math.log(Math.max(1, city.getAgeDays())) * 0.0666666666666666666666666666666);
@@ -421,7 +405,7 @@ public final class CityNode implements INationCity {
         }
     }
 
-    public CityNode(CachedCity origin, byte[] modifiable, char numBuildings, byte commerce, char pollution, double baseRevenue, int index) {
+    public CityNode(CachedCity origin, byte[] modifiable, char numBuildings, char commerce, char pollution, double baseRevenue, int index) {
         this(origin, 0L, numBuildings, commerce, pollution, baseRevenue, index);
         for (int i = 0; i < Math.min(modifiable.length, LENGTH); i++) {
             int amount = modifiable[i] & 0xFF;
@@ -430,7 +414,7 @@ public final class CityNode implements INationCity {
         invalidateDerivedCache();
     }
 
-    public CityNode(CachedCity origin, long packedBuildings, char numBuildings, byte commerce, char pollution, double baseRevenue, int index) {
+    public CityNode(CachedCity origin, long packedBuildings, char numBuildings, char commerce, char pollution, double baseRevenue, int index) {
         this.cached = origin;
         this.packedBuildings = packedBuildings;
         this.numBuildings = numBuildings;
@@ -481,7 +465,10 @@ public final class CityNode implements INationCity {
 
     @Override
     public int getBuildingOrdinal(int ordinal) {
-        return getNumBuildings[ordinal].apply(this, cached);
+        if (ordinal >= modIs && ordinal < modIe) {
+            return getPackedMutable(ordinal - modIs);
+        }
+        return cached.buildings[ordinal] & 0xFF;
     }
 
     private int getPackedMutable(int modIndex) {
@@ -516,7 +503,7 @@ public final class CityNode implements INationCity {
     public final double[] getProfit(double[] profitBuffer) {
         System.arraycopy(cached.baseProfit, 0, profitBuffer, 0, profitBuffer.length);
         int population = calcPopulation(cached.hasProject);
-        double revenue = cached.baseProfitConverted + cached.commerceIncome[commerce & 0xFF] * population;
+        double revenue = cached.baseProfitConverted + cached.commerceIncome[commerce] * population;
         profitBuffer[0] += revenue;
 
         for (int i = 0; i < LENGTH; i++) {
@@ -534,7 +521,7 @@ public final class CityNode implements INationCity {
         }
         CachedCity c        = cached;
         int pop             = calcPopulation();
-        double rev          = c.baseProfitConverted + c.commerceIncome[commerce & 0xFF] * pop;
+        double rev          = c.baseProfitConverted + c.commerceIncome[commerce] * pop;
         rev += baseRevenue;
         revenueFull = rev;
         return rev;
@@ -591,7 +578,7 @@ public final class CityNode implements INationCity {
             return crimeValue;
         }
         int police           = getPackedMutable(POLICE_MOD_INDEX);
-        double crimeVal      = cached.crimeCache[commerce & 0xFF];
+        double crimeVal      = cached.crimeCache[commerce];
 
         if (police > 0) {
             crimeVal -= police * cached.policePct;
@@ -634,7 +621,7 @@ public final class CityNode implements INationCity {
         for (int i = Math.max(0, startIndex); i < orderedBuildings.length; i++) {
             Building building = orderedBuildings[i];
             int currentAmt = getBuilding(building);
-            int cap = building.cap(cached.hasProject());
+            int cap = cached.capByBuilding[building.ordinal()];
             int room = cap - currentAmt;
             if (room <= 0) {
                 continue;
@@ -647,14 +634,17 @@ public final class CityNode implements INationCity {
             for (int level = currentAmt; level < cap; level++) {
                 double marginal = cached.getMarginalProfit(building, level);
                 if (marginal <= 0) {
-                    continue;
+                    break;
+                }
+                if (heapSize == scratchLen && marginal <= topGainScratch[0]) {
+                    break;
                 }
 
                 if (heapSize < scratchLen) {
                     topGainScratch[heapSize] = marginal;
                     siftUpMin(topGainScratch, heapSize);
                     heapSize++;
-                } else if (marginal > topGainScratch[0]) {
+                } else {
                     topGainScratch[0] = marginal;
                     siftDownMin(topGainScratch, heapSize, 0);
                 }

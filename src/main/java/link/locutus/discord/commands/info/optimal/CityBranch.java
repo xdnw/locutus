@@ -1,22 +1,31 @@
 package link.locutus.discord.commands.info.optimal;
 
-import it.unimi.dsi.fastutil.PriorityQueue;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectHeapPriorityQueue;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.city.ICity;
 import link.locutus.discord.apiv1.enums.city.INationCity;
-import link.locutus.discord.apiv1.enums.city.building.*;
+import link.locutus.discord.apiv1.enums.city.building.Building;
+import link.locutus.discord.apiv1.enums.city.building.Buildings;
+import link.locutus.discord.apiv1.enums.city.building.CommerceBuilding;
+import link.locutus.discord.apiv1.enums.city.building.ResourceBuilding;
+import link.locutus.discord.apiv1.enums.city.building.ServiceBuilding;
 import link.locutus.discord.db.entities.CityNode;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.search.BFSUtil;
 
-import java.util.*;
-import java.util.function.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.ToDoubleFunction;
 
 public class CityBranch implements BiConsumer<CityNode, Consumer<CityNode>>, Consumer<CityNode> {
     private final Building[] buildings;
+    private final int[] buildingCaps;
     private boolean usedOrigin = false;
     private Building originBuilding = null;
 
@@ -74,7 +83,7 @@ public class CityBranch implements BiConsumer<CityNode, Consumer<CityNode>>, Con
         CityNode probe = null;
         for (Building building : buildings) {
             int current = init.getBuilding(building);
-            if (current >= building.cap(origin.hasProject())) {
+            if (current >= origin.capByBuilding[building.ordinal()]) {
                 continue;
             }
             probe = init.clone();
@@ -126,6 +135,10 @@ public class CityBranch implements BiConsumer<CityNode, Consumer<CityNode>>, Con
             if (building instanceof ServiceBuilding) allBuildings.add(building);
         }
         this.buildings = allBuildings.toArray(new Building[0]);
+        this.buildingCaps = new int[this.buildings.length];
+        for (int i = 0; i < this.buildings.length; i++) {
+            this.buildingCaps[i] = this.buildings[i].cap(origin.hasProject());
+        }
     }
 
     public int getBranchingWidth() {
@@ -200,7 +213,7 @@ public class CityBranch implements BiConsumer<CityNode, Consumer<CityNode>>, Con
 
         Building building = buildings[currBuildingIndex];
         int amt = origin.getBuildingOrdinal(building.ordinal());
-        while (amt >= building.cap(this.origin.hasProject())) {
+        while (amt >= buildingCaps[currBuildingIndex]) {
             currBuildingIndex++;
             if (currBuildingIndex >= this.buildings.length) {
                 return;
@@ -259,14 +272,9 @@ public class CityBranch implements BiConsumer<CityNode, Consumer<CityNode>>, Con
         if (currBuildingIndex < this.buildings.length - 1) {
             cities.accept(create(origin, currBuildingIndex + 1));
         }
-//        if (!usedOrigin)
-//        {
-//            pool.enqueue(originPair);
-//        }
     }
 
     @Override
     public void accept(CityNode originPair) {
-//        pool.enqueue(originPair);
     }
 }
