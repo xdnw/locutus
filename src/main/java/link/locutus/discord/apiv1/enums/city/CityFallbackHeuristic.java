@@ -321,11 +321,13 @@ final class CityFallbackHeuristic {
                 best = chooseBetter(best, evaluateDonor(donor, useBeamSearch, worker));
             }
         } else {
-            ThreadLocal<DonorWorker> workers = ThreadLocal.withInitial(this::newDonorWorker);
             try {
                 best = SHARED_POOL.submit(() -> donorList.parallelStream()
-                    .map(donor -> evaluateDonor(donor, useBeamSearch, workers.get()))
-                    .reduce(null, this::chooseBetter, this::chooseBetter)).get();
+                    .collect(
+                            () -> new ParallelAccumulator(newDonorWorker()),
+                            (acc, donor) -> acc.best = chooseBetter(acc.best, evaluateDonor(donor, useBeamSearch, acc.worker)),
+                            (left, right) -> left.best = chooseBetter(left.best, right.best)
+                    ).best).get();
             } catch (InterruptedException | ExecutionException e) {
                 throw new RuntimeException("Failed during fallback donor evaluation", e);
             }
@@ -506,7 +508,7 @@ final class CityFallbackHeuristic {
                     }
 
                     int newAmt = addMode ? amt + 1 : amt - 1;
-                    long childState = (parentState & ~civilianMask[bi]) | (((long) newAmt << civilianShift[bi]) & civilianMask[bi]);
+                    long childState = (parentState & ~civilianMask[bi]) | (((long) newAmt << civilianShift[bi]));
 
                     double value = localScoreCache.get(childState);
                     if (Double.isNaN(value)) {
@@ -815,8 +817,17 @@ final class CityFallbackHeuristic {
             long[] nextBeam,
             double[] topScores,
             Long2DoubleOpenHashMap localScoreCache,
-            LongOpenHashSet beamSet  // ADD THIS
+            LongOpenHashSet beamSet
     ) {}
+
+    private static final class ParallelAccumulator {
+        private final DonorWorker worker;
+        private EvaluatedCandidate best;
+
+        private ParallelAccumulator(DonorWorker worker) {
+            this.worker = worker;
+        }
+    }
 
     private record EvaluatedCandidate(DBCity donor, long state, double value, int donorId) { }
 }
