@@ -11,7 +11,7 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PW;
 
 import java.util.*;
-import java.util.function.*;
+import java.util.function.Predicate;
 
 public final class CityNode implements INationCity {
     private static final int POPULATION_DIRTY_SENTINEL = Integer.MIN_VALUE;
@@ -77,11 +77,10 @@ public final class CityNode implements INationCity {
     }
 
     public static class CachedCity {
-        private final Consumer<CityNode>[] ADD_BUILDING;
-        private final Consumer<CityNode>[] REMOVE_BUILDING;
-
         private final byte[] buildings;
         public final int[] capByBuilding;
+        private final int[] mutableCommerceDelta;
+        private final int[] mutablePollutionDelta;
         private final char basePollution;
         private final List<Building> existing;
         private final List<Building> buildable;
@@ -111,6 +110,7 @@ public final class CityNode implements INationCity {
         private final int maxSlots;
         private final double infraLow;
         private final double[][] marginalProfit;
+        private final double[][] cumulativeProfit;
         private final int[] shift;
         private final long[] mask;
         private final int[] cap;
@@ -208,7 +208,7 @@ public final class CityNode implements INationCity {
             }
             this.numBuildings = (char) numBuildings;
             this.basePollution = (char) basePollution;
-            this.food = (Math.pow(basePopulation, 2)) / 125_000_000 + ((basePopulation) * (1 + Math.log(city.getAgeDays()) / 15d) - basePopulation) / 850;
+            this.food = (basePopulation * basePopulation) / 125_000_000 + ((basePopulation) * (1 + Math.log(city.getAgeDays()) / 15d) - basePopulation) / 850;
             this.baseProfit[ResourceType.FOOD.ordinal()] -= food;
             baseProfitConverted -= ResourceType.convertedTotalNegative(ResourceType.FOOD, food);
             this.baseProfitConverted = baseProfitConverted;
@@ -235,105 +235,30 @@ public final class CityNode implements INationCity {
                 bitOffset += bits;
             }
 
-            ADD_BUILDING = new Consumer[modIe - modIs];
-            REMOVE_BUILDING = new Consumer[modIe - modIs];
+            this.mutableCommerceDelta = new int[modIe - modIs];
+            this.mutablePollutionDelta = new int[modIe - modIs];
             this.marginalProfit = new double[modIe - modIs][];
+            this.cumulativeProfit = new double[modIe - modIs][];
 
             for (int i = modIs, j = 0; i < modIe; i++, j++) {
-                int finalJ = j;
                 Building building = Buildings.get(i);
                 int addCommerce = building.getCommerce();
                 int addPollution = building.getPollution(hasProject);
                 int cap = this.cap[j];
                 double[] marginalProfitJ = new double[cap];
+                double[] cumulativeProfitJ = new double[cap + 1];
                 double lastMarginal = 0;
                 for (int k = 0; k < cap; k++) {
                     double profit = building.profitConverted(continent, rads, hasProject, this.land, k + 1);
                     marginalProfitJ[k] = profit - lastMarginal;
                     lastMarginal = profit;
+                    cumulativeProfitJ[k + 1] = lastMarginal;
                 }
 
+                mutableCommerceDelta[j] = addCommerce;
+                mutablePollutionDelta[j] = addPollution;
                 marginalProfit[j] = marginalProfitJ;
-
-                if (addCommerce != 0) {
-                    if (addPollution != 0) {
-                        ADD_BUILDING[j] = (n) -> {
-                            int amt = n.getPackedMutable(finalJ);
-                            n.baseRevenue += marginalProfitJ[amt];
-
-                            n.commerce += addCommerce;
-                            n.pollution += addPollution;
-                            n.numBuildings++;
-                            n.setPackedMutable(finalJ, amt + 1);
-                            n.invalidateDerivedCache();
-                        };
-                        REMOVE_BUILDING[j] = (n) -> {
-                            int amt = n.getPackedMutable(finalJ);
-                            n.baseRevenue -= marginalProfitJ[amt - 1];
-
-                            n.commerce -= addCommerce;
-                            n.pollution -= addPollution;
-                            n.numBuildings--;
-                            n.setPackedMutable(finalJ, amt - 1);
-                            n.invalidateDerivedCache();
-                        };
-                    } else {
-                        ADD_BUILDING[j] = (n) -> {
-                            int amt = n.getPackedMutable(finalJ);
-                            n.baseRevenue += marginalProfitJ[amt];
-
-                            n.commerce += addCommerce;
-                            n.numBuildings++;
-                            n.setPackedMutable(finalJ, amt + 1);
-                            n.invalidateDerivedCache();
-                        };
-                        REMOVE_BUILDING[j] = (n) -> {
-                            int amt = n.getPackedMutable(finalJ);
-                            n.baseRevenue -= marginalProfitJ[amt - 1];
-
-                            n.commerce -= addCommerce;
-                            n.numBuildings--;
-                            n.setPackedMutable(finalJ, amt - 1);
-                            n.invalidateDerivedCache();
-                        };
-                    }
-                } else if (addPollution != 0) {
-                    ADD_BUILDING[j] = (n) -> {
-                        int amt = n.getPackedMutable(finalJ);
-                        n.baseRevenue += marginalProfitJ[amt];
-
-                        n.pollution += addPollution;
-                        n.numBuildings++;
-                        n.setPackedMutable(finalJ, amt + 1);
-                        n.invalidateDerivedCache();
-                    };
-                    REMOVE_BUILDING[j] = (n) -> {
-                        int amt = n.getPackedMutable(finalJ);
-                        n.baseRevenue -= marginalProfitJ[amt - 1];
-
-                        n.pollution -= addPollution;
-                        n.numBuildings--;
-                        n.setPackedMutable(finalJ, amt - 1);
-                        n.invalidateDerivedCache();
-                    };
-                } else {
-                    ADD_BUILDING[j] = (n) -> {
-                        int amt = n.getPackedMutable(finalJ);
-                        n.baseRevenue += marginalProfitJ[amt];
-
-                        n.numBuildings++;
-                        n.setPackedMutable(finalJ, amt + 1);
-                        n.invalidateDerivedCache();
-                    };
-                    REMOVE_BUILDING[j] = (n) -> {
-                        int amt = n.getPackedMutable(finalJ);
-                        n.baseRevenue -= marginalProfitJ[amt - 1];
-
-                        n.numBuildings--;
-                        n.setPackedMutable(finalJ, amt - 1);
-                        n.invalidateDerivedCache();
-                    };
-                }
+                cumulativeProfit[j] = cumulativeProfitJ;
             }
         }
 
@@ -402,6 +327,64 @@ public final class CityNode implements INationCity {
                 return 0;
             }
             return marginal[currentAmt];
+        }
+
+        public int getMutableAmount(long packedBuildings, int modIndex) {
+            int shift = this.shift[modIndex];
+            long mask = this.mask[modIndex];
+            return (int) ((packedBuildings & mask) >>> shift);
+        }
+
+        public long withMutableAmount(long packedBuildings, int modIndex, int value) {
+            int shift = this.shift[modIndex];
+            long mask = this.mask[modIndex];
+            int clamped = Math.max(0, Math.min(value, this.cap[modIndex]));
+            long encoded = ((long) clamped << shift) & mask;
+            return (packedBuildings & ~mask) | encoded;
+        }
+
+        public long incrementMutable(long packedBuildings, int modIndex) {
+            int current = getMutableAmount(packedBuildings, modIndex);
+            return withMutableAmount(packedBuildings, modIndex, current + 1);
+        }
+
+        public long decrementMutable(long packedBuildings, int modIndex) {
+            int current = getMutableAmount(packedBuildings, modIndex);
+            return withMutableAmount(packedBuildings, modIndex, current - 1);
+        }
+
+        public int getMutableCommerceDelta(int modIndex) {
+            return mutableCommerceDelta[modIndex];
+        }
+
+        public int getMutablePollutionDelta(int modIndex) {
+            return mutablePollutionDelta[modIndex];
+        }
+
+        public double getMutableCumulativeProfit(int modIndex, int amount) {
+            double[] cumulative = cumulativeProfit[modIndex];
+            int clamped = Math.max(0, Math.min(amount, cumulative.length - 1));
+            return cumulative[clamped];
+        }
+
+        public int getMutableCap(int modIndex) {
+            return cap[modIndex];
+        }
+
+        public int getMutableBuildingCount() {
+            return LENGTH;
+        }
+
+        public boolean isMutableBuildingOrdinal(int ordinal) {
+            return ordinal >= modIs && ordinal < modIe;
+        }
+
+        public int toMutableIndex(int ordinal) {
+            return ordinal - modIs;
+        }
+
+        public long incrementMutableByBuildingOrdinal(long packedBuildings, int ordinal) {
+            return incrementMutable(packedBuildings, toMutableIndex(ordinal));
         }
     }
 
@@ -478,11 +461,7 @@ public final class CityNode implements INationCity {
     }
 
     private void setPackedMutable(int modIndex, int value) {
-        int shift = cached.shift[modIndex];
-        long mask = cached.mask[modIndex];
-        int clamped = Math.max(0, Math.min(value, cached.cap[modIndex]));
-        long encoded = ((long) clamped << shift) & mask;
-        packedBuildings = (packedBuildings & ~mask) | encoded;
+        packedBuildings = cached.withMutableAmount(packedBuildings, modIndex, value);
     }
 
     private void invalidateDerivedCache() {
@@ -493,11 +472,66 @@ public final class CityNode implements INationCity {
     }
 
     public void add(Building building) {
-        cached.ADD_BUILDING[building.ordinal() - modIs].accept(this);
+        int modIndex = building.ordinal() - modIs;
+        int amt = getPackedMutable(modIndex);
+        baseRevenue += cached.marginalProfit[modIndex][amt];
+        commerce    += cached.getMutableCommerceDelta(modIndex);
+        pollution   += cached.getMutablePollutionDelta(modIndex);
+        numBuildings++;
+        setPackedMutable(modIndex, amt + 1);
+        invalidateDerivedCacheSurgical(modIndex);
     }
 
     public void remove(Building building) {
-        cached.REMOVE_BUILDING[building.ordinal() - modIs].accept(this);
+        int modIndex = building.ordinal() - modIs;
+        int amt = getPackedMutable(modIndex);
+        baseRevenue -= cached.marginalProfit[modIndex][amt - 1];
+        commerce    -= cached.getMutableCommerceDelta(modIndex);
+        pollution   -= cached.getMutablePollutionDelta(modIndex);
+        numBuildings--;
+        setPackedMutable(modIndex, amt - 1);
+        invalidateDerivedCacheSurgical(modIndex);
+    }
+
+    private void invalidateDerivedCacheSurgical(int modIndex) {
+        revenueFull = Double.NaN; // always dirty
+
+        boolean affectsDisease    = (modIndex == HOSPITAL_MOD_INDEX);
+        boolean affectsCrime      = (modIndex == POLICE_MOD_INDEX);
+        boolean affectsPopulation = affectsDisease
+                                || affectsCrime
+                                || cached.getMutableCommerceDelta(modIndex) != 0
+                                || cached.getMutablePollutionDelta(modIndex) != 0;
+
+        if (affectsDisease)    diseaseValue    = Double.NaN;
+        if (affectsCrime)      crimeValue      = Double.NaN;
+        if (affectsPopulation) populationValue = POPULATION_DIRTY_SENTINEL;
+    }
+
+    public long getPackedBuildings() {
+        return packedBuildings;
+    }
+
+    public void setPackedState(long packedBuildings, int index) {
+        this.packedBuildings = packedBuildings;
+        this.index = index;
+        this.numBuildings = cached.numBuildings;
+        this.commerce     = cached.baseCommerce;
+        this.pollution    = cached.basePollution;
+        this.baseRevenue  = 0d;
+
+        if (packedBuildings != 0L) { // skip loop entirely for empty state
+            int mutableCount = cached.getMutableBuildingCount();
+            for (int modIndex = 0; modIndex < mutableCount; modIndex++) {
+                int amount = cached.getMutableAmount(packedBuildings, modIndex);
+                if (amount <= 0) continue;
+                this.numBuildings += amount;
+                this.commerce     += amount * cached.getMutableCommerceDelta(modIndex);
+                this.pollution    += amount * cached.getMutablePollutionDelta(modIndex);
+                this.baseRevenue  += cached.getMutableCumulativeProfit(modIndex, amount);
+            }
+        }
+        invalidateDerivedCache();
     }
 
     public final double[] getProfit(double[] profitBuffer) {
@@ -520,8 +554,8 @@ public final class CityNode implements INationCity {
             return revenueFull;
         }
         CachedCity c        = cached;
-        int pop             = calcPopulation();
-        double rev          = c.baseProfitConverted + c.commerceIncome[commerce] * pop;
+        populationValue = calcPopulation(calcDiseaseRaw(), calcCrimeRaw());
+        double rev          = c.baseProfitConverted + c.commerceIncome[commerce] * populationValue;
         rev += baseRevenue;
         revenueFull = rev;
         return rev;
@@ -536,10 +570,7 @@ public final class CityNode implements INationCity {
         if (populationValue != POPULATION_DIRTY_SENTINEL) {
             return populationValue;
         }
-        double disease = calcDisease();
-        double crime = calcCrime();
-        populationValue = calcPopulation(disease, crime);
-        return populationValue;
+        return populationValue = calcPopulation(calcDiseaseRaw(), calcCrimeRaw());
     }
 
     public final int calcPopulation(double disease, double crime) {
@@ -557,6 +588,10 @@ public final class CityNode implements INationCity {
         if (!Double.isNaN(diseaseValue)) {
             return diseaseValue;
         }
+        return calcDiseaseRaw();
+    }
+
+    private final double calcDiseaseRaw() {
         int hospitals        = getPackedMutable(HOSPITAL_MOD_INDEX);
         double pollutionMod  = pollution * 0.05;
         double base          = cached.baseDisease + pollutionMod;
@@ -577,6 +612,10 @@ public final class CityNode implements INationCity {
         if (!Double.isNaN(crimeValue)) {
             return crimeValue;
         }
+        return calcCrimeRaw();
+    }
+
+    private final double calcCrimeRaw() {
         int police           = getPackedMutable(POLICE_MOD_INDEX);
         double crimeVal      = cached.crimeCache[commerce];
 
@@ -618,7 +657,7 @@ public final class CityNode implements INationCity {
         int heapSize = 0;
 
         int commerceGainPotential = 0;
-        for (int i = Math.max(0, startIndex); i < orderedBuildings.length; i++) {
+        for (int i = startIndex; i < orderedBuildings.length; i++) {
             Building building = orderedBuildings[i];
             int currentAmt = getBuilding(building);
             int cap = cached.capByBuilding[building.ordinal()];
