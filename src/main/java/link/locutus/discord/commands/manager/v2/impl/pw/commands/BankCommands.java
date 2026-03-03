@@ -45,6 +45,7 @@ import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.TransferResult;
+import link.locutus.discord.util.scheduler.CachedSupplier;
 import link.locutus.discord.util.scheduler.KeyValue;
 import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.scheduler.TriFunction;
@@ -2160,14 +2161,16 @@ public class BankCommands {
         }
 
         boolean hasAdmin = Roles.ECON.has(author, guildDb.getGuild());
-        Map<Long, AccessType> allowedIds = guildDb.getAllowedBankAccountsOrThrow(me, author, receiver, channel.getIdLong(), hasAdmin);
+        Supplier<Map<Long, AccessType>> allowedIdsSupplier = new CachedSupplier<>(() -> {
+            return guildDb.getAllowedBankAccountsOrThrow(me, author, receiver, channel.getIdLong(), hasAdmin);
+        });
 
         if (onlyMissingFunds) {
             int aaId = receiver.getAlliance_id();
             if (aaId == 0) {
                 return "Receiver is not in an alliance (cannot determine missing funds)";
             }
-            AccessType accessType = allowedIds.get((long) aaId);
+            AccessType accessType = allowedIdsSupplier.get().get((long) aaId);
             if (accessType == null) {
                 return "You do not have access to the alliance stockpile information for " + DBAlliance.getOrCreate(aaId).getQualifiedId();
             }
