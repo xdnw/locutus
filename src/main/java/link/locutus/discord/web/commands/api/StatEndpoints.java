@@ -45,8 +45,9 @@ public class StatEndpoints {
                 modifier = entry.getValue();
             }
         }
+
         Set<T> selection = ph.parseSet(store, selection_str, modifier);
-        ValueStore<T> cacheStore = PlaceholderCache.createCache(selection, typeCasted);
+        ValueStore<T> cacheStore = PlaceholderCache.createCache(store, selection, typeCasted);
 
         List<String> renderers = new ObjectArrayList<>(columns.size());
         List<TypedFunction<T, ?>> formatters = new ObjectArrayList<>(columns.size());
