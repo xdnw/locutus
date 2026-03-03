@@ -118,6 +118,10 @@ public interface CommandCallable {
     }
 
     default String getFullPath(String delim) {
+        return String.join(delim, getFullPathList());
+    }
+
+    default List<String> getFullPathList() {
         List<String> pathList = new ArrayList<>();
         CommandCallable root = this;
         while (root != null) {
@@ -127,7 +131,7 @@ public interface CommandCallable {
             root = root.getParent();
         }
         Collections.reverse(pathList);
-        return StringMan.join(pathList, delim);
+        return pathList;
     }
 
     default String getPrimaryCommandId() {

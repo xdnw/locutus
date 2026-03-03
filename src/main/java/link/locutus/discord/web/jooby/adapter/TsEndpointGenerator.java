@@ -97,7 +97,7 @@ public class TsEndpointGenerator {
             File output = new File(outputDir, "lib/commands.ts");
 
             String jsonStr = WebUtil.GSON.toJson(json);
-            Files.write(output.toPath(), (header + jsonStr).getBytes());
+            Files.write(output.toPath(), (header + jsonStr + " as const;").getBytes());
         }
     }
 

@@ -251,13 +251,12 @@ public class ConflictCommands {
             }
             io.updateOptionally(msgFuture, "Pushing index...");
             urls.add(manager.pushIndex(now));
-            return "Done! See:\n- <" + StringMan.join(urls, ">\n- <") + ">";
         } else {
             if (!manager.pushDirtyConflicts()) {
                 manager.pushIndex(now);
             }
-            return "Done! See: <" + Settings.INSTANCE.WEB.CONFLICTS.SITE + ">";
         }
+        return "Done! See: <" + Settings.INSTANCE.WEB.CONFLICTS.SITE + ">";
     }
 
     @Command(desc = "Delete a conflict from the database\n" +

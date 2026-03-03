@@ -324,6 +324,15 @@ public abstract class GuildSetting<T> {
         return getCommandMention(getCallables());
     }
 
+    @Command(desc = "The full command paths for this setting")
+    public List<List<String>> getCommandPaths() {
+        List<List<String>> paths = new ArrayList<>();
+        for (ParametricCallable<?> callable : getCallables()) {
+            paths.add(callable.getFullPathList());
+        }
+        return paths;
+    }
+
     private String getCommandMention(Set<ParametricCallable<?>> callables) {
         List<String> result = new ArrayList<>();
         for (ParametricCallable callable : callables) {
@@ -403,6 +412,7 @@ public abstract class GuildSetting<T> {
         return allowed(db, false);
     }
 
+    @Command
     public boolean allowed(GuildDB db, boolean throwException) {
         while (!setupRequirements.isEmpty()) {
             Consumer<GuildSetting<T>> poll = setupRequirements.poll();
@@ -738,10 +748,16 @@ public abstract class GuildSetting<T> {
         return getOrNull(db, checkDelegate) != null;
     }
 
-    //    @Command(desc = "The setting value")
+    @Command(desc = "The setting value")
     @RolePermission(Roles.ADMIN)
-    public T getValueString(@Me GuildDB db, @Switch("d") boolean checkDelegate) {
+    public T getValue(@Me GuildDB db, @Switch("d") boolean checkDelegate) {
         return getOrNull(db, checkDelegate);
+    }
+
+    @Command(desc = "The setting raw value string")
+    @RolePermission(Roles.ADMIN)
+    public String getValueRaw(@Me GuildDB db, @Switch("d") boolean checkDelegate) {
+        return getRaw(db, checkDelegate);
     }
 
     @Command(desc = "If the value is invalid")
