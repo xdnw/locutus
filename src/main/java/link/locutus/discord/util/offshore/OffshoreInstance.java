@@ -429,7 +429,7 @@ public class OffshoreInstance {
         Supplier<Map<Long, AccessType>> allowedIdsGet = ArrayUtil.memorize(new Supplier<Map<Long, AccessType>>() {
             @Override
             public Map<Long, AccessType> get() {
-               return senderDB.getAllowedBankAccountsOrThrow(bankerNation, banker, receiver, senderChannel, senderChannel == null || Roles.ECON.has(banker, senderDB.getGuild()));
+               return senderDB.getAllowedBankAccountsOrThrow(bankerNation, banker, receiver, senderChannel, senderChannel == null || Roles.ECON.has(banker, senderDB.getGuild()) || requireConfirmation);
             }
         });
         return transferFromNationAccountWithRoleChecks(allowedIdsGet, banker, nationAccount, allianceAccount, tax_account, senderDB, senderChannel, receiver, amount, depositType, expire, decay, grantToken, convertCash, escrowMode, requireConfirmation, bypassChecks);
@@ -616,7 +616,7 @@ public class OffshoreInstance {
 
         Set<Integer> guildAllianceIds = senderDB.getAllianceIds();
 
-        if ((expire != null && expire != 0) || (decay != null && decay != 0)) {
+        if (((expire != null && expire != 0) || (decay != null && decay != 0)) && !requireConfirmation) {
             allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
             if (allowedIds.isEmpty()) {
 //                return KeyValue.of(TransferStatus.AUTHORIZATION, "You are only authorized " + DepositType.DEPOSIT + " but attempted to do " + depositType);
@@ -649,7 +649,7 @@ public class OffshoreInstance {
 //                    return KeyValue.of(TransferStatus.AUTHORIZATION, "Transfers are temporarily disabled for this account due to an error. Have a server admin use " + CM.bank.unlockTransfers.cmd.toSlashMention() + " to re-enable");
                     return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, depositType.toString()).addMessage("Transfers are temporarily disabled for this account due to an error.", "Have a server admin use " + CM.bank.unlockTransfers.cmd.nationOrAllianceOrGuild(nationAccount.getId() + "") + " in " + getGuild());
                 }
-                if (!depositType.isDeposits() || depositType.isReservedOrIgnored()) {
+                if ((!depositType.isDeposits() || depositType.isReservedOrIgnored()) && !requireConfirmation) {
                     allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
                     if (allowedIds.isEmpty()) {
 //                        return KeyValue.of(TransferStatus.AUTHORIZATION, "You are only authorized for the note `" + DepositType.DEPOSIT + "` but attempted to do `" + depositType + "`");

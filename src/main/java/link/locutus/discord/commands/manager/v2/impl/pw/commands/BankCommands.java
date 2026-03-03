@@ -2160,27 +2160,25 @@ public class BankCommands {
             return "Transfer too large. Please specify a smaller amount";
         }
 
-        boolean hasAdmin = Roles.ECON.has(author, guildDb.getGuild());
-        Supplier<Map<Long, AccessType>> allowedIdsSupplier = new CachedSupplier<>(() -> {
-            return guildDb.getAllowedBankAccountsOrThrow(me, author, receiver, channel.getIdLong(), hasAdmin);
-        });
-
         if (onlyMissingFunds) {
-            int aaId = receiver.getAlliance_id();
-            if (aaId == 0) {
-                return "Receiver is not in an alliance (cannot determine missing funds)";
-            }
-            AccessType accessType = allowedIdsSupplier.get().get((long) aaId);
-            if (accessType == null) {
-                return "You do not have access to the alliance stockpile information for " + DBAlliance.getOrCreate(aaId).getQualifiedId();
-            }
             if (me.getId() != receiver.getId()) {
+                System.out.println("Checking missing funds for receiver: " + receiver.getMarkdownUrl() + " | " + me.getMarkdownUrl());
+                int aaId = receiver.getAlliance_id();
+                if (aaId == 0) {
+                    return "Receiver is not in an alliance (cannot determine missing funds)";
+                }
+                if (!guildDb.isAllianceId(receiver.getAlliance_id())) {
+                    return "This guild is not registered to the alliance `" + receiver.getAlliance_id() + "`. See: " + CM.settings_default.registerAlliance.cmd.toSlashMention();
+                }
+                boolean hasAdmin = Roles.ECON.has(author, guildDb.getGuild());
+                Map<Long, AccessType> allowedIds = guildDb.getAllowedBankAccountsOrThrow(me, author, receiver, channel.getIdLong(), hasAdmin || !force);
+                AccessType accessType = allowedIds.get((long) aaId);
+                if (accessType == null) {
+                    return "You do not have access to the alliance stockpile information for " + DBAlliance.getOrCreate(aaId).getQualifiedId();
+                }
                 if (accessType != AccessType.ECON) {
                     return "You can only access stockpile information for yourself";
                 }
-            }
-            if (!guildDb.isAllianceId(receiver.getAlliance_id())) {
-                return "This guild is not registered to the alliance `" + receiver.getAlliance_id() + "`. See: " + CM.settings_default.registerAlliance.cmd.toSlashMention();
             }
             Map<ResourceType, Double> existing = receiver.getStockpile();
             for (Map.Entry<ResourceType, Double> entry : transfer.entrySet()) {
