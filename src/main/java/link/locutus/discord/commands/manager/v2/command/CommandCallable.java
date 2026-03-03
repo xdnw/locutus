@@ -95,7 +95,7 @@ public interface CommandCallable {
         while (!args.isEmpty()) {
             if (root instanceof ParametricCallable) {
                 if (!allowRemainder)
-                    throw new IllegalArgumentException("Parametric command: " + root.getFullPath() + " has no sub command: " + StringMan.getString(args));
+                    throw new IllegalArgumentException("Command: " + root.getFullPath() + " has no sub command: " + StringMan.getString(args));
                 return root;
             }
             String arg = args.remove(0);
