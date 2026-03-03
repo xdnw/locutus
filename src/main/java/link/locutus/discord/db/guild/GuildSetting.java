@@ -413,7 +413,7 @@ public abstract class GuildSetting<T> {
     }
 
     @Command
-    public boolean allowed(GuildDB db, boolean throwException) {
+    public boolean allowed(@Me GuildDB db, boolean throwException) {
         while (!setupRequirements.isEmpty()) {
             Consumer<GuildSetting<T>> poll = setupRequirements.poll();
             if (poll != null) poll.accept(this);
@@ -727,6 +727,18 @@ public abstract class GuildSetting<T> {
     @Command(desc = "The name of the setting type key")
     public String getKeyName() {
         return getType().toSimpleString();
+    }
+
+    @Command
+    public String getWebType(ValueStore store) {
+        Parser parser = store.get(type);
+        if (parser != null) {
+            Key webType = parser.getWebTypeOrNull();
+            if (webType != null) {
+                return webType.toSimpleString();
+            }
+        }
+        return getKeyName();
     }
 
     @Command(desc = "The name of the setting")
